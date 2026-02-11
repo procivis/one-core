@@ -24,7 +24,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, DetailCredential, HolderBindingCtx, IdentifierDetails,
+    CredentialClaim, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -206,11 +206,11 @@ impl OpenId4VpProofValidatorProto {
             } else {
                 ExtractPresentationCtx {
                     verification_protocol_type: protocol_type,
-                    nonce: None,
+                    nonce: Some(interaction_data.nonce.clone()),
                     format_nonce: None,
                     issuance_date: None,
                     expiration_date: None,
-                    client_id: None,
+                    client_id: Some(interaction_data.client_id.clone()),
                     response_uri: None,
                     mdoc_session_transcript: None,
                     verifier_key: None,
@@ -299,10 +299,6 @@ impl OpenId4VpProofValidatorProto {
                         &credential_token,
                         &lvvc_credentials,
                         proof_input_schema,
-                        HolderBindingCtx {
-                            nonce: interaction_data.nonce.clone(),
-                            audience: interaction_data.client_id.clone(),
-                        },
                         trusted_authorities,
                     )
                     .await?;
@@ -416,7 +412,6 @@ impl OpenId4VpProofValidatorProto {
         credential_token: &str,
         extracted_lvvcs: &[DetailCredential],
         proof_schema_input: &ProofInputSchema,
-        holder_binding_ctx: HolderBindingCtx,
         trusted_authorities: Option<&[TrustedAuthority]>,
     ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
         let format = proof_schema_input
@@ -434,7 +429,6 @@ impl OpenId4VpProofValidatorProto {
                 credential_token,
                 proof_schema_input.credential_schema.as_ref(),
                 self.key_verification(KeyRole::AssertionMethod),
-                Some(holder_binding_ctx),
             )
             .await
             .map_err(|e| {
@@ -631,11 +625,11 @@ impl OpenId4VpProofValidatorProto {
             } else {
                 ExtractPresentationCtx {
                     verification_protocol_type: protocol_type,
-                    nonce: None,
+                    nonce: Some(interaction_data.nonce.clone()),
                     format_nonce: None,
                     issuance_date: None,
                     expiration_date: None,
-                    client_id: None,
+                    client_id: Some(interaction_data.client_id.clone()),
                     response_uri: None,
                     mdoc_session_transcript: None,
                     verifier_key: None,
@@ -711,11 +705,6 @@ impl OpenId4VpProofValidatorProto {
                     "Missing proof input schema for credential schema".to_owned(),
                 ))?;
 
-            let holder_binding_ctx = HolderBindingCtx {
-                nonce: interaction_data.nonce.clone(),
-                audience: interaction_data.client_id.clone(),
-            };
-
             let holder_details =
                 presentation
                     .issuer
@@ -743,7 +732,6 @@ impl OpenId4VpProofValidatorProto {
                     credential_token,
                     &extracted_lvvcs,
                     proof_schema_input,
-                    holder_binding_ctx,
                     None,
                 )
                 .await?;

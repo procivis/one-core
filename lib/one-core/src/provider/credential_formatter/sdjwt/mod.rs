@@ -283,17 +283,9 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         token: &str,
         crypto: &dyn CryptoProvider,
         verification: Option<&VerificationFn>,
-        params: SdJwtHolderBindingParams,
         certificate_validator: Option<&dyn CertificateValidator>,
         http_client: &dyn HttpClient,
-    ) -> Result<
-        (
-            Jwt<Payload>,
-            Option<JWTPayload<KeyBindingPayload>>,
-            IdentifierDetails,
-        ),
-        FormatterError,
-    > {
+    ) -> Result<(Jwt<Payload>, IdentifierDetails, Option<String>), FormatterError> {
         let DecomposedTokenWithDisclosures {
             jwt,
             disclosures,
@@ -315,20 +307,6 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             )
         })?;
 
-        let key_binding_payload =
-            if let Some(ref cnf) = decomposed_token.payload.proof_of_possession_key {
-                Self::verify_holder_binding(
-                    cnf,
-                    token,
-                    key_binding_token,
-                    &*hasher,
-                    verification,
-                    params,
-                )
-                .await?
-            } else {
-                None
-            };
         let issuer = decomposed_token
             .payload
             .issuer
@@ -482,27 +460,29 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 header: decomposed_token.header.clone(),
                 payload: new_payload,
             },
-            key_binding_payload,
             isuer_details,
+            key_binding_token.map(String::from),
         ))
     }
 
-    async fn verify_holder_binding(
+    pub(crate) async fn verify_holder_binding(
         cnf: &ProofOfPossessionKey,
         token: &str,
         key_binding_token: Option<&str>,
         hasher: &dyn Hasher,
         verification: Option<&VerificationFn>,
         params: SdJwtHolderBindingParams,
-    ) -> Result<Option<JWTPayload<KeyBindingPayload>>, FormatterError> {
+    ) -> Result<JWTPayload<KeyBindingPayload>, FormatterError> {
         let decomposed_kb_token = key_binding_token.map(Jwt::<KeyBindingPayload>::decompose_token);
 
         let Some(holder_binding_context) = params.holder_binding_context else {
             if let Some(decomposed_kb_token) = decomposed_kb_token {
                 let token = decomposed_kb_token.error_while("parsing SD-JWT key binding token")?;
-                return Ok(Some(token.payload));
+                return Ok(token.payload);
             } else {
-                return Ok(None);
+                return Err(FormatterError::CouldNotExtractCredentials(
+                    "Missing key binding token".to_string(),
+                ));
             }
         };
 
@@ -591,6 +571,6 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 holder_binding_context.nonce, kb_payload.custom.nonce
             )));
         }
-        Ok(Some(kb_payload))
+        Ok(kb_payload)
     }
 }

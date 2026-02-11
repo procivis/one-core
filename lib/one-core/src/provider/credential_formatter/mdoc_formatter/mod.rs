@@ -51,8 +51,8 @@ use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialSchema, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, PublicKeySource, PublishedClaim,
-    SelectiveDisclosure, TokenVerifier, VerificationFn,
+    FormatterCapabilities, IdentifierDetails, PublicKeySource, PublishedClaim, SelectiveDisclosure,
+    TokenVerifier, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::data_type::model::ExtractedClaim;
@@ -271,7 +271,6 @@ impl CredentialFormatter for MdocFormatter {
         token: &str,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
         _verification: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(&*self.certificate_validator, token, true).await
     }

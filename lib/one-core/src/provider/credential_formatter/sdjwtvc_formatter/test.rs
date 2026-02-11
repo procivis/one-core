@@ -491,7 +491,7 @@ async fn test_extract_credentials() {
         .return_once(|_,  _, _, _| Ok(()));
 
     let credentials = sd_formatter
-        .extract_credentials(&token, None, Box::new(verify_mock), None)
+        .extract_credentials(&token, None, Box::new(verify_mock))
         .await
         .unwrap();
 
@@ -664,12 +664,7 @@ async fn test_extract_credentials_swiyu() {
     };
 
     let credentials = sd_formatter
-        .extract_credentials(
-            &token,
-            Some(&credential_schema),
-            Box::new(verify_mock),
-            None,
-        )
+        .extract_credentials(&token, Some(&credential_schema), Box::new(verify_mock))
         .await
         .unwrap();
 
@@ -842,7 +837,6 @@ async fn test_extract_credentials_with_cnf_no_subject() {
             &format!("{jwt_token}.{token_signature}.{disclosures}"),
             None,
             Box::new(verify_mock),
-            None,
         )
         .await
         .unwrap();
@@ -1021,7 +1015,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         .unwrap();
 
     let result = formatter
-        .extract_credentials(token.as_str(), None, key_verification, None)
+        .extract_credentials(token.as_str(), None, key_verification)
         .await
         .unwrap();
 
@@ -1234,7 +1228,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         .unwrap();
 
     let result = formatter
-        .extract_credentials(token.as_str(), None, key_verification, None)
+        .extract_credentials(token.as_str(), None, key_verification)
         .await
         .unwrap();
 

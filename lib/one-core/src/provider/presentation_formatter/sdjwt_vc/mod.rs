@@ -129,20 +129,11 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         &self,
         token: &str,
         verification_fn: VerificationFn,
-        _context: ExtractPresentationCtx,
+        context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
         let (subject, proof_of_key_possession) = self
-            .extract_presentation_internal(
-                token,
-                Some(verification_fn),
-                &*self.crypto,
-                Duration::seconds(self.get_leeway() as i64),
-            )
+            .extract_presentation_internal(token, Some(verification_fn), &*self.crypto, &context)
             .await?;
-
-        let proof_of_key_possession = proof_of_key_possession.ok_or(FormatterError::Failed(
-            "Missing proof of key possession".to_string(),
-        ))?;
 
         Ok(ExtractedPresentation {
             id: proof_of_key_possession.jwt_id,
@@ -157,20 +148,11 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
     async fn extract_presentation_unverified(
         &self,
         token: &str,
-        _context: ExtractPresentationCtx,
+        context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
         let (subject, proof_of_key_possession) = self
-            .extract_presentation_internal(
-                token,
-                None,
-                &*self.crypto,
-                Duration::seconds(self.get_leeway() as i64),
-            )
+            .extract_presentation_internal(token, None, &*self.crypto, &context)
             .await?;
-
-        let proof_of_key_possession = proof_of_key_possession.ok_or(FormatterError::Failed(
-            "Missing proof of key possesion".to_string(),
-        ))?;
 
         Ok(ExtractedPresentation {
             id: proof_of_key_possession.jwt_id,
@@ -193,23 +175,52 @@ impl SdjwtVCPresentationFormatter {
         token: &str,
         verification: Option<VerificationFn>,
         crypto: &dyn CryptoProvider,
-        leeway: Duration,
-    ) -> Result<(Option<DidValue>, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
-        let params = SdJwtHolderBindingParams {
-            holder_binding_context: None,
-            leeway,
-            skip_holder_binding_aud_check: self.params.swiyu_mode, // skip holder binding aud check for SWIYU as aud is randomly populated
-        };
-        let (jwt, proof_of_key_possession, _): (Jwt<SdJwtVc>, _, _) =
+        context: &ExtractPresentationCtx,
+    ) -> Result<(Option<DidValue>, JWTPayload<KeyBindingPayload>), FormatterError> {
+        let (jwt, _issuer_details, key_binding_token): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 token,
                 crypto,
                 verification.as_ref(),
-                params,
                 Some(&*self.certificate_validator),
                 &*self.client,
             )
             .await?;
+
+        let cnf = jwt
+            .payload
+            .proof_of_possession_key
+            .as_ref()
+            .ok_or(FormatterError::Failed(
+                "Missing proof of key possession".to_string(),
+            ))?;
+        let holder_binding_ctx = match (&context.nonce, &context.client_id) {
+            (Some(nonce), Some(client_id)) => Some(HolderBindingCtx {
+                nonce: nonce.clone(),
+                audience: client_id.clone(),
+            }),
+            _ => None,
+        };
+        let hash_alg = jwt.payload.custom.hash_alg.as_deref().unwrap_or("sha-256");
+        let hasher = crypto.get_hasher(hash_alg).map_err(|_| {
+            FormatterError::CouldNotExtractCredentials(
+                "Missing or invalid hash algorithm".to_string(),
+            )
+        })?;
+        let params = SdJwtHolderBindingParams {
+            holder_binding_context: holder_binding_ctx,
+            leeway: Duration::seconds(self.get_leeway() as i64),
+            skip_holder_binding_aud_check: self.params.swiyu_mode,
+        };
+        let proof_of_key_possession = Jwt::<SdJwtVc>::verify_holder_binding(
+            cnf,
+            token,
+            key_binding_token.as_deref(),
+            &*hasher,
+            verification.as_ref(),
+            params,
+        )
+        .await?;
 
         let subject = jwt
             .payload

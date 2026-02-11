@@ -20,13 +20,12 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    Features, FormatterCapabilities, HolderBindingCtx, IdentifierDetails, SelectiveDisclosure,
-    VerificationFn,
+    Features, FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::mapper::vc_from_credential;
 use super::sdjwt::model::*;
-use super::sdjwt::{SdJwtHolderBindingParams, format_credential, model, prepare_sd_presentation};
+use super::sdjwt::{format_credential, model, prepare_sd_presentation};
 use super::vcdm::{VcdmCredential, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
@@ -39,7 +38,7 @@ use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
+use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -143,19 +142,9 @@ impl CredentialFormatter for SDJWTFormatter {
         token: &str,
         _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
-        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
-        let (credential, _) = extract_credentials_internal(
-            token,
-            Some(&(verification)),
-            &*self.crypto,
-            holder_binding_ctx,
-            Duration::seconds(self.get_leeway() as i64),
-            &*self.client,
-        )
-        .await?;
-
-        Ok(credential)
+        extract_credentials_internal(token, Some(&(verification)), &*self.crypto, &*self.client)
+            .await
     }
 
     async fn prepare_selective_disclosure(
@@ -178,17 +167,7 @@ impl CredentialFormatter for SDJWTFormatter {
         token: &str,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        let (credential, _) = extract_credentials_internal(
-            token,
-            None,
-            &*self.crypto,
-            None,
-            Duration::seconds(self.get_leeway() as i64),
-            &*self.client,
-        )
-        .await?;
-
-        Ok(credential)
+        extract_credentials_internal(token, None, &*self.crypto, &*self.client).await
     }
 
     fn get_leeway(&self) -> u64 {
@@ -274,16 +253,11 @@ impl CredentialFormatter for SDJWTFormatter {
     async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let (parsed_credential, _, issuer): (Jwt<VcClaim>, _, _) =
+        let (parsed_credential, issuer, _): (Jwt<VcClaim>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 credential,
                 &*self.crypto,
                 None,
-                SdJwtHolderBindingParams {
-                    holder_binding_context: None,
-                    leeway: Duration::seconds(self.get_leeway() as i64),
-                    skip_holder_binding_aud_check: false,
-                },
                 None,
                 &*self.client,
             )
@@ -441,25 +415,11 @@ pub(crate) async fn extract_credentials_internal(
     token: &str,
     verification: Option<&VerificationFn>,
     crypto: &dyn CryptoProvider,
-    holder_binding_ctx: Option<HolderBindingCtx>,
-    leeway: Duration,
     http_client: &dyn HttpClient,
-) -> Result<(DetailCredential, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
-    let params = SdJwtHolderBindingParams {
-        holder_binding_context: holder_binding_ctx,
-        leeway,
-        skip_holder_binding_aud_check: false,
-    };
-    let (jwt, key_binding_payload, issuer_details): (Jwt<VcClaim>, _, _) =
-        Jwt::build_from_token_with_disclosures(
-            token,
-            crypto,
-            verification,
-            params,
-            None,
-            http_client,
-        )
-        .await?;
+) -> Result<DetailCredential, FormatterError> {
+    let (jwt, issuer_details, _): (Jwt<VcClaim>, _, _) =
+        Jwt::build_from_token_with_disclosures(token, crypto, verification, None, http_client)
+            .await?;
     let metadata_claims = jwt
         .get_metadata_claims()
         .error_while("getting metadata claims")?;
@@ -496,33 +456,30 @@ pub(crate) async fn extract_credentials_internal(
         }
     };
 
-    Ok((
-        DetailCredential {
-            id: jwt.payload.jwt_id,
-            issuance_date: jwt.payload.issued_at,
-            valid_from: jwt.payload.issued_at,
-            valid_until: jwt.payload.expires_at,
-            update_at: None,
-            invalid_before: jwt.payload.invalid_before,
-            issuer,
-            subject: jwt
-                .payload
-                .subject
-                .map(|did| did.parse().context("did parsing error"))
-                .transpose()
-                .map_err(|e| FormatterError::Failed(e.to_string()))?
-                .map(IdentifierDetails::Did),
-            claims,
-            status: jwt.payload.custom.vc.credential_status,
-            credential_schema: jwt
-                .payload
-                .custom
-                .vc
-                .credential_schema
-                .and_then(|schema| schema.into_iter().next()),
-        },
-        key_binding_payload,
-    ))
+    Ok(DetailCredential {
+        id: jwt.payload.jwt_id,
+        issuance_date: jwt.payload.issued_at,
+        valid_from: jwt.payload.issued_at,
+        valid_until: jwt.payload.expires_at,
+        update_at: None,
+        invalid_before: jwt.payload.invalid_before,
+        issuer,
+        subject: jwt
+            .payload
+            .subject
+            .map(|did| did.parse().context("did parsing error"))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map(IdentifierDetails::Did),
+        claims,
+        status: jwt.payload.custom.vc.credential_status,
+        credential_schema: jwt
+            .payload
+            .custom
+            .vc
+            .credential_schema
+            .and_then(|schema| schema.into_iter().next()),
+    })
 }
 
 fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterError> {

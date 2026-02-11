@@ -158,12 +158,7 @@ impl VerificationProtocol for ScanToVerify {
         });
 
         let credential = formatter
-            .extract_credentials(
-                &credentials,
-                Some(credential_schema),
-                key_verification,
-                None,
-            )
+            .extract_credentials(&credentials, Some(credential_schema), key_verification)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

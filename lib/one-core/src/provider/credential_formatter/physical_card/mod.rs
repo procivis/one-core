@@ -7,7 +7,7 @@ use one_crypto::CryptoProvider;
 use shared_types::CredentialSchemaId;
 
 use super::json_ld_classic::verify_credential_signature;
-use super::model::{CredentialData, HolderBindingCtx};
+use super::model::CredentialData;
 use crate::config::core_config::{
     DidType, IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
@@ -67,7 +67,6 @@ impl CredentialFormatter for PhysicalCardFormatter {
         token: &str,
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         let credential_with_optical_data = OptiocalBarcodeCredential::from_token(token)?;
         let extra_information_for_proof = credential_with_optical_data.extra_information_bytes();

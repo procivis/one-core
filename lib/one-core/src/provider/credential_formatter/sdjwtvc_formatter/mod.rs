@@ -27,12 +27,11 @@ use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, PublishedClaim,
-    SelectiveDisclosure, VerificationFn,
+    FormatterCapabilities, IdentifierDetails, PublishedClaim, SelectiveDisclosure, VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
-use super::sdjwt::model::{DecomposedToken, KeyBindingPayload, SdJwtFormattingInputs};
-use super::sdjwt::{SdJwtHolderBindingParams, prepare_sd_presentation};
+use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
+use super::sdjwt::prepare_sd_presentation;
 use super::vcdm::VcdmCredential;
 use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
 use crate::config::core_config::{
@@ -47,7 +46,7 @@ use crate::model::identifier::Identifier;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
+use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
@@ -98,16 +97,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
     async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let (parsed_credential, _, issuer): (Jwt<SdJwtVc>, _, _) =
+        let (parsed_credential, issuer, _): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 credential,
                 &*self.crypto,
                 None,
-                SdJwtHolderBindingParams {
-                    holder_binding_context: None,
-                    leeway: Duration::seconds(self.get_leeway() as i64),
-                    skip_holder_binding_aud_check: true,
-                },
                 Some(&*self.certificate_validator),
                 &*self.http_client,
             )
@@ -287,20 +281,14 @@ impl CredentialFormatter for SDJWTVCFormatter {
         token: &str,
         credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
-        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
-        let (credential, _) = self
-            .extract_credentials_internal(
-                token,
-                credential_schema,
-                Some(verification),
-                &*self.crypto,
-                holder_binding_ctx,
-                Duration::seconds(self.get_leeway() as i64),
-            )
-            .await?;
-
-        Ok(credential)
+        self.extract_credentials_internal(
+            token,
+            credential_schema,
+            Some(verification),
+            &*self.crypto,
+        )
+        .await
     }
 
     async fn prepare_selective_disclosure(
@@ -323,18 +311,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
         token: &str,
         credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        let (credential, _) = self
-            .extract_credentials_internal(
-                token,
-                credential_schema,
-                None,
-                &*self.crypto,
-                None,
-                Duration::seconds(self.get_leeway() as i64),
-            )
-            .await?;
-
-        Ok(credential)
+        self.extract_credentials_internal(token, credential_schema, None, &*self.crypto)
+            .await
     }
 
     fn get_leeway(&self) -> u64 {
@@ -499,24 +477,15 @@ impl SDJWTVCFormatter {
         credential_schema: Option<&CredentialSchema>,
         verification: Option<VerificationFn>,
         crypto: &dyn CryptoProvider,
-        holder_binding_ctx: Option<HolderBindingCtx>,
-        leeway: Duration,
-    ) -> Result<(DetailCredential, Option<JWTPayload<KeyBindingPayload>>), FormatterError> {
-        let params = SdJwtHolderBindingParams {
-            holder_binding_context: holder_binding_ctx,
-            leeway,
-            skip_holder_binding_aud_check: self.params.swiyu_mode, // skip holder binding aud check for SWIYU as aud is randomly populated
-        };
-        let (mut jwt, proof_of_key_possession, issuer): (Jwt<SdJwtVc>, _, _) =
-            Jwt::build_from_token_with_disclosures(
-                token,
-                crypto,
-                verification.as_ref(),
-                params,
-                Some(&*self.certificate_validator),
-                &*self.http_client,
-            )
-            .await?;
+    ) -> Result<DetailCredential, FormatterError> {
+        let (mut jwt, issuer, _): (Jwt<SdJwtVc>, _, _) = Jwt::build_from_token_with_disclosures(
+            token,
+            crypto,
+            verification.as_ref(),
+            Some(&*self.certificate_validator),
+            &*self.http_client,
+        )
+        .await?;
 
         // SWIYU credentials don't encode image claims with the data uri prefix
         if self.params.swiyu_mode
@@ -556,22 +525,19 @@ impl SDJWTVCFormatter {
             id: None,
         };
         claims.claims.extend(metadata_claims);
-        Ok((
-            DetailCredential {
-                id: jwt.payload.jwt_id,
-                issuance_date: jwt.payload.issued_at,
-                valid_from: jwt.payload.issued_at,
-                valid_until: jwt.payload.expires_at,
-                update_at: None,
-                invalid_before: jwt.payload.invalid_before,
-                issuer,
-                subject,
-                claims,
-                status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
-                credential_schema: None,
-            },
-            proof_of_key_possession,
-        ))
+        Ok(DetailCredential {
+            id: jwt.payload.jwt_id,
+            issuance_date: jwt.payload.issued_at,
+            valid_from: jwt.payload.issued_at,
+            valid_until: jwt.payload.expires_at,
+            update_at: None,
+            invalid_before: jwt.payload.invalid_before,
+            issuer,
+            subject,
+            claims,
+            status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
+            credential_schema: None,
+        })
     }
 
     fn credential_to_claims(

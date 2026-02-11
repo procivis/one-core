@@ -18,8 +18,7 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    Features, FormatterCapabilities, HolderBindingCtx, IdentifierDetails, Issuer, PublicKeySource,
-    VerificationFn,
+    Features, FormatterCapabilities, IdentifierDetails, Issuer, PublicKeySource, VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -165,7 +164,6 @@ impl CredentialFormatter for JsonLdClassic {
         credential: &str,
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, Some(verification_fn))
             .await

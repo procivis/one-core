@@ -202,7 +202,7 @@ impl CredentialService {
             certificate_validator: self.certificate_validator.clone(),
         });
         formatter
-            .extract_credentials(&result.credential, Some(schema), verification_fn, None)
+            .extract_credentials(&result.credential, Some(schema), verification_fn)
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 

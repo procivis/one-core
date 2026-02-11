@@ -674,7 +674,7 @@ async fn test_holder_accept_credential_success() {
 
             formatter
                 .expect_extract_credentials()
-                .returning(move |_, _, _, _| {
+                .returning(move |_, _, _| {
                     Ok(DetailCredential {
                         id: None,
                         issuance_date: None,
@@ -893,7 +893,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
                 formatter.expect_extract_credentials().returning({
                     let jwk = jwk.clone();
-                    move |_, _, _, _| {
+                    move |_, _, _| {
                         Ok(DetailCredential {
                             id: None,
                             issuance_date: None,
@@ -1128,7 +1128,7 @@ async fn test_holder_accept_expired_credential_fails() {
 
             formatter
                 .expect_extract_credentials()
-                .returning(move |_, _, _, _| {
+                .returning(move |_, _, _| {
                     Ok(DetailCredential {
                         id: None,
                         issuance_date: None,

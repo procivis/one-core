@@ -15,8 +15,11 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, HolderBindingCtx, VerificationFn,
 };
-use crate::provider::credential_formatter::sdjwt::append_key_binding_token;
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
+use crate::provider::credential_formatter::sdjwt::model::VcClaim;
+use crate::provider::credential_formatter::sdjwt::{
+    SdJwtHolderBindingParams, append_key_binding_token,
+};
 use crate::provider::credential_formatter::sdjwt_formatter::extract_credentials_internal;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
@@ -145,18 +148,23 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         &self,
         presentation: &str,
         verification_fn: VerificationFn,
-        _context: ExtractPresentationCtx,
+        context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        self.extract_presentation_internal(presentation, Some(&verification_fn), &*self.client)
-            .await
+        self.extract_presentation_internal(
+            presentation,
+            Some(&verification_fn),
+            &*self.client,
+            &context,
+        )
+        .await
     }
 
     async fn extract_presentation_unverified(
         &self,
         presentation: &str,
-        _context: ExtractPresentationCtx,
+        context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        self.extract_presentation_internal(presentation, None, &*self.client)
+        self.extract_presentation_internal(presentation, None, &*self.client, &context)
             .await
     }
 
@@ -171,6 +179,7 @@ impl SdjwtPresentationFormatter {
         token: &str,
         verification: Option<&VerificationFn>,
         http_client: &dyn HttpClient,
+        context: &ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
         // W3C VP SD-JWT tokens and SD-JWT tokens.
         let as_jwt_vp: Result<Jwt<Sdvp>, FormatterError> =
@@ -184,19 +193,53 @@ impl SdjwtPresentationFormatter {
             });
         }
 
-        let (credential, proof_of_key_possesion) = extract_credentials_internal(
+        let credential =
+            extract_credentials_internal(token, verification, &*self.crypto, http_client).await?;
+
+        // Perform KB verification at the presentation level
+        let decomposed = parse_token(token)?;
+        let decomposed_jwt = Jwt::<serde_json::Map<String, Value>>::decompose_token(decomposed.jwt)
+            .error_while("parsing SD-JWT token")?;
+
+        let cnf = decomposed_jwt
+            .payload
+            .proof_of_possession_key
+            .as_ref()
+            .ok_or(FormatterError::Failed(
+                "Missing proof of key possesion".to_string(),
+            ))?;
+        let holder_binding_ctx = match (&context.nonce, &context.client_id) {
+            (Some(nonce), Some(client_id)) => Some(HolderBindingCtx {
+                nonce: nonce.clone(),
+                audience: client_id.clone(),
+            }),
+            _ => None,
+        };
+        let hash_alg = decomposed_jwt
+            .payload
+            .custom
+            .get("_sd_alg")
+            .and_then(|alg| alg.as_str())
+            .unwrap_or("sha-256");
+        let hasher = self.crypto.get_hasher(hash_alg).map_err(|_| {
+            FormatterError::CouldNotExtractCredentials(
+                "Missing or invalid hash algorithm".to_string(),
+            )
+        })?;
+        let params = SdJwtHolderBindingParams {
+            holder_binding_context: holder_binding_ctx,
+            leeway: Duration::seconds(self.get_leeway() as i64),
+            skip_holder_binding_aud_check: false,
+        };
+        let proof_of_key_possesion = Jwt::<VcClaim>::verify_holder_binding(
+            cnf,
             token,
+            decomposed.key_binding_token,
+            &*hasher,
             verification,
-            &*self.crypto,
-            None,
-            Duration::seconds(self.get_leeway() as i64),
-            http_client,
+            params,
         )
         .await?;
-
-        let proof_of_key_possesion = proof_of_key_possesion.ok_or(FormatterError::Failed(
-            "Missing proof of key possesion".to_string(),
-        ))?;
 
         let presentation = ExtractedPresentation {
             id: proof_of_key_possesion.jwt_id,

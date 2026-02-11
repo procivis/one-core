@@ -17,7 +17,7 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, VerificationFn,
+    FormatterCapabilities, IdentifierDetails, VerificationFn,
 };
 use super::vcdm::vcdm_metadata_claims;
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -188,7 +188,6 @@ impl CredentialFormatter for JWTFormatter {
         token: &str,
         _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(&verification), None)

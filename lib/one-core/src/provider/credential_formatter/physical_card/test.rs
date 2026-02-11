@@ -182,7 +182,7 @@ async fn test_mrz_proof_process() {
     );
 
     formatter
-        .extract_credentials(&token, None, Box::new(token_verifier), None)
+        .extract_credentials(&token, None, Box::new(token_verifier))
         .await
         .unwrap();
 }

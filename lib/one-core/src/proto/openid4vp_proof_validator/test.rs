@@ -323,7 +323,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     if let Some(credential_extraction) = mock_data.credential_extraction {
         credential_formatter
             .expect_extract_credentials()
-            .return_once(move |_, _, _, _| credential_extraction);
+            .return_once(move |_, _, _| credential_extraction);
     }
     let presentation_formatter = Arc::new(presentation_formatter);
     let presentation_formatter_clone = presentation_formatter.clone();

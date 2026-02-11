@@ -7,7 +7,6 @@ use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
-use crate::provider::credential_formatter::model::HolderBindingCtx;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
@@ -71,7 +70,6 @@ pub trait CredentialFormatter: Send + Sync {
         credentials: &str,
         credential_schema: Option<&'a CredentialSchema>,
         verification: Box<dyn TokenVerifier>,
-        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError>;
 
     /// Parses a received credential without verifying the signature.

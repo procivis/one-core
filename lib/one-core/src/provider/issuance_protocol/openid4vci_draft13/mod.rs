@@ -547,7 +547,6 @@ impl OpenID4VCI13 {
                 &issuer_response.credential,
                 credential.schema.as_ref(),
                 verification_fn,
-                None,
             )
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;

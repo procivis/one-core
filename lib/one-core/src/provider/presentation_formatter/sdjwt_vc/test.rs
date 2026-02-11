@@ -54,7 +54,7 @@ async fn test_extract_presentation() {
 
     crypto
         .expect_get_hasher()
-        .once()
+        .times(2)
         .with(eq("sha-256"))
         .returning(|_| Ok(Arc::new(SHA256 {})));
 
@@ -157,4 +157,215 @@ async fn test_extract_presentation() {
         Some(IdentifierDetails::Did(expected_holder_did))
     );
     assert_eq!(presentation.nonce, Some("1234567890".to_string()));
+}
+
+#[tokio::test]
+async fn test_extract_presentation_with_holder_binding() {
+    // https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-4.2
+    let jwt_token = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNpZ25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9CVkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9kYXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9pZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNONndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAiamRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxlLmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJjbmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJaeGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ";
+    let token_signature =
+        "2CyX0v3AAFG9y-A_Z46uz9hHsNbr0yWTbDQaajLCrsxo-JxVh4a9dAMFVYZ8GFG2wgj2jKnA42wSgv7xVM64PA";
+    // SD-JWT format: header.payload.signature~disclosure1~disclosure2~kb_jwt
+    // Note: no extra '.' between signature and disclosures (disclosures start with '~')
+    let disclosures_and_kb = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
+    let presentation_token = format!("{jwt_token}.{token_signature}{disclosures_and_kb}");
+
+    let expected_holder_did = DidValue::from_str("did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCJ5IjoiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9").unwrap();
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .times(2)
+        .with(eq("sha-256"))
+        .returning(|_| Ok(Arc::new(SHA256 {})));
+
+    let mut http_client = MockHttpClient::new();
+    http_client
+        .expect_get()
+        .once()
+        .with(eq(ISSUER_URL))
+        .returning(|url| {
+            let mut inner_client = MockHttpClient::new();
+            inner_client.expect_send().once().returning(|_, _, _, _| {
+                Ok(Response {
+                    body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
+                    headers: Default::default(),
+                    status: StatusCode(200),
+                    request: Request {
+                        body: None,
+                        headers: Default::default(),
+                        method: Method::Get,
+                        url: ISSUER_URL.to_string(),
+                    },
+                })
+            });
+
+            RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
+        });
+
+    let sd_formatter = SdjwtVCPresentationFormatter::new(
+        Arc::new(http_client),
+        Arc::new(crypto),
+        Arc::new(MockCertificateValidator::new()),
+        false,
+    );
+
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock
+        .expect_verify()
+        .times(2)
+        .returning(|_, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("ES256"))
+        .times(2)
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .returning(|| KeyAlgorithmType::Eddsa);
+
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+
+    let result = sd_formatter
+        .extract_presentation(
+            &presentation_token,
+            Box::new(verify_mock),
+            ExtractPresentationCtx {
+                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                nonce: Some("1234567890".to_string()),
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: Some("https://example.com/verifier".to_string()),
+                response_uri: None,
+                mdoc_session_transcript: None,
+                verifier_key: None,
+            },
+        )
+        .await;
+
+    assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+
+    let presentation = result.unwrap();
+
+    assert_eq!(presentation.expires_at, None);
+    assert_eq!(
+        presentation.issued_at,
+        Some(OffsetDateTime::from_unix_timestamp(1733230140).unwrap())
+    );
+    assert_eq!(presentation.credentials.len(), 1);
+    assert_eq!(
+        presentation.issuer,
+        Some(IdentifierDetails::Did(expected_holder_did))
+    );
+    assert_eq!(presentation.nonce, Some("1234567890".to_string()));
+}
+
+#[tokio::test]
+async fn test_extract_presentation_with_wrong_nonce() {
+    // https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-4.2
+    let jwt_token = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNpZ25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9CVkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9kYXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9pZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNONndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAiamRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxlLmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJjbmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJaeGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ";
+    let token_signature =
+        "2CyX0v3AAFG9y-A_Z46uz9hHsNbr0yWTbDQaajLCrsxo-JxVh4a9dAMFVYZ8GFG2wgj2jKnA42wSgv7xVM64PA";
+    // SD-JWT format: header.payload.signature~disclosure1~disclosure2~kb_jwt
+    // Note: no extra '.' between signature and disclosures (disclosures start with '~')
+    let disclosures_and_kb = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
+    let presentation_token = format!("{jwt_token}.{token_signature}{disclosures_and_kb}");
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .times(2)
+        .with(eq("sha-256"))
+        .returning(|_| Ok(Arc::new(SHA256 {})));
+
+    let mut http_client = MockHttpClient::new();
+    http_client
+        .expect_get()
+        .once()
+        .with(eq(ISSUER_URL))
+        .returning(|url| {
+            let mut inner_client = MockHttpClient::new();
+            inner_client.expect_send().once().returning(|_, _, _, _| {
+                Ok(Response {
+                    body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
+                    headers: Default::default(),
+                    status: StatusCode(200),
+                    request: Request {
+                        body: None,
+                        headers: Default::default(),
+                        method: Method::Get,
+                        url: ISSUER_URL.to_string(),
+                    },
+                })
+            });
+
+            RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
+        });
+
+    let sd_formatter = SdjwtVCPresentationFormatter::new(
+        Arc::new(http_client),
+        Arc::new(crypto),
+        Arc::new(MockCertificateValidator::new()),
+        false,
+    );
+
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock
+        .expect_verify()
+        .times(2)
+        .returning(|_, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("ES256"))
+        .times(2)
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .returning(|| KeyAlgorithmType::Eddsa);
+
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+
+    let result = sd_formatter
+        .extract_presentation(
+            &presentation_token,
+            Box::new(verify_mock),
+            ExtractPresentationCtx {
+                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                nonce: Some("wrong_nonce".to_string()),
+                format_nonce: None,
+                issuance_date: None,
+                expiration_date: None,
+                client_id: Some("https://example.com/verifier".to_string()),
+                response_uri: None,
+                mdoc_session_transcript: None,
+                verifier_key: None,
+            },
+        )
+        .await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("Invalid key binding token nonce"),
+        "Expected nonce mismatch error, got: {err}"
+    );
 }

@@ -313,7 +313,7 @@ impl RevocationMethod for BitstringStatusList {
 
         let status_credential = self
             .get_formatter_for_parsing(content_type, is_bbs)?
-            .extract_credentials(&response_content, None, key_verification, None)
+            .extract_credentials(&response_content, None, key_verification)
             .await
             .error_while("parsing status list")?;
 

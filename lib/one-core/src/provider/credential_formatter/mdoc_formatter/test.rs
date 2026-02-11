@@ -874,7 +874,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .returning(move |_, _, _, _| Ok(()));
 
     formatter
-        .extract_credentials(&formatted_credential, None, Box::new(token_verifier), None)
+        .extract_credentials(&formatted_credential, None, Box::new(token_verifier))
         .await
         .unwrap()
 }

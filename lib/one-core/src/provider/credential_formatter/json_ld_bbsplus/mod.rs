@@ -21,8 +21,7 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, Issuer, SelectiveDisclosure,
-    VerificationFn,
+    FormatterCapabilities, IdentifierDetails, Issuer, SelectiveDisclosure, VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -225,7 +224,6 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential: &str,
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         self.verify(credential, verification_fn).await
     }
