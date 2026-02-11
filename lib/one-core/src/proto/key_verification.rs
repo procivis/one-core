@@ -10,6 +10,7 @@ use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
+use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -98,7 +99,7 @@ impl TokenVerifier for KeyVerification {
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
-    ) -> Result<(), SignerError> {
+    ) -> Result<(), TokenError> {
         let public_key = match public_key_source {
             PublicKeySource::Did { did, key_id } => {
                 self.public_key_from_did(&did, key_id, algorithm).await
@@ -115,7 +116,7 @@ impl TokenVerifier for KeyVerification {
                     .map_err(|e| SignerError::CouldNotVerify(e.to_string()))
             }
         }?;
-        public_key.verify(token, signature)
+        Ok(public_key.verify(token, signature)?)
     }
 
     fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider {
@@ -264,7 +265,10 @@ mod test {
                 b"signature",
             )
             .await;
-        assert!(matches!(result, Err(SignerError::CouldNotVerify(_))));
+        assert!(matches!(
+            result,
+            Err(TokenError::SignerError(SignerError::CouldNotVerify(_)))
+        ));
     }
 
     #[tokio::test]
@@ -324,6 +328,9 @@ mod test {
                 b"signature",
             )
             .await;
-        assert!(matches!(result, Err(SignerError::InvalidSignature)));
+        assert!(matches!(
+            result,
+            Err(TokenError::SignerError(SignerError::InvalidSignature))
+        ));
     }
 }

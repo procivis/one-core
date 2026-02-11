@@ -7,6 +7,7 @@ use time::format_description::well_known::iso8601::{
     Config, EncodedConfig, FormattedComponents, TimePrecision,
 };
 
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
@@ -99,7 +100,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
                 if matches!(e, DataLayerError::AlreadyExists) {
                     ServiceError::from(BusinessLogicError::CredentialSchemaAlreadyExists)
                 } else {
-                    e.into()
+                    e.error_while("creating credential schema").into()
                 }
             })?;
 
@@ -136,7 +137,8 @@ impl CredentialSchemaImporterProto {
         Ok(self
             .repository
             .get_credential_schema_list(query, &Default::default())
-            .await?
+            .await
+            .error_while("getting credential schema list")?
             .values)
     }
 

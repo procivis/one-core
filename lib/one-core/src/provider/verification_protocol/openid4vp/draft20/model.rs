@@ -7,6 +7,7 @@ use standardized_types::openid4vp::ResponseMode;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -136,6 +137,9 @@ impl OpenID4VP20AuthorizationRequest {
                 custom: self.clone(),
             },
         };
-        Ok(unsigned_jwt.tokenize(Some(&*auth_fn)).await?)
+        Ok(unsigned_jwt
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating authorization request token")?)
     }
 }

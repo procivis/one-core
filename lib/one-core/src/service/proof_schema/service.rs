@@ -17,6 +17,7 @@ use super::validator::{
     extract_claims_from_credential_schema, proof_schema_name_already_exists,
     validate_create_request, validate_imported_proof_schema,
 };
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
@@ -72,7 +73,8 @@ impl ProofSchemaService {
                     }),
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof schema")?
             .ok_or(EntityNotFoundError::ProofSchema(*id))?;
         throw_if_org_relation_not_matching_session(
             result.organisation.as_ref(),
@@ -100,7 +102,8 @@ impl ProofSchemaService {
         let result = self
             .proof_schema_repository
             .get_proof_schema_list(query)
-            .await?;
+            .await
+            .error_while("getting proof schemas")?;
         Ok(list_response_into(result))
     }
 
@@ -126,7 +129,8 @@ impl ProofSchemaService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
+            .await
+            .error_while("getting organisation")?;
 
         let Some(organisation) = organisation else {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
@@ -171,7 +175,8 @@ impl ProofSchemaService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schemas")?
             .values;
 
         if credential_schemas.len() != expected_credential_schemas {
@@ -212,7 +217,8 @@ impl ProofSchemaService {
         let result = self
             .proof_schema_repository
             .create_proof_schema(proof_schema)
-            .await?;
+            .await
+            .error_while("creating proof schema")?;
         tracing::info!(message = success_log);
         Ok(result)
     }
@@ -232,7 +238,8 @@ impl ProofSchemaService {
                     proof_inputs: None,
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof schema")?
             .ok_or(BusinessLogicError::MissingProofSchema {
                 proof_schema_id: *id,
             })?;
@@ -247,11 +254,12 @@ impl ProofSchemaService {
             .await
             .map_err(|error| match error {
                 // proof schema not found or already deleted
-                DataLayerError::RecordNotUpdated => BusinessLogicError::MissingProofSchema {
-                    proof_schema_id: *id,
+                DataLayerError::RecordNotUpdated => {
+                    ServiceError::from(BusinessLogicError::MissingProofSchema {
+                        proof_schema_id: *id,
+                    })
                 }
-                .into(),
-                error => ServiceError::from(error),
+                error => error.error_while("deleting proof schema").into(),
             })?;
         tracing::info!("Deleted proof schema {}", id);
         Ok(())
@@ -270,7 +278,8 @@ impl ProofSchemaService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof schema")?
             .ok_or(EntityNotFoundError::ProofSchema(id))?;
         throw_if_org_relation_not_matching_session(
             proof_schema.organisation.as_ref(),
@@ -292,7 +301,8 @@ impl ProofSchemaService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or::<ServiceError>(
                 BusinessLogicError::MissingOrganisation(request.organisation_id).into(),
             )?;
@@ -333,7 +343,7 @@ impl ProofSchemaService {
                                     ..Default::default()
                                 },
                             )
-                            .await?;
+                            .await .error_while("getting credential schema")?;
 
                         let credential_schema =
                             // if not exists (or deleted) create new credential schema
@@ -373,7 +383,8 @@ impl ProofSchemaService {
         let proof_schema_id = self
             .proof_schema_repository
             .create_proof_schema(proof_schema)
-            .await?;
+            .await
+            .error_while("creating proof schema")?;
         tracing::info!(message = success_log);
         Ok(ImportProofSchemaResponseDTO {
             id: proof_schema_id,

@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 
 use super::dto::RevocationListResponseDTO;
 use crate::config::core_config::RevocationType;
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
@@ -52,7 +53,7 @@ impl RevocationListService {
                 },
             )
             .await
-            .map_err(ServiceError::from)?
+            .error_while("getting credential")?
             .ok_or(EntityNotFoundError::Credential(*id))?;
 
         // In the next step the latest LVVC credential should be obtained from the asked-for credential
@@ -60,7 +61,7 @@ impl RevocationListService {
             .lvvc_repository
             .get_latest_by_credential_id(id.to_owned(), ValidityCredentialType::Lvvc)
             .await
-            .map_err(ServiceError::from)?
+            .error_while("getting validity credential")?
             .ok_or(EntityNotFoundError::Lvvc(*id))?;
 
         let credential_content = std::str::from_utf8(&latest_lvvc.credential)
@@ -209,7 +210,10 @@ impl RevocationListService {
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?
                 .to_string();
 
-            self.lvvc_repository.insert(lvvc.into()).await?;
+            self.lvvc_repository
+                .insert(lvvc.into())
+                .await
+                .error_while("inserting validity credential")?;
 
             return Ok(IssuerResponseDTO {
                 credential: credential_content,
@@ -229,7 +233,8 @@ impl RevocationListService {
         let result = self
             .revocation_list_repository
             .get_revocation_list(id, &RevocationListRelations::default())
-            .await?;
+            .await
+            .error_while("getting revocation list")?;
 
         let Some(list) = result else {
             return Err(EntityNotFoundError::RevocationList(*id).into());
@@ -248,7 +253,8 @@ impl RevocationListService {
         let result = self
             .revocation_list_repository
             .get_revocation_list(id, &RevocationListRelations::default())
-            .await?;
+            .await
+            .error_while("getting revocation list")?;
 
         let Some(list) = result else {
             return Err(EntityNotFoundError::RevocationList(*id).into());

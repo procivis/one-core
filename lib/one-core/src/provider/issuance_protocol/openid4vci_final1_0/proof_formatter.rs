@@ -5,6 +5,7 @@ use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -40,7 +41,8 @@ impl OpenID4VCIProofJWTFormatter {
         jwt: &str,
         verifier: &dyn TokenVerifier,
     ) -> Result<OpenID4VCIVerifiedProof, FormatterError> {
-        let proof_jwt: DecomposedJwt<ProofOfPossession> = Jwt::decompose_token(jwt)?;
+        let proof_jwt: DecomposedJwt<ProofOfPossession> =
+            Jwt::decompose_token(jwt).error_while("parsing proof token")?;
 
         match proof_jwt.header.r#type.as_deref() {
             Some(JWT_PROOF_TYPE) => {}
@@ -104,7 +106,8 @@ impl OpenID4VCIProofJWTFormatter {
                     })?;
 
                     let wua =
-                        Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)?;
+                        Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)
+                            .error_while("parsing WUA token")?;
 
                     let attested_key = wua
                         .payload
@@ -132,7 +135,8 @@ impl OpenID4VCIProofJWTFormatter {
 
         proof_jwt
             .verify_signature(public_key_source, verifier)
-            .await?;
+            .await
+            .error_while("validating proof token")?;
 
         Ok(OpenID4VCIVerifiedProof {
             holder_binding,
@@ -180,7 +184,10 @@ impl OpenID4VCIProofJWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(&*auth_fn)).await
+        Ok(jwt
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating proof token")?)
     }
 }
 

@@ -4,6 +4,7 @@ use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use time::OffsetDateTime;
 
 use crate::config::{ConfigValidationError, core_config};
+use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
@@ -49,7 +50,8 @@ impl CredentialService {
 
             self.credential_repository
                 .update_credential(credential.id, update_request)
-                .await?;
+                .await
+                .error_while("updating credential")?;
         }
 
         Ok(CredentialRevocationCheckResponseDTO {
@@ -213,7 +215,10 @@ impl CredentialService {
         let blob_id = match credential.credential_blob_id {
             None => {
                 let blob = Blob::new(result.credential, BlobType::Credential);
-                db_blob_storage.create(blob.clone()).await?;
+                db_blob_storage
+                    .create(blob.clone())
+                    .await
+                    .error_while("creating credential blob")?;
                 blob.id
             }
             Some(blob_id) => {
@@ -224,7 +229,8 @@ impl CredentialService {
                             value: Some(result.credential.into()),
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating credential blob")?;
                 blob_id
             }
         };
@@ -238,7 +244,8 @@ impl CredentialService {
 
         self.credential_repository
             .update_credential(credential.id, update_request)
-            .await?;
+            .await
+            .error_while("updating credential")?;
         Ok(())
     }
 }
@@ -393,7 +400,8 @@ async fn check_access_token(
     // Update in database
     interactions
         .update_interaction(interaction.id, interaction.into())
-        .await?;
+        .await
+        .error_while("updating interaction")?;
 
     Ok(TokenCheckResult::RefreshPossible {
         access_token: token_response.access_token,

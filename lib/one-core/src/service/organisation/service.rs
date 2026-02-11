@@ -7,6 +7,7 @@ use super::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListResponseDTO, UpsertOrganisationRequestDTO,
 };
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::{OrganisationListQuery, OrganisationRelations};
@@ -26,7 +27,8 @@ impl OrganisationService {
         let organisations = self
             .organisation_repository
             .get_organisation_list(query)
-            .await?;
+            .await
+            .error_while("getting organisations")?;
 
         let wallet_provider_issuers: Vec<IdentifierId> = organisations
             .values
@@ -49,7 +51,8 @@ impl OrganisationService {
                     ),
                     ..Default::default()
                 })
-                .await?
+                .await
+                .error_while("getting identifiers")?
                 .values
                 .into_iter()
                 .map(|identifier| (identifier.id, identifier))
@@ -89,7 +92,8 @@ impl OrganisationService {
         let organisation = self
             .organisation_repository
             .get_organisation(id, &OrganisationRelations::default())
-            .await?;
+            .await
+            .error_while("getting organisation")?;
 
         let Some(organisation) = organisation else {
             return Err(EntityNotFoundError::Organisation(*id).into());
@@ -100,7 +104,8 @@ impl OrganisationService {
                 Some(
                     self.identifier_repository
                         .get(*identifier_id, &Default::default())
-                        .await?
+                        .await
+                        .error_while("getting identifier")?
                         .ok_or(ServiceError::MappingError(format!(
                             "Identifier not found: {identifier_id}"
                         )))?,
@@ -136,7 +141,7 @@ impl OrganisationService {
             Err(DataLayerError::AlreadyExists) => {
                 Err(BusinessLogicError::OrganisationAlreadyExists.into())
             }
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err.error_while("creating organisation").into()),
         }
     }
 
@@ -148,7 +153,8 @@ impl OrganisationService {
             let org = self
                 .organisation_repository
                 .get_organisation(&request.id, &Default::default())
-                .await?;
+                .await
+                .error_while("getting organisation")?;
             let id = org.as_ref().map(|org| &org.id);
             validate_wallet_provider_issuer(id, issuer, &*self.identifier_repository).await?;
         }
@@ -182,7 +188,7 @@ impl OrganisationService {
                 self.create_organisation(request.into()).await?;
                 Ok(())
             }
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err.error_while("updating organisation").into()),
         }
     }
 }

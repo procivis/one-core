@@ -8,6 +8,7 @@ use serde_json::Value;
 use shared_types::DidValue;
 use time::Duration;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -86,7 +87,8 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         let mut vp_token = credential.credential_token.clone();
 
         let jwt = parse_token(&vp_token)?;
-        let decomposed_token = Jwt::<Value>::decompose_token(jwt.jwt)?;
+        let decomposed_token =
+            Jwt::<Value>::decompose_token(jwt.jwt).error_while("parsing SD-JWT token")?;
         let hash_alg = decomposed_token
             .payload
             .custom

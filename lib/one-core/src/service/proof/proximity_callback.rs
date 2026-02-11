@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -220,7 +221,10 @@ impl ProofService {
 
         let blob = Blob::new(blob_value, BlobType::Proof);
         let proof_blob_id = blob.id;
-        blob_storage.create(blob).await?;
+        blob_storage
+            .create(blob)
+            .await
+            .error_while("creating proof blob")?;
 
         match self
             .proof_validator

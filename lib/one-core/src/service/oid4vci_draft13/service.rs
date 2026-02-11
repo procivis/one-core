@@ -17,6 +17,7 @@ use super::OID4VCIDraft13Service;
 use super::dto::{OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{self, FormatType, IssuanceProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::exchange::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
     get_exchange_param_token_expires_in,
@@ -88,7 +89,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
@@ -175,7 +177,8 @@ impl OID4VCIDraft13Service {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential schema")?;
 
         let Some(schema) = schema else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -245,7 +248,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential schema")?;
 
         let Some(schema) = schema else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -283,7 +287,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential")?;
 
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(credential_id).into());
@@ -373,7 +378,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
@@ -390,7 +396,8 @@ impl OID4VCIDraft13Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting interaction")?
         else {
             return Err(
                 BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
@@ -410,7 +417,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let Some(credential) = credentials.iter().find(|credential| {
             credential
@@ -486,7 +494,8 @@ impl OID4VCIDraft13Service {
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
-            .await??;
+            .await
+            .error_while("issuing credential")??;
         tracing::info!("Issued credential {}", credential.id);
         Ok(response)
     }
@@ -508,7 +517,8 @@ impl OID4VCIDraft13Service {
                 },
                 Some(LockType::Update),
             )
-            .await?
+            .await
+            .error_while("getting interaction")?
         else {
             return Err(
                 BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
@@ -524,7 +534,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
 
         let issued_credential = self
             .protocol_provider
@@ -550,7 +561,8 @@ impl OID4VCIDraft13Service {
                                 data: Some(Some(data)),
                             },
                         )
-                        .await?;
+                        .await
+                        .error_while("updating interaction")?;
                 }
                 Ok(issued_credential.into())
             }
@@ -568,7 +580,8 @@ impl OID4VCIDraft13Service {
                             ..Default::default()
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating credential")?;
                 Err(error.into())
             }
         }
@@ -586,7 +599,8 @@ impl OID4VCIDraft13Service {
         let Some(interaction) = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default(), None)
-            .await?
+            .await
+            .error_while("getting interaction")?
         else {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
         };
@@ -621,7 +635,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let Some(credential) = credentials.iter().find(|credential| {
             credential
@@ -694,7 +709,8 @@ impl OID4VCIDraft13Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
 
         // mark the credential as revoked (if supported and not done before)
         if matches!(
@@ -724,7 +740,8 @@ impl OID4VCIDraft13Service {
         let Some(credential_schema) = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
-            .await?
+            .await
+            .error_while("getting credential schema")?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
@@ -751,7 +768,8 @@ impl OID4VCIDraft13Service {
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(&interaction_id, &CredentialRelations::default())
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let credential = credentials
             .first()
@@ -784,7 +802,8 @@ impl OID4VCIDraft13Service {
                     &InteractionRelations::default(),
                     Some(LockType::Update),
                 )
-                .await?
+                .await
+                .error_while("getting interaction")?
                 .ok_or(ServiceError::MappingError(format!(
                     "Interaction `{}` not found",
                     interaction_id
@@ -812,7 +831,8 @@ impl OID4VCIDraft13Service {
                                 ..Default::default()
                             },
                         )
-                        .await?;
+                        .await
+                        .error_while("updating credential")?;
                 }
 
                 let credential_format_type = self
@@ -836,11 +856,16 @@ impl OID4VCIDraft13Service {
 
             self.interaction_repository
                 .update_interaction(interaction.id, interaction.into())
-                .await?;
+                .await
+                .error_while("updating interaction")?;
             Ok(response)
         }
         .boxed();
-        let result = self.transaction_manager.tx(tx).await??;
+        let result = self
+            .transaction_manager
+            .tx(tx)
+            .await
+            .error_while("creating token")??;
         tracing::info!(
             "Issued access token for issuance of credential {}",
             credential.id

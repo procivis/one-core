@@ -7,6 +7,7 @@ use super::dto::{
     GetIdentifierResponseDTO,
 };
 use crate::config::core_config;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
 use crate::model::identifier::{IdentifierListQuery, IdentifierRelations};
@@ -52,7 +53,8 @@ impl IdentifierService {
                     organisation: Some(Default::default()),
                 },
             )
-            .await?
+            .await
+            .error_while("getting identifier")?
             .ok_or(EntityNotFoundError::Identifier(*id))?;
 
         throw_if_org_relation_not_matching_session(
@@ -77,7 +79,8 @@ impl IdentifierService {
         Ok(self
             .identifier_repository
             .get_identifier_list(query)
-            .await?
+            .await
+            .error_while("getting identifiers")?
             .into())
     }
 
@@ -94,7 +97,8 @@ impl IdentifierService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
         if organisation.deactivated_at.is_some() {
@@ -143,7 +147,8 @@ impl IdentifierService {
                             organisation: Some(Default::default()),
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting key")?
                     .ok_or(EntityNotFoundError::Key(key_id))?;
 
                 self.identifier_creator
@@ -167,7 +172,8 @@ impl IdentifierService {
                             organisation: Some(Default::default()),
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting key")?
                     .ok_or(EntityNotFoundError::Key(key_id))?;
 
                 self.identifier_creator
@@ -236,7 +242,8 @@ impl IdentifierService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting identifier")?;
         let Some(identifier) = identifier else {
             return Err(EntityNotFoundError::Identifier(*id).into());
         };
@@ -251,7 +258,7 @@ impl IdentifierService {
                 DataLayerError::RecordNotUpdated => {
                     ServiceError::EntityNotFound(EntityNotFoundError::Identifier(*id))
                 }
-                e => e.into(),
+                e => e.error_while("deleting identifier").into(),
             })?;
         tracing::info!(
             "Deleted identifier `{}` ({})`",

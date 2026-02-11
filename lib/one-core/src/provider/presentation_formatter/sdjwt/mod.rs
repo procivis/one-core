@@ -8,6 +8,7 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::config::core_config::FormatType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -74,7 +75,9 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         for credential in &credentials {
             let mut vp_token = credential.credential_token.clone();
             let jwt = parse_token(&vp_token)?;
-            let jwt_payload = Jwt::<Value>::decompose_token(jwt.jwt)?.payload;
+            let jwt_payload = Jwt::<Value>::decompose_token(jwt.jwt)
+                .error_while("parsing SD-JWT presetation token")?
+                .payload;
 
             // The CNF claim is optional as per https://www.w3.org/TR/vc-jose-cose/#cnf
             // We only append a key binding token if the CNF is present

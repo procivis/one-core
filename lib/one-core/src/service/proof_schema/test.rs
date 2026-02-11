@@ -254,10 +254,7 @@ async fn test_get_proof_schema_list_failure() {
     };
     let result = service.get_proof_schema_list(&organisation_id, query).await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Repository(DataLayerError::Db(_)))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0054);
 }
 
 #[tokio::test]

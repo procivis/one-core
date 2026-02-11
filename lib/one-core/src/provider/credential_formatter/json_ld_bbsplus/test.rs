@@ -153,7 +153,7 @@ fn verifier() -> impl TokenVerifier {
 
     verifier
         .expect_verify()
-        .returning(move |_, _, token, signature| key_handle.verify(token, signature));
+        .returning(move |_, _, token, signature| Ok(key_handle.verify(token, signature)?));
 
     verifier
 }

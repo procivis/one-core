@@ -3,6 +3,7 @@ use url::Url;
 
 use super::SSIHolderService;
 use super::dto::HandleInvitationResultDTO;
+use crate::error::ContextWithErrorCode;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::validator::throw_if_org_not_matching_session;
@@ -19,7 +20,8 @@ impl SSIHolderService {
         let organisation = self
             .organisation_repository
             .get_organisation(&organisation_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or(EntityNotFoundError::Organisation(organisation_id))?;
 
         if organisation.deactivated_at.is_some() {

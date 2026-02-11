@@ -261,7 +261,7 @@ fn compute_disclosure_for(key: &str, value: &Value) -> Result<String, FormatterE
 
     let array = json!([salt, key, value]).to_string();
 
-    string_to_b64url_string(&array)
+    Ok(string_to_b64url_string(&array)?)
 }
 
 pub(crate) fn compute_array_disclosures(
@@ -332,7 +332,7 @@ pub(crate) fn compute_array_disclosures(
 fn compute_disclosure_for_array_element(value: &Value) -> Result<String, FormatterError> {
     let salt = one_crypto::utilities::generate_salt_base64_16();
     let array = json!([salt, value]).to_string();
-    string_to_b64url_string(&array)
+    Ok(string_to_b64url_string(&array)?)
 }
 
 pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken<'_>, FormatterError> {

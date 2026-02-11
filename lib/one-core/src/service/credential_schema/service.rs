@@ -1,6 +1,7 @@
 use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -75,7 +76,8 @@ impl CredentialSchemaService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
+            .await
+            .error_while("getting organisation")?;
 
         let Some(organisation) = organisation else {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
@@ -122,7 +124,7 @@ impl CredentialSchemaService {
             .credential_schema_repository
             .create_credential_schema(credential_schema)
             .await
-            .map_err(ServiceError::from)?;
+            .error_while("getting credential schema")?;
 
         tracing::info!(message = success_log);
         Ok(schema_id)
@@ -146,7 +148,8 @@ impl CredentialSchemaService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
             .ok_or(BusinessLogicError::MissingCredentialSchema)?;
 
         throw_if_org_relation_not_matching_session(
@@ -159,9 +162,9 @@ impl CredentialSchemaService {
             .await
             .map_err(|error| match error {
                 DataLayerError::RecordNotUpdated => {
-                    EntityNotFoundError::CredentialSchema(*credential_schema_id).into()
+                    ServiceError::from(EntityNotFoundError::CredentialSchema(*credential_schema_id))
                 }
-                error => ServiceError::from(error),
+                error => error.error_while("deleting credential schema").into(),
             })?;
 
         tracing::info!(
@@ -190,7 +193,8 @@ impl CredentialSchemaService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential schema")?;
 
         let Some(schema) = schema else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -222,7 +226,8 @@ impl CredentialSchemaService {
         let result = self
             .credential_schema_repository
             .get_credential_schema_list(query, &Default::default())
-            .await?;
+            .await
+            .error_while("getting credential schemas")?;
         Ok(list_response_into(result))
     }
 
@@ -239,7 +244,8 @@ impl CredentialSchemaService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or(ServiceError::BusinessLogic(
                 BusinessLogicError::MissingOrganisation(request.organisation_id),
             ))?;
@@ -292,7 +298,8 @@ impl CredentialSchemaService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::CredentialSchema(*credential_schema_id),
             ))?;

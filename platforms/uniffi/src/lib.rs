@@ -5,6 +5,7 @@ use std::sync::{Arc, LazyLock};
 
 use one_core::OneCore;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
+use one_core::error::ContextWithErrorCode;
 use one_core::proto::http_client::HttpClient;
 use one_core::proto::http_client::reqwest_client::ReqwestClient;
 use one_core::proto::session_provider::NoSessionProvider;
@@ -183,7 +184,8 @@ async fn initialize(
             let db_url = format!("sqlite:{db_path}?mode=rwc");
             let db_conn = sql_data_provider::db_conn(db_url, true)
                 .await
-                .map_err(|e| ServiceError::Repository(DataLayerError::Db(e.into())))?;
+                .map_err(|e| DataLayerError::Db(e.into()))
+                .error_while("opening DB")?;
             let data_repository = Arc::new(DataLayer::build(db_conn, vec!["INTERNAL".to_string()]));
 
             let reqwest_client = reqwest::Client::builder()

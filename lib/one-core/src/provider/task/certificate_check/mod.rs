@@ -6,6 +6,7 @@ use shared_types::{CertificateId, IdentifierId};
 use time::OffsetDateTime;
 
 use super::Task;
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{
     CertificateFilterValue, CertificateListQuery, CertificateState, UpdateCertificateRequest,
 };
@@ -66,7 +67,8 @@ impl Task for CertificateCheck {
                         ..Default::default()
                     },
                 )
-                .await?
+                .await
+                .error_while("getting identifier")?
                 .ok_or(EntityNotFoundError::Identifier(identifier_id))?;
 
             if identifier.state == IdentifierState::Active
@@ -86,7 +88,8 @@ impl Task for CertificateCheck {
                             ..Default::default()
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating identifier")?;
                 deactivated_identifier_ids.push(identifier_id);
             }
         }
@@ -141,7 +144,8 @@ impl CertificateCheck {
                 ),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .error_while("getting certificates")?;
 
         let mut expired_certificate_ids: Vec<ExpirationCheckResult> =
             Vec::with_capacity(active_expired_certificates.total_items as usize);
@@ -154,7 +158,8 @@ impl CertificateCheck {
                         ..Default::default()
                     },
                 )
-                .await?;
+                .await
+                .error_while("updating certificate")?;
             expired_certificate_ids.push(ExpirationCheckResult {
                 certificate_id: certificate.id,
                 identifier_id: certificate.identifier_id,
@@ -173,7 +178,8 @@ impl CertificateCheck {
                 ),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .error_while("getting certificates")?;
 
         let mut results: Vec<RevocationCheckResult> = vec![];
         for certificate in active_certificates.values {
@@ -201,7 +207,8 @@ impl CertificateCheck {
                                 ..Default::default()
                             },
                         )
-                        .await?;
+                        .await
+                        .error_while("updating certificate")?;
                 }
                 Err(err) => {
                     results.push(RevocationCheckResult {

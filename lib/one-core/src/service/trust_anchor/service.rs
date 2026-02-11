@@ -8,6 +8,7 @@ use super::dto::{
 use super::mapper::trust_anchor_from_request;
 use crate::config::core_config::TrustManagementType;
 use crate::config::validator::trust_management::validate_trust_management;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
@@ -58,7 +59,7 @@ impl TrustAnchorService {
                 DataLayerError::AlreadyExists => {
                     ServiceError::from(BusinessLogicError::TrustAnchorNameTaken)
                 }
-                err => err.into(),
+                err => err.error_while("creating trust achor").into(),
             })?;
         tracing::info!(message = success_log);
         Ok(id)
@@ -71,7 +72,8 @@ impl TrustAnchorService {
         let result = self
             .trust_anchor_repository
             .get(trust_anchor_id)
-            .await?
+            .await
+            .error_while("getting trust achor")?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustAnchor(trust_anchor_id),
             ))?;
@@ -89,7 +91,8 @@ impl TrustAnchorService {
         let entities = self
             .trust_entity_repository
             .get_active_by_trust_anchor_id(trust_anchor_id)
-            .await?;
+            .await
+            .error_while("getting trust entities")?;
 
         let entities = entities
             .into_iter()
@@ -109,9 +112,14 @@ impl TrustAnchorService {
         &self,
         anchor_id: TrustAnchorId,
     ) -> Result<GetTrustAnchorDetailResponseDTO, ServiceError> {
-        let response = self.trust_anchor_repository.get(anchor_id).await?.ok_or(
-            ServiceError::EntityNotFound(EntityNotFoundError::TrustAnchor(anchor_id)),
-        )?;
+        let response = self
+            .trust_anchor_repository
+            .get(anchor_id)
+            .await
+            .error_while("getting trust anchor")?
+            .ok_or(ServiceError::EntityNotFound(
+                EntityNotFoundError::TrustAnchor(anchor_id),
+            ))?;
 
         Ok(response.into())
     }
@@ -120,20 +128,25 @@ impl TrustAnchorService {
         &self,
         filters: ListTrustAnchorsQueryDTO,
     ) -> Result<GetTrustAnchorsResponseDTO, ServiceError> {
-        self.trust_anchor_repository
+        Ok(self
+            .trust_anchor_repository
             .list(filters)
             .await
-            .map_err(Into::into)
+            .error_while("getting trust achors")?)
     }
 
     pub async fn delete_trust_anchor(&self, anchor_id: TrustAnchorId) -> Result<(), ServiceError> {
         let anchor = self
             .trust_anchor_repository
             .get(anchor_id)
-            .await?
+            .await
+            .error_while("getting trust achor")?
             .ok_or(EntityNotFoundError::TrustAnchor(anchor_id))?;
 
-        self.trust_anchor_repository.delete(anchor_id).await?;
+        self.trust_anchor_repository
+            .delete(anchor_id)
+            .await
+            .error_while("deleting trust achor")?;
         tracing::info!("Deleted trust anchor `{}` ({})", anchor.name, anchor_id);
         Ok(())
     }

@@ -6,6 +6,7 @@ use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use tokio_util::either::Either;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -33,7 +34,7 @@ impl OpenID4VCIProofJWTFormatter {
             payload,
             signature,
             unverified_jwt,
-        } = Jwt::decompose_token(jwt)?;
+        } = Jwt::decompose_token(jwt).error_while("parsing proof token")?;
 
         match header.r#type.as_deref() {
             Some(JWT_PROOF_TYPE) => {}
@@ -160,7 +161,10 @@ impl OpenID4VCIProofJWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(&*auth_fn)).await
+        Ok(jwt
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating proof token")?)
     }
 }
 

@@ -30,7 +30,7 @@ use super::validator::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
-use crate::error::ErrorCodeMixin;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixin};
 use crate::mapper::list_response_into;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
@@ -89,7 +89,8 @@ impl WalletProviderService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting wallet unit")?
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
         throw_if_org_relation_not_matching_session(
             result.organisation.as_ref(),
@@ -113,7 +114,8 @@ impl WalletProviderService {
         let result = self
             .wallet_unit_repository
             .get_wallet_unit_list(query)
-            .await?;
+            .await
+            .error_while("getting wallet units")?;
 
         Ok(list_response_into(result))
     }
@@ -128,7 +130,8 @@ impl WalletProviderService {
         let Some(organisation) = self
             .organisation_repository
             .get_organisation_for_wallet_provider(&wallet_provider)
-            .await?
+            .await
+            .error_while("getting organisation")?
         else {
             return Err(WalletProviderError::WalletProviderNotAssociatedWithOrganisation.into());
         };
@@ -163,7 +166,8 @@ impl WalletProviderService {
                     .proof
                     .as_ref()
                     .ok_or(WalletProviderError::MissingProof)?,
-            )?;
+            )
+            .error_while("parsing proof token")?;
             let public_key_jwk = request
                 .public_key
                 .clone()
@@ -214,7 +218,8 @@ impl WalletProviderService {
         let wallet_unit_id = self
             .wallet_unit_repository
             .create_wallet_unit(wallet_unit)
-            .await?;
+            .await
+            .error_while("creating wallet unit")?;
 
         self.create_wallet_unit_history(
             &wallet_unit_id,
@@ -312,7 +317,8 @@ impl WalletProviderService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting wallet unit")?
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
         match wallet_unit.status {
@@ -384,7 +390,8 @@ impl WalletProviderService {
             }
         };
         let attestation_key_proof =
-            Jwt::<NoncePayload>::decompose_token(&request.attestation_key_proof)?;
+            Jwt::<NoncePayload>::decompose_token(&request.attestation_key_proof)
+                .error_while("parsing attestation key proof token")?;
         self.verify_attestation_proof(
             &attestation_key_proof,
             &attested_public_key,
@@ -405,7 +412,8 @@ impl WalletProviderService {
         let jwk =
             if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
                 let device_signing_key_proof =
-                    Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)?;
+                    Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)
+                        .error_while("parsing device signing key proof token")?;
                 let (_, alg) = self
                     .key_algorithm_provider
                     .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
@@ -442,7 +450,8 @@ impl WalletProviderService {
                     attested_keys: None,
                 },
             )
-            .await?;
+            .await
+            .error_while("updating wallet unit")?;
 
         self.create_wallet_unit_history(
             &wallet_unit_id,
@@ -530,7 +539,8 @@ impl WalletProviderService {
                     attested_keys: None,
                 },
             )
-            .await?;
+            .await
+            .error_while("updating wallet unit")?;
 
         let Some(organisation) = &wallet_unit.organisation else {
             return Err(ServiceError::MappingError(format!(
@@ -566,7 +576,8 @@ impl WalletProviderService {
                     }),
                 },
             )
-            .await?
+            .await
+            .error_while("getting wallet unit")?
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
@@ -598,7 +609,8 @@ impl WalletProviderService {
             .transpose()?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
-        let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)?;
+        let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)
+            .error_while("parsing bearer token")?;
         self.verify_device_signing_proof(
             &bearer_token,
             &key,
@@ -621,7 +633,10 @@ impl WalletProviderService {
                 &auth_fn,
                 public_key_info.clone(),
             )?;
-            let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
+            let signed_attestation = attestation
+                .tokenize(Some(&*auth_fn))
+                .await
+                .error_while("creating WIA token")?;
             instance_attestations.push(signed_attestation);
         }
 
@@ -687,7 +702,8 @@ impl WalletProviderService {
                                 ..Default::default()
                             },
                         )
-                        .await?;
+                        .await
+                        .error_while("updating wallet unit")?;
 
                     if !instance_attestations.is_empty() {
                         self.create_wallet_unit_history(
@@ -717,7 +733,8 @@ impl WalletProviderService {
                     Ok::<_, ServiceError>(())
                 }
                 .boxed())
-                .await??;
+                .await
+                .error_while("issuing attestation")??;
         }
         tracing::info!("Issued attestations for wallet unit {}", wallet_unit_id);
         Ok(IssueWalletUnitAttestationResponseDTO {
@@ -762,7 +779,10 @@ impl WalletProviderService {
             issuer_public_key_info,
             revocation_info,
         )?;
-        let signed_attestation = attestation.tokenize(Some(auth_fn.as_ref())).await?;
+        let signed_attestation = attestation
+            .tokenize(Some(auth_fn.as_ref()))
+            .await
+            .error_while("creating WUA token")?;
         let attestation_hash = SHA256
             .hash_base64(signed_attestation.as_bytes())
             .map_err(|e| {
@@ -931,7 +951,8 @@ impl WalletProviderService {
                     }),
                 },
             )
-            .await?;
+            .await
+            .error_while("getting identifier")?;
 
         let Some(issuer_identifier) = issuer_identifier else {
             return Err(EntityNotFoundError::Identifier(issuer_identifier_id).into());
@@ -1068,7 +1089,8 @@ impl WalletProviderService {
     }
 
     pub async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicJwk, ServiceError> {
-        let pop_token = Jwt::<NoncePayload>::decompose_token(pop)?;
+        let pop_token =
+            Jwt::<NoncePayload>::decompose_token(pop).error_while("parsing pop token")?;
         let jwk = pop_token
             .header
             .jwk
@@ -1110,7 +1132,8 @@ impl WalletProviderService {
                     }),
                 },
             )
-            .await?
+            .await
+            .error_while("getting wallet unit")?
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
@@ -1135,7 +1158,8 @@ impl WalletProviderService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating wallet unit")?;
         self.create_wallet_unit_history(
             id,
             wallet_unit.name,
@@ -1180,14 +1204,18 @@ impl WalletProviderService {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(id, &WalletUnitRelations::default())
-            .await?
+            .await
+            .error_while("getting wallet unit")?
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Pending {
             return Err(WalletProviderError::WalletUnitMustBePending.into());
         }
 
-        self.wallet_unit_repository.delete_wallet_unit(id).await?;
+        self.wallet_unit_repository
+            .delete_wallet_unit(id)
+            .await
+            .error_while("deleting wallet unit")?;
         let _unused = self
             .history_repository
             .delete_history_by_entity_id((*id).into())

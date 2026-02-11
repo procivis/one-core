@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use self::dto::InteractionExpirationCheckResultDTO;
 use super::Task;
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -54,7 +55,8 @@ impl Task for InteractionExpirationCheckProvider {
         let updated_credentials = self
             .interaction_repository
             .update_expired_credentials()
-            .await?;
+            .await
+            .error_while("updating expired credentials")?;
 
         // write credential history
         for credential_id in &updated_credentials {
@@ -78,7 +80,8 @@ impl Task for InteractionExpirationCheckProvider {
                         ..Default::default()
                     },
                 )
-                .await?
+                .await
+                .error_while("getting credential")?
                 .ok_or(EntityNotFoundError::Credential(*credential_id))?;
 
             let target = target_from_credential(&credential);
@@ -100,10 +103,15 @@ impl Task for InteractionExpirationCheckProvider {
                     organisation_id: schema.organisation.map(|o| o.id),
                     user: self.session_provider.session().user(),
                 })
-                .await?;
+                .await
+                .error_while("creating history")?;
         }
 
-        let updated_proofs = self.interaction_repository.update_expired_proofs().await?;
+        let updated_proofs = self
+            .interaction_repository
+            .update_expired_proofs()
+            .await
+            .error_while("updating expired proofs")?;
 
         // write proof history
         for proof_id in &updated_proofs {
@@ -120,7 +128,8 @@ impl Task for InteractionExpirationCheckProvider {
                     },
                     None,
                 )
-                .await?
+                .await
+                .error_while("getting proof")?
                 .ok_or(EntityNotFoundError::Proof(*proof_id))?;
 
             let name = proof.schema.map(|schema| schema.name).unwrap_or_default();
@@ -145,7 +154,8 @@ impl Task for InteractionExpirationCheckProvider {
                     organisation_id: organisation.map(|o| o.id),
                     user: self.session_provider.session().user(),
                 })
-                .await?;
+                .await
+                .error_while("creating history")?;
         }
 
         let result = InteractionExpirationCheckResultDTO {

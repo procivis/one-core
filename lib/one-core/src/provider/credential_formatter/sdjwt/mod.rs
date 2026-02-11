@@ -14,6 +14,7 @@ use super::model::{
     AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
     PublicKeySource, SettableClaims, SignatureProvider, VerificationFn,
 };
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
@@ -165,7 +166,10 @@ pub(crate) async fn format_credential<T: Serialize>(
         payload,
     );
 
-    let mut token = jwt.tokenize(Some(&*auth_fn)).await?;
+    let mut token = jwt
+        .tokenize(Some(&*auth_fn))
+        .await
+        .error_while("creating SD-JWT token")?;
     append_disclosures(&mut token, disclosures);
     Ok(token)
 }
@@ -186,7 +190,8 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
         None => token,
         Some((without_claims, _)) => without_claims,
     };
-    let jwt: DecomposedJwt<AnyPayload> = Jwt::decompose_token(without_claims)?;
+    let jwt: DecomposedJwt<AnyPayload> =
+        Jwt::decompose_token(without_claims).error_while("parsing SD-JWT token")?;
 
     if jwt.payload.custom.contains_key("vct") {
         Ok(SdJwtType::SdJwtVc)
@@ -203,7 +208,9 @@ pub(crate) async fn prepare_sd_presentation(
     let model::DecomposedToken {
         jwt, disclosures, ..
     } = parse_token(&presentation.token)?;
-    let jwt_payload = Jwt::<Value>::decompose_token(jwt)?.payload;
+    let jwt_payload = Jwt::<Value>::decompose_token(jwt)
+        .error_while("parsing SD-JWT token")?
+        .payload;
     let disclosed_keys = if !user_claim_path.is_empty() {
         let prefix = user_claim_path.join("/");
         presentation
@@ -292,7 +299,8 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             disclosures,
             key_binding_token,
         } = parse_token(token)?;
-        let decomposed_token = Jwt::<serde_json::Map<String, Value>>::decompose_token(jwt)?;
+        let decomposed_token = Jwt::<serde_json::Map<String, Value>>::decompose_token(jwt)
+            .error_while("parsing SD-JWT token")?;
 
         let hash_alg = decomposed_token
             .payload
@@ -407,7 +415,8 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         if let Some(verification) = verification {
             decomposed_token
                 .verify_signature(params, verification)
-                .await?;
+                .await
+                .error_while("verifying SD-JWT token")?;
         };
 
         let disclosures_with_hashes = disclosures
@@ -490,19 +499,19 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
 
         let Some(holder_binding_context) = params.holder_binding_context else {
             if let Some(decomposed_kb_token) = decomposed_kb_token {
-                let token = decomposed_kb_token?;
+                let token = decomposed_kb_token.error_while("parsing SD-JWT key binding token")?;
                 return Ok(Some(token.payload));
             } else {
                 return Ok(None);
             }
         };
 
-        let decomposed_kb_token =
-            decomposed_kb_token
-                .transpose()?
-                .ok_or(FormatterError::CouldNotExtractCredentials(
-                    "Missing key binding token".to_string(),
-                ))?;
+        let decomposed_kb_token = decomposed_kb_token
+            .transpose()
+            .error_while("parsing SD-JWT key binding token")?
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "Missing key binding token".to_string(),
+            ))?;
 
         if let Some(verification) = verification {
             let kb_issuer = encode_to_did(cnf.jwk.jwk()).map_err(|err| {
@@ -516,7 +525,8 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             };
             decomposed_kb_token
                 .verify_signature(params, verification)
-                .await?;
+                .await
+                .error_while("verifying SD-JWT key binding token")?;
         }
 
         let DecomposedJwt {

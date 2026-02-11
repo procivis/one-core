@@ -33,6 +33,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
@@ -162,7 +163,9 @@ impl CredentialFormatter for SDJWTFormatter {
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
         let model::DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None, None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None, None)
+            .await
+            .error_while("creating SD-JWT token")?;
         let hasher = self
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
@@ -316,7 +319,9 @@ impl CredentialFormatter for SDJWTFormatter {
             .unwrap_or_else(|| "VerifiableCredential".to_string());
 
         // Get metadata claims first (includes vc type and standard JWT claims)
-        let metadata_claims = parsed_credential.get_metadata_claims()?;
+        let metadata_claims = parsed_credential
+            .get_metadata_claims()
+            .error_while("getting metadata claims")?;
 
         // Parse claims from credential subject
         let credential_subject = parsed_credential
@@ -455,7 +460,9 @@ pub(crate) async fn extract_credentials_internal(
             http_client,
         )
         .await?;
-    let metadata_claims = jwt.get_metadata_claims()?;
+    let metadata_claims = jwt
+        .get_metadata_claims()
+        .error_while("getting metadata claims")?;
     let credential_subject = jwt
         .payload
         .custom

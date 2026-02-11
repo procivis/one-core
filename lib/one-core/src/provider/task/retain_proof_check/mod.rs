@@ -8,6 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::Task;
+use crate::error::ContextWithErrorCode;
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{CredentialFilterValue, CredentialRelations, GetCredentialQuery};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
@@ -62,7 +63,8 @@ impl Task for RetainProofCheck {
                 sorting: None,
                 include: None,
             })
-            .await?
+            .await
+            .error_while("getting history list")?
             .values
             .into_iter()
             .flat_map(|event| event.entity_id)
@@ -88,7 +90,8 @@ impl Task for RetainProofCheck {
                     sorting: None,
                     include: None,
                 })
-                .await?;
+                .await
+                .error_while("getting proofs")?;
 
             if proofs.values.is_empty() {
                 return Ok(json!({}));
@@ -119,7 +122,8 @@ impl Task for RetainProofCheck {
                         },
                         None,
                     )
-                    .await?
+                    .await
+                    .error_while("getting proof")?
                     .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
                         proof.id,
                     )))?
@@ -138,10 +142,14 @@ impl Task for RetainProofCheck {
                     })
                     .collect::<Result<HashSet<_>, _>>()?;
 
-                self.proof_repository.delete_proof_claims(&proof.id).await?;
+                self.proof_repository
+                    .delete_proof_claims(&proof.id)
+                    .await
+                    .error_while("deleting proof claims")?;
                 self.claim_repository
                     .delete_claims_for_credentials(credential_ids.clone())
-                    .await?;
+                    .await
+                    .error_while("deleting credential claims")?;
 
                 let blob_storage = self
                     .blob_storage_provider
@@ -162,16 +170,21 @@ impl Task for RetainProofCheck {
                         ),
                         ..GetCredentialQuery::default()
                     })
-                    .await?
+                    .await
+                    .error_while("getting credentials")?
                     .values
                     .into_iter()
                     .filter_map(|c| c.credential_blob_id)
                     .collect::<Vec<_>>();
 
-                blob_storage.delete_many(&credential_blob_ids).await?;
+                blob_storage
+                    .delete_many(&credential_blob_ids)
+                    .await
+                    .error_while("deleting blobs")?;
                 self.credential_repository
                     .delete_credential_blobs(credential_ids)
-                    .await?;
+                    .await
+                    .error_while("deleting credential blobs")?;
 
                 if let Some(proof_blob_id) = proof.proof_blob_id {
                     let blob_storage = self
@@ -182,7 +195,10 @@ impl Task for RetainProofCheck {
                             MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
                         })?;
 
-                    blob_storage.delete(&proof_blob_id).await?;
+                    blob_storage
+                        .delete(&proof_blob_id)
+                        .await
+                        .error_while("deleting proof blob")?;
                 }
             }
 

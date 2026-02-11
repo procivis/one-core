@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{
     CredentialFilterValue, CredentialRole, CredentialStateEnum, GetCredentialQuery,
 };
@@ -48,7 +49,8 @@ impl Task for SuspendCheckProvider {
                 ),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let credentials = credential_list.values;
 

@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::{TransportType, VerificationEngagement};
+use crate::error::ContextWithErrorCode;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
@@ -84,7 +85,11 @@ impl ProofService {
             interaction: None,
         };
 
-        let proof_id = self.proof_repository.create_proof(proof.clone()).await?;
+        let proof_id = self
+            .proof_repository
+            .create_proof(proof.clone())
+            .await
+            .error_while("creating proof")?;
 
         let RetrievalOptions::Ble(ble_options) = device_retrieval_method.retrieval_options;
 

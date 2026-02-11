@@ -25,6 +25,7 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{decode_cbor_base64, encode_cbor_base64};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
+use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
     EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header,
@@ -437,7 +438,7 @@ async fn try_verify_detached_signature_with_provider(
     external_aad: &[u8],
     issuer_key: &PublicJwk,
     verifier: &dyn TokenVerifier,
-) -> Result<(), SignerError> {
+) -> Result<(), TokenError> {
     let sig_data = coset::sig_structure_data(
         SignatureContext::CoseSign1,
         device_signature.protected.clone(),

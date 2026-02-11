@@ -3,6 +3,7 @@ use shared_types::CertificateId;
 
 use super::CertificateService;
 use super::dto::CertificateResponseDTO;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::IdentifierType;
@@ -23,7 +24,8 @@ impl CertificateService {
                     organisation: Some(Default::default()),
                 },
             )
-            .await?
+            .await
+            .error_while("getting certificate")?
             .ok_or(EntityNotFoundError::Certificate(id))?;
 
         throw_if_org_not_matching_session(
@@ -47,13 +49,15 @@ impl CertificateService {
         let certificate = self
             .certificate_repository
             .get(id, &Default::default())
-            .await?
+            .await
+            .error_while("getting certificate")?
             .ok_or(EntityNotFoundError::Certificate(id))?;
 
         let identifier = self
             .identifier_repository
             .get(certificate.identifier_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting identifier")?
             .ok_or(EntityNotFoundError::Identifier(certificate.identifier_id))?;
 
         if identifier.r#type != IdentifierType::CertificateAuthority {

@@ -3,6 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::WalletProviderType;
+use crate::error::ErrorCodeMixinExt;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -65,7 +66,7 @@ pub(crate) fn public_key_from_wallet_unit(
 pub(crate) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
     match error {
         DataLayerError::AlreadyExists => WalletProviderError::WalletUnitAlreadyExists.into(),
-        e => e.into(),
+        e => e.error_while("creating wallet unit").into(),
     }
 }
 

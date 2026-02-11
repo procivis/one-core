@@ -13,6 +13,7 @@ use super::utils::{
     build_metadata_file_content, create_backup_history_event, create_zip, dir_path_from_file_path,
     get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationListQuery;
 use crate::repository::error::DataLayerError;
@@ -32,16 +33,22 @@ impl BackupService {
             .context("Failed to create db temp file")
             .map_err(map_error)?;
 
-        let db_metadata = self.backup_repository.copy_db_to(db_copy.path()).await?;
+        let db_metadata = self
+            .backup_repository
+            .copy_db_to(db_copy.path())
+            .await
+            .error_while("copying DB")?;
         let unexportable: UnexportableEntitiesResponseDTO = unexportable_entities_to_response_dto(
             self.backup_repository
                 .fetch_unexportable(Some(db_copy.path()))
-                .await?,
+                .await
+                .error_while("fetching unexportable")?,
             &self.config,
         )?;
         self.backup_repository
             .delete_unexportable(db_copy.path())
-            .await?;
+            .await
+            .error_while("deleting unexportable")?;
 
         let organisation = self
             .organisation_repository
@@ -53,7 +60,8 @@ impl BackupService {
                     .into_iter()
                     .next()
                     .ok_or(DataLayerError::MappingError)
-            })?;
+            })
+            .error_while("getting organisations")?;
 
         let history_event = create_backup_history_event(
             organisation.id,
@@ -64,7 +72,8 @@ impl BackupService {
 
         self.backup_repository
             .add_history_event(db_copy.path(), history_event.clone())
-            .await?;
+            .await
+            .error_while("adding history")?;
 
         let metadata_file = build_metadata_file_content(&mut db_copy, db_metadata.version)?;
 
@@ -79,7 +88,8 @@ impl BackupService {
         let history_id = self
             .history_repository
             .create_history(history_event)
-            .await?;
+            .await
+            .error_while("creating history")?;
 
         tracing::info!("Created backup `{}`", output_path);
 
@@ -170,7 +180,10 @@ impl BackupService {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     pub async fn backup_info(&self) -> Result<UnexportableEntitiesResponseDTO, ServiceError> {
         unexportable_entities_to_response_dto(
-            self.backup_repository.fetch_unexportable(None).await?,
+            self.backup_repository
+                .fetch_unexportable(None)
+                .await
+                .error_while("fetching unexportable")?,
             &self.config,
         )
     }

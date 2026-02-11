@@ -307,7 +307,10 @@ async fn test_handle_invitation_success() {
         .expect_key_algorithm_provider()
         .once()
         .return_const(Box::new(key_algorithm_provider));
-    verifier.expect_verify().once().return_const(Ok(()));
+    verifier
+        .expect_verify()
+        .once()
+        .return_once(|_, _, _, _| Ok(()));
     let response = handle_invitation_with_transport(
         valid,
         dummy_organisation(None),

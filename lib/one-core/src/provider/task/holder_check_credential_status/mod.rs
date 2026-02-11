@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared_types::OrganisationId;
 
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{CredentialFilterValue, CredentialRole, GetCredentialQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::provider::task::Task;
@@ -60,7 +61,8 @@ impl Task for HolderCheckCredentialStatus {
                 ),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .error_while("getting certificates")?;
 
         let force_refresh = self
             .params

@@ -7,6 +7,7 @@ use super::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityFromDidPublisherRequestDTO,
     GetRemoteTrustEntityResponseDTO, UpdateTrustEntityFromDidRequestDTO,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{Did, DidRelations};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
@@ -140,7 +141,8 @@ impl TrustEntityService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting identifier")?
             .ok_or(EntityNotFoundError::Did(did_id.to_owned()))?;
 
         if identifier.is_remote {

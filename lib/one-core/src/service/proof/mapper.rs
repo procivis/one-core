@@ -14,6 +14,7 @@ use super::dto::{
     ProofInputDTO, ProofListItemResponseDTO,
 };
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
@@ -217,11 +218,10 @@ pub(super) async fn get_verifier_proof_detail(
         };
 
         let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format.to_string() == "MDOC" => {
-                validity_credential_repository
-                    .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
-                    .await?
-            }
+            Some(schema) if schema.format.to_string() == "MDOC" => validity_credential_repository
+                .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
+                .await
+                .error_while("getting validity credential")?,
             _ => None,
         };
 
@@ -615,7 +615,8 @@ pub(super) async fn get_holder_proof_detail(
                                 credential.id,
                                 ValidityCredentialType::Mdoc,
                             )
-                            .await?
+                            .await
+                            .error_while("getting validity credential")?
                     }
                     _ => None,
                 };

@@ -8,6 +8,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
@@ -49,7 +50,8 @@ impl WalletUnitService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
         if organisation.deactivated_at.is_some() {
@@ -142,7 +144,8 @@ impl WalletUnitService {
         let holder_wallet_unit_id = self
             .holder_wallet_unit_repository
             .create_holder_wallet_unit(wallet_unit_request)
-            .await?;
+            .await
+            .error_while("creating holder wallet unit")?;
 
         let now = self.clock.now_utc();
         let wallet_unit_name = format!(
@@ -169,7 +172,8 @@ impl WalletUnitService {
                 organisation_id: Some(organisation.id),
                 user: self.session_provider.session().user(),
             })
-            .await?;
+            .await
+            .error_while("creating history")?;
         tracing::info!(message = success_log);
         Ok(holder_wallet_unit_id)
     }
@@ -187,7 +191,8 @@ impl WalletUnitService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting holder wallet unit")?
             .ok_or(EntityNotFoundError::HolderWalletUnit(id))?;
 
         result.try_into()
@@ -207,7 +212,8 @@ impl WalletUnitService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting holder wallet unit")?
             .ok_or(EntityNotFoundError::HolderWalletUnit(id))?;
 
         if holder_wallet_unit.status != WalletUnitStatus::Active {
@@ -229,7 +235,7 @@ impl WalletUnitService {
                     },
                 )
                 .await
-                .map_err(ServiceError::from)?;
+                .error_while("updating holder wallet unit")?;
 
             self.history_repository
                 .create_history(History {
@@ -245,7 +251,8 @@ impl WalletUnitService {
                     user: self.session_provider.session().user(),
                     created_date: self.clock.now_utc(),
                 })
-                .await?;
+                .await
+                .error_while("creating history")?;
         }
         Ok(())
     }
@@ -447,7 +454,7 @@ impl WalletUnitService {
                 DataLayerError::AlreadyExists => {
                     ServiceError::from(BusinessLogicError::KeyAlreadyExists)
                 }
-                err => ServiceError::from(err),
+                err => err.error_while("creating key").into(),
             })?;
         Ok(())
     }
@@ -483,7 +490,10 @@ impl WalletUnitService {
             },
         );
 
-        let signed_proof = proof.tokenize(Some(&*auth_fn)).await?;
+        let signed_proof = proof
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating key possession proof token")?;
         Ok(signed_proof)
     }
 
@@ -519,7 +529,10 @@ impl WalletUnitService {
             },
         );
 
-        let signed_proof = proof.tokenize(Some(&*auth_fn)).await?;
+        let signed_proof = proof
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating device signing proof token")?;
         Ok(signed_proof)
     }
 }

@@ -18,6 +18,7 @@ use super::validator::{
 };
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -77,7 +78,8 @@ impl CredentialService {
                         ..Default::default()
                     },
                 )
-                .await?
+                .await
+                .error_while("getting identifier")?
                 .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
                     issuer_identifier_id,
                 )))?,
@@ -97,7 +99,8 @@ impl CredentialService {
                             ..Default::default()
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::from(EntityNotFoundError::Did(issuer_did_id)))?
             }
         };
@@ -111,7 +114,8 @@ impl CredentialService {
                     organisation: Some(Default::default()),
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
         else {
             return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
         };
@@ -220,7 +224,8 @@ impl CredentialService {
         let result = self
             .credential_repository
             .create_credential(credential)
-            .await?;
+            .await
+            .error_while("creating credential")?;
 
         tracing::info!(message = success_log);
         Ok(result)
@@ -247,7 +252,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential")?;
 
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
@@ -285,9 +291,9 @@ impl CredentialService {
             .map_err(|error| match error {
                 // credential not found or already deleted
                 DataLayerError::RecordNotUpdated => {
-                    EntityNotFoundError::Credential(*credential_id).into()
+                    ServiceError::from(EntityNotFoundError::Credential(*credential_id))
                 }
-                error => ServiceError::from(error),
+                error => error.error_while("deleting credential").into(),
             })?;
 
         tracing::info!("Deleted credential {}", credential.id);
@@ -321,7 +327,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential")?;
 
         let credential = credential.ok_or(EntityNotFoundError::Credential(*credential_id))?;
         throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)?;
@@ -331,11 +338,11 @@ impl CredentialService {
         }
 
         let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format.to_string() == "MDOC" => {
-                self.validity_credential_repository
-                    .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
-                    .await?
-            }
+            Some(schema) if schema.format.to_string() == "MDOC" => self
+                .validity_credential_repository
+                .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
+                .await
+                .error_while("getting validity credential")?,
             _ => None,
         };
 
@@ -361,7 +368,8 @@ impl CredentialService {
             let latest_lvvc = self
                 .validity_credential_repository
                 .get_latest_by_credential_id(credential_id.to_owned(), ValidityCredentialType::Lvvc)
-                .await?;
+                .await
+                .error_while("getting validity credential")?;
 
             if let Some(latest_lvvc) = latest_lvvc {
                 response.lvvc_issuance_date = Some(latest_lvvc.created_date);
@@ -389,15 +397,27 @@ impl CredentialService {
 
         let wallet_instance_attestation_blob = match &credential.wallet_instance_attestation_blob_id
         {
-            Some(blob_id) => Some(db_blob_storage.get(blob_id).await?.ok_or(
-                ServiceError::MappingError("wallet instance attestation blob is None".to_string()),
-            )?),
+            Some(blob_id) => Some(
+                db_blob_storage
+                    .get(blob_id)
+                    .await
+                    .error_while("getting WIA blob")?
+                    .ok_or(ServiceError::MappingError(
+                        "wallet instance attestation blob is None".to_string(),
+                    ))?,
+            ),
             None => None,
         };
         let wallet_unit_attestation_blob = match &credential.wallet_unit_attestation_blob_id {
-            Some(blob_id) => Some(db_blob_storage.get(blob_id).await?.ok_or(
-                ServiceError::MappingError("wallet unit attestation blob is None".to_string()),
-            )?),
+            Some(blob_id) => Some(
+                db_blob_storage
+                    .get(blob_id)
+                    .await
+                    .error_while("getting WUA blob")?
+                    .ok_or(ServiceError::MappingError(
+                        "wallet unit attestation blob is None".to_string(),
+                    ))?,
+            ),
             None => None,
         };
 
@@ -421,7 +441,8 @@ impl CredentialService {
         let result = self
             .credential_repository
             .get_credential_list(query)
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         list_response_try_into(result)
     }
@@ -582,7 +603,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
         tracing::info!("Shared credential {credential_id}");
         Ok(ShareCredentialResponseDTO {
@@ -624,7 +646,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential")?
             .ok_or(EntityNotFoundError::Credential(*id))?;
 
         Ok(credential)
@@ -668,7 +691,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential")?;
 
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
@@ -755,7 +779,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
 
         Ok(())
     }
@@ -800,7 +825,8 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential")?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::Credential(credential_id),
             ))?;
@@ -859,7 +885,8 @@ impl CredentialService {
 
             blob_storage
                 .get(&credential_blob_id)
-                .await?
+                .await
+                .error_while("getting credential blob")?
                 .ok_or(ServiceError::MappingError(
                     "credential blob is None".to_string(),
                 ))?
@@ -991,7 +1018,8 @@ impl CredentialService {
                         ..Default::default()
                     },
                 )
-                .await?;
+                .await
+                .error_while("updating credential")?;
         }
 
         Ok(CredentialRevocationCheckResponseDTO {

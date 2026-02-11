@@ -7,6 +7,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -50,7 +51,8 @@ pub(super) async fn generate_nonce(
         .tokenize(Some(&HS256Signer {
             signing_key: params.signing_key,
         }))
-        .await?)
+        .await
+        .error_while("creating nonce token")?)
 }
 
 pub(super) fn validate_nonce(
@@ -63,7 +65,7 @@ pub(super) fn validate_nonce(
         payload,
         signature,
         unverified_jwt,
-    } = Jwt::decompose_token(nonce)?;
+    } = Jwt::decompose_token(nonce).error_while("parsing nonce token")?;
 
     if header.algorithm != "HS256" {
         return Err(FormatterError::CouldNotVerify("Invalid nonce alg header".to_string()).into());

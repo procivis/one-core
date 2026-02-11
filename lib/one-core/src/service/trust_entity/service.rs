@@ -17,6 +17,7 @@ use super::mapper::{
     trust_entity_from_request, update_request_from_dto,
 };
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, DidType};
@@ -56,7 +57,8 @@ impl TrustEntityService {
         let trust_anchor = self
             .trust_anchor_repository
             .get(request.trust_anchor_id)
-            .await?
+            .await
+            .error_while("getting trust anchor")?
             .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
 
         if !trust_anchor.is_publisher {
@@ -66,7 +68,8 @@ impl TrustEntityService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
         if organisation.deactivated_at.is_some() {
@@ -115,7 +118,7 @@ impl TrustEntityService {
                 DataLayerError::AlreadyExists => {
                     ServiceError::from(BusinessLogicError::TrustEntityAlreadyPresent)
                 }
-                err => err.into(),
+                err => err.error_while("creating trust entity").into(),
             })?;
         tracing::info!(message = success_log);
         Ok(id)
@@ -169,7 +172,8 @@ impl TrustEntityService {
                     certificates: None,
                 },
             )
-            .await?
+            .await
+            .error_while("getting identifier")?
             .ok_or(EntityNotFoundError::Identifier(identifier_id))?;
 
         let Some(did) = identifier.did else {
@@ -214,7 +218,8 @@ impl TrustEntityService {
                     keys: None,
                 },
             )
-            .await?
+            .await
+            .error_while("getting did")?
             .ok_or(EntityNotFoundError::Did(did_id))?;
 
         if did.did_type == DidType::Remote {
@@ -274,7 +279,8 @@ impl TrustEntityService {
         if self
             .trust_entity_repository
             .get_by_entity_key(&(&did_value).into())
-            .await?
+            .await
+            .error_while("getting trust entity")?
             .is_some()
         {
             return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
@@ -307,7 +313,7 @@ impl TrustEntityService {
                 DataLayerError::AlreadyExists => {
                     BusinessLogicError::TrustEntityAlreadyPresent.into()
                 }
-                err => err.into(),
+                err => err.error_while("creating trust entity").into(),
             })
     }
 
@@ -324,7 +330,8 @@ impl TrustEntityService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?
+            .await
+            .error_while("getting trust entity")?
             .ok_or(EntityNotFoundError::TrustEntity(id))?;
 
         let (mut identifier, content) = match &trust_entity.r#type {
@@ -337,7 +344,8 @@ impl TrustEntityService {
                 let did = self
                     .did_repository
                     .get_did_by_value(&did_value, Some(organisation_id), &DidRelations::default())
-                    .await?
+                    .await
+                    .error_while("getting did")?
                     .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::DidValue(
                         did_value,
                     )))?;
@@ -345,7 +353,8 @@ impl TrustEntityService {
                 let mut identifier = self
                     .identifier_repository
                     .get_from_did_id(did.id, &IdentifierRelations::default())
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::EntityNotFound(
                         EntityNotFoundError::IdentifierByDidId(did.id),
                     ))?;
@@ -440,14 +449,16 @@ impl TrustEntityService {
                     keys: None,
                 },
             )
-            .await?
+            .await
+            .error_while("getting did")?
             .ok_or(ServiceError::ValidationError("unknown did".to_string()))?;
         let entity_key: TrustEntityKey = did_value.clone().into();
 
         let result = self
             .trust_entity_repository
             .get_by_entity_key(&entity_key)
-            .await?
+            .await
+            .error_while("getting trust entity")?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustEntityByEntityKey(entity_key),
             ))?;
@@ -463,10 +474,11 @@ impl TrustEntityService {
         &self,
         filters: ListTrustEntitiesQueryDTO,
     ) -> Result<GetTrustEntitiesResponseDTO, ServiceError> {
-        self.trust_entity_repository
+        Ok(self
+            .trust_entity_repository
             .list(filters)
             .await
-            .map_err(Into::into)
+            .error_while("getting trust entities")?)
     }
 
     async fn update_trust_entity(
@@ -503,7 +515,7 @@ impl TrustEntityService {
                 DataLayerError::AlreadyExists => {
                     ServiceError::BusinessLogic(BusinessLogicError::TrustEntityAlreadyPresent)
                 }
-                err => err.into(),
+                err => err.error_while("updating trust entity").into(),
             })?;
 
         Ok(())
@@ -523,7 +535,8 @@ impl TrustEntityService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting trust entity")?
             .ok_or(EntityNotFoundError::TrustEntity(id))?;
 
         self.update_trust_entity(entity, update_request).await?;
@@ -552,7 +565,8 @@ impl TrustEntityService {
         let Some(did) = self
             .did_repository
             .get_did_by_value(&did_value, Some(None), &DidRelations::default())
-            .await?
+            .await
+            .error_while("getting did")?
         else {
             return Err(EntityNotFoundError::DidValue(did_value).into());
         };
@@ -560,7 +574,8 @@ impl TrustEntityService {
         let Some(entity) = self
             .trust_entity_repository
             .get_by_entity_key(&did.did.into())
-            .await?
+            .await
+            .error_while("getting trust entity")?
         else {
             return Err(BusinessLogicError::TrustEntityHasDuplicates.into());
         };
@@ -618,7 +633,8 @@ impl TrustEntityService {
                         )),
                         include: None,
                     })
-                    .await?;
+                    .await
+                    .error_while("getting trust anchors")?;
                 if anchors.values.len() > 1 {
                     return Err(BusinessLogicError::MultipleMatchingTrustAnchors.into());
                 }
@@ -627,13 +643,12 @@ impl TrustEntityService {
                 ))?;
                 Ok(trust_anchor.clone().into())
             }
-            Some(trust_anchor_id) => {
-                Ok(self
-                    .trust_anchor_repository
-                    .get(trust_anchor_id)
-                    .await?
-                    .ok_or(EntityNotFoundError::TrustAnchor(trust_anchor_id))?)
-            }
+            Some(trust_anchor_id) => Ok(self
+                .trust_anchor_repository
+                .get(trust_anchor_id)
+                .await
+                .error_while("getting trust anchor")?
+                .ok_or(EntityNotFoundError::TrustAnchor(trust_anchor_id))?),
         }
     }
 
@@ -652,7 +667,8 @@ impl TrustEntityService {
                 ),
                 include: None,
             })
-            .await?;
+            .await
+            .error_while("getting trust anchors")?;
 
         for trust_anchor in trust_anchor_list.values.into_iter().map(TrustAnchor::from) {
             let trust = self
@@ -671,7 +687,8 @@ impl TrustEntityService {
                         keys: None,
                     },
                 )
-                .await?
+                .await
+                .error_while("getting did")?
                 .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Did(
                     did_id,
                 )))?;
@@ -713,7 +730,8 @@ impl TrustEntityService {
                 ),
                 include: None,
             })
-            .await?;
+            .await
+            .error_while("getting trust anchors")?;
 
         let mut result: HashMap<IdentifierId, Vec<ResolvedIdentifierTrustEntityResponseDTO>> =
             HashMap::new();
@@ -844,7 +862,8 @@ impl TrustEntityService {
                         ..Default::default()
                     },
                 )
-                .await?
+                .await
+                .error_while("getting identifier")?
                 .ok_or(ServiceError::EntityNotFound(
                     EntityNotFoundError::Identifier(request.id),
                 ))?;

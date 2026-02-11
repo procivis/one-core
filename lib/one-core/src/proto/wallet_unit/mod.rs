@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use shared_types::HolderWalletUnitId;
 use time::{Duration, OffsetDateTime};
 
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
 use crate::model::key::{Key, KeyRelations};
@@ -192,7 +193,9 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         const INDEX_KEY: &str = "idx";
 
         let parsed_wallet_unit_attestation: Jwt<WalletUnitAttestationClaims> =
-            Jwt::build_from_token(wua, None, None).await?;
+            Jwt::build_from_token(wua, None, None)
+                .await
+                .error_while("parsing WUA token")?;
 
         let Some(status) = &parsed_wallet_unit_attestation.payload.custom.status else {
             return Ok(WalletUnitStatusCheckResponse::Active);
@@ -332,7 +335,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 },
             )
             .await
-            .map_err(ServiceError::from)?
+            .error_while("getting holder wallet unit")?
             .ok_or(ServiceError::MappingError(
                 "holder wallet unit not found".to_string(),
             ))?;
@@ -359,7 +362,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 },
             )
             .await
-            .map_err(ServiceError::from)?
+            .error_while("getting holder wallet unit")?
             .ok_or(ServiceError::MappingError(
                 "holder wallet unit not found".to_string(),
             ))?;

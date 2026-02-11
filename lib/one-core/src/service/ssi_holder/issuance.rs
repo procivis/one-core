@@ -16,6 +16,7 @@ use super::validator::{
     validate_initiate_issuance_request,
 };
 use crate::config::core_config::FormatType;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
@@ -84,7 +85,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => Some(
@@ -101,7 +103,8 @@ impl SSIHolderService {
                             ..Default::default()
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::from(ValidationError::DidNotFound))?,
             ),
             (None, Some(identifier_id)) => Some(
@@ -118,7 +121,8 @@ impl SSIHolderService {
                             ..Default::default()
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
                         identifier_id,
                     )))?,
@@ -179,7 +183,8 @@ impl SSIHolderService {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting interaction")?
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
         if interaction.interaction_type != InteractionType::Issuance {
@@ -281,7 +286,10 @@ impl SSIHolderService {
             BlobType::Credential,
         );
         let blob_id = blob.id;
-        db_blob_storage.create(blob.clone()).await?;
+        db_blob_storage
+            .create(blob.clone())
+            .await
+            .error_while("creating credential blob")?;
 
         let credential_id = self
             .credential_repository
@@ -290,7 +298,8 @@ impl SSIHolderService {
                 credential_blob_id: Some(blob_id),
                 ..credential
             })
-            .await?;
+            .await
+            .error_while("creating credential")?;
 
         Ok(credential_id)
     }
@@ -421,7 +430,10 @@ impl SSIHolderService {
                     issuer_response.credential.as_bytes().to_vec(),
                     BlobType::Credential,
                 );
-                db_blob_storage.create(blob.clone()).await?;
+                db_blob_storage
+                    .create(blob.clone())
+                    .await
+                    .error_while("creating credential blob")?;
                 blob.id
             }
             Some(blob_id) => {
@@ -432,7 +444,8 @@ impl SSIHolderService {
                             value: Some(issuer_response.credential.as_bytes().to_vec()),
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating credential blob")?;
                 blob_id
             }
         };
@@ -447,7 +460,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
 
         Ok(())
     }
@@ -523,7 +537,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         if credentials.is_empty() {
             return Err(BusinessLogicError::MissingCredentialsForInteraction {
@@ -590,7 +605,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
 
         Ok(())
     }
@@ -662,12 +678,14 @@ impl SSIHolderService {
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository
                 .update_credential_schema(update_credential_schema)
-                .await?;
+                .await
+                .error_while("updating credential schema")?;
         }
         if let Some((credential_id, update_credential)) = update_response.update_credential {
             self.credential_repository
                 .update_credential(credential_id, update_credential)
-                .await?;
+                .await
+                .error_while("updating credential")?;
         }
         Ok(update_response.result)
     }
@@ -682,7 +700,8 @@ impl SSIHolderService {
         let Some(organisation) = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
         else {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
@@ -739,7 +758,8 @@ impl SSIHolderService {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
             })
-            .await?;
+            .await
+            .error_while("creating interaction")?;
 
         tracing::info!(
             "Initiated authorization code flow for credential issuance, created interaction {interaction_id}"
@@ -790,7 +810,8 @@ impl SSIHolderService {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting interaction")?
             .ok_or(EntityNotFoundError::Interaction(interaction_id))?;
 
         throw_if_org_relation_not_matching_session(

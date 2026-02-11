@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use time::macros::datetime;
 
 use super::model::JWTPayload;
-use super::{Jwt, TokenVerifier};
+use super::{Jwt, TokenError, TokenVerifier};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::PublicKeySource;
@@ -40,7 +40,7 @@ impl TokenVerifier for TestVerify {
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
-    ) -> Result<(), SignerError> {
+    ) -> Result<(), TokenError> {
         match public_key_source {
             PublicKeySource::Did { did, .. } => {
                 assert_eq!(
@@ -48,7 +48,7 @@ impl TokenVerifier for TestVerify {
                     self.issuer_did_value.as_ref().unwrap().to_string()
                 )
             }
-            _ => return Err(SignerError::InvalidSignature),
+            _ => return Err(SignerError::InvalidSignature.into()),
         }
         assert_eq!(algorithm, self.algorithm);
         assert_eq!(token, self.token.as_bytes());
@@ -56,7 +56,7 @@ impl TokenVerifier for TestVerify {
         if signature == self.signature {
             Ok(())
         } else {
-            Err(SignerError::InvalidSignature)
+            Err(SignerError::InvalidSignature.into())
         }
     }
 

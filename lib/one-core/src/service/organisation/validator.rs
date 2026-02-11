@@ -1,6 +1,7 @@
 use shared_types::{IdentifierId, OrganisationId};
 
 use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmType};
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
 use crate::model::identifier::IdentifierRelations;
@@ -35,7 +36,8 @@ pub(super) async fn validate_wallet_provider_issuer(
                 }),
             },
         )
-        .await?;
+        .await
+        .error_while("getting identifier")?;
     let Some(identifier) = identifier else {
         return Err(EntityNotFoundError::Identifier(issuer_id))?;
     };
@@ -68,7 +70,8 @@ pub(super) async fn validate_wallet_provider(
         .map_err(|_| WalletProviderError::WalletProviderNotConfigured)?;
     if let Some(org) = organisation_repository
         .get_organisation_for_wallet_provider(wallet_provider)
-        .await?
+        .await
+        .error_while("getting organisation")?
     {
         Err(BusinessLogicError::WalletProviderAlreadyAssociated(org.id))?
     }

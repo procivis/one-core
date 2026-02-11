@@ -8,6 +8,7 @@ use tracing::warn;
 use super::OID4VPFinal1_0Service;
 use super::proof_request::generate_authorization_request_params_final1_0;
 use crate::config::core_config::VerificationProtocolType;
+use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
@@ -87,7 +88,8 @@ impl OID4VPFinal1_0Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
@@ -196,7 +198,8 @@ impl OID4VPFinal1_0Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
@@ -247,7 +250,8 @@ impl OID4VPFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::BusinessLogic(
                 BusinessLogicError::MissingProofForInteraction(interaction_id),
             ))?;
@@ -316,7 +320,10 @@ impl OID4VPFinal1_0Service {
 
         let blob = Blob::new(blob_value, BlobType::Proof);
         let proof_blob_id = blob.id;
-        blob_storage.create(blob).await?;
+        blob_storage
+            .create(blob)
+            .await
+            .error_while("creating proof blob")?;
 
         match self
             .proof_validator
@@ -411,7 +418,8 @@ impl OID4VPFinal1_0Service {
                 let key = self
                     .key_repository
                     .get_key(&key_id, &KeyRelations::default())
-                    .await?
+                    .await
+                    .error_while("getting key")?
                     .ok_or_else(|| {
                         ServiceError::ValidationError("Invalid JWE key_id".to_string())
                     })?;

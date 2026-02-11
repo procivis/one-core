@@ -1,6 +1,8 @@
 use shared_types::{ClaimId, ClaimSchemaId, ProofId};
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
+
 #[derive(Debug, Error)]
 pub enum DataLayerError {
     #[error("Already exists")]
@@ -17,6 +19,9 @@ pub enum DataLayerError {
 
     #[error("Database error: {0}")]
     Db(#[from] anyhow::Error),
+
+    #[error("UUID error: {0}")]
+    UUIDError(#[from] uuid::Error),
 
     #[error("Missing required relation {relation} for {id}")]
     MissingRequiredRelation { relation: &'static str, id: String },
@@ -37,8 +42,21 @@ pub enum DataLayerError {
     TransactionError(String),
 }
 
-impl From<uuid::Error> for DataLayerError {
-    fn from(_: uuid::Error) -> Self {
-        Self::MappingError
+impl ErrorCodeMixin for DataLayerError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Db(_) => ErrorCode::BR_0054,
+            Self::AlreadyExists => ErrorCode::BR_0357,
+            Self::IncorrectParameters
+            | Self::RecordNotUpdated
+            | Self::MappingError
+            | Self::UUIDError(_)
+            | Self::IncompleteClaimsList { .. }
+            | Self::IncompleteClaimsSchemaList { .. }
+            | Self::MissingProofState { .. }
+            | Self::MissingRequiredRelation { .. }
+            | Self::MissingClaimsSchemaForClaim(_, _)
+            | Self::TransactionError(_) => ErrorCode::BR_0000,
+        }
     }
 }

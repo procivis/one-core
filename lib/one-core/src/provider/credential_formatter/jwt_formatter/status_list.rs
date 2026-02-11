@@ -4,6 +4,7 @@ use url::Url;
 
 use super::JWTFormatter;
 use super::model::{TokenStatusListContent, TokenStatusListSubject, VcClaim};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateState;
 use crate::model::identifier::{Identifier, IdentifierType};
@@ -80,7 +81,10 @@ impl JWTFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), jose_alg, None, None, payload);
 
-        jwt.tokenize(Some(&*auth_fn)).await
+        Ok(jwt
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating JWT bitstring status list token")?)
     }
 
     pub(super) async fn format_token_status_list(
@@ -188,6 +192,9 @@ impl JWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(&*auth_fn)).await
+        Ok(jwt
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating JWT token status list")?)
     }
 }

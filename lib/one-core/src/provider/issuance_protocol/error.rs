@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::credential::CredentialStateEnum;
 
 #[derive(Debug, Error)]
@@ -40,6 +41,33 @@ pub enum IssuanceProtocolError {
     Suspended,
     #[error("Credential refresh is not yet possible")]
     RefreshTooSoon,
+}
+
+impl ErrorCodeMixin for IssuanceProtocolError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Failed(_) => ErrorCode::BR_0062,
+            Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
+            Self::Transport(_) => ErrorCode::BR_0086,
+            Self::JsonError(_) => ErrorCode::BR_0062,
+            Self::OperationNotSupported => ErrorCode::BR_0062,
+            Self::MissingBaseUrl => ErrorCode::BR_0062,
+            Self::InvalidRequest(_) => ErrorCode::BR_0085,
+            Self::Disabled(_) => ErrorCode::BR_0085,
+            Self::Other(_) => ErrorCode::BR_0062,
+            Self::StorageAccessError(_) => ErrorCode::BR_0062,
+            Self::TxCode(tx_code_error) => match tx_code_error {
+                TxCodeError::IncorrectCode => ErrorCode::BR_0169,
+                TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
+            },
+            Self::DidMismatch
+            | Self::KeyMismatch
+            | Self::CertificateMismatch
+            | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
+            Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
+            Self::Suspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
+        }
+    }
 }
 
 #[derive(Debug, Error)]

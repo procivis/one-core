@@ -12,9 +12,8 @@ mod validator {
     use std::fmt::Debug;
     use std::sync::Arc;
 
-    use one_core::proto::jwt::Jwt;
     use one_core::proto::jwt::model::{DecomposedJwt, JWTPayload};
-    use one_core::provider::credential_formatter::error::FormatterError;
+    use one_core::proto::jwt::{Jwt, TokenError};
     use one_core::validator::{
         validate_audience, validate_expiration_time, validate_not_before_time,
     };
@@ -144,7 +143,7 @@ mod validator {
         #[error("Empty token.")]
         EmptyToken,
         #[error("Failed to decode JWT. Cause: {0}.")]
-        FailedToDecodeJwt(FormatterError),
+        FailedToDecodeJwt(TokenError),
         #[error("Unsupported algorithm.")]
         UnsupportedAlgorithm,
         #[error("Missing key id.")]

@@ -1,6 +1,7 @@
 use shared_types::InteractionId;
 use time::OffsetDateTime;
 
+use crate::error::ContextWithErrorCode;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -29,7 +30,8 @@ pub(crate) async fn add_new_interaction(
 
     interaction_repository
         .create_interaction(new_interaction.clone())
-        .await?;
+        .await
+        .error_while("creating interaction")?;
     Ok(new_interaction)
 }
 
@@ -40,7 +42,8 @@ pub(crate) async fn clear_previous_interaction(
     if let Some(interaction) = interaction.as_ref() {
         interaction_repository
             .delete_interaction(&interaction.id)
-            .await?;
+            .await
+            .error_while("deleting interaction")?;
     }
     Ok(())
 }

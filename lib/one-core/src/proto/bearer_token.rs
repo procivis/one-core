@@ -8,6 +8,7 @@ use super::jwt::Jwt;
 use super::jwt::model::{JWTHeader, JWTPayload};
 use super::key_verification::KeyVerification;
 use crate::KeyProvider;
+use crate::error::ContextWithErrorCode;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::provider::credential_formatter::model::VerificationFn;
@@ -102,7 +103,8 @@ pub(crate) async fn prepare_bearer_token(
         payload,
     }
     .tokenize(Some(&*signer))
-    .await?;
+    .await
+    .error_while("creating bearer token")?;
 
     Ok(bearer_token)
 }
@@ -123,7 +125,9 @@ pub(crate) async fn validate_bearer_token(
     });
 
     let jwt: Jwt<BearerTokenPayload> =
-        Jwt::build_from_token(bearer_token, Some(&(token_signature_verification)), None).await?;
+        Jwt::build_from_token(bearer_token, Some(&(token_signature_verification)), None)
+            .await
+            .error_while("parsing bearer token")?;
 
     // checking timestamp to prevent replay attack
     validate_expiration_time(&Some(jwt.payload.custom.timestamp), leeway)

@@ -29,6 +29,7 @@ use crate::config::validator::protocol::{
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
+use crate::error::ContextWithErrorCode;
 use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -142,7 +143,8 @@ impl ProofService {
                 },
                 None,
             )
-            .await?;
+            .await
+            .error_while("getting proof")?;
 
         let Some(proof) = proof else {
             return Err(EntityNotFoundError::Proof(*id).into());
@@ -164,7 +166,8 @@ impl ProofService {
                 ),
                 include: None,
             })
-            .await?
+            .await
+            .error_while("getting history list")?
             .values
             .into_iter()
             .next();
@@ -257,7 +260,8 @@ impl ProofService {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(EntityNotFoundError::Proof(*id).into())
     }
 
@@ -280,7 +284,11 @@ impl ProofService {
         query: GetProofQueryDTO,
     ) -> Result<GetProofListResponseDTO, ServiceError> {
         throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
-        let result = self.proof_repository.get_proof_list(query).await?;
+        let result = self
+            .proof_repository
+            .get_proof_list(query)
+            .await
+            .error_while("getting proofs")?;
         list_response_try_into(result)
     }
 
@@ -328,7 +336,8 @@ impl ProofService {
                     }),
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof schema")?
             .ok_or(BusinessLogicError::MissingProofSchema { proof_schema_id })?;
         throw_if_org_relation_not_matching_session(
             proof_schema.organisation.as_ref(),
@@ -425,7 +434,8 @@ impl ProofService {
                         ..Default::default()
                     },
                 )
-                .await?
+                .await
+                .error_while("getting identifier")?
                 .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
                     verifier_identifier_id,
                 )))?,
@@ -448,7 +458,8 @@ impl ProofService {
                             ..Default::default()
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::from(EntityNotFoundError::Did(
                         verifier_did_id,
                     )))?
@@ -548,7 +559,8 @@ impl ProofService {
                 verifier_certificate,
                 maybe_interaction,
             ))
-            .await?;
+            .await
+            .error_while("creating proof")?;
 
         tracing::info!("Created proof request {proof_id} {success_log_detail}");
         Ok(proof_id)
@@ -647,7 +659,8 @@ impl ProofService {
                 },
                 None,
             )
-            .await?;
+            .await
+            .error_while("updating proof")?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
         tracing::info!("Shared proof request {}", proof.id);
         Ok(ShareProofResponseDTO { url, expires_at })
@@ -674,7 +687,8 @@ impl ProofService {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
                 proof_id,
             )))?;
@@ -694,11 +708,15 @@ impl ProofService {
             })
             .collect::<Result<HashSet<_>, _>>()?;
 
-        self.proof_repository.delete_proof_claims(&proof.id).await?;
+        self.proof_repository
+            .delete_proof_claims(&proof.id)
+            .await
+            .error_while("deleting proof claims")?;
 
         self.claim_repository
             .delete_claims_for_credentials(credential_ids.clone())
-            .await?;
+            .await
+            .error_while("deleting credential claims")?;
 
         let blob_storage = self
             .blob_storage_provider
@@ -715,17 +733,22 @@ impl ProofService {
                 ),
                 ..GetCredentialQuery::default()
             })
-            .await?
+            .await
+            .error_while("getting credentials")?
             .values
             .into_iter()
             .filter_map(|c| c.credential_blob_id)
             .collect::<Vec<_>>();
 
-        blob_storage.delete_many(&credential_blob_ids).await?;
+        blob_storage
+            .delete_many(&credential_blob_ids)
+            .await
+            .error_while("deleting credential blobs")?;
 
         self.credential_repository
             .delete_credential_blobs(credential_ids)
-            .await?;
+            .await
+            .error_while("deleting credential blobs")?;
 
         if let Some(proof_blob_id) = proof.proof_blob_id {
             let blob_storage = self
@@ -736,7 +759,10 @@ impl ProofService {
                     MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
                 })?;
 
-            blob_storage.delete(&proof_blob_id).await?;
+            blob_storage
+                .delete(&proof_blob_id)
+                .await
+                .error_while("deleting proof blobs")?;
         }
         tracing::info!("Deleted proof claims for proof {}", proof.id);
         Ok(())
@@ -766,7 +792,8 @@ impl ProofService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
+            .await
+            .error_while("getting organisation")?;
 
         let transport = self
             .config
@@ -899,7 +926,8 @@ impl ProofService {
                 proof_blob_id: None,
                 engagement: None,
             })
-            .await?;
+            .await
+            .error_while("creating proof")?;
 
         receive_mdl_request(
             ble,
@@ -937,7 +965,8 @@ impl ProofService {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
         else {
             return Err(EntityNotFoundError::Proof(proof_id).into());
         };
@@ -959,7 +988,8 @@ impl ProofService {
                 };
                 self.proof_repository
                     .update_proof(&proof.id, proof_update, None)
-                    .await?;
+                    .await
+                    .error_while("updating proof")?;
             }
             state => return Err(BusinessLogicError::InvalidProofState { state }.into()),
         };
@@ -972,7 +1002,10 @@ impl ProofService {
                     MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
                 })?;
 
-            blob_storage.delete(&proof_blob_id).await?;
+            blob_storage
+                .delete(&proof_blob_id)
+                .await
+                .error_while("deleting proof blob")?;
         }
         tracing::info!("Deleted proof {}", proof.id);
         Ok(())
@@ -981,11 +1014,15 @@ impl ProofService {
     // ============ Private methods
 
     async fn hard_delete_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
-        self.proof_repository.delete_proof(&proof.id).await?;
+        self.proof_repository
+            .delete_proof(&proof.id)
+            .await
+            .error_while("deleting proof")?;
         if let Some(ref interaction) = proof.interaction {
             self.interaction_repository
                 .delete_interaction(&interaction.id)
-                .await?;
+                .await
+                .error_while("deleting interaction")?;
         };
         Ok(())
     }
@@ -1041,7 +1078,8 @@ impl ProofService {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(EntityNotFoundError::Proof(*id))?;
 
         Ok(proof)

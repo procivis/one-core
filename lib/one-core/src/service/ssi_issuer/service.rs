@@ -12,6 +12,7 @@ use super::dto::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, Params};
+use crate::error::ContextWithErrorCode;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
@@ -125,7 +126,8 @@ impl SSIIssuerService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential schema")?;
 
         let Some(credential_schema) = credential_schema else {
             return Err(EntityNotFoundError::CredentialSchema(credential_schema_id).into());
@@ -247,7 +249,8 @@ impl SSIIssuerService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential schemas")?;
 
         let Some(credential_schema) = schema_list.values.pop() else {
             return Err(ServiceError::EntityNotFound(

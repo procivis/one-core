@@ -8,6 +8,7 @@ use super::dto::{
 };
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use crate::config::core_config::VerificationProtocolType;
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -82,12 +83,14 @@ impl VCAPIService {
                     organisation: None,
                 },
             )
-            .await?
+            .await
+            .error_while("getting did")?
             .ok_or(ServiceError::Other("Issuer DID not found".to_string()))?;
         let _issuer_identifier = self
             .identifier_repository
             .get_from_did_id(issuer_did.id, &Default::default())
-            .await?
+            .await
+            .error_while("getting identifier")?
             .ok_or(ServiceError::Other(
                 "Issuer DID identifier not found".to_string(),
             ))?;

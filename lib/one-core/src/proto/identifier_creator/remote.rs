@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use super::IdentifierRole;
 use super::creator::IdentifierCreatorProto;
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
@@ -37,7 +38,8 @@ impl IdentifierCreatorProto {
                 organisation.as_ref().map(|org| Some(org.id)),
                 &DidRelations::default(),
             )
-            .await?
+            .await
+            .error_while("getting did")?
         {
             Some(did) => did,
             None => {
@@ -61,7 +63,10 @@ impl IdentifierCreatorProto {
                     deactivated: false,
                     log: None,
                 };
-                self.did_repository.create_did(did.clone()).await?;
+                self.did_repository
+                    .create_did(did.clone())
+                    .await
+                    .error_while("creating did")?;
                 did
             }
         };
@@ -77,7 +82,8 @@ impl IdentifierCreatorProto {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting did")?
         {
             Some(identifier) => identifier,
             None => {
@@ -97,7 +103,8 @@ impl IdentifierCreatorProto {
                 };
                 self.identifier_repository
                     .create(identifier.clone())
-                    .await?;
+                    .await
+                    .error_while("creating identifier")?;
                 identifier
             }
         };
@@ -125,13 +132,15 @@ impl IdentifierCreatorProto {
                 ),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .error_while("getting certificates")?;
 
         if let Some(certificate) = list.values.into_iter().next() {
             let identifier = self
                 .identifier_repository
                 .get(certificate.identifier_id, &Default::default())
-                .await?
+                .await
+                .error_while("getting identifier")?
                 .ok_or(ServiceError::MappingError(
                     "Certificate identifier not found".to_string(),
                 ))?;
@@ -174,7 +183,8 @@ impl IdentifierCreatorProto {
         };
         self.identifier_repository
             .create(identifier.clone())
-            .await?;
+            .await
+            .error_while("creating identifier")?;
 
         let certificate = Certificate {
             id: Uuid::new_v4().into(),
@@ -191,7 +201,8 @@ impl IdentifierCreatorProto {
         };
         self.certificate_repository
             .create(certificate.clone())
-            .await?;
+            .await
+            .error_while("creating certificate")?;
 
         Ok((certificate, identifier))
     }
@@ -216,7 +227,8 @@ impl IdentifierCreatorProto {
                 ),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .error_while("getting keys")?;
 
         let key = if let Some(key) = list.values.into_iter().next() {
             let identifier = self
@@ -229,7 +241,8 @@ impl IdentifierCreatorProto {
                     ),
                     ..Default::default()
                 })
-                .await?
+                .await
+                .error_while("getting identifiers")?
                 .values
                 .into_iter()
                 .next();
@@ -253,7 +266,10 @@ impl IdentifierCreatorProto {
                 key_type: parsed_key.algorithm_type.to_string(),
             };
 
-            self.key_repository.create_key(key.clone()).await?;
+            self.key_repository
+                .create_key(key.clone())
+                .await
+                .error_while("creating key")?;
             key
         };
 
@@ -274,7 +290,8 @@ impl IdentifierCreatorProto {
         };
         self.identifier_repository
             .create(identifier.clone())
-            .await?;
+            .await
+            .error_while("creating identifier")?;
 
         Ok((key, identifier))
     }
@@ -294,7 +311,8 @@ impl IdentifierCreatorProto {
                         organisation.as_ref().map(|org| Some(org.id)),
                         &DidRelations::default(),
                     )
-                    .await?
+                    .await
+                    .error_while("getting did")?
                     .ok_or(ServiceError::MappingError("Did not found".to_string()))?;
 
                 let identifier = self
@@ -306,7 +324,8 @@ impl IdentifierCreatorProto {
                             ..Default::default()
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::MappingError(
                         "Identifier not found".to_string(),
                     ))?;
@@ -330,7 +349,8 @@ impl IdentifierCreatorProto {
                         ),
                         ..Default::default()
                     })
-                    .await?;
+                    .await
+                    .error_while("getting certificates")?;
 
                 let Some(certificate) = list.values.into_iter().next() else {
                     return Err(ServiceError::MappingError(
@@ -341,7 +361,8 @@ impl IdentifierCreatorProto {
                 let identifier = self
                     .identifier_repository
                     .get(certificate.identifier_id, &Default::default())
-                    .await?
+                    .await
+                    .error_while("getting identifier")?
                     .ok_or(ServiceError::MappingError(
                         "Certificate identifier not found".to_string(),
                     ))?;
@@ -368,7 +389,8 @@ impl IdentifierCreatorProto {
                         ),
                         ..Default::default()
                     })
-                    .await?;
+                    .await
+                    .error_while("getting keys")?;
 
                 let Some(key) = list.values.into_iter().next() else {
                     return Err(ServiceError::MappingError("Key not found".to_string()));
@@ -384,7 +406,8 @@ impl IdentifierCreatorProto {
                         ),
                         ..Default::default()
                     })
-                    .await?
+                    .await
+                    .error_while("getting identifiers")?
                     .values
                     .into_iter()
                     .next()

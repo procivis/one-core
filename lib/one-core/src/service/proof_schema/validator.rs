@@ -10,6 +10,7 @@ use super::dto::{
     ProofInputSchemaRequestDTO,
 };
 use crate::config::core_config::{ConfigExt, CoreConfig, RevocationType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
@@ -29,7 +30,8 @@ pub async fn proof_schema_name_already_exists(
 ) -> Result<(), ServiceError> {
     let proof_schemas = repository
         .get_proof_schema_list(create_unique_name_check_request(name, organisation_id)?)
-        .await?;
+        .await
+        .error_while("getting proof schemas")?;
     if proof_schemas.total_items > 0 {
         return Err(BusinessLogicError::ProofSchemaAlreadyExists.into());
     }

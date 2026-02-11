@@ -12,6 +12,7 @@ use super::dto::{
 use super::mapper::{did_update_to_update_request, map_did_to_did_keys};
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{DidListQuery, DidRelations, RelatedKey};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
@@ -47,7 +48,8 @@ impl DidService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting did")?;
 
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
@@ -108,7 +110,8 @@ impl DidService {
         let did = self
             .did_repository
             .get_did(id, &DidRelations::default())
-            .await?;
+            .await
+            .error_while("getting did")?;
 
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
@@ -138,7 +141,8 @@ impl DidService {
                     keys: Some(KeyRelations::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("getting did")?;
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
         };
@@ -161,7 +165,11 @@ impl DidService {
         query: DidListQuery,
     ) -> Result<GetDidListResponseDTO, ServiceError> {
         throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
-        let result = self.did_repository.get_did_list(query).await?;
+        let result = self
+            .did_repository
+            .get_did_list(query)
+            .await
+            .error_while("getting dids")?;
         Ok(result.into())
     }
 
@@ -175,7 +183,8 @@ impl DidService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting organisation")?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
         if organisation.deactivated_at.is_some() {
@@ -220,7 +229,8 @@ impl DidService {
                     keys: Some(Default::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("getting did")?;
 
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
@@ -242,12 +252,14 @@ impl DidService {
             let update = did_method.deactivate(did.id, keys, did.log).await?;
             self.did_repository
                 .update_did(did_update_to_update_request(did.id, update))
-                .await?;
+                .await
+                .error_while("updating did")?;
 
             let identifier = self
                 .identifier_repository
                 .get_from_did_id(did.id, &Default::default())
-                .await?
+                .await
+                .error_while("getting identifier")?
                 .ok_or(ServiceError::MappingError(
                     "No identifier for this did exists".to_string(),
                 ))?;
@@ -265,7 +277,8 @@ impl DidService {
                         ..Default::default()
                     },
                 )
-                .await?;
+                .await
+                .error_while("updating identifier")?;
 
             // Success log is only written if update request was not empty
             tracing::info!(

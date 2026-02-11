@@ -6,6 +6,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::OrganisationService;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::organisation::{
     GetOrganisationList, OrganisationListQuery, OrganisationRelations,
 };
@@ -169,8 +170,5 @@ async fn test_get_organisation_list_failure() {
         .get_organisation_list(OrganisationListQuery::default())
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Repository(DataLayerError::Db(_)))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0054);
 }

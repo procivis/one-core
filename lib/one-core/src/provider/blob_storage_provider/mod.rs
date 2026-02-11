@@ -10,6 +10,7 @@ use strum::Display;
 
 use crate::config::core_config;
 use crate::config::core_config::BlobStorageConfig;
+use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, UpdateBlobRequest};
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::repository::blob_repository::BlobRepository;
@@ -58,29 +59,43 @@ pub struct RepositoryBlobStorage {
 #[async_trait]
 impl BlobStorage for RepositoryBlobStorage {
     async fn create(&self, blob: Blob) -> Result<(), BlobStorageError> {
-        self.blob_repository.create(blob).await.map_err(Into::into)
+        Ok(self
+            .blob_repository
+            .create(blob)
+            .await
+            .error_while("creating blob")?)
     }
 
     async fn get(&self, id: &BlobId) -> Result<Option<Blob>, BlobStorageError> {
-        self.blob_repository.get(id).await.map_err(Into::into)
+        Ok(self
+            .blob_repository
+            .get(id)
+            .await
+            .error_while("getting blob")?)
     }
 
     async fn update(&self, id: &BlobId, update: UpdateBlobRequest) -> Result<(), BlobStorageError> {
-        self.blob_repository
+        Ok(self
+            .blob_repository
             .update(id, update)
             .await
-            .map_err(Into::into)
+            .error_while("updating blob")?)
     }
 
     async fn delete(&self, id: &BlobId) -> Result<(), BlobStorageError> {
-        self.blob_repository.delete(id).await.map_err(Into::into)
+        Ok(self
+            .blob_repository
+            .delete(id)
+            .await
+            .error_while("deleting blob")?)
     }
 
     async fn delete_many(&self, ids: &[BlobId]) -> Result<(), BlobStorageError> {
-        self.blob_repository
+        Ok(self
+            .blob_repository
             .delete_many(ids)
             .await
-            .map_err(Into::into)
+            .error_while("deleting blobs")?)
     }
 }
 

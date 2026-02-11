@@ -4,6 +4,7 @@ use shared_types::BlobId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::error::ContextWithErrorCode;
 use crate::mapper::encode_cbor_base64;
 use crate::mapper::openid4vp::credential_from_proved;
 use crate::model::common::LockType;
@@ -42,7 +43,8 @@ pub(crate) async fn persist_accepted_proof(
                         &ProofRelations::default(),
                         Some(LockType::Update),
                     )
-                    .await?
+                    .await
+                    .error_while("getting proof")?
                     .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
                         proof.id,
                     )))?;
@@ -62,7 +64,10 @@ pub(crate) async fn persist_accepted_proof(
                         credential_from_proved(identifier_creator, proved_credential, organisation)
                             .await?;
 
-                    credential_repository.create_credential(credential).await?;
+                    credential_repository
+                        .create_credential(credential)
+                        .await
+                        .error_while("crating credential")?;
 
                     if let Some(mso) = mdoc_mso {
                         let mso_cbor = encode_cbor_base64(mso)
@@ -78,13 +83,15 @@ pub(crate) async fn persist_accepted_proof(
                                 }
                                 .into(),
                             )
-                            .await?;
+                            .await
+                            .error_while("inserting validity credential")?;
                     }
                 }
 
                 proof_repository
                     .set_proof_claims(&proof.id, convert_inner(claims))
-                    .await?;
+                    .await
+                    .error_while("setting proof claims")?;
 
                 proof_repository
                     .update_proof(
@@ -96,13 +103,15 @@ pub(crate) async fn persist_accepted_proof(
                         },
                         None,
                     )
-                    .await?;
+                    .await
+                    .error_while("updating proof")?;
                 Ok::<_, ServiceError>(())
             }
             .boxed(),
             Some(IsolationLevel::ReadCommitted),
             None,
         )
-        .await??;
+        .await
+        .error_while("persisting proof")??;
     Ok(())
 }

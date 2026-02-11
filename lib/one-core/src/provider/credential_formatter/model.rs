@@ -25,6 +25,7 @@ use crate::config::core_config::{
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::model::identifier::Identifier;
+use crate::proto::jwt::TokenError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
@@ -61,7 +62,7 @@ pub trait TokenVerifier: Send + Sync {
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
-    ) -> Result<(), SignerError>;
+    ) -> Result<(), TokenError>;
 
     fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider;
 }

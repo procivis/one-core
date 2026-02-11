@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use super::creator::IdentifierCreatorProto;
 use crate::config::validator::did::validate_did_method;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -154,7 +155,7 @@ impl IdentifierCreatorProto {
                     DataLayerError::AlreadyExists => {
                         ServiceError::BusinessLogic(BusinessLogicError::CertificateAlreadyExists)
                     }
-                    e => e.into(),
+                    e => e.error_while("creating certificate").into(),
                 })?;
         }
 
@@ -205,7 +206,7 @@ impl IdentifierCreatorProto {
                     DataLayerError::AlreadyExists => {
                         ServiceError::BusinessLogic(BusinessLogicError::CertificateAlreadyExists)
                     }
-                    e => e.into(),
+                    e => e.error_while("creating certificate").into(),
                 })?;
         }
 
@@ -247,7 +248,11 @@ impl IdentifierCreatorProto {
         );
 
         let key_ids = key_ids.into_iter().collect::<Vec<_>>();
-        let mut all_keys = self.key_repository.get_keys(&key_ids).await?;
+        let mut all_keys = self
+            .key_repository
+            .get_keys(&key_ids)
+            .await
+            .error_while("getting keys")?;
 
         let new_id = Uuid::new_v4();
         let new_did_id = DidId::from(new_id);
@@ -298,7 +303,10 @@ impl IdentifierCreatorProto {
 
         if let Some(update_keys) = update_keys {
             for key in update_keys {
-                self.key_repository.create_key(key.clone()).await?;
+                self.key_repository
+                    .create_key(key.clone())
+                    .await
+                    .error_while("creating key")?;
                 all_keys.push(key);
             }
         }
@@ -328,7 +336,7 @@ impl IdentifierCreatorProto {
                 DataLayerError::AlreadyExists => {
                     ServiceError::from(BusinessLogicError::DidValueAlreadyExists(did_value))
                 }
-                err => ServiceError::from(err),
+                err => err.error_while("creating did").into(),
             })?;
 
         Ok(did)
@@ -343,7 +351,8 @@ impl IdentifierCreatorProto {
         let key = self
             .key_repository
             .get_key(&request.key_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting key")?
             .ok_or(EntityNotFoundError::Key(request.key_id))?;
 
         let ParsedCertificate {
@@ -394,7 +403,8 @@ impl IdentifierCreatorProto {
         let key = self
             .key_repository
             .get_key(&request.key_id, &Default::default())
-            .await?
+            .await
+            .error_while("getting key")?
             .ok_or(EntityNotFoundError::Key(request.key_id))?;
 
         let chain = match (request.chain, request.self_signed) {
@@ -473,7 +483,7 @@ fn map_already_exists_error(error: DataLayerError) -> ServiceError {
         DataLayerError::AlreadyExists => {
             ServiceError::BusinessLogic(BusinessLogicError::IdentifierAlreadyExists)
         }
-        e => e.into(),
+        e => e.error_while("creating identifier").into(),
     }
 }
 

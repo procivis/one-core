@@ -6,6 +6,7 @@ use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -33,7 +34,8 @@ pub(crate) async fn credential_schema_already_exists(
             create_unique_name_check_request(name, schema_id.clone(), organisation_id)?,
             &Default::default(),
         )
-        .await?;
+        .await
+        .error_while("getting credential schemas")?;
 
     if let Some(schema_id) = schema_id
         && credential_schemas

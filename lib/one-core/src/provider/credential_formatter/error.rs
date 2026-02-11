@@ -1,13 +1,15 @@
 use one_crypto::CryptoProviderError;
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum ParseError {
     #[error("Failed: `{0}`")]
     Failed(String),
 }
 
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum FormatterError {
     #[error("Failed: `{0}`")]
     Failed(String),
@@ -47,6 +49,40 @@ pub enum FormatterError {
     JsonPtrAssignError(#[from] jsonptr::assign::Error),
     #[error("Jsonptr parse error: `{0}`")]
     JsonPtrParseError(#[from] jsonptr::ParseError),
+    #[error("Encoding error: `{0}`")]
+    EncodingError(#[from] ct_codecs::Error),
     #[error("Float value is NaN")]
     FloatValueIsNaN,
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for FormatterError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::BBSOnly => ErrorCode::BR_0090,
+            Self::Failed(_)
+            | Self::CouldNotSign(_)
+            | Self::CouldNotVerify(_)
+            | Self::CouldNotFormat(_)
+            | Self::CouldNotExtractCredentials(_)
+            | Self::CouldNotExtractPresentation(_)
+            | Self::CouldNotExtractClaimsFromPresentation(_)
+            | Self::IncorrectSignature
+            | Self::MissingPart
+            | Self::MissingDisclosure
+            | Self::MissingIssuer
+            | Self::MissingHolder
+            | Self::MissingClaim
+            | Self::CryptoError(_)
+            | Self::MissingBaseUrl { .. }
+            | Self::JsonMapping(_)
+            | Self::JsonPtrAssignError(_)
+            | Self::JsonPtrParseError(_)
+            | Self::EncodingError(_)
+            | Self::FloatValueIsNaN => ErrorCode::BR_0057,
+            Self::Nested(nested) => nested.error_code(),
+        }
+    }
 }

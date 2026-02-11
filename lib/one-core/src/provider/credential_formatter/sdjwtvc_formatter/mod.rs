@@ -39,6 +39,7 @@ use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
@@ -123,7 +124,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let vct = parsed_credential.payload.custom.vc_type.clone();
 
         // Get metadata claims first (includes vct and standard JWT claims)
-        let metadata_claims = parsed_credential.get_metadata_claims()?;
+        let metadata_claims = parsed_credential
+            .get_metadata_claims()
+            .error_while("getting metadata claims")?;
 
         // Parse claims from public_claims
         let (mut claims, mut claim_schemas) = parse_claims(
@@ -305,7 +308,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
         let DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
-        let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None, None).await?;
+        let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None, None)
+            .await
+            .error_while("parsing SD-JWT-VC token")?;
         let hasher = self
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
@@ -535,7 +540,9 @@ impl SDJWTVCFormatter {
             }
         }
 
-        let metadata_claims = jwt.get_metadata_claims()?;
+        let metadata_claims = jwt
+            .get_metadata_claims()
+            .error_while("getting metadata claims")?;
         let subject = jwt
             .payload
             .subject

@@ -1,9 +1,17 @@
 use thiserror::Error;
 
-use crate::repository::error::DataLayerError;
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error)]
 pub enum BlobStorageError {
-    #[error("Blob storage data layer error: `{0}`")]
-    DataLayerError(#[from] DataLayerError),
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for BlobStorageError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Nested(nested) => nested.error_code(),
+        }
+    }
 }

@@ -21,6 +21,7 @@ use super::validator::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
     get_exchange_param_token_expires_in,
@@ -103,7 +104,8 @@ impl OID4VCIFinal1_0Service {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential schema")?;
 
         let Some(schema) = schema else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -186,7 +188,8 @@ impl OID4VCIFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
@@ -273,7 +276,8 @@ impl OID4VCIFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credential")?;
 
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(credential_id).into());
@@ -343,7 +347,8 @@ impl OID4VCIFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential schema")?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
@@ -360,7 +365,8 @@ impl OID4VCIFinal1_0Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting interaction")?
         else {
             return Err(
                 BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
@@ -380,7 +386,8 @@ impl OID4VCIFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let Some(credential) = credentials.iter().find(|credential| {
             credential
@@ -445,7 +452,7 @@ impl OID4VCIFinal1_0Service {
                 DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
                     ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
                 }
-                e => ServiceError::Repository(e),
+                e => e.error_while("marking nonce as used").into(),
             })?;
 
         // Key attestation is expected if wallet storage type is set
@@ -499,7 +506,8 @@ impl OID4VCIFinal1_0Service {
 
                 let wallet_instance_attestation_blob = db_blob_storage
                     .get(wallet_instance_attestation_blob_id)
-                    .await?
+                    .await
+                    .error_while("getting WIA blob")?
                     .ok_or(ServiceError::MappingError(
                         "wallet app attestation blob is None".to_string(),
                     ))?;
@@ -512,7 +520,8 @@ impl OID4VCIFinal1_0Service {
                 })?;
 
                 let wia =
-                    Jwt::<WalletInstanceAttestationClaims>::decompose_token(&wia_dto.attestation)?;
+                    Jwt::<WalletInstanceAttestationClaims>::decompose_token(&wia_dto.attestation)
+                        .error_while("parsing WIA token")?;
 
                 verify_wua_wia_issuers_match(key_attestation_jwt, &wia)?;
             }
@@ -597,7 +606,8 @@ impl OID4VCIFinal1_0Service {
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
-            .await??;
+            .await
+            .error_while("issuing credential")??;
         tracing::info!("Issued credential {}", credential.id);
         Ok(result)
     }
@@ -620,7 +630,8 @@ impl OID4VCIFinal1_0Service {
                 },
                 Some(LockType::Update),
             )
-            .await?
+            .await
+            .error_while("getting interaction")?
         else {
             return Err(
                 BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
@@ -640,7 +651,10 @@ impl OID4VCIFinal1_0Service {
             let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
             let wua_blob = Blob::new(wua_dto, BlobType::WalletUnitAttestation);
-            blob_storage.create(wua_blob.clone()).await?;
+            blob_storage
+                .create(wua_blob.clone())
+                .await
+                .error_while("creating WUA blob")?;
             Some(wua_blob.id)
         } else {
             None
@@ -667,7 +681,8 @@ impl OID4VCIFinal1_0Service {
                             ..Default::default()
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating credential")?;
                 if let Some(notification_id) = &issued_credential.notification_id {
                     interaction_data.notification_id = Some(notification_id.to_owned());
 
@@ -681,7 +696,8 @@ impl OID4VCIFinal1_0Service {
                                 data: Some(Some(data)),
                             },
                         )
-                        .await?;
+                        .await
+                        .error_while("updating interaction")?;
                 }
 
                 Ok(OpenID4VCICredentialResponseDTO {
@@ -708,7 +724,8 @@ impl OID4VCIFinal1_0Service {
                             ..Default::default()
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating credential")?;
                 Err(error.into())
             }
         }
@@ -724,7 +741,8 @@ impl OID4VCIFinal1_0Service {
         let Some(interaction) = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default(), None)
-            .await?
+            .await
+            .error_while("getting interaction")?
         else {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
         };
@@ -759,7 +777,8 @@ impl OID4VCIFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let Some(credential) = credentials.iter().find(|credential| {
             credential
@@ -837,7 +856,8 @@ impl OID4VCIFinal1_0Service {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("updating credential")?;
 
         // mark the credential as revoked (if supported and not done before)
         if matches!(
@@ -869,7 +889,8 @@ impl OID4VCIFinal1_0Service {
         let credential_schema = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
-            .await?
+            .await
+            .error_while("getting credential schema")?
             .ok_or(EntityNotFoundError::CredentialSchema(*credential_schema_id))?;
 
         let interaction_id = match &request {
@@ -894,7 +915,8 @@ impl OID4VCIFinal1_0Service {
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(&interaction_id, &CredentialRelations::default())
-            .await?;
+            .await
+            .error_while("getting credentials")?;
 
         let credential = credentials
             .first()
@@ -941,7 +963,8 @@ impl OID4VCIFinal1_0Service {
                     &InteractionRelations::default(),
                     Some(LockType::Update),
                 )
-                .await?
+                .await
+                .error_while("getting interaction")?
                 .ok_or(ServiceError::MappingError(format!(
                     "Interaction `{}` not found",
                     interaction_id
@@ -980,7 +1003,10 @@ impl OID4VCIFinal1_0Service {
                             let blob =
                                 Blob::new(attestation_token, BlobType::WalletInstanceAttestation);
 
-                            blob_storage.create(blob.clone()).await?;
+                            blob_storage
+                                .create(blob.clone())
+                                .await
+                                .error_while("creating WIA blob")?;
                             Some(blob.id)
                         }
                         None => None,
@@ -1001,7 +1027,8 @@ impl OID4VCIFinal1_0Service {
                 {
                     self.credential_repository
                         .update_credential(credential.id, state_update)
-                        .await?;
+                        .await
+                        .error_while("updating credential")?;
                 }
             }
 
@@ -1025,11 +1052,16 @@ impl OID4VCIFinal1_0Service {
 
             self.interaction_repository
                 .update_interaction(interaction.id, interaction.into())
-                .await?;
+                .await
+                .error_while("updating credential interaction")?;
             Ok(response)
         }
         .boxed();
-        let result = self.transaction_manager.tx(tx).await??;
+        let result = self
+            .transaction_manager
+            .tx(tx)
+            .await
+            .error_while("creating token")??;
         tracing::info!(
             "Issued access token for issuance of credential {}",
             credential.id
@@ -1065,8 +1097,10 @@ impl OID4VCIFinal1_0Service {
 
         let wallet_instance_attestation = Jwt::<WalletInstanceAttestationClaims>::decompose_token(
             wallet_instance_attestation_token,
-        )?;
-        let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)?;
+        )
+        .error_while("parsing WIA token")?;
+        let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)
+            .error_while("parsing WUA token")?;
 
         // Validate timestamps for both tokens
         validate_timestamps(&wallet_instance_attestation, leeway)?;

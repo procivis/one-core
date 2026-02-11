@@ -16,7 +16,7 @@ use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
-use crate::error::ErrorCodeMixin;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixin};
 use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
 use crate::model::claim::{Claim, ClaimRelations};
@@ -72,7 +72,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .error_while("getting proof")?;
 
         let Some(proof) = proof else {
             return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
@@ -106,7 +107,8 @@ impl SSIHolderService {
                 },
                 error_metadata,
             )
-            .await?;
+            .await
+            .error_while("updating proof")?;
 
         tracing::info!("Rejected proof request {}", proof.id);
         Ok(())
@@ -131,7 +133,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof")?
         else {
             return Err(
                 BusinessLogicError::MissingProofForInteraction(submission.interaction_id).into(),
@@ -162,7 +165,8 @@ impl SSIHolderService {
                             ..Default::default()
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting credential")?
                     .ok_or(EntityNotFoundError::Credential(
                         submitted_credential.credential_id,
                     ))?;
@@ -259,11 +263,13 @@ impl SSIHolderService {
                     .ok_or_else(|| {
                         MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
                     })?;
-                let credential_blob = db_blob_storage.get(&credential_blob_id).await?.ok_or(
-                    BusinessLogicError::MissingCredentialData {
+                let credential_blob = db_blob_storage
+                    .get(&credential_blob_id)
+                    .await
+                    .error_while("getting credential blob")?
+                    .ok_or(BusinessLogicError::MissingCredentialData {
                         credential_id: submitted_credential.credential_id,
-                    },
-                )?;
+                    })?;
 
                 let credential_data = credential_blob.value.as_slice();
                 let credential_content = std::str::from_utf8(credential_data)
@@ -357,11 +363,13 @@ impl SSIHolderService {
                 },
                 error_metadata,
             )
-            .await?;
+            .await
+            .error_while("updating proof")?;
 
         self.proof_repository
             .set_proof_claims(&proof.id, submitted_claims)
-            .await?;
+            .await
+            .error_while("setting proof claims")?;
         submit_result
     }
 
@@ -473,7 +481,8 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof")?
         else {
             return Err(
                 BusinessLogicError::MissingProofForInteraction(request.interaction_id).into(),
@@ -605,7 +614,10 @@ impl SSIHolderService {
 
         self.fill_verifier_in_proof(&mut proof).await?;
 
-        self.proof_repository.create_proof(proof.to_owned()).await?;
+        self.proof_repository
+            .create_proof(proof.to_owned())
+            .await
+            .error_while("creating proof")?;
 
         Ok(HandleInvitationResultDTO::ProofRequest {
             interaction_id,
@@ -649,7 +661,8 @@ impl SSIHolderService {
         if let Some(update_proof) = update_response.update_proof {
             self.proof_repository
                 .update_proof(&proof_id, update_proof, None)
-                .await?;
+                .await
+                .error_while("updating proof")?;
         }
         Ok(())
     }
@@ -687,20 +700,21 @@ impl SSIHolderService {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting credential")?
             .ok_or(EntityNotFoundError::Credential(credential_id))?;
         let blob_id = credential
             .credential_blob_id
             .ok_or(ServiceError::MappingError(format!(
                 "Missing blob id on credential `{credential_id}`"
             )))?;
-        let credential_blob =
-            blob_storage
-                .get(&blob_id)
-                .await?
-                .ok_or(ServiceError::MappingError(format!(
-                    "Blob with id `{blob_id}` (belonging to credential `{credential_id}`) not found"
-                )))?;
+        let credential_blob = blob_storage
+            .get(&blob_id)
+            .await
+            .error_while("getting credential blob")?
+            .ok_or(ServiceError::MappingError(format!(
+                "Blob with id `{blob_id}` (belonging to credential `{credential_id}`) not found"
+            )))?;
 
         let credential_content = std::str::from_utf8(&credential_blob.value)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;

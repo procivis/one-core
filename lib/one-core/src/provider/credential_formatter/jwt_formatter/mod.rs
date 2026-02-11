@@ -25,6 +25,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
@@ -126,7 +127,10 @@ impl CredentialFormatter for JWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(&*auth_fn)).await
+        Ok(jwt
+            .tokenize(Some(&*auth_fn))
+            .await
+            .error_while("creating JWT credential token")?)
     }
 
     async fn format_status_list(
@@ -187,7 +191,9 @@ impl CredentialFormatter for JWTFormatter {
         _holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(&verification), None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(&verification), None)
+            .await
+            .error_while("extracting JWT credential token")?;
 
         DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
@@ -197,7 +203,9 @@ impl CredentialFormatter for JWTFormatter {
         token: &str,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None, None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None, None)
+            .await
+            .error_while("parsing JWT credential token")?;
 
         DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
@@ -291,7 +299,9 @@ impl CredentialFormatter for JWTFormatter {
     async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, None, None).await?;
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, None, None)
+            .await
+            .error_while("parsing JWT credential token")?;
 
         let revocation_method =
             if let Some(status) = jwt.payload.custom.vc.credential_status.first() {
@@ -318,7 +328,9 @@ impl CredentialFormatter for JWTFormatter {
             .unwrap_or_else(|| "VerifiableCredential".to_string());
 
         // Get metadata claims first (includes vc type and standard JWT claims)
-        let metadata_claims = jwt.get_metadata_claims()?;
+        let metadata_claims = jwt
+            .get_metadata_claims()
+            .error_while("getting JWT metadata claims")?;
 
         // Parse claims from credential subject
         let credential_subject = jwt

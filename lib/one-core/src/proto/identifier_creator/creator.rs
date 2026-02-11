@@ -6,6 +6,7 @@ use super::{
     CreateLocalIdentifierRequest, IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
 };
 use crate::config::core_config::CoreConfig;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::csr_creator::CsrCreator;
@@ -16,7 +17,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::signer::provider::SignerProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
-use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::error::ServiceError;
@@ -125,10 +125,11 @@ impl IdentifierCreator for IdentifierCreatorProto {
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
-            .await?;
+            .await
+            .error_while("creating remote identifier")?;
 
         match result {
-            Err(ServiceError::Repository(DataLayerError::AlreadyExists)) => {
+            Err(error) if error.error_code() == ErrorCode::BR_0357 => {
                 tracing::debug!("Identifier already exists, fetching again");
                 self.get_identifier(organisation, details).await
             }
@@ -180,6 +181,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
-            .await??)
+            .await
+            .error_while("creating local identifier")??)
     }
 }

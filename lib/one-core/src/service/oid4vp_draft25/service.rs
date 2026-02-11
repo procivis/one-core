@@ -7,6 +7,7 @@ use tracing::warn;
 use super::OID4VPDraft25Service;
 use super::proof_request::generate_authorization_request_params_draft25;
 use crate::config::core_config::VerificationProtocolType;
+use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::mapper::get_encryption_key_jwk_from_proof;
 use crate::model::blob::{Blob, BlobType};
@@ -85,7 +86,8 @@ impl OID4VPDraft25Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
@@ -197,7 +199,8 @@ impl OID4VPDraft25Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
@@ -246,7 +249,8 @@ impl OID4VPDraft25Service {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::BusinessLogic(
                 BusinessLogicError::MissingProofForInteraction(interaction_id),
             ))?;
@@ -315,7 +319,10 @@ impl OID4VPDraft25Service {
 
         let blob = Blob::new(blob_value, BlobType::Proof);
         let proof_blob_id = blob.id;
-        blob_storage.create(blob).await?;
+        blob_storage
+            .create(blob)
+            .await
+            .error_while("creating proof blob")?;
 
         match self
             .proof_validator
@@ -381,7 +388,8 @@ impl OID4VPDraft25Service {
                 },
                 None,
             )
-            .await?
+            .await
+            .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         validate_verification_protocol_type(
@@ -463,7 +471,8 @@ impl OID4VPDraft25Service {
                 let key = self
                     .key_repository
                     .get_key(&key_id, &KeyRelations::default())
-                    .await?
+                    .await
+                    .error_while("getting key")?
                     .ok_or_else(|| {
                         ServiceError::ValidationError("Invalid JWE key_id".to_string())
                     })?;

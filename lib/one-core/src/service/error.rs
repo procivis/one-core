@@ -11,18 +11,17 @@ use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, VerificationProtocolType};
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::did::KeyRole;
 use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::proto::csr_creator::CsrCreationError;
 use crate::proto::nfc::NfcError;
-use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::issuance_protocol::error::{
-    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError, TxCodeError,
+    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;
@@ -33,7 +32,6 @@ use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::repository::error::DataLayerError;
 use crate::service::wallet_provider::error::WalletProviderError;
 use crate::service::wallet_unit::error::HolderWalletUnitError;
 use crate::util::key_selection::KeySelectionError;
@@ -113,9 +111,6 @@ pub enum ServiceError {
     Validation(#[from] ValidationError),
 
     #[error(transparent)]
-    Repository(#[from] DataLayerError),
-
-    #[error(transparent)]
     KeyStorageError(#[from] KeyStorageError),
 
     #[error(transparent)]
@@ -126,9 +121,6 @@ pub enum ServiceError {
 
     #[error("Trust management error `{0}`")]
     TrustManagementError(#[from] TrustManagementError),
-
-    #[error("Blob storage error `{0}`")]
-    BlobStorageError(#[from] BlobStorageError),
 
     #[error("Wallet provider error: `{0}`")]
     WalletProviderError(#[from] WalletProviderError),
@@ -147,6 +139,9 @@ pub enum ServiceError {
 
     #[error("Failed to create CSR: `{0}`")]
     CsrCreation(#[from] CsrCreationError),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -805,7 +800,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::EntityNotFound(error) => error.error_code(),
             Self::BusinessLogic(error) => error.error_code(),
             Self::Validation(error) => error.error_code(),
-            Self::Repository(error) => error.error_code(),
             Self::MissingProvider(error) => error.error_code(),
             Self::IssuanceProtocolError(error) => error.error_code(),
             Self::VerificationProtocolError(error) => error.error_code(),
@@ -831,31 +825,13 @@ impl ErrorCodeMixin for ServiceError {
             Self::Revocation(error) => error.error_code(),
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
             Self::KeyHandleError(error) => error.error_code(),
-            Self::BlobStorageError(_) => ErrorCode::BR_0251,
             Self::WalletProviderError(error) => error.error_code(),
             Self::WalletUnitAttestationError(error) => error.error_code(),
             Self::NfcError(error) => error.error_code(),
             Self::SignerError(error) => error.error_code(),
             Self::KeySelection(error) => error.error_code(),
             Self::CsrCreation(error) => error.error_code(),
-        }
-    }
-}
-
-impl ErrorCodeMixin for ConfigValidationError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::TypeNotFound(_) => ErrorCode::BR_0089,
-            Self::EntryDisabled(_)
-            | Self::EntryNotFound(_)
-            | Self::FieldsDeserialization { .. }
-            | Self::InvalidType(_, _)
-            | Self::DatatypeValidation(_)
-            | Self::DuplicateUrlScheme { .. }
-            | Self::MultipleFallbackProviders { .. }
-            | Self::MissingX509CaCertificate
-            | Self::MissingBaseUrl => ErrorCode::BR_0051,
-            Self::IncompatibleReferencedProvider { .. } => ErrorCode::BR_0328,
+            Self::Nested(error) => error.error_code(),
         }
     }
 }
@@ -1064,78 +1040,6 @@ impl ErrorCodeMixin for ValidationError {
     }
 }
 
-impl ErrorCodeMixin for IssuanceProtocolError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::Failed(_) => ErrorCode::BR_0062,
-            Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
-            Self::Transport(_) => ErrorCode::BR_0086,
-            Self::JsonError(_) => ErrorCode::BR_0062,
-            Self::OperationNotSupported => ErrorCode::BR_0062,
-            Self::MissingBaseUrl => ErrorCode::BR_0062,
-            Self::InvalidRequest(_) => ErrorCode::BR_0085,
-            Self::Disabled(_) => ErrorCode::BR_0085,
-            Self::Other(_) => ErrorCode::BR_0062,
-            Self::StorageAccessError(_) => ErrorCode::BR_0062,
-            Self::TxCode(tx_code_error) => match tx_code_error {
-                TxCodeError::IncorrectCode => ErrorCode::BR_0169,
-                TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
-            },
-            Self::DidMismatch
-            | Self::KeyMismatch
-            | Self::CertificateMismatch
-            | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
-            Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
-            Self::Suspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
-        }
-    }
-}
-
-impl ErrorCodeMixin for FormatterError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::BBSOnly => ErrorCode::BR_0090,
-            Self::Failed(_)
-            | Self::CouldNotSign(_)
-            | Self::CouldNotVerify(_)
-            | Self::CouldNotFormat(_)
-            | Self::CouldNotExtractCredentials(_)
-            | Self::CouldNotExtractPresentation(_)
-            | Self::CouldNotExtractClaimsFromPresentation(_)
-            | Self::IncorrectSignature
-            | Self::MissingPart
-            | Self::MissingDisclosure
-            | Self::MissingIssuer
-            | Self::MissingHolder
-            | Self::MissingClaim
-            | Self::CryptoError(_)
-            | Self::MissingBaseUrl { .. }
-            | Self::JsonMapping(_)
-            | Self::JsonPtrAssignError(_)
-            | Self::JsonPtrParseError(_)
-            | Self::FloatValueIsNaN => ErrorCode::BR_0057,
-        }
-    }
-}
-
-impl ErrorCodeMixin for DataLayerError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::Db(_) => ErrorCode::BR_0054,
-            Self::AlreadyExists
-            | Self::IncorrectParameters
-            | Self::RecordNotUpdated
-            | Self::MappingError
-            | Self::IncompleteClaimsList { .. }
-            | Self::IncompleteClaimsSchemaList { .. }
-            | Self::MissingProofState { .. }
-            | Self::MissingRequiredRelation { .. }
-            | Self::MissingClaimsSchemaForClaim(_, _)
-            | Self::TransactionError(_) => ErrorCode::BR_0000,
-        }
-    }
-}
-
 impl ErrorCodeMixin for MissingProviderError {
     fn error_code(&self) -> ErrorCode {
         match self {
@@ -1151,46 +1055,6 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::TrustManager(_) => ErrorCode::BR_0132,
             Self::BlobStorage(_) => ErrorCode::BR_0252,
             Self::Signer(_) => ErrorCode::BR_0326,
-        }
-    }
-}
-
-impl ErrorCodeMixin for WalletProviderError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::WalletProviderDisabled(_) => ErrorCode::BR_0260,
-            Self::CouldNotVerifyProof(_) => ErrorCode::BR_0071,
-            Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
-            Self::WalletUnitRevoked => ErrorCode::BR_0261,
-            Self::RefreshTimeNotReached => ErrorCode::BR_0258,
-            Self::MissingWalletUnitAttestationNonce | Self::InvalidWalletUnitAttestationNonce => {
-                ErrorCode::BR_0153
-            }
-            Self::InvalidWalletUnitState => ErrorCode::BR_0265,
-            Self::AppIntegrityValidationError(_) => ErrorCode::BR_0266,
-            Self::MissingProof => ErrorCode::BR_0268,
-            Self::MissingPublicKey => ErrorCode::BR_0269,
-            Self::AppIntegrityCheckRequired => ErrorCode::BR_0270,
-            Self::WalletUnitAlreadyExists => ErrorCode::BR_0271,
-            Self::AppIntegrityCheckNotRequired => ErrorCode::BR_0279,
-            Self::WalletProviderNotConfigured | Self::WalletProviderOrganisationDisabled => {
-                ErrorCode::BR_0284
-            }
-            Self::WalletProviderNotAssociatedWithOrganisation => ErrorCode::BR_0286,
-            Self::WalletUnitMustBeActive => ErrorCode::BR_0081,
-            Self::WalletUnitMustBePending => ErrorCode::BR_0168,
-            Self::InsufficientSecurityLevel => ErrorCode::BR_0297,
-        }
-    }
-}
-
-impl ErrorCodeMixin for HolderWalletUnitError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            HolderWalletUnitError::WalletUnitRevoked => ErrorCode::BR_0261,
-            HolderWalletUnitError::WalletProviderClientFailure(_) => ErrorCode::BR_0264,
-            HolderWalletUnitError::AppIntegrityCheckRequired => ErrorCode::BR_0280,
-            HolderWalletUnitError::AppIntegrityCheckNotRequired => ErrorCode::BR_0281,
         }
     }
 }

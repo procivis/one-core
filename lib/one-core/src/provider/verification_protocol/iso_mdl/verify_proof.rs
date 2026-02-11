@@ -5,6 +5,7 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId};
 
 use super::common::to_cbor;
 use crate::config::core_config::VerificationProtocolType;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, extracted_credential_to_model};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -439,7 +440,10 @@ pub(crate) async fn accept_proof(
                 .to_owned(),
         );
 
-        credential_repository.create_credential(credential).await?;
+        credential_repository
+            .create_credential(credential)
+            .await
+            .error_while("creating credential")?;
     }
 
     proof_repository
@@ -452,9 +456,10 @@ pub(crate) async fn accept_proof(
             None,
         )
         .await
-        .map_err(ServiceError::from)?;
+        .error_while("updating proof")?;
     proof_repository
         .set_proof_claims(&proof.id, proof_claims)
-        .await?;
+        .await
+        .error_while("setting proof claims")?;
     Ok(())
 }

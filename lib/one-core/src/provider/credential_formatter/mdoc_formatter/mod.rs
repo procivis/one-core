@@ -45,6 +45,7 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
+use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::{
@@ -651,7 +652,7 @@ pub async fn try_verify_detached_signature_with_provider(
     external_aad: &[u8],
     issuer_key: &PublicJwk,
     verifier: &dyn TokenVerifier,
-) -> Result<(), SignerError> {
+) -> Result<(), TokenError> {
     let sig_data = coset::sig_structure_data(
         SignatureContext::CoseSign1,
         device_signature.protected.clone(),

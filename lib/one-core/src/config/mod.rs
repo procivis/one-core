@@ -2,6 +2,7 @@ use shared_types::RevocationMethodId;
 use strum::Display;
 
 use self::validator::datatype::DatatypeValidationError;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::provider::data_type::model::ValueType;
 
 pub mod validator;
@@ -72,6 +73,24 @@ pub enum ConfigValidationError {
     MultipleFallbackProviders { value_type: ValueType },
     #[error("Missing base url")]
     MissingBaseUrl,
+}
+
+impl ErrorCodeMixin for ConfigValidationError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::TypeNotFound(_) => ErrorCode::BR_0089,
+            Self::EntryDisabled(_)
+            | Self::EntryNotFound(_)
+            | Self::FieldsDeserialization { .. }
+            | Self::InvalidType(_, _)
+            | Self::DatatypeValidation(_)
+            | Self::DuplicateUrlScheme { .. }
+            | Self::MultipleFallbackProviders { .. }
+            | Self::MissingX509CaCertificate
+            | Self::MissingBaseUrl => ErrorCode::BR_0051,
+            Self::IncompatibleReferencedProvider { .. } => ErrorCode::BR_0328,
+        }
+    }
 }
 
 impl ConfigValidationError {

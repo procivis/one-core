@@ -485,8 +485,8 @@ mod test {
         );
 
         assert_eq!(
-            hash_data,
-            Ok(HashData {
+            hash_data.unwrap(),
+            HashData {
                 proof_hash: hex::decode(
                     "3a5bbf25d34d90b18c35cd2357be6a6f42301e94fc9e52f77e93b773c5614bdf"
                 )
@@ -496,7 +496,7 @@ mod test {
                 )
                 .unwrap(),
                 transformed_document,
-            }),
+            },
         );
     }
 

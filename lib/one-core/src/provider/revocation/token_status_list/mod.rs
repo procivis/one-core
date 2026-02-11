@@ -315,7 +315,9 @@ impl RevocationMethod for TokenStatusList {
         };
 
         let jwt: Jwt<TokenStatusListContent> =
-            Jwt::build_from_token(&response_content, Some(&key_verification), issuer_did).await?;
+            Jwt::build_from_token(&response_content, Some(&key_verification), issuer_did)
+                .await
+                .error_while("validating token status list")?;
 
         Ok(util::extract_state_from_token(
             &jwt.payload.custom.status_list,

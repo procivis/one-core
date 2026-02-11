@@ -596,9 +596,6 @@ pub enum ErrorCode {
     #[strum(message = "Basic constraints violation")]
     BR_0250,
 
-    #[strum(message = "Blob storage error")]
-    BR_0251,
-
     #[strum(message = "Blob storage provider not found")]
     BR_0252,
 
@@ -785,6 +782,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Cache failure")]
     BR_0354,
+
+    #[strum(message = "JWT handling failure")]
+    BR_0355,
+
+    #[strum(message = "DB entry already exists")]
+    BR_0357,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

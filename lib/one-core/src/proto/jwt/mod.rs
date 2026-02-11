@@ -8,7 +8,6 @@ use anyhow::Context;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mapper::{bin_to_b64url_string, string_to_b64url_string};
-use one_crypto::SignerError;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::DidValue;
@@ -16,6 +15,7 @@ use standardized_types::jwk::PublicJwk;
 
 use self::model::{DecomposedJwt, JWTHeader};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::jwt::model::{DecomposedToken, Payload, SerdeSkippable};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -43,7 +43,7 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
         algorithm: KeyAlgorithmType,
         token: &'a [u8],
         signature: &'a [u8],
-    ) -> Result<(), SignerError> {
+    ) -> Result<(), TokenError> {
         self.as_ref()
             .verify(public_key_source, algorithm, token, signature)
             .await
@@ -110,12 +110,11 @@ impl<Subject: SerdeSkippable, CustomPayload> JwtImpl<Subject, CustomPayload> {
 impl<Subject: Serialize + SerdeSkippable, CustomPayload: WithMetadata + Serialize>
     JwtImpl<Subject, CustomPayload>
 {
-    pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-        let value = serde_json::to_value(&self.payload)
-            .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+    pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, TokenError> {
+        let value = serde_json::to_value(&self.payload)?;
 
         let Some(obj) = value.as_object() else {
-            return Err(FormatterError::Failed(
+            return Err(TokenError::ValidationFailed(
                 "Expected root to be an object".to_string(),
             ));
         };
@@ -123,11 +122,17 @@ impl<Subject: Serialize + SerdeSkippable, CustomPayload: WithMetadata + Serializ
         let mut result = HashMap::new();
         for key in ["iss", "aud", "sub", "jti", "exp", "nbf", "iat"] {
             let Some(claim) = obj.get(key) else { continue };
-            let mut claim = CredentialClaim::try_from(claim.clone())?;
+            let mut claim = CredentialClaim::try_from(claim.clone())
+                .error_while("extracting metadata claim")?;
             claim.set_metadata(true);
             result.insert(key.to_string(), claim);
         }
-        result.extend(self.payload.custom.get_metadata_claims()?);
+        result.extend(
+            self.payload
+                .custom
+                .get_metadata_claims()
+                .error_while("getting metadata claims")?,
+        );
         Ok(result)
     }
 }
@@ -141,7 +146,7 @@ where
         token: &str,
         verification: Option<&VerificationFn>,
         issuer_did: Option<DidValue>,
-    ) -> Result<JwtImpl<Subject, CustomPayload>, FormatterError> {
+    ) -> Result<JwtImpl<Subject, CustomPayload>, TokenError> {
         let DecomposedToken {
             header,
             mut payload,
@@ -152,7 +157,7 @@ where
         if let (Some(issuer), Some(issuer_did)) = (&payload.issuer, &issuer_did)
             && issuer != issuer_did.as_str()
         {
-            return Err(FormatterError::CouldNotVerify(format!(
+            return Err(TokenError::ValidationFailed(format!(
                 "Token issuer `{issuer}` does not match credential issuer `{issuer_did}`",
             )));
         }
@@ -172,17 +177,16 @@ where
             let (_, algorithm) = verification
                 .key_algorithm_provider()
                 .key_algorithm_from_jose_alg(&header.algorithm)
-                .ok_or(FormatterError::CouldNotVerify(format!(
-                    "Missing key algorithm for {}",
-                    header.algorithm
-                )))?;
+                .ok_or(TokenError::MissingJOSEAlgorithm(
+                    header.algorithm.to_owned(),
+                ))?;
 
             let issuer_did = payload
                 .issuer
                 .as_ref()
                 .map(|did| did.parse::<DidValue>().context("did parsing error"))
                 .transpose()
-                .map_err(|e| FormatterError::Failed(e.to_string()))?
+                .map_err(|e| TokenError::ValidationFailed(e.to_string()))?
                 .or(issuer_did);
 
             let public_key_source = match (issuer_did, &header.x5c, &header.jwk) {
@@ -195,12 +199,12 @@ where
                     jwk: Cow::Owned(jwk.to_owned()),
                 },
                 (None, None, None) => {
-                    return Err(FormatterError::CouldNotVerify(
+                    return Err(TokenError::ValidationFailed(
                         "Missing public key information for JWT".to_string(),
                     ));
                 }
                 (did, x5c, jwk) => {
-                    return Err(FormatterError::CouldNotVerify(format!(
+                    return Err(TokenError::ValidationFailed(format!(
                         "Mixed specification of public key info: did:{did:?}, x5c:{x5c:?}, jwk:{jwk:?}",
                     )));
                 }
@@ -213,8 +217,7 @@ where
                     unverified_jwt.as_bytes(),
                     &signature,
                 )
-                .await
-                .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+                .await?;
         }
 
         let jwt = JwtImpl { header, payload };
@@ -224,37 +227,28 @@ where
 
     pub fn decompose_token(
         token: &str,
-    ) -> Result<DecomposedToken<Subject, CustomPayload>, FormatterError> {
+    ) -> Result<DecomposedToken<Subject, CustomPayload>, TokenError> {
         let token = token.trim_matches(|c: char| c == '.' || c.is_whitespace());
         let mut jwt_parts = token.splitn(3, '.');
 
         let (Some(header), Some(payload), maybe_signature) =
             (jwt_parts.next(), jwt_parts.next(), jwt_parts.next())
         else {
-            return Err(FormatterError::CouldNotExtractCredentials(
-                "Missing token part".to_owned(),
+            return Err(TokenError::ValidationFailed(
+                "Missing token part".to_string(),
             ));
         };
 
         let unverified_jwt = [header, payload].join(".");
 
-        let header_decoded = Base64UrlSafeNoPadding::decode_to_vec(header, None)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let header_decoded = Base64UrlSafeNoPadding::decode_to_vec(header, None)?;
+        let header: JWTHeader = serde_json::from_slice(&header_decoded)?;
 
-        let header: JWTHeader = serde_json::from_slice(&header_decoded)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-
-        let payload_decoded = Base64UrlSafeNoPadding::decode_to_vec(payload, None)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-
-        let payload: Payload<Subject, CustomPayload> = serde_json::from_slice(&payload_decoded)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let payload_decoded = Base64UrlSafeNoPadding::decode_to_vec(payload, None)?;
+        let payload: Payload<Subject, CustomPayload> = serde_json::from_slice(&payload_decoded)?;
 
         let signature = maybe_signature
-            .map(|signature| {
-                Base64UrlSafeNoPadding::decode_to_vec(signature, None)
-                    .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
-            })
+            .map(|signature| Base64UrlSafeNoPadding::decode_to_vec(signature, None))
             .transpose()?
             .unwrap_or_default();
 
@@ -274,11 +268,9 @@ impl<Subject: Serialize + SerdeSkippable, CustomPayload: Serialize>
     pub async fn tokenize(
         &self,
         auth_fn: Option<&dyn SignatureProvider>,
-    ) -> Result<String, FormatterError> {
-        let jwt_header_json = serde_json::to_string(&self.header)
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-        let payload_json = serde_json::to_string(&self.payload)
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+    ) -> Result<String, TokenError> {
+        let jwt_header_json = serde_json::to_string(&self.header)?;
+        let payload_json = serde_json::to_string(&self.payload)?;
         let mut token = format!(
             "{}.{}",
             string_to_b64url_string(&jwt_header_json)?,
@@ -286,10 +278,7 @@ impl<Subject: Serialize + SerdeSkippable, CustomPayload: Serialize>
         );
 
         if let Some(auth_fn) = auth_fn {
-            let signature = auth_fn
-                .sign(token.as_bytes())
-                .await
-                .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
+            let signature = auth_fn.sign(token.as_bytes()).await?;
 
             if !signature.is_empty() {
                 let signature_encoded = bin_to_b64url_string(&signature)?;
@@ -308,14 +297,13 @@ impl<T> DecomposedJwt<T> {
         &self,
         public_key_source: PublicKeySource<'_>,
         token_verifier: &dyn TokenVerifier,
-    ) -> Result<(), FormatterError> {
+    ) -> Result<(), TokenError> {
         let (_, algorithm) = token_verifier
             .key_algorithm_provider()
             .key_algorithm_from_jose_alg(&self.header.algorithm)
-            .ok_or(FormatterError::CouldNotVerify(format!(
-                "Missing key algorithm for {}",
-                self.header.algorithm
-            )))?;
+            .ok_or(TokenError::MissingJOSEAlgorithm(
+                self.header.algorithm.to_owned(),
+            ))?;
 
         token_verifier
             .verify(
@@ -324,7 +312,40 @@ impl<T> DecomposedJwt<T> {
                 self.unverified_jwt.as_bytes(),
                 &self.signature,
             )
-            .await
-            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum TokenError {
+    #[error("Unknown JOSE algorithm `{0}`")]
+    MissingJOSEAlgorithm(String),
+    #[error("Validation failed: `{0}`")]
+    ValidationFailed(String),
+
+    #[error("Signer error: `{0}`")]
+    SignerError(#[from] one_crypto::SignerError),
+    #[error("Serialization error: `{0}`")]
+    SerializationError(#[from] serde_json::Error),
+    #[error("Encoding error: `{0}`")]
+    EncodingError(#[from] ct_codecs::Error),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for TokenError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::MissingJOSEAlgorithm(_)
+            | Self::SignerError(_)
+            | Self::ValidationFailed(_)
+            | Self::SerializationError(_)
+            | Self::EncodingError(_) => ErrorCode::BR_0355,
+
+            Self::Nested(nested) => nested.error_code(),
+        }
     }
 }

@@ -9,6 +9,7 @@ use uuid::Uuid;
 use super::{Signer, access_certificate, registration_certificate, x509_certificate};
 use crate::config::core_config::{ConfigExt, CoreConfig, RevocationConfig, SignerType};
 use crate::config::{ConfigValidationError, ProviderReference};
+use crate::error::ContextWithErrorCode;
 use crate::model::revocation_list::RevocationListEntityInfo;
 use crate::proto::clock::Clock;
 use crate::proto::session_provider::SessionProvider;
@@ -43,7 +44,8 @@ impl SignerProvider for SignerProviderImpl {
         let entry = self
             .revocation_list_repository
             .get_entry_by_id(id.into())
-            .await?
+            .await
+            .error_while("getting revocation list entry")?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::RevocationListEntry(id.into()),
             ))?;

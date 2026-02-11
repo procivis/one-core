@@ -4,6 +4,7 @@ use super::ProofService;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use crate::config::validator::transport::get_first_available_transport;
+use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::mapper::extracted_credential_to_model;
 use crate::model::claim::Claim;
@@ -53,9 +54,13 @@ impl ProofService {
             .create_interaction(proof.interaction.clone().ok_or(ServiceError::MappingError(
                 "interaction not created".to_string(),
             ))?)
-            .await?;
+            .await
+            .error_while("creating interaction")?;
 
-        self.proof_repository.create_proof(proof.clone()).await?;
+        self.proof_repository
+            .create_proof(proof.clone())
+            .await
+            .error_while("creating proof")?;
 
         let result = self
             .validate_scan_to_verify_proof(&*exchange_protocol, &proof, &submission_data)
@@ -65,7 +70,8 @@ impl ProofService {
             Ok(claims) => {
                 self.proof_repository
                     .set_proof_claims(&proof.id, claims)
-                    .await?;
+                    .await
+                    .error_while("setting proof claims")?;
 
                 self.proof_repository
                     .update_proof(
@@ -76,7 +82,8 @@ impl ProofService {
                         },
                         None,
                     )
-                    .await?;
+                    .await
+                    .error_while("updating proof")?;
             }
             Err(err) => {
                 let error_metadata = HistoryErrorMetadata {
@@ -92,7 +99,8 @@ impl ProofService {
                         },
                         Some(error_metadata),
                     )
-                    .await?;
+                    .await
+                    .error_while("updating proof")?;
             }
         }
 
@@ -236,7 +244,8 @@ impl ProofService {
 
         self.credential_repository
             .create_credential(credential)
-            .await?;
+            .await
+            .error_while("creating credential")?;
 
         Ok(proof_claims)
     }

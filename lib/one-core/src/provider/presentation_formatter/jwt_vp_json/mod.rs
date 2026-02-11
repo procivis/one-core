@@ -8,6 +8,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::FormatType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -128,7 +129,10 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, public_key_info, payload);
 
-        let vp_token = jwt.tokenize(Some(&*holder_binding_fn)).await?;
+        let vp_token = jwt
+            .tokenize(Some(&*holder_binding_fn))
+            .await
+            .error_while("creating jwt_vp_json token")?;
         Ok(FormattedPresentation {
             vp_token,
             oidc_format: "jwt_vp_json".to_string(),
@@ -141,8 +145,9 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         verification_fn: VerificationFn,
         _context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let jwt: Jwt<VP> =
-            Jwt::build_from_token(presentation, Some(&verification_fn), None).await?;
+        let jwt: Jwt<VP> = Jwt::build_from_token(presentation, Some(&verification_fn), None)
+            .await
+            .error_while("validating presentation token")?;
 
         jwt.try_into()
     }
@@ -152,7 +157,9 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         presentation: &str,
         _context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let jwt: Jwt<VP> = Jwt::build_from_token(presentation, None, None).await?;
+        let jwt: Jwt<VP> = Jwt::build_from_token(presentation, None, None)
+            .await
+            .error_while("parsing presentation token")?;
 
         jwt.try_into()
     }

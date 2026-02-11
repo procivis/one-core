@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::model::credential_schema::CredentialSchema;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
@@ -195,7 +196,8 @@ pub(crate) async fn validate_key_attestation(
     expected_key_storage_security_level: KeyStorageSecurityLevel,
     leeway: u64,
 ) -> Result<Vec<PublicJwk>, ServiceError> {
-    let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)?;
+    let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)
+        .error_while("parsing WUA token")?;
 
     validate_timestamps(&wua, leeway)?;
 
@@ -225,7 +227,9 @@ pub(crate) async fn validate_key_attestation(
         }
     };
 
-    wua.verify_signature(wua_issuer_key, verifier).await?;
+    wua.verify_signature(wua_issuer_key, verifier)
+        .await
+        .error_while("validating WUA token")?;
 
     Ok(wua.payload.custom.attested_keys)
 }
@@ -235,7 +239,8 @@ pub(crate) fn verify_wua_wia_issuers_match(
     wua_jwt: &str,
     wia: &DecomposedJwt<WalletInstanceAttestationClaims>,
 ) -> Result<(), ServiceError> {
-    let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(wua_jwt)?;
+    let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(wua_jwt)
+        .error_while("parsing WUA token")?;
 
     let wia_issuer = (wia.header.jwk.as_ref(), wia.header.x5c.as_ref());
     let wua_issuer = (wua.header.jwk.as_ref(), wua.header.x5c.as_ref());

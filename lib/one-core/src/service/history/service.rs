@@ -1,6 +1,7 @@
 use shared_types::HistoryId;
 
 use super::dto::HistoryResponseDTO;
+use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryListQuery, HistorySource};
 use crate::proto::session_provider::SessionExt;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
@@ -17,7 +18,11 @@ impl HistoryService {
         &self,
         query: HistoryListQuery,
     ) -> Result<GetHistoryListResponseDTO, ServiceError> {
-        let history_list = self.history_repository.get_history_list(query).await?;
+        let history_list = self
+            .history_repository
+            .get_history_list(query)
+            .await
+            .error_while("getting history list")?;
         Ok(history_list.into())
     }
 
@@ -29,7 +34,8 @@ impl HistoryService {
         let history = self
             .history_repository
             .get_history_entry(history_id)
-            .await?
+            .await
+            .error_while("getting history")?
             .ok_or(EntityNotFoundError::History(history_id))?;
         Ok(history.into())
     }
@@ -46,7 +52,11 @@ impl HistoryService {
         let mut request: History = request.into();
         request.user = self.session_provider.session().user();
 
-        let history = self.history_repository.create_history(request).await?;
+        let history = self
+            .history_repository
+            .create_history(request)
+            .await
+            .error_while("creating history")?;
         tracing::info!("Created history entry: {}", history);
         Ok(history)
     }
