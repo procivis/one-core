@@ -13,6 +13,7 @@ use crate::config::core_config::{
 };
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
+use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
@@ -49,7 +50,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_expiration_time, validate_issuance_time,
 };
-use crate::util::authority_key_identifier::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 use crate::validator::throw_if_proof_state_not_in;
 
 pub(crate) struct OpenId4VpProofValidatorProto {

@@ -6,7 +6,7 @@ use shared_types::{CertificateId, IdentifierId};
 use time::OffsetDateTime;
 
 use super::Task;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{
     CertificateFilterValue, CertificateListQuery, CertificateState, UpdateCertificateRequest,
 };
@@ -15,7 +15,7 @@ use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison
 use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
+use crate::service::error::{EntityNotFoundError, ServiceError};
 
 pub mod dto;
 
@@ -192,7 +192,7 @@ impl CertificateCheck {
                 .await
             {
                 Ok(_) => {}
-                Err(ServiceError::Validation(ValidationError::CertificateRevoked)) => {
+                Err(error) if error.error_code() == ErrorCode::BR_0212 => {
                     results.push(RevocationCheckResult {
                         certificate_id: certificate.id,
                         identifier_id: certificate.identifier_id,

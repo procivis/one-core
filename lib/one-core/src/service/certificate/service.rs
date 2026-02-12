@@ -39,7 +39,7 @@ impl CertificateService {
             &*self.session_provider,
         )?;
 
-        Ok(certificate.try_into()?)
+        certificate.try_into()
     }
 
     pub async fn get_certificate_authority(

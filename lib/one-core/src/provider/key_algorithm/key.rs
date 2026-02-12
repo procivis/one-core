@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum KeyHandle {
     SignatureOnly(SignatureKeyHandle),
     SignatureAndKeyAgreement {
@@ -167,6 +167,15 @@ pub enum SignatureKeyHandle {
     PublicKeyOnly(Arc<dyn SignaturePublicKeyHandle>),
 }
 
+impl std::fmt::Debug for SignatureKeyHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::WithPrivateKey { .. } => f.debug_struct("WithPrivateKey").finish(),
+            Self::PublicKeyOnly(_) => f.debug_tuple("PublicKeyOnly").finish(),
+        }
+    }
+}
+
 impl SignatureKeyHandle {
     /// private key operations
     pub fn private(&self) -> Option<&Arc<dyn SignaturePrivateKeyHandle>> {
@@ -209,6 +218,15 @@ pub enum KeyAgreementHandle {
     PublicKeyOnly(Arc<dyn PublicKeyAgreementHandle>),
 }
 
+impl std::fmt::Debug for KeyAgreementHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::WithPrivateKey { .. } => f.debug_struct("WithPrivateKey").finish(),
+            Self::PublicKeyOnly(_) => f.debug_tuple("PublicKeyOnly").finish(),
+        }
+    }
+}
+
 impl KeyAgreementHandle {
     /// private key operations
     pub fn private(&self) -> Option<&Arc<dyn PrivateKeyAgreementHandle>> {
@@ -241,6 +259,15 @@ pub enum MultiMessageSignatureKeyHandle {
         public: Arc<dyn MultiMessageSignaturePublicKeyHandle>,
     },
     PublicKeyOnly(Arc<dyn MultiMessageSignaturePublicKeyHandle>),
+}
+
+impl std::fmt::Debug for MultiMessageSignatureKeyHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::WithPrivateKey { .. } => f.debug_struct("WithPrivateKey").finish(),
+            Self::PublicKeyOnly(_) => f.debug_tuple("PublicKeyOnly").finish(),
+        }
+    }
 }
 
 impl MultiMessageSignatureKeyHandle {

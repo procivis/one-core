@@ -6,10 +6,12 @@ use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa, Issuer,
     KeyPair, KeyUsagePurpose, SigningKey,
 };
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use x509_parser::pem::Pem;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
     CrlMode,
@@ -26,7 +28,6 @@ use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use crate::service::error::{ServiceError, ValidationError};
 
 #[tokio::test]
 async fn test_revocation_check_uses_crl_cache() {
@@ -258,15 +259,8 @@ async fn validate_chain_fails_on_violation_of_root_ca_path_len_constraint() {
             CertSelection::Leaf,
         )
         .await;
-    match result {
-        Err(ServiceError::Validation(ValidationError::BasicConstraintsViolation(_))) => { /* ok */ }
-        Err(other) => panic!(
-            "Got Err({other}), expected Err(ServiceError::Validation(ValidationError::BasicConstraintsViolation)",
-        ),
-        Ok(_) => panic!(
-            "Got Ok(_), expected Err(ServiceError::Validation(ValidationError::BasicConstraintsViolation)"
-        ),
-    }
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0250);
 }
 
 #[tokio::test]
@@ -304,15 +298,8 @@ async fn validate_chain_fails_on_violation_of_intermediate_ca_path_len_constrain
             CertSelection::Leaf,
         )
         .await;
-    match result {
-        Err(ServiceError::Validation(ValidationError::BasicConstraintsViolation(_))) => { /* ok */ }
-        Err(other) => panic!(
-            "Got Err({other}), expected Err(ServiceError::Validation(ValidationError::BasicConstraintsViolation)",
-        ),
-        Ok(_) => panic!(
-            "Got Ok(_), expected Err(ServiceError::Validation(ValidationError::BasicConstraintsViolation)"
-        ),
-    }
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0250);
 }
 
 #[tokio::test]

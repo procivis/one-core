@@ -50,7 +50,7 @@ pub struct SdjwtVCPresentationFormatter {
 }
 
 impl SdjwtVCPresentationFormatter {
-    pub fn new(
+    pub(crate) fn new(
         client: Arc<dyn HttpClient>,
         crypto: Arc<dyn CryptoProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,

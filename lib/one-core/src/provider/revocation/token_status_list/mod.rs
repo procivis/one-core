@@ -103,7 +103,7 @@ pub struct TokenStatusList {
 
 impl TokenStatusList {
     #[expect(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         config_id: RevocationMethodId,
         core_base_url: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

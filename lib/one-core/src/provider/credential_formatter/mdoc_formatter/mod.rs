@@ -94,7 +94,7 @@ pub struct Params {
 }
 
 impl MdocFormatter {
-    pub fn new(
+    pub(crate) fn new(
         params: Params,
         certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,

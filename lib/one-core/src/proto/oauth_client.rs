@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
@@ -27,9 +28,7 @@ impl OAuthClient {
             .await?;
 
         if metadata.issuer != authorization_server {
-            return Err(OAuthClientError::Failed(
-                "Issuer mismatch between request and authorization server metadata".to_string(),
-            ));
+            return Err(OAuthClientError::IssuerMismatch);
         }
 
         // optional support for PKCE
@@ -41,9 +40,7 @@ impl OAuthClient {
             // a similar amount of entropy (around 32-33 bytes). So it does not really make sense to generate
             // more as the hash cannot contain more entropy.
             let code_verifier = generate_alphanumeric(44);
-            let code_challenge = SHA256
-                .hash_base64_url(code_verifier.as_bytes())
-                .map_err(|e| OAuthClientError::Failed(e.to_string()))?;
+            let code_challenge = SHA256.hash_base64_url(code_verifier.as_bytes())?;
             (
                 request.with_code_challenge(code_challenge, OAuthCodeChallengeMethod::S256),
                 Some(code_verifier),
@@ -60,11 +57,9 @@ impl OAuthClient {
             };
 
         // construct authorization URL by adding all necessary query parameters
-        let mut url = metadata.authorization_endpoint.ok_or_else(|| {
-            OAuthClientError::Failed(
-                "Authorization endpoint not found in authorization server metadata".to_string(),
-            )
-        })?;
+        let mut url = metadata
+            .authorization_endpoint
+            .ok_or(OAuthClientError::MissingURL)?;
         url.set_query(Some(&response_params));
 
         Ok(OAuthAuthorizationResponse { url, code_verifier })
@@ -76,18 +71,17 @@ impl OAuthClient {
         request: OAuthAuthorizationRequest,
     ) -> Result<OAuthResponseParamsPAR, OAuthClientError> {
         let client_id = request.client_id.clone();
-        let response: OAuthPARResponse = self
-            .http_client
-            .post(par_endpoint.as_str())
-            .form(request)
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))?
-            .json()
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))?;
+        let response: OAuthPARResponse = async {
+            self.http_client
+                .post(par_endpoint.as_str())
+                .form(request)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("PAR request")?;
 
         Ok(OAuthResponseParamsPAR {
             request_uri: response.request_uri,
@@ -103,7 +97,7 @@ impl OAuthClient {
         // prepend `.well-known/oauth-authorization-server` to path to construct provider metadata endpoint
         let original_path_segments: Vec<_> = issuer_url
             .path_segments()
-            .ok_or(OAuthClientError::Failed("invalid issuer URL".to_string()))?
+            .ok_or(OAuthClientError::InvalidURL)?
             .filter_map(|segment| {
                 if segment.is_empty() {
                     None
@@ -117,7 +111,7 @@ impl OAuthClient {
         {
             let mut segments = authorization_server_metadata_endpoint
                 .path_segments_mut()
-                .map_err(|_| OAuthClientError::Failed("invalid issuer URL".to_string()))?;
+                .map_err(|_| OAuthClientError::InvalidURL)?;
 
             segments
                 .clear()
@@ -128,15 +122,16 @@ impl OAuthClient {
             }
         }
 
-        self.http_client
-            .get(authorization_server_metadata_endpoint.as_str())
-            .send()
-            .await
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))?
-            .json()
-            .map_err(|e| OAuthClientError::Failed(e.to_string()))
+        Ok(async {
+            self.http_client
+                .get(authorization_server_metadata_endpoint.as_str())
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching authorization server metadata")?)
     }
 }
 
@@ -160,11 +155,32 @@ impl OAuthClientProvider for Arc<dyn HttpClient> {
 
 #[derive(Debug, Error)]
 pub(crate) enum OAuthClientError {
-    #[error("OAuth client failure: `{0}`")]
-    Failed(String),
+    #[error("OAuth issuer mismatch between request and authorization server metadata")]
+    IssuerMismatch,
+    #[error("Invalid OAuth issuer URL")]
+    InvalidURL,
+    #[error("OAuth Authorization endpoint not found in authorization server metadata")]
+    MissingURL,
 
     #[error("OAuth client serialization failure: `{0}`")]
     Serialization(#[from] serde_urlencoded::ser::Error),
+    #[error("Hash error: `{0}`")]
+    HasherError(#[from] one_crypto::HasherError),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for OAuthClientError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::HasherError(_) => ErrorCode::BR_0000,
+            Self::IssuerMismatch | Self::InvalidURL | Self::MissingURL | Self::Serialization(_) => {
+                ErrorCode::BR_0360
+            }
+            Self::Nested(nested) => nested.error_code(),
+        }
+    }
 }
 
 /// <https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1>

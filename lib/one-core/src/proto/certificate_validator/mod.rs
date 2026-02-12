@@ -5,6 +5,7 @@ use time::Duration;
 use x509_parser::certificate::X509Certificate;
 
 use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::clock::{Clock, DefaultClock};
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::android_attestation_crl::{
@@ -18,7 +19,6 @@ use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::error::{ServiceError, ValidationError};
 
 pub mod parse;
 mod revocation;
@@ -27,24 +27,85 @@ pub(crate) mod x509_extension;
 #[cfg(test)]
 mod test;
 
-#[derive(Clone)]
-pub struct ParsedCertificate {
-    pub attributes: CertificateX509AttributesDTO,
-    pub subject_common_name: Option<String>,
-    pub subject_key_identifier: Option<String>,
-    pub public_key: KeyHandle,
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum Error {
+    #[error("No certificates specified in the chain")]
+    EmptyChain,
+    #[error("Unsupported algorithm: `{0}`")]
+    UnsupportedAlgorithm(String),
+    #[error("CRL check failure: `{0}`")]
+    CRLCheckFailed(String),
+    #[error("Certificate signature invalid")]
+    CertificateSignatureInvalid,
+    #[error("Certificate revoked")]
+    CertificateRevoked,
+    #[error("Certificate is expired")]
+    CertificateExpired,
+    #[error("Certificate is not yet valid")]
+    CertificateNotYetValid,
+    #[error("CRL is not up to date")]
+    CRLOutdated,
+    #[error("CRL signature invalid")]
+    CRLSignatureInvalid,
+    #[error("Invalid CA chain: {0}")]
+    InvalidCaCertificateChain(String),
+    #[error("Unknown critical X.509 extension: {0}")]
+    UnknownCriticalExtension(String),
+    #[error("Certificate key usage violation: {0}")]
+    KeyUsageViolation(String),
+    #[error("Basic constraints violation: {0}")]
+    BasicConstraintsViolation(String),
+
+    #[error("PEM error: `{0}`")]
+    PEMError(#[from] x509_parser::error::PEMError),
+    #[expect(clippy::enum_variant_names)]
+    #[error("X509 nom error: `{0}`")]
+    X509NomError(#[from] x509_parser::nom::Err<x509_parser::error::X509Error>),
+    #[expect(clippy::enum_variant_names)]
+    #[error("X509 error: `{0}`")]
+    X509ParserError(#[from] x509_parser::error::X509Error),
+    #[error("Hash error: `{0}`")]
+    HasherError(#[from] one_crypto::HasherError),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for Error {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::HasherError(_) => ErrorCode::BR_0000,
+            Self::EmptyChain
+            | Self::UnsupportedAlgorithm(_)
+            | Self::PEMError(_)
+            | Self::X509NomError(_)
+            | Self::X509ParserError(_) => ErrorCode::BR_0224,
+            Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
+            Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
+            Self::CertificateRevoked => ErrorCode::BR_0212,
+            Self::CertificateExpired => ErrorCode::BR_0213,
+            Self::CertificateNotYetValid => ErrorCode::BR_0359,
+            Self::CRLOutdated => ErrorCode::BR_0234,
+            Self::CRLSignatureInvalid => ErrorCode::BR_0235,
+            Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
+            Self::UnknownCriticalExtension(_) => ErrorCode::BR_0248,
+            Self::KeyUsageViolation(_) => ErrorCode::BR_0249,
+            Self::BasicConstraintsViolation(_) => ErrorCode::BR_0250,
+            Self::Nested(nested) => nested.error_code(),
+        }
+    }
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait CertificateValidator: Send + Sync {
+pub(crate) trait CertificateValidator: Send + Sync {
     /// Extract leaf certificate_validator from the provided PEM chain
     /// Optionally validate the chain depending on the options
     async fn parse_pem_chain(
         &self,
         pem_chain: &str,
         validation: CertificateValidationOptions,
-    ) -> Result<ParsedCertificate, ServiceError>;
+    ) -> Result<ParsedCertificate, Error>;
 
     /// Validates the pem_chain starting from a leaf certificate_validator against a ca_chain starting
     /// from an intermediary or root CA.
@@ -55,7 +116,15 @@ pub trait CertificateValidator: Send + Sync {
         ca_pem_chain: &str,
         validation: CertificateValidationOptions,
         cert_selection: CertSelection,
-    ) -> Result<ParsedCertificate, ServiceError>;
+    ) -> Result<ParsedCertificate, Error>;
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedCertificate {
+    pub attributes: CertificateX509AttributesDTO,
+    pub subject_common_name: Option<String>,
+    pub subject_key_identifier: Option<String>,
+    pub public_key: KeyHandle,
 }
 
 pub enum CertSelection {
@@ -79,9 +148,9 @@ pub enum EnforceKeyUsage {
     CRLSign,
 }
 
-pub type LeafValidation = fn(&X509Certificate) -> Result<(), ValidationError>;
+pub(crate) type LeafValidation = fn(&X509Certificate) -> Result<(), Error>;
 
-pub struct CertificateValidationOptions {
+pub(crate) struct CertificateValidationOptions {
     /// will fail if the chain is not complete
     pub require_root_termination: bool,
     /// will fail if the CA path-len limits are violated, a signature doesn't match, or an unknown critical extension is used

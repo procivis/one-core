@@ -1,4 +1,3 @@
-pub mod authority_key_identifier;
 pub mod interactions;
 pub mod key_selection;
 pub mod logging;

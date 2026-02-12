@@ -86,6 +86,8 @@ pub(crate) enum Error {
     InvalidCertificateAuthorityIdentifierInput,
     #[error("Key does not match public key of certificate")]
     CertificateKeyNotMatching,
+    #[error("Certificate missing common name")]
+    MissingCertificateCommonName,
 
     #[error("DID method error: `{0}`")]
     DidMethodError(#[from] DidMethodError),
@@ -107,6 +109,7 @@ impl ErrorCodeMixin for Error {
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
             Self::InvalidCertificateAuthorityIdentifierInput => ErrorCode::BR_0331,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
+            Self::MissingCertificateCommonName => ErrorCode::BR_0224,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
             Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::Nested(nested) => nested.error_code(),

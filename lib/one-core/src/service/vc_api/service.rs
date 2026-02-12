@@ -29,7 +29,7 @@ use crate::service::vc_api::model::LdCredential;
 
 impl VCAPIService {
     #[expect(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,

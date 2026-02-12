@@ -75,7 +75,6 @@ pub(crate) fn get_presentation_formatter_provider(
             (
                 "MDOC".to_owned(),
                 Arc::new(MsoMdocPresentationFormatter::new(
-                    key_algorithm_provider.clone(),
                     certificate_validator.clone(),
                     core_base_url,
                 )) as _,

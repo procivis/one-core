@@ -17,7 +17,7 @@ use super::mapper::{
     trust_entity_from_request, update_request_from_dto,
 };
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, DidType};
@@ -137,7 +137,8 @@ impl TrustEntityService {
                 &content,
                 CertificateValidationOptions::full_validation(None),
             )
-            .await?;
+            .await
+            .error_while("parsing PEM chain")?;
 
         let entity_key = TrustEntityKey::try_from(&certificate)?;
 
@@ -398,18 +399,26 @@ impl TrustEntityService {
                     .await
                 {
                     Ok(parsed) => (CertificateState::Active, parsed),
-                    Err(ServiceError::Validation(ValidationError::CertificateNotYetValid)) => (
+                    Err(error) if error.error_code() == ErrorCode::BR_0359 => (
                         CertificateState::NotYetActive,
-                        unchecked_certificate().await?,
+                        unchecked_certificate()
+                            .await
+                            .error_while("parsing certificate")?,
                     ),
-                    Err(ServiceError::Validation(ValidationError::CertificateExpired)) => {
-                        (CertificateState::Expired, unchecked_certificate().await?)
-                    }
-                    Err(ServiceError::Validation(ValidationError::CertificateRevoked)) => {
-                        (CertificateState::Revoked, unchecked_certificate().await?)
-                    }
+                    Err(error) if error.error_code() == ErrorCode::BR_0213 => (
+                        CertificateState::Expired,
+                        unchecked_certificate()
+                            .await
+                            .error_while("parsing certificate")?,
+                    ),
+                    Err(error) if error.error_code() == ErrorCode::BR_0212 => (
+                        CertificateState::Revoked,
+                        unchecked_certificate()
+                            .await
+                            .error_while("parsing certificate")?,
+                    ),
                     Err(err) => {
-                        return Err(err);
+                        return Err(err.error_while("parsing PEM chain").into());
                     }
                 };
 
@@ -497,7 +506,8 @@ impl TrustEntityService {
                             content,
                             CertificateValidationOptions::full_validation(None),
                         )
-                        .await?;
+                        .await
+                        .error_while("parsing PEM chain")?;
                     if entity.entity_key != TrustEntityKey::try_from(&cert)? {
                         return Err(
                             ValidationError::TrustEntitySubjectKeyIdentifierDoesNotMatch.into()
@@ -603,7 +613,8 @@ impl TrustEntityService {
             self.certificate_validator.clone(),
             leeway,
         )
-        .await?;
+        .await
+        .error_while("validating bearer token")?;
 
         let token_issuer = jwt.payload.issuer.ok_or(ValidationError::Forbidden)?;
 
@@ -825,7 +836,8 @@ impl TrustEntityService {
                 CertificateValidationOptions::full_validation(None),
                 CertSelection::LowestCaChain,
             )
-            .await?;
+            .await
+            .error_while("validating certificate")?;
 
         let public_key = hex::encode(public_key.public_key_as_raw());
         Ok(trust_entity_certificate_from_x509(

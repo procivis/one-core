@@ -193,7 +193,8 @@ impl TrustEntityService {
             &*self.key_provider,
             &self.key_algorithm_provider,
         )
-        .await?;
+        .await
+        .error_while("preparing bearer token")?;
 
         Ok(RemoteOperationProperties {
             did: identifier

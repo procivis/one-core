@@ -35,7 +35,6 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, IdentifierDetails, PublicKeySource, SignatureProvider, TokenVerifier,
     VerificationFn,
 };
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
@@ -50,15 +49,13 @@ pub struct Params {
 }
 
 pub struct MsoMdocPresentationFormatter {
-    pub certificate_validator: Arc<dyn CertificateValidator>,
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    pub base_url: Option<String>,
-    pub params: Params,
+    certificate_validator: Arc<dyn CertificateValidator>,
+    base_url: Option<String>,
+    params: Params,
 }
 
 impl MsoMdocPresentationFormatter {
-    pub fn new(
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    pub(crate) fn new(
         certificate_validator: Arc<dyn CertificateValidator>,
         base_url: Option<String>,
     ) -> Self {
@@ -66,7 +63,6 @@ impl MsoMdocPresentationFormatter {
             base_url,
             certificate_validator,
             params: Params { leeway: 60 },
-            key_algorithm_provider,
         }
     }
 }

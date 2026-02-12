@@ -369,11 +369,7 @@ impl IdentifierCreatorProto {
 
         let name = match request.name {
             Some(name) => name,
-            None => subject_common_name
-                .ok_or_else(|| {
-                    ValidationError::CertificateParsingFailed("missing common-name".to_string())
-                })
-                .error_while("preparing certificate name")?,
+            None => subject_common_name.ok_or(Error::MissingCertificateCommonName)?,
         };
 
         Ok(Certificate {
@@ -461,11 +457,7 @@ impl IdentifierCreatorProto {
 
         let name = match request.name {
             Some(name) => name,
-            None => subject_common_name
-                .ok_or_else(|| {
-                    ValidationError::CertificateParsingFailed("missing common-name".to_string())
-                })
-                .error_while("preparing CA name")?,
+            None => subject_common_name.ok_or(Error::MissingCertificateCommonName)?,
         };
 
         Ok(Certificate {

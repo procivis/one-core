@@ -26,7 +26,7 @@ use crate::provider::revocation::model::{
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 
-pub struct StatusList2021 {
+pub(crate) struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub client: Arc<dyn HttpClient>,

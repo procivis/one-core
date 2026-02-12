@@ -89,7 +89,8 @@ impl RevocationListService {
             self.certificate_validator.clone(),
             revocation_params.leeway,
         )
-        .await?;
+        .await
+        .error_while("validating bearer token")?;
 
         let holder_identifier =
             credential

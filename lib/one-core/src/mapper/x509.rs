@@ -14,7 +14,6 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
-use crate::service::error::ValidationError;
 
 pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>> {
     Pem::iter_from_buffer(pem_chain.as_bytes())
@@ -67,23 +66,39 @@ pub(crate) fn der_chain_into_pem_chain(der_chain: Vec<Vec<u8>>) -> anyhow::Resul
     ))
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum CertificateParsingError {
+    #[error("Unexpected extension")]
+    UnexpectedExtension,
+    #[error("Missing authority key identifier")]
+    MissingAuthorityKeyIdentifier,
+
+    #[error("PEM error: `{0}`")]
+    PEMError(#[from] x509_parser::error::PEMError),
+    #[error("X509 nom error: `{0}`")]
+    X509NomError(#[from] x509_parser::nom::Err<x509_parser::error::X509Error>),
+    #[error("X509 error: `{0}`")]
+    X509ParserError(#[from] x509_parser::error::X509Error),
+}
+
+impl ErrorCodeMixin for CertificateParsingError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
+            _ => ErrorCode::BR_0224,
+        }
+    }
+}
+
 pub(crate) fn subject_key_identifier(
     cert: &X509Certificate,
-) -> Result<Option<String>, ValidationError> {
+) -> Result<Option<String>, CertificateParsingError> {
     Ok(cert
-        .get_extension_unique(&OID_X509_EXT_SUBJECT_KEY_IDENTIFIER)
-        .map_err(|err| {
-            ValidationError::CertificateParsingFailed(format!(
-                "failed to get subject key identifier: {err}"
-            ))
-        })?
+        .get_extension_unique(&OID_X509_EXT_SUBJECT_KEY_IDENTIFIER)?
         .map(|ext| ext.parsed_extension())
         .map(|ext| match ext {
             ParsedExtension::SubjectKeyIdentifier(key_identifier) => Ok(key_identifier),
-            _ => Err(ValidationError::CertificateParsingFailed(
-                "Encountered unexpected extension while looking for subject key identifier"
-                    .to_string(),
-            )),
+            _ => Err(CertificateParsingError::UnexpectedExtension),
         })
         .transpose()?
         .map(|key_id| format!("{key_id:x}")))
@@ -91,33 +106,50 @@ pub(crate) fn subject_key_identifier(
 
 pub(crate) fn authority_key_identifier(
     cert: &X509Certificate,
-) -> Result<Option<String>, ValidationError> {
+) -> Result<Option<String>, CertificateParsingError> {
     Ok(cert
-        .get_extension_unique(&OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER)
-        .map_err(|err| {
-            ValidationError::CertificateParsingFailed(format!(
-                "failed to get subject key identifier: {err}"
-            ))
-        })?
+        .get_extension_unique(&OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER)?
         .map(|ext| ext.parsed_extension())
         .map(|ext| match ext {
             ParsedExtension::AuthorityKeyIdentifier(key_identifier) => Ok(key_identifier),
-            _ => Err(ValidationError::CertificateParsingFailed(
-                "Encountered unexpected extension while looking for subject key identifier"
-                    .to_string(),
-            )),
+            _ => Err(CertificateParsingError::UnexpectedExtension),
         })
         .transpose()?
         .map(|key_identifier| {
             key_identifier
                 .key_identifier
                 .as_ref()
-                .ok_or(ValidationError::CertificateParsingFailed(
-                    "Mising authority key identifier".to_string(),
-                ))
+                .ok_or(CertificateParsingError::MissingAuthorityKeyIdentifier)
         })
         .transpose()?
         .map(|key_id| format!("{key_id:x}")))
+}
+
+#[derive(Eq, PartialEq)]
+pub struct AuthorityKeyIdentifier(pub Vec<u8>);
+
+pub fn get_akis_for_pem_chain(
+    pem_chain: &[u8],
+) -> Result<Vec<AuthorityKeyIdentifier>, CertificateParsingError> {
+    Pem::iter_from_buffer(pem_chain)
+        .filter_map(|item| match item {
+            Ok(pem) => match pem.parse_x509() {
+                Ok(x509_cert) => x509_cert
+                    .extensions()
+                    .iter()
+                    .filter_map(|ext| match ext.parsed_extension() {
+                        ParsedExtension::AuthorityKeyIdentifier(aki) => Some(aki),
+                        _ => None,
+                    })
+                    .filter_map(|aki| aki.key_identifier.as_ref())
+                    .map(|key_id| AuthorityKeyIdentifier(key_id.0.to_owned()))
+                    .next() // RFC 5280 disallows more than 1 instance of an extension
+                    .map(Ok),
+                Err(e) => Some(Err(e.into())),
+            },
+            Err(e) => Some(Err(e.into())),
+        })
+        .collect()
 }
 
 #[derive(Debug, thiserror::Error)]

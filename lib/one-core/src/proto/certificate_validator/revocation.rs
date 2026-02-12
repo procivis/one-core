@@ -6,11 +6,10 @@ use x509_parser::prelude::{
     GeneralName, ParsedExtension, X509Certificate,
 };
 
-use super::{CertificateValidatorImpl, CrlMode};
-use crate::error::ContextWithErrorCode;
+use super::{CertificateValidatorImpl, CrlMode, Error};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::provider::caching_loader::android_attestation_crl::CertificateStatus;
 use crate::provider::revocation::error::RevocationError;
-use crate::service::error::{ServiceError, ValidationError};
 
 impl CertificateValidatorImpl {
     /// Returns `Ok` if not revoked, `Err(CertificateRevoked)` if certificate revoked,
@@ -20,19 +19,18 @@ impl CertificateValidatorImpl {
         certificate: &X509Certificate<'_>,
         parent: Option<&X509Certificate<'_>>,
         crl_mode: CrlMode,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), Error> {
         match crl_mode {
             CrlMode::X509 => {
-                let extension = certificate
-                    .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
-                    .map_err(|err| ValidationError::CRLCheckFailed(err.to_string()))?;
+                let extension =
+                    certificate.get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)?;
 
                 if let Some(ParsedExtension::CRLDistributionPoints(crl)) =
                     extension.map(|extension| extension.parsed_extension())
                 {
                     let downloaded_crl = self.download_crl_from_points(crl).await?;
                     if self.check_crl_revocation(&downloaded_crl, certificate, parent)? {
-                        return Err(ValidationError::CertificateRevoked.into());
+                        return Err(Error::CertificateRevoked);
                     }
                 }
             }
@@ -41,13 +39,13 @@ impl CertificateValidatorImpl {
                     .android_attestation_crl_cache
                     .get()
                     .await
-                    .map_err(|e| ValidationError::CRLCheckFailed(e.to_string()))?;
+                    .map_err(|e| Error::CRLCheckFailed(e.to_string()))?;
                 let entry_id = certificate.serial.to_str_radix(16).to_lowercase();
                 let entry_status = crl.entries.get(&entry_id).map(|info| &info.status);
                 if entry_status.is_some_and(|status| {
                     *status == CertificateStatus::Revoked || *status == CertificateStatus::Suspended
                 }) {
-                    return Err(ValidationError::CertificateRevoked.into());
+                    return Err(Error::CertificateRevoked);
                 }
             }
         }
@@ -62,9 +60,8 @@ impl CertificateValidatorImpl {
         downloaded_crl: &[u8],
         certificate: &X509Certificate<'_>,
         parent: Option<&X509Certificate<'_>>,
-    ) -> Result<bool, ServiceError> {
-        let (_, crl) = x509_parser::parse_x509_crl(downloaded_crl)
-            .map_err(|err| ValidationError::CRLCheckFailed(err.to_string()))?;
+    ) -> Result<bool, Error> {
+        let (_, crl) = x509_parser::parse_x509_crl(downloaded_crl)?;
 
         if let Some(parent) = parent {
             self.check_crl_signature(&crl, parent)?;
@@ -72,13 +69,13 @@ impl CertificateValidatorImpl {
 
         // check CRL validity
         if crl.last_update().to_datetime() > OffsetDateTime::now_utc() {
-            return Err(ValidationError::CRLOutdated.into());
+            return Err(Error::CRLOutdated);
         }
         if crl
             .next_update()
             .is_some_and(|next_update| next_update.to_datetime() < OffsetDateTime::now_utc())
         {
-            return Err(ValidationError::CRLOutdated.into());
+            return Err(Error::CRLOutdated);
         }
 
         Ok(crl
@@ -90,19 +87,18 @@ impl CertificateValidatorImpl {
         &self,
         crl: &CertificateRevocationList<'_>,
         parent: &X509Certificate<'_>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), Error> {
         // check key usage
         let key_usage = parent
             .key_usage()
-            .map_err(|e| ValidationError::CRLCheckFailed(e.to_string()))?
-            .ok_or(ValidationError::CRLCheckFailed(
+            .map_err(|e| Error::CRLCheckFailed(e.to_string()))?
+            .ok_or(Error::CRLCheckFailed(
                 "Parent CA cert key usage not found".to_string(),
             ))?;
         if !key_usage.value.crl_sign() {
-            return Err(ValidationError::CRLCheckFailed(
+            return Err(Error::CRLCheckFailed(
                 "CRL signer certificate_validator key usage does not include crlSign".to_string(),
-            )
-            .into());
+            ));
         }
 
         let Some(parent_cert_key_identifier) = parent.extensions().iter().find_map(|extension| {
@@ -114,10 +110,9 @@ impl CertificateValidatorImpl {
                 None
             }
         }) else {
-            return Err(ValidationError::CRLCheckFailed(
+            return Err(Error::CRLCheckFailed(
                 "Parent CA cert subject key identifier not found".to_string(),
-            )
-            .into());
+            ));
         };
 
         let Some(crl_authority_key_identifier) = crl.extensions().iter().find_map(|extension| {
@@ -129,25 +124,23 @@ impl CertificateValidatorImpl {
                 None
             }
         }) else {
-            return Err(ValidationError::CRLCheckFailed(
+            return Err(Error::CRLCheckFailed(
                 "CRL authority key identifier not found".to_string(),
-            )
-            .into());
+            ));
         };
 
         if crl_authority_key_identifier == parent_cert_key_identifier {
             crl.verify_signature(parent.public_key()).map_err(|err| {
                 if err == X509Error::SignatureUnsupportedAlgorithm {
-                    ValidationError::CRLCheckFailed(err.to_string())
+                    Error::CRLCheckFailed(err.to_string())
                 } else {
-                    ValidationError::CRLSignatureInvalid
+                    Error::CRLSignatureInvalid
                 }
             })?;
         } else {
-            return Err(ValidationError::CRLCheckFailed(
+            return Err(Error::CRLCheckFailed(
                 "Parent CA key not matching CRL signer".to_string(),
-            )
-            .into());
+            ));
         }
 
         Ok(())
@@ -156,7 +149,7 @@ impl CertificateValidatorImpl {
     async fn download_crl_from_points(
         &self,
         points: &CRLDistributionPoints<'_>,
-    ) -> Result<Vec<u8>, ServiceError> {
+    ) -> Result<Vec<u8>, Error> {
         let mut last_error = None;
         for point in &points.points {
             match self.download_crl_from_point(point).await {
@@ -169,27 +162,24 @@ impl CertificateValidatorImpl {
             };
         }
 
-        Err(last_error.unwrap_or(
-            ValidationError::CRLCheckFailed("No CRL download points found".to_string()).into(),
-        ))
+        Err(last_error.unwrap_or(Error::CRLCheckFailed(
+            "No CRL download points found".to_string(),
+        )))
     }
 
     async fn download_crl_from_point(
         &self,
         point: &CRLDistributionPoint<'_>,
-    ) -> Result<Vec<u8>, ServiceError> {
-        let point = point
+    ) -> Result<Vec<u8>, Error> {
+        let point: &DistributionPointName<'_> = point
             .distribution_point
             .as_ref()
-            .ok_or(ValidationError::CRLCheckFailed(
-                "no distribution point".to_string(),
-            ))?;
+            .ok_or(Error::CRLCheckFailed("no distribution point".to_string()))?;
 
         let DistributionPointName::FullName(name) = point else {
-            return Err(ValidationError::CRLCheckFailed(
+            return Err(Error::CRLCheckFailed(
                 "CRL distribution point not a full-name".to_string(),
-            )
-            .into());
+            ));
         };
 
         let mut last_error = None;
@@ -203,13 +193,12 @@ impl CertificateValidatorImpl {
                     return Ok(crl);
                 }
                 Err(err) => {
-                    last_error = Some(err.into());
+                    last_error = Some(err.error_while("fetching CRL").into());
                 }
             };
         }
 
-        Err(last_error
-            .unwrap_or(ValidationError::CRLCheckFailed("No CRL URI found".to_string()).into()))
+        Err(last_error.unwrap_or(Error::CRLCheckFailed("No CRL URI found".to_string())))
     }
 
     async fn download_crl(&self, uri: &str) -> Result<Vec<u8>, RevocationError> {

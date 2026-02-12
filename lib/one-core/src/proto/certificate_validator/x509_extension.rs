@@ -6,16 +6,14 @@ use x509_parser::prelude::{
 };
 use x509_parser::x509::X509Name;
 
+use super::Error;
 use crate::proto::certificate_validator::EnforceKeyUsage;
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
-use crate::service::error::ValidationError;
 
-pub(crate) fn parse(
-    extension: &X509Extension,
-) -> Result<CertificateX509ExtensionDTO, ValidationError> {
+pub(crate) fn parse(extension: &X509Extension) -> Result<CertificateX509ExtensionDTO, Error> {
     let values = match extension.parsed_extension() {
         ParsedExtension::UnsupportedExtension { .. } if extension.critical => {
-            return Err(ValidationError::UnknownCriticalExtension(
+            return Err(Error::UnknownCriticalExtension(
                 extension.oid.to_id_string(),
             ));
         }
@@ -57,9 +55,7 @@ pub(crate) fn parse(
 
 /// Fail if found an unknown critical extension
 /// <https://www.rfc-editor.org/rfc/rfc5280.html#appendix-B>
-pub(crate) fn validate_critical_extensions(
-    certificate: &X509Certificate,
-) -> Result<(), ValidationError> {
+pub(crate) fn validate_critical_extensions(certificate: &X509Certificate) -> Result<(), Error> {
     for extension in certificate.extensions() {
         if extension.critical
             && matches!(
@@ -67,7 +63,7 @@ pub(crate) fn validate_critical_extensions(
                 ParsedExtension::UnsupportedExtension { .. }
             )
         {
-            return Err(ValidationError::UnknownCriticalExtension(
+            return Err(Error::UnknownCriticalExtension(
                 extension.oid.to_id_string(),
             ));
         }
@@ -81,17 +77,17 @@ pub(crate) fn validate_critical_extensions(
 pub(crate) fn validate_ca_signature(
     certificate: &X509Certificate,
     parent_ca_certificate: &X509Certificate,
-) -> Result<(), ValidationError> {
+) -> Result<(), Error> {
     validate_ca(parent_ca_certificate)?;
     certificate
         .verify_signature(Some(parent_ca_certificate.public_key()))
-        .map_err(|_| ValidationError::CertificateSignatureInvalid)
+        .map_err(|_| Error::CertificateSignatureInvalid)
 }
 
 /// Validates certificate has BasicConstraints extension with `ca` set to true and KeyUsage extension with `keyCertSign` set.
-pub(crate) fn validate_ca(ca_certificate: &X509Certificate) -> Result<(), ValidationError> {
+pub(crate) fn validate_ca(ca_certificate: &X509Certificate) -> Result<(), Error> {
     if !ca_certificate.is_ca() {
-        return Err(ValidationError::InvalidCaCertificateChain(
+        return Err(Error::InvalidCaCertificateChain(
             "Certificate chain containing non-CA parents".to_string(),
         ));
     };
@@ -102,11 +98,11 @@ pub(crate) fn validate_ca(ca_certificate: &X509Certificate) -> Result<(), Valida
 pub(crate) fn validate_required_cert_key_usage(
     certificate: &X509Certificate,
     required_key_usages: &[EnforceKeyUsage],
-) -> Result<(), ValidationError> {
+) -> Result<(), Error> {
     let key_usage = certificate
         .key_usage()
-        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
-        .ok_or(ValidationError::KeyUsageViolation(
+        .map_err(|e| Error::KeyUsageViolation(e.to_string()))?
+        .ok_or(Error::KeyUsageViolation(
             "Leaf certificate_validator missing required Key Usage extension".to_string(),
         ))?;
 
@@ -114,7 +110,7 @@ pub(crate) fn validate_required_cert_key_usage(
         match required_key_usage {
             EnforceKeyUsage::DigitalSignature => {
                 if !key_usage.value.digital_signature() {
-                    return Err(ValidationError::KeyUsageViolation(
+                    return Err(Error::KeyUsageViolation(
                         "End-entity certificate_validator missing DigitalSignature usage"
                             .to_string(),
                     ));
@@ -122,14 +118,14 @@ pub(crate) fn validate_required_cert_key_usage(
             }
             EnforceKeyUsage::KeyCertSign => {
                 if !key_usage.value.key_cert_sign() {
-                    return Err(ValidationError::KeyUsageViolation(
+                    return Err(Error::KeyUsageViolation(
                         "End-entity certificate_validator missing KeyCertSign usage".to_string(),
                     ));
                 }
             }
             EnforceKeyUsage::CRLSign => {
                 if !key_usage.value.crl_sign() {
-                    return Err(ValidationError::KeyUsageViolation(
+                    return Err(Error::KeyUsageViolation(
                         "End-entity certificate_validator missing CRLSign usage".to_string(),
                     ));
                 }
@@ -143,19 +139,17 @@ pub(crate) fn validate_required_cert_key_usage(
 /// Validates key usage constraint `keyCertSign` according to [RFC 5280 section 4.2.1.3](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3)
 ///
 /// CA certificates must declare `keyCertSign` usage if the key is used to sign other certificates (always enforced)
-fn validate_ca_key_cert_sign_key_usage(
-    ca_certificate: &X509Certificate,
-) -> Result<(), ValidationError> {
+fn validate_ca_key_cert_sign_key_usage(ca_certificate: &X509Certificate) -> Result<(), Error> {
     let key_usage = ca_certificate
         .key_usage()
-        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
-        .ok_or(ValidationError::KeyUsageViolation(
+        .map_err(|e| Error::KeyUsageViolation(e.to_string()))?
+        .ok_or(Error::KeyUsageViolation(
             "CA certificate_validator missing Key Usage extension".to_string(),
         ))?;
 
     // The keyCertSign bit is asserted when the subject public key is used for verifying signatures on public key certificates
     if !key_usage.value.key_cert_sign() {
-        return Err(ValidationError::KeyUsageViolation(
+        return Err(Error::KeyUsageViolation(
             "CA certificate_validator missing keyCertSign usage".to_string(),
         ));
     }

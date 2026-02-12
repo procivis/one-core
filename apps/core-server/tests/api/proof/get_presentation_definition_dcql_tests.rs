@@ -2354,9 +2354,9 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
 
 mod trusted_authorities {
     use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+    use one_core::mapper::x509::get_akis_for_pem_chain;
     use one_core::model::certificate::Certificate;
     use one_core::model::organisation::Organisation;
-    use one_core::util::authority_key_identifier::get_akis_for_pem_chain;
     use similar_asserts::assert_eq;
 
     use super::*;

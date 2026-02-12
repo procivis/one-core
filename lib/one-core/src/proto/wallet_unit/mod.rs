@@ -221,7 +221,8 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                         &chain,
                         CertificateValidationOptions::signature_and_revocation(None),
                     )
-                    .await?;
+                    .await
+                    .error_while("parsing PEM chain")?;
 
                 IdentifierDetails::Certificate(CertificateDetails {
                     chain,

@@ -561,9 +561,6 @@ pub enum ValidationError {
     #[error("Did not found")]
     DidNotFound,
 
-    #[error("Key not found")]
-    KeyNotFound,
-
     #[error("Layout attribute doesn't exists: `{0}`")]
     MissingLayoutAttribute(String),
 
@@ -629,21 +626,6 @@ pub enum ValidationError {
     )]
     InvalidIdentifierInput,
 
-    #[error("Certificate signature invalid")]
-    CertificateSignatureInvalid,
-
-    #[error("Certificate revoked")]
-    CertificateRevoked,
-
-    #[error("Certificate is expired")]
-    CertificateExpired,
-
-    #[error("Certificate is not yet valid")]
-    CertificateNotYetValid,
-
-    #[error("Certificate parsing failure: `{0}`")]
-    CertificateParsingFailed(String),
-
     #[error("Identifier type `{0}` is disabled")]
     IdentifierTypeDisabled(String),
 
@@ -658,30 +640,6 @@ pub enum ValidationError {
 
     #[error("Trust entity subject key identifier does not match")]
     TrustEntitySubjectKeyIdentifierDoesNotMatch,
-
-    #[error("CRL check failure: `{0}`")]
-    CRLCheckFailed(String),
-
-    #[error("CRL is not up to date")]
-    CRLOutdated,
-
-    #[error("CRL signature invalid")]
-    CRLSignatureInvalid,
-
-    #[error("Invalid CA chain: {0}")]
-    InvalidCaCertificateChain(String),
-
-    #[error("Missing authority key identifier")]
-    MissingAuthorityKeyIdentifier,
-
-    #[error("Unknown critical X.509 extension: {0}")]
-    UnknownCriticalExtension(String),
-
-    #[error("Certificate key usage violation: {0}")]
-    KeyUsageViolation(String),
-
-    #[error("Basic constraints violation: {0}")]
-    BasicConstraintsViolation(String),
 
     #[error("Missing configuration for verification engagement type: {0}")]
     MissingVerificationEngagementConfig(String),
@@ -944,7 +902,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::UnsupportedKeyOperation => ErrorCode::BR_0041,
             Self::InvalidDatatype { .. } => ErrorCode::BR_0061,
             Self::DidNotFound => ErrorCode::BR_0024,
-            Self::KeyNotFound => ErrorCode::BR_0037,
             Self::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
             Self::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
             Self::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
@@ -972,24 +929,12 @@ impl ErrorCodeMixin for ValidationError {
             Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
             Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
             Self::InvalidIdentifierInput => ErrorCode::BR_0206,
-            Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
-            Self::CertificateRevoked => ErrorCode::BR_0212,
-            Self::CertificateExpired | Self::CertificateNotYetValid => ErrorCode::BR_0213,
-            Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
-            Self::UnknownCriticalExtension(_) => ErrorCode::BR_0248,
-            Self::KeyUsageViolation(_) => ErrorCode::BR_0249,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
             Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,
             Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
             Self::TrustEntityTypeInvalid => ErrorCode::BR_0230,
             Self::TrustEntitySubjectKeyIdentifierDoesNotMatch => ErrorCode::BR_0231,
-            Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
-            Self::CRLOutdated => ErrorCode::BR_0234,
-            Self::CRLSignatureInvalid => ErrorCode::BR_0235,
-            Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
-            Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
             Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
-            Self::BasicConstraintsViolation(_) => ErrorCode::BR_0250,
             Self::MissingVerificationEngagementConfig(_) => ErrorCode::BR_0077,
             Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,
             Self::InvalidProofEngagement => ErrorCode::BR_0078,

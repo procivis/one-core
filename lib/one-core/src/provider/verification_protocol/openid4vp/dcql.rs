@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
+use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
@@ -38,7 +39,6 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::authority_key_identifier::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 
 /// Retrieve the "presentation definition" for the given DCQL query.
 ///

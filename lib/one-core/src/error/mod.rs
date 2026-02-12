@@ -504,7 +504,7 @@ pub enum ErrorCode {
     #[strum(message = "Certificate revoked")]
     BR_0212,
 
-    #[strum(message = "Certificate is expired or not yet valid")]
+    #[strum(message = "Certificate is expired")]
     BR_0213,
 
     #[strum(message = "Key does not match public key of certificate")]
@@ -788,6 +788,15 @@ pub enum ErrorCode {
 
     #[strum(message = "DB entry already exists")]
     BR_0357,
+
+    #[strum(message = "Bearer token expired")]
+    BR_0358,
+
+    #[strum(message = "Certificate not yet valid")]
+    BR_0359,
+
+    #[strum(message = "OAuth failure")]
+    BR_0360,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

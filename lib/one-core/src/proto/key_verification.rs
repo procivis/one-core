@@ -17,7 +17,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[derive(Clone)]
-pub struct KeyVerification {
+pub(crate) struct KeyVerification {
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub certificate_validator: Arc<dyn CertificateValidator>,
