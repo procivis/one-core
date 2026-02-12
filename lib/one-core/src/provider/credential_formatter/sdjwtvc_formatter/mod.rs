@@ -27,7 +27,8 @@ use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, PublishedClaim, SelectiveDisclosure, VerificationFn,
+    FormatterCapabilities, IdentifierDetails, PublishedClaim, SelectiveDisclosure, TokenVerifier,
+    VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
@@ -94,14 +95,18 @@ fn default_sd_array_elements() -> bool {
 
 #[async_trait]
 impl CredentialFormatter for SDJWTVCFormatter {
-    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
         let (parsed_credential, issuer, _): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 credential,
                 &*self.crypto,
-                None,
+                Some(&verification),
                 Some(&*self.certificate_validator),
                 &*self.http_client,
             )

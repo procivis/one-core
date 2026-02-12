@@ -20,7 +20,8 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    Features, FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, VerificationFn,
+    Features, FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, TokenVerifier,
+    VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::mapper::vc_from_credential;
@@ -250,14 +251,18 @@ impl CredentialFormatter for SDJWTFormatter {
         vec!["vc".to_string(), "credentialSubject".to_string()]
     }
 
-    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
         let (parsed_credential, issuer, _): (Jwt<VcClaim>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 credential,
                 &*self.crypto,
-                None,
+                Some(&verification),
                 None,
                 &*self.client,
             )

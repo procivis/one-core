@@ -1114,8 +1114,27 @@ async fn test_parse_credential() {
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
     );
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
-    let result = formatter.parse_credential(CREDENTIAL).await.unwrap();
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+    let result = formatter
+        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .await
+        .unwrap();
 
     // Verify basic credential properties
     assert!(result.claims.is_some());
@@ -1276,8 +1295,27 @@ async fn test_parse_credential_with_lvvc() {
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
     );
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
-    let credential = formatter.parse_credential(CREDENTIAL).await.unwrap();
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+    let credential = formatter
+        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .await
+        .unwrap();
 
     // Verify revocation method is LVVC
     let schema = credential.schema.as_ref().unwrap();

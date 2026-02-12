@@ -432,7 +432,11 @@ impl CredentialFormatter for MdocFormatter {
         vec![]
     }
 
-    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        _verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         let issuer_signed: IssuerSigned = decode_cbor_base64(credential)?;
         let issuer_certificate = extract_certificate_from_x5chain_header(
             &*self.certificate_validator,

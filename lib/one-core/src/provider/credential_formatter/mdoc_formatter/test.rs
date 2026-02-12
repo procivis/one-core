@@ -997,8 +997,13 @@ async fn test_parse_credential() {
         Arc::new(datatype_provider),
         Arc::new(key_algorithm_provider),
     );
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
 
-    let credential = formatter.parse_credential(ISSUED_MDOC).await.unwrap();
+    let credential = formatter
+        .parse_credential(ISSUED_MDOC, Box::new(verify_mock))
+        .await
+        .unwrap();
 
     assert_eq!(credential.role, CredentialRole::Holder);
     assert_eq!(

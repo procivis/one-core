@@ -22,7 +22,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
-    PublishedClaim, PublishedClaimValue,
+    MockTokenVerifier, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
@@ -196,7 +196,22 @@ async fn test_parse_credential() {
         .https_only(false)
         .build()
         .expect("Failed to create reqwest::Client");
+    let mut hasher = MockHasher::default();
 
+    hasher.expect_hash().returning(|_| {
+        Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc"
+            .as_bytes()
+            .to_vec())
+    });
+
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
     let formatter = JsonLdClassic::new(
         Params {
             leeway: Duration::seconds(60),
@@ -204,14 +219,20 @@ async fn test_parse_credential() {
             allowed_contexts: None,
             expiration_time: Duration::days(1),
         },
-        Arc::new(MockCryptoProvider::default()),
+        Arc::new(crypto),
         prepare_caching_loader(None),
         Arc::new(datatype_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(ReqwestClient::new(reqwest_client)),
     );
 
-    let credential = formatter.parse_credential(CREDENTIAL).await.unwrap();
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+
+    let credential = formatter
+        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .await
+        .unwrap();
 
     assert_eq!(credential.role, CredentialRole::Holder);
     assert!(credential.issuance_date.is_none());

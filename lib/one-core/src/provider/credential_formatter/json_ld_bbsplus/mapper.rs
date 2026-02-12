@@ -49,13 +49,7 @@ pub(super) fn convert_to_detail_credential(
 
     let mut claims = HashMap::from_iter(credential_subject.claims);
 
-    if let Some(mandatory_pointers) = mandatory_pointers {
-        let mandatory_claim_paths: Vec<_> = mandatory_pointers
-            .iter()
-            .filter_map(|pointer| pointer.strip_prefix("/credentialSubject"))
-            .collect();
-        mark_object_claims_selectively_disclosable(&mut claims, &mandatory_claim_paths);
-    }
+    mark_claims_selectively_disclosable(&mut claims, mandatory_pointers);
     claims.extend(metadata_claims);
 
     let claims = CredentialSubject {
@@ -84,7 +78,20 @@ pub(super) fn convert_to_detail_credential(
     })
 }
 
-fn metadata_claims_with_sd_flags(
+pub(super) fn mark_claims_selectively_disclosable(
+    claims: &mut HashMap<String, CredentialClaim>,
+    mandatory_pointers: Option<Vec<String>>,
+) {
+    if let Some(mandatory_pointers) = mandatory_pointers {
+        let mandatory_claim_paths: Vec<_> = mandatory_pointers
+            .iter()
+            .filter_map(|pointer| pointer.strip_prefix("/credentialSubject"))
+            .collect();
+        mark_object_claims_selectively_disclosable(claims, &mandatory_claim_paths);
+    }
+}
+
+pub(super) fn metadata_claims_with_sd_flags(
     vcdm: &VcdmCredential,
     mandatory_pointers: &Option<Vec<String>>,
     metadata_claim_keys: &[String],
@@ -102,7 +109,7 @@ fn metadata_claims_with_sd_flags(
     Ok(metadata_claims)
 }
 
-fn mark_object_claims_selectively_disclosable(
+pub(super) fn mark_object_claims_selectively_disclosable(
     obj: &mut HashMap<String, CredentialClaim>,
     mandatory_claim_paths: &[&str],
 ) {

@@ -18,7 +18,8 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    Features, FormatterCapabilities, IdentifierDetails, Issuer, PublicKeySource, VerificationFn,
+    Features, FormatterCapabilities, IdentifierDetails, Issuer, PublicKeySource, TokenVerifier,
+    VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -249,11 +250,24 @@ impl CredentialFormatter for JsonLdClassic {
         vec!["credentialSubject".to_string()]
     }
 
-    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
         let vcdm: VcdmCredential = serde_json::from_str(credential)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+
+        verify_credential_signature(
+            vcdm.clone(),
+            verification,
+            &*self.crypto,
+            self.caching_loader.to_owned(),
+            None,
+        )
+        .await?;
 
         let revocation_method = if let Some(status) = vcdm.credential_status.first() {
             match status.r#type.as_str() {

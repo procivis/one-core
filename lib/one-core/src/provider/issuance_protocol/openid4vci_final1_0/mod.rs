@@ -62,6 +62,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::{
@@ -69,6 +70,7 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
+use crate::proto::key_verification::KeyVerification;
 use crate::proto::wallet_unit::{HolderWalletUnitProto, IssueWalletAttestationRequest};
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
@@ -142,6 +144,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config_id: String,
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl OpenID4VCIFinal1_0 {
@@ -166,6 +169,7 @@ impl OpenID4VCIFinal1_0 {
         params: OpenID4VCIFinal1Params,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -189,6 +193,7 @@ impl OpenID4VCIFinal1_0 {
             config_id,
             holder_wallet_unit_proto,
             key_security_level_provider,
+            certificate_validator,
         }
     }
 
@@ -729,8 +734,15 @@ impl OpenID4VCIFinal1_0 {
                 IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
             })?;
 
+        let verification_fn = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        });
+
         let mut credential = formatter
-            .parse_credential(&issuer_response.credential)
+            .parse_credential(&issuer_response.credential, verification_fn)
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 

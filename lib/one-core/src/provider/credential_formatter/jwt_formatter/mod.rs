@@ -17,7 +17,7 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, VerificationFn,
+    FormatterCapabilities, IdentifierDetails, TokenVerifier, VerificationFn,
 };
 use super::vcdm::vcdm_metadata_claims;
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -295,10 +295,14 @@ impl CredentialFormatter for JWTFormatter {
         vec!["vc".to_string(), "credentialSubject".to_string()]
     }
 
-    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, None, None)
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, Some(&verification), None)
             .await
             .error_while("parsing JWT credential token")?;
 

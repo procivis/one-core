@@ -29,6 +29,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::{
@@ -88,6 +89,7 @@ struct TestInputs {
     pub did_method_provider: MockDidMethodProvider,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub key_security_level_provider: MockKeySecurityLevelProvider,
+    pub certificate_validator: MockCertificateValidator,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIFinal1Params>,
 }
@@ -127,6 +129,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(inputs.certificate_validator),
     )
 }
 
@@ -490,7 +493,7 @@ async fn test_holder_accept_credential_success() {
     formatter.expect_get_leeway().returning(|| 1000);
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_| Ok(clone.clone())
+        move |_, _| Ok(clone.clone())
     });
 
     let formatter = Arc::new(formatter);
@@ -699,7 +702,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     formatter.expect_get_leeway().returning(|| 1000);
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_| Ok(clone.clone())
+        move |_, _| Ok(clone.clone())
     });
     let formatter = Arc::new(formatter);
     let formatter_clone = formatter.clone();
@@ -938,7 +941,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     formatter.expect_get_leeway().returning(|| 1000);
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_| Ok(clone.clone())
+        move |_, _| Ok(clone.clone())
     });
 
     let formatter = Arc::new(formatter);

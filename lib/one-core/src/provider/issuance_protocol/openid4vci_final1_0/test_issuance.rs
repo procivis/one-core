@@ -24,6 +24,7 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -206,6 +207,7 @@ async fn test_issuer_submit_succeeds() {
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     let result = provider
@@ -365,6 +367,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     service
@@ -503,6 +506,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     service
@@ -603,6 +607,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockCertificateValidator::new()),
     );
 
     assert!(matches!(

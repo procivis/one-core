@@ -7,7 +7,7 @@ use one_crypto::CryptoProvider;
 use shared_types::CredentialSchemaId;
 
 use super::json_ld_classic::verify_credential_signature;
-use super::model::CredentialData;
+use super::model::{CredentialData, TokenVerifier};
 use crate::config::core_config::{
     DidType, IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
@@ -176,7 +176,11 @@ impl CredentialFormatter for PhysicalCardFormatter {
         vec![]
     }
 
-    async fn parse_credential(&self, _credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        _credential: &str,
+        _verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         unimplemented!()
     }
 }

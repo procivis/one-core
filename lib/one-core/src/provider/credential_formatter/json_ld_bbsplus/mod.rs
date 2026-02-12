@@ -21,7 +21,8 @@ use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, Issuer, SelectiveDisclosure, VerificationFn,
+    FormatterCapabilities, IdentifierDetails, Issuer, SelectiveDisclosure, TokenVerifier,
+    VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -34,6 +35,9 @@ use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
+use crate::provider::credential_formatter::json_ld_bbsplus::mapper::{
+    mark_claims_selectively_disclosable, metadata_claims_with_sd_flags,
+};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -405,10 +409,14 @@ impl CredentialFormatter for JsonLdBbsplus {
         vec!["credentialSubject".to_string()]
     }
 
-    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let vcdm: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
@@ -427,14 +435,14 @@ impl CredentialFormatter for JsonLdBbsplus {
             None
         };
 
-        let metadata_claims = vcdm.get_metadata_claims(
-            &self
-                .get_metadata_claims()
-                .into_iter()
-                .map(|c| c.key)
-                .collect::<Vec<_>>(),
-            &[],
-        )?;
+        let mandatory_pointers = self.verify(&mut vcdm, verification).await?;
+        let metadata_claim_keys = self
+            .get_metadata_claims()
+            .into_iter()
+            .map(|c| c.key)
+            .collect::<Vec<_>>();
+        let metadata_claims =
+            metadata_claims_with_sd_flags(&vcdm, &mandatory_pointers, &metadata_claim_keys)?;
         let vc_types = vcdm.r#type;
         let schema_name = vc_types
             .iter()
@@ -449,11 +457,10 @@ impl CredentialFormatter for JsonLdBbsplus {
             .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
 
         let credential_id = Uuid::new_v4().into();
-        let (mut claims, mut claim_schemas) = parse_claims(
-            HashMap::from_iter(credential_subject.claims.clone()),
-            self.data_type_provider.as_ref(),
-            credential_id,
-        )?;
+        let mut claims = HashMap::from_iter(credential_subject.claims.clone());
+        mark_claims_selectively_disclosable(&mut claims, mandatory_pointers);
+        let (mut claims, mut claim_schemas) =
+            parse_claims(claims, self.data_type_provider.as_ref(), credential_id)?;
 
         // Add parsed metadata claims
         let (metadata_claims, metadata_claim_schemas) = parse_claims(

@@ -128,6 +128,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     params,
                     name.to_owned(),
                     wallet_unit_proto.clone(),
+                    certificate_validator.clone(),
                 ))
             }
             IssuanceProtocolType::OpenId4VciDraft13 => {

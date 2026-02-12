@@ -124,5 +124,9 @@ pub trait CredentialFormatter: Send + Sync {
 
     /// Parse issued credential on holder side.
     /// Reconstructs credential_schema, claims, issuer identifiers etc.
-    async fn parse_credential(&self, _credential: &str) -> Result<Credential, FormatterError>;
+    async fn parse_credential(
+        &self,
+        credential: &str,
+        verification: Box<dyn TokenVerifier>,
+    ) -> Result<Credential, FormatterError>;
 }

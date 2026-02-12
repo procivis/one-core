@@ -775,8 +775,27 @@ async fn test_parse_credential() {
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(datatype_provider),
     };
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
 
-    let credential = jwt_formatter.parse_credential(TOKEN).await.unwrap();
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+    let credential = jwt_formatter
+        .parse_credential(TOKEN, Box::new(verify_mock))
+        .await
+        .unwrap();
 
     assert_eq!(credential.role, CredentialRole::Holder);
     assert_eq!(
