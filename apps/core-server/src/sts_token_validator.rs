@@ -14,10 +14,10 @@ mod validator {
 
     use one_core::proto::jwt::model::{DecomposedJwt, JWTPayload};
     use one_core::proto::jwt::{Jwt, TokenError};
+    use one_core::provider::key_algorithm::key::KeyHandleError;
     use one_core::validator::{
         validate_audience, validate_expiration_time, validate_not_before_time,
     };
-    use one_crypto::SignerError;
     use serde::de::DeserializeOwned;
     use thiserror::Error;
     use tokio::sync::Mutex;
@@ -151,7 +151,7 @@ mod validator {
         #[error("No matching key found.")]
         NoMatchingKey,
         #[error("Failed to verify token signature. Cause: {0}.")]
-        FailedToVerifySignature(SignerError),
+        FailedToVerifySignature(KeyHandleError),
         #[error("Missing issuer.")]
         MissingIssuer,
         #[error("Incorrect issuer.")]

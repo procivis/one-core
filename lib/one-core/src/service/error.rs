@@ -23,8 +23,6 @@ use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError}
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
-use crate::provider::revocation::error::RevocationError;
 use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -94,15 +92,6 @@ pub enum ServiceError {
 
     #[error(transparent)]
     Validation(#[from] ValidationError),
-
-    #[error(transparent)]
-    KeyStorageError(#[from] KeyStorageError),
-
-    #[error(transparent)]
-    KeyStorageProvider(#[from] KeyStorageProviderError),
-
-    #[error("Revocation error: {0}")]
-    Revocation(#[from] RevocationError),
 
     #[error("Trust management error `{0}`")]
     TrustManagementError(#[from] TrustManagementError),
@@ -719,8 +708,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::FormatterError(error) => error.error_code(),
-            Self::KeyStorageError(error) => error.error_code(),
-            Self::KeyStorageProvider(error) => error.error_code(),
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
                 ErrorCode::BR_0048
@@ -733,7 +720,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::DidMethodProviderError(error) => error.error_code(),
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
-            Self::Revocation(error) => error.error_code(),
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
             Self::WalletProviderError(error) => error.error_code(),
             Self::WalletUnitAttestationError(error) => error.error_code(),

@@ -83,19 +83,12 @@ impl KeyStorage for SecureElementKeyProvider {
         _key_algorithm: KeyAlgorithmType,
         _jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if !self
-            .get_capabilities()
-            .features
-            .contains(&Features::Importable)
-        {
-            return Err(KeyStorageError::UnsupportedFeature {
-                feature: Features::Importable,
-            });
-        };
-        unimplemented!("import is not supported for SecureElementKeyProvider");
+        Err(KeyStorageError::UnsupportedFeature {
+            feature: Features::Importable,
+        })
     }
 
-    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
         let handle = SecureElementKeyHandle {
             key: key.clone(),
             native_storage: self.native_storage.clone(),
@@ -186,20 +179,20 @@ impl SignaturePublicKeyHandle for SecureElementKeyHandle {
         self.key.public_key.clone()
     }
 
-    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        ECDSASigner {}.verify(message, signature, &self.key.public_key)
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), KeyHandleError> {
+        Ok(ECDSASigner.verify(message, signature, &self.key.public_key)?)
     }
 }
 
 #[async_trait::async_trait]
 impl SignaturePrivateKeyHandle for SecureElementKeyHandle {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError> {
         let key_reference = self
             .key
             .key_reference
             .as_ref()
             .ok_or(SignerError::MissingKeyReference)?;
-        self.native_storage.sign(key_reference, message).await
+        Ok(self.native_storage.sign(key_reference, message).await?)
     }
 }
 

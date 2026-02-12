@@ -444,7 +444,7 @@ mod test {
             "entry_hash_mismatch.jsonl" => ResolutionError("Entry hash mismatch, expected QmQikVGn3cLzaQ8PwqS4KNXtrfCr9Rbf5kTz9ayWXDAZZo, got QmVdZgk73vwTHX7wbNd7bd6jcMZeae88gxCuNqwMTT6PCQ.".to_owned()),
             "invalid_proof_verification_method_key.jsonl" => ResolutionError("Proof verification failed: verification method did:key:z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH#z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH is not allowed update_key".to_owned()),
             "wrong_index.jsonl" => ResolutionError("Unexpected versionId '1-QmUcfiZ4jTAYXuMjo4Fxoi3BHP2fjyZVeXCyugYYgdA4hW', expected index 2, got 1.".to_owned()),
-            "invalid_sig.jsonl" => ResolutionError("Failed to verify integrity proof for log entry 1-QmQ5sMLi5vKyHhdaL1LaD3b2C1JY2rCckr2uyGN9KyxMy2: Invalid signature".to_owned()),
+            "invalid_sig.jsonl" => ResolutionError("Failed to verify integrity proof for log entry 1-QmQ5sMLi5vKyHhdaL1LaD3b2C1JY2rCckr2uyGN9KyxMy2: Signer error: `Invalid signature`".to_owned()),
             "invalid_scid.jsonl" => ResolutionError("Invalid SCID: expected QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zY, got QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW".to_owned()),
             "proof_too_old.jsonl" => ResolutionError("Invalid proof: created time is before entry time.".to_owned()),
             "portable_true_after_first_entry.jsonl" => ResolutionError("portable flag can only be set to true in first entry".to_owned()),

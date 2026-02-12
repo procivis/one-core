@@ -20,7 +20,6 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -130,7 +129,7 @@ impl HolderWalletUnitProtoImpl {
 
         let key_handle = key_storage
             .key_handle(key)
-            .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+            .error_while("getting key handle")?;
 
         let public_key = key_handle.public_key_as_jwk().error_while("creating JWK")?;
 
@@ -169,7 +168,7 @@ impl HolderWalletUnitProtoImpl {
         let signature = key_handle
             .sign(token.as_bytes())
             .await
-            .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+            .error_while("signing")?;
 
         let signature_encoded = bin_to_b64url_string(&signature).map_err(|e| {
             ServiceError::MappingError(format!("Failed to convert signature to base64url: {e}"))
@@ -266,13 +265,15 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 None,
                 false,
             )
-            .await;
+            .await
+            .error_while("checking credential status")?;
 
-        match revocation_status {
-            Ok(RevocationState::Valid) => Ok(WalletUnitStatusCheckResponse::Active),
-            Ok(_) => Ok(WalletUnitStatusCheckResponse::Revoked),
-            Err(e) => Err(ServiceError::Revocation(e)),
-        }
+        Ok(match revocation_status {
+            RevocationState::Valid => WalletUnitStatusCheckResponse::Active,
+            RevocationState::Revoked | RevocationState::Suspended { .. } => {
+                WalletUnitStatusCheckResponse::Revoked
+            }
+        })
     }
 
     async fn check_wallet_unit_status(

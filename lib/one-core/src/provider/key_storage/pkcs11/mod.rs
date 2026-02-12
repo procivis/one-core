@@ -1,4 +1,3 @@
-use one_crypto::SignerError;
 use shared_types::KeyId;
 use standardized_types::jwk::PrivateJwk;
 
@@ -44,7 +43,7 @@ impl KeyStorage for PKCS11KeyProvider {
         unimplemented!("import is not supported for PKCS11KeyProvider");
     }
 
-    fn key_handle(&self, _key: &Key) -> Result<KeyHandle, SignerError> {
+    fn key_handle(&self, _key: &Key) -> Result<KeyHandle, KeyStorageError> {
         todo!()
     }
 

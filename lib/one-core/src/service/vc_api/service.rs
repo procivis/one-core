@@ -117,11 +117,14 @@ impl VCAPIService {
             "Could not find key in assertion method".to_string(),
         ))?;
 
-        let auth_fn = self.key_provider.get_signature_provider(
-            &key.key,
-            Some(key_id.to_owned()),
-            self.key_algorithm_provider.clone(),
-        )?;
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(
+                &key.key,
+                Some(key_id.to_owned()),
+                self.key_algorithm_provider.clone(),
+            )
+            .error_while("getting key provider")?;
 
         let credential_format = credential_format
             .as_deref()

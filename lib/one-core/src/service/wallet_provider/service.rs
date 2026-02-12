@@ -759,14 +759,18 @@ impl WalletProviderService {
     ) -> Result<String, ServiceError> {
         let revocation_info = if let Some(revocation_method) = revocation_method {
             match &input.key {
-                AttestedKeyInput::NewlyCreated(key) => {
-                    Some(revocation_method.add_issued_attestation(key).await?)
-                }
+                AttestedKeyInput::NewlyCreated(key) => Some(
+                    revocation_method
+                        .add_issued_attestation(key)
+                        .await
+                        .error_while("adding attestation")?,
+                ),
                 AttestedKeyInput::Reused(None) => None,
                 AttestedKeyInput::Reused(Some(info)) => Some(
                     revocation_method
                         .get_attestation_revocation_info(info)
-                        .await?,
+                        .await
+                        .error_while("getting attestation revocation info")?,
                 ),
             }
         } else {
@@ -995,11 +999,10 @@ impl WalletProviderService {
             None
         };
 
-        let auth_fn = self.key_provider.get_signature_provider(
-            issuer_key,
-            key_id,
-            self.key_algorithm_provider.clone(),
-        )?;
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(issuer_key, key_id, self.key_algorithm_provider.clone())
+            .error_while("getting signature provider")?;
 
         let public_key_info = match issuer_identifier.r#type {
             IdentifierType::Key | IdentifierType::Did => {
@@ -1203,7 +1206,8 @@ impl WalletProviderService {
 
             revocation_method
                 .update_attestation_entries(keys, RevocationState::Revoked)
-                .await?;
+                .await
+                .error_while("revoking attestations")?;
         }
         tracing::info!("Revoked wallet unit {}", id);
         Ok(())

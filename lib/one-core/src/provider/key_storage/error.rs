@@ -12,45 +12,48 @@ pub enum KeyStorageProviderError {
     #[error("Invalid key storage `{0}`")]
     InvalidKeyStorage(String),
 
-    #[error("Key storage error: `{0}`")]
-    KeyStorageError(#[from] KeyStorageError),
-}
-
-#[derive(Debug, Error)]
-pub enum KeyStorageError {
-    #[error("Key algorithm error: `{0}`")]
-    Failed(String),
-    #[error("Signer error: `{0}`")]
-    SignerError(#[from] SignerError),
-    #[error("Not supported for type: `{0}`")]
-    NotSupported(String),
-    #[error("Unsupported key type: {key_type}")]
-    UnsupportedKeyType { key_type: String },
-    #[error("Mapping error: `{0}`")]
-    MappingError(String),
-    #[error("Transport error: `{0}`")]
-    Transport(anyhow::Error),
-    #[error("Invalid key algorithm `{0}`")]
-    InvalidKeyAlgorithm(String),
-    #[error("Encryption error: `{0}`")]
-    Encryption(EncryptionError),
-    #[error("Unsupported feature: `{feature}`")]
-    UnsupportedFeature { feature: Features },
-
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for KeyStorageProviderError {
     fn error_code(&self) -> ErrorCode {
-        ErrorCode::BR_0039
+        match self {
+            Self::InvalidKeyStorage(_) => ErrorCode::BR_0040,
+            Self::Nested(nested) => nested.error_code(),
+        }
     }
+}
+
+#[derive(Debug, Error)]
+pub enum KeyStorageError {
+    #[error("Key storage error: `{0}`")]
+    Failed(String),
+    #[error("Invalid key algorithm `{0}`")]
+    InvalidKeyAlgorithm(String),
+    #[error("Not supported for type: `{0}`")]
+    NotSupported(String),
+    #[error("Unsupported key type: {key_type}")]
+    UnsupportedKeyType { key_type: String },
+    #[error("Unsupported feature: `{feature}`")]
+    UnsupportedFeature { feature: Features },
+
+    #[error("Encryption error: `{0}`")]
+    Encryption(#[from] EncryptionError),
+    #[error("Signer error: `{0}`")]
+    SignerError(#[from] SignerError),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for KeyStorageError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            KeyStorageError::Nested(nested) => nested.error_code(),
+            Self::Nested(nested) => nested.error_code(),
+            Self::NotSupported(_)
+            | Self::UnsupportedKeyType { .. }
+            | Self::UnsupportedFeature { .. } => ErrorCode::BR_0361,
             _ => ErrorCode::BR_0039,
         }
     }

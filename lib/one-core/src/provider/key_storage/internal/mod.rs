@@ -71,10 +71,7 @@ impl KeyStorage for InternalKeyProvider {
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,
-            key_reference: Some(
-                encrypt_data(&key_pair.private, &self.encryption_key)
-                    .map_err(KeyStorageError::Encryption)?,
-            ),
+            key_reference: Some(encrypt_data(&key_pair.private, &self.encryption_key)?),
         })
     }
 
@@ -106,14 +103,11 @@ impl KeyStorage for InternalKeyProvider {
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,
-            key_reference: Some(
-                encrypt_data(&key_pair.private, &self.encryption_key)
-                    .map_err(KeyStorageError::Encryption)?,
-            ),
+            key_reference: Some(encrypt_data(&key_pair.private, &self.encryption_key)?),
         })
     }
 
-    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
         let algorithm = key
             .key_algorithm_type()
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
@@ -123,12 +117,11 @@ impl KeyStorage for InternalKeyProvider {
             .key_reference
             .as_ref()
             .ok_or(SignerError::MissingKeyReference)?;
-        let private_key = decrypt_data(key_reference, &self.encryption_key)
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+        let private_key = decrypt_data(key_reference, &self.encryption_key)?;
 
-        algorithm
+        Ok(algorithm
             .reconstruct_key(&key.public_key, Some(private_key), None)
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)
+            .error_while("reconstructing key")?)
     }
 
     async fn generate_attestation_key(

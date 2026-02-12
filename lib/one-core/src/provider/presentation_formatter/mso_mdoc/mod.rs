@@ -411,7 +411,7 @@ async fn try_verify_device_signed(
         verify_fn,
     )
     .await
-    .map_err(|e| FormatterError::CouldNotSign(e.to_string()))
+    .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
 }
 
 fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<KeyAlgorithmType> {

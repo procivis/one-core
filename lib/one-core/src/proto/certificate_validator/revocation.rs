@@ -7,9 +7,9 @@ use x509_parser::prelude::{
 };
 
 use super::{CertificateValidatorImpl, CrlMode, Error};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ErrorCodeMixinExt;
+use crate::provider::caching_loader::CacheError;
 use crate::provider::caching_loader::android_attestation_crl::CertificateStatus;
-use crate::provider::revocation::error::RevocationError;
 
 impl CertificateValidatorImpl {
     /// Returns `Ok` if not revoked, `Err(CertificateRevoked)` if certificate revoked,
@@ -201,7 +201,7 @@ impl CertificateValidatorImpl {
         Err(last_error.unwrap_or(Error::CRLCheckFailed("No CRL URI found".to_string())))
     }
 
-    async fn download_crl(&self, uri: &str) -> Result<Vec<u8>, RevocationError> {
-        Ok(self.crl_cache.get(uri).await.error_while("getting CRL")?)
+    async fn download_crl(&self, uri: &str) -> Result<Vec<u8>, CacheError> {
+        self.crl_cache.get(uri).await
     }
 }

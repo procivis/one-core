@@ -762,7 +762,8 @@ impl CredentialService {
         }
         revocation_method
             .mark_credential_as(&credential, revocation_state.to_owned())
-            .await?;
+            .await
+            .error_while("marking credential status")?;
 
         let suspend_end_date =
             if let RevocationState::Suspended { suspend_end_date } = &revocation_state {

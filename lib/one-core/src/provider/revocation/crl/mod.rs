@@ -29,7 +29,6 @@ use crate::model::wallet_unit_attested_key::{
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
-use crate::provider::key_storage::error::KeyStorageProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
@@ -37,6 +36,7 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, JsonLdContext, RevocationMethodCapabilities, RevocationState,
 };
 use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::service::error::MissingProviderError;
 
 #[cfg(test)]
 mod test;
@@ -419,7 +419,7 @@ impl CRLRevocation {
         let key_storage = self
             .key_provider
             .get_key_storage(&key.storage_type)
-            .ok_or(KeyStorageProviderError::InvalidKeyStorage(
+            .ok_or(MissingProviderError::KeyStorage(
                 key.storage_type.to_owned(),
             ))
             .error_while("getting key storage")?;

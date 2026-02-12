@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_crypto::Signer;
 use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::PrivateKeyAgreementHandle;
 use one_crypto::signer::ecdsa::ECDSASigner;
-use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
 
@@ -202,15 +202,15 @@ impl SignaturePublicKeyHandle for EcdsaPublicKeyHandle {
         self.public_key.clone()
     }
 
-    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        ECDSASigner {}.verify(message, signature, &self.public_key)
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), KeyHandleError> {
+        Ok(ECDSASigner.verify(message, signature, &self.public_key)?)
     }
 }
 
 #[async_trait::async_trait]
 impl SignaturePrivateKeyHandle for EcdsaPrivateKeyHandle {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        ECDSASigner {}.sign(message, &self.public_key, &self.private_key)
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError> {
+        Ok(ECDSASigner.sign(message, &self.public_key, &self.private_key)?)
     }
 }
 

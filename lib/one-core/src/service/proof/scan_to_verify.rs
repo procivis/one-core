@@ -158,7 +158,8 @@ impl ProofService {
                     Some(additional_data.to_owned()),
                     false,
                 )
-                .await?;
+                .await
+                .error_while("checking credential status")?;
 
             if state != RevocationState::Valid {
                 return Err(BusinessLogicError::CredentialIsRevokedOrSuspended.into());

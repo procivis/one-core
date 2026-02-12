@@ -171,7 +171,8 @@ impl RevocationListService {
             .await
             .map_err(ServiceError::from)?;
 
-        let status = status_from_lvvc_claims(&extracted_credential.claims.claims)?;
+        let status = status_from_lvvc_claims(&extracted_credential.claims.claims)
+            .error_while("checking LVVC status")?;
         match status {
             // ONE-1780: return current lvvc credential if not active
             LvvcStatus::Revoked | LvvcStatus::Suspended { .. } => {
@@ -203,9 +204,12 @@ impl RevocationListService {
                 formatter,
                 self.key_provider.clone(),
                 self.key_algorithm_provider.clone(),
-                revocation.get_json_ld_context()?,
+                revocation
+                    .get_json_ld_context()
+                    .error_while("getting JSON-LD context")?,
             )
-            .await?
+            .await
+            .error_while("creating LVVC")?
             .into();
 
             let credential_content = std::str::from_utf8(&lvvc.credential)
@@ -273,7 +277,10 @@ impl RevocationListService {
             .get_revocation_method(&list.r#type)
             .ok_or(MissingProviderError::RevocationMethod(list.r#type))?;
 
-        let updated_list = revocation_method.get_updated_list(list.id).await?;
+        let updated_list = revocation_method
+            .get_updated_list(list.id)
+            .await
+            .error_while("getting updated CRL")?;
         Ok(updated_list)
     }
 }

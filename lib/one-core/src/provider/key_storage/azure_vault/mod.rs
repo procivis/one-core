@@ -3,7 +3,6 @@
 use std::ops::Add;
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dto::{AzureHsmGetTokenResponse, AzureHsmKeyResponse, AzureHsmSignResponse};
@@ -23,6 +22,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::model::key::{Key, PrivateJwkExt};
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::ecdsa::{
@@ -93,8 +93,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
-        let public_key = ECDSASigner::parse_public_key(&public_key_bytes, true)
-            .map_err(|err| KeyStorageError::Failed(format!("failed to build public key: {err}")))?;
+        let public_key = ECDSASigner::parse_public_key(&public_key_bytes, true)?;
 
         Ok(StorageGeneratedKey {
             public_key,
@@ -133,8 +132,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
-        let public_key = ECDSASigner::parse_public_key(&public_key_bytes, true)
-            .map_err(|err| KeyStorageError::Failed(format!("failed to build public key: {err}")))?;
+        let public_key = ECDSASigner::parse_public_key(&public_key_bytes, true)?;
 
         Ok(StorageGeneratedKey {
             public_key,
@@ -142,7 +140,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         })
     }
 
-    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError> {
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
         let handle =
             AzureVaultKeyHandle::new(key.clone(), self.crypto.clone(), self.azure_client.clone());
 
@@ -231,14 +229,14 @@ impl SignaturePublicKeyHandle for AzureVaultKeyHandle {
         self.key.public_key.clone()
     }
 
-    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        ECDSASigner {}.verify(message, signature, &self.key.public_key)
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), KeyHandleError> {
+        Ok(ECDSASigner.verify(message, signature, &self.key.public_key)?)
     }
 }
 
 #[async_trait]
 impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError> {
         let key_reference = self
             .key
             .key_reference
@@ -275,22 +273,17 @@ impl AzureClient {
         let mut url = self.params.oauth_service_url.clone();
         url.set_path(&format!("{}/oauth2/v2.0/token", self.params.ad_tenant_id));
 
-        let response: AzureHsmGetTokenResponse = self
-            .client
-            .post(url.as_str())
-            .form(&request)
-            .context("form error")
-            .map_err(KeyStorageError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(KeyStorageError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(KeyStorageError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(KeyStorageError::Transport)?;
+        let response: AzureHsmGetTokenResponse = async {
+            self.client
+                .post(url.as_str())
+                .form(&request)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching azure token")?;
 
         if response.token_type != "Bearer" {
             return Err(KeyStorageError::Failed(format!(
@@ -309,7 +302,7 @@ impl AzureClient {
                 .lock()
                 .await
                 .as_ref()
-                .ok_or(KeyStorageError::MappingError("token is None".to_string()))?
+                .ok_or(KeyStorageError::Failed("token is None".to_string()))?
                 .token
                 .to_owned())
         } else {
@@ -348,23 +341,18 @@ impl AzureClient {
         url.set_path(&format!("keys/{key_id}/create"));
         url.set_query(Some("api-version=7.4"));
 
-        let response = self
-            .client
-            .post(url.as_str())
-            .bearer_auth(access_token.expose_secret())
-            .json(request)
-            .context("json error")
-            .map_err(KeyStorageError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(KeyStorageError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(KeyStorageError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(KeyStorageError::Transport)?;
+        let response = async {
+            self.client
+                .post(url.as_str())
+                .bearer_auth(access_token.expose_secret())
+                .json(request)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("requesting azure key")?;
         Ok(response)
     }
 
@@ -379,23 +367,18 @@ impl AzureClient {
         url.set_path(&format!("keys/{key_id}"));
         url.set_query(Some("api-version=7.4"));
 
-        let response = self
-            .client
-            .put(url.as_str())
-            .bearer_auth(access_token.expose_secret())
-            .json(request)
-            .context("json error")
-            .map_err(KeyStorageError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(KeyStorageError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(KeyStorageError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(KeyStorageError::Transport)?;
+        let response = async {
+            self.client
+                .put(url.as_str())
+                .bearer_auth(access_token.expose_secret())
+                .json(request)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("importing azure key")?;
         Ok(response)
     }
 

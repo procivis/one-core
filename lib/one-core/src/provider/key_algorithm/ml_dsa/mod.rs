@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_crypto::Signer;
 use one_crypto::signer::ml_dsa::MlDsaSigner;
-use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkAkp};
 
@@ -184,16 +184,14 @@ impl SignaturePublicKeyHandle for MlDsaPublicKeyHandle {
         self.public_key.clone()
     }
 
-    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        MlDsaSigner
-            .verify(message, signature, &self.public_key)
-            .map_err(|_| SignerError::InvalidSignature)
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), KeyHandleError> {
+        Ok(MlDsaSigner.verify(message, signature, &self.public_key)?)
     }
 }
 
 #[async_trait]
 impl SignaturePrivateKeyHandle for MlDsaPrivateKeyHandle {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        MlDsaSigner.sign(message, &self.public_key, &self.private_key)
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError> {
+        Ok(MlDsaSigner.sign(message, &self.public_key, &self.private_key)?)
     }
 }

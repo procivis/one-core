@@ -23,7 +23,6 @@ use crate::proto::session_provider::SessionExt;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_storage::KeyStorage;
-use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
@@ -275,13 +274,12 @@ impl WalletUnitService {
 
         let key_handle = key_storage
             .key_handle(&key)
-            .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+            .error_while("getting key handle")?;
 
-        let auth_fn = self.key_provider.get_signature_provider(
-            &key,
-            None,
-            self.key_algorithm_provider.clone(),
-        )?;
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
+            .error_while("getting signature provider")?;
         let signed_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
@@ -335,7 +333,8 @@ impl WalletUnitService {
         let key_id = Uuid::new_v4().into();
         let attestation_key = key_storage
             .generate_attestation_key(key_id, Some(nonce.clone()))
-            .await?;
+            .await
+            .error_while("getting attestation key")?;
         let attestation_key = key_from_generated_key(
             key_id,
             key_storage_id,
@@ -347,14 +346,18 @@ impl WalletUnitService {
         self.store_key(&attestation_key).await?;
         let attestation = key_storage
             .generate_attestation(&attestation_key, Some(nonce.clone()))
-            .await?;
+            .await
+            .error_while("getting attestation")?;
 
         // Use SignatureProvider that uses the attestation key and the key_storage.sign_with_attestation_key method
-        let auth_fn = self.key_provider.get_attestation_signature_provider(
-            &attestation_key,
-            None,
-            self.key_algorithm_provider.clone(),
-        )?;
+        let auth_fn = self
+            .key_provider
+            .get_attestation_signature_provider(
+                &attestation_key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )
+            .error_while("getting attestation signature provider")?;
         let attestation_key_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
@@ -372,13 +375,16 @@ impl WalletUnitService {
 
             let key_handle = key_storage
                 .key_handle(&device_signing_key)
-                .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+                .error_while("getting key handle")?;
 
-            let auth_fn = self.key_provider.get_signature_provider(
-                &device_signing_key,
-                None,
-                self.key_algorithm_provider.clone(),
-            )?;
+            let auth_fn = self
+                .key_provider
+                .get_signature_provider(
+                    &device_signing_key,
+                    None,
+                    self.key_algorithm_provider.clone(),
+                )
+                .error_while("getting signature provider")?;
             let signed_proof = self
                 .create_device_signing_key_pop(
                     self.clock.now_utc(),
@@ -419,7 +425,10 @@ impl WalletUnitService {
         key_storage: &Arc<dyn KeyStorage>,
     ) -> Result<Key, ServiceError> {
         let key_id = Uuid::new_v4().into();
-        let key = key_storage.generate(key_id, key_type).await?;
+        let key = key_storage
+            .generate(key_id, key_type)
+            .await
+            .error_while("generating key")?;
         let key =
             key_from_generated_key(key_id, key_storage_id, key_type.as_ref(), organisation, key);
         self.store_key(&key).await?;

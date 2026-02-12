@@ -726,7 +726,8 @@ impl OID4VCIDraft13Service {
         {
             revocation_method
                 .mark_credential_as(credential, RevocationState::Revoked)
-                .await?;
+                .await
+                .error_while("marking credential status")?;
         }
 
         Ok(())

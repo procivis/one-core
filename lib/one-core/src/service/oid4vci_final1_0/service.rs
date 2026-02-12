@@ -873,7 +873,8 @@ impl OID4VCIFinal1_0Service {
         {
             revocation_method
                 .mark_credential_as(credential, RevocationState::Revoked)
-                .await?;
+                .await
+                .error_while("marking credential status")?;
         }
         tracing::info!(message = success_log);
         Ok(())

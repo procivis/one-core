@@ -71,8 +71,6 @@ impl Signer for MlDsaSigner {
         )?;
         VerifyingKey::<MlDsa65>::decode(&encoded_key)
             .verify(input, &sig)
-            .map_err(|err| {
-                SignerError::CouldNotVerify(format!("Failed to verify signature: {err}"))
-            })
+            .map_err(|_| SignerError::InvalidSignature)
     }
 }

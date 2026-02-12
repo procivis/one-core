@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::SignerError;
 use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
@@ -181,8 +180,13 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
         header: Vec<u8>,
         messages: Vec<Vec<u8>>,
         signature: &[u8],
-    ) -> Result<(), SignerError> {
-        BBSSigner::verify_bbs(header, messages, signature, &self.public_key)
+    ) -> Result<(), KeyHandleError> {
+        Ok(BBSSigner::verify_bbs(
+            header,
+            messages,
+            signature,
+            &self.public_key,
+        )?)
     }
 
     fn derive_proof(
@@ -190,7 +194,7 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
         header: Vec<u8>,
         messages: Vec<(Vec<u8>, bool)>,
         signature: Vec<u8>,
-    ) -> Result<Vec<u8>, SignerError> {
+    ) -> Result<Vec<u8>, KeyHandleError> {
         let derive_input = BbsDeriveInput {
             header,
             messages,
@@ -198,7 +202,7 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
             presentation_header: None,
         };
 
-        BBSSigner::derive_proof(derive_input, &self.public_key)
+        Ok(BBSSigner::derive_proof(derive_input, &self.public_key)?)
     }
 
     fn verify_proof(
@@ -207,7 +211,7 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
         messages: Vec<(usize, Vec<u8>)>,
         presentation_header: Option<Vec<u8>>,
         proof: &[u8],
-    ) -> Result<(), SignerError> {
+    ) -> Result<(), KeyHandleError> {
         let input = BbsProofInput {
             header,
             presentation_header,
@@ -215,13 +219,18 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
             messages,
         };
 
-        BBSSigner::verify_proof(&input, &self.public_key)
+        Ok(BBSSigner::verify_proof(&input, &self.public_key)?)
     }
 }
 
 impl MultiMessageSignaturePrivateKeyHandle for BBSPrivateKeyHandle {
-    fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, SignerError> {
-        BBSSigner::sign_bbs(header, messages, &self.private_key, &self.public_key)
+    fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, KeyHandleError> {
+        Ok(BBSSigner::sign_bbs(
+            header,
+            messages,
+            &self.private_key,
+            &self.public_key,
+        )?)
     }
 
     fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {

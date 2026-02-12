@@ -4,18 +4,13 @@ use shared_types::{CredentialId, IdentifierId};
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::credential::CredentialStateEnum;
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
 
 #[derive(Debug, Error)]
 pub enum RevocationError {
-    #[error("Credential not found: `{0}`")]
-    CredentialNotFound(CredentialId),
     #[error("Formatter not found: `{0}`")]
     FormatterNotFound(String),
-    #[error("Invalid credential state: `{0}`")]
-    InvalidCredentialState(CredentialStateEnum),
     #[error("Invalid identifier type: `{0}`")]
     InvalidIdentifierType(IdentifierType),
     #[error("Invalid key algorithm: `{0}`")]

@@ -1,5 +1,3 @@
-use async_trait;
-use one_crypto::SignerError;
 use shared_types::KeyId;
 use standardized_types::jwk::PrivateJwk;
 
@@ -40,7 +38,7 @@ pub trait KeyStorage: Send + Sync {
     ) -> Result<model::StorageGeneratedKey, error::KeyStorageError>;
 
     /// Access to key operations
-    fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError>;
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, error::KeyStorageError>;
 
     // Generate hardware bound key for wallet unit attestations
     async fn generate_attestation_key(

@@ -26,7 +26,6 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
@@ -491,7 +490,7 @@ impl OID4VPDraft20Service {
 
                 let key = key_storage
                     .key_handle(&key)
-                    .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+                    .error_while("getting key handle")?;
 
                 let key = key
                     .key_agreement()

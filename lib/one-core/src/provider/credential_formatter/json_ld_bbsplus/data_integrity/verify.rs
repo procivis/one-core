@@ -216,6 +216,7 @@ mod test {
     use one_crypto::hasher::sha256::SHA256;
 
     use super::*;
+    use crate::error::ContextWithErrorCode;
     use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::document_loader;
     use crate::provider::credential_formatter::model::MockTokenVerifier;
     use crate::provider::key_algorithm::KeyAlgorithm;
@@ -412,7 +413,11 @@ mod test {
 
         verifier
             .expect_verify()
-            .returning(move |_, _, token, signature| Ok(key_handle.verify(token, signature)?));
+            .returning(move |_, _, token, signature| {
+                Ok(key_handle
+                    .verify(token, signature)
+                    .error_while("verifying signature")?)
+            });
 
         verifier
     }

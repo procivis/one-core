@@ -438,7 +438,8 @@ impl SSIHolderService {
                         &revocation_params,
                         false,
                     )
-                    .await?;
+                    .await
+                    .error_while("getting LVVC")?;
 
                     let token = std::str::from_utf8(&lvvc.credential)
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?

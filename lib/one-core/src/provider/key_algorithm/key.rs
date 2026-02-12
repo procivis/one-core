@@ -93,7 +93,7 @@ impl KeyHandle {
         }
     }
 
-    pub fn verify(&self, message: &[u8], signature_bytes: &[u8]) -> Result<(), SignerError> {
+    pub fn verify(&self, message: &[u8], signature_bytes: &[u8]) -> Result<(), KeyHandleError> {
         match &self {
             Self::SignatureOnly(value) => value.public().verify(message, signature_bytes),
             Self::SignatureAndKeyAgreement { signature, .. } => {
@@ -105,13 +105,11 @@ impl KeyHandle {
                     .public()
                     .verify_signature(input.header, input.messages, signature_bytes)
             }
-            Self::KeyAgreementOnly(_) => {
-                Err(SignerError::CouldNotVerify("Not supported".to_string()))
-            }
+            Self::KeyAgreementOnly(_) => Err(KeyHandleError::OperationNotSupported),
         }
     }
 
-    pub async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    pub async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError> {
         match &self {
             Self::SignatureOnly(value) => {
                 value
@@ -134,9 +132,7 @@ impl KeyHandle {
                     .ok_or(SignerError::MissingKey)?
                     .sign(input.header, input.messages)
             }
-            Self::KeyAgreementOnly(_) => {
-                Err(SignerError::CouldNotSign("Not supported".to_string()))
-            }
+            Self::KeyAgreementOnly(_) => Err(KeyHandleError::OperationNotSupported),
         }
     }
 
@@ -192,13 +188,13 @@ pub trait SignaturePublicKeyHandle: Send + Sync {
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
     fn as_raw(&self) -> Vec<u8>;
 
-    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError>;
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), KeyHandleError>;
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait SignaturePrivateKeyHandle: Send + Sync {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError>;
 }
 
 #[derive(Clone)]
@@ -291,14 +287,14 @@ pub trait MultiMessageSignaturePublicKeyHandle: Send + Sync {
         header: Vec<u8>,
         messages: Vec<Vec<u8>>,
         signature: &[u8],
-    ) -> Result<(), SignerError>;
+    ) -> Result<(), KeyHandleError>;
 
     fn derive_proof(
         &self,
         header: Vec<u8>,
         messages: Vec<(Vec<u8>, bool)>,
         signature: Vec<u8>,
-    ) -> Result<Vec<u8>, SignerError>;
+    ) -> Result<Vec<u8>, KeyHandleError>;
 
     fn verify_proof(
         &self,
@@ -306,11 +302,11 @@ pub trait MultiMessageSignaturePublicKeyHandle: Send + Sync {
         messages: Vec<(usize, Vec<u8>)>,
         presentation_header: Option<Vec<u8>>,
         proof: &[u8],
-    ) -> Result<(), SignerError>;
+    ) -> Result<(), KeyHandleError>;
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait MultiMessageSignaturePrivateKeyHandle: Send + Sync {
-    fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, SignerError>;
+    fn sign(&self, header: Vec<u8>, messages: Vec<Vec<u8>>) -> Result<Vec<u8>, KeyHandleError>;
     fn as_jwk(&self) -> Result<SecretString, KeyHandleError>;
 }

@@ -7,6 +7,7 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
     document_loader, vc_permanent_resident_card,
@@ -153,7 +154,11 @@ fn verifier() -> impl TokenVerifier {
 
     verifier
         .expect_verify()
-        .returning(move |_, _, token, signature| Ok(key_handle.verify(token, signature)?));
+        .returning(move |_, _, token, signature| {
+            Ok(key_handle
+                .verify(token, signature)
+                .error_while("verifying signature")?)
+        });
 
     verifier
 }

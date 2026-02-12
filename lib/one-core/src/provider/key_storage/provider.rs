@@ -8,13 +8,14 @@ use serde_json::json;
 
 use super::KeyStorage;
 use super::azure_vault::AzureVaultKeyProvider;
-use super::error::{KeyStorageError, KeyStorageProviderError};
+use super::error::KeyStorageProviderError;
 use super::internal::InternalKeyProvider;
 use super::pkcs11::PKCS11KeyProvider;
 use super::remote_secure_element::RemoteSecureElementKeyProvider;
 use super::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType, KeyStorageType};
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
@@ -37,7 +38,7 @@ pub trait KeyProvider: Send + Sync {
                 key.storage_type.clone(),
             ))?
             .key_handle(key)
-            .map_err(KeyStorageError::SignerError)?;
+            .error_while("getting key storage")?;
 
         Ok(Box::new(SignatureProviderImpl {
             key: key.to_owned(),
@@ -74,24 +75,6 @@ impl KeyProvider for KeyProviderImpl {
     fn get_key_storage(&self, format: &str) -> Option<Arc<dyn KeyStorage>> {
         self.storages.get(format).cloned()
     }
-
-    fn get_attestation_signature_provider(
-        &self,
-        key: &Key,
-        jwk_key_id: Option<String>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Result<AuthenticationFn, KeyStorageProviderError> {
-        let key_storage = self.get_key_storage(&key.storage_type).ok_or(
-            KeyStorageProviderError::InvalidKeyStorage(key.storage_type.clone()),
-        )?;
-
-        Ok(Box::new(AttestationSignatureProvider {
-            key: key.to_owned(),
-            key_storage,
-            jwk_key_id,
-            key_algorithm_provider,
-        }))
-    }
 }
 
 pub(crate) struct SignatureProviderImpl {
@@ -111,7 +94,10 @@ pub(crate) struct AttestationSignatureProvider {
 #[async_trait::async_trait]
 impl SignatureProvider for SignatureProviderImpl {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        self.key_handle.sign(message).await
+        self.key_handle
+            .sign(message)
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))
     }
 
     fn get_key_id(&self) -> Option<String> {

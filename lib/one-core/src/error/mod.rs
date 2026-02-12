@@ -797,6 +797,9 @@ pub enum ErrorCode {
 
     #[strum(message = "OAuth failure")]
     BR_0360,
+
+    #[strum(message = "Key storage operation not supported")]
+    BR_0361,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

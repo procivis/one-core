@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-use crate::provider::revocation::error::RevocationError;
-
 #[derive(Debug, Error)]
 pub enum OpenID4VCError {
     #[error("Credential is revoked or suspended")]
@@ -24,7 +22,4 @@ pub enum OpenID4VCError {
     VPFormatsNotSupported,
     #[error("vc_formats_not_supported")]
     VCFormatsNotSupported,
-
-    #[error("Revocation error: `{0}`")]
-    Revocation(#[from] RevocationError),
 }

@@ -5,6 +5,7 @@ use one_crypto::SignerError;
 use shared_types::DidValue;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::{
@@ -116,7 +117,9 @@ impl TokenVerifier for KeyVerification {
                     .map_err(|e| SignerError::CouldNotVerify(e.to_string()))
             }
         }?;
-        Ok(public_key.verify(token, signature)?)
+        Ok(public_key
+            .verify(token, signature)
+            .error_while("verifying signature")?)
     }
 
     fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider {
@@ -134,6 +137,7 @@ mod test {
     use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 
     use super::*;
+    use crate::error::{ErrorCode, ErrorCodeMixin};
     use crate::proto::certificate_validator::MockCertificateValidator;
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -289,7 +293,7 @@ mod test {
                 .expect_verify()
                 .with(eq("token".as_bytes()), eq(b"signature".as_slice()))
                 .once()
-                .returning(|_, _| Err(SignerError::InvalidSignature));
+                .returning(|_, _| Err(SignerError::InvalidSignature.into()));
 
             Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
                 Arc::new(key_handle),
@@ -328,9 +332,7 @@ mod test {
                 b"signature",
             )
             .await;
-        assert!(matches!(
-            result,
-            Err(TokenError::SignerError(SignerError::InvalidSignature))
-        ));
+
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0201);
     }
 }
