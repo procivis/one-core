@@ -1754,6 +1754,7 @@ async fn handle_credential_invitation(
     }
 
     let tx_code = credential_offer.grants.tx_code().cloned();
+    let requires_wallet_instance_attestation = requires_wia(&oauth_metadata);
 
     let PrepareIssuanceSuccess {
         interaction_id,
@@ -1778,7 +1779,14 @@ async fn handle_credential_invitation(
         tx_code,
         key_storage_security,
         key_algorithms,
+        requires_wallet_instance_attestation,
     })
+}
+
+fn requires_wia(oauth_metadata: &OAuthAuthorizationServerMetadataResponseDTO) -> bool {
+    let auth_methods = &oauth_metadata.token_endpoint_auth_methods_supported;
+    !auth_methods.contains(&TokenEndpointAuthMethod::None)
+        && auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth)
 }
 
 async fn handle_continue_issuance(

@@ -67,6 +67,8 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     pub authorization_code_flow_url: Option<String>,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
+    pub requires_wallet_instance_attestation: Option<bool>,
+    pub protocol: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

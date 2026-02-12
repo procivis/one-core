@@ -140,6 +140,8 @@ pub enum HandleInvitationResponseBindingEnum {
         /// wallet user must input a transaction code to receive the offered credential.
         /// This code is typically sent through a separate channel such as SMS or email.
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
+        protocol: String,
+        requires_wallet_instance_attestation: bool,
     },
     AuthorizationCodeFlow {
         /// For reference.
@@ -153,6 +155,7 @@ pub enum HandleInvitationResponseBindingEnum {
         interaction_id: String,
         /// Proof request.
         proof_id: String,
+        protocol: String,
     },
 }
 

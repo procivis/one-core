@@ -14,6 +14,8 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 tx_code,
                 key_storage_security_levels,
                 key_algorithms,
+                protocol,
+                requires_wallet_instance_attestation,
             } => Self {
                 interaction_id,
                 proof_id: None,
@@ -22,6 +24,8 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 authorization_code_flow_url: None,
                 key_storage_security_levels: convert_inner_of_inner(key_storage_security_levels),
                 key_algorithms,
+                requires_wallet_instance_attestation: Some(requires_wallet_instance_attestation),
+                protocol: Some(protocol),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
@@ -34,10 +38,13 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 authorization_code_flow_url: Some(authorization_code_flow_url),
                 key_storage_security_levels: None,
                 key_algorithms: None,
+                requires_wallet_instance_attestation: None,
+                protocol: None,
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
                 interaction_id,
+                protocol,
             } => Self {
                 interaction_id,
                 interaction_type: InteractionTypeRestEnum::Verification,
@@ -46,6 +53,8 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 authorization_code_flow_url: None,
                 key_storage_security_levels: None,
                 key_algorithms: None,
+                requires_wallet_instance_attestation: None,
+                protocol: Some(protocol),
             },
         }
     }

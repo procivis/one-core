@@ -32,6 +32,7 @@ pub(crate) enum InvitationResponseEnum {
         tx_code: Option<OpenID4VCITxCode>,
         key_storage_security: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
+        requires_wallet_instance_attestation: bool,
     },
     AuthorizationFlow {
         organisation_id: OrganisationId,

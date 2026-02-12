@@ -62,17 +62,22 @@ impl SSIHolderService {
 
 fn success_log(result: &HandleInvitationResultDTO) {
     match result {
-        HandleInvitationResultDTO::Credential { interaction_id, .. } => tracing::info!(
-            "Handled invitation and created interaction {interaction_id} for credential issuance using pre-authorized code flow`",
+        HandleInvitationResultDTO::Credential {
+            interaction_id,
+            protocol,
+            ..
+        } => tracing::info!(
+            "Handled invitation and created interaction {interaction_id} for credential issuance using pre-authorized code flow: issuance protocol `{protocol}`",
         ),
         HandleInvitationResultDTO::AuthorizationCodeFlow { interaction_id, .. } => tracing::info!(
-            "Handled invitation and created interaction {interaction_id} for credential issuance using authorization code flow`",
+            "Handled invitation and created interaction {interaction_id} for credential issuance using authorization code flow",
         ),
         HandleInvitationResultDTO::ProofRequest {
             interaction_id,
             proof_id,
+            protocol,
         } => tracing::info!(
-            "Handled invitation and created interaction {interaction_id} for proof request {proof_id}"
+            "Handled invitation and created interaction {interaction_id} for proof request {proof_id}: verification protocol `{protocol}`"
         ),
     }
 }

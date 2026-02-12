@@ -224,11 +224,15 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 tx_code,
                 key_storage_security_levels,
                 key_algorithms,
+                protocol,
+                requires_wallet_instance_attestation,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 tx_code: convert_inner(tx_code),
+                protocol,
                 key_storage_security_levels: convert_inner_of_inner(key_storage_security_levels),
                 key_algorithms,
+                requires_wallet_instance_attestation,
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
@@ -240,9 +244,11 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
             HandleInvitationResultDTO::ProofRequest {
                 interaction_id,
                 proof_id,
+                protocol,
             } => Self::ProofRequest {
                 interaction_id: interaction_id.to_string(),
                 proof_id: proof_id.to_string(),
+                protocol,
             },
         }
     }

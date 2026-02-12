@@ -611,7 +611,7 @@ impl SSIHolderService {
             .holder_handle_invitation(url, organisation, &self.storage_proxy(), transport)
             .await?;
 
-        proof.protocol = verification_exchange;
+        proof.protocol = verification_exchange.clone();
 
         self.fill_verifier_in_proof(&mut proof).await?;
 
@@ -623,6 +623,7 @@ impl SSIHolderService {
         Ok(HandleInvitationResultDTO::ProofRequest {
             interaction_id,
             proof_id: proof.id,
+            protocol: verification_exchange,
         })
     }
 

@@ -960,6 +960,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
     assert!(resp.get("interactionId").is_some());
     assert_eq!(resp["interactionType"], "ISSUANCE");
     assert_eq!(resp["walletStorageType"], Value::Null);
+    assert_eq!(resp["protocol"], "OPENID4VCI_DRAFT13");
+    assert_eq!(resp["requiresWalletInstanceAttestation"], false);
 }
 
 #[tokio::test]
@@ -1162,6 +1164,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
     assert_eq!(resp["interactionType"], "VERIFICATION");
+    assert_eq!(resp["protocol"], "OPENID4VP_DRAFT20");
 }
 
 #[tokio::test]

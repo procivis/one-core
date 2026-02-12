@@ -629,11 +629,14 @@ impl SSIHolderService {
                 tx_code,
                 key_storage_security,
                 key_algorithms,
+                requires_wallet_instance_attestation,
             } => Ok(HandleInvitationResultDTO::Credential {
                 interaction_id,
                 tx_code,
                 key_storage_security_levels: key_storage_security,
                 key_algorithms,
+                protocol: exchange,
+                requires_wallet_instance_attestation,
             }),
             InvitationResponseEnum::AuthorizationFlow {
                 organisation_id,

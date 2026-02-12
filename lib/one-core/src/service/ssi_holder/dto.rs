@@ -45,6 +45,8 @@ pub enum HandleInvitationResultDTO {
         tx_code: Option<OpenID4VCITxCode>,
         key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
+        protocol: String,
+        requires_wallet_instance_attestation: bool,
     },
     AuthorizationCodeFlow {
         interaction_id: InteractionId,
@@ -53,6 +55,7 @@ pub enum HandleInvitationResultDTO {
     ProofRequest {
         interaction_id: InteractionId,
         proof_id: ProofId,
+        protocol: String,
     },
 }
 

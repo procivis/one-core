@@ -1725,6 +1725,7 @@ async fn handle_credential_invitation(
         tx_code,
         key_storage_security,
         key_algorithms,
+        requires_wallet_instance_attestation: false,
     })
 }
 
