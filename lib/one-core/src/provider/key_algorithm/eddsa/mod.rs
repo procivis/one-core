@@ -12,6 +12,7 @@ use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
@@ -49,7 +50,7 @@ impl KeyAlgorithm for Eddsa {
         ));
         let public_handle = Arc::new(
             EddsaPublicKeyHandle::new(key_pair.public.clone(), None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
+                .error_while("creating public key handle")?,
         );
 
         Ok(GeneratedKey {
@@ -79,7 +80,7 @@ impl KeyAlgorithm for Eddsa {
                 Arc::new(EddsaPrivateKeyHandle::new(private_key, public_key.to_vec()));
             let public_handle = Arc::new(
                 EddsaPublicKeyHandle::new(public_key.to_vec(), r#use)
-                    .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
+                    .error_while("creating public key handle")?,
             );
 
             Ok(KeyHandle::SignatureAndKeyAgreement {
@@ -95,7 +96,7 @@ impl KeyAlgorithm for Eddsa {
         } else {
             let public_handle = Arc::new(
                 EddsaPublicKeyHandle::new(public_key.to_vec(), r#use)
-                    .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
+                    .error_while("creating public key handle")?,
             );
 
             Ok(KeyHandle::SignatureAndKeyAgreement {
@@ -119,16 +120,15 @@ impl KeyAlgorithm for Eddsa {
 
     fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
         let PublicJwk::Okp(data) = key else {
-            return Err(KeyAlgorithmError::Failed("invalid kty".to_string()));
+            return Err(KeyAlgorithmError::InvalidKeyType);
         };
 
         match data.crv.as_str() {
             "Ed25519" => {
-                let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
-                    .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+                let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)?;
                 let handle = Arc::new(
                     EddsaPublicKeyHandle::new(x, data.r#use.clone())
-                        .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
+                        .error_while("creating public key handle")?,
                 );
                 Ok(KeyHandle::SignatureAndKeyAgreement {
                     signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
@@ -137,13 +137,10 @@ impl KeyAlgorithm for Eddsa {
             }
             "X25519" => {
                 if data.r#use == Some(JwkUse::Signature) {
-                    return Err(KeyAlgorithmError::Failed(
-                        "invalid use of x25519 key".to_string(),
-                    ));
+                    return Err(KeyAlgorithmError::InvalidUse(JwkUse::Signature));
                 }
 
-                let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
-                    .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+                let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)?;
                 let handle = Arc::new(X25519PublicKeyHandle::new(x));
                 Ok(KeyHandle::KeyAgreementOnly(
                     KeyAgreementHandle::PublicKeyOnly(handle),
@@ -157,15 +154,10 @@ impl KeyAlgorithm for Eddsa {
         match jwk {
             PrivateJwk::Okp(data) => {
                 if data.crv != "Ed25519" {
-                    return Err(KeyAlgorithmError::Failed(format!(
-                        "unsupported crv {}",
-                        data.crv
-                    )));
+                    return Err(KeyAlgorithmError::NotSupported(format!("crv {}", data.crv)));
                 }
                 let d: SecretSlice<u8> =
-                    Base64UrlSafeNoPadding::decode_to_vec(data.d.expose_secret(), None)
-                        .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?
-                        .into();
+                    Base64UrlSafeNoPadding::decode_to_vec(data.d.expose_secret(), None)?.into();
 
                 let keys = EDDSASigner::parse_key_pair(&d)?;
 
@@ -177,7 +169,7 @@ impl KeyAlgorithm for Eddsa {
                     private: keys.private,
                 })
             }
-            _ => Err(KeyAlgorithmError::Failed("invalid kty".to_string())),
+            _ => Err(KeyAlgorithmError::InvalidKeyType),
         }
     }
 
@@ -189,8 +181,7 @@ impl KeyAlgorithm for Eddsa {
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
         let key = EDDSASigner::public_key_from_der(public_key_der)?;
         let handle = Arc::new(
-            EddsaPublicKeyHandle::new(key, None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
+            EddsaPublicKeyHandle::new(key, None).error_while("creating public key handle")?,
         );
         Ok(KeyHandle::SignatureAndKeyAgreement {
             signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
@@ -208,8 +199,7 @@ struct EddsaPublicKeyHandle {
 impl EddsaPublicKeyHandle {
     fn new(public_key: Vec<u8>, r#use: Option<JwkUse>) -> Result<Self, KeyHandleError> {
         Ok(Self {
-            public_key_x25519: EDDSASigner::public_key_into_x25519(&public_key)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+            public_key_x25519: EDDSASigner::public_key_into_x25519(&public_key)?,
             public_key,
             r#use,
         })
@@ -273,8 +263,7 @@ impl PublicKeyAgreementHandle for EddsaPublicKeyHandle {
             r#use: Some(JwkUse::Encryption),
             kid: None,
             crv: "X25519".to_string(),
-            x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key_x25519)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+            x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key_x25519)?,
             y: None,
         }))
     }
@@ -306,9 +295,7 @@ impl PublicKeyAgreementHandle for X25519PublicKeyHandle {
             r#use: Some(JwkUse::Encryption),
             kid: None,
             crv: "X25519".to_string(),
-            x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key).map_err(|e| {
-                KeyHandleError::EncodingJwk(format!("Failed to serialize public key bytes: {e}"))
-            })?,
+            x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key)?,
             y: None,
         }))
     }
@@ -337,24 +324,21 @@ pub(crate) fn eddsa_public_key_as_jwk(
         r#use,
         kid: None,
         crv: curve.to_string(),
-        x: Base64UrlSafeNoPadding::encode_to_string(public_key)
-            .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+        x: Base64UrlSafeNoPadding::encode_to_string(public_key)?,
         y: None,
     }))
 }
 
 pub(crate) fn eddsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
     let codec = &[0xed, 0x1];
-    let key = EDDSASigner::check_public_key(public_key)
-        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let key = EDDSASigner::check_public_key(public_key)?;
     let data = [codec, key.as_slice()].concat();
     Ok(format!("z{}", bs58::encode(data).into_string()))
 }
 
 pub(crate) fn x25519_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
     let codec = &[0xec, 0x1];
-    let key = EDDSASigner::check_x25519_public_key(public_key)
-        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let key = EDDSASigner::check_x25519_public_key(public_key)?;
     let data = [codec, key.as_slice()].concat();
     Ok(format!("z{}", bs58::encode(data).into_string()))
 }

@@ -89,15 +89,13 @@ impl KeyAlgorithm for BBS {
 
     fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
         if let PublicJwk::Okp(data) = key {
-            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)?;
             let y = Base64UrlSafeNoPadding::decode_to_vec(
                 data.y
                     .as_ref()
-                    .ok_or(KeyAlgorithmError::Failed("Y is missing".to_string()))?,
+                    .ok_or(KeyAlgorithmError::MissingParameter("Y".to_string()))?,
                 None,
-            )
-            .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+            )?;
 
             let public_key = BBSSigner::parse_public_key(&x, &y, true)?;
 
@@ -108,12 +106,14 @@ impl KeyAlgorithm for BBS {
                 ))),
             ))
         } else {
-            Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+            Err(KeyAlgorithmError::InvalidKeyType)
         }
     }
 
     fn parse_private_jwk(&self, _jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
-        Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+        Err(KeyAlgorithmError::NotSupported(
+            "private BBS keys not supported".to_string(),
+        ))
     }
 
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
@@ -122,7 +122,9 @@ impl KeyAlgorithm for BBS {
     }
 
     fn parse_raw(&self, _public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
-        todo!()
+        Err(KeyAlgorithmError::NotSupported(
+            "raw BBS keys not supported".to_string(),
+        ))
     }
 }
 
@@ -153,19 +155,14 @@ impl BBSPublicKeyHandle {
 
 impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
     fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
-        let (x, y) = BBSSigner::get_public_key_coordinates(&self.public_key)
-            .map_err(KeyHandleError::Signer)?;
+        let (x, y) = BBSSigner::get_public_key_coordinates(&self.public_key)?;
         Ok(PublicJwk::Okp(PublicJwkEc {
             alg: None,
             r#use: self.r#use.clone(),
             kid: None,
             crv: "Bls12381G2".to_string(),
-            x: Base64UrlSafeNoPadding::encode_to_string(x)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-            y: Some(
-                Base64UrlSafeNoPadding::encode_to_string(y)
-                    .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-            ),
+            x: Base64UrlSafeNoPadding::encode_to_string(x)?,
+            y: Some(Base64UrlSafeNoPadding::encode_to_string(y)?),
         }))
     }
 
@@ -228,6 +225,6 @@ impl MultiMessageSignaturePrivateKeyHandle for BBSPrivateKeyHandle {
     }
 
     fn as_jwk(&self) -> Result<SecretString, KeyHandleError> {
-        todo!()
+        Err(KeyHandleError::OperationNotSupported)
     }
 }

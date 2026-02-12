@@ -105,9 +105,7 @@ impl DataType for PictureDataType {
                 let Some(mime_type) = self.determine_mdoc_image_mime_type(bytes) else {
                     return Ok(ExtractionResult::NotApplicable);
                 };
-                let value = Base64::encode_to_string(bytes).map_err(|err| {
-                    DataTypeError::Failed(format!("failed to base64 encode image bytes: {err}"))
-                })?;
+                let value = Base64::encode_to_string(bytes)?;
                 Ok(ExtractionResult::Value(format!(
                     "data:{mime_type};base64,{value}"
                 )))

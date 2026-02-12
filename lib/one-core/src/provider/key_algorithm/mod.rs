@@ -55,20 +55,18 @@ pub(crate) fn parse_multibase_with_tag(
     expected_tag: &[u8],
 ) -> Result<Vec<u8>, KeyAlgorithmError> {
     if !encoded.starts_with('z') {
-        return Err(KeyAlgorithmError::Failed(format!(
+        return Err(KeyAlgorithmError::InvalidEncoding(format!(
             "Invalid multibase, expected 'z' prefix but got '{encoded}'"
         )));
     }
     let raw_bs58 = &encoded[1..];
-    let decoded = bs58::decode(&raw_bs58)
-        .into_vec()
-        .map_err(|err| KeyAlgorithmError::Failed(format!("Invalid multibase suffix: {err}")))?;
+    let decoded = bs58::decode(&raw_bs58).into_vec()?;
 
     if decoded
         .get(..expected_tag.len())
         .is_none_or(|tag| tag != expected_tag)
     {
-        return Err(KeyAlgorithmError::Failed(format!(
+        return Err(KeyAlgorithmError::InvalidEncoding(format!(
             "Invalid multibase tag, expected {}, but got {}",
             hex::encode(expected_tag),
             hex::encode(&decoded)
@@ -76,6 +74,6 @@ pub(crate) fn parse_multibase_with_tag(
     };
     Ok(decoded
         .get(expected_tag.len()..)
-        .ok_or_else(|| KeyAlgorithmError::Failed("Invalid multibase suffix".to_string()))?
+        .ok_or_else(|| KeyAlgorithmError::InvalidEncoding("Invalid multibase suffix".to_string()))?
         .to_vec())
 }

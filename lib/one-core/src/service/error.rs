@@ -23,8 +23,6 @@ use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError}
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
-use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::signer::error::SignerError;
@@ -75,15 +73,6 @@ pub enum ServiceError {
 
     #[error(transparent)]
     MissingProvider(#[from] MissingProviderError),
-
-    #[error(transparent)]
-    KeyAlgorithmError(#[from] KeyAlgorithmError),
-
-    #[error(transparent)]
-    KeyAlgorithmProviderError(#[from] KeyAlgorithmProviderError),
-
-    #[error(transparent)]
-    KeyHandleError(#[from] KeyHandleError),
 
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
@@ -691,12 +680,6 @@ pub enum MissingProviderError {
     #[error("Cannot find `{0}` in did method provider")]
     DidMethod(String),
 
-    #[error(transparent)]
-    KeyAlgorithm(#[from] KeyAlgorithmError),
-
-    #[error(transparent)]
-    KeyAlgorithmProvider(#[from] KeyAlgorithmProviderError),
-
     #[error("Cannot find `{0}` in revocation method provider")]
     RevocationMethod(RevocationMethodId),
 
@@ -746,15 +729,12 @@ impl ErrorCodeMixin for ServiceError {
             Self::MissingSigner(_) => ErrorCode::BR_0060,
             Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
             Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
-            Self::KeyAlgorithmError(error) => error.error_code(),
-            Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
             Self::DidMethodProviderError(error) => error.error_code(),
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::Revocation(error) => error.error_code(),
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
-            Self::KeyHandleError(error) => error.error_code(),
             Self::WalletProviderError(error) => error.error_code(),
             Self::WalletUnitAttestationError(error) => error.error_code(),
             Self::NfcError(error) => error.error_code(),
@@ -956,8 +936,6 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::Formatter(_) | Self::FormatterType(_) => ErrorCode::BR_0038,
             Self::KeyStorage(_) => ErrorCode::BR_0040,
             Self::DidMethod(_) => ErrorCode::BR_0031,
-            Self::KeyAlgorithm(_) => ErrorCode::BR_0042,
-            Self::KeyAlgorithmProvider(_) => ErrorCode::BR_0042,
             Self::RevocationMethod(_) => ErrorCode::BR_0044,
             Self::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
             Self::ExchangeProtocol(_) => ErrorCode::BR_0046,

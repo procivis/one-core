@@ -52,12 +52,12 @@ use crate::model::wallet_unit_attested_key::{
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
-use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo, TokenError};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
-use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
@@ -417,17 +417,18 @@ impl WalletProviderService {
                 let (_, alg) = self
                     .key_algorithm_provider
                     .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
-                    .ok_or(MissingProviderError::KeyAlgorithmProvider(
-                        KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                            device_signing_key_proof.header.algorithm.clone(),
-                        ),
-                    ))?;
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        device_signing_key_proof.header.algorithm.clone(),
+                    ))
+                    .error_while("getting key algorithm")?;
                 let device_signing_key = device_signing_key_proof.header.jwk.clone().ok_or(
                     ServiceError::MappingError(
                         "Missing JWK in device signing key header".to_string(),
                     ),
                 )?;
-                let device_signing_key_handle = alg.parse_jwk(&device_signing_key)?;
+                let device_signing_key_handle = alg
+                    .parse_jwk(&device_signing_key)
+                    .error_while("parsing device signing JWK")?;
                 self.verify_device_signing_proof(
                     &device_signing_key_proof,
                     &device_signing_key_handle,
@@ -437,7 +438,9 @@ impl WalletProviderService {
                 .await?;
                 device_signing_key
             } else {
-                attested_public_key.public_key_as_jwk()?
+                attested_public_key
+                    .public_key_as_jwk()
+                    .error_while("creating JWK")?
             };
 
         self.wallet_unit_repository
@@ -829,9 +832,12 @@ impl WalletProviderService {
         issuer_public_key_info: JwtPublicKeyInfo,
     ) -> Result<Jwt<WalletInstanceAttestationClaims>, ServiceError> {
         let now = self.clock.now_utc();
-        let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-            "No JOSE alg specified".to_string(),
-        ))?;
+        let jose_alg = auth_fn
+            .jose_alg()
+            .ok_or(TokenError::MissingJOSEAlgorithm(
+                "No JOSE alg specified".to_string(),
+            ))
+            .error_while("preparing WIA header")?;
         let key_id = auth_fn.get_key_id();
 
         Ok(Jwt::new(
@@ -878,9 +884,12 @@ impl WalletProviderService {
         revocation_info: Option<CredentialRevocationInfo>,
     ) -> Result<Jwt<WalletUnitAttestationClaims>, ServiceError> {
         let now = self.clock.now_utc();
-        let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-            "No JOSE alg specified".to_string(),
-        ))?;
+        let jose_alg = auth_fn
+            .jose_alg()
+            .ok_or(TokenError::MissingJOSEAlgorithm(
+                "No JOSE alg specified".to_string(),
+            ))
+            .error_while("preparing WUA header")?;
         let key_id = auth_fn.get_key_id();
 
         let status = revocation_info
@@ -1005,7 +1014,7 @@ impl WalletProviderService {
                     .map_err(|e| {
                         ServiceError::MappingError(format!("Failed to get key handle: {e}"))
                     })?;
-                JwtPublicKeyInfo::Jwk(key_handle.public_key_as_jwk()?)
+                JwtPublicKeyInfo::Jwk(key_handle.public_key_as_jwk().error_while("creating JWK")?)
             }
             IdentifierType::Certificate => {
                 let cert = issuer_identifier

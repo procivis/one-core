@@ -107,15 +107,13 @@ impl KeyAlgorithm for Ecdsa {
 
     fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
         if let PublicJwk::Ec(data) = key {
-            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)?;
             let y = Base64UrlSafeNoPadding::decode_to_vec(
                 data.y
                     .as_ref()
-                    .ok_or(KeyAlgorithmError::Failed("Y is missing".to_string()))?,
+                    .ok_or(KeyAlgorithmError::MissingParameter("Y".to_string()))?,
                 None,
-            )
-            .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+            )?;
 
             let public_key = ECDSASigner::parse_public_key_coordinates(&x, &y, true)?;
             let handle = Arc::new(EcdsaPublicKeyHandle::new(public_key, data.r#use.clone()));
@@ -125,7 +123,7 @@ impl KeyAlgorithm for Ecdsa {
                 key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
             })
         } else {
-            Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+            Err(KeyAlgorithmError::InvalidKeyType)
         }
     }
 
@@ -133,15 +131,10 @@ impl KeyAlgorithm for Ecdsa {
         match jwk {
             PrivateJwk::Ec(data) => {
                 if data.crv != "P-256" {
-                    return Err(KeyAlgorithmError::Failed(format!(
-                        "unsupported crv {}",
-                        data.crv
-                    )));
+                    return Err(KeyAlgorithmError::NotSupported(format!("crv {}", data.crv)));
                 }
                 let d: SecretSlice<u8> =
-                    Base64UrlSafeNoPadding::decode_to_vec(data.d.expose_secret(), None)
-                        .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?
-                        .into();
+                    Base64UrlSafeNoPadding::decode_to_vec(data.d.expose_secret(), None)?.into();
 
                 let (private, public) = ECDSASigner::parse_private_key_coordinates(&d, true)?;
 
@@ -152,7 +145,7 @@ impl KeyAlgorithm for Ecdsa {
                     private,
                 })
             }
-            _ => Err(KeyAlgorithmError::Failed("invalid kty".to_string())),
+            _ => Err(KeyAlgorithmError::InvalidKeyType),
         }
     }
 
@@ -249,8 +242,7 @@ pub(crate) fn ecdsa_public_key_as_jwk(
     public_key: &[u8],
     r#use: Option<JwkUse>,
 ) -> Result<PublicJwk, KeyHandleError> {
-    let (x, y) =
-        ECDSASigner::get_public_key_coordinates(public_key).map_err(KeyHandleError::Signer)?;
+    let (x, y) = ECDSASigner::get_public_key_coordinates(public_key)?;
 
     let alg = match r#use {
         Some(JwkUse::Encryption) => Some("ECDH-ES".to_string()),
@@ -263,19 +255,14 @@ pub(crate) fn ecdsa_public_key_as_jwk(
         r#use,
         kid: None,
         crv: "P-256".to_string(),
-        x: Base64UrlSafeNoPadding::encode_to_string(x)
-            .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-        y: Some(
-            Base64UrlSafeNoPadding::encode_to_string(y)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
-        ),
+        x: Base64UrlSafeNoPadding::encode_to_string(x)?,
+        y: Some(Base64UrlSafeNoPadding::encode_to_string(y)?),
     }))
 }
 
 pub(crate) fn ecdsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
     let codec = &[0x80, 0x24];
-    let key = ECDSASigner::parse_public_key(public_key, true)
-        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let key = ECDSASigner::parse_public_key(public_key, true)?;
     let data = [codec, key.as_slice()].concat();
     Ok(format!("z{}", bs58::encode(data).into_string()))
 }

@@ -190,7 +190,5 @@ async fn test_parse_jwk_invalid_crv() {
     let result = eddsa.parse_private_jwk(private_jwk);
 
     // then
-    assert!(
-        matches!(result, Err(KeyAlgorithmError::Failed(msg)) if msg == "unsupported crv P-512")
-    );
+    assert!(matches!(result, Err(KeyAlgorithmError::NotSupported(msg)) if msg == "crv P-512"));
 }

@@ -8,9 +8,8 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use crate::error::ContextWithErrorCode;
-use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::proto::jwt::{Jwt, TokenError};
 use crate::provider::verification_protocol::openid4vp::AuthenticationFn;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -115,9 +114,12 @@ impl OpenID4VP20AuthorizationRequest {
     ) -> Result<String, ServiceError> {
         let unsigned_jwt = Jwt {
             header: JWTHeader {
-                algorithm: auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-                    "No JOSE alg specified".to_string(),
-                ))?,
+                algorithm: auth_fn
+                    .jose_alg()
+                    .ok_or(TokenError::MissingJOSEAlgorithm(
+                        "No JOSE alg specified".to_string(),
+                    ))
+                    .error_while("signing JWT")?,
                 key_id: auth_fn.get_key_id(),
                 r#type: Some("oauth-authz-req+jwt".to_string()),
                 jwk: None,

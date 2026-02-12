@@ -15,7 +15,6 @@ use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::validate_expiration_time;
 
@@ -91,9 +90,7 @@ pub(crate) async fn prepare_bearer_token(
         .key_algorithm_type()
         .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
         .ok_or_else(|| {
-            MissingProviderError::KeyAlgorithmProvider(
-                KeyAlgorithmProviderError::MissingAlgorithmImplementation(key.key_type.to_owned()),
-            )
+            KeyAlgorithmProviderError::MissingAlgorithmImplementation(key.key_type.to_owned())
         })
         .error_while("getting key algorithm")?;
 

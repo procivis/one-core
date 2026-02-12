@@ -3,6 +3,7 @@
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use strum::Display;
 
 use crate::secret_string;
 
@@ -156,7 +157,7 @@ pub struct PrivateJwkEc {
 }
 
 /// see: <https://datatracker.ietf.org/doc/html/rfc7517#section-4.2>
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Display, Eq, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum JwkUse {
     #[serde(rename = "sig")]

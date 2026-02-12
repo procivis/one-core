@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::WalletProviderType;
-use crate::error::ErrorCodeMixinExt;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -54,12 +54,14 @@ pub(crate) fn public_key_from_wallet_unit(
     wallet_unit: &WalletUnit,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<KeyHandle, ServiceError> {
-    let ParsedKey { key, .. } = key_algorithm_provider.parse_jwk(
-        wallet_unit
-            .authentication_key_jwk
-            .as_ref()
-            .ok_or(ServiceError::MappingError("Missing public key".to_string()))?,
-    )?;
+    let ParsedKey { key, .. } = key_algorithm_provider
+        .parse_jwk(
+            wallet_unit
+                .authentication_key_jwk
+                .as_ref()
+                .ok_or(ServiceError::MappingError("Missing public key".to_string()))?,
+        )
+        .error_while("parsing wallet unit JWK")?;
     Ok(key)
 }
 

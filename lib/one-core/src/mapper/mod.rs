@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
+use crate::error::ContextWithErrorCode;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -25,7 +26,7 @@ use crate::model::proof::Proof;
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -266,9 +267,10 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     let key_algorithm = encryption_key
         .key_algorithm_type()
         .and_then(|key_type| key_algorithm_provider.key_algorithm_from_type(key_type))
-        .ok_or(KeyAlgorithmError::NotSupported(
+        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
             encryption_key.key_type.to_owned(),
-        ))?;
+        ))
+        .error_while("getting key algorithm")?;
 
     /*
      * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params
@@ -292,8 +294,10 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     };
 
     let mut jwk = key_algorithm
-        .reconstruct_key(&encryption_key.public_key, None, r#use)?
-        .public_key_as_jwk()?;
+        .reconstruct_key(&encryption_key.public_key, None, r#use)
+        .error_while("reconstructing encryption key")?
+        .public_key_as_jwk()
+        .error_while("creating JWK")?;
     jwk.set_kid(encryption_key.id.to_string());
     Ok(Some(jwk))
 }

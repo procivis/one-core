@@ -215,7 +215,10 @@ impl IdentifierCreatorProto {
         public_key: &PublicJwk,
         role: IdentifierRole,
     ) -> Result<(Key, Identifier), Error> {
-        let parsed_key = self.key_algorithm_provider.parse_jwk(public_key)?;
+        let parsed_key = self
+            .key_algorithm_provider
+            .parse_jwk(public_key)
+            .error_while("parsing JWK")?;
         let organisation_id = organisation.as_ref().map(|org| org.id);
         let now = OffsetDateTime::now_utc();
 
@@ -371,7 +374,10 @@ impl IdentifierCreatorProto {
                 ))
             }
             IdentifierDetails::Key(public_jwk) => {
-                let parsed_key = self.key_algorithm_provider.parse_jwk(public_jwk)?;
+                let parsed_key = self
+                    .key_algorithm_provider
+                    .parse_jwk(public_jwk)
+                    .error_while("parsing JWK")?;
                 let organisation_id = organisation.as_ref().map(|org| org.id);
 
                 let list = self

@@ -16,6 +16,7 @@ use super::key::KeyHandle;
 use super::ml_dsa::MlDsa;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmConfig, KeyAlgorithmType};
+use crate::error::ContextWithErrorCode;
 
 #[derive(Clone)]
 pub struct ParsedKey {
@@ -148,9 +149,9 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         let algorithm = self.key_algorithm_from_type(algorithm).ok_or(
             KeyAlgorithmProviderError::MissingAlgorithmImplementation(algorithm.to_string()),
         )?;
-        algorithm
+        Ok(algorithm
             .reconstruct_key(public_key, private_key, r#use)
-            .map_err(KeyAlgorithmProviderError::KeyAlgorithm)
+            .error_while("reconstructing key")?)
     }
 
     fn supported_verification_jose_alg_ids(&self) -> Vec<String> {

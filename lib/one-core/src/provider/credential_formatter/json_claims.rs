@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use super::error::FormatterError;
 use super::model::{CredentialClaim, CredentialClaimValue};
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -172,7 +173,7 @@ fn parse_claim(
             let json_value = serde_json::Value::from(simple_value);
             let extracted = datatype_provider
                 .extract_json_claim(&json_value)
-                .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+                .error_while("extracting JSON claim")?;
 
             vec![Claim {
                 id: Uuid::new_v4().into(),

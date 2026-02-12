@@ -9,7 +9,6 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
@@ -91,8 +90,6 @@ pub(crate) enum Error {
 
     #[error("DID method error: `{0}`")]
     DidMethodError(#[from] DidMethodError),
-    #[error("Key algorithm provider error: `{0}`")]
-    KeyAlgorithmProviderError(#[from] KeyAlgorithmProviderError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -111,7 +108,6 @@ impl ErrorCodeMixin for Error {
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::MissingCertificateCommonName => ErrorCode::BR_0224,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
-            Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::Nested(nested) => nested.error_code(),
         }
     }

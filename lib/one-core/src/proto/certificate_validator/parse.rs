@@ -18,7 +18,6 @@ use crate::mapper::x509::{authority_key_identifier, subject_key_identifier};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::error::MissingProviderError;
 
 #[async_trait::async_trait]
 impl CertificateValidator for CertificateValidatorImpl {
@@ -180,9 +179,7 @@ impl CertificateValidatorImpl {
             .key_algorithm_provider
             .key_algorithm_from_type(alg_type)
             .ok_or_else(|| {
-                MissingProviderError::KeyAlgorithmProvider(
-                    KeyAlgorithmProviderError::MissingAlgorithmImplementation(alg_type.to_string()),
-                )
+                KeyAlgorithmProviderError::MissingAlgorithmImplementation(alg_type.to_string())
             })
             .error_while("getting key algorithm")?;
 

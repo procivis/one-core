@@ -103,7 +103,7 @@ impl DataType for DateDataType {
     ) -> Result<ExtractionResult, DataTypeError> {
         let text = match value {
             ciborium::Value::Tag(tag, val) if *tag == TDATE_TAG || *tag == FULL_DATE_TAG => {
-                val.as_text().ok_or(DataTypeError::Failed(format!(
+                val.as_text().ok_or(DataTypeError::UnexpectedValue(format!(
                     "Expected text data for tagged element with tag `{tag}`."
                 )))?
             }

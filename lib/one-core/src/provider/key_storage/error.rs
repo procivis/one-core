@@ -4,8 +4,7 @@ use one_crypto::SignerError;
 use one_crypto::encryption::EncryptionError;
 use thiserror::Error;
 
-use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::provider::key_storage::model::Features;
 
 #[derive(Debug, Error)]
@@ -31,14 +30,15 @@ pub enum KeyStorageError {
     MappingError(String),
     #[error("Transport error: `{0}`")]
     Transport(anyhow::Error),
-    #[error("Key algorithm error: `{0}`")]
-    KeyAlgorithmError(#[from] KeyAlgorithmError),
     #[error("Invalid key algorithm `{0}`")]
     InvalidKeyAlgorithm(String),
     #[error("Encryption error: `{0}`")]
     Encryption(EncryptionError),
     #[error("Unsupported feature: `{feature}`")]
     UnsupportedFeature { feature: Features },
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for KeyStorageProviderError {
@@ -49,6 +49,9 @@ impl ErrorCodeMixin for KeyStorageProviderError {
 
 impl ErrorCodeMixin for KeyStorageError {
     fn error_code(&self) -> ErrorCode {
-        ErrorCode::BR_0039
+        match self {
+            KeyStorageError::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0039,
+        }
     }
 }

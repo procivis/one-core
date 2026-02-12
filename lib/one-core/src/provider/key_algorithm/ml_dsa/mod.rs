@@ -88,35 +88,32 @@ impl KeyAlgorithm for MlDsa {
     fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
         if let PublicJwk::Akp(data) = key {
             if !self.verification_jose_alg_ids().contains(&data.alg) {
-                return Err(KeyAlgorithmError::Failed(format!(
-                    "unsupported key algorithm variant: {}",
+                return Err(KeyAlgorithmError::NotSupported(format!(
+                    "key algorithm variant: {}",
                     data.alg
                 )));
             }
-            let r#pub = Base64UrlSafeNoPadding::decode_to_vec(&data.r#pub, None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+            let r#pub = Base64UrlSafeNoPadding::decode_to_vec(&data.r#pub, None)?;
 
             Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
                 Arc::new(MlDsaPublicKeyHandle::new(r#pub, data.r#use.clone())),
             )))
         } else {
-            Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+            Err(KeyAlgorithmError::InvalidKeyType)
         }
     }
 
     fn parse_private_jwk(&self, jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
         if let PrivateJwk::Akp(data) = jwk {
             if data.alg != "ML-DSA-65" {
-                return Err(KeyAlgorithmError::Failed(format!(
-                    "unsupported alg `{}`",
+                return Err(KeyAlgorithmError::NotSupported(format!(
+                    "alg: `{}`",
                     data.alg
                 )));
             }
-            let r#pub = Base64UrlSafeNoPadding::decode_to_vec(&data.r#pub, None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
-            let r#priv = Base64UrlSafeNoPadding::decode_to_vec(data.r#priv.expose_secret(), None)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?
-                .into();
+            let r#pub = Base64UrlSafeNoPadding::decode_to_vec(&data.r#pub, None)?;
+            let r#priv =
+                Base64UrlSafeNoPadding::decode_to_vec(data.r#priv.expose_secret(), None)?.into();
 
             let keys = MlDsaSigner::parse_key_pair(&r#pub, &r#priv)?;
             let key_handle =
@@ -127,7 +124,7 @@ impl KeyAlgorithm for MlDsa {
                 private: keys.seed,
             })
         } else {
-            Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
+            Err(KeyAlgorithmError::InvalidKeyType)
         }
     }
 
@@ -175,8 +172,7 @@ impl SignaturePublicKeyHandle for MlDsaPublicKeyHandle {
             r#use: self.r#use.clone(),
             kid: None,
             alg: "ML-DSA-65".to_string(),
-            r#pub: Base64UrlSafeNoPadding::encode_to_string(&self.public_key)
-                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+            r#pub: Base64UrlSafeNoPadding::encode_to_string(&self.public_key)?,
         }))
     }
 

@@ -12,7 +12,7 @@ use super::dto::{
 use super::mapper::{did_update_to_update_request, map_did_to_did_keys};
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::did::{DidListQuery, DidRelations, RelatedKey};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
@@ -84,13 +84,16 @@ impl DidService {
                         return Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
                             key.key.key_type,
                         )
+                        .error_while("getting key algorithm")
                         .into());
                     };
 
                     let jwk = self
                         .key_algorithm_provider
-                        .reconstruct_key(key_type, &key.key.public_key, None, None)?
-                        .public_key_as_jwk()?;
+                        .reconstruct_key(key_type, &key.key.public_key, None, None)
+                        .error_while("reconstructing key")?
+                        .public_key_as_jwk()
+                        .error_while("creating JWK")?;
                     Ok((
                         key_id,
                         jwk_verification_method(did.verification_method_id(&key), &did.did, jwk)

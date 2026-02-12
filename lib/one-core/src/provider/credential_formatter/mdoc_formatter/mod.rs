@@ -36,6 +36,7 @@ use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::model::claim::Claim;
@@ -1321,7 +1322,7 @@ fn parse_claim(
         simple_value => {
             let ExtractedClaim { data_type, value } = datatype_provider
                 .extract_cbor_claim(&simple_value)
-                .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+                .error_while("extracting CBOR claim")?;
 
             vec![Claim {
                 id: Uuid::new_v4().into(),

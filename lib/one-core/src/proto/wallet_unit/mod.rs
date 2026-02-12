@@ -132,7 +132,7 @@ impl HolderWalletUnitProtoImpl {
             .key_handle(key)
             .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
 
-        let public_key = key_handle.public_key_as_jwk()?;
+        let public_key = key_handle.public_key_as_jwk().error_while("creating JWK")?;
 
         let now = OffsetDateTime::now_utc();
         let jwt = Jwt::new(

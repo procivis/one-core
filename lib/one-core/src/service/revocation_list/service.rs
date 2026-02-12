@@ -115,13 +115,14 @@ impl RevocationListService {
                 let (alg_type, key_algorithm) = self
                     .key_algorithm_provider
                     .key_algorithm_from_jose_alg(&jwt.header.algorithm)
-                    .ok_or(MissingProviderError::KeyAlgorithmProvider(
-                        KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                            jwt.header.algorithm,
-                        ),
-                    ))?;
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        jwt.header.algorithm,
+                    ))
+                    .error_while("getting key algorithm")?;
 
-                let token_issuer_key = key_algorithm.parse_jwk(&token_issuer_key)?;
+                let token_issuer_key = key_algorithm
+                    .parse_jwk(&token_issuer_key)
+                    .error_while("parsing issuer JWK")?;
 
                 if holder_key.key_type != alg_type.to_string()
                     || holder_key.public_key != token_issuer_key.public_key_as_raw()

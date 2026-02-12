@@ -10,6 +10,7 @@ use shared_types::KeyId;
 use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::key::{Key, PrivateJwkExt};
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -66,7 +67,7 @@ impl KeyStorage for InternalKeyProvider {
             .key_algorithm_from_type(key_type)
             .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
             .generate_key()
-            .map_err(KeyStorageError::KeyAlgorithmError)?;
+            .error_while("generating key")?;
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,
@@ -101,7 +102,7 @@ impl KeyStorage for InternalKeyProvider {
             .key_algorithm_from_type(key_type)
             .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
             .parse_private_jwk(jwk)
-            .map_err(KeyStorageError::KeyAlgorithmError)?;
+            .error_while("parsing private JWK")?;
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,

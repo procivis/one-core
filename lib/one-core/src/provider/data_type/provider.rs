@@ -17,6 +17,7 @@ use super::swiyu_picture::SwiyuPictureDataType;
 use super::{CommonParams, DataType, date, number, picture, string, swiyu_picture};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::error::ContextWithErrorCode;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait DataTypeProvider: Send + Sync {
@@ -145,7 +146,7 @@ impl DataTypeProviderImpl {
     {
         let providers = self.get_by_value_type(value.try_into()?);
         for NamedProvider { name, provider } in providers {
-            let result = extract(&*provider, value)?;
+            let result = extract(&*provider, value).error_while("extracting claim value")?;
             match result {
                 ExtractionResult::Value(value) => {
                     return Ok(ExtractedClaim {

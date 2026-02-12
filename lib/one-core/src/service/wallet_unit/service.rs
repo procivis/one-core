@@ -18,11 +18,10 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
-use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo, TokenError};
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
@@ -296,7 +295,7 @@ impl WalletUnitService {
         let register_request = RegisterWalletUnitRequestDTO {
             wallet_provider: provider_info.name.clone(),
             os,
-            public_key: Some(key_handle.public_key_as_jwk()?),
+            public_key: Some(key_handle.public_key_as_jwk().error_while("creating JWK")?),
             proof: Some(signed_proof),
         };
 
@@ -384,7 +383,7 @@ impl WalletUnitService {
                 .create_device_signing_key_pop(
                     self.clock.now_utc(),
                     auth_fn,
-                    key_handle.public_key_as_jwk()?,
+                    key_handle.public_key_as_jwk().error_while("creating JWK")?,
                     &provider_info.name,
                     &provider_info.url,
                     nonce,
@@ -469,9 +468,12 @@ impl WalletUnitService {
     ) -> Result<String, ServiceError> {
         let proof = Jwt::new(
             "jwt".to_string(),
-            auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-                "No JOSE alg specified".to_string(),
-            ))?,
+            auth_fn
+                .jose_alg()
+                .ok_or(TokenError::MissingJOSEAlgorithm(
+                    "No JOSE alg specified".to_string(),
+                ))
+                .error_while("preparing key possession proof header")?,
             auth_fn.get_key_id(),
             None,
             JWTPayload {
@@ -508,9 +510,12 @@ impl WalletUnitService {
     ) -> Result<String, ServiceError> {
         let proof = Jwt::new(
             "jwt".to_string(),
-            auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-                "No JOSE alg specified".to_string(),
-            ))?,
+            auth_fn
+                .jose_alg()
+                .ok_or(TokenError::MissingJOSEAlgorithm(
+                    "No JOSE alg specified".to_string(),
+                ))
+                .error_while("preparing device signing key POP header")?,
             None,
             Some(JwtPublicKeyInfo::Jwk(public_key)),
             JWTPayload {

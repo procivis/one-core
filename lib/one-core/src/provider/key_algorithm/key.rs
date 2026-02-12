@@ -23,23 +23,15 @@ pub enum KeyHandle {
 
 #[derive(Debug, Error)]
 pub enum KeyHandleError {
-    #[error("Missing private key")]
-    MissingPrivateKey,
-
-    #[error("Encoding JWK: `{0}`")]
-    EncodingJwk(String),
-
-    #[error("Encoding multibase: `{0}`")]
-    EncodingMultibase(String),
-
-    #[error("Encoding private JWK: `{0}`")]
-    EncodingPrivateJwk(String),
+    #[error("Operation not supported")]
+    OperationNotSupported,
 
     #[error("Encryption error: `{0}`")]
-    Encryption(EncryptionError),
-
+    Encryption(#[from] EncryptionError),
     #[error("Signer error: `{0}`")]
-    Signer(SignerError),
+    SignerError(#[from] SignerError),
+    #[error("Encoding error: `{0}`")]
+    EncodingError(#[from] ct_codecs::Error),
 }
 
 impl ErrorCodeMixin for KeyHandleError {
