@@ -8,7 +8,7 @@
 
 - [Getting started](#getting-started)
 - [Background](#background)
-- [eIDAS 2.0](#eidas-20)
+- [EU Digital Identity Ecosystem](#eu-digital-identity-ecosystem)
 - [Interoperability and conformance](#interoperability-and-conformance)
 - [Supported standards](#supported-standards)
 - [Support](#support)
@@ -318,18 +318,11 @@ the issuer via back-channels, keeping the wallet holder's interactions private b
 those parties directly involved in each interaction. This model of digital identity is
 often referred to as Self-Sovereign Identity, or SSI.
 
-## eIDAS 2.0
+## EU Digital Identity Ecosystem
 
-Whether you want to:
+*Procivis One* provides solutions for multiple roles within this ecosystem:
 
-- issue into an EUDI Wallet
-- provide an EUDI Wallet
-- offer services to an EUDI Wallet holder
-
-*Procivis One* provides production grade open source components to get certified and
-connect your organization to the eIDAS 2.0 ecosystem.
-
-![Procivis One in the eIDAS ARF](https://assets.procivis-one.com/static/diff/eIDAS_Architecture.png)
+![Procivis One in the EU Digital Identity Ecosystem](https://onesdk.blob.core.windows.net/doc-assets/img/EUDI_Architecture.png)
 
 Use the *Procivis One Core* for Issuer or Verifier solutions. For an EUDI Wallet, use the
 [One Core React Native SDK][rncore] for embedding into an existing app, or use the
