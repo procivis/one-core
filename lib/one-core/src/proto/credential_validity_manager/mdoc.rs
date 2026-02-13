@@ -1,4 +1,3 @@
-use anyhow::Context;
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use time::OffsetDateTime;
@@ -10,12 +9,14 @@ use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::did::KeyRole;
+use crate::proto::credential_validity_manager::{
+    CredentialValidityCheckResult, CredentialValidityManagerImpl, Error,
+};
 use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
-use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     HolderInteractionData, OpenID4VCICredentialRequestDTO, OpenID4VCIDraft13Params,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
@@ -24,18 +25,16 @@ use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::Ope
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::service::credential::CredentialService;
-use crate::service::credential::dto::CredentialRevocationCheckResponseDTO;
-use crate::service::error::{MissingProviderError, ServiceError};
+use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 
-impl CredentialService {
-    pub(super) async fn update_mdoc(
+impl CredentialValidityManagerImpl {
+    pub(crate) async fn update_mdoc(
         &self,
         credential: &Credential,
         detail_credential: &DetailCredential,
         force_refresh: bool,
-    ) -> Result<CredentialRevocationCheckResponseDTO, ServiceError> {
+    ) -> Result<CredentialValidityCheckResult, Error> {
         let current_state = credential.state;
         let new_state = self
             .check_mdoc_update(credential, detail_credential, force_refresh)
@@ -54,9 +53,9 @@ impl CredentialService {
                 .error_while("updating credential")?;
         }
 
-        Ok(CredentialRevocationCheckResponseDTO {
+        Ok(CredentialValidityCheckResult {
             credential_id: credential.id,
-            status: new_state.into(),
+            status: new_state,
             success: true,
             reason: None,
         })
@@ -67,13 +66,14 @@ impl CredentialService {
         credential: &Credential,
         detail_credential: &DetailCredential,
         force_refresh: bool,
-    ) -> Result<CredentialStateEnum, ServiceError> {
+    ) -> Result<CredentialStateEnum, Error> {
         let mut interaction_data: HolderInteractionData = deserialize_interaction_data(
             credential
                 .interaction
                 .as_ref()
                 .and_then(|i| i.data.as_ref()),
-        )?;
+        )
+        .error_while("deserializing interaction data")?;
 
         let new_state = if is_mso_expired(detail_credential) {
             CredentialStateEnum::Suspended
@@ -120,28 +120,30 @@ impl CredentialService {
         credential: &Credential,
         interaction_data: &HolderInteractionData,
         access_token: &SecretString,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), Error> {
         let key = credential
             .key
             .as_ref()
-            .ok_or(ServiceError::Other("Missing key".to_owned()))?
+            .ok_or(Error::MappingError("Missing key".to_owned()))?
             .clone();
         let holder_did = credential
             .holder_identifier
             .as_ref()
-            .ok_or(ServiceError::Other("Missing holder identifier".to_owned()))?
+            .ok_or(Error::MappingError("Missing holder identifier".to_owned()))?
             .did
             .as_ref()
-            .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
+            .ok_or(Error::MappingError("Missing holder did".to_owned()))?
             .clone();
 
-        let key = holder_did.find_key(&key.id, &Default::default())?;
+        let key = holder_did
+            .find_key(&key.id, &Default::default())
+            .error_while("getting key from holder did")?;
         let key_id = holder_did.verification_method_id(key);
 
         let auth_fn = self
             .key_provider
             .get_signature_provider(&key.key, None, self.key_algorithm_provider.clone())
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("getting signature provider")?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url.clone(),
@@ -151,12 +153,12 @@ impl CredentialService {
             auth_fn,
         )
         .await
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("formatting proof")?;
 
         let schema = credential
             .schema
             .as_ref()
-            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+            .ok_or(Error::MappingError("schema is None".to_string()))?;
 
         let body = OpenID4VCICredentialRequestDTO {
             proof: OpenID4VCIProofRequestDTO {
@@ -174,26 +176,22 @@ impl CredentialService {
             .post(&interaction_data.credential_endpoint)
             .bearer_auth(access_token.expose_secret())
             .json(&body)
-            .context("json error")
-            .map_err(IssuanceProtocolError::Transport)?
+            .error_while("creating credential request")?
             .send()
             .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?;
+            .error_while("sending credential request")?;
         let response = response
             .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?;
+            .error_while("requesting credential")?;
 
         let result: OpenID4VCICredentialResponseDTO =
-            serde_json::from_slice(&response.body).map_err(IssuanceProtocolError::JsonError)?;
+            serde_json::from_slice(&response.body).map_err(Error::JsonError)?;
 
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&schema.format)
-            .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!("{} formatter not found", schema.format))
-            })?;
+            .ok_or_else(|| MissingProviderError::Formatter(schema.format.to_string()))
+            .error_while("getting credential formatter")?;
 
         let verification_fn = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -204,13 +202,14 @@ impl CredentialService {
         formatter
             .extract_credentials(&result.credential, Some(schema), verification_fn)
             .await
-            .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
+            .error_while("extracting credential")?;
 
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .error_while("getting blob storage")?;
 
         let blob_id = match credential.credential_blob_id {
             None => {
@@ -258,11 +257,11 @@ enum TokenCheckResult {
 fn encryption_key_from_config(
     config: &core_config::CoreConfig,
     credential: &Credential,
-) -> Result<SecretSlice<u8>, ServiceError> {
+) -> Result<SecretSlice<u8>, Error> {
     let fields = config
         .issuance_protocol
         .get_fields(&credential.protocol)
-        .map_err(ServiceError::ConfigValidationError)?;
+        .error_while("getting issuance protocol fields from config")?;
 
     Ok(match fields.r#type {
         core_config::IssuanceProtocolType::OpenId4VciDraft13 => {
@@ -271,7 +270,8 @@ fn encryption_key_from_config(
                 .map_err(|source| ConfigValidationError::FieldsDeserialization {
                     key: credential.protocol.to_string(),
                     source,
-                })?;
+                })
+                .error_while("loading encryption key from config")?;
             params.encryption
         }
         core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
@@ -280,7 +280,8 @@ fn encryption_key_from_config(
                 .map_err(|source| ConfigValidationError::FieldsDeserialization {
                     key: credential.protocol.to_string(),
                     source,
-                })?;
+                })
+                .error_while("loading encryption key from config")?;
             params.encryption
         }
         core_config::IssuanceProtocolType::OpenId4VciFinal1_0 => {
@@ -289,7 +290,8 @@ fn encryption_key_from_config(
                 .map_err(|source| ConfigValidationError::FieldsDeserialization {
                     key: credential.protocol.to_string(),
                     source,
-                })?;
+                })
+                .error_while("loading encryption key from config")?;
             params.encryption
         }
     })
@@ -301,12 +303,12 @@ async fn check_access_token(
     interaction_data: &mut HolderInteractionData,
     client: &dyn HttpClient,
     token_encryption_key: &SecretSlice<u8>,
-) -> Result<TokenCheckResult, ServiceError> {
+) -> Result<TokenCheckResult, Error> {
     let now = OffsetDateTime::now_utc();
     let access_token_expires_at =
         interaction_data
             .access_token_expires_at
-            .ok_or(ServiceError::Other(
+            .ok_or(Error::MappingError(
                 "Missing expires_at in interaction data for mso".to_owned(),
             ))?;
 
@@ -316,17 +318,15 @@ async fn check_access_token(
             interaction_data
                 .access_token
                 .as_ref()
-                .ok_or(ServiceError::Other("missing access_token".to_string()))?,
+                .ok_or(Error::MappingError("missing access_token".to_string()))?,
             token_encryption_key,
-        )
-        .map_err(|err| ServiceError::Other(format!("failed to decrypt refresh token: {err}")))?;
+        )?;
         return Ok(TokenCheckResult::RefreshPossible { access_token });
     }
 
     // Fetch a new one
     let refresh_token = if let Some(refresh_token) = interaction_data.refresh_token.as_ref() {
-        decrypt_string(refresh_token, token_encryption_key)
-            .map_err(|err| ServiceError::Other(format!("failed to decrypt refresh token: {err}")))?
+        decrypt_string(refresh_token, token_encryption_key)?
     } else {
         // missing refresh token
         return Ok(TokenCheckResult::RefreshNotPossible);
@@ -340,13 +340,10 @@ async fn check_access_token(
         return Ok(TokenCheckResult::RefreshNotPossible);
     }
 
-    let token_endpoint =
-        interaction_data
-            .token_endpoint
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "token endpoint is missing".to_string(),
-            ))?;
+    let token_endpoint = interaction_data
+        .token_endpoint
+        .as_ref()
+        .ok_or(Error::MappingError("token endpoint is missing".to_string()))?;
 
     let token_response: OpenID4VCITokenResponseDTO = client
         .post(token_endpoint)
@@ -354,23 +351,16 @@ async fn check_access_token(
             ("refresh_token", refresh_token.expose_secret().to_string()),
             ("grant_type", "refresh_token".to_string()),
         ])
-        .context("form error")
-        .map_err(IssuanceProtocolError::Transport)?
+        .error_while("creating form for token refresh")?
         .send()
         .await
-        .context("send error")
-        .map_err(IssuanceProtocolError::Transport)?
+        .error_while("sending token refresh request")?
         .error_for_status()
-        .context("status error")
-        .map_err(IssuanceProtocolError::Transport)?
+        .error_while("refreshing token")?
         .json()
-        .context("parsing error")
-        .map_err(IssuanceProtocolError::Transport)?;
+        .error_while("parsing token refresh response")?;
 
-    let encrypted_token = encrypt_string(&token_response.access_token, token_encryption_key)
-        .map_err(|err| {
-            IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
-        })?;
+    let encrypted_token = encrypt_string(&token_response.access_token, token_encryption_key)?;
     interaction_data.access_token = Some(encrypted_token);
     interaction_data.access_token_expires_at =
         OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
@@ -378,10 +368,7 @@ async fn check_access_token(
     interaction_data.refresh_token = token_response
         .refresh_token
         .map(|token| encrypt_string(&token, token_encryption_key))
-        .transpose()
-        .map_err(|err| {
-            IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
-        })?;
+        .transpose()?;
     interaction_data.refresh_token_expires_at = token_response
         .refresh_token_expires_in
         .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
@@ -390,12 +377,11 @@ async fn check_access_token(
     let mut interaction = credential
         .interaction
         .as_ref()
-        .ok_or(ServiceError::Other("Missing interaction".to_owned()))?
+        .ok_or(Error::MappingError("Missing interaction".to_owned()))?
         .clone();
 
     interaction.data = Some(
-        serde_json::to_vec(&interaction_data)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+        serde_json::to_vec(&interaction_data).map_err(|e| Error::MappingError(e.to_string()))?,
     );
     // Update in database
     interactions

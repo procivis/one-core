@@ -1,22 +1,20 @@
-use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::*;
 use serde_json::json;
-use shared_types::{CredentialId, RevocationMethodId};
+use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialService;
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, GetCredentialList,
-    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
@@ -27,29 +25,16 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
-use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::credential_validity_manager::MockCredentialValidityManager;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
-};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::{
-    Operation, RevocationMethodCapabilities, RevocationState,
-};
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
@@ -58,14 +43,14 @@ use crate::repository::validity_credential_repository::MockValidityCredentialRep
 use crate::service::credential;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialRequestClaimDTO, DetailCredentialClaimValueResponseDTO,
-    GetCredentialQueryDTO, SuspendCredentialRequestDTO,
+    GetCredentialQueryDTO,
 };
 use crate::service::credential::validator::validate_create_request;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{
-    dummy_did, dummy_did_document, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
     generic_formatter_capabilities, get_dummy_date,
 };
 use crate::util::key_selection::KeySelectionError;
@@ -76,16 +61,12 @@ struct Repositories {
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub identifier_repository: MockIdentifierRepository,
     pub interaction_repository: MockInteractionRepository,
-    pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockIssuanceProtocolProvider,
-    pub did_method_provider: MockDidMethodProvider,
-    pub key_provider: MockKeyProvider,
-    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockValidityCredentialRepository,
-    pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub credential_validity_manager: MockCredentialValidityManager,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
@@ -95,20 +76,15 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.identifier_repository),
         Arc::new(repositories.interaction_repository),
-        Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
-        Arc::new(repositories.did_method_provider),
-        Arc::new(repositories.key_provider),
-        Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
-        Arc::new(ReqwestClient::default()),
-        Arc::new(repositories.certificate_validator),
         Arc::new(repositories.blob_storage_provider),
         repositories
             .session_provider
             .unwrap_or(Arc::new(NoSessionProvider)),
+        Arc::new(repositories.credential_validity_manager),
     )
 }
 
@@ -298,7 +274,6 @@ fn generic_credential_list_entity() -> Credential {
 async fn test_delete_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
 
     credential_repository
         .expect_get_credential()
@@ -310,7 +285,6 @@ async fn test_delete_credential_success() {
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
-        revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -762,24 +736,11 @@ async fn test_create_credential_based_on_issuer_did_success() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -874,24 +835,11 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -957,22 +905,9 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
             .returning(move |_, _| Ok(Some(credential_schema.clone())));
     }
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_schema_repository,
         identifier_repository,
-        key_algorithm_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1400,24 +1335,11 @@ async fn test_create_credential_one_required_claim_missing_success() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1609,8 +1531,6 @@ async fn test_create_credential_schema_deleted() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let revocation_method_provider = MockRevocationMethodProvider::default();
-
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
         deleted_at: Some(OffsetDateTime::now_utc()),
@@ -1668,7 +1588,6 @@ async fn test_create_credential_schema_deleted() {
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        revocation_method_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1713,312 +1632,6 @@ async fn test_create_credential_schema_deleted() {
         let Err(ServiceError::BusinessLogic(
             BusinessLogicError::MissingCredentialSchema
         )) = result
-    );
-}
-
-#[tokio::test]
-async fn test_check_revocation_invalid_role() {
-    let credential_issuer_role = Credential {
-        role: CredentialRole::Issuer,
-        ..generic_credential()
-    };
-
-    let credential_verifier_role = Credential {
-        role: CredentialRole::Verifier,
-        ..generic_credential()
-    };
-
-    let issuer_credential_id = credential_issuer_role.id;
-    let verifier_credential_id = credential_verifier_role.id;
-
-    let mut credential_repository = MockCredentialRepository::default();
-
-    credential_repository
-        .expect_get_credential()
-        .with(eq(credential_issuer_role.id), always())
-        .returning(move |_, _| Ok(Some(credential_issuer_role.clone())));
-
-    credential_repository
-        .expect_get_credential()
-        .with(eq(credential_verifier_role.id), always())
-        .returning(move |_, _| Ok(Some(credential_verifier_role.clone())));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        ..Default::default()
-    });
-
-    let issuer_revocation_check_resp = service
-        .check_revocation(vec![issuer_credential_id], false)
-        .await;
-
-    let verifier_revocation_check_resp = service
-        .check_revocation(vec![verifier_credential_id], false)
-        .await;
-
-    assert!(issuer_revocation_check_resp.is_err());
-    assert!(matches!(
-        issuer_revocation_check_resp.unwrap_err(),
-        ServiceError::BusinessLogic(BusinessLogicError::RevocationCheckNotAllowedForRole { .. })
-    ));
-
-    assert!(verifier_revocation_check_resp.is_err());
-    assert!(matches!(
-        verifier_revocation_check_resp.unwrap_err(),
-        ServiceError::BusinessLogic(BusinessLogicError::RevocationCheckNotAllowedForRole { .. })
-    ));
-}
-
-#[tokio::test]
-async fn test_check_revocation_invalid_state() {
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let credential = generic_credential();
-    {
-        let credential_clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .returning(move |_, _| Ok(Some(credential_clone.clone())));
-    }
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service.check_revocation(vec![credential.id], false).await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].credential_id, credential.id);
-    assert!(!result[0].success);
-    assert_eq!(
-        result[0].status,
-        credential::dto::CredentialStateEnum::Created
-    );
-}
-
-#[tokio::test]
-async fn test_check_revocation_non_revocable() {
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-
-    let mut formatter = MockCredentialFormatter::default();
-
-    formatter
-        .expect_extract_credentials_unverified()
-        .returning(|_, _| {
-            Ok(DetailCredential {
-                id: None,
-                issuance_date: None,
-                valid_from: None,
-                valid_until: None,
-                update_at: None,
-                invalid_before: None,
-                issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
-                subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
-                status: vec![],
-                credential_schema: None,
-            })
-        });
-
-    let formatter = Arc::new(formatter);
-    formatter_provider
-        .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
-
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .returning(|_| Some(Arc::new(MockRevocationMethod::default())));
-
-    let credential = Credential {
-        state: CredentialStateEnum::Accepted,
-        ..generic_credential()
-    };
-
-    {
-        let credential_clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .returning(move |_, _| Ok(Some(credential_clone.clone())));
-    }
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        revocation_method_provider,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .check_revocation(vec![credential.id, Uuid::new_v4().into()], false)
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(result.len(), 2);
-    assert_eq!(result[0].credential_id, credential.id);
-    assert!(result[0].success);
-    assert_eq!(
-        result[0].status,
-        credential::dto::CredentialStateEnum::Accepted
-    );
-
-    assert!(result[1].success);
-    assert_eq!(
-        result[1].status,
-        credential::dto::CredentialStateEnum::Accepted
-    );
-}
-
-#[tokio::test]
-async fn test_check_revocation_already_revoked() {
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let credential = Credential {
-        state: CredentialStateEnum::Revoked,
-        suspend_end_date: None,
-        ..generic_credential()
-    };
-
-    {
-        let credential_clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .returning(move |_, _| Ok(Some(credential_clone.clone())));
-    }
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .check_revocation(vec![credential.id, Uuid::new_v4().into()], false)
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(result.len(), 2);
-    assert_eq!(result[0].credential_id, credential.id);
-    assert!(result[0].success);
-    assert_eq!(
-        result[0].status,
-        credential::dto::CredentialStateEnum::Revoked
-    );
-
-    assert!(result[1].success);
-    assert_eq!(
-        result[1].status,
-        credential::dto::CredentialStateEnum::Revoked
-    );
-}
-
-#[tokio::test]
-async fn test_check_revocation_being_revoked() {
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut revocation_method_provider: MockRevocationMethodProvider =
-        MockRevocationMethodProvider::default();
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-
-    let mut formatter = MockCredentialFormatter::default();
-
-    let mut revocation_method = MockRevocationMethod::default();
-
-    formatter
-        .expect_extract_credentials_unverified()
-        .returning(|_, _| {
-            Ok(DetailCredential {
-                id: None,
-                issuance_date: None,
-                valid_from: None,
-                valid_until: None,
-                update_at: None,
-                invalid_before: None,
-                issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
-                subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
-                status: vec![CredentialStatus {
-                    id: Some("did:status:test".parse().unwrap()),
-                    r#type: "type".to_string(),
-                    status_purpose: Some("purpose".to_string()),
-                    additional_fields: HashMap::default(),
-                }],
-                credential_schema: None,
-            })
-        });
-
-    revocation_method
-        .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
-
-    let formatter = Arc::new(formatter);
-    formatter_provider
-        .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
-
-    let revocation_method = Arc::new(revocation_method);
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .returning(move |_| Some(revocation_method.clone()));
-
-    let credential = {
-        let mut cred = Credential {
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-            ..generic_credential()
-        };
-        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-        cred
-    };
-
-    {
-        let credential_clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .returning(move |_, _| Ok(Some(credential_clone.clone())));
-    }
-
-    credential_repository
-        .expect_update_credential()
-        .withf(|_, request| {
-            matches!(
-                request,
-                UpdateCredentialRequest {
-                    state: Some(CredentialStateEnum::Revoked),
-                    ..
-                }
-            )
-        })
-        .returning(|_, _| Ok(()));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        revocation_method_provider,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service.check_revocation(vec![credential.id], false).await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].credential_id, credential.id);
-    assert!(result[0].success);
-    assert_eq!(
-        result[0].status,
-        credential::dto::CredentialStateEnum::Revoked
     );
 }
 
@@ -2086,24 +1699,11 @@ async fn test_create_credential_key_with_issuer_key() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2238,24 +1838,11 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .returning(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2364,23 +1951,10 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2483,23 +2057,10 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2613,23 +2174,10 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2743,23 +2291,10 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Ecdsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -3008,329 +2543,6 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
         Err(ServiceError::Validation(
             ValidationError::InvalidRedirectUri
         ))
-    ));
-}
-
-#[tokio::test]
-async fn test_revoke_credential_success_with_accepted_credential() {
-    let mut credential = generic_credential();
-    credential.state = CredentialStateEnum::Accepted;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-
-    let mut credential_repository = MockCredentialRepository::default();
-    let clone = credential.clone();
-    credential_repository
-        .expect_get_credential()
-        .times(1)
-        .with(eq(clone.id), always())
-        .returning(move |_, _| Ok(Some(clone.clone())));
-
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .once()
-        .return_once(move || RevocationMethodCapabilities {
-            operations: vec![Operation::Revoke],
-        });
-    revocation_method
-        .expect_mark_credential_as()
-        .once()
-        .with(always(), eq(RevocationState::Revoked))
-        .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
-            Ok(())
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
-    let revocation_method = Arc::new(revocation_method);
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        revocation_method_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    service.revoke_credential(&credential.id).await.unwrap();
-}
-
-#[tokio::test]
-async fn test_revoke_credential_success_with_suspended_credential() {
-    let mut credential = generic_credential();
-
-    credential.state = CredentialStateEnum::Suspended;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .once()
-        .return_once(move || RevocationMethodCapabilities {
-            operations: vec![Operation::Revoke],
-        });
-    revocation_method
-        .expect_mark_credential_as()
-        .once()
-        .with(always(), eq(RevocationState::Revoked))
-        .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
-            Ok(())
-        });
-
-    let clone = credential.clone();
-    credential_repository
-        .expect_get_credential()
-        .times(1)
-        .with(eq(clone.id), always())
-        .returning(move |_, _| Ok(Some(clone.clone())));
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
-    let revocation_method = Arc::new(revocation_method);
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        revocation_method_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    service.revoke_credential(&credential.id).await.unwrap();
-}
-
-#[tokio::test]
-async fn test_suspend_credential_success() {
-    let now = OffsetDateTime::now_utc();
-
-    let mut credential = generic_credential();
-
-    credential.state = CredentialStateEnum::Accepted;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-
-    let suspend_end_date = now.add(Duration::days(1));
-
-    let mut credential_repository = MockCredentialRepository::default();
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .once()
-        .return_once(move || RevocationMethodCapabilities {
-            operations: vec![Operation::Suspend],
-        });
-    revocation_method
-        .expect_mark_credential_as()
-        .once()
-        .with(
-            always(),
-            eq(RevocationState::Suspended {
-                suspend_end_date: Some(suspend_end_date),
-            }),
-        )
-        .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
-            Ok(())
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
-    let revocation_method = Arc::new(revocation_method);
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        revocation_method_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    service
-        .suspend_credential(
-            &credential.id,
-            SuspendCredentialRequestDTO {
-                suspend_end_date: Some(suspend_end_date),
-            },
-        )
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
-    let mut credential = generic_credential();
-
-    credential.state = CredentialStateEnum::Revoked;
-
-    let mut credential_repository = MockCredentialRepository::default();
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-    let service = setup_service(Repositories {
-        credential_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .suspend_credential(
-            &credential.id,
-            SuspendCredentialRequestDTO {
-                suspend_end_date: None,
-            },
-        )
-        .await
-        .unwrap_err();
-
-    assert!(matches!(
-        result,
-        ServiceError::BusinessLogic(BusinessLogicError::InvalidCredentialState { .. })
-    ));
-}
-
-#[tokio::test]
-async fn test_reactivate_credential_success() {
-    let mut credential = generic_credential();
-
-    credential.state = CredentialStateEnum::Suspended;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut did_method_provider = MockDidMethodProvider::default();
-
-    did_method_provider
-        .expect_resolve()
-        .returning(|did| Ok(dummy_did_document(did)));
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .once()
-        .return_once(move || RevocationMethodCapabilities {
-            operations: vec![Operation::Suspend],
-        });
-    revocation_method
-        .expect_mark_credential_as()
-        .once()
-        .with(always(), eq(RevocationState::Valid))
-        .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap());
-            Ok(())
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
-    let revocation_method = Arc::new(revocation_method);
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        did_method_provider,
-        revocation_method_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    service.reactivate_credential(&credential.id).await.unwrap();
-}
-
-#[tokio::test]
-async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential() {
-    let mut credential = generic_credential();
-
-    credential.state = CredentialStateEnum::Revoked;
-
-    let mut credential_repository = MockCredentialRepository::default();
-    let clone = credential.clone();
-    credential_repository
-        .expect_get_credential()
-        .times(1)
-        .with(eq(clone.id), always())
-        .returning(move |_, _| Ok(Some(clone.clone())));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .reactivate_credential(&credential.id)
-        .await
-        .unwrap_err();
-
-    assert!(matches!(
-        result,
-        ServiceError::BusinessLogic(BusinessLogicError::InvalidCredentialState { .. })
     ));
 }
 
@@ -5235,24 +4447,11 @@ async fn test_create_credential_array(
         .once()
         .return_once(move |_| Some(Arc::new(dummy_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .return_once(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::new();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some(Arc::new(key_algorithm))
-        });
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,
         ..Default::default()
@@ -5597,33 +4796,5 @@ async fn test_credential_ops_session_org_mismatch() {
         result,
         Err(ServiceError::Validation(ValidationError::Forbidden))
     ));
-    let result = service
-        .suspend_credential(
-            &Uuid::new_v4().into(),
-            SuspendCredentialRequestDTO {
-                suspend_end_date: None,
-            },
-        )
-        .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
-    let result = service.reactivate_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
-    let result = service
-        .check_revocation(vec![Uuid::new_v4().into()], false)
-        .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
-    let result = service.revoke_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ))
+    // revocation related operations are checked by the credential validity manager
 }

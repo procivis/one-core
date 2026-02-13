@@ -12,15 +12,15 @@ use shared_types::OrganisationId;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{CredentialFilterValue, CredentialRole, GetCredentialQuery};
 use crate::model::list_filter::ListFilterValue;
+use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::provider::task::Task;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
 
 pub struct HolderCheckCredentialStatus {
     params: Option<Params>,
     credential_repository: Arc<dyn CredentialRepository>,
-    credential_service: CredentialService,
+    credential_validity_manager: Arc<dyn CredentialValidityManager>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,12 +34,12 @@ impl HolderCheckCredentialStatus {
     pub(crate) fn new(
         params: Option<Params>,
         credential_repository: Arc<dyn CredentialRepository>,
-        credential_service: CredentialService,
+        credential_validity_manager: Arc<dyn CredentialValidityManager>,
     ) -> Self {
         Self {
             params,
             credential_repository,
-            credential_service,
+            credential_validity_manager,
         }
     }
 }
@@ -69,12 +69,13 @@ impl Task for HolderCheckCredentialStatus {
             .as_ref()
             .and_then(|p| p.force_refresh)
             .unwrap_or(false);
-        self.credential_service
-            .check_revocation(
-                credentials.values.iter().map(|c| c.id).collect(),
-                force_refresh,
-            )
-            .await?;
+
+        for credential in credentials.values.iter() {
+            self.credential_validity_manager
+                .check_holder_credential_validity(credential.id, force_refresh)
+                .await
+                .error_while("checking credential validity")?;
+        }
 
         let result = dto::HolderCheckCredentialStatusResultDTO {
             total_checks: credentials.total_items,

@@ -258,7 +258,7 @@ async fn test_suspend_credential_with_none_fails() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0162", resp.error_code().await);
+    assert_eq!("BR_0098", resp.error_code().await);
 }
 
 #[tokio::test]

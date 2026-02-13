@@ -59,6 +59,19 @@ pub(crate) fn throw_if_org_relation_not_matching_session(
     )
 }
 
+pub(crate) fn throw_if_credential_schema_not_in_session_org(
+    credential: &Credential,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    let schema = credential
+        .schema
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "credential_schema is None".to_string(),
+        ))?;
+    throw_if_org_relation_not_matching_session(schema.organisation.as_ref(), session_provider)
+}
+
 pub(crate) fn throw_if_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
@@ -67,19 +80,6 @@ pub(crate) fn throw_if_credential_state_not_eq(
     if current_state != state {
         return Err(BusinessLogicError::InvalidCredentialState {
             state: current_state.to_owned(),
-        }
-        .into());
-    }
-    Ok(())
-}
-
-pub(crate) fn throw_if_state_not_in(
-    state: &CredentialStateEnum,
-    valid_states: &[CredentialStateEnum],
-) -> Result<(), ServiceError> {
-    if !valid_states.contains(state) {
-        return Err(BusinessLogicError::InvalidCredentialState {
-            state: state.to_owned(),
         }
         .into());
     }

@@ -4,6 +4,7 @@ pub mod certificate_validator;
 pub mod clock;
 pub(crate) mod cose;
 pub(crate) mod credential_schema;
+pub(crate) mod credential_validity_manager;
 pub(crate) mod csr_creator;
 pub(crate) mod history_decorator;
 pub mod http_client;

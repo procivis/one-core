@@ -40,6 +40,7 @@ pub enum RevocationError {
 impl ErrorCodeMixin for RevocationError {
     fn error_code(&self) -> ErrorCode {
         match self {
+            Self::OperationNotSupported(_) => ErrorCode::BR_0098,
             Self::Nested(nested) => nested.error_code(),
             _ => ErrorCode::BR_0101,
         }

@@ -247,14 +247,8 @@ pub enum ErrorCode {
     #[strum(message = "BBS key not supported")]
     BR_0091,
 
-    #[strum(message = "Credential already revoked")]
-    BR_0092,
-
     #[strum(message = "Missing proof for provided interaction")]
     BR_0094,
-
-    #[strum(message = "StatusList2021 not supported for credential issuance and revocation")]
-    BR_0095,
 
     #[strum(message = "Invalid key")]
     BR_0096,
@@ -262,7 +256,7 @@ pub enum ErrorCode {
     #[strum(message = "Requested wallet storage type cannot be fulfilled")]
     BR_0097,
 
-    #[strum(message = "Revocation method does not support state (REVOKE, SUSPEND)")]
+    #[strum(message = "Operation not supported by revocation method")]
     BR_0098,
 
     #[strum(message = "Credential state is Revoked or Suspended and cannot be shared")]
@@ -809,6 +803,12 @@ pub enum ErrorCode {
 
     #[strum(message = "DID operation not supported")]
     BR_0365,
+
+    #[strum(message = "Invalid credential state transition")]
+    BR_0366,
+
+    #[strum(message = "Encryption Error")]
+    BR_0368,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

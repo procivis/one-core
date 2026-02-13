@@ -12,6 +12,7 @@ use super::suspend_check::SuspendCheckProvider;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, TaskType};
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::repository::certificate_repository::CertificateRepository;
@@ -21,7 +22,6 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::credential::CredentialService;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TaskProvider: Send + Sync {
@@ -48,7 +48,7 @@ pub(crate) fn task_provider_from_config(
     certificate_repository: Arc<dyn CertificateRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    credential_service: CredentialService,
+    credential_validity_manager: Arc<dyn CredentialValidityManager>,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
@@ -63,7 +63,7 @@ pub(crate) fn task_provider_from_config(
         let task: Arc<dyn Task> = match &field.r#type {
             TaskType::SuspendCheck => Arc::new(SuspendCheckProvider::new(
                 credential_repository.clone(),
-                credential_service.clone(),
+                credential_validity_manager.clone(),
             )),
             TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(
                 claim_repository.clone(),
@@ -80,7 +80,7 @@ pub(crate) fn task_provider_from_config(
             TaskType::HolderCheckCredentialStatus => Arc::new(HolderCheckCredentialStatus::new(
                 parse_params(field)?,
                 credential_repository.clone(),
-                credential_service.clone(),
+                credential_validity_manager.clone(),
             )),
             TaskType::InteractionExpirationCheck => {
                 Arc::new(InteractionExpirationCheckProvider::new(

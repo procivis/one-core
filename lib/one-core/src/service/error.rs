@@ -12,7 +12,7 @@ use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::credential::{CredentialRole, CredentialStateEnum};
+use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::did::KeyRole;
 use crate::model::proof::{ProofRole, ProofStateEnum};
@@ -274,23 +274,6 @@ pub enum BusinessLogicError {
 
     #[error("Missing proof for interaction `{0}`")]
     MissingProofForInteraction(InteractionId),
-
-    #[error(
-        "StatusList2021 revocation method not supported for credential issuance and revocation"
-    )]
-    StatusList2021NotSupported,
-
-    #[error("Credential already revoked")]
-    CredentialAlreadyRevoked,
-
-    #[error("Revocation method does not support state ({operation})")]
-    OperationNotSupportedByRevocationMethod { operation: String },
-
-    #[error("Credential role must be Holder, received {role}, credential id: {credential_id}")]
-    RevocationCheckNotAllowedForRole {
-        role: CredentialRole,
-        credential_id: CredentialId,
-    },
 
     #[error("Wallet storage type requirement cannot be fulfilled")]
     UnfulfilledWalletStorageType,
@@ -770,10 +753,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::GeneralInputValidationError => ErrorCode::BR_0084,
             Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
-            Self::StatusList2021NotSupported => ErrorCode::BR_0095,
-            Self::CredentialAlreadyRevoked => ErrorCode::BR_0092,
             Self::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
-            Self::OperationNotSupportedByRevocationMethod { .. } => ErrorCode::BR_0098,
             Self::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
             Self::RevocationMethodNotCompatibleWithSelectedFormat => ErrorCode::BR_0110,
             Self::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
@@ -801,7 +781,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
             Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
-            Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
             Self::InvalidProofRole { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
             Self::InvalidHolderIdentifier(_) => ErrorCode::BR_0217,

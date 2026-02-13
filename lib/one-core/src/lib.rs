@@ -13,6 +13,7 @@ use crate::proto::certificate_validator::{
 use crate::proto::clock::DefaultClock;
 use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
+use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
 use crate::proto::history_decorator::decorated_data_provider::decorate_data_provider;
 use crate::proto::http_client::HttpClient;
@@ -369,23 +370,33 @@ impl OneCore {
 
         let config = Arc::new(config);
 
+        let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(
+            data_provider.get_credential_repository(),
+            data_provider.get_interaction_repository(),
+            client.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            certificate_validator.clone(),
+            did_method_provider.clone(),
+            revocation_method_provider.clone(),
+            credential_formatter_provider.clone(),
+            blob_storage_provider.clone(),
+            session_provider.clone(),
+            config.clone(),
+        ));
+
         let credential_service = CredentialService::new(
             data_provider.get_credential_repository(),
             data_provider.get_credential_schema_repository(),
             data_provider.get_identifier_repository(),
             data_provider.get_interaction_repository(),
-            revocation_method_provider.clone(),
             credential_formatter_provider.clone(),
             issuance_provider.clone(),
-            did_method_provider.clone(),
-            key_provider.clone(),
-            key_algorithm_provider.clone(),
             config.clone(),
             data_provider.get_validity_credential_repository(),
-            client.clone(),
-            certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
+            credential_validity_manager.clone(),
         );
 
         let task_provider = task_provider_from_config(
@@ -397,7 +408,7 @@ impl OneCore {
             data_provider.get_certificate_repository(),
             data_provider.get_identifier_repository(),
             data_provider.get_interaction_repository(),
-            credential_service.clone(),
+            credential_validity_manager,
             certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),

@@ -10,25 +10,26 @@ use crate::model::credential::{
     CredentialFilterValue, CredentialRole, CredentialStateEnum, GetCredentialQuery,
 };
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use crate::proto::credential_validity_manager::CredentialValidityManager;
+use crate::provider::revocation::model::RevocationState;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
 
 pub mod dto;
 
 pub(crate) struct SuspendCheckProvider {
     credential_repository: Arc<dyn CredentialRepository>,
-    credential_service: CredentialService,
+    credential_validity_manager: Arc<dyn CredentialValidityManager>,
 }
 
 impl SuspendCheckProvider {
     pub fn new(
         credential_repository: Arc<dyn CredentialRepository>,
-        credential_service: CredentialService,
+        credential_validity_manager: Arc<dyn CredentialValidityManager>,
     ) -> Self {
         SuspendCheckProvider {
             credential_repository,
-            credential_service,
+            credential_validity_manager,
         }
     }
 }
@@ -55,9 +56,10 @@ impl Task for SuspendCheckProvider {
         let credentials = credential_list.values;
 
         for credential in &credentials {
-            self.credential_service
-                .reactivate_credential(&credential.id)
-                .await?;
+            self.credential_validity_manager
+                .change_credential_validity_state(&credential.id, RevocationState::Valid)
+                .await
+                .error_while("reactivating credential")?;
         }
 
         let result = SuspendCheckResultDTO {

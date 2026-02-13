@@ -208,7 +208,8 @@ pub struct CredentialRequestClaimDTO {
     pub path: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
+#[from(crate::proto::credential_validity_manager::CredentialValidityCheckResult)]
 pub struct CredentialRevocationCheckResponseDTO {
     pub credential_id: CredentialId,
     pub status: CredentialStateEnum,

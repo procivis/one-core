@@ -34,7 +34,7 @@ impl RevocationMethod for NoneRevocation {
         _credential: &Credential,
         _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        Err(RevocationError::ValidationError(
+        Err(RevocationError::OperationNotSupported(
             "Credential cannot be revoked, reactivated or suspended".to_string(),
         ))
     }
@@ -46,7 +46,7 @@ impl RevocationMethod for NoneRevocation {
         _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
-        Err(RevocationError::ValidationError(
+        Err(RevocationError::OperationNotSupported(
             "Credential cannot be revoked - status invalid".to_string(),
         ))
     }
