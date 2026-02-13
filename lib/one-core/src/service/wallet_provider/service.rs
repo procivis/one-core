@@ -30,7 +30,7 @@ use super::validator::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixin};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
@@ -133,9 +133,14 @@ impl WalletProviderService {
             .await
             .error_while("getting organisation")?
         else {
-            return Err(WalletProviderError::WalletProviderNotAssociatedWithOrganisation.into());
+            return Err(
+                WalletProviderError::WalletProviderNotAssociatedWithOrganisation
+                    .error_while("getting organisation")
+                    .into(),
+            );
         };
-        validate_org_wallet_provider(&organisation, &wallet_provider)?;
+        validate_org_wallet_provider(&organisation, &wallet_provider)
+            .error_while("validating waller provider")?;
 
         if !config_params
             .wallet_instance_attestation
@@ -146,7 +151,9 @@ impl WalletProviderService {
         {
             // If both, proof and public key are missing, the assumption is that the client is expecting
             // an app integrity check with a nonce --> return specific error code to cover that case.
-            return Err(WalletProviderError::AppIntegrityCheckNotRequired.into());
+            return Err(WalletProviderError::AppIntegrityCheckNotRequired
+                .error_while("validating request")
+                .into());
         }
 
         let result = if config_params
@@ -156,7 +163,9 @@ impl WalletProviderService {
             && request.os != WalletUnitOs::Web
         {
             if request.public_key.is_some() || request.proof.is_some() {
-                return Err(WalletProviderError::AppIntegrityCheckRequired.into());
+                return Err(WalletProviderError::AppIntegrityCheckRequired
+                    .error_while("validating request")
+                    .into());
             }
             self.create_wallet_unit_with_nonce(request, organisation, config.r#type)
                 .await
@@ -165,14 +174,18 @@ impl WalletProviderService {
                 request
                     .proof
                     .as_ref()
-                    .ok_or(WalletProviderError::MissingProof)?,
+                    .ok_or(WalletProviderError::MissingProof)
+                    .error_while("validating request")?,
             )
             .error_while("parsing proof token")?;
             let public_key_jwk = request
                 .public_key
                 .clone()
-                .ok_or(WalletProviderError::MissingPublicKey)?;
-            let public_key = self.parse_jwk(&proof.header.algorithm, &public_key_jwk)?;
+                .ok_or(WalletProviderError::MissingPublicKey)
+                .error_while("validating request")?;
+            let public_key = self
+                .parse_jwk(&proof.header.algorithm, &public_key_jwk)
+                .error_while("parsing proof JWK")?;
             self.verify_device_signing_proof(
                 &proof,
                 &public_key,
@@ -324,13 +337,21 @@ impl WalletProviderService {
         match wallet_unit.status {
             WalletUnitStatus::Pending => {} // OK
             WalletUnitStatus::Active | WalletUnitStatus::Error => {
-                return Err(WalletProviderError::InvalidWalletUnitState.into());
+                return Err(WalletProviderError::InvalidWalletUnitState
+                    .error_while("checking status")
+                    .into());
             }
-            WalletUnitStatus::Revoked => return Err(WalletProviderError::WalletUnitRevoked.into()),
+            WalletUnitStatus::Revoked => {
+                return Err(WalletProviderError::WalletUnitRevoked
+                    .error_while("checking status")
+                    .into());
+            }
         }
 
         let Some(wallet_unit_nonce) = &wallet_unit.nonce else {
-            return Err(WalletProviderError::MissingWalletUnitAttestationNonce.into());
+            return Err(WalletProviderError::MissingWalletUnitAttestationNonce
+                .error_while("validating nonce")
+                .into());
         };
         let Some(organisation) = &wallet_unit.organisation else {
             return Err(ServiceError::MappingError(format!(
@@ -341,7 +362,8 @@ impl WalletProviderService {
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
 
-        validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
+        validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)
+            .error_while("validating provider")?;
 
         if wallet_unit.last_modified
             + Duration::seconds(
@@ -364,7 +386,7 @@ impl WalletProviderService {
                 },
             )
             .await?;
-            return Err(error.into());
+            return Err(error.error_while("validating time").into());
         };
 
         let attestation_result = self
@@ -386,7 +408,7 @@ impl WalletProviderService {
                     },
                 )
                 .await?;
-                return Err(err.into());
+                return Err(err.error_while("validating attestation").into());
             }
         };
         let attestation_key_proof =
@@ -584,7 +606,9 @@ impl WalletProviderService {
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
-            return Err(WalletProviderError::WalletUnitRevoked.into());
+            return Err(WalletProviderError::WalletUnitRevoked
+                .error_while("validating status")
+                .into());
         }
 
         let Some(organisation) = &wallet_unit.organisation else {
@@ -596,7 +620,8 @@ impl WalletProviderService {
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
         let issuer_identifier =
-            validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
+            validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)
+                .error_while("validating provider")?;
 
         let revocation_method = config_params
             .wallet_unit_attestation
@@ -814,7 +839,8 @@ impl WalletProviderService {
             .config
             .wallet_provider
             .get_if_enabled(wallet_provider)
-            .map_err(WalletProviderError::WalletProviderDisabled)?;
+            .map_err(WalletProviderError::WalletProviderDisabled)
+            .error_while("validating config")?;
 
         let wallet_provider_config_params = wallet_provider_config
             .deserialize::<WalletProviderParams>()
@@ -1074,7 +1100,8 @@ impl WalletProviderService {
         nonce: Option<&str>,
     ) -> Result<(), ServiceError> {
         let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
-            (true, WalletUnitOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)?,
+            (true, WalletUnitOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)
+                .error_while("verifying iOS attestation")?,
             _ => (
                 proof.unverified_jwt.as_bytes().to_vec(),
                 proof.signature.clone(),
@@ -1083,7 +1110,8 @@ impl WalletProviderService {
 
         public_key
             .verify(&msg, &signature)
-            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
+            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))
+            .error_while("verifying attestation proof signature")?;
         validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
@@ -1096,7 +1124,8 @@ impl WalletProviderService {
     ) -> Result<(), ServiceError> {
         public_key
             .verify(proof.unverified_jwt.as_bytes(), &proof.signature)
-            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
+            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))
+            .error_while("verifying device singing proof signature")?;
         validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
@@ -1109,11 +1138,15 @@ impl WalletProviderService {
             .clone()
             .ok_or(WalletProviderError::CouldNotVerifyProof(
                 "Missing jwk".to_string(),
-            ))?;
-        let key_handle = self.parse_jwk(&pop_token.header.algorithm, &jwk)?;
+            ))
+            .error_while("validating PoP header")?;
+        let key_handle = self
+            .parse_jwk(&pop_token.header.algorithm, &jwk)
+            .error_while("parsing JWK")?;
         key_handle
             .verify(pop_token.unverified_jwt.as_bytes(), &pop_token.signature)
-            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
+            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))
+            .error_while("verifying PoP signature")?;
         validate_proof_payload(&pop_token, leeway, self.base_url.as_deref(), None)?;
         Ok(jwk)
     }
@@ -1149,7 +1182,9 @@ impl WalletProviderService {
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
-            return Err(WalletProviderError::WalletUnitMustBeActive.into());
+            return Err(WalletProviderError::WalletUnitMustBeActive
+                .error_while("checking status")
+                .into());
         }
 
         let Some(organisation) = &wallet_unit.organisation else {
@@ -1222,7 +1257,9 @@ impl WalletProviderService {
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Pending {
-            return Err(WalletProviderError::WalletUnitMustBePending.into());
+            return Err(WalletProviderError::WalletUnitMustBePending
+                .error_while("checking status")
+                .into());
         }
 
         self.wallet_unit_repository

@@ -23,7 +23,6 @@ use crate::proto::session_provider::SessionExt;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_storage::KeyStorage;
-use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -99,7 +98,7 @@ impl WalletUnitService {
             .wallet_provider_client
             .get_wallet_provider_metadata(&request.wallet_provider.url)
             .await
-            .map_err(HolderWalletUnitError::from)?;
+            .error_while("getting wallet provider metadata")?;
         let provider_info = WalletProviderInfo {
             name: metadata.name.clone(),
             url: wallet_provider_url.clone(),
@@ -221,7 +220,8 @@ impl WalletUnitService {
         let wallet_unit_status = self
             .wallet_unit_proto
             .check_wallet_unit_status(&holder_wallet_unit)
-            .await?;
+            .await
+            .error_while("checking wallet unit status")?;
 
         if wallet_unit_status == WalletUnitStatusCheckResponse::Revoked {
             self.holder_wallet_unit_repository
@@ -297,7 +297,10 @@ impl WalletUnitService {
             proof: Some(signed_proof),
         };
 
-        let register_response = self.register(&provider_info.url, register_request).await?;
+        let register_response = self
+            .register(&provider_info.url, register_request)
+            .await
+            .error_while("registering")?;
         Ok(Registration {
             wallet_unit_id: register_response.id,
             key,
@@ -318,11 +321,16 @@ impl WalletUnitService {
             public_key: None,
             proof: None,
         };
-        let register_response = self.register(&provider_info.url, register_request).await?;
+        let register_response = self
+            .register(&provider_info.url, register_request)
+            .await
+            .error_while("registering")?;
 
         let Some(nonce) = register_response.nonce else {
             // integrity check was expected, but is not required
-            return Err(HolderWalletUnitError::AppIntegrityCheckNotRequired.into());
+            return Err(HolderWalletUnitError::AppIntegrityCheckNotRequired
+                .error_while("registering")
+                .into());
         };
 
         let key_storage = self
@@ -409,7 +417,7 @@ impl WalletUnitService {
         self.wallet_provider_client
             .activate(&provider_info.url, register_response.id, activate_request)
             .await
-            .map_err(HolderWalletUnitError::from)?;
+            .error_while("activating wallet unit")?;
 
         Ok(Registration {
             wallet_unit_id: register_response.id,
@@ -440,18 +448,11 @@ impl WalletUnitService {
         url: &str,
         register_request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, HolderWalletUnitError> {
-        self.wallet_provider_client
+        Ok(self
+            .wallet_provider_client
             .register(url, register_request)
             .await
-            .map_err(|err| match err {
-                WalletProviderClientError::Transport(_) => HolderWalletUnitError::from(err),
-                WalletProviderClientError::IntegrityCheckRequired => {
-                    HolderWalletUnitError::AppIntegrityCheckRequired
-                }
-                WalletProviderClientError::IntegrityCheckNotRequired => {
-                    HolderWalletUnitError::AppIntegrityCheckNotRequired
-                }
-            })
+            .error_while("registering wallet unit")?)
     }
 
     async fn store_key(&self, key: &Key) -> Result<(), ServiceError> {

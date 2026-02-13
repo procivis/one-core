@@ -67,7 +67,8 @@ pub(super) async fn validate_wallet_provider(
     config
         .wallet_provider
         .get_if_enabled(wallet_provider)
-        .map_err(|_| WalletProviderError::WalletProviderNotConfigured)?;
+        .map_err(|_| WalletProviderError::WalletProviderNotConfigured)
+        .error_while("checking config")?;
     if let Some(org) = organisation_repository
         .get_organisation_for_wallet_provider(wallet_provider)
         .await

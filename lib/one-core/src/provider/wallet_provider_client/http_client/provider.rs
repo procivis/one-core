@@ -1,9 +1,8 @@
-use anyhow::{Context, anyhow};
-use serde_json::{Value, json};
+use serde::Deserialize;
 use shared_types::WalletUnitId;
 use url::Url;
 
-use crate::proto::http_client::Error;
+use crate::error::{ContextWithErrorCode, ErrorCode};
 use crate::provider::wallet_provider_client::WalletProviderClient;
 use crate::provider::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
@@ -24,19 +23,18 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         &self,
         wallet_provider_metadata_url: &str,
     ) -> Result<WalletProviderMetadataResponseDTO, WalletProviderClientError> {
-        self.http_client
-            .get(wallet_provider_metadata_url)
-            .send()
-            .await
-            .context("send error")
-            .map_err(WalletProviderClientError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(WalletProviderClientError::Transport)?
-            .json::<WalletProviderMetadataResponseRestDTO>()
-            .context("parsing error")
-            .map_err(WalletProviderClientError::Transport)
-            .map(Into::into)
+        let response: WalletProviderMetadataResponseRestDTO = async {
+            self.http_client
+                .get(wallet_provider_metadata_url)
+                .send()
+                .await?
+                .error_for_status()?
+                .json::<WalletProviderMetadataResponseRestDTO>()
+        }
+        .await
+        .error_while("fetching wallet provider metadata")?;
+
+        Ok(response.into())
     }
 
     async fn register(
@@ -44,44 +42,34 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         wallet_provider_url: &str,
         request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderClientError> {
-        let url = Url::parse(format!("{wallet_provider_url}/ssi/wallet-unit/v1").as_str())
-            .context("url error")
-            .map_err(WalletProviderClientError::Transport)?;
+        let url = Url::parse(format!("{wallet_provider_url}/ssi/wallet-unit/v1").as_str())?;
 
-        let response = self
-            .http_client
-            .post(url.as_str())
-            .json(RegisterWalletUnitRequestRestDTO::from(request))
-            .context("json error")
-            .map_err(WalletProviderClientError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(WalletProviderClientError::Transport)?;
+        let response = async {
+            self.http_client
+                .post(url.as_str())
+                .json(RegisterWalletUnitRequestRestDTO::from(request))?
+                .send()
+                .await
+        }
+        .await
+        .error_while("requesting wallet unit registration")?;
 
         if response.status.is_client_error() {
-            let body = serde_json::from_slice::<Value>(&response.body)
-                .map_err(|e| WalletProviderClientError::Transport(Error::JsonError(e).into()))?;
-            let cause = body
-                .get("code")
-                .ok_or(WalletProviderClientError::Transport(anyhow!(
-                    "Error missing code"
-                )))?;
-            if cause == "BR_0270" {
+            let error_body: ErrorBody = serde_json::from_slice(&response.body)?;
+            if error_body.code == ErrorCode::BR_0270 {
                 return Err(WalletProviderClientError::IntegrityCheckRequired);
-            } else if cause == "BR_0279" {
+            } else if error_body.code == ErrorCode::BR_0279 {
                 return Err(WalletProviderClientError::IntegrityCheckNotRequired);
             }
         }
 
-        response
+        let response: RegisterWalletUnitResponseRestDTO = response
             .error_for_status()
-            .context("status error")
-            .map_err(WalletProviderClientError::Transport)?
-            .json::<RegisterWalletUnitResponseRestDTO>()
-            .context("parsing error")
-            .map_err(WalletProviderClientError::Transport)
-            .map(|r| r.into())
+            .error_while("requesting wallet unit registration")?
+            .json()
+            .error_while("requesting wallet unit registration")?;
+
+        Ok(response.into())
     }
 
     async fn activate(
@@ -92,22 +80,19 @@ impl WalletProviderClient for HTTPWalletProviderClient {
     ) -> Result<(), WalletProviderClientError> {
         let url = Url::parse(
             format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/activate").as_str(),
-        )
-        .context("url error")
-        .map_err(WalletProviderClientError::Transport)?;
+        )?;
 
-        self.http_client
-            .post(url.as_str())
-            .json(ActivateWalletUnitRequestRestDTO::from(request))
-            .context("json error")
-            .map_err(WalletProviderClientError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(WalletProviderClientError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(WalletProviderClientError::Transport)?;
+        async {
+            self.http_client
+                .post(url.as_str())
+                .json(ActivateWalletUnitRequestRestDTO::from(request))?
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("requesting activation of wallet unit")?;
+
         Ok(())
     }
 
@@ -121,42 +106,38 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         let url = Url::parse(
             format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/issue-attestation")
                 .as_str(),
-        )
-        .context("url error")
-        .map_err(WalletProviderClientError::Transport)?;
+        )?;
 
-        let result = self
-            .http_client
-            .post(url.as_str())
-            .bearer_auth(bearer_token)
-            .json(IssueWalletUnitAttestationRequestRestDTO::from(request))
-            .context("json error")
-            .map_err(WalletProviderClientError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(WalletProviderClientError::Transport)?;
+        let response = async {
+            self.http_client
+                .post(url.as_str())
+                .bearer_auth(bearer_token)
+                .json(IssueWalletUnitAttestationRequestRestDTO::from(request))?
+                .send()
+                .await
+        }
+        .await
+        .error_while("requesting issuance of wallet unit")?;
 
-        if result.status.is_client_error() {
-            let body = serde_json::from_slice::<Value>(&result.body)
-                .map_err(|e| WalletProviderClientError::Transport(Error::JsonError(e).into()))?;
-            let cause = body
-                .get("code")
-                .ok_or(WalletProviderClientError::Transport(anyhow!(
-                    "Error missing code"
-                )))?;
-            if *cause == json!("BR_0261".to_string()) {
+        if response.status.is_client_error() {
+            let error_body: ErrorBody = serde_json::from_slice(&response.body)?;
+
+            if error_body.code == ErrorCode::BR_0261 {
                 return Ok(IssueWalletAttestationResponse::Revoked);
             }
         }
 
-        result
+        let response: IssueWalletUnitAttestationResponseRestDTO = response
             .error_for_status()
-            .context("status error")
-            .map_err(WalletProviderClientError::Transport)?
-            .json::<IssueWalletUnitAttestationResponseRestDTO>()
-            .context("parsing error")
-            .map_err(WalletProviderClientError::Transport)
-            .map(|r| IssueWalletAttestationResponse::Active(r.into()))
+            .error_while("requesting issuance of wallet unit")?
+            .json()
+            .error_while("requesting issuance of wallet unit")?;
+
+        Ok(IssueWalletAttestationResponse::Active(response.into()))
     }
+}
+
+#[derive(Deserialize)]
+struct ErrorBody {
+    code: ErrorCode,
 }

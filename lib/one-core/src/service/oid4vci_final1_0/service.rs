@@ -475,7 +475,8 @@ impl OID4VCIFinal1_0Service {
             let wallet_unit_attestation_status = self
                 .holder_wallet_unit_proto
                 .check_wallet_unit_attestation_status(key_attestation_jwt)
-                .await?;
+                .await
+                .error_while("checking wallet unit attestation status")?;
 
             if wallet_unit_attestation_status == WalletUnitStatusCheckResponse::Revoked {
                 tracing::error!("wallet unit attestation is revoked");

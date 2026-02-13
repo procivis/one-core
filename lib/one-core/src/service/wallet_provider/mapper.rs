@@ -65,11 +65,14 @@ pub(crate) fn public_key_from_wallet_unit(
     Ok(key)
 }
 
-pub(crate) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
+pub(super) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
     match error {
-        DataLayerError::AlreadyExists => WalletProviderError::WalletUnitAlreadyExists.into(),
-        e => e.error_while("creating wallet unit").into(),
+        DataLayerError::AlreadyExists => {
+            WalletProviderError::WalletUnitAlreadyExists.error_while("creating wallet unit")
+        }
+        e => e.error_while("creating wallet unit"),
     }
+    .into()
 }
 
 impl From<EudiWalletInfoConfig> for EudiWalletInfo {

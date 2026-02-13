@@ -19,8 +19,8 @@ pub enum DidValueError {
     IncorrectScheme(String),
     #[error("Incorrect did method: `{0}`")]
     IncorrectDidMethod(String),
-    #[error("Incorrect did value")]
-    IncorrectDidValue,
+    #[error("Incorrect did value: `{0}`")]
+    IncorrectDidValue(String),
     #[error("Did method not found")]
     DidMethodNotFound,
     #[error("URL parsing error: `{0}`")]
@@ -107,11 +107,15 @@ impl FromStr for DidValue {
             .ok_or(DidValueError::DidMethodNotFound)?;
 
         if url.query().is_some() && !QUERY_PARAM_DID_METHODS_EXCEPTIONS.contains(&method) {
-            return Err(DidValueError::IncorrectDidValue);
+            return Err(DidValueError::IncorrectDidValue(
+                "Contains URL query".to_string(),
+            ));
         }
 
         if url.fragment().is_some() {
-            return Err(DidValueError::IncorrectDidValue);
+            return Err(DidValueError::IncorrectDidValue(
+                "Contains URL fragment".to_string(),
+            ));
         }
 
         if !method
@@ -122,7 +126,9 @@ impl FromStr for DidValue {
         }
 
         if !DID_ALLOWLIST_REGEX.is_match(rest) {
-            return Err(DidValueError::IncorrectDidValue);
+            return Err(DidValueError::IncorrectDidValue(format!(
+                "Invalid value: `{rest}`"
+            )));
         }
 
         let method = method.to_owned();

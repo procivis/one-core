@@ -4,6 +4,7 @@ use super::dto::{NoncePayload, WalletProviderParams};
 use super::error::WalletProviderError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
+use crate::error::ErrorCodeMixinExt;
 use crate::model::organisation::Organisation;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::service::error::ServiceError;
@@ -61,17 +62,29 @@ pub(super) fn validate_proof_payload(
     validate_issuance_time(&proof.payload.issued_at, leeway)?;
 
     if proof.payload.invalid_before.is_none() {
-        return Err(WalletProviderError::CouldNotVerifyProof("Missing nbf".to_string()).into());
+        return Err(
+            WalletProviderError::CouldNotVerifyProof("Missing nbf".to_string())
+                .error_while("validating time")
+                .into(),
+        );
     }
     validate_not_before_time(&proof.payload.invalid_before, leeway)?;
 
     if proof.payload.expires_at.is_none() {
-        return Err(WalletProviderError::CouldNotVerifyProof("Missing ext".to_string()).into());
+        return Err(
+            WalletProviderError::CouldNotVerifyProof("Missing ext".to_string())
+                .error_while("validating time")
+                .into(),
+        );
     }
     validate_expiration_time(&proof.payload.expires_at, leeway)?;
 
     let Some(audience) = proof.payload.audience.as_ref() else {
-        return Err(WalletProviderError::CouldNotVerifyProof("Missing aud".to_string()).into());
+        return Err(
+            WalletProviderError::CouldNotVerifyProof("Missing aud".to_string())
+                .error_while("validating audience")
+                .into(),
+        );
     };
     if let Some(expected_audience) = base_url {
         validate_audience(audience, expected_audience)?;
@@ -84,7 +97,11 @@ pub(super) fn validate_proof_payload(
             .as_ref()
             .is_none_or(|client_nonce| client_nonce != nonce)
     {
-        return Err(WalletProviderError::CouldNotVerifyProof("Invalid nonce".to_string()).into());
+        return Err(
+            WalletProviderError::CouldNotVerifyProof("Invalid nonce".to_string())
+                .error_while("validating nonce")
+                .into(),
+        );
     }
     Ok(())
 }

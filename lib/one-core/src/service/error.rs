@@ -26,8 +26,6 @@ use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::service::wallet_provider::error::WalletProviderError;
-use crate::service::wallet_unit::error::HolderWalletUnitError;
 use crate::util::key_selection::KeySelectionError;
 
 #[derive(Debug, Error)]
@@ -88,12 +86,6 @@ pub enum ServiceError {
 
     #[error("Trust management error `{0}`")]
     TrustManagementError(#[from] TrustManagementError),
-
-    #[error("Wallet provider error: `{0}`")]
-    WalletProviderError(#[from] WalletProviderError),
-
-    #[error("Wallet unit error: `{0}`")]
-    WalletUnitAttestationError(#[from] HolderWalletUnitError),
 
     #[error("NFC error: `{0}`")]
     NfcError(#[from] NfcError),
@@ -712,8 +704,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
-            Self::WalletProviderError(error) => error.error_code(),
-            Self::WalletUnitAttestationError(error) => error.error_code(),
             Self::NfcError(error) => error.error_code(),
             Self::SignerError(error) => error.error_code(),
             Self::KeySelection(error) => error.error_code(),
