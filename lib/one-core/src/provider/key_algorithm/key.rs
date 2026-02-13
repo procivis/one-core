@@ -1,6 +1,6 @@
+use std::string::FromUtf8Error;
 use std::sync::Arc;
 
-use one_crypto::SignerError;
 use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::PrivateKeyAgreementHandle;
 use one_crypto::signer::bbs::parse_bbs_input;
@@ -8,7 +8,7 @@ use secrecy::SecretString;
 use standardized_types::jwk::PublicJwk;
 use thiserror::Error;
 
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Clone)]
 pub enum KeyHandle {
@@ -29,14 +29,22 @@ pub enum KeyHandleError {
     #[error("Encryption error: `{0}`")]
     Encryption(#[from] EncryptionError),
     #[error("Signer error: `{0}`")]
-    SignerError(#[from] SignerError),
+    SignerError(#[from] one_crypto::SignerError),
     #[error("Encoding error: `{0}`")]
     EncodingError(#[from] ct_codecs::Error),
+    #[error("UTF-8 error: `{0}`")]
+    FromUtf8Error(#[from] FromUtf8Error),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for KeyHandleError {
     fn error_code(&self) -> ErrorCode {
-        ErrorCode::BR_0201
+        match self {
+            Self::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0201,
+        }
     }
 }
 
@@ -114,14 +122,14 @@ impl KeyHandle {
             Self::SignatureOnly(value) => {
                 value
                     .private()
-                    .ok_or(SignerError::MissingKey)?
+                    .ok_or(KeyHandleError::OperationNotSupported)?
                     .sign(message)
                     .await
             }
             Self::SignatureAndKeyAgreement { signature, .. } => {
                 signature
                     .private()
-                    .ok_or(SignerError::MissingKey)?
+                    .ok_or(KeyHandleError::OperationNotSupported)?
                     .sign(message)
                     .await
             }
@@ -129,7 +137,7 @@ impl KeyHandle {
                 let input = parse_bbs_input(message);
                 value
                     .private()
-                    .ok_or(SignerError::MissingKey)?
+                    .ok_or(KeyHandleError::OperationNotSupported)?
                     .sign(input.header, input.messages)
             }
             Self::KeyAgreementOnly(_) => Err(KeyHandleError::OperationNotSupported),

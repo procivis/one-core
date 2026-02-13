@@ -13,6 +13,7 @@ use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCNonceParams;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::service::error::ServiceError;
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
@@ -115,9 +116,9 @@ struct HS256Signer {
 
 #[async_trait::async_trait]
 impl SignatureProvider for HS256Signer {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
         utilities::create_hmac(self.signing_key.expose_secret(), message)
-            .ok_or(SignerError::CouldNotSign("HMAC failure".to_string()))
+            .ok_or(SignerError::CouldNotSign("HMAC failure".to_string()).into())
     }
 
     fn get_key_id(&self) -> Option<String> {

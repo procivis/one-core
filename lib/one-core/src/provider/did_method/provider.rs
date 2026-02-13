@@ -178,7 +178,7 @@ pub(crate) fn did_method_provider_from_config(
             core_base_url.clone(),
             client.clone(),
             intermediary_provider.clone(),
-            Some(key_provider.clone()),
+            key_provider.clone(),
         );
         did_methods.insert(name, Arc::new(did_webvh));
     }

@@ -1,5 +1,5 @@
-use one_core::provider::did_method::error::{DidMethodError, DidMethodProviderError};
-use one_core::service::error::{MissingProviderError, ServiceError};
+use one_core::error::{ErrorCode, ErrorCodeMixin};
+use one_core::service::error::ServiceError;
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 
@@ -29,23 +29,14 @@ pub struct VcApiErrorRestDTO {
 impl From<ServiceError> for VcApiError {
     fn from(value: ServiceError) -> Self {
         match value {
-            ServiceError::MissingProvider(MissingProviderError::DidMethod(e)) => {
-                Self::DidResolverError(DidResolverError::MethodNotSupported(e))
+            error if matches!(error.error_code(), ErrorCode::BR_0363 | ErrorCode::BR_0031) => {
+                Self::DidResolverError(DidResolverError::MethodNotSupported(error.to_string()))
             }
-            ServiceError::DidMethodProviderError(e) => match e {
-                DidMethodProviderError::MissingProvider(e) => {
-                    Self::DidResolverError(DidResolverError::MethodNotSupported(e))
+            error if error.error_code() == ErrorCode::BR_0364 => match error.to_string() {
+                m if m.contains("Unsupported key") => {
+                    Self::DidResolverError(DidResolverError::InvalidPublicKeyLength(m))
                 }
-                DidMethodProviderError::DidMethod(DidMethodError::ResolutionError(m)) => match m {
-                    _ if m.contains("Unsupported key") => {
-                        Self::DidResolverError(DidResolverError::InvalidPublicKeyLength(m))
-                    }
-                    _ => Self::DidResolverError(DidResolverError::InvalidDid(m)),
-                },
-                DidMethodProviderError::DidMethod(e) => {
-                    Self::DidResolverError(DidResolverError::InvalidDid(e.to_string()))
-                }
-                _ => Self::UnmappedError(e.to_string()),
+                m => Self::DidResolverError(DidResolverError::InvalidDid(m)),
             },
             _ => Self::UnmappedError(value.to_string()),
         }

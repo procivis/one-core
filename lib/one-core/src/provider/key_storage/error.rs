@@ -37,6 +37,8 @@ pub enum KeyStorageError {
     UnsupportedKeyType { key_type: String },
     #[error("Unsupported feature: `{feature}`")]
     UnsupportedFeature { feature: Features },
+    #[error("Missing key reference")]
+    MissingKeyReference,
 
     #[error("Encryption error: `{0}`")]
     Encryption(#[from] EncryptionError),

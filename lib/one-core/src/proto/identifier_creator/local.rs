@@ -293,7 +293,8 @@ impl IdentifierCreatorProto {
 
         let did_value = did_method
             .create(Some(new_did_id), &request.params, Some(keys.clone()))
-            .await?;
+            .await
+            .error_while("creating DID")?;
 
         if let Some(update_keys) = update_keys {
             for key in update_keys {
@@ -307,7 +308,9 @@ impl IdentifierCreatorProto {
 
         let mut key_reference_mapping: HashMap<KeyId, String> = HashMap::new();
         for key in all_keys {
-            let reference = did_method.get_reference_for_key(&key)?;
+            let reference = did_method
+                .get_reference_for_key(&key)
+                .error_while("getting DID key reference")?;
             key_reference_mapping.insert(key.id, reference);
         }
 

@@ -12,6 +12,7 @@ use shared_types::{DidId, DidValue};
 use super::common::expect_one_key;
 use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
@@ -20,6 +21,7 @@ use crate::provider::did_method::jwk::jwk_helpers::{
 };
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct JWKDidMethod {
@@ -42,22 +44,29 @@ impl DidMethod for JWKDidMethod {
         _params: &Option<serde_json::Value>,
         keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
-        let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
+        let keys = keys.ok_or(DidMethodError::CreationError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
         let key_algorithm_type = key
             .key_algorithm_type()
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                key.key_type.to_owned(),
+            ))
+            .error_while("getting key algorithm")?;
 
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(key_algorithm_type)
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                key_algorithm_type.to_string(),
+            ))
+            .error_while("getting key algorithm")?;
+
         let jwk = key_algorithm
             .reconstruct_key(&key.public_key, None, None)
-            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?
+            .error_while("reconstructing key")?
             .public_key_as_jwk()
-            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
+            .error_while("getting JWK")?;
 
         encode_to_did(&jwk).map(|did| DidCreated { did, log: None })
     }
@@ -73,7 +82,7 @@ impl DidMethod for JWKDidMethod {
         _keys: DidKeys,
         _log: Option<String>,
     ) -> Result<DidUpdate, DidMethodError> {
-        Err(DidMethodError::NotSupported)
+        Err(DidMethodError::OperationNotSupported)
     }
 
     fn get_capabilities(&self) -> DidCapabilities {

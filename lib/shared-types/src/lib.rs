@@ -38,7 +38,7 @@ pub use credential_format::CredentialFormat;
 pub use credential_id::CredentialId;
 pub use credential_schema_id::CredentialSchemaId;
 pub use did_id::DidId;
-pub use did_value::DidValue;
+pub use did_value::{DidValue, DidValueError};
 pub use entity_id::EntityId;
 pub use history_id::HistoryId;
 pub use holder_wallet_unit_id::HolderWalletUnitId;

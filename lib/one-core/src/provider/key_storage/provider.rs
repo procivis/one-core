@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_crypto::{CryptoProvider, SignerError};
+use one_crypto::CryptoProvider;
 use serde_json::json;
 
 use super::KeyStorage;
@@ -19,6 +19,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -93,11 +94,8 @@ pub(crate) struct AttestationSignatureProvider {
 
 #[async_trait::async_trait]
 impl SignatureProvider for SignatureProviderImpl {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        self.key_handle
-            .sign(message)
-            .await
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
+        Ok(self.key_handle.sign(message).await.error_while("signing")?)
     }
 
     fn get_key_id(&self) -> Option<String> {
@@ -124,11 +122,12 @@ impl SignatureProvider for SignatureProviderImpl {
 
 #[async_trait::async_trait]
 impl SignatureProvider for AttestationSignatureProvider {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        self.key_storage
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
+        Ok(self
+            .key_storage
             .sign_with_attestation_key(&self.key, message)
             .await
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))
+            .error_while("signing with attestation key")?)
     }
 
     fn get_key_id(&self) -> Option<String> {

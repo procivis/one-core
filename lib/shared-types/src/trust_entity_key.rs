@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ use crate::macros::{impl_display, impl_from, impl_into};
 pub struct TrustEntityKey(String);
 
 impl FromStr for TrustEntityKey {
-    type Err = anyhow::Error;
+    type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(TrustEntityKey(s.to_string()))

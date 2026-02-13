@@ -3,6 +3,7 @@ use one_crypto::SignerError;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 
 use crate::provider::credential_formatter::model::SignatureProvider;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 
 /// Adaptation of the [`coset::CoseSign1Builder`] to allow signing with async signer
 #[derive(Debug, Default)]
@@ -48,11 +49,11 @@ impl CoseSign1Builder {
     }
 
     /// Any protected header values should be set before using this method.
-    pub async fn try_create_signature_with_provider(
+    pub(crate) async fn try_create_signature_with_provider(
         self,
         external_aad: &[u8],
         signer: &dyn SignatureProvider,
-    ) -> Result<Self, SignerError> {
+    ) -> Result<Self, KeyAlgorithmError> {
         let sig_data = coset::sig_structure_data(
             SignatureContext::CoseSign1,
             self.0.protected.clone(),
@@ -65,16 +66,17 @@ impl CoseSign1Builder {
         Ok(self.signature(sig_data))
     }
 
-    pub async fn try_create_detached_signature_with_provider(
+    pub(crate) async fn try_create_detached_signature_with_provider(
         self,
         payload: &[u8],
         external_aad: &[u8],
         signer: &dyn SignatureProvider,
-    ) -> Result<Self, SignerError> {
+    ) -> Result<Self, KeyAlgorithmError> {
         if self.0.payload.is_some() {
             return Err(SignerError::CouldNotSign(
                 "For detached mode payload should not be set".to_string(),
-            ));
+            )
+            .into());
         }
 
         let sig_data = coset::sig_structure_data(

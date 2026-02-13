@@ -1,6 +1,8 @@
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::presentation_formatter::jwt_vp_json::model::{VP, VerifiableCredential};
 use crate::provider::presentation_formatter::model::ExtractedPresentation;
 
@@ -32,7 +34,8 @@ impl TryFrom<Jwt<VP>> for ExtractedPresentation {
             (Some(issuer), None) => IdentifierDetails::Did(
                 issuer
                     .parse()
-                    .map_err(|e: anyhow::Error| Self::Error::CouldNotVerify(e.to_string()))?,
+                    .map_err(DidMethodError::DidValueError)
+                    .error_while("parsing issuer DID")?,
             ),
             (None, None) => {
                 return Err(FormatterError::MissingIssuer);

@@ -56,8 +56,8 @@ async fn test_fail_to_resolve_invalid_did_jwk() {
     let resp = context.api.did_resolvers.resolve("did:jwk:1").await;
 
     // THEN
-    assert_eq!(resp.status(), 500);
-    assert_eq!("BR_0064", resp.error_code().await);
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0363", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -114,8 +114,8 @@ async fn test_fail_to_resolve_invalid_did_key() {
     let resp = context.api.did_resolvers.resolve("did:key:1").await;
 
     // THEN
-    assert_eq!(resp.status(), 500);
-    assert_eq!("BR_0064", resp.error_code().await);
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0363", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -190,8 +190,8 @@ async fn test_fail_to_resolve_invalid_did_universal_document() {
     let resp = context.api.did_resolvers.resolve(did).await;
 
     // THEN
-    assert_eq!(resp.status(), 500);
-    assert_eq!("BR_0064", resp.error_code().await);
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0363", resp.error_code().await);
 }
 
 #[tokio::test]

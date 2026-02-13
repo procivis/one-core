@@ -33,6 +33,7 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
@@ -394,7 +395,8 @@ impl CredentialFormatter for JWTFormatter {
             .issuer
             .ok_or(FormatterError::Failed("JWT missing issuer".to_string()))?
             .parse()
-            .map_err(|e: anyhow::Error| FormatterError::Failed(e.to_string()))?;
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing issuer DID")?;
 
         let issuer_identifier = prepare_identifier(
             &IdentifierDetails::Did(issuer),

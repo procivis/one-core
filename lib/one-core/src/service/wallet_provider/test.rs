@@ -2,8 +2,8 @@ use std::ops::{Add, Sub};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_crypto::Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
-use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::IdentifierId;
@@ -28,6 +28,7 @@ use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
@@ -456,8 +457,8 @@ struct FakeEcdsaSigner {
 
 #[async_trait]
 impl SignatureProvider for FakeEcdsaSigner {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        ECDSASigner {}.sign(message, &self.public_key, &self.private_key)
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
+        Ok(ECDSASigner.sign(message, &self.public_key, &self.private_key)?)
     }
 
     fn get_key_id(&self) -> Option<String> {

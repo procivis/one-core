@@ -8,7 +8,6 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::did_method::error::DidMethodError;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
@@ -88,9 +87,6 @@ pub(crate) enum Error {
     #[error("Certificate missing common name")]
     MissingCertificateCommonName,
 
-    #[error("DID method error: `{0}`")]
-    DidMethodError(#[from] DidMethodError),
-
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -107,7 +103,6 @@ impl ErrorCodeMixin for Error {
             Self::InvalidCertificateAuthorityIdentifierInput => ErrorCode::BR_0331,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::MissingCertificateCommonName => ErrorCode::BR_0224,
-            Self::DidMethodError(_) => ErrorCode::BR_0064,
             Self::Nested(nested) => nested.error_code(),
         }
     }

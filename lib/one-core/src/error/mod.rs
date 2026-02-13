@@ -800,6 +800,15 @@ pub enum ErrorCode {
 
     #[strum(message = "Key storage operation not supported")]
     BR_0361,
+
+    #[strum(message = "DID resolution failed")]
+    BR_0363,
+
+    #[strum(message = "Invalid DID value")]
+    BR_0364,
+
+    #[strum(message = "DID operation not supported")]
+    BR_0365,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

@@ -8,6 +8,7 @@ use super::common::{
     CRYPTOSUITE, DidLogParameters, canonicalize_multihash_encode, multihash_b58_encode, now_utc,
 };
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::did_method::dto::DidVerificationMethodDTO;
 use crate::provider::did_method::error::DidMethodError;
@@ -70,14 +71,10 @@ async fn create_with_options(
         .iter()
         .map(|key| {
             let key_ref = common::make_keyref(key, key_provider)?;
-            let hash = SHA256.hash(key_ref.multibase.as_bytes()).map_err(|err| {
-                DidMethodError::CouldNotCreate(format!("Failed to hash next key: {err}"))
-            })?;
-
-            multihash_b58_encode(&hash)
-                .map_err(|err| DidMethodError::CouldNotCreate(format!("{err:#}")))
+            let hash = SHA256.hash(key_ref.multibase.as_bytes())?;
+            Ok(multihash_b58_encode(&hash)?)
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, DidMethodError>>()?;
 
     let parameters = DidLogParameters {
         method: Some(DidMethodVersion::V3),
@@ -115,12 +112,8 @@ async fn create_with_options(
     .await?;
     log.proof = vec![proof];
 
-    let line = serde_json::to_string(&log).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("Failed serializing did log: {err}"))
-    })?;
-    let did = log.state.value.id.parse().map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("Failed parsing webvh did as did value: {err:#}"))
-    })?;
+    let line = serde_json::to_string(&log)?;
+    let did = log.state.value.id.parse()?;
 
     Ok((did, line))
 }
@@ -128,7 +121,7 @@ async fn create_with_options(
 fn check_keys(keys: &UpdateKeys<'_>) -> Result<(), DidMethodError> {
     for key in std::iter::once(keys.active).chain(keys.next) {
         if key.key_type != KeyAlgorithmType::Eddsa.as_ref() {
-            return Err(DidMethodError::CouldNotCreate(format!(
+            return Err(DidMethodError::CreationError(format!(
                 "invalid key type `{}`. expected EDDSA key for cryptosuite {CRYPTOSUITE}",
                 key.key_type,
             )));
@@ -223,9 +216,7 @@ fn create_verification_method(
     did: String,
     key_handle: &KeyHandle,
 ) -> Result<DidVerificationMethodDTO, DidMethodError> {
-    let public_key_jwk = key_handle.public_key_as_jwk().map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("Cannot convert PK to JWK: {err}"))
-    })?;
+    let public_key_jwk = key_handle.public_key_as_jwk().error_while("getting JWK")?;
 
     Ok(DidVerificationMethodDTO {
         id,
@@ -242,16 +233,7 @@ fn replace_scid(mut entry: DidLogEntry, scid: String) -> Result<DidLogEntry, Did
     {
         let did_doc = &mut entry.state.value;
         // replace in document id
-        did_doc.id = did_doc
-            .id
-            .as_str()
-            .replace(SCID_PLACEHOLDER, &scid)
-            .parse()
-            .map_err(|err| {
-                DidMethodError::CouldNotCreate(format!(
-                    "Invalid did:webvh after replacing SCID: {err}"
-                ))
-            })?;
+        did_doc.id = did_doc.id.as_str().replace(SCID_PLACEHOLDER, &scid);
 
         // replace verification id for each key role
         for v in did_doc

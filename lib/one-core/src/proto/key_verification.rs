@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use one_crypto::SignerError;
 use shared_types::DidValue;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -14,6 +13,7 @@ use crate::proto::certificate_validator::{
 use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -31,12 +31,12 @@ impl KeyVerification {
         issuer_did_value: &DidValue,
         issuer_key_id: Option<&str>,
         algorithm: KeyAlgorithmType,
-    ) -> Result<KeyHandle, SignerError> {
+    ) -> Result<KeyHandle, TokenError> {
         let did_document = self
             .did_method_provider
             .resolve(issuer_did_value)
             .await
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+            .error_while("resolving DID")?;
 
         let key_id_list = match &self.key_role {
             KeyRole::Authentication => did_document.authentication,
@@ -46,12 +46,17 @@ impl KeyVerification {
             KeyRole::CapabilityDelegation => did_document.capability_delegation,
             KeyRole::UpdateKey => None,
         }
-        .ok_or(SignerError::MissingKey)?;
+        .ok_or(TokenError::ValidationFailed(format!(
+            "missing key for role: {}",
+            self.key_role
+        )))?;
 
         let method_id = if let Some(issuer_key_id) = issuer_key_id {
             issuer_key_id
         } else {
-            key_id_list.first().ok_or(SignerError::MissingKey)?
+            key_id_list
+                .first()
+                .ok_or(TokenError::ValidationFailed("Missing keyId".to_string()))?
         };
 
         tracing::debug!("Verification method_id: {method_id}");
@@ -59,23 +64,26 @@ impl KeyVerification {
             .verification_method
             .into_iter()
             .find(|method| method.id == method_id)
-            .ok_or(SignerError::MissingKey)?;
+            .ok_or(TokenError::ValidationFailed(format!(
+                "missing verification method: {method_id}"
+            )))?;
         let alg = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)
-            .ok_or(SignerError::CouldNotVerify(format!(
-                "Invalid algorithm: {algorithm}"
-            )))?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                algorithm.to_string(),
+            ))
+            .error_while("getting key algorithm")?;
 
         let public_key = alg
             .parse_jwk(&method.public_key_jwk)
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+            .error_while("parsing JWK")?;
         Ok(public_key)
     }
 
-    async fn public_key_from_cert(&self, x5c: &[String]) -> Result<KeyHandle, SignerError> {
+    async fn public_key_from_cert(&self, x5c: &[String]) -> Result<KeyHandle, TokenError> {
         let pem_chain = x5c_into_pem_chain(x5c).map_err(|err| {
-            SignerError::CouldNotVerify(format!("failed to parse x5c header param: {err}"))
+            TokenError::ValidationFailed(format!("failed to parse x5c header param: {err}"))
         })?;
 
         let ParsedCertificate { public_key, .. } = self
@@ -85,9 +93,7 @@ impl KeyVerification {
                 CertificateValidationOptions::signature_and_revocation(None),
             )
             .await
-            .map_err(|err| {
-                SignerError::CouldNotVerify(format!("failed to parse certificate chain: {err}"))
-            })?;
+            .error_while("parsing PEM chain")?;
         Ok(public_key)
     }
 }
@@ -103,20 +109,20 @@ impl TokenVerifier for KeyVerification {
     ) -> Result<(), TokenError> {
         let public_key = match public_key_source {
             PublicKeySource::Did { did, key_id } => {
-                self.public_key_from_did(&did, key_id, algorithm).await
+                self.public_key_from_did(&did, key_id, algorithm).await?
             }
-            PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await,
+            PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await?,
             PublicKeySource::Jwk { jwk } => {
                 let alg = self
                     .key_algorithm_provider
                     .key_algorithm_from_type(algorithm)
-                    .ok_or(SignerError::CouldNotVerify(format!(
-                        "Invalid algorithm: {algorithm}"
-                    )))?;
-                alg.parse_jwk(&jwk)
-                    .map_err(|e| SignerError::CouldNotVerify(e.to_string()))
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        algorithm.to_string(),
+                    ))
+                    .error_while("getting key algorithm")?;
+                alg.parse_jwk(&jwk).error_while("parsing JWK")?
             }
-        }?;
+        };
         Ok(public_key
             .verify(token, signature)
             .error_while("verifying signature")?)
@@ -132,14 +138,15 @@ mod test {
     use std::borrow::Cow;
 
     use mockall::predicate::*;
+    use one_crypto::SignerError;
     use serde_json::json;
     use similar_asserts::assert_eq;
     use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 
     use super::*;
-    use crate::error::{ErrorCode, ErrorCodeMixin};
+    use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
     use crate::proto::certificate_validator::MockCertificateValidator;
-    use crate::provider::did_method::error::DidMethodProviderError;
+    use crate::provider::did_method::error::DidMethodError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -242,10 +249,11 @@ mod test {
     #[tokio::test]
     async fn test_verify_did_resolution_failed() {
         let mut did_method_provider = MockDidMethodProvider::default();
-        did_method_provider
-            .expect_resolve()
-            .once()
-            .returning(|_| Err(DidMethodProviderError::Other("test-error".to_string())));
+        did_method_provider.expect_resolve().once().returning(|_| {
+            Err(DidMethodError::ResolutionError("test-error".to_string())
+                .error_while("resolving did")
+                .into())
+        });
 
         let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
@@ -269,10 +277,7 @@ mod test {
                 b"signature",
             )
             .await;
-        assert!(matches!(
-            result,
-            Err(TokenError::SignerError(SignerError::CouldNotVerify(_)))
-        ));
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0363);
     }
 
     #[tokio::test]

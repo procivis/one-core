@@ -1,8 +1,6 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
-use one_core::provider::did_method::error::DidMethodProviderError;
-use one_core::service::error::{MissingProviderError, ServiceError};
 use shared_types::DidValue;
 
 use super::dto::{
@@ -61,17 +59,6 @@ pub(crate) async fn resolve_identifier(
     state: State<AppState>,
     WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, VcApiError>,
 ) -> VcApiResponse<DidDocumentResolutionResponseDTO> {
-    let result = state
-        .core
-        .did_service
-        .resolve_did(&did_value)
-        .await
-        .map_err(|e| match e {
-            DidMethodProviderError::MissingProvider(e) => {
-                ServiceError::MissingProvider(MissingProviderError::DidMethod(e))
-            }
-            _ => ServiceError::DidMethodProviderError(e),
-        });
-
+    let result = state.core.did_service.resolve_did(&did_value).await;
     VcApiResponse::ok(result)
 }

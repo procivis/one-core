@@ -1,10 +1,10 @@
-use anyhow::Context;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use time::OffsetDateTime;
 
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::error::DidMethodError;
@@ -12,6 +12,7 @@ use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
 use crate::provider::did_method::webvh::serialize::DidLogEntry;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::service::error::MissingProviderError;
 
 pub(super) const CRYPTOSUITE: &str = "eddsa-jcs-2022";
 
@@ -45,19 +46,15 @@ pub fn canonicalized_hash(mut data: json_syntax::Value) -> Result<Vec<u8>, DidMe
     })
 }
 
-pub fn multihash_b58_encode(input: &[u8]) -> Result<String, anyhow::Error> {
-    let multihash =
-        multihash::Multihash::<32>::wrap(0x12, input).context("Failed to create multihash")?;
-
+pub fn multihash_b58_encode(input: &[u8]) -> Result<String, multihash::Error> {
+    let multihash = multihash::Multihash::<32>::wrap(0x12, input)?;
     Ok(bs58::encode(multihash.to_bytes()).into_string())
 }
 
 pub(super) fn canonicalize_multihash_encode(log: impl Serialize) -> Result<String, DidMethodError> {
-    let json = json_syntax::to_value(log)
-        .map_err(|err| DidMethodError::CouldNotCreate(format!("failed serializing log: {err}")))?;
+    let json = json_syntax::to_value(log)?;
     let hash = canonicalized_hash(json)?;
-
-    multihash_b58_encode(&hash).map_err(|err| DidMethodError::CouldNotCreate(format!("{err:#}")))
+    Ok(multihash_b58_encode(&hash)?)
 }
 
 pub(super) fn now_utc() -> OffsetDateTime {
@@ -75,20 +72,18 @@ pub(crate) fn make_keyref(
     key: &Key,
     key_provider: &dyn KeyProvider,
 ) -> Result<KeyRef, DidMethodError> {
-    let Some(storage) = key_provider.get_key_storage(&key.storage_type) else {
-        return Err(DidMethodError::CouldNotCreate(format!(
-            "missing key storage for storage type: {}",
-            key.storage_type
-        )));
-    };
+    let storage = key_provider
+        .get_key_storage(&key.storage_type)
+        .ok_or(MissingProviderError::KeyStorage(
+            key.storage_type.to_string(),
+        ))
+        .error_while("getting key storage")?;
 
-    let key_handle = storage.key_handle(key).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed getting key handle for key: {err}"))
-    })?;
+    let key_handle = storage.key_handle(key).error_while("getting key handle")?;
 
-    let multibase = key_handle.public_key_as_multibase().map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed converting key to multibase: {err}"))
-    })?;
+    let multibase = key_handle
+        .public_key_as_multibase()
+        .error_while("getting key multibase")?;
 
     Ok(KeyRef {
         multibase,
@@ -110,14 +105,10 @@ pub(crate) async fn build_proof(
         .verification_method(verification_method)
         .build();
 
-    let json = json_syntax::to_value(&proof).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed serializing proof: {err}"))
-    })?;
+    let json = json_syntax::to_value(&proof)?;
     let mut proof_hash = canonicalized_hash(json)?;
 
-    let json = json_syntax::to_value(&log.state.value).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("failed serializing did doc: {err}"))
-    })?;
+    let json = json_syntax::to_value(&log.state.value)?;
     let did_doc_hash = canonicalized_hash(json)?;
     proof_hash.extend(did_doc_hash);
 
@@ -129,7 +120,7 @@ pub(crate) async fn build_proof(
             let encoded = bs58::encode(s).into_string();
             format!("z{encoded}")
         })
-        .map_err(|err| DidMethodError::CouldNotCreate(format!("failed signing did log: {err}")))?;
+        .error_while("signing")?;
 
     proof.proof_value = Some(proof_value);
 

@@ -3,19 +3,20 @@
 
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
 use super::common::expect_one_key;
 use super::{DidCreated, DidKeys, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
+use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use crate::provider::did_method::{DidMethod, key_helpers};
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct KeyDidMethod {
@@ -38,30 +39,25 @@ impl DidMethod for KeyDidMethod {
         _params: &Option<serde_json::Value>,
         keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
-        let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
+        let keys = keys.ok_or(DidMethodError::CreationError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
         let multibase = self.get_multibase(key)?;
+        let did = format!("did:key:{multibase}").parse()?;
 
-        format!("did:key:{multibase}")
-            .parse()
-            .map(|did| DidCreated { did, log: None })
-            .context("did parsing error")
-            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
+        Ok(DidCreated { did, log: None })
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {
         let decoded = decode_did(did_value)?;
-        let key_type = match decoded.type_ {
-            key_helpers::DidKeyType::Eddsa => KeyAlgorithmType::Eddsa,
-            key_helpers::DidKeyType::Ecdsa => KeyAlgorithmType::Ecdsa,
-            key_helpers::DidKeyType::Bbs => KeyAlgorithmType::BbsPlus,
-        };
 
         let jwk = self
             .key_algorithm_provider
-            .key_algorithm_from_type(key_type)
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?
+            .key_algorithm_from_type(decoded.r#type)
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                decoded.r#type.to_string(),
+            ))
+            .error_while("getting key algorithm")?
             .reconstruct_key(&decoded.decoded_multibase, None, None)
             .map_err(|err| {
                 DidMethodError::ResolutionError(format!(
@@ -75,7 +71,7 @@ impl DidMethod for KeyDidMethod {
                 ))
             })?;
 
-        generate_document(decoded, did_value, jwk)
+        Ok(generate_document(decoded, did_value, jwk))
     }
 
     async fn deactivate(
@@ -84,7 +80,7 @@ impl DidMethod for KeyDidMethod {
         _keys: DidKeys,
         _log: Option<String>,
     ) -> Result<DidUpdate, DidMethodError> {
-        Err(DidMethodError::NotSupported)
+        Err(DidMethodError::OperationNotSupported)
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
@@ -118,17 +114,23 @@ impl KeyDidMethod {
     fn get_multibase(&self, key: &Key) -> Result<String, DidMethodError> {
         let key_algorithm_type = key
             .key_algorithm_type()
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                key.key_type.to_string(),
+            ))
+            .error_while("getting key algorithm")?;
 
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(key_algorithm_type)
-            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                key_algorithm_type.to_string(),
+            ))
+            .error_while("getting key algorithm")?;
         let multibase = key_algorithm
             .reconstruct_key(&key.public_key, None, None)
-            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
+            .error_while("reconstructing key")?
             .public_key_as_multibase()
-            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+            .error_while("getting multibase")?;
         Ok(multibase)
     }
 }

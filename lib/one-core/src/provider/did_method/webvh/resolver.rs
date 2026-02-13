@@ -47,7 +47,7 @@ pub async fn resolve(
 
             Ok((entry, line))
         })
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<_, DidMethodError>>()?;
 
     verify_did_log(&entries, did_method_provider, params).await?;
 
@@ -460,7 +460,11 @@ mod test {
                 "Failed resolving did! Did log file: {file_name}"
             );
             let expected_error = *expected_errors.get(&file_name as &str).as_ref().unwrap();
-            assert_eq!(&error, expected_error, "Failed for file: {file_name}");
+            assert_eq!(
+                error.to_string(),
+                expected_error.to_string(),
+                "Failed for file: {file_name}"
+            );
         })
         .await;
     }

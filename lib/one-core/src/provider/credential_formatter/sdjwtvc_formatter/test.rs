@@ -1093,9 +1093,9 @@ fn test_auth_fn(key_pair: KeyPair, issuer_did: DidValue) -> MockSignatureProvide
     let mut auth_fn = MockSignatureProvider::new();
     let public_key = key_pair.public.clone();
     let private_key = key_pair.private.clone();
-    auth_fn
-        .expect_sign()
-        .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
+    auth_fn.expect_sign().returning(move |msg| {
+        Ok(EDDSASigner.sign(msg, &public_key.clone(), &private_key.clone())?)
+    });
     auth_fn
         .expect_get_key_id()
         .returning(move || Some(format!("{issuer_did}#0")));
@@ -1359,10 +1359,8 @@ fn formatter_for_params(
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256 {}) as Arc<dyn Hasher>
     };
-    let signers = hashmap! {
-        "Ed25519".to_string() => Arc::new(EDDSASigner {}) as Arc<dyn Signer>,
-    };
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
+
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -1423,7 +1421,7 @@ async fn test_parse_credential_eudi() {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
     };
 
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
 
     let mut certificate_validator = MockCertificateValidator::new();
     certificate_validator
@@ -1718,7 +1716,7 @@ async fn test_parse_credential() {
         RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
     });
 
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
 
     let mut datatype_provider = MockDataTypeProvider::new();
     // Set up expectations for all claim extractions
@@ -1901,7 +1899,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
     };
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
     let formatter = SDJWTVCFormatter::new(
         params,
         crypto,
@@ -1950,7 +1948,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
     };
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
     let formatter = SDJWTVCFormatter::new(
         params,
         crypto,

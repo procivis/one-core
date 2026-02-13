@@ -16,10 +16,6 @@ use sha2::Sha256;
 use thiserror::Error;
 
 use crate::hasher::sha256::SHA256;
-use crate::signer::bbs::BBSSigner;
-use crate::signer::ecdsa::ECDSASigner;
-use crate::signer::eddsa::EDDSASigner;
-use crate::signer::ml_dsa::MlDsaSigner;
 
 pub mod encryption;
 pub mod hasher;
@@ -37,15 +33,11 @@ mod test;
 #[derive(Clone)]
 pub struct CryptoProviderImpl {
     hashers: HashMap<String, Arc<dyn Hasher>>,
-    signers: HashMap<String, Arc<dyn Signer>>,
 }
 
 impl CryptoProviderImpl {
-    pub fn new(
-        hashers: HashMap<String, Arc<dyn Hasher>>,
-        signers: HashMap<String, Arc<dyn Signer>>,
-    ) -> Self {
-        Self { hashers, signers }
+    pub fn new(hashers: HashMap<String, Arc<dyn Hasher>>) -> Self {
+        Self { hashers }
     }
 }
 
@@ -57,22 +49,12 @@ impl CryptoProvider for CryptoProviderImpl {
             .ok_or(CryptoProviderError::MissingHasher(hasher.to_owned()))?
             .clone())
     }
-
-    fn get_signer(&self, signer: &str) -> Result<Arc<dyn Signer>, CryptoProviderError> {
-        Ok(self
-            .signers
-            .get(signer)
-            .ok_or(CryptoProviderError::MissingHasher(signer.to_owned()))?
-            .clone())
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Error, Clone)]
 pub enum CryptoProviderError {
     #[error("Missing hasher: `{0}`")]
     MissingHasher(String),
-    #[error("Missing signer: `{0}`")]
-    MissingSigner(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
@@ -101,12 +83,6 @@ pub enum SignerError {
     CouldNotVerify(String),
     #[error("Invalid signature")]
     InvalidSignature,
-    #[error("Missing algorithm `{0}`")]
-    MissingAlgorithm(String),
-    #[error("Missing key")]
-    MissingKey,
-    #[error("Missing key reference")]
-    MissingKeyReference,
 }
 
 /// Provides hashing.
@@ -145,23 +121,10 @@ pub trait Signer: Send + Sync {
 pub trait CryptoProvider: Send + Sync {
     /// Returns hasher instance.
     fn get_hasher(&self, hasher: &str) -> Result<Arc<dyn Hasher>, CryptoProviderError>;
-
-    /// Returns signer instance.
-    fn get_signer(&self, signer: &str) -> Result<Arc<dyn Signer>, CryptoProviderError>;
 }
 
 pub fn initialize_crypto_provider() -> Arc<dyn CryptoProvider> {
     let hashers: Vec<(String, Arc<dyn Hasher>)> = vec![("sha-256".to_string(), Arc::new(SHA256))];
 
-    let signers: Vec<(String, Arc<dyn Signer>)> = vec![
-        ("Ed25519".to_string(), Arc::new(EDDSASigner)),
-        ("ECDSA".to_string(), Arc::new(ECDSASigner)),
-        ("ML_DSA".to_string(), Arc::new(MlDsaSigner)),
-        ("BBS".to_string(), Arc::new(BBSSigner)),
-    ];
-
-    Arc::new(CryptoProviderImpl::new(
-        HashMap::from_iter(hashers),
-        HashMap::from_iter(signers),
-    ))
+    Arc::new(CryptoProviderImpl::new(HashMap::from_iter(hashers)))
 }

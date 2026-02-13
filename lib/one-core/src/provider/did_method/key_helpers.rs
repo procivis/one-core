@@ -1,24 +1,18 @@
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::did_method::common::{jwk_context, jwk_verification_method};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum DidKeyType {
-    Eddsa,
-    Ecdsa,
-    Bbs,
-}
-
-pub struct DecodedDidKey {
+pub(crate) struct DecodedDidKey {
     pub multibase: String,
     pub decoded_multibase: Vec<u8>,
-    pub type_: DidKeyType,
+    pub r#type: KeyAlgorithmType,
 }
 
-pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
+pub(crate) fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
     let tail = did
         .as_str()
         .strip_prefix("did:key:")
@@ -34,13 +28,13 @@ pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
         DidMethodError::ResolutionError(format!("Invalid did key multibase suffix: {err}"))
     })?;
 
-    let type_ = match decoded
+    let r#type = match decoded
         .get(0..2)
         .ok_or_else(|| DidMethodError::ResolutionError("Invalid did key multibase".to_string()))?
     {
-        [0xed, 0x1] => DidKeyType::Eddsa,
-        [0x80, 0x24] => DidKeyType::Ecdsa,
-        [0xeb, 0x01] => DidKeyType::Bbs,
+        [0xed, 0x1] => KeyAlgorithmType::Eddsa,
+        [0x80, 0x24] => KeyAlgorithmType::Ecdsa,
+        [0xeb, 0x01] => KeyAlgorithmType::BbsPlus,
         _ => {
             return Err(DidMethodError::ResolutionError(
                 "Unsupported key algorithm".to_string(),
@@ -57,22 +51,22 @@ pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
     Ok(DecodedDidKey {
         multibase: tail.into(),
         decoded_multibase: decoded_without_multibase_prefix,
-        type_,
+        r#type,
     })
 }
 
-pub fn generate_document(
+pub(crate) fn generate_document(
     decoded: DecodedDidKey,
     did: &DidValue,
     public_key_jwk: PublicJwk,
-) -> Result<DidDocument, DidMethodError> {
+) -> DidDocument {
     let verification_method = jwk_verification_method(
         format!("{}#{}", did, decoded.multibase),
         did,
         public_key_jwk,
     );
 
-    Ok(DidDocument {
+    DidDocument {
         context: jwk_context(),
         id: did.clone(),
         authentication: Some(vec![verification_method.id.clone()]),
@@ -83,5 +77,5 @@ pub fn generate_document(
         verification_method: vec![verification_method],
         also_known_as: None,
         service: None,
-    })
+    }
 }

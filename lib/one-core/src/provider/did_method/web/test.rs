@@ -143,7 +143,10 @@ async fn test_did_web_create_fail_no_base_url() {
 
     let result = did_web_method.create(Some(id), &None, None).await;
 
-    assert!(matches!(result, Err(DidMethodError::CouldNotCreate(_))))
+    assert!(matches!(
+        result,
+        Err(DidMethodError::InitializationError(_))
+    ))
 }
 
 #[tokio::test]

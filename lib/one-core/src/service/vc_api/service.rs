@@ -107,7 +107,8 @@ impl VCAPIService {
         let assertion_methods = self
             .did_method_provider
             .resolve(&issuer_did_value)
-            .await?
+            .await
+            .error_while("resolving DID")?
             .assertion_method
             .ok_or(ServiceError::MappingError(
                 "Missing assertion_method".to_owned(),

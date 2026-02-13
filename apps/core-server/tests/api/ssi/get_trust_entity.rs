@@ -11,9 +11,10 @@ use one_core::provider::credential_formatter::model::SignatureProvider;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::{DidKeys, DidMethod};
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use one_core::provider::key_algorithm::error::KeyAlgorithmError;
 use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_crypto::Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
-use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
 use similar_asserts::assert_eq;
@@ -92,8 +93,8 @@ struct FakeEcdsaSigner {
 
 #[async_trait]
 impl SignatureProvider for FakeEcdsaSigner {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        ECDSASigner {}.sign(message, &self.public_key, &self.private_key)
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
+        Ok(ECDSASigner.sign(message, &self.public_key, &self.private_key)?)
     }
 
     fn get_key_id(&self) -> Option<String> {

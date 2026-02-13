@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use serde::Deserialize;
 use shared_types::{DidId, DidValue};
@@ -40,12 +39,13 @@ impl WebDidMethod {
         params: Params,
     ) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
-            let url =
-                Url::parse(base_url).map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
+            let url = Url::parse(base_url)?;
 
             let mut host_str = url
                 .host_str()
-                .ok_or(DidMethodError::CouldNotCreate("Missing host".to_string()))?
+                .ok_or(DidMethodError::InitializationError(
+                    "Missing host".to_string(),
+                ))?
                 .to_owned();
 
             if let Some(port) = url.port() {
@@ -78,21 +78,15 @@ impl DidMethod for WebDidMethod {
         let did_base_string =
             self.did_base_string
                 .as_ref()
-                .ok_or(DidMethodError::CouldNotCreate(
+                .ok_or(DidMethodError::InitializationError(
                     "Missing base_url".to_string(),
                 ))?;
 
-        let id = id.ok_or(DidMethodError::ResolutionError(
-            "Missing did id".to_string(),
-        ))?;
+        let id = id.ok_or(DidMethodError::CreationError("Missing did id".to_string()))?;
 
         let did_value = format!("{did_base_string}:{id}");
 
-        did_value
-            .parse()
-            .map(|did| DidCreated { did, log: None })
-            .context("did parsing error")
-            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
+        Ok(did_value.parse().map(|did| DidCreated { did, log: None })?)
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {

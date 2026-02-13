@@ -6,7 +6,6 @@ use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
-use one_crypto::SignerError;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
@@ -26,6 +25,7 @@ use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::TokenError;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
@@ -71,7 +71,7 @@ pub trait TokenVerifier: Send + Sync {
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait SignatureProvider: Send + Sync {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError>;
     fn get_key_id(&self) -> Option<String>;
     fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String>;
     fn jose_alg(&self) -> Option<String>;

@@ -48,7 +48,7 @@ impl DidMethod for UniversalDidMethod {
         _params: &Option<serde_json::Value>,
         _keys: Option<DidKeys>,
     ) -> Result<DidCreated, DidMethodError> {
-        Err(DidMethodError::NotSupported)
+        Err(DidMethodError::OperationNotSupported)
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {
@@ -79,7 +79,7 @@ impl DidMethod for UniversalDidMethod {
         _keys: DidKeys,
         _log: Option<String>,
     ) -> Result<DidUpdate, DidMethodError> {
-        Err(DidMethodError::NotSupported)
+        Err(DidMethodError::OperationNotSupported)
     }
 
     fn get_capabilities(&self) -> DidCapabilities {

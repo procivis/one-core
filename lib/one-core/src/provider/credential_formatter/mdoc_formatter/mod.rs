@@ -11,7 +11,6 @@ use coset::iana::{self, EnumI64};
 use coset::{CoseKey, CoseKeyBuilder, Header, HeaderBuilder, SignatureContext};
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
-use one_crypto::SignerError;
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
@@ -666,7 +665,7 @@ pub async fn try_verify_detached_signature_with_provider(
     );
 
     let algorithm = extract_algorithm_from_header(device_signature).ok_or(
-        SignerError::CouldNotVerify("Missing or invalid signature algorithm".to_string()),
+        TokenError::MissingJOSEAlgorithm("Missing or invalid signature algorithm".to_string()),
     )?;
 
     let signature = &device_signature.signature;

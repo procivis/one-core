@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use one_crypto::SignerError;
 use one_crypto::encryption::{decrypt_data, encrypt_data};
 use secrecy::SecretSlice;
 use serde::Deserialize;
@@ -13,6 +12,7 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::key::{Key, PrivateJwkExt};
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
@@ -111,12 +111,15 @@ impl KeyStorage for InternalKeyProvider {
         let algorithm = key
             .key_algorithm_type()
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .ok_or(SignerError::MissingAlgorithm(key.key_type.clone()))?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                key.key_type.clone(),
+            ))
+            .error_while("getting key algorithm")?;
 
         let key_reference = key
             .key_reference
             .as_ref()
-            .ok_or(SignerError::MissingKeyReference)?;
+            .ok_or(KeyStorageError::MissingKeyReference)?;
         let private_key = decrypt_data(key_reference, &self.encryption_key)?;
 
         Ok(algorithm

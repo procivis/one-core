@@ -16,8 +16,9 @@ pub mod ecdsa {
     use async_trait::async_trait;
     use one_core::config::core_config::KeyAlgorithmType;
     use one_core::provider::credential_formatter::model::SignatureProvider;
+    use one_core::provider::key_algorithm::error::KeyAlgorithmError;
+    use one_crypto::Signer;
     use one_crypto::signer::ecdsa::ECDSASigner;
-    use one_crypto::{Signer, SignerError};
     use rcgen::{Error, PKCS_ECDSA_P256_SHA256, PublicKeyData, SignatureAlgorithm, SigningKey};
     use secrecy::SecretSlice;
 
@@ -82,7 +83,7 @@ pub mod ecdsa {
 
     #[async_trait]
     impl SignatureProvider for Key {
-        async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
             Ok(Self::sign(message))
         }
 
@@ -111,8 +112,9 @@ pub mod eddsa {
     use async_trait::async_trait;
     use one_core::config::core_config::KeyAlgorithmType;
     use one_core::provider::credential_formatter::model::SignatureProvider;
+    use one_core::provider::key_algorithm::error::KeyAlgorithmError;
+    use one_crypto::Signer;
     use one_crypto::signer::eddsa::EDDSASigner;
-    use one_crypto::{Signer, SignerError};
     use rcgen::{Error, PKCS_ED25519, PublicKeyData, SignatureAlgorithm, SigningKey};
     use secrecy::SecretSlice;
 
@@ -167,7 +169,7 @@ pub mod eddsa {
 
     #[async_trait]
     impl SignatureProvider for Key {
-        async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
             Ok(Self::sign(message))
         }
 

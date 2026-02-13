@@ -278,7 +278,10 @@ impl<Subject: Serialize + SerdeSkippable, CustomPayload: Serialize>
         );
 
         if let Some(auth_fn) = auth_fn {
-            let signature = auth_fn.sign(token.as_bytes()).await?;
+            let signature = auth_fn
+                .sign(token.as_bytes())
+                .await
+                .error_while("signing")?;
 
             if !signature.is_empty() {
                 let signature_encoded = bin_to_b64url_string(&signature)?;
@@ -325,8 +328,6 @@ pub enum TokenError {
     #[error("Validation failed: `{0}`")]
     ValidationFailed(String),
 
-    #[error("Signer error: `{0}`")]
-    SignerError(#[from] one_crypto::SignerError),
     #[error("Serialization error: `{0}`")]
     SerializationError(#[from] serde_json::Error),
     #[error("Encoding error: `{0}`")]
@@ -340,11 +341,9 @@ impl ErrorCodeMixin for TokenError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::MissingJOSEAlgorithm(_)
-            | Self::SignerError(_)
             | Self::ValidationFailed(_)
             | Self::SerializationError(_)
             | Self::EncodingError(_) => ErrorCode::BR_0355,
-
             Self::Nested(nested) => nested.error_code(),
         }
     }

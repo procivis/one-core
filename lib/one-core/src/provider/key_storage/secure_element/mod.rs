@@ -7,6 +7,7 @@ use shared_types::KeyId;
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::key_algorithm::ecdsa::{
     ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase,
@@ -191,7 +192,8 @@ impl SignaturePrivateKeyHandle for SecureElementKeyHandle {
             .key
             .key_reference
             .as_ref()
-            .ok_or(SignerError::MissingKeyReference)?;
+            .ok_or(KeyStorageError::MissingKeyReference)
+            .error_while("signing")?;
         Ok(self.native_storage.sign(key_reference, message).await?)
     }
 }

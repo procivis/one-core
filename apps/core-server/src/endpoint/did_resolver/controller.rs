@@ -1,6 +1,5 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
-use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::{DidValue, Permission};
 
@@ -30,11 +29,6 @@ pub(crate) async fn resolve_did(
     state: State<AppState>,
     WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<DidDocumentRestDTO> {
-    let result = state
-        .core
-        .did_service
-        .resolve_did(&did_value)
-        .await
-        .map_err(ServiceError::from);
+    let result = state.core.did_service.resolve_did(&did_value).await;
     OkOrErrorResponse::from_result(result, state, "resolving did document")
 }

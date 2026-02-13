@@ -241,10 +241,10 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
             .key
             .key_reference
             .as_ref()
-            .ok_or(SignerError::MissingKey)
-            .map(ToOwned::to_owned)
-            .map(String::from_utf8)?
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+            .ok_or(KeyStorageError::MissingKeyReference)
+            .error_while("getting key reference")?
+            .to_owned();
+        let key_reference = String::from_utf8(key_reference)?;
 
         let sign_request = create_sign_request(message, self.crypto.clone())?;
 

@@ -1078,7 +1078,7 @@ async fn test_parse_credential() {
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
     };
-    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers, HashMap::new()));
+    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers));
 
     let mut datatype_provider = crate::provider::data_type::provider::MockDataTypeProvider::new();
     datatype_provider
@@ -1274,7 +1274,7 @@ async fn test_parse_credential_with_lvvc() {
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
     };
-    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers, HashMap::new()));
+    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers));
 
     let mut datatype_provider = crate::provider::data_type::provider::MockDataTypeProvider::new();
     datatype_provider

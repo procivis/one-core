@@ -10,9 +10,11 @@ use time::macros::datetime;
 use super::model::JWTPayload;
 use super::{Jwt, TokenError, TokenVerifier};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ErrorCodeMixinExt;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::PublicKeySource;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -48,7 +50,11 @@ impl TokenVerifier for TestVerify {
                     self.issuer_did_value.as_ref().unwrap().to_string()
                 )
             }
-            _ => return Err(SignerError::InvalidSignature.into()),
+            _ => {
+                return Err(KeyAlgorithmError::from(SignerError::InvalidSignature)
+                    .error_while("verifying")
+                    .into());
+            }
         }
         assert_eq!(algorithm, self.algorithm);
         assert_eq!(token, self.token.as_bytes());
@@ -56,7 +62,9 @@ impl TokenVerifier for TestVerify {
         if signature == self.signature {
             Ok(())
         } else {
-            Err(SignerError::InvalidSignature.into())
+            Err(KeyAlgorithmError::from(SignerError::InvalidSignature)
+                .error_while("verifying")
+                .into())
         }
     }
 

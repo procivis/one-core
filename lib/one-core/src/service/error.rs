@@ -19,7 +19,6 @@ use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::proto::csr_creator::CsrCreationError;
 use crate::proto::nfc::NfcError;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -71,12 +70,6 @@ pub enum ServiceError {
 
     #[error(transparent)]
     MissingProvider(#[from] MissingProviderError),
-
-    #[error("Did method error `{0}`")]
-    DidMethodError(#[from] DidMethodError),
-
-    #[error("Did method provider error `{0}`")]
-    DidMethodProviderError(#[from] DidMethodProviderError),
 
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
@@ -716,8 +709,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::MissingSigner(_) => ErrorCode::BR_0060,
             Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
             Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
-            Self::DidMethodError(_) => ErrorCode::BR_0064,
-            Self::DidMethodProviderError(error) => error.error_code(),
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,

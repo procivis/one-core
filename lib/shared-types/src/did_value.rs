@@ -2,7 +2,6 @@ use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
-use anyhow::Context;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -16,14 +15,16 @@ const QUERY_PARAM_DID_METHODS_EXCEPTIONS: &[&str] = &["sd_jwt_vc_issuer_metadata
 
 #[derive(Debug, Error)]
 pub enum DidValueError {
-    #[error("Incorrect did schema")]
-    IncorrectSchema,
-    #[error("Incorrect did method")]
-    IncorrectDiDMethod,
+    #[error("Incorrect URL scheme: `{0}`")]
+    IncorrectScheme(String),
+    #[error("Incorrect did method: `{0}`")]
+    IncorrectDidMethod(String),
     #[error("Incorrect did value")]
-    IncorrectDiDValue,
+    IncorrectDidValue,
     #[error("Did method not found")]
     DidMethodNotFound,
+    #[error("URL parsing error: `{0}`")]
+    URLError(#[from] url::ParseError),
 }
 
 /// https://www.w3.org/TR/did-core/#did-syntax
@@ -48,10 +49,9 @@ impl DidValue {
     }
 
     /// https://www.w3.org/TR/did-core/#did-url-syntax
-    pub fn from_did_url(url: impl AsRef<str>) -> Result<Self, anyhow::Error> {
+    pub fn from_did_url(url: impl AsRef<str>) -> Result<Self, DidValueError> {
         let url = url.as_ref();
-        let mut url =
-            Url::parse(url).with_context(|| format!("Failed to convert did: {url} to URL"))?;
+        let mut url = Url::parse(url)?;
 
         url.set_fragment(None);
         url.set_query(None);
@@ -92,13 +92,13 @@ mod utoipa_schema {
 }
 
 impl FromStr for DidValue {
-    type Err = anyhow::Error;
+    type Err = DidValueError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(s).with_context(|| format!("Failed to convert did: {s} to URL"))?;
+        let url = Url::parse(s)?;
 
         if url.scheme() != "did" {
-            return Err(DidValueError::IncorrectSchema).context("did parsing error");
+            return Err(DidValueError::IncorrectScheme(url.scheme().to_string()));
         }
 
         let (method, rest) = url
@@ -107,22 +107,22 @@ impl FromStr for DidValue {
             .ok_or(DidValueError::DidMethodNotFound)?;
 
         if url.query().is_some() && !QUERY_PARAM_DID_METHODS_EXCEPTIONS.contains(&method) {
-            return Err(DidValueError::IncorrectDiDValue).context("did value with query");
+            return Err(DidValueError::IncorrectDidValue);
         }
 
         if url.fragment().is_some() {
-            return Err(DidValueError::IncorrectDiDValue).context("did value with fragment");
+            return Err(DidValueError::IncorrectDidValue);
         }
 
         if !method
             .chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
         {
-            return Err(DidValueError::IncorrectDiDMethod).context("did parsing error");
+            return Err(DidValueError::IncorrectDidMethod(method.to_string()));
         }
 
         if !DID_ALLOWLIST_REGEX.is_match(rest) {
-            return Err(DidValueError::IncorrectDiDValue).context("did parsing error");
+            return Err(DidValueError::IncorrectDidValue);
         }
 
         let method = method.to_owned();
@@ -137,7 +137,7 @@ impl From<DidValue> for String {
 }
 
 impl TryFrom<String> for DidValue {
-    type Error = anyhow::Error;
+    type Error = DidValueError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         DidValue::from_str(&value)

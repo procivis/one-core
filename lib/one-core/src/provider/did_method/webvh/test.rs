@@ -5,6 +5,7 @@ use uuid::Uuid;
 use super::*;
 use crate::proto::http_client::MockHttpClient;
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_storage::provider::MockKeyProvider;
 
 #[rstest]
 #[case("https://example.com/", "example.com")]
@@ -22,7 +23,7 @@ fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case
         core_base_url: None,
         client: Arc::new(MockHttpClient::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
-        key_provider: None,
+        key_provider: Arc::new(MockKeyProvider::new()),
     };
 
     let did_id = Uuid::new_v4().into();
@@ -49,7 +50,7 @@ fn test_use_domain_with_core_base_url(#[case] base_url: &str, #[case] expected: 
         core_base_url: Some(base_url.to_string()),
         client: Arc::new(MockHttpClient::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
-        key_provider: None,
+        key_provider: Arc::new(MockKeyProvider::new()),
     };
 
     let did_id = Uuid::new_v4().into();

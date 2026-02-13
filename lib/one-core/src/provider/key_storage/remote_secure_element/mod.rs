@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
+use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
-use one_crypto::{Signer, SignerError};
 use shared_types::KeyId;
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
 use super::secure_element::NativeKeyStorage;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::key_algorithm::eddsa::{
     eddsa_public_key_as_jwk, eddsa_public_key_as_multibase,
@@ -139,7 +140,8 @@ impl SignaturePrivateKeyHandle for RemoteSecureElementKeyHandle {
             .key
             .key_reference
             .as_ref()
-            .ok_or(SignerError::MissingKeyReference)?;
+            .ok_or(KeyStorageError::MissingKeyReference)
+            .error_while("signing")?;
         Ok(self.native_storage.sign(key_reference, message).await?)
     }
 }

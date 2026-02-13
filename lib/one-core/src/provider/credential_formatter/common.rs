@@ -84,17 +84,16 @@ pub(super) fn map_claims(
 pub struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
 
 #[cfg(test)]
-pub use one_crypto::SignerError;
-
-#[cfg(test)]
 pub use crate::config::core_config::KeyAlgorithmType;
 #[cfg(test)]
 pub use crate::provider::credential_formatter::model::SignatureProvider;
+#[cfg(test)]
+pub use crate::provider::key_algorithm::error::KeyAlgorithmError;
 
 #[cfg(test)]
 #[async_trait::async_trait]
 impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
         Ok(self.0(message))
     }
 

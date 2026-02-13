@@ -1,4 +1,3 @@
-use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use shared_types::DidValue;
 use standardized_types::jwk::{JwkUse, PublicJwk};
@@ -62,15 +61,7 @@ pub fn generate_document(did: &DidValue, jwk: PublicJwk) -> DidDocument {
 }
 
 pub fn encode_to_did(jwk: &PublicJwk) -> Result<DidValue, DidMethodError> {
-    let jwk = serde_json::to_string(jwk)
-        .map_err(|err| DidMethodError::CouldNotCreate(format!("Failed to serialize jwk: {err}")))?;
-
-    let encoded = Base64UrlSafeNoPadding::encode_to_string(jwk).map_err(|err| {
-        DidMethodError::CouldNotCreate(format!("Failed to base64 encode jwk: {err}"))
-    })?;
-
-    format!("did:jwk:{encoded}")
-        .parse()
-        .context("did parsing error")
-        .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
+    let jwk = serde_json::to_string(jwk)?;
+    let encoded = Base64UrlSafeNoPadding::encode_to_string(jwk)?;
+    Ok(format!("did:jwk:{encoded}").parse()?)
 }

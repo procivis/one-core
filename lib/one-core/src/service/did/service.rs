@@ -21,7 +21,6 @@ use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::provider::did_method::DidKeys;
 use crate::provider::did_method::common::jwk_verification_method;
 use crate::provider::did_method::dto::DidDocumentDTO;
-use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::did::mapper::map_did_model_to_did_web_response;
@@ -253,7 +252,10 @@ impl DidService {
         if let Some(deactivated) = request.deactivated {
             validate_deactivation_request(&did, did_method.as_ref(), deactivated)?;
             let keys = map_did_to_did_keys(&did)?;
-            let update = did_method.deactivate(did.id, keys, did.log).await?;
+            let update = did_method
+                .deactivate(did.id, keys, did.log)
+                .await
+                .error_while("deactivating DID")?;
             self.did_repository
                 .update_did(did_update_to_update_request(did.id, update))
                 .await
@@ -295,11 +297,13 @@ impl DidService {
         Ok(())
     }
 
-    pub async fn resolve_did(
-        &self,
-        did: &DidValue,
-    ) -> Result<DidDocumentDTO, DidMethodProviderError> {
-        self.did_method_provider.resolve(did).await.map(Into::into)
+    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError> {
+        Ok(self
+            .did_method_provider
+            .resolve(did)
+            .await
+            .error_while("resolving DID")?
+            .into())
     }
 }
 
@@ -364,19 +368,15 @@ pub(crate) async fn generate_update_key(
     let key_storage_type = KeyStorageType::Internal;
     let key_storage = key_provider
         .get_key_storage(key_storage_type.as_ref())
-        .ok_or_else(|| {
-            DidMethodError::CouldNotCreate(format!(
-                "Missing {key_storage_type} storage type for generating update keys"
-            ))
-        })?;
+        .ok_or(MissingProviderError::KeyStorage(
+            key_storage_type.to_string(),
+        ))?;
 
     let key_id = Uuid::new_v4().into();
     let key = key_storage
         .generate(key_id, update_key_type)
         .await
-        .map_err(|err| {
-            DidMethodError::CouldNotCreate(format!("Failed generating update keys: {err}"))
-        })?;
+        .error_while("generating key")?;
     let key = Key {
         id: key_id,
         created_date: OffsetDateTime::now_utc(),

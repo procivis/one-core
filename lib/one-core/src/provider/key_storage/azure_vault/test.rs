@@ -150,10 +150,7 @@ async fn sign_mock(mock_server: &MockServer, expect: u64) {
 }
 
 fn get_crypto(hashers: Vec<(String, Arc<dyn Hasher>)>) -> Arc<dyn CryptoProvider> {
-    Arc::new(CryptoProviderImpl::new(
-        HashMap::from_iter(hashers),
-        HashMap::new(),
-    ))
+    Arc::new(CryptoProviderImpl::new(HashMap::from_iter(hashers)))
 }
 
 #[tokio::test]

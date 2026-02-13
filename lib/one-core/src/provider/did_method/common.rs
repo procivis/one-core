@@ -56,14 +56,14 @@ pub fn expect_one_key(keys: &DidKeys) -> Result<&Key, DidMethodError> {
     .filter(|key| seen.insert(key.id));
 
     let Some(key) = unique_keys.next() else {
-        return Err(DidMethodError::CouldNotCreate(
+        return Err(DidMethodError::CreationError(
             "No keys provided for any role".to_string(),
         ));
     };
 
     let remaining_keys_count = unique_keys.count();
     if remaining_keys_count > 0 {
-        return Err(DidMethodError::CouldNotCreate(format!(
+        return Err(DidMethodError::CreationError(format!(
             "Too many keys provided, expected exactly one, got {remaining_keys_count}"
         )));
     }

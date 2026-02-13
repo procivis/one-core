@@ -7,7 +7,6 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use coset::{RegisteredLabelWithPrivate, SignatureContext, iana};
-use one_crypto::SignerError;
 use serde::Deserialize;
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
@@ -444,7 +443,7 @@ async fn try_verify_detached_signature_with_provider(
     );
 
     let algorithm = extract_algorithm_from_header(device_signature).ok_or(
-        SignerError::CouldNotVerify("Missing or invalid signature algorithm".to_string()),
+        TokenError::MissingJOSEAlgorithm("Missing or invalid signature algorithm".to_string()),
     )?;
 
     let signature = &device_signature.signature;
