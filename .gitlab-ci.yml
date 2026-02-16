@@ -150,7 +150,7 @@ before_script:
     CHECK_LINT: false
   trigger:
     project: procivis/one/one-tests
-    branch: 'ONE-7620-do-not-assert-error-msg'
+    branch: v1.70.6
     strategy: depend
     forward:
       pipeline_variables: true
