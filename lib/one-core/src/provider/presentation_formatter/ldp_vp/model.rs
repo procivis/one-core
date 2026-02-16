@@ -33,8 +33,7 @@ impl CredentialEnvelope {
     }
 
     pub fn to_map(&self) -> Result<serde_json::Map<String, serde_json::Value>, FormatterError> {
-        let as_value = serde_json::to_value(self)
-            .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?;
+        let as_value = serde_json::to_value(self)?;
 
         Ok(as_value
             .as_object()

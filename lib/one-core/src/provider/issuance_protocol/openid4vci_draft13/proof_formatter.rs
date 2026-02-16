@@ -13,6 +13,8 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
 };
+use crate::provider::did_method::error::DidMethodError;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
 
@@ -48,7 +50,8 @@ impl OpenID4VCIProofJWTFormatter {
                     "Missing proof.jwt type".to_string(),
                 ));
             }
-        }
+        };
+
         if let Some(expected_nonce) = expected_nonce
             && payload.custom.nonce.as_ref() != Some(expected_nonce)
         {
@@ -77,14 +80,16 @@ impl OpenID4VCIProofJWTFormatter {
 
                 let did: DidValue = did
                     .parse()
-                    .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid did: {e}")))?;
+                    .map_err(DidMethodError::DidValueError)
+                    .error_while("parsing issuer DID")?;
 
                 let (_, key_algorithm) = verifier
                     .key_algorithm_provider()
                     .key_algorithm_from_jose_alg(&header.algorithm)
-                    .ok_or(FormatterError::CouldNotVerify(
-                        "Invalid key algorithm".to_string(),
-                    ))?;
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        header.algorithm.to_string(),
+                    ))
+                    .error_while("getting key algorithm")?;
 
                 let params = PublicKeySource::Did {
                     did: Cow::Borrowed(&did),
@@ -98,26 +103,19 @@ impl OpenID4VCIProofJWTFormatter {
                         &signature,
                     )
                     .await
-                    .map_err(|e| {
-                        FormatterError::CouldNotVerify(format!("Failed to verify proof.jwt: {e}"))
-                    })?;
+                    .error_while("verifying issuer signature")?;
                 Either::Left((did, key_id.clone()))
             }
             (None, Some(jwk)) => {
-                let key_handle =
-                    verifier
-                        .key_algorithm_provider()
-                        .parse_jwk(&jwk)
-                        .map_err(|e| {
-                            FormatterError::CouldNotVerify(format!(
-                                "Could not parse jwk from proof.jwt: {e}"
-                            ))
-                        })?;
+                let key_handle = verifier
+                    .key_algorithm_provider()
+                    .parse_jwk(&jwk)
+                    .error_while("parsing JWK")?;
 
                 key_handle
                     .key
                     .verify(unverified_jwt.as_bytes(), &signature)
-                    .map_err(|_| FormatterError::CouldNotVerify("Invalid signature".to_string()))?;
+                    .error_while("verifying issuer signature")?;
 
                 Either::Right(jwk)
             }

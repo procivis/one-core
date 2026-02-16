@@ -26,16 +26,18 @@ pub fn generate_alphanumeric(length: usize) -> String {
     Alphanumeric.sample_string(&mut get_rng(), length)
 }
 
-pub fn create_hmac(key: &[u8], message: &[u8]) -> Option<Vec<u8>> {
-    let mut mac = HmacSha256::new_from_slice(key).ok()?;
+pub fn create_hmac(key: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    let mut mac =
+        HmacSha256::new_from_slice(key).map_err(|e| SignerError::HmacError(e.to_string()))?;
     mac.update(message);
     let result = mac.finalize();
-    Some(result.into_bytes().to_vec())
+    Ok(result.into_bytes().to_vec())
 }
 
-pub fn build_hmac_sha256(key: &[u8]) -> Option<impl FnMut(&[u8]) -> Vec<u8>> {
-    let mut mac = HmacSha256::new_from_slice(key).ok()?;
-    Some(move |message: &[u8]| {
+pub fn build_hmac_sha256(key: &[u8]) -> Result<impl FnMut(&[u8]) -> Vec<u8>, SignerError> {
+    let mut mac =
+        HmacSha256::new_from_slice(key).map_err(|e| SignerError::HmacError(e.to_string()))?;
+    Ok(move |message: &[u8]| {
         mac.update(message);
         mac.finalize_reset().into_bytes().to_vec()
     })

@@ -1,9 +1,10 @@
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::presentation_formatter::model::ExtractedPresentation;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -25,7 +26,7 @@ pub(crate) struct VPContent {
 }
 
 impl TryFrom<Jwt<Sdvp>> for ExtractedPresentation {
-    type Error = anyhow::Error;
+    type Error = FormatterError;
 
     fn try_from(jwt: Jwt<Sdvp>) -> Result<Self, Self::Error> {
         Ok(ExtractedPresentation {
@@ -35,9 +36,10 @@ impl TryFrom<Jwt<Sdvp>> for ExtractedPresentation {
             issuer: jwt
                 .payload
                 .issuer
-                .map(|did| did.parse().context("did parsing error"))
+                .map(|did| did.parse())
                 .transpose()
-                .map_err(|e| FormatterError::Failed(e.to_string()))?
+                .map_err(DidMethodError::DidValueError)
+                .error_while("parsing issuer DID")?
                 .map(IdentifierDetails::Did),
             nonce: jwt.payload.custom.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,

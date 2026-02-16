@@ -211,8 +211,7 @@ async fn validate_against_ca_certs(
     ca_certs: &[String],
     attestation: &Attestation,
 ) -> Result<ParsedCertificate, WalletProviderError> {
-    let pem_chain = der_chain_into_pem_chain(attestation.attestation_statement.x5c.clone())
-        .map_err(|e| AppIntegrityValidationError(e.to_string()))?;
+    let pem_chain = der_chain_into_pem_chain(attestation.attestation_statement.x5c.clone());
     let mut errs = vec![];
     for ca_pem in ca_certs {
         let result = certificate_validator

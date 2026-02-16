@@ -1,4 +1,3 @@
-use anyhow::{Context, anyhow};
 use ciborium::Value;
 use ciborium::tag::Required;
 use coset::iana::EnumI64;
@@ -14,6 +13,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
@@ -188,12 +188,12 @@ impl From<Bstr> for ciborium::Value {
 }
 
 impl TryFrom<ciborium::Value> for Bstr {
-    type Error = anyhow::Error;
+    type Error = FormatterError;
 
     fn try_from(value: ciborium::Value) -> Result<Self, Self::Error> {
-        Ok(Self(
-            value.into_bytes().map_err(|_| anyhow!("Value not bytes"))?,
-        ))
+        Ok(Self(value.into_bytes().map_err(|_| {
+            FormatterError::CouldNotExtractCredentials("Not a Bstr".to_string())
+        })?))
     }
 }
 
@@ -300,7 +300,9 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
         .rest
         .iter()
         .find(|(label, _)| label == &x5chain_label)
-        .ok_or(FormatterError::Failed("Missing x5chain header".to_string()))?;
+        .ok_or(FormatterError::CouldNotExtractCredentials(
+            "Missing x5chain header".to_string(),
+        ))?;
 
     let pem_chain_bytes = match x5c {
         Value::Bytes(single_cert) => {
@@ -311,7 +313,7 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
             .flat_map(|val| val.as_bytes().into_iter().cloned())
             .collect(),
         val => {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotExtractCredentials(format!(
                 "Unexpected value in x5chain header: {val:?}"
             )));
         }
@@ -340,7 +342,7 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
     } = certificate_validator
         .parse_pem_chain(&chain, validation_context)
         .await
-        .map_err(|err| FormatterError::Failed(format!("Failed to validate pem chain: {err}")))?;
+        .error_while("parsing PEM chain")?;
 
     Ok(CertificateDetails {
         chain,
@@ -373,7 +375,7 @@ pub(crate) fn try_build_algorithm_header(
         KeyAlgorithmType::Ecdsa => iana::Algorithm::ES256,
         KeyAlgorithmType::Eddsa => iana::Algorithm::EdDSA,
         _ => {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotFormat(format!(
                 "Failed mapping algorithm `{algorithm}` to name compatible with allowed COSE Algorithms"
             )));
         }
@@ -390,30 +392,23 @@ pub(crate) fn try_extract_mobile_security_object(
     CoseSign1(cose_sign1): &CoseSign1,
 ) -> Result<MobileSecurityObject, FormatterError> {
     let Some(payload) = &cose_sign1.payload else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotExtractCredentials(
             "IssuerAuth doesn't contain payload".to_owned(),
         ));
     };
 
-    let mso: EmbeddedCbor<MobileSecurityObject> =
-        ciborium::from_reader(&payload[..]).map_err(|err| {
-            FormatterError::Failed(format!(
-                "IssuerAuth payload cannot be converted to MSO: {err}"
-            ))
-        })?;
+    let mso: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&payload[..])?;
 
     Ok(mso.into_inner())
 }
 pub(crate) fn try_extract_holder_public_key(
     CoseSign1(issuer_auth): &CoseSign1,
 ) -> Result<PublicJwk, FormatterError> {
-    let mso = issuer_auth
-        .payload
-        .as_ref()
-        .ok_or_else(|| FormatterError::Failed("Issuer auth missing mso object".to_owned()))?;
+    let mso = issuer_auth.payload.as_ref().ok_or_else(|| {
+        FormatterError::CouldNotExtractCredentials("Issuer auth missing mso object".to_owned())
+    })?;
 
-    let mso: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&mso[..])
-        .map_err(|err| FormatterError::Failed(format!("Failed deserializing MSO: {err}")))?;
+    let mso: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&mso[..])?;
 
     let DeviceKey(cose_key) = mso.into_inner().device_key_info.device_key;
 
@@ -422,69 +417,73 @@ pub(crate) fn try_extract_holder_public_key(
             .params
             .iter()
             .find_map(|(k, v)| (k == &key).then_some(v))
+            .ok_or_else(|| {
+                FormatterError::CouldNotExtractCredentials(format!(
+                    "Missing CoseKey param: {key:?}"
+                ))
+            })
     };
 
-    match cose_key.kty {
-        coset::RegisteredLabel::Assigned(iana::KeyType::EC2) => (|| -> anyhow::Result<_> {
-            let _crv = get_param_value(Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))
-                .and_then(|v| v.as_integer())
-                .filter(|v| v == &iana::EllipticCurve::P_256.to_i64().into())
-                .context("Missing P-256 curve in params")?;
+    Ok(match cose_key.kty {
+        coset::RegisteredLabel::Assigned(iana::KeyType::EC2) => {
+            let crv = get_param_value(Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))?
+                .as_integer()
+                .ok_or(FormatterError::JsonMapping("Invalid EC2 CRV".to_string()))?;
+            if crv != iana::EllipticCurve::P_256.to_i64().into() {
+                return Err(FormatterError::CouldNotExtractCredentials(format!(
+                    "Unsupported EC2 CRV: {crv:?}"
+                )));
+            }
 
-            let x = get_param_value(Label::Int(iana::Ec2KeyParameter::X.to_i64()))
-                .and_then(|v| v.as_bytes())
-                .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
-                .context("Missing P-256 X value in params")?;
+            let x = get_param_value(Label::Int(iana::Ec2KeyParameter::X.to_i64()))?
+                .as_bytes()
+                .ok_or(FormatterError::JsonMapping("Invalid X".to_string()))?;
+            let x = Base64UrlSafeNoPadding::encode_to_string(x)?;
 
-            let y = get_param_value(Label::Int(iana::Ec2KeyParameter::Y.to_i64()))
-                .and_then(|v| v.as_bytes())
-                .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
-                .context("Missing P-256  Y value in params")?;
+            let y = get_param_value(Label::Int(iana::Ec2KeyParameter::Y.to_i64()))?
+                .as_bytes()
+                .ok_or(FormatterError::JsonMapping("Invalid Y".to_string()))?;
+            let y = Base64UrlSafeNoPadding::encode_to_string(y)?;
 
-            let key = PublicJwk::Ec(PublicJwkEc {
+            PublicJwk::Ec(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,
                 crv: "P-256".to_owned(),
                 x,
                 y: Some(y),
-            });
+            })
+        }
 
-            Ok(key)
-        })()
-        .map_err(|err| {
-            FormatterError::Failed(format!("Cannot build P-256 public key from CoseKey: {err}"))
-        }),
+        coset::RegisteredLabel::Assigned(iana::KeyType::OKP) => {
+            let crv = get_param_value(Label::Int(iana::OkpKeyParameter::Crv.to_i64()))?
+                .as_integer()
+                .ok_or(FormatterError::JsonMapping("Invalid OKP CRV".to_string()))?;
+            if crv != iana::EllipticCurve::Ed25519.to_i64().into() {
+                return Err(FormatterError::CouldNotExtractCredentials(format!(
+                    "Unsupported OKP CRV: {crv:?}"
+                )));
+            }
 
-        coset::RegisteredLabel::Assigned(iana::KeyType::OKP) => (|| -> anyhow::Result<_> {
-            let _crv = get_param_value(Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))
-                .and_then(|v| v.as_integer())
-                .filter(|v| v == &iana::EllipticCurve::Ed25519.to_i64().into())
-                .context("Missing Ed25519 curve in params")?;
+            let x = get_param_value(Label::Int(iana::OkpKeyParameter::X.to_i64()))?
+                .as_bytes()
+                .ok_or(FormatterError::JsonMapping("Invalid X".to_string()))?;
+            let x = Base64UrlSafeNoPadding::encode_to_string(x)?;
 
-            let x = get_param_value(Label::Int(iana::Ec2KeyParameter::X.to_i64()))
-                .and_then(|v| v.as_bytes())
-                .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
-                .context("Missing Ed25519 X value in params")?;
-
-            let key = PublicJwk::Okp(PublicJwkEc {
+            PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,
                 crv: "Ed25519".to_owned(),
                 x,
                 y: None,
-            });
+            })
+        }
 
-            Ok(key)
-        })()
-        .map_err(|err| {
-            FormatterError::Failed(format!(
-                "Cannot build Ed25519 public key from CoseKey: {err}"
-            ))
-        }),
-        other => Err(FormatterError::Failed(format!(
-            "CoseKey contains invalid kty `{other:?}`, only EC2 and OKP keys are supported"
-        ))),
-    }
+        other => {
+            return Err(FormatterError::CouldNotExtractCredentials(format!(
+                "CoseKey contains invalid kty `{other:?}`, only EC2 and OKP keys are supported"
+            )));
+        }
+    })
 }

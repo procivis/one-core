@@ -16,11 +16,10 @@ pub struct VcClaim {
 
 impl WithMetadata for VcClaim {
     fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-        let value =
-            serde_json::to_value(self).map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+        let value = serde_json::to_value(self)?;
 
         let Some(obj) = value.as_object() else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::JsonMapping(
                 "Expected serialized value to be an object".to_string(),
             ));
         };

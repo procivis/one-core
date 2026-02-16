@@ -482,7 +482,7 @@ impl SSIHolderService {
         let credential = formatter
             .extract_credentials_unverified(credential, Some(schema))
             .await
-            .map_err(ServiceError::FormatterError)?;
+            .error_while("parsing credential")?;
 
         let mut collected_claims: Vec<Claim> = Vec::new();
 

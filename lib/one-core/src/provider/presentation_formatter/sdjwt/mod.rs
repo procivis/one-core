@@ -101,7 +101,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
                 ..
             } = context.clone()
             else {
-                return Err(FormatterError::Failed(
+                return Err(FormatterError::CouldNotFormat(
                 "Missing nonce or audience in context, cannot format presentation SD-JWT with key binding token".to_owned(),
             ));
             };
@@ -182,15 +182,10 @@ impl SdjwtPresentationFormatter {
         context: &ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
         // W3C VP SD-JWT tokens and SD-JWT tokens.
-        let as_jwt_vp: Result<Jwt<Sdvp>, FormatterError> =
-            Jwt::build_from_token(token, verification, None)
-                .await
-                .map_err(|e| FormatterError::Failed(format!("Failed to build Jwt<Sdvp>: {e}")));
+        let as_jwt_vp = Jwt::<Sdvp>::build_from_token(token, verification, None).await;
 
         if let Ok(jwt_vp) = as_jwt_vp {
-            return jwt_vp.try_into().map_err(|e| {
-                FormatterError::Failed(format!("Failed to convert Jwt<Sdvp> to Presentation: {e}"))
-            });
+            return jwt_vp.try_into();
         }
 
         let credential =
@@ -205,7 +200,7 @@ impl SdjwtPresentationFormatter {
             .payload
             .proof_of_possession_key
             .as_ref()
-            .ok_or(FormatterError::Failed(
+            .ok_or(FormatterError::CouldNotExtractPresentation(
                 "Missing proof of key possesion".to_string(),
             ))?;
         let holder_binding_ctx = match (&context.nonce, &context.client_id) {
@@ -221,11 +216,7 @@ impl SdjwtPresentationFormatter {
             .get("_sd_alg")
             .and_then(|alg| alg.as_str())
             .unwrap_or("sha-256");
-        let hasher = self.crypto.get_hasher(hash_alg).map_err(|_| {
-            FormatterError::CouldNotExtractCredentials(
-                "Missing or invalid hash algorithm".to_string(),
-            )
-        })?;
+        let hasher = self.crypto.get_hasher(hash_alg)?;
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
             leeway: Duration::seconds(self.get_leeway() as i64),

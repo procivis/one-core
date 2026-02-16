@@ -9,11 +9,12 @@ use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
+use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::base_proof::create_base_proof;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::test_data::{
     document_loader, vc_permanent_resident_card,
 };
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::{
-    add_derived_proof, create_base_proof, verify_base_proof, verify_derived_proof,
+    add_derived_proof, verify_base_proof, verify_derived_proof,
 };
 use crate::provider::credential_formatter::model::{
     MockTokenVerifier, SignatureProvider, TokenVerifier,

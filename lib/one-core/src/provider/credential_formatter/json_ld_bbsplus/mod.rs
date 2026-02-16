@@ -138,7 +138,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         }
 
         let mandatory_pointers = generate_mandatory_pointers(&vcdm);
-        let proof = data_integrity::create_base_proof(
+        let proof = data_integrity::base_proof::create_base_proof(
             &vcdm,
             mandatory_pointers,
             verification_method,
@@ -151,7 +151,7 @@ impl CredentialFormatter for JsonLdBbsplus {
 
         vcdm.proof = Some(proof);
 
-        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
+        Ok(serde_json::to_string(&vcdm)?)
     }
 
     async fn format_status_list(
@@ -165,7 +165,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
         if status_list_type != RevocationType::BitstringStatusList {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "Only BitstringStatusList can be formatted with JSON_LD_BBSPLUS formatter"
                     .to_string(),
             ));
@@ -174,16 +174,11 @@ impl CredentialFormatter for JsonLdBbsplus {
             return Err(FormatterError::BBSOnly);
         }
 
-        let issuer = Issuer::Url(
-            issuer_identifier
-                .as_url()
-                .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?,
-        );
+        let issuer = Issuer::Url(issuer_identifier.as_url().ok_or(
+            FormatterError::CouldNotFormat("Invalid issuer DID".to_string()),
+        )?);
 
-        let credential_subject_id: Url =
-            format!("{revocation_list_url}#list").parse().map_err(|_| {
-                FormatterError::Failed("Invalid issuer credential subject id".to_string())
-            })?;
+        let credential_subject_id: Url = format!("{revocation_list_url}#list").parse()?;
         let credential_subject = VcdmCredentialSubject::new([
             ("type", json!("BitstringStatusList")),
             ("statusPurpose", json!(status_purpose)),
@@ -191,9 +186,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         ])?
         .with_id(credential_subject_id);
 
-        let credential_id = Url::parse(&revocation_list_url).map_err(|_| {
-            FormatterError::Failed("Revocation list is not a valid URL".to_string())
-        })?;
+        let credential_id = Url::parse(&revocation_list_url)?;
 
         let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
             .with_id(credential_id)
@@ -207,7 +200,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         let mut mandatory_pointers = generate_mandatory_pointers(&vcdm);
         mandatory_pointers.push("/credentialSubject".to_string());
 
-        let proof = data_integrity::create_base_proof(
+        let proof = data_integrity::base_proof::create_base_proof(
             &vcdm,
             mandatory_pointers,
             verification_method,
@@ -220,7 +213,7 @@ impl CredentialFormatter for JsonLdBbsplus {
 
         vcdm.proof = Some(proof);
 
-        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
+        Ok(serde_json::to_string(&vcdm)?)
     }
 
     async fn extract_credentials<'a>(
@@ -229,9 +222,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        let mut vcdm: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
-        })?;
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential)?;
         let mandatory_pointers = self.verify(&mut vcdm, verification_fn).await?;
         let metadata_claims = self
             .get_metadata_claims()
@@ -246,9 +237,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential: &str,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        let vc: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
-        })?;
+        let vc: VcdmCredential = serde_json::from_str(credential)?;
 
         let metadata_claims = self
             .get_metadata_claims()
@@ -263,9 +252,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        let mut vcdm: VcdmCredential = serde_json::from_str(&credential.token).map_err(|e| {
-            FormatterError::CouldNotFormat(format!("Could not deserialize base proof: {e}"))
-        })?;
+        let mut vcdm: VcdmCredential = serde_json::from_str(&credential.token)?;
 
         let Some(proof) = vcdm.proof.take() else {
             return Err(FormatterError::CouldNotFormat("Missing proof".to_string()));
@@ -298,8 +285,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         )
         .await?;
 
-        let resp = serde_json::to_string(&revealed_document)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let resp = serde_json::to_string(&revealed_document)?;
 
         Ok(resp)
     }
@@ -416,16 +402,14 @@ impl CredentialFormatter for JsonLdBbsplus {
     ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let mut vcdm: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
-        })?;
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential)?;
 
         let revocation_method = if let Some(status) = vcdm.credential_status.first() {
             match status.r#type.as_str() {
                 "LVVC" => Some(RevocationType::Lvvc),
                 "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                 _ => {
-                    return Err(FormatterError::Failed(format!(
+                    return Err(FormatterError::CouldNotVerify(format!(
                         "Unknown revocation method: {}",
                         status.r#type
                     )));
@@ -451,10 +435,9 @@ impl CredentialFormatter for JsonLdBbsplus {
             .unwrap_or_else(|| "VerifiableCredential".to_string());
 
         // Parse claims from credential subject
-        let credential_subject = vcdm
-            .credential_subject
-            .first()
-            .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+        let credential_subject = vcdm.credential_subject.first().ok_or_else(|| {
+            FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
+        })?;
 
         let credential_id = Uuid::new_v4().into();
         let mut claims = HashMap::from_iter(credential_subject.claims.clone());

@@ -23,6 +23,7 @@ use crate::provider::credential_formatter::sdjwt::{
     SdJwtHolderBindingParams, append_key_binding_token,
 };
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
@@ -78,7 +79,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let [credential] = credentials.as_slice() else {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotFormat(format!(
                 "SD_JWT_VC presentation formatter only supports single credential presentations, received {} credentials",
                 credentials.len()
             )));
@@ -106,7 +107,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             ..
         } = context
         else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "Missing nonce or audience in context, cannot format presentation SD-JWT VC with key binding token".to_owned(),
             ));
         };
@@ -187,13 +188,11 @@ impl SdjwtVCPresentationFormatter {
             )
             .await?;
 
-        let cnf = jwt
-            .payload
-            .proof_of_possession_key
-            .as_ref()
-            .ok_or(FormatterError::Failed(
+        let cnf = jwt.payload.proof_of_possession_key.as_ref().ok_or(
+            FormatterError::CouldNotExtractPresentation(
                 "Missing proof of key possession".to_string(),
-            ))?;
+            ),
+        )?;
         let holder_binding_ctx = match (&context.nonce, &context.client_id) {
             (Some(nonce), Some(client_id)) => Some(HolderBindingCtx {
                 nonce: nonce.clone(),
@@ -202,11 +201,7 @@ impl SdjwtVCPresentationFormatter {
             _ => None,
         };
         let hash_alg = jwt.payload.custom.hash_alg.as_deref().unwrap_or("sha-256");
-        let hasher = crypto.get_hasher(hash_alg).map_err(|_| {
-            FormatterError::CouldNotExtractCredentials(
-                "Missing or invalid hash algorithm".to_string(),
-            )
-        })?;
+        let hasher = crypto.get_hasher(hash_alg)?;
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
             leeway: Duration::seconds(self.get_leeway() as i64),
@@ -227,7 +222,8 @@ impl SdjwtVCPresentationFormatter {
             .subject
             .map(|did| DidValue::from_str(&did))
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing subject DID")?;
 
         Ok((subject, proof_of_key_possession))
     }

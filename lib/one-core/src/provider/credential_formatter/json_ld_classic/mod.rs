@@ -27,6 +27,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
@@ -34,6 +35,7 @@ use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::rdf_canonization::{json_ld_processor_options, rdf_canonize};
@@ -94,9 +96,10 @@ impl CredentialFormatter for JsonLdClassic {
             cs.id = holder_did;
         }
 
-        let key_algorithm = auth_fn.get_key_algorithm().map_err(|key_type| {
-            FormatterError::CouldNotFormat(format!("Unsupported algorithm: {key_type}"))
-        })?;
+        let key_algorithm = auth_fn
+            .get_key_algorithm()
+            .map_err(KeyAlgorithmProviderError::MissingAlgorithmImplementation)
+            .error_while("getting key algorithm")?;
 
         if !self.params.embed_layout_properties {
             vcdm.remove_layout_properties();
@@ -104,7 +107,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let vcdm = self.add_proof(vcdm, key_algorithm, auth_fn).await?;
 
-        serde_json::to_string(&vcdm).map_err(|e| FormatterError::CouldNotFormat(e.to_string()))
+        Ok(serde_json::to_string(&vcdm)?)
     }
 
     async fn format_status_list(
@@ -118,21 +121,21 @@ impl CredentialFormatter for JsonLdClassic {
         status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
         if status_list_type != RevocationType::BitstringStatusList {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "Only BitstringStatusList can be formatted with JSON_LD_CLASSIC formatter"
                     .to_string(),
             ));
         }
 
-        let issuer = issuer_identifier
-            .as_url()
-            .map(Issuer::Url)
-            .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?;
+        let issuer =
+            issuer_identifier
+                .as_url()
+                .map(Issuer::Url)
+                .ok_or(FormatterError::CouldNotFormat(
+                    "Invalid issuer DID".to_string(),
+                ))?;
 
-        let credential_subject_id: Url =
-            format!("{revocation_list_url}#list").parse().map_err(|_| {
-                FormatterError::Failed("Invalid issuer credential subject id".to_string())
-            })?;
+        let credential_subject_id: Url = format!("{revocation_list_url}#list").parse()?;
         let credential_subject = VcdmCredentialSubject::new([
             ("type", json!("BitstringStatusList")),
             ("statusPurpose", json!(status_purpose)),
@@ -140,9 +143,7 @@ impl CredentialFormatter for JsonLdClassic {
         ])?
         .with_id(credential_subject_id);
 
-        let credential_id = Url::parse(&revocation_list_url).map_err(|_| {
-            FormatterError::Failed("Revocation list is not a valid URL".to_string())
-        })?;
+        let credential_id = Url::parse(&revocation_list_url)?;
 
         let credential = VcdmCredential::new_v2(issuer, credential_subject)
             .with_id(credential_id)
@@ -151,11 +152,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let credential = self.add_proof(credential, algorithm, auth_fn).await?;
 
-        serde_json::to_string(&credential).map_err(|err| {
-            FormatterError::Failed(format!(
-                "Failed formatting BitstringStatusList credential {err}"
-            ))
-        })
+        Ok(serde_json::to_string(&credential)?)
     }
 
     async fn extract_credentials<'a>(
@@ -257,8 +254,7 @@ impl CredentialFormatter for JsonLdClassic {
     ) -> Result<Credential, FormatterError> {
         let now = OffsetDateTime::now_utc();
 
-        let vcdm: VcdmCredential = serde_json::from_str(credential)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let vcdm: VcdmCredential = serde_json::from_str(credential)?;
 
         verify_credential_signature(
             vcdm.clone(),
@@ -274,7 +270,7 @@ impl CredentialFormatter for JsonLdClassic {
                 "LVVC" => Some(RevocationType::Lvvc),
                 "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                 _ => {
-                    return Err(FormatterError::Failed(format!(
+                    return Err(FormatterError::CouldNotExtractCredentials(format!(
                         "Unknown revocation method: {}",
                         status.r#type
                     )));
@@ -302,10 +298,9 @@ impl CredentialFormatter for JsonLdClassic {
         )?;
 
         // Parse claims from credential subject
-        let credential_subject = vcdm
-            .credential_subject
-            .first()
-            .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+        let credential_subject = vcdm.credential_subject.first().ok_or_else(|| {
+            FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
+        })?;
 
         let (mut claims, mut claim_schemas) = parse_claims(
             HashMap::from_iter(credential_subject.claims.clone()),
@@ -418,8 +413,7 @@ impl JsonLdClassic {
         credential: &str,
         verification_fn: Option<VerificationFn>,
     ) -> Result<DetailCredential, FormatterError> {
-        let vcdm: VcdmCredential = serde_json::from_str(credential)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let vcdm: VcdmCredential = serde_json::from_str(credential)?;
 
         if let Some(verification_fn) = verification_fn {
             verify_credential_signature(
@@ -591,9 +585,7 @@ pub(crate) async fn verify_proof_signature(
         )));
     }
 
-    let signature = bs58::decode(&proof_value_bs58[1..])
-        .into_vec()
-        .map_err(|_| FormatterError::CouldNotVerify("Hash decoding error".to_owned()))?;
+    let signature = bs58::decode(&proof_value_bs58[1..]).into_vec()?;
 
     let algorithm = match cryptosuite {
         // todo: check if `eddsa-2022` is correct as the VCDM test suite is sending this
@@ -613,7 +605,7 @@ pub(crate) async fn verify_proof_signature(
     verification_fn
         .verify(params, algorithm, proof_hash, &signature)
         .await
-        .map_err(|e| FormatterError::CouldNotVerify(format!("Verification error: {e}")))?;
+        .error_while("verifying")?;
 
     Ok(())
 }
@@ -622,10 +614,7 @@ pub(crate) async fn sign_proof_hash(
     proof_hash: &[u8],
     auth_fn: AuthenticationFn,
 ) -> Result<String, FormatterError> {
-    let signature = auth_fn
-        .sign(proof_hash)
-        .await
-        .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
+    let signature = auth_fn.sign(proof_hash).await.error_while("signing")?;
 
     Ok(format!("z{}", bs58::encode(signature).into_string()))
 }
@@ -647,19 +636,13 @@ pub(crate) async fn prepare_proof_hash(
         [proof, document]
             .into_iter()
             .chain(extra_information)
-            .map(|bytes| {
-                hasher
-                    .hash(bytes)
-                    .map_err(|err| FormatterError::CouldNotFormat(format!("Hasher error: `{err}`")))
-            })
+            .map(|bytes| Ok(hasher.hash(bytes)?))
             .flatten_ok()
             .try_collect()
     }
 
     let hashing_function = "sha-256";
-    let hasher = crypto.get_hasher(hashing_function).map_err(|_| {
-        FormatterError::CouldNotFormat(format!("Hasher {hashing_function} unavailable"))
-    })?;
+    let hasher = crypto.get_hasher(hashing_function)?;
 
     let transformed_document = rdf_canonize(document, &caching_loader, options.clone()).await?;
     let transformed_proof_config = rdf_canonize(proof, &caching_loader, options).await?;

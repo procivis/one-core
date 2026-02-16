@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use sha2::{Digest, Sha256};
 use standardized_types::jwk::PublicJwk;
 
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// OpenID4VP Final Handover
@@ -21,7 +22,7 @@ impl OID4VPFinal1_0Handover {
         response_uri: &str,
         nonce: &str,
         verifier_key: Option<&PublicJwk>,
-    ) -> Result<Self, anyhow::Error> {
+    ) -> Result<Self, FormatterError> {
         let client_id = client_id.trim_end_matches('/');
         let response_uri = response_uri.trim_end_matches('/');
         let jwk_thumbprint = verifier_key.map(jwk_thumbprint).transpose()?.map(Bstr);
@@ -76,7 +77,7 @@ impl<'a> Deserialize<'a> for OID4VPFinal1_0Handover {
 ///
 /// - inspired by: <https://docs.rs/biscuit/0.7.0/src/biscuit/jwk.rs.html#276>
 /// - using SHA-256 hash function
-fn jwk_thumbprint(verifier_key: &PublicJwk) -> Result<Vec<u8>, anyhow::Error> {
+fn jwk_thumbprint(verifier_key: &PublicJwk) -> Result<Vec<u8>, serde_json::Error> {
     use serde::ser::SerializeMap;
 
     let mut serializer = serde_json::Serializer::new(Vec::new());

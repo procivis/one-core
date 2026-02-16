@@ -29,11 +29,12 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
-use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
+use crate::proto::jwt::{Jwt, TokenError};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
@@ -147,11 +148,15 @@ impl CredentialFormatter for JWTFormatter {
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)
-            .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                algorithm.to_string(),
+            ))
+            .error_while("getting key algorithm")?;
 
         let jose_alg = key_algorithm
             .issuance_jose_alg_id()
-            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
+            .ok_or(TokenError::MissingJOSEAlgorithm(algorithm.to_string()))
+            .error_while("preparing JWT header")?;
 
         match status_list_type {
             RevocationType::BitstringStatusList => {
@@ -195,7 +200,7 @@ impl CredentialFormatter for JWTFormatter {
             .await
             .error_while("extracting JWT credential token")?;
 
-        DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
+        DetailCredential::try_from(jwt)
     }
 
     async fn extract_credentials_unverified<'a>(
@@ -207,7 +212,7 @@ impl CredentialFormatter for JWTFormatter {
             .await
             .error_while("parsing JWT credential token")?;
 
-        DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
+        DetailCredential::try_from(jwt)
     }
 
     async fn prepare_selective_disclosure(
@@ -313,7 +318,7 @@ impl CredentialFormatter for JWTFormatter {
                     "LVVC" => Some(RevocationType::Lvvc),
                     "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                     _ => {
-                        return Err(FormatterError::Failed(format!(
+                        return Err(FormatterError::CouldNotExtractCredentials(format!(
                             "Unknown revocation method: {}",
                             status.r#type
                         )));
@@ -343,7 +348,9 @@ impl CredentialFormatter for JWTFormatter {
             .vc
             .credential_subject
             .first()
-            .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
+            })?;
 
         let (mut claims, mut claim_schemas) = parse_claims(
             HashMap::from_iter(credential_subject.claims.clone()),
@@ -393,7 +400,9 @@ impl CredentialFormatter for JWTFormatter {
         let issuer = jwt
             .payload
             .issuer
-            .ok_or(FormatterError::Failed("JWT missing issuer".to_string()))?
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "JWT missing issuer".to_string(),
+            ))?
             .parse()
             .map_err(DidMethodError::DidValueError)
             .error_while("parsing issuer DID")?;
@@ -407,7 +416,8 @@ impl CredentialFormatter for JWTFormatter {
             .subject
             .map(|did| DidValue::from_str(&did))
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing subject")?
             .map(IdentifierDetails::Did)
             .map(|details| prepare_identifier(&details, self.key_algorithm_provider.as_ref()))
             .transpose()?;

@@ -408,7 +408,8 @@ impl SSIHolderService {
 
         let presentation = formatter
             .prepare_selective_disclosure(credential_presentation)
-            .await?;
+            .await
+            .error_while("preparing selective disclosure")?;
 
         let lvvc_presentation = match &credential_schema.revocation_method {
             Some(method_id) => {
@@ -418,7 +419,8 @@ impl SSIHolderService {
                 if revocation_method.r#type == RevocationType::Lvvc {
                     let extracted = formatter
                         .extract_credentials_unverified(&presentation, Some(credential_schema))
-                        .await?;
+                        .await
+                        .error_while("parsing credential")?;
                     let credential_status = extracted
                         .status
                         .first()
@@ -452,7 +454,8 @@ impl SSIHolderService {
 
                     let formatted_lvvc_presentation = formatter
                         .prepare_selective_disclosure(lvvc_presentation)
-                        .await?;
+                        .await
+                        .error_while("preparing disclosures")?;
                     Some(formatted_lvvc_presentation)
                 } else {
                     None

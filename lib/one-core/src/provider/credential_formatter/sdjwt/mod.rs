@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use anyhow::Context;
 use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
 use one_crypto::{CryptoProvider, Hasher};
@@ -25,7 +24,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
-use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
+use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo, TokenError};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
@@ -36,8 +35,10 @@ use crate::provider::credential_formatter::sdjwt::model::{
 };
 use crate::provider::credential_formatter::sdjwt::x5c::resolve_jwks_url;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 pub mod disclosures;
 pub mod mapper;
@@ -78,7 +79,7 @@ pub(crate) async fn format_credential<T: Serialize>(
                     let did_document = did_method_provider
                         .resolve(&did.did)
                         .await
-                        .map_err(|err| FormatterError::CouldNotFormat(format!("{err}")))?;
+                        .error_while("resolving DID")?;
                     did_document
                         .find_verification_method(
                             additional_inputs.holder_key_id.as_deref(),
@@ -95,27 +96,25 @@ pub(crate) async fn format_credential<T: Serialize>(
             }
             IdentifierType::Key => {
                 if let Some(key) = &identifier.key {
-                    let key_type =
-                        key.key_algorithm_type()
-                            .ok_or(FormatterError::CouldNotFormat(
-                                "Invalid key algorithm".to_string(),
-                            ))?;
+                    let key_type = key
+                        .key_algorithm_type()
+                        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                            key.key_type.to_string(),
+                        ))
+                        .error_while("getting key algorithm")?;
 
                     let key_algorithm = key_algorithm_provider
                         .key_algorithm_from_type(key_type)
-                        .ok_or(FormatterError::CouldNotFormat(
-                            "Invalid key algorithm".to_string(),
-                        ))?;
+                        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                            key_type.to_string(),
+                        ))
+                        .error_while("getting key algorithm")?;
 
                     let jwk = key_algorithm
                         .reconstruct_key(key.public_key.as_slice(), None, None)
-                        .map_err(|e| {
-                            FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
-                        })?;
+                        .error_while("reconstructing key")?;
 
-                    let jwk = jwk.public_key_as_jwk().map_err(|e| {
-                        FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
-                    })?;
+                    let jwk = jwk.public_key_as_jwk().error_while("getting JWK")?;
                     Some(ProofOfPossessionKey {
                         key_id: None,
                         jwk: ProofOfPossessionJwk::Jwk { jwk },
@@ -151,17 +150,18 @@ pub(crate) async fn format_credential<T: Serialize>(
     let key_id = auth_fn.get_key_id();
     let jwt = Jwt::new(
         additional_inputs.token_type,
-        auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
-            "Invalid key algorithm".to_string(),
-        ))?,
+        auth_fn
+            .jose_alg()
+            .ok_or(TokenError::MissingJOSEAlgorithm(
+                "Missing key algorithm".to_string(),
+            ))
+            .error_while("preparing JWT")?,
         key_id,
         additional_inputs
             .issuer_certificate
             .map(|issuer_certificate| pem_chain_into_x5c(&issuer_certificate.chain))
             .transpose()
-            .map_err(|err| {
-                FormatterError::Failed(format!("failed to create x5c header parameter: {err}"))
-            })?
+            .error_while("parsing PEM chain")?
             .map(JwtPublicKeyInfo::X5c),
         payload,
     );
@@ -250,9 +250,7 @@ pub(crate) async fn append_key_binding_token(
         .ok_or(FormatterError::CouldNotFormat(
             "Invalid key algorithm".to_string(),
         ))?;
-    let sd_hash = hasher
-        .hash_base64_url(token.as_bytes())
-        .map_err(|err| FormatterError::CouldNotFormat(format!("failed to hash token: {err}")))?;
+    let sd_hash = hasher.hash_base64_url(token.as_bytes())?;
     let payload = JWTPayload {
         issued_at: Some(OffsetDateTime::now_utc()),
         audience: Some(vec![holder_binding_ctx.audience]),
@@ -265,9 +263,7 @@ pub(crate) async fn append_key_binding_token(
     let kb_token = Jwt::new(KEY_BINDING_TYPE.to_string(), alg, None, None, payload)
         .tokenize(Some(holder_binding_fn))
         .await
-        .map_err(|err| {
-            FormatterError::CouldNotFormat(format!("failed to tokenize key binding token: {err}"))
-        })?;
+        .error_while("creating KB token")?;
     token.push_str(&kb_token);
     Ok(())
 }
@@ -307,19 +303,15 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             )
         })?;
 
-        let issuer = decomposed_token
-            .payload
-            .issuer
-            .as_ref()
-            .ok_or(FormatterError::Failed(
-                "Missing issuer in sd-jwt".to_string(),
-            ))?;
+        let issuer = decomposed_token.payload.issuer.as_ref().ok_or(
+            FormatterError::CouldNotExtractCredentials("Missing issuer in sd-jwt".to_string()),
+        )?;
 
         let (params, isuer_details) = if issuer.starts_with("did:") {
             let did: DidValue = issuer
                 .parse()
-                .context("issuer did parsing error")
-                .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                .map_err(DidMethodError::DidValueError)
+                .error_while("parsing issuer DID")?;
             let params = PublicKeySource::Did {
                 did: Cow::Owned(did.clone()),
                 key_id: decomposed_token.header.key_id.as_deref(),
@@ -347,8 +339,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                             "empty JWK list".to_string(),
                         ))?;
 
-                    let did = encode_to_did(jwk)
-                        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+                    let did = encode_to_did(jwk).error_while("encoding DID")?;
                     let params = PublicKeySource::Did {
                         did: Cow::Owned(did.clone()),
                         key_id: decomposed_token.header.key_id.as_deref(),
@@ -356,13 +347,12 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     (params, IdentifierDetails::Did(did))
                 }
                 Some(x5c) => {
-                    let certificate_validator = certificate_validator.ok_or(
-                        FormatterError::Failed("x5c header param not supported".to_string()),
-                    )?;
+                    let certificate_validator =
+                        certificate_validator.ok_or(FormatterError::CouldNotExtractCredentials(
+                            "x5c header param not supported".to_string(),
+                        ))?;
                     let params = PublicKeySource::X5c { x5c };
-                    let chain = x5c_into_pem_chain(x5c).map_err(|err| {
-                        FormatterError::Failed(format!("failed to parse x5c header param: {err}"))
-                    })?;
+                    let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
                     let validation_options =
                         CertificateValidationOptions::signature_and_revocation(None);
                     let ParsedCertificate {
@@ -372,11 +362,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     } = certificate_validator
                         .parse_pem_chain(&chain, validation_options)
                         .await
-                        .map_err(|err| {
-                            FormatterError::Failed(format!(
-                                "failed to parse x5c header param: {err}"
-                            ))
-                        })?;
+                        .error_while("parsing PEM chain")?;
                     (
                         params,
                         IdentifierDetails::Certificate(CertificateDetails {
@@ -419,14 +405,8 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 &mut payload_before_expanding,
             )?;
 
-            let mut extended_payload: Payload = serde_json::from_value(Value::from(
-                decomposed_token.payload.custom,
-            ))
-            .map_err(|_| {
-                FormatterError::CouldNotExtractCredentials(
-                    "Failed to deserialize JWT payload".to_string(),
-                )
-            })?;
+            let mut extended_payload: Payload =
+                serde_json::from_value(Value::from(decomposed_token.payload.custom))?;
             extended_payload.set_claims(payload_before_expanding)?;
             extended_payload
         };
@@ -439,7 +419,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             (None, Some(cnf)) => Some(
                 encode_to_did(cnf.jwk.jwk())
                     .map(|did| did.to_string())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                    .error_while("preparing DID subject")?,
             ),
             (None, None) => None,
         };
@@ -494,11 +474,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             ))?;
 
         if let Some(verification) = verification {
-            let kb_issuer = encode_to_did(cnf.jwk.jwk()).map_err(|err| {
-                FormatterError::CouldNotExtractCredentials(format!(
-                    "Failed to encode cnf JWK to did: {err}"
-                ))
-            })?;
+            let kb_issuer = encode_to_did(cnf.jwk.jwk()).error_while("encoding DID")?;
             let params = PublicKeySource::Did {
                 did: Cow::Borrowed(&kb_issuer),
                 key_id: decomposed_kb_token.header.key_id.as_deref(),
@@ -522,15 +498,11 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 .ok_or(FormatterError::CouldNotExtractCredentials(
                     "Invalid credential format".to_string(),
                 ))?;
-        let expected_hash = hasher
-            .hash_base64_url(token.as_bytes().get(..=payload_end).ok_or(
-                FormatterError::CouldNotExtractCredentials(
-                    "Could not extract payload for hash".to_string(),
-                ),
-            )?)
-            .map_err(|err| {
-                FormatterError::CouldNotFormat(format!("failed to hash token: {err}"))
-            })?;
+        let expected_hash = hasher.hash_base64_url(token.as_bytes().get(..=payload_end).ok_or(
+            FormatterError::CouldNotExtractCredentials(
+                "Could not extract payload for hash".to_string(),
+            ),
+        )?)?;
         if kb_payload.custom.sd_hash != expected_hash {
             return Err(FormatterError::CouldNotExtractCredentials(format!(
                 "Invalid key binding token sd_hash: expected '{}', got '{}'",

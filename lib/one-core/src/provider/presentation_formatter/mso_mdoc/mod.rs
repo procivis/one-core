@@ -1,10 +1,6 @@
-pub(crate) mod model;
-pub(crate) mod session_transcript;
-
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use coset::{RegisteredLabelWithPrivate, SignatureContext, iana};
 use serde::Deserialize;
@@ -20,6 +16,7 @@ use self::model::{
 use self::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use self::session_transcript::{Handover, SessionTranscript};
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{decode_cbor_base64, encode_cbor_base64};
 use crate::proto::certificate_validator::CertificateValidator;
@@ -41,6 +38,8 @@ use crate::provider::presentation_formatter::model::{
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 
+pub(crate) mod model;
+pub(crate) mod session_transcript;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
@@ -80,7 +79,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             ..
         } = context
         else {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotFormat(format!(
                 "Cannot format mdoc presentation invalid context `{context:?}`"
             )));
         };
@@ -105,7 +104,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             let doc_type = mso.doc_type;
             let algorithm = holder_binding_fn
                 .get_key_algorithm()
-                .map_err(|key_type| FormatterError::Failed(format!("Failed mapping algorithm `{key_type}` to name compatible with allowed COSE Algorithms")))?;
+                .map_err(|key_type| FormatterError::CouldNotFormat(format!("Failed mapping algorithm `{key_type}` to name compatible with allowed COSE Algorithms")))?;
 
             let device_signed = try_build_device_signed(
                 &*holder_binding_fn,
@@ -170,9 +169,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             )
             .await?;
 
-            let x5c = pem_chain_into_x5c(&cert_details.chain).map_err(|err| {
-                FormatterError::CouldNotExtractPresentation(format!("Failed to create x5c: {err}"))
-            })?;
+            let x5c = pem_chain_into_x5c(&cert_details.chain).error_while("parsing PEM chain")?;
             try_verify_issuer_auth(&issuer_signed.issuer_auth, &x5c, &verification_fn).await?;
 
             let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
@@ -260,9 +257,7 @@ impl MsoMdocPresentationFormatter {
                     "missing ISO mDL session transcript".to_string(),
                 ));
             };
-            let session_transcript = ciborium::from_reader(session_transcript.as_slice())
-                .context("session_transcript deserialization error")
-                .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            let session_transcript = ciborium::from_reader(session_transcript.as_slice())?;
 
             return Ok((session_transcript, None));
         }
@@ -286,7 +281,7 @@ impl MsoMdocPresentationFormatter {
                     .map(|u| u.to_string())
                     .ok()
             })
-            .ok_or_else(|| {
+            .ok_or({
                 FormatterError::CouldNotExtractPresentation(
                     "Could not create client_id for validation".to_owned(),
                 )
@@ -298,28 +293,24 @@ impl MsoMdocPresentationFormatter {
             .unwrap_or(client_id.as_str());
 
         let handover = match &context.verification_protocol_type {
-            VerificationProtocolType::OpenId4VpFinal1_0 => Handover::OID4VPFinal1_0(
-                OID4VPFinal1_0Handover::compute(
+            VerificationProtocolType::OpenId4VpFinal1_0 => {
+                Handover::OID4VPFinal1_0(OID4VPFinal1_0Handover::compute(
                     &client_id,
                     response_uri,
                     &nonce,
                     context.verifier_key.as_ref(),
-                )
-                .map_err(|e| FormatterError::Failed(e.to_string()))?,
-            ),
+                )?)
+            }
             // proximity V2 (using dcql)
             VerificationProtocolType::OpenId4VpProximityDraft00
                 if context.format_nonce.is_none() =>
             {
-                Handover::OID4VPFinal1_0(
-                    OID4VPFinal1_0Handover::compute(
-                        &client_id,
-                        response_uri,
-                        &nonce,
-                        context.verifier_key.as_ref(),
-                    )
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
-                )
+                Handover::OID4VPFinal1_0(OID4VPFinal1_0Handover::compute(
+                    &client_id,
+                    response_uri,
+                    &nonce,
+                    context.verifier_key.as_ref(),
+                )?)
             }
             _ => {
                 let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
@@ -328,15 +319,12 @@ impl MsoMdocPresentationFormatter {
                     ),
                 )?;
 
-                Handover::Iso18013_7AnnexB(
-                    OID4VPDraftHandover::compute(
-                        &client_id,
-                        response_uri,
-                        &nonce,
-                        mdoc_generated_nonce,
-                    )
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
-                )
+                Handover::Iso18013_7AnnexB(OID4VPDraftHandover::compute(
+                    &client_id,
+                    response_uri,
+                    &nonce,
+                    mdoc_generated_nonce,
+                )?)
             }
         };
 
@@ -367,13 +355,11 @@ async fn try_verify_issuer_auth(
         FormatterError::CouldNotVerify("IssuerAuth is missing algorithm information".to_owned())
     })?;
 
-    let signature = &cose_sign1.signature;
-
     let params = PublicKeySource::X5c { x5c: chain };
-    verifier
-        .verify(params, algorithm, &token, signature)
+    Ok(verifier
+        .verify(params, algorithm, &token, &cose_sign1.signature)
         .await
-        .map_err(|err| FormatterError::CouldNotVerify(err.to_string()))
+        .error_while("verifying")?)
 }
 
 async fn try_verify_device_signed(
@@ -383,26 +369,16 @@ async fn try_verify_device_signed(
     holder_key: &PublicJwk,
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
-    let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
-        FormatterError::Failed(format!(
-            "CBOR serialization failed for DeviceNamespaces: {err}"
-        ))
-    })?;
+    let device_namespaces = EmbeddedCbor::new([].into())?;
 
     let device_auth = DeviceAuthentication {
         session_transcript,
         doctype: doctype.to_owned(),
         device_namespaces,
     };
-    let device_auth_bytes = EmbeddedCbor::new(device_auth)
-        .map_err(|err| {
-            FormatterError::Failed(format!(
-                "CBOR serialization failed for DeviceAuthentication: {err}"
-            ))
-        })?
-        .into_bytes();
+    let device_auth_bytes = EmbeddedCbor::new(device_auth)?.into_bytes();
 
-    try_verify_detached_signature_with_provider(
+    Ok(try_verify_detached_signature_with_provider(
         signature,
         &device_auth_bytes,
         &[],
@@ -410,7 +386,7 @@ async fn try_verify_device_signed(
         verify_fn,
     )
     .await
-    .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
+    .error_while("verifying DeviceSigned")?)
 }
 
 fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<KeyAlgorithmType> {
@@ -462,33 +438,22 @@ async fn try_build_device_signed(
     doctype: &str,
     session_transcript_bytes: &[u8],
 ) -> Result<DeviceSigned, FormatterError> {
-    let session_transcript = ciborium::from_reader(session_transcript_bytes)
-        .map_err(|err| FormatterError::Failed(format!("invalid session transcript: {err}")))?;
-    let device_namespaces = EmbeddedCbor::<DeviceNamespaces>::new([].into()).map_err(|err| {
-        FormatterError::Failed(format!(
-            "CBOR serialization failed for DeviceNamespaces: {err}"
-        ))
-    })?;
+    let session_transcript = ciborium::from_reader(session_transcript_bytes)?;
+    let device_namespaces = EmbeddedCbor::<DeviceNamespaces>::new([].into())?;
 
     let device_auth = DeviceAuthentication {
         session_transcript,
         doctype: doctype.to_owned(),
         device_namespaces: device_namespaces.clone(),
     };
-    let device_auth_bytes = EmbeddedCbor::new(device_auth)
-        .map_err(|err| {
-            FormatterError::Failed(format!(
-                "CBOR serialization failed for DeviceAuthentication: {err}"
-            ))
-        })?
-        .into_bytes();
+    let device_auth_bytes = EmbeddedCbor::new(device_auth)?.into_bytes();
 
     let algorithm_header = try_build_algorithm_header(algorithm)?;
     let cose_sign1 = CoseSign1Builder::new()
         .protected(algorithm_header)
         .try_create_detached_signature_with_provider(&device_auth_bytes, &[], auth_fn)
         .await
-        .map_err(|err| FormatterError::CouldNotSign(err.to_string()))?
+        .error_while("creating signature")?
         .build();
 
     let device_auth = DeviceAuth {

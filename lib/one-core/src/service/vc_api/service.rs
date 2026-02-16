@@ -72,7 +72,7 @@ impl VCAPIService {
         let issuer_did_value = vcdm
             .issuer
             .to_did_value()
-            .map_err(ServiceError::FormatterError)?;
+            .error_while("parsing issuer did")?;
         let issuer_did = self
             .did_repository
             .get_did_by_value(
@@ -197,10 +197,13 @@ impl VCAPIService {
             holder_key_id: None,
             issuer_certificate: None,
         };
-        let test = formatter.format_credential(credential_data, auth_fn).await;
+        let test = formatter
+            .format_credential(credential_data, auth_fn)
+            .await
+            .error_while("formatting credential")?;
 
         let mut verifiable_credential: LdCredential =
-            serde_json::from_str(&test?).map_err(|e: serde_json::Error| {
+            serde_json::from_str(&test).map_err(|e: serde_json::Error| {
                 ServiceError::Other(format!("Failed to serialize verifiable credential: {e}"))
             })?;
 
@@ -262,7 +265,8 @@ impl VCAPIService {
 
         formatter
             .extract_credentials(&string_token, None, verification_fn)
-            .await?;
+            .await
+            .error_while("extracting credential")?;
 
         Ok(CredentialVerifyResponse {
             credential: verify_request.verifiable_credential,
@@ -319,7 +323,8 @@ impl VCAPIService {
                     verifier_key: None,
                 },
             )
-            .await?;
+            .await
+            .error_while("extracting presentation")?;
 
         Ok(PresentationVerifyResponse {
             checks: vec![],

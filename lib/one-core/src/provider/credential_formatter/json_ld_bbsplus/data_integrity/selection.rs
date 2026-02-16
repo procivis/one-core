@@ -4,6 +4,7 @@ use json_ld::{BlankIdBuf, JsonLdProcessor, Loader, RemoteDocument, rdf_types};
 use sophia_api::quad::Spog;
 
 use super::skolemize::to_deskolemized_nquads;
+use crate::error::ContextWithErrorCode;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::util::rdf_canonization::TermAdapter;
 
@@ -23,16 +24,11 @@ pub async fn select_canonical_nquads(
     let selected_document = select_json_ld(document, pointers)
         .map(json_syntax::Value::from_serde_json)
         .map(|selected| RemoteDocument::new(None, None, selected))
-        .map_err(|e| FormatterError::Failed(format!("Failed to select document: {e}")))?;
+        .error_while("selecting document")?;
 
     let expanded = selected_document
         .expand_with_using(&mut (), &loader, options)
-        .await
-        .map_err(|e| {
-            FormatterError::Failed(format!(
-                "Failed to expand document during selection step: {e}"
-            ))
-        })?;
+        .await?;
 
     let deskolemized_nquads: HashSet<Spog<TermAdapter>> = to_deskolemized_nquads(&expanded);
 
@@ -73,20 +69,22 @@ pub fn select_json_ld(
     pointers: &[String],
 ) -> Result<serde_json::Value, FormatterError> {
     if !document.is_object() {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotFormat(
             "Document is not an object".to_string(),
         ));
     }
 
     if pointers.is_empty() {
-        return Err(FormatterError::Failed("No pointers provided".to_string()));
+        return Err(FormatterError::CouldNotFormat(
+            "No pointers provided".to_string(),
+        ));
     }
 
     let mut selection_document = initialize_selection(document);
 
     if let Some(context) = document.get("@context") {
         let Some(document) = selection_document.as_object_mut() else {
-            return Err(FormatterError::Failed("Invalid document".to_string()));
+            return Err(FormatterError::JsonMapping("Invalid document".to_string()));
         };
         document.insert("@context".to_string(), context.to_owned());
     }
@@ -100,7 +98,7 @@ pub fn select_json_ld(
 
         selection_document =
             select_paths(document, &paths, selection_document).ok_or_else(|| {
-                FormatterError::Failed(format!("Failed to select for pointer: {pointer}"))
+                FormatterError::CouldNotFormat(format!("Failed to select for pointer: {pointer}"))
             })?;
     }
 

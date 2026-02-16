@@ -18,7 +18,6 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::proto::csr_creator::CsrCreationError;
 use crate::proto::nfc::NfcError;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -53,9 +52,6 @@ pub enum ServiceError {
 
     #[error("Verification protocol error `{0}`")]
     VerificationProtocolError(#[from] VerificationProtocolError),
-
-    #[error("Formatter error `{0}`")]
-    FormatterError(#[from] FormatterError),
 
     #[error("Missing signer for algorithm `{0}`")]
     MissingSigner(String),
@@ -675,7 +671,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::IssuanceProtocolError(error) => error.error_code(),
             Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
-            Self::FormatterError(error) => error.error_code(),
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
                 ErrorCode::BR_0048

@@ -3,6 +3,7 @@ use itertools::Itertools;
 use x509_parser::der_parser::error::BerError;
 use x509_parser::der_parser::parse_der;
 
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CrlMode, ParsedCertificate,
@@ -21,8 +22,7 @@ pub(crate) async fn validate_attestation_android(
     bundle: &AndroidBundle,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<KeyHandle, WalletProviderError> {
-    let attestation_pem_chain =
-        x5c_into_pem_chain(attestation).map_err(|e| AppIntegrityValidationError(e.to_string()))?;
+    let attestation_pem_chain = x5c_into_pem_chain(attestation).error_while("parsing x5c")?;
 
     let cert = check_ca_certs(
         &attestation_pem_chain,

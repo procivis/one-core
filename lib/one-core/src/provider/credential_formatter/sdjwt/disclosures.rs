@@ -61,18 +61,18 @@ pub(crate) fn select_disclosures(
         for key_part in disclosed_key.split(NESTED_CLAIM_MARKER) {
             match current_node {
                 Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
-                    return Err(FormatterError::Failed(format!(
+                    return Err(FormatterError::CouldNotFormat(format!(
                         "Invalid nesting: child claim `{key_part}` from key `{disclosed_key}` does not exist"
                     )));
                 }
                 Value::Array(claims) => {
                     let index: usize = key_part.parse().map_err(|err| {
-                        FormatterError::Failed(format!(
+                        FormatterError::CouldNotFormat(format!(
                             "Key `{key_part}` is not a valid array index: {err}"
                         ))
                     })?;
                     let Some(child) = claims.get(index) else {
-                        return Err(FormatterError::Failed(format!(
+                        return Err(FormatterError::CouldNotFormat(format!(
                             "Index `{index}` from key `{disclosed_key}` is out of bounds: array length is {}",
                             claims.len()
                         )));
@@ -179,15 +179,11 @@ fn collect_all_subdisclosures(
 impl Disclosure {
     // We keep this is for backwards compatibility where by mistake we were using the disclosure array string `[salt,key,value]` as disclosure
     pub fn hash_disclosure_array(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
-        hasher
-            .hash_base64_url(self.disclosure_array.as_bytes())
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
+        Ok(hasher.hash_base64_url(self.disclosure_array.as_bytes())?)
     }
 
     pub fn hash_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
-        hasher
-            .hash_base64_url(self.disclosure.as_bytes())
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
+        Ok(hasher.hash_base64_url(self.disclosure.as_bytes())?)
     }
 }
 
@@ -215,10 +211,7 @@ pub(crate) fn compute_object_disclosures(
                 });
 
                 let disclosure = compute_disclosure_for(key, &nested_sd)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64_url(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                let hashed_disclosure = hasher.hash_base64_url(disclosure.as_bytes())?;
 
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
@@ -234,19 +227,14 @@ pub(crate) fn compute_object_disclosures(
                     .collect::<Vec<_>>();
 
                 let disclosure = compute_disclosure_for(key, &Value::Array(sd_elements))?;
-                let hashed_disclosure = hasher
-                    .hash_base64_url(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                let hashed_disclosure = hasher.hash_base64_url(disclosure.as_bytes())?;
 
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
             }
             _ => {
                 let disclosure = compute_disclosure_for(key, value)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64_url(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                let hashed_disclosure = hasher.hash_base64_url(disclosure.as_bytes())?;
 
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
@@ -287,10 +275,7 @@ pub(crate) fn compute_array_disclosures(
                 });
 
                 let disclosure = compute_disclosure_for_array_element(&nested_sd)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64_url(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                let hashed_disclosure = hasher.hash_base64_url(disclosure.as_bytes())?;
 
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
@@ -306,19 +291,14 @@ pub(crate) fn compute_array_disclosures(
                     .collect::<Vec<_>>();
 
                 let disclosure = compute_disclosure_for_array_element(&Value::Array(sd_elements))?;
-                let hashed_disclosure = hasher
-                    .hash_base64_url(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                let hashed_disclosure = hasher.hash_base64_url(disclosure.as_bytes())?;
 
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
             }
             _ => {
                 let disclosure = compute_disclosure_for_array_element(value)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64_url(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                let hashed_disclosure = hasher.hash_base64_url(disclosure.as_bytes())?;
 
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
@@ -351,18 +331,16 @@ pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken<'_>, FormatterE
     };
 
     let mut token_parts = token_with_disclosures.split("~");
-    let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
+    let jwt = token_parts
+        .next()
+        .ok_or(FormatterError::CouldNotExtractCredentials(
+            "Missing JWT part".to_string(),
+        ))?;
 
     let disclosures = token_parts
         .map(|disclosure| {
-            let bytes = Base64UrlSafeNoPadding::decode_to_vec(disclosure, None).map_err(|err| {
-                FormatterError::Failed(format!("failed to decode base64 disclosure: {err}"))
-            })?;
-            let disclosure_array = String::from_utf8(bytes).map_err(|err| {
-                FormatterError::Failed(format!(
-                    "failed to parse UTF-8 disclosure array from bytes: {err}"
-                ))
-            })?;
+            let bytes = Base64UrlSafeNoPadding::decode_to_vec(disclosure, None)?;
+            let disclosure_array = String::from_utf8(bytes)?;
 
             parse_disclosure(disclosure_array, disclosure.to_string())
         })
@@ -404,8 +382,7 @@ pub(crate) fn parse_disclosure(
         },
         Err(_) => {
             let array_element_disclosure =
-                serde_json::from_str::<DisclosureArrayElement>(&disclosure_array)
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                serde_json::from_str::<DisclosureArrayElement>(&disclosure_array)?;
             Disclosure {
                 salt: array_element_disclosure.salt,
                 key: None,

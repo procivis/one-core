@@ -228,9 +228,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         ) {
             (Some(jwk), None) => IdentifierDetails::Key(jwk),
             (None, Some(x5c)) => {
-                let chain = x5c_into_pem_chain(x5c).map_err(|err| {
-                    Error::MappingError(format!("failed to parse x5c header param: {err}"))
-                })?;
+                let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
 
                 let ParsedCertificate {
                     attributes,

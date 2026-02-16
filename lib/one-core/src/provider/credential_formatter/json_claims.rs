@@ -279,7 +279,7 @@ pub fn prepare_identifier(
         IdentifierDetails::Key(key) => {
             let parsed_key = key_algorithm_provider
                 .parse_jwk(key)
-                .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+                .error_while("parsing JWK")?;
             let key_model = Key {
                 id: Uuid::new_v4().into(),
                 created_date: now,

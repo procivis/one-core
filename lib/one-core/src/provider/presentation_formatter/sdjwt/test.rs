@@ -168,7 +168,7 @@ async fn test_format_presentation_with_cnf_missing_nonce_fails() {
         )
         .await;
 
-    assert!(matches!(result, Err(FormatterError::Failed(_))));
+    assert!(matches!(result, Err(FormatterError::CouldNotFormat(_))));
 }
 
 #[tokio::test]
@@ -202,7 +202,7 @@ async fn test_format_presentation_with_cnf_missing_audience_fails() {
         )
         .await;
 
-    assert!(matches!(result, Err(FormatterError::Failed(_))));
+    assert!(matches!(result, Err(FormatterError::CouldNotFormat(_))));
 }
 
 #[tokio::test]

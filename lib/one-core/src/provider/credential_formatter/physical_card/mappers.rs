@@ -15,9 +15,7 @@ use crate::provider::verification_protocol::scan_to_verify::dto::ScanToVerifyCre
 
 impl OptiocalBarcodeCredential {
     pub fn from_token(token: &str) -> Result<Self, FormatterError> {
-        let input: ScanToVerifyCredentialDTO = serde_json::from_str(token).map_err(|e| {
-            FormatterError::Failed(format!("Failed to extract input data from token: {e}"))
-        })?;
+        let input: ScanToVerifyCredentialDTO = serde_json::from_str(token)?;
 
         let schema: Result<_, FormatterError> = match input.schema_id.as_str() {
             "IdentityCard" | "UtopiaEmploymentDocument" => Ok(CredentialSchema {
@@ -25,21 +23,19 @@ impl OptiocalBarcodeCredential {
                 r#type: "OpticalBarcodeCredential".to_string(),
                 metadata: None,
             }),
-            _ => Err(FormatterError::Failed(format!(
-                "Unsupported schema, {}",
+            _ => Err(FormatterError::CouldNotExtractCredentials(format!(
+                "Unsupported schema: {}",
                 input.schema_id
             ))),
         };
 
-        let credential: VcdmCredential = serde_json::from_str(&input.credential).map_err(|e| {
-            FormatterError::Failed(format!("Failed to deserialize credential: {e}"))
-        })?;
+        let credential: VcdmCredential = serde_json::from_str(&input.credential)?;
 
         if !credential
             .r#type
             .contains(&"OpticalBarcodeCredential".to_string())
         {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid credential type, expected `OpticalBarcodeCredential`".to_string(),
             ));
         }
@@ -47,12 +43,11 @@ impl OptiocalBarcodeCredential {
         Ok(Self {
             schema: schema?,
             optical_data: ProtectedOpticalData::new_from_credential_subject(
-                credential
-                    .credential_subject
-                    .first()
-                    .ok_or(FormatterError::Failed(
+                credential.credential_subject.first().ok_or(
+                    FormatterError::CouldNotExtractCredentials(
                         "Failed to find credential_subject".to_string(),
-                    ))?,
+                    ),
+                )?,
                 input.barcode,
             )?,
             credential,
@@ -62,17 +57,18 @@ impl OptiocalBarcodeCredential {
     pub fn extract_claims(&self) -> Result<CredentialSubject, FormatterError> {
         match &self.optical_data {
             ProtectedOpticalData::Mrz(mrz) => {
-                if let mrtd::Document::IdentityCard(mrz_fields) = mrtd::parse(mrz)
-                    .map_err(|err| FormatterError::Failed(format!("Failed to decode MRZ: {err}")))?
+                if let mrtd::Document::IdentityCard(mrz_fields) =
+                    mrtd::parse(mrz).map_err(|err| {
+                        FormatterError::CouldNotExtractCredentials(format!(
+                            "Failed to decode MRZ: {err}"
+                        ))
+                    })?
                 {
                     let claim_values = IdentityCard::try_from(mrz_fields)?;
 
-                    let map: HashMap<_, _> = serde_json::to_value(claim_values)
-                        .map_err(|err| {
-                            FormatterError::Failed(format!("Failed to decode MRZ: {err}"))
-                        })?
+                    let map: HashMap<_, _> = serde_json::to_value(claim_values)?
                         .as_object()
-                        .ok_or(FormatterError::Failed(
+                        .ok_or(FormatterError::JsonMapping(
                             "Failed to decode MRZ fields".to_string(),
                         ))?
                         .into_iter()
@@ -84,7 +80,9 @@ impl OptiocalBarcodeCredential {
                         id: None,
                     })
                 } else {
-                    Err(FormatterError::Failed("Unknown Barcode format".to_string()))
+                    Err(FormatterError::CouldNotExtractCredentials(
+                        "Unknown Barcode format".to_string(),
+                    ))
                 }
             }
         }
@@ -154,14 +152,16 @@ impl ProtectedOpticalData {
             .claims
             .get("type")
             .and_then(|v| v.value.as_str())
-            .ok_or(FormatterError::Failed("Missing subject type".to_string()))?;
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "Missing subject type".to_string(),
+            ))?;
 
         match subject_type {
             MRZ_CREDENTIAL_SUBJECT_TYPE => {
                 // Remove all whitespaces and newlines, otherwise the MRZ parser will fail
                 Ok(Self::Mrz(code.replace([' ', '\n', '\r'], "")))
             }
-            _ => Err(FormatterError::Failed(format!(
+            _ => Err(FormatterError::CouldNotExtractCredentials(format!(
                 "Unsupported subject type: {subject_type}"
             ))),
         }
@@ -172,24 +172,30 @@ impl TryFrom<CredentialStatus> for TerseBitstringStatusListEntry {
     type Error = FormatterError;
     fn try_from(status: CredentialStatus) -> Result<Self, Self::Error> {
         if status.r#type != "TerseBitstringStatusListEntry" {
-            return Err(FormatterError::Failed("Invalid status type".to_string()));
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "Invalid status type".to_string(),
+            ));
         }
 
         let terse_status_list_index: usize = status
             .additional_fields
             .get("terseStatusListIndex")
             .and_then(|v| v.as_u64())
-            .ok_or(FormatterError::Failed(
+            .ok_or(FormatterError::CouldNotExtractCredentials(
                 "Missing status list index".to_string(),
             ))?
             .try_into()
-            .map_err(|_| FormatterError::Failed("Invalid status list index".to_string()))?;
+            .map_err(|e| {
+                FormatterError::CouldNotExtractCredentials(format!(
+                    "Invalid status list index: {e}"
+                ))
+            })?;
 
         let terse_status_list_base_url = status
             .additional_fields
             .get("terseStatusListBaseUrl")
             .and_then(|v| v.as_str())
-            .ok_or(FormatterError::Failed(
+            .ok_or(FormatterError::CouldNotExtractCredentials(
                 "Missing status list base url".to_string(),
             ))?
             .to_owned();

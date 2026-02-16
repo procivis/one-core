@@ -191,11 +191,10 @@ impl VcdmCredential {
         plain_claims: &[String],
         selectively_disclosable_claims: &[String],
     ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-        let value =
-            serde_json::to_value(self).map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+        let value = serde_json::to_value(self)?;
 
         let Some(obj) = value.as_object() else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotExtractCredentials(
                 "Expected root to be an object".to_string(),
             ));
         };

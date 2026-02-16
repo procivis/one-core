@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error)]
 pub enum WalletProviderError {
@@ -46,6 +46,9 @@ pub enum WalletProviderError {
     WalletUnitMustBePending,
     #[error("Insufficient security level")]
     InsufficientSecurityLevel,
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for WalletProviderError {
@@ -73,6 +76,7 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::WalletUnitMustBeActive => ErrorCode::BR_0081,
             Self::WalletUnitMustBePending => ErrorCode::BR_0168,
             Self::InsufficientSecurityLevel => ErrorCode::BR_0297,
+            Self::Nested(nested) => nested.error_code(),
         }
     }
 }

@@ -6,10 +6,10 @@ use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use one_crypto::utilities::build_hmac_sha256;
 
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::base_proof::parse_base_proof_value;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::canonicalize::{
     CanonicializeAndGroupOutput, canonicalize_and_group, create_shuffled_id_label_map_function,
 };
-use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::parse_base_proof_value;
 use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::selection::select_json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
     BbsDerivedProofComponents, CBOR_PREFIX_DERIVED, ParsedBbsDerivedProofComponents,
@@ -36,8 +36,7 @@ pub async fn add_derived_proof(
     .await?;
 
     let mut reveal_document: VcdmCredential =
-        json_syntax::from_value(disclosure_data.reveal_document)
-            .map_err(|e| FormatterError::Failed(format!("Invalid reveal document: {e}")))?;
+        json_syntax::from_value(disclosure_data.reveal_document)?;
 
     let proof_value = serialize_derived_proof_value(
         disclosure_data.bbs_proof,
@@ -59,36 +58,36 @@ pub fn parse_derived_proof_value(
     proof_value: &str,
 ) -> Result<ParsedBbsDerivedProofComponents, FormatterError> {
     let Some(proof_value) = proof_value.strip_prefix("u") else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotVerify(
             "Proof value is not multibase-base64url-no-pad-encoded".to_string(),
         ));
     };
 
-    let proof_value = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
-        .map_err(|e| FormatterError::Failed(format!("Failed to b64 decoding proof value: {e}")))?;
+    let proof_value = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)?;
 
-    let proof_value = match proof_value.get(..3).ok_or(FormatterError::Failed(format!(
-        "Invalid proof value. expected prefix got: {}",
-        hex::encode(&proof_value)
-    )))? {
+    let proof_value = match proof_value
+        .get(..3)
+        .ok_or(FormatterError::CouldNotVerify(format!(
+            "Invalid proof value. expected prefix got: {}",
+            hex::encode(&proof_value)
+        )))? {
         prefix if prefix == CBOR_PREFIX_DERIVED => {
-            proof_value.get(3..).ok_or(FormatterError::Failed(format!(
-                "Invalid proof value. got: {}",
-                hex::encode(&proof_value)
-            )))?
+            proof_value
+                .get(3..)
+                .ok_or(FormatterError::CouldNotVerify(format!(
+                    "Invalid proof value. got: {}",
+                    hex::encode(&proof_value)
+                )))?
         }
         other => {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotVerify(format!(
                 "Invalid proof value. expected derived prefix got: {}",
                 hex::encode(other)
             )));
         }
     };
 
-    let proof_components: BbsDerivedProofComponents = ciborium::de::from_reader(proof_value)
-        .map_err(|e| {
-            FormatterError::Failed(format!("Failed to deserialize bbs+ proof components: {e}"))
-        })?;
+    let proof_components: BbsDerivedProofComponents = ciborium::de::from_reader(proof_value)?;
 
     let decompressed_label_map = decompress_label_map(proof_components.compressed_label_map)?;
 
@@ -119,7 +118,7 @@ async fn create_disclosure_data(
     json_ld_processor_options: json_ld::Options,
 ) -> Result<DisclosureData, FormatterError> {
     let Some(proof_value) = base_proof.proof_value.as_ref() else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotFormat(
             "VCDM proof is missing proofValue".to_string(),
         ));
     };
@@ -128,9 +127,8 @@ async fn create_disclosure_data(
     let proof_components = parse_base_proof_value(proof_value)?;
 
     // 2. Create hmac function
-    let hmac = build_hmac_sha256(&proof_components.hmac_key).ok_or_else(|| {
-        FormatterError::Failed("Failed to build HMAC-SHA256 for specified key".to_string())
-    })?;
+    let hmac = build_hmac_sha256(&proof_components.hmac_key)
+        .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
     // 3. Create label map factory function
     let label_map_factory_function = create_shuffled_id_label_map_function(hmac);
@@ -152,9 +150,7 @@ async fn create_disclosure_data(
     group_definitions.insert("combined".to_string(), combined_pointers.as_slice());
 
     // 6. Canonicalize and group
-    let document = json_syntax::to_value(vcdm).map_err(|e| {
-        FormatterError::Failed(format!("Failed to convert VCDMCredential to JSON: {e}"))
-    })?;
+    let document = json_syntax::to_value(vcdm)?;
     let CanonicializeAndGroupOutput {
         groups, label_map, ..
     } = canonicalize_and_group(
@@ -167,13 +163,19 @@ async fn create_disclosure_data(
     .await?;
 
     let mandatory_group = groups.get("mandatory").ok_or_else(|| {
-        FormatterError::Failed("Mandatory group not found in canonicalized document".to_string())
+        FormatterError::CouldNotFormat(
+            "Mandatory group not found in canonicalized document".to_string(),
+        )
     })?;
     let selective_group = groups.get("selective").ok_or_else(|| {
-        FormatterError::Failed("Selective group not found in canonicalized document".to_string())
+        FormatterError::CouldNotFormat(
+            "Selective group not found in canonicalized document".to_string(),
+        )
     })?;
     let combined_group = groups.get("combined").ok_or_else(|| {
-        FormatterError::Failed("Combined group not found in canonicalized document".to_string())
+        FormatterError::CouldNotFormat(
+            "Combined group not found in canonicalized document".to_string(),
+        )
     })?;
 
     // 7. Compute mandatory indexes relative to combined group
@@ -209,16 +211,13 @@ async fn create_disclosure_data(
         presentation_header,
     };
     let bbs_proof = BBSSigner::derive_proof(derive_input, &proof_components.public_key)
-        .map_err(|e| FormatterError::Failed(format!("Failed to derive BBS proof: {e}")))?;
+        .map_err(|e| FormatterError::CouldNotFormat(format!("Failed to derive BBS proof: {e}")))?;
     // 12. Generate reveal document (we skip step 11 as we default to baseline featureOption)
     let document = document.into_serde_json();
     let reveal_document = select_json_ld(&document, &combined_pointers)?;
 
     // 13. Get canonical id map from combined group deskolemized nquads
-    let (_, canonical_id_map) = sophia_c14n::rdfc10::relabel(&combined_group.deskolemized_nquads)
-        .map_err(|e| {
-        FormatterError::Failed(format!("Failed to relabel combined group nquads: {e}"))
-    })?;
+    let (_, canonical_id_map) = sophia_c14n::rdfc10::relabel(&combined_group.deskolemized_nquads)?;
 
     // 14. Create verifier label map
     let mut verifier_label_map = BTreeMap::new();
@@ -228,7 +227,7 @@ async fn create_disclosure_data(
             label_map
                 .get(input_label.as_ref())
                 .ok_or_else(|| {
-                    FormatterError::Failed(format!("Failed to find label: {input_label}"))
+                    FormatterError::CouldNotFormat(format!("Failed to find label: {input_label}"))
                 })?
                 .clone(),
         );
@@ -262,17 +261,9 @@ fn serialize_derived_proof_value(
 
     let mut proof_value = CBOR_PREFIX_DERIVED.to_vec();
     let mut cbor = Vec::new();
-    ciborium::into_writer(&bbs_derived_proof_components, &mut cbor).map_err(|e| {
-        FormatterError::Failed(format!(
-            "Failed to serialize BBS derived proof components: {e}"
-        ))
-    })?;
+    ciborium::into_writer(&bbs_derived_proof_components, &mut cbor)?;
     proof_value.extend(cbor);
-    let proof_value = Base64UrlSafeNoPadding::encode_to_string(&proof_value).map_err(|e| {
-        FormatterError::Failed(format!(
-            "Failed to encode BBS derived proof components: {e}"
-        ))
-    })?;
+    let proof_value = Base64UrlSafeNoPadding::encode_to_string(&proof_value)?;
 
     Ok(format!("u{proof_value}"))
 }
@@ -285,12 +276,16 @@ fn compress_label_map(
         let k = k
             .strip_prefix("c14n")
             .and_then(|s| s.parse::<usize>().ok())
-            .ok_or_else(|| FormatterError::Failed("Invalid label map key format".to_string()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotFormat("Invalid label map key format".to_string())
+            })?;
 
         let v = v
             .strip_prefix("b")
             .and_then(|s| s.parse::<usize>().ok())
-            .ok_or_else(|| FormatterError::Failed("Invalid label map value format".to_string()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotFormat("Invalid label map value format".to_string())
+            })?;
 
         map.insert(k, v);
     }

@@ -81,6 +81,8 @@ pub enum SignerError {
     CouldNotExtractPrivateKey(String),
     #[error("Could not verify: `{0}`")]
     CouldNotVerify(String),
+    #[error("HMAC error: `{0}`")]
+    HmacError(String),
     #[error("Invalid signature")]
     InvalidSignature,
 }

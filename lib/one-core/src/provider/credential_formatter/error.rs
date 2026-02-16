@@ -1,20 +1,13 @@
-use one_crypto::CryptoProviderError;
+use std::convert::Infallible;
+use std::string::FromUtf8Error;
+
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-
-#[derive(Debug, PartialEq, Eq, Error)]
-pub enum ParseError {
-    #[error("Failed: `{0}`")]
-    Failed(String),
-}
+use crate::util::rdf_canonization::CanonizationError;
 
 #[derive(Debug, Error)]
 pub enum FormatterError {
-    #[error("Failed: `{0}`")]
-    Failed(String),
-    #[error("Could not sign: `{0}`")]
-    CouldNotSign(String),
     #[error("Could not verify: `{0}`")]
     CouldNotVerify(String),
     #[error("Could not format: `{0}`")]
@@ -23,36 +16,51 @@ pub enum FormatterError {
     CouldNotExtractCredentials(String),
     #[error("Could not extract presentation: `{0}`")]
     CouldNotExtractPresentation(String),
-    #[error("Could not extract claims from presentation: `{0}`")]
-    CouldNotExtractClaimsFromPresentation(String),
-    #[error("Incorrect signature")]
-    IncorrectSignature,
-    #[error("Missing part")]
-    MissingPart,
-    #[error("Missing disclosure")]
-    MissingDisclosure,
-    #[error("Missing issuer")]
-    MissingIssuer,
-    #[error("Missing credential subject")]
-    MissingHolder,
-    #[error("Missing claim")]
-    MissingClaim,
     #[error("Only BBS is allowed")]
     BBSOnly,
-    #[error("Crypto library error: `{0}`")]
-    CryptoError(#[from] CryptoProviderError),
-    #[error("{formatter} formatter missing missing base url")]
-    MissingBaseUrl { formatter: &'static str },
     #[error("JSON mapping error: `{0}`")]
     JsonMapping(String),
+    #[error("Float value is NaN")]
+    FloatValueIsNaN,
+
+    #[error("Crypto library error: `{0}`")]
+    CryptoError(#[from] one_crypto::CryptoProviderError),
     #[error("Jsonptr assign error: `{0}`")]
     JsonPtrAssignError(#[from] jsonptr::assign::Error),
     #[error("Jsonptr parse error: `{0}`")]
     JsonPtrParseError(#[from] jsonptr::ParseError),
+    #[error("Json serialization error: `{0}`")]
+    JsonSerialization(#[from] serde_json::Error),
+    #[error("Json serialization error: `{0}`")]
+    JsonSyntaxSerialization(#[from] json_syntax::SerializeError),
+    #[error("Json deserialization error: `{0}`")]
+    JsonSyntaxDeserialization(#[from] json_syntax::DeserializeError),
     #[error("Encoding error: `{0}`")]
     EncodingError(#[from] ct_codecs::Error),
-    #[error("Float value is NaN")]
-    FloatValueIsNaN,
+    #[error("CBOR serialization: `{0}`")]
+    CBORSerialization(#[from] ciborium::ser::Error<std::io::Error>),
+    #[error("CBOR parsing: `{0}`")]
+    CBORParsing(#[from] ciborium::de::Error<std::io::Error>),
+    #[error("CBOR value: `{0}`")]
+    CBORValue(#[from] ciborium::value::Error),
+    #[error("COSE error: `{0}`")]
+    CoseError(#[from] coset::CoseError),
+    #[error("Encoding error: `{0}`")]
+    Base58(#[from] bs58::decode::Error),
+    #[error("Hash error: `{0}`")]
+    HasherError(#[from] one_crypto::HasherError),
+    #[error("URL error: `{0}`")]
+    Url(#[from] url::ParseError),
+    #[error("String parsing error: `{0}`")]
+    FromUtf8Error(#[from] FromUtf8Error),
+    #[error("C14n error: `{0}`")]
+    C14nError(#[from] sophia_c14n::C14nError<Infallible>),
+    #[error("RDF error: `{0}`")]
+    ToRdfError(#[from] json_ld::ToRdfError),
+    #[error("Expand error: `{0}`")]
+    ExpandError(#[from] json_ld::ExpandError),
+    #[error("Canonization error: `{0}`")]
+    CanonizationError(#[from] CanonizationError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -62,25 +70,30 @@ impl ErrorCodeMixin for FormatterError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::BBSOnly => ErrorCode::BR_0090,
-            Self::Failed(_)
-            | Self::CouldNotSign(_)
-            | Self::CouldNotVerify(_)
+            Self::CouldNotVerify(_)
             | Self::CouldNotFormat(_)
             | Self::CouldNotExtractCredentials(_)
             | Self::CouldNotExtractPresentation(_)
-            | Self::CouldNotExtractClaimsFromPresentation(_)
-            | Self::IncorrectSignature
-            | Self::MissingPart
-            | Self::MissingDisclosure
-            | Self::MissingIssuer
-            | Self::MissingHolder
-            | Self::MissingClaim
             | Self::CryptoError(_)
-            | Self::MissingBaseUrl { .. }
             | Self::JsonMapping(_)
             | Self::JsonPtrAssignError(_)
             | Self::JsonPtrParseError(_)
+            | Self::JsonSerialization(_)
+            | Self::JsonSyntaxSerialization(_)
+            | Self::JsonSyntaxDeserialization(_)
             | Self::EncodingError(_)
+            | Self::CBORSerialization(_)
+            | Self::CBORParsing(_)
+            | Self::CBORValue(_)
+            | Self::CoseError(_)
+            | Self::Base58(_)
+            | Self::Url(_)
+            | Self::FromUtf8Error(_)
+            | Self::C14nError(_)
+            | Self::ToRdfError(_)
+            | Self::ExpandError(_)
+            | Self::CanonizationError(_)
+            | Self::HasherError(_)
             | Self::FloatValueIsNaN => ErrorCode::BR_0057,
             Self::Nested(nested) => nested.error_code(),
         }

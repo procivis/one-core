@@ -25,6 +25,7 @@ use super::model::{
 };
 use super::{JWTSigner, get_jwt_signer, jwe_presentation};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{
@@ -663,8 +664,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
                     VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
                 )?;
 
-                pem_chain_into_x5c(&verifier_certificate.chain)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                pem_chain_into_x5c(&verifier_certificate.chain).error_while("parsing PEM chain")?
             }
             IdentifierType::Did | IdentifierType::Key | IdentifierType::CertificateAuthority => {
                 return Err(VerificationProtocolError::Failed(format!(

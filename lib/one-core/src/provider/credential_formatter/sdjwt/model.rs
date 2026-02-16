@@ -86,37 +86,50 @@ impl SettableClaims for VcClaim {
         // store all claims for later use
         self.all_claims = Some(claims.clone());
         let Some(subject) = self.vc.credential_subject.first_mut() else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotExtractCredentials(
                 "Missing vc.credential_subject".to_string(),
             ));
         };
-        let first_level = claims.value.as_object_mut().ok_or(FormatterError::Failed(
-            "Expected claims to be an object".to_string(),
-        ))?;
+        let first_level =
+            claims
+                .value
+                .as_object_mut()
+                .ok_or(FormatterError::CouldNotExtractCredentials(
+                    "Expected claims to be an object".to_string(),
+                ))?;
         let vc = first_level
             .get_mut("vc")
-            .ok_or(FormatterError::Failed("vc not found".to_string()))?
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "vc not found".to_string(),
+            ))?
             .value
             .as_object_mut()
-            .ok_or(FormatterError::Failed("vc is not an object".to_string()))?;
-        let credential_subject = vc
-            .get_mut("credentialSubject")
-            .ok_or(FormatterError::Failed(
-                "Missing credentialSubject".to_string(),
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "vc is not an object".to_string(),
             ))?;
+        let credential_subject =
+            vc.get_mut("credentialSubject")
+                .ok_or(FormatterError::CouldNotExtractCredentials(
+                    "Missing credentialSubject".to_string(),
+                ))?;
 
         let subject_claims = match &mut credential_subject.value {
             CredentialClaimValue::Array(arr) => {
-                let first = arr.first_mut().ok_or(FormatterError::Failed(
-                    "Empty credentialSubject".to_string(),
-                ))?;
-                first.value.as_object_mut().ok_or(FormatterError::Failed(
-                    "credentialSubject must be an object or array of objects".to_string(),
-                ))?
+                let first = arr
+                    .first_mut()
+                    .ok_or(FormatterError::CouldNotExtractCredentials(
+                        "Empty credentialSubject".to_string(),
+                    ))?;
+                first
+                    .value
+                    .as_object_mut()
+                    .ok_or(FormatterError::CouldNotExtractCredentials(
+                        "credentialSubject must be an object or array of objects".to_string(),
+                    ))?
             }
             CredentialClaimValue::Object(obj) => obj,
             _ => {
-                return Err(FormatterError::Failed(
+                return Err(FormatterError::CouldNotExtractCredentials(
                     "credentialSubject must be array or object".to_string(),
                 ));
             }
@@ -124,14 +137,9 @@ impl SettableClaims for VcClaim {
 
         let id = subject_claims.remove("id");
         if let Some(id) = id {
-            subject.id = Some(
-                Url::parse(
-                    id.value
-                        .as_str()
-                        .ok_or(FormatterError::Failed("id must be string".to_string()))?,
-                )
-                .map_err(|e| FormatterError::Failed(format!("failed to parse id as URL: {e}")))?,
-            );
+            subject.id = Some(Url::parse(id.value.as_str().ok_or(
+                FormatterError::CouldNotExtractCredentials("id must be a URL string".to_string()),
+            )?)?);
         };
         subject.claims = IndexMap::from_iter(subject_claims.drain());
         Ok(())

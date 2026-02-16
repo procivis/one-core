@@ -51,6 +51,7 @@ use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -170,7 +171,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .subject
             .map(|did| DidValue::from_str(&did))
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing subject DID")?
             .map(IdentifierDetails::Did)
             .map(|details| prepare_identifier(&details, self.key_algorithm_provider.as_ref()))
             .transpose()?;
@@ -224,7 +226,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .as_ref()
             .and_then(|schemas| schemas.first())
             .map(|schema| schema.id.to_owned())
-            .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotFormat("Missing credential schema id".to_string())
+            })?;
 
         let token_type = if self.params.swiyu_mode {
             // SWIYU still uses the old typ
@@ -244,7 +248,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .vct_type_metadata_cache
             .get(&schema_id)
             .await
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?
+            .error_while("getting VCT")?
             .and_then(|item| item.integrity);
 
         let status = vcdm.credential_status.clone();
@@ -276,7 +280,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
-        Err(FormatterError::Failed(
+        Err(FormatterError::CouldNotFormat(
             "Cannot format StatusList with SD-JWT VC formatter".to_string(),
         ))
     }
@@ -522,7 +526,8 @@ impl SDJWTVCFormatter {
             .subject
             .map(|did| DidValue::from_str(&did))
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing subject DID")?
             .map(IdentifierDetails::Did);
 
         let mut claims = CredentialSubject {
@@ -555,7 +560,9 @@ impl SDJWTVCFormatter {
             .first()
             .map(|cs| cs.claims.clone())
             .ok_or_else(|| {
-                FormatterError::Failed("Credential is missing credential subject".to_string())
+                FormatterError::CouldNotFormat(
+                    "Credential is missing credential subject".to_string(),
+                )
             })?;
 
         let mut claims = HashMap::from_iter(claims);

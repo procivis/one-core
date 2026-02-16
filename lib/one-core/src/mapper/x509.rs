@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use ct_codecs::{Base64, Decoder, Encoder};
 use one_crypto::signer::ecdsa::ECDSASigner;
 use x509_parser::certificate::X509Certificate;
@@ -15,12 +14,10 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 
-pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>> {
+pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> Result<Vec<String>, CertificateParsingError> {
     Pem::iter_from_buffer(pem_chain.as_bytes())
         .map(|pem| {
-            let pem = pem.context("failed to parse x509 certificate")?;
-            let encoded = Base64::encode_to_string(pem.contents)
-                .context("failed to encode x509 certificate")?;
+            let encoded = Base64::encode_to_string(pem?.contents)?;
             Ok(encoded)
         })
         .collect()
@@ -29,15 +26,12 @@ pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>>
 /// For each certificate in the chain, retrieve the authority key identifier.
 pub(crate) fn pem_chain_to_authority_key_identifiers(
     pem_chain: &str,
-) -> anyhow::Result<Vec<String>> {
+) -> Result<Vec<String>, CertificateParsingError> {
     Pem::iter_from_buffer(pem_chain.as_bytes())
         .map(|pem| {
-            let pem = pem.context("failed to parse x509 certificate")?;
-            let cert = pem
-                .parse_x509()
-                .context("failed to parse x509 certificate")?;
-            let key_identifier = authority_key_identifier(&cert)
-                .context("failed to parse authority key identifier")?;
+            let pem = pem?;
+            let cert = pem.parse_x509()?;
+            let key_identifier = authority_key_identifier(&cert)?;
             Ok(key_identifier)
         })
         // If the chain goes up to the CA (which is self-signed) then the last entry might not have an authority key identifier
@@ -46,24 +40,21 @@ pub(crate) fn pem_chain_to_authority_key_identifiers(
         .collect()
 }
 
-pub(crate) fn x5c_into_pem_chain(x5c: &[String]) -> anyhow::Result<String> {
+pub(crate) fn x5c_into_pem_chain(x5c: &[String]) -> Result<String, CertificateParsingError> {
     let der_chain = x5c.iter().try_fold(Vec::new(), |mut aggr, item| {
-        aggr.push(Base64::decode_to_vec(item, None).context("failed to decode x5c")?);
-        Ok::<_, anyhow::Error>(aggr)
+        aggr.push(Base64::decode_to_vec(item, None)?);
+        Ok::<_, CertificateParsingError>(aggr)
     })?;
-    der_chain_into_pem_chain(der_chain)
+    Ok(der_chain_into_pem_chain(der_chain))
 }
 
-pub(crate) fn der_chain_into_pem_chain(der_chain: Vec<Vec<u8>>) -> anyhow::Result<String> {
+pub(crate) fn der_chain_into_pem_chain(der_chain: Vec<Vec<u8>>) -> String {
     use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
     let pems = der_chain
         .into_iter()
         .map(|der| Pem::new("CERTIFICATE", der))
         .collect::<Vec<_>>();
-    Ok(encode_many_config(
-        &pems,
-        EncodeConfig::new().set_line_ending(LineEnding::LF),
-    ))
+    encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF))
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -79,6 +70,8 @@ pub enum CertificateParsingError {
     X509NomError(#[from] x509_parser::nom::Err<x509_parser::error::X509Error>),
     #[error("X509 error: `{0}`")]
     X509ParserError(#[from] x509_parser::error::X509Error),
+    #[error("Encoding error: `{0}`")]
+    Encoding(#[from] ct_codecs::Error),
 }
 
 impl ErrorCodeMixin for CertificateParsingError {

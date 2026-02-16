@@ -29,12 +29,7 @@ pub async fn skolemize_compact_json_ld(
     // expand document
     let mut expanded = document
         .expand_with_using(&mut (), &loader, json_ld_processor_options)
-        .await
-        .map_err(|e| {
-            FormatterError::Failed(format!(
-                "Failed to expand document during skolemization step: {e}"
-            ))
-        })?;
+        .await?;
 
     // skolemize expanded document
     let mut labeler = CustomUrnSchemaBlankNodeLabeler::default();
@@ -46,7 +41,9 @@ pub async fn skolemize_compact_json_ld(
             let processed_context = context
                 .process(&mut (), &loader, None)
                 .await
-                .map_err(|e| FormatterError::Failed(format!("Failed to process context: {e}")))?
+                .map_err(|e| {
+                    FormatterError::CouldNotVerify(format!("Failed to process context: {e}"))
+                })?
                 .into_processed();
 
             ProcessedOwned::new(context, processed_context)
@@ -57,7 +54,7 @@ pub async fn skolemize_compact_json_ld(
     let compact = expanded
         .compact(processed_context.as_ref(), loader)
         .await
-        .map_err(|e| FormatterError::Failed(format!("Failed to compact document: {e}")))?;
+        .map_err(|e| FormatterError::CouldNotVerify(format!("Failed to compact document: {e}")))?;
 
     Ok(SkolemizedDocument { expanded, compact })
 }

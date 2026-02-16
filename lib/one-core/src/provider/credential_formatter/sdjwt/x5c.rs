@@ -2,6 +2,7 @@ use serde::Deserialize;
 use standardized_types::jwk::PublicJwk;
 use url::Url;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
 
@@ -19,18 +20,18 @@ pub async fn resolve_jwks_url(
         cloned
     };
 
-    let response: SdJwtVcIssuerMetadataDTO = http_client
-        .get(jwks_endpoint.as_str())
-        .send()
-        .await
-        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?
-        .error_for_status()
-        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?
-        .json()
-        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+    let response: SdJwtVcIssuerMetadataDTO = async {
+        http_client
+            .get(jwks_endpoint.as_str())
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+    }
+    .await
+    .error_while("fetching jwt-vc-issuer metadata")?;
 
-    let response_issuer = Url::parse(&response.issuer)
-        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+    let response_issuer = Url::parse(&response.issuer)?;
 
     if response_issuer != issuer_url {
         return Err(FormatterError::CouldNotExtractCredentials(
@@ -50,16 +51,17 @@ async fn get_jwks_list(
     if let Some(jwks) = &dto.jwks {
         Ok(jwks.keys.clone())
     } else if let Some(jwks_uri) = &dto.jwks_uri {
-        Ok(http_client
-            .get(jwks_uri.as_str())
-            .send()
-            .await
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?
-            .json::<SdJwtVcIssuerMetadataJwkDTO>()
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?
-            .keys)
+        Ok(async {
+            http_client
+                .get(jwks_uri.as_str())
+                .send()
+                .await?
+                .error_for_status()?
+                .json::<SdJwtVcIssuerMetadataJwkDTO>()
+        }
+        .await
+        .error_while("fetching JWKs")?
+        .keys)
     } else {
         Err(FormatterError::CouldNotExtractCredentials(
             "Missing `jwks` or `jwks_uri`".to_string(),

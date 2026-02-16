@@ -85,7 +85,8 @@ pub(crate) async fn validate_proof(
                 verifier_key: None,
             },
         )
-        .await?;
+        .await
+        .error_while("extracting presentation")?;
 
     let holder_identifier = presentation.issuer.ok_or(ServiceError::MappingError(
         "presentation issuer is None".to_string(),
@@ -173,7 +174,8 @@ pub(crate) async fn validate_proof(
     for credential in presentation.credentials {
         let received_credential = credential_formatter
             .extract_credentials(&credential, None, key_verification_credentials.clone())
-            .await?;
+            .await
+            .error_while("extracting credential")?;
 
         // Check if "nbf" attribute of VCs and VP are valid. || Check if VCs are expired.
         validate_issuance_time(&received_credential.invalid_before, leeway)?;

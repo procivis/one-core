@@ -1017,12 +1017,7 @@ fn prepare_batch(
                     certificate_id: certificate_id.to_string(),
                 })?;
             let trust_entity_keys = pem_chain_to_authority_key_identifiers(&certificate.chain)
-                .map_err(|err| {
-                    ServiceError::Other(format!(
-                        "failed to extract authority key identifiers for certificate {}: {err}",
-                        certificate.id
-                    ))
-                })?
+                .error_while("parsing PEM chain")?
                 .into_iter()
                 .map(TrustEntityKey::from)
                 .collect();

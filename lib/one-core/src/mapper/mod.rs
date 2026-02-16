@@ -1,4 +1,3 @@
-use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
@@ -303,15 +302,9 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
 }
 
 pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {
-    let type_name = type_name::<T>();
     let mut bytes = vec![];
-
-    ciborium::ser::into_writer(&t, &mut bytes).map_err(|err| {
-        FormatterError::Failed(format!("CBOR serialization of `{type_name}` failed: {err}"))
-    })?;
-
-    Base64UrlSafeNoPadding::encode_to_string(bytes)
-        .map_err(|err| FormatterError::Failed(format!("Base64 encoding failed: {err}")))
+    ciborium::ser::into_writer(&t, &mut bytes)?;
+    Ok(Base64UrlSafeNoPadding::encode_to_string(bytes)?)
 }
 
 pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
@@ -319,17 +312,11 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Form
         Ok(bytes) => bytes,
         Err(_) => {
             // Fallback for EUDI
-            Base64UrlSafe::decode_to_vec(s, None)
-                .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?
+            Base64UrlSafe::decode_to_vec(s, None)?
         }
     };
 
-    let type_name = type_name::<T>();
-    ciborium::de::from_reader(&bytes[..]).map_err(|err| {
-        FormatterError::Failed(format!(
-            "CBOR deserialization into `{type_name}` failed: {err}"
-        ))
-    })
+    Ok(ciborium::de::from_reader(&bytes[..])?)
 }
 
 impl TryFrom<Vec<CredentialSchemaClaim>> for CredentialSchemaClaimsNestedView {

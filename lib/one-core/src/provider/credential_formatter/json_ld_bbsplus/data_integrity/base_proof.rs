@@ -10,6 +10,7 @@ use one_crypto::utilities::{build_hmac_sha256, generate_random_bytes};
 use time::OffsetDateTime;
 
 use super::canonicalize::{canonicalize_and_group, create_shuffled_id_label_map_function};
+use crate::error::ContextWithErrorCode;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
     BbsBaseProofComponents, CBOR_PREFIX_BASE,
@@ -18,7 +19,7 @@ use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
 use crate::util::rdf_canonization::rdf_canonize;
 
-pub async fn create_base_proof(
+pub(crate) async fn create_base_proof(
     unsecured_document: &VcdmCredential,
     mandatory_pointers: Vec<String>,
     verification_method: String,
@@ -41,40 +42,40 @@ pub async fn create_base_proof(
     .await
 }
 
-pub fn parse_base_proof_value(proof_value: &str) -> Result<BbsBaseProofComponents, FormatterError> {
+pub(crate) fn parse_base_proof_value(
+    proof_value: &str,
+) -> Result<BbsBaseProofComponents, FormatterError> {
     let Some(proof_value) = proof_value.strip_prefix("u") else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotVerify(
             "Proof value is not multibase-base64url-no-pad-encoded".to_string(),
         ));
     };
 
-    let proof_value = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
-        .map_err(|e| FormatterError::Failed(format!("Failed to b64 decoding proof value: {e}")))?;
+    let proof_value = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)?;
 
-    let proof_value = match proof_value.get(..3).ok_or(FormatterError::Failed(format!(
-        "Invalid proof value. expected prefix got: {}",
-        hex::encode(&proof_value)
-    )))? {
+    let proof_value = match proof_value
+        .get(..3)
+        .ok_or(FormatterError::CouldNotVerify(format!(
+            "Invalid proof value. expected prefix got: {}",
+            hex::encode(&proof_value)
+        )))? {
         prefix if prefix == CBOR_PREFIX_BASE => {
-            proof_value.get(3..).ok_or(FormatterError::Failed(format!(
-                "Invalid proof value. got: {}",
-                hex::encode(&proof_value)
-            )))?
+            proof_value
+                .get(3..)
+                .ok_or(FormatterError::CouldNotVerify(format!(
+                    "Invalid proof value. got: {}",
+                    hex::encode(&proof_value)
+                )))?
         }
         other => {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotVerify(format!(
                 "Invalid proof value. expected baseline prefix got: {}",
                 hex::encode(other)
             )));
         }
     };
 
-    let proof_components: BbsBaseProofComponents =
-        ciborium::de::from_reader(proof_value).map_err(|e| {
-            FormatterError::Failed(format!("Failed to deserialize bbs+ proof components: {e}"))
-        })?;
-
-    Ok(proof_components)
+    Ok(ciborium::de::from_reader(proof_value)?)
 }
 
 // https://www.w3.org/TR/vc-di-bbs/#create-base-proof-bbs-2023
@@ -91,17 +92,13 @@ async fn create_base_proof_with_options(
     options: json_ld::Options,
 ) -> Result<VcdmProof, FormatterError> {
     if unsecured_document.proof.is_some() {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotFormat(
             "Cannot create base proof for credential with existing proof".to_string(),
         ));
     }
 
     let context = unsecured_document.context.clone();
-    let unsecured_document = json_syntax::to_value(unsecured_document).map_err(|e| {
-        FormatterError::Failed(format!(
-            "Failed to convert unsecured document to value: {e}",
-        ))
-    })?;
+    let unsecured_document = json_syntax::to_value(unsecured_document)?;
 
     let mut proof_config = VcdmProof::builder()
         .context(context)
@@ -156,9 +153,8 @@ pub(super) async fn base_proof_transformation(
 ) -> Result<TransformedDocument, FormatterError> {
     // 1. Initialize hmac to an HMAC API using a locally generated and exportable HMAC key.
     let hmac_key = hmac_key.unwrap_or_else(generate_random_bytes::<32>);
-    let hmac = build_hmac_sha256(&hmac_key).ok_or_else(|| {
-        FormatterError::Failed("Failed to build HMAC-SHA256 for specified key".to_string())
-    })?;
+    let hmac =
+        build_hmac_sha256(&hmac_key).map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
     // 2. Initialize labelMapFactoryFunction to the result of calling the createShuffledIdLabelMapFunction algorithm passing hmac as HMAC.
     let label_map_factory_function = create_shuffled_id_label_map_function(hmac);
     // 3. Initialize groupDefinitions to a map with an entry with a key of the string "mandatory" and a value of mandatoryPointers.
@@ -175,7 +171,9 @@ pub(super) async fn base_proof_transformation(
     .await?;
 
     let entry = result.groups.remove("mandatory").ok_or_else(|| {
-        FormatterError::Failed("Mandatory group not found in canonicalized document".to_string())
+        FormatterError::CouldNotVerify(
+            "Mandatory group not found in canonicalized document".to_string(),
+        )
     })?;
 
     Ok(TransformedDocument {
@@ -197,15 +195,9 @@ pub(super) fn base_proof_hashing(
     canonical_proof_config: String,
     hasher: &dyn Hasher,
 ) -> Result<HashData, FormatterError> {
-    let proof_hash = hasher
-        .hash(canonical_proof_config.as_bytes())
-        .map_err(|e| {
-            FormatterError::Failed(format!("Failed to hash canonical proof config: {e}"))
-        })?;
+    let proof_hash = hasher.hash(canonical_proof_config.as_bytes())?;
     let mandatory_concat = transformed_document.mandatory.values().join("");
-    let mandatory_hash = hasher
-        .hash(mandatory_concat.as_bytes())
-        .map_err(|e| FormatterError::Failed(format!("Failed to hash mandatory concat: {e}")))?;
+    let mandatory_hash = hasher.hash(mandatory_concat.as_bytes())?;
 
     Ok(HashData {
         proof_hash,
@@ -238,8 +230,7 @@ pub(super) fn generate_signature_input(
     let message = serde_json::to_vec(&BbsInput {
         header: header.clone(),
         messages: bbs_messages,
-    })
-    .map_err(|e| FormatterError::Failed(format!("Failed to serialize bbs input: {e}")))?;
+    })?;
 
     Ok(SignatureInput { header, message })
 }
@@ -255,7 +246,7 @@ async fn base_proof_serialization(
     let signature = auth_fn
         .sign(&message)
         .await
-        .map_err(|e| FormatterError::Failed(format!("Failed to sign bbs input: {e}")))?;
+        .error_while("Signing bbs input")?;
 
     let proof_value = serialize_base_proof_value(
         signature,
@@ -284,14 +275,12 @@ fn serialize_base_proof_value(
     };
 
     let mut cbor_components = Vec::new();
-    ciborium::ser::into_writer(&bbs_components, &mut cbor_components)
-        .map_err(|e| FormatterError::CouldNotFormat(format!("CBOR serialization failed: {e}")))?;
+    ciborium::ser::into_writer(&bbs_components, &mut cbor_components)?;
 
     let mut cbor = CBOR_PREFIX_BASE.to_vec();
     cbor.extend(cbor_components);
 
-    let b64 = Base64UrlSafeNoPadding::encode_to_string(cbor)
-        .map_err(|_| FormatterError::CouldNotFormat("B64 encoding failed".to_owned()))?;
+    let b64 = Base64UrlSafeNoPadding::encode_to_string(cbor)?;
 
     Ok(format!("u{b64}"))
 }

@@ -13,6 +13,7 @@ pub mod model;
 mod test;
 
 use crate::config::core_config::{FormatType, KeyAlgorithmType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
@@ -24,6 +25,7 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, IdentifierDetails, Issuer, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::ldp_vp::model::{
     CredentialEnvelope, LdPresentation, VerifiableCredential,
@@ -80,16 +82,12 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         for credential in credentials_to_present {
             match credential.credential_format {
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => {
-                    verifiable_credential.push(
-                        serde_json::from_str(credential.credential_token.as_str())
-                            .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
-                    );
+                    verifiable_credential
+                        .push(serde_json::from_str(credential.credential_token.as_str())?);
 
                     if let Some(lvvc_credential_token) = credential.lvvc_credential_token {
-                        verifiable_credential.push(
-                            serde_json::from_str(lvvc_credential_token.as_str())
-                                .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
-                        );
+                        verifiable_credential
+                            .push(serde_json::from_str(lvvc_credential_token.as_str())?);
                     }
                 }
                 _ => {
@@ -120,11 +118,12 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
 
         let holder = holder_did
             .as_ref()
-            .ok_or_else(|| FormatterError::CouldNotFormat("Holder DID not specified".to_string()))?
+            .ok_or(FormatterError::CouldNotFormat(
+                "Holder DID not specified".to_string(),
+            ))?
             .as_str()
             .parse()
-            .map(Issuer::Url)
-            .map_err(|_| FormatterError::CouldNotFormat("Holder DID is not a URL".to_string()))?;
+            .map(Issuer::Url)?;
 
         let mut presentation = LdPresentation {
             context: json_ld_context.clone(),
@@ -136,7 +135,8 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
 
         let algorithm = holder_binding_fn
             .get_key_algorithm()
-            .map_err(|e| FormatterError::CouldNotFormat(format!("Unsupported algorithm: {e}")))?;
+            .map_err(KeyAlgorithmProviderError::MissingAlgorithmImplementation)
+            .error_while("getting key algorithm")?;
 
         let cryptosuite = match algorithm {
             KeyAlgorithmType::Eddsa => "eddsa-rdfc-2022",
@@ -179,8 +179,7 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         proof.context = None;
         presentation.proof = Some(proof);
 
-        let resp = serde_json::to_string(&presentation)
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+        let resp = serde_json::to_string(&presentation)?;
 
         Ok(FormattedPresentation {
             vp_token: resp,
@@ -217,8 +216,7 @@ impl LdpVpPresentationFormatter {
         presentation: &str,
         verification_fn: Option<VerificationFn>,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let presentation: LdPresentation = serde_json::from_str(presentation)
-            .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
+        let presentation: LdPresentation = serde_json::from_str(presentation)?;
 
         if let Some(verification_fn) = verification_fn {
             verify_presentation_signature(
@@ -247,11 +245,11 @@ impl LdpVpPresentationFormatter {
 
                     Ok(enveloped.get_token())
                 } else {
-                    serde_json::to_string(token)
+                    Ok(serde_json::to_string(token)?)
                 }
             })
-            .collect::<Result<_, _>>()
-            .map_err(|err| FormatterError::CouldNotExtractCredentials(err.to_string()))?;
+            .collect::<Result<_, FormatterError>>()
+            .error_while("parsing presentation")?;
 
         let proof = presentation.proof.as_ref();
         Ok(ExtractedPresentation {

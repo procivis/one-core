@@ -53,7 +53,7 @@ impl SettableClaims for SdJwtVc {
     fn set_claims(&mut self, claims: CredentialClaim) -> Result<(), FormatterError> {
         let mut claims = match claims.value {
             CredentialClaimValue::Object(claims) => claims,
-            _ => Err(FormatterError::Failed(
+            _ => Err(FormatterError::JsonMapping(
                 "Expected claims to be object".to_string(),
             ))?,
         };

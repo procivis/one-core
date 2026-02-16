@@ -106,8 +106,7 @@ pub fn label_replacement_canonicalize_nquads(
         C14nIdMap,
     ) -> Result<BTreeMap<String, String>, FormatterError>,
 ) -> Result<(Vec<String>, BTreeMap<String, String>), FormatterError> {
-    let (_, canonical_id_map) = sophia_c14n::rdfc10::relabel(&nquads)
-        .map_err(|e| FormatterError::Failed(format!("Failed to relabel nquads: {e}")))?;
+    let (_, canonical_id_map) = sophia_c14n::rdfc10::relabel(&nquads)?;
 
     let mut label_map_factory_function = label_map_factory_function;
     let label_map = label_map_factory_function(canonical_id_map.clone())?;
@@ -116,18 +115,17 @@ pub fn label_replacement_canonicalize_nquads(
         .map(|(key, new_label)| {
             let key = canonical_id_map
                 .get(key.as_str())
-                .ok_or(FormatterError::Failed(format!("Failed to find key: {key}")))?;
+                .ok_or(FormatterError::CouldNotFormat(format!(
+                    "Failed to find key: {key}"
+                )))?;
             Ok((key.to_string(), new_label.to_string()))
         })
         .collect::<Result<_, FormatterError>>()?;
 
     let canonical_nquads = {
         let mut canonical_nquads = Vec::<u8>::new();
-        sophia_c14n::rdfc10::normalize(&nquads, &mut canonical_nquads)
-            .map_err(|e| FormatterError::Failed(format!("Failed to normalize nquads: {e}")))?;
-        String::from_utf8(canonical_nquads).map_err(|e| {
-            FormatterError::Failed(format!("Failed to convert nquads to string: {e}"))
-        })?
+        sophia_c14n::rdfc10::normalize(&nquads, &mut canonical_nquads)?;
+        String::from_utf8(canonical_nquads)?
     };
 
     let canonical_nquads: Vec<String> = canonical_nquads
@@ -136,14 +134,14 @@ pub fn label_replacement_canonicalize_nquads(
             replace_all(&BLANK_NODE_REGEX, quad, |capture: &Captures<'_>| {
                 let old_label = capture
                     .get(2)
-                    .ok_or(FormatterError::Failed(
+                    .ok_or(FormatterError::CouldNotVerify(
                         "Failed to find old_label".to_string(),
                     ))?
                     .as_str();
                 let new_label =
                     c14n_label_map
                         .get(old_label)
-                        .ok_or(FormatterError::Failed(format!(
+                        .ok_or(FormatterError::CouldNotVerify(format!(
                             "Failed to find old_label: {old_label}"
                         )))?;
                 Ok(format!("_:{new_label}"))
@@ -188,12 +186,7 @@ pub async fn label_replacement_canonicalize_json_ld(
     let labeler = rdf_types::generator::Blank::new_with_prefix("b".to_string());
     let quads: HashSet<Spog<TermAdapter>> = document
         .to_rdf_using(labeler, &loader, json_ld_processor_options)
-        .await
-        .map_err(|e| {
-            FormatterError::Failed(format!(
-                "Failed to expand document during label replacement step: {e}"
-            ))
-        })?
+        .await?
         .cloned_quads()
         .map(|quad| {
             let (subject, predicate, object, maybe_graph) = quad.into_parts();
@@ -217,8 +210,7 @@ pub fn create_shuffled_id_label_map_function(
 
         for (input, c14n_label) in canonical_id_map {
             let digest = hmac(c14n_label.as_bytes());
-            let b64url_digest = Base64UrlSafeNoPadding::encode_to_string(&digest)
-                .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            let b64url_digest = Base64UrlSafeNoPadding::encode_to_string(&digest)?;
             bnode_id_map.push((input, format!("u{b64url_digest}")));
         }
         // Derive the shuffled mapping from the bnode_id_map
@@ -244,7 +236,7 @@ pub fn create_label_map_function(
                 input.to_string(),
                 label_map
                     .get(c14n_label.as_str())
-                    .ok_or(FormatterError::Failed(format!(
+                    .ok_or(FormatterError::CouldNotVerify(format!(
                         "Failed to find c14n_label: {}",
                         c14n_label.as_str()
                     )))?

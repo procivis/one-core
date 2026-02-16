@@ -65,8 +65,7 @@ impl CertificateService {
             return Err(EntityNotFoundError::Certificate(id).into());
         }
 
-        let x5c = pem_chain_into_x5c(&certificate.chain)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let x5c = pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?;
 
         let base64_encoded = x5c
             .first()

@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
@@ -42,6 +41,7 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -133,7 +133,7 @@ impl CredentialFormatter for SDJWTFormatter {
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
-        Err(FormatterError::Failed(
+        Err(FormatterError::CouldNotFormat(
             "Cannot format StatusList with SD-JWT formatter".to_string(),
         ))
     }
@@ -279,7 +279,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "LVVC" => Some(RevocationType::Lvvc),
                 "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                 _ => {
-                    return Err(FormatterError::Failed(format!(
+                    return Err(FormatterError::CouldNotExtractCredentials(format!(
                         "Unknown revocation method: {}",
                         status.r#type
                     )));
@@ -309,7 +309,9 @@ impl CredentialFormatter for SDJWTFormatter {
             .vc
             .credential_subject
             .first()
-            .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
+            })?;
 
         let (mut claims, mut claim_schemas) = parse_claims(
             HashMap::from_iter(credential_subject.claims.clone()),
@@ -362,7 +364,8 @@ impl CredentialFormatter for SDJWTFormatter {
             .subject
             .map(|did| DidValue::from_str(&did))
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing subject DID")?
             .map(IdentifierDetails::Did)
             .map(|details| prepare_identifier(&details, self.key_algorithm_provider.as_ref()))
             .transpose()?;
@@ -435,7 +438,9 @@ pub(crate) async fn extract_credentials_internal(
         .credential_subject
         .into_iter()
         .next()
-        .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+        .ok_or_else(|| {
+            FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
+        })?;
 
     let mut claims = CredentialSubject {
         id: credential_subject.id,
@@ -445,7 +450,7 @@ pub(crate) async fn extract_credentials_internal(
 
     let issuer = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {
         (None, None) => {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotExtractCredentials(
                 "Missing issuer in SD-JWT".to_string(),
             ));
         }
@@ -453,7 +458,7 @@ pub(crate) async fn extract_credentials_internal(
         (Some(_), None) => issuer_details,
         (Some(i1), Some(i2)) => {
             if i1 != i2.as_url().as_str() {
-                return Err(FormatterError::Failed(
+                return Err(FormatterError::CouldNotExtractCredentials(
                     "Invalid issuer in SD-JWT".to_string(),
                 ));
             }
@@ -472,9 +477,10 @@ pub(crate) async fn extract_credentials_internal(
         subject: jwt
             .payload
             .subject
-            .map(|did| did.parse().context("did parsing error"))
+            .map(|did| did.parse())
             .transpose()
-            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing subject DID")?
             .map(IdentifierDetails::Did),
         claims,
         status: jwt.payload.custom.vc.credential_status,
@@ -505,6 +511,6 @@ fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterE
             serde_json::Value::Object(object)
         })
         .ok_or_else(|| {
-            FormatterError::Failed("Credential is missing credential subject".to_string())
+            FormatterError::CouldNotFormat("Credential is missing credential subject".to_string())
         })
 }

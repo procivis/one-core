@@ -3,10 +3,13 @@ use std::collections::HashMap;
 use shared_types::DidValue;
 
 use super::model::VcClaim;
+use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IdentifierDetails,
 };
+use crate::provider::did_method::error::DidMethodError;
 
 impl From<CredentialSchemaData> for Option<CredentialSchema> {
     fn from(credential_schema: CredentialSchemaData) -> Self {
@@ -23,10 +26,12 @@ impl From<CredentialSchemaData> for Option<CredentialSchema> {
 }
 
 impl TryFrom<Jwt<VcClaim>> for DetailCredential {
-    type Error = anyhow::Error;
+    type Error = FormatterError;
 
     fn try_from(jwt: Jwt<VcClaim>) -> Result<Self, Self::Error> {
-        let metadata_claims = jwt.get_metadata_claims()?;
+        let metadata_claims = jwt
+            .get_metadata_claims()
+            .error_while("getting metadata claims")?;
         let credential_subject = jwt
             .payload
             .custom
@@ -34,7 +39,11 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             .credential_subject
             .into_iter()
             .next()
-            .ok_or_else(|| anyhow::anyhow!("JWT missing credential subject"))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotExtractCredentials(
+                    "JWT missing credential subject".to_string(),
+                )
+            })?;
 
         // credential subject id should be present in "sub" claim or "credentialSubject.id"
         let subject = jwt
@@ -48,8 +57,12 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
         let did = jwt
             .payload
             .issuer
-            .ok_or(anyhow::anyhow!("JWT missing credential issuer"))?
-            .parse()?;
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "JWT missing credential issuer".to_string(),
+            ))?
+            .parse()
+            .map_err(DidMethodError::DidValueError)
+            .error_while("parsing issuer")?;
 
         let mut claims = HashMap::from_iter(credential_subject.claims);
         claims.extend(metadata_claims);

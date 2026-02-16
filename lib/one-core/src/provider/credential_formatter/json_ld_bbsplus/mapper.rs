@@ -14,13 +14,13 @@ pub(super) fn convert_to_detail_credential(
     metadata_claim_keys: &[String],
 ) -> Result<DetailCredential, FormatterError> {
     let Some(credential_subject) = vcdm.credential_subject.pop() else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotExtractCredentials(
             "Missing credential subject".to_string(),
         ));
     };
 
     if !vcdm.credential_subject.is_empty() {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotExtractCredentials(
             "We currently don't support multiple credential subjects".to_string(),
         ));
     }
@@ -32,13 +32,13 @@ pub(super) fn convert_to_detail_credential(
         .credential_schema
         .map(|mut schemas| {
             let Some(credential_schema) = schemas.pop() else {
-                return Err(FormatterError::Failed(
+                return Err(FormatterError::CouldNotExtractCredentials(
                     "Missing credential schema".to_string(),
                 ));
             };
 
             if !schemas.is_empty() {
-                return Err(FormatterError::Failed(
+                return Err(FormatterError::CouldNotExtractCredentials(
                     "We currently don't support multiple credential schemas".to_string(),
                 ));
             }

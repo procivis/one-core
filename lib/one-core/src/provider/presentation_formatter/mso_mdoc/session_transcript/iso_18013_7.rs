@@ -1,8 +1,8 @@
-use anyhow::anyhow;
 use ciborium::cbor;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use sha2::{Digest, Sha256};
 
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// ISO 18013-7 Annex B OpenID4VP Handover structure
@@ -21,7 +21,7 @@ impl OID4VPDraftHandover {
         response_uri: &str,
         nonce: &str,
         mdoc_generated_nonce: &str,
-    ) -> Result<Self, anyhow::Error> {
+    ) -> Result<Self, FormatterError> {
         let client_id = client_id.trim_end_matches('/');
         let response_uri = response_uri.trim_end_matches('/');
 
@@ -40,12 +40,11 @@ impl OID4VPDraftHandover {
 }
 
 /// compute SHA-256 hash
-fn compute_hash(values_to_hash: &[&str]) -> Result<Bstr, anyhow::Error> {
-    let cbor_value = cbor!(values_to_hash).map_err(|e| anyhow!("CBOR error: {}", e))?;
+fn compute_hash(values_to_hash: &[&str]) -> Result<Bstr, FormatterError> {
+    let cbor_value = cbor!(values_to_hash)?;
 
     let mut buf = Vec::new();
-    ciborium::ser::into_writer(&cbor_value, &mut buf)
-        .map_err(|e| anyhow!("CBOR serialization error: {}", e))?;
+    ciborium::ser::into_writer(&cbor_value, &mut buf)?;
 
     Ok(Bstr(Sha256::digest(&buf).to_vec()))
 }

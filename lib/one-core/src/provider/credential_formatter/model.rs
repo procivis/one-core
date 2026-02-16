@@ -21,10 +21,12 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::TokenError;
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -455,15 +457,14 @@ pub enum Issuer {
 
 impl Issuer {
     pub fn to_did_value(&self) -> Result<DidValue, FormatterError> {
-        match self {
-            Self::Object { id, .. } => Ok(id.to_string().parse().map_err(|_| {
-                FormatterError::Failed("Parsing did from object failed".to_string())
-            })?),
-            Self::Url(url) => Ok(url
-                .as_str()
-                .parse()
-                .map_err(|_| FormatterError::Failed("Parsing did from url failed".to_string()))?),
+        Ok(match self {
+            Self::Object { id, .. } => id,
+            Self::Url(url) => url,
         }
+        .as_str()
+        .parse()
+        .map_err(DidMethodError::DidValueError)
+        .error_while("parsing issuer DID")?)
     }
 
     pub fn as_url(&self) -> &Url {

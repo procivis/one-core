@@ -166,8 +166,7 @@ impl Signer for RegistrationCertificate {
             return Err(SignerError::InvalidIssuerIdentifier(identifier.id));
         };
         let pubkey_info = Some(JwtPublicKeyInfo::X5c(
-            pem_chain_into_x5c(&certificate.chain)
-                .map_err(|e| SignerError::MappingError(e.to_string()))?,
+            pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?,
         ));
 
         let (jwt_id, status) = revocation_info.unwrap_or((Uuid::new_v4(), None));

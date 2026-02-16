@@ -38,7 +38,7 @@ impl TryFrom<Jwt<VP>> for ExtractedPresentation {
                     .error_while("parsing issuer DID")?,
             ),
             (None, None) => {
-                return Err(FormatterError::MissingIssuer);
+                return Err(FormatterError::CouldNotVerify("Missing issuer".to_string()));
             }
             (Some(_), Some(_)) => {
                 return Err(FormatterError::CouldNotVerify(

@@ -10,6 +10,7 @@ use url::Url;
 use super::model::{
     OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
 };
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::{
@@ -44,8 +45,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .x5c
         .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
 
-    let pem_chain = x5c_into_pem_chain(&x5c)
-        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+    let pem_chain = x5c_into_pem_chain(&x5c).error_while("parsing x5c")?;
 
     let ParsedCertificate {
         public_key,

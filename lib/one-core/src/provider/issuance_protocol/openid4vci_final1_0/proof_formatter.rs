@@ -12,6 +12,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
 };
+use crate::provider::did_method::error::DidMethodError;
 use crate::service::wallet_provider::dto::WalletUnitAttestationClaims;
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
@@ -86,7 +87,8 @@ impl OpenID4VCIProofJWTFormatter {
 
                     let did: DidValue = did
                         .parse()
-                        .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid did: {e}")))?;
+                        .map_err(DidMethodError::DidValueError)
+                        .error_while("parsing issuer DID")?;
 
                     (
                         OpenID4VCIProofHolderBinding::Did {

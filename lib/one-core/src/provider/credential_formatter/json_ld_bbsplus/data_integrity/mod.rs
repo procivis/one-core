@@ -5,8 +5,7 @@ use sophia_api::quad::Spog;
 
 use crate::util::rdf_canonization::TermAdapter;
 
-mod base_proof;
-pub use base_proof::*;
+pub mod base_proof;
 
 mod derived_proof;
 pub use derived_proof::*;

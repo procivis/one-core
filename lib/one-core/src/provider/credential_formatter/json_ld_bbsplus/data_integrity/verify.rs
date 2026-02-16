@@ -4,16 +4,15 @@ use json_ld::Loader;
 use one_crypto::Hasher;
 use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 
-use super::parse_base_proof_value;
-use crate::config::core_config::KeyAlgorithmType;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::canonicalize::{
-    create_label_map_function, label_replacement_canonicalize_json_ld,
-};
-use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::{
+use super::base_proof::{
     base_proof_config, base_proof_hashing, base_proof_transformation, generate_signature_input,
-    parse_derived_proof_value,
+    parse_base_proof_value,
 };
+use super::canonicalize::{create_label_map_function, label_replacement_canonicalize_json_ld};
+use super::parse_derived_proof_value;
+use crate::config::core_config::KeyAlgorithmType;
+use crate::error::ContextWithErrorCode;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::BbsBaseProofComponents;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
@@ -28,13 +27,13 @@ pub async fn verify_base_proof(
     options: json_ld::Options,
 ) -> Result<BbsBaseProofComponents, FormatterError> {
     if vcdm.proof.is_some() {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotVerify(
             "VCDM should not contain proof".to_string(),
         ));
     }
 
     let Some(proof_value) = proof.proof_value.take() else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotVerify(
             "VCDM proof is missing proofValue".to_string(),
         ));
     };
@@ -43,11 +42,9 @@ pub async fn verify_base_proof(
 
     let proof_components = parse_base_proof_value(&proof_value)?;
     let hmac_key = <[u8; 32]>::try_from(proof_components.hmac_key.as_slice())
-        .map_err(|_| FormatterError::Failed("Invalid hmac key".to_string()))?;
+        .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid hmac key: `{e}`")))?;
 
-    let unsecured_document = json_syntax::to_value(vcdm).map_err(|error| {
-        FormatterError::Failed(format!("Failed to convert VCDM to json value: {error}"))
-    })?;
+    let unsecured_document = json_syntax::to_value(vcdm)?;
     let transformed_doc = base_proof_transformation(
         unsecured_document,
         &proof_components.mandatory_pointers,
@@ -62,7 +59,9 @@ pub async fn verify_base_proof(
     let signature_input = generate_signature_input(hash_data)?;
 
     if signature_input.header != proof_components.bbs_header {
-        return Err(FormatterError::Failed("Invalid bbs header".to_string()));
+        return Err(FormatterError::CouldNotVerify(
+            "Invalid bbs header".to_string(),
+        ));
     }
 
     let did_value = vcdm.issuer.to_did_value()?;
@@ -78,7 +77,7 @@ pub async fn verify_base_proof(
             &proof_components.bbs_signature,
         )
         .await
-        .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+        .error_while("verifying")?;
 
     Ok(proof_components)
 }
@@ -103,7 +102,7 @@ pub async fn verify_derived_proof(
     let bbs_header = [proof_hash, mandatory_hash].concat();
 
     if non_mandatory.len() != selective_indexes.len() {
-        return Err(FormatterError::Failed(format!(
+        return Err(FormatterError::CouldNotVerify(format!(
             "Disclosed messages length `{}` and selective indexes length `{}` mismatch",
             non_mandatory.len(),
             selective_indexes.len()
@@ -117,7 +116,7 @@ pub async fn verify_derived_proof(
             Ok((
                 selective_indexes
                     .get(i)
-                    .ok_or(FormatterError::Failed("Invalid index".to_string()))?
+                    .ok_or(FormatterError::CouldNotVerify("Invalid index".to_string()))?
                     .to_owned(),
                 quad.into_bytes(),
             ))
@@ -151,31 +150,25 @@ async fn create_verify_data(
     options: json_ld::Options,
 ) -> Result<VerifyData, FormatterError> {
     if vcdm.proof.is_some() {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotVerify(
             "VCDM should not contain proof".to_string(),
         ));
     }
 
     let mut proof = proof;
     let Some(proof_value) = proof.proof_value.take() else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotVerify(
             "VCDM proof is missing proofValue".to_string(),
         ));
     };
 
     let canonical_proof_config = rdf_canonize(&proof, &loader, options.clone()).await?;
-    let proof_hash = hasher
-        .hash(canonical_proof_config.as_bytes())
-        .map_err(|e| {
-            FormatterError::Failed(format!("Failed to hash canonical proof config: {e}"))
-        })?;
+    let proof_hash = hasher.hash(canonical_proof_config.as_bytes())?;
 
     let proof_components = parse_derived_proof_value(&proof_value)?;
     let label_map_function = create_label_map_function(proof_components.decompressed_label_map);
 
-    let document = json_syntax::to_value(vcdm).map_err(|error| {
-        FormatterError::Failed(format!("Failed to convert VCDM to json value: {error}"))
-    })?;
+    let document = json_syntax::to_value(vcdm)?;
     let canonical_nquads =
         label_replacement_canonicalize_json_ld(document, label_map_function, loader, options)
             .await?;
@@ -206,9 +199,7 @@ fn hash_mandatory_nquads(
     hasher: &dyn Hasher,
 ) -> Result<Vec<u8>, FormatterError> {
     let bytes = mandatory.join("").into_bytes();
-    hasher
-        .hash(&bytes)
-        .map_err(|e| FormatterError::Failed(format!("Failed to hash mandatory nquads: {e}")))
+    Ok(hasher.hash(&bytes)?)
 }
 
 #[cfg(test)]

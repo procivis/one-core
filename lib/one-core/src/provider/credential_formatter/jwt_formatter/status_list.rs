@@ -28,7 +28,7 @@ impl JWTFormatter {
         status_purpose: StatusPurpose,
     ) -> Result<String, FormatterError> {
         if issuer_identifier.r#type != IdentifierType::Did {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "Unsupported identifier type".to_string(),
             ));
         }
@@ -36,19 +36,15 @@ impl JWTFormatter {
         let issuer_did = issuer_identifier
             .did
             .as_ref()
-            .ok_or(FormatterError::Failed(
+            .ok_or(FormatterError::CouldNotFormat(
                 "Identifier of type DID has no related DID".to_string(),
             ))?;
 
-        let issuer = Issuer::Url(
-            issuer_identifier
-                .as_url()
-                .ok_or(FormatterError::Failed("Invalid issuer DID".to_string()))?,
-        );
+        let issuer = Issuer::Url(issuer_identifier.as_url().ok_or(
+            FormatterError::CouldNotFormat("Invalid issuer DID".to_string()),
+        )?);
 
-        let revocation_list_url: Url = revocation_list_url
-            .parse()
-            .map_err(|_| FormatterError::Failed("Invalid revocation list url".to_string()))?;
+        let revocation_list_url: Url = revocation_list_url.parse()?;
 
         let credential_id = revocation_list_url.clone();
 
@@ -98,24 +94,22 @@ impl JWTFormatter {
     ) -> Result<String, FormatterError> {
         let (issuer, public_key_info) = match issuer_identifier.r#type {
             IdentifierType::Did => {
-                let issuer_did = issuer_identifier
-                    .did
-                    .as_ref()
-                    .ok_or(FormatterError::Failed(
-                        "Identifier of type DID has no related DID".to_string(),
-                    ))?;
+                let issuer_did =
+                    issuer_identifier
+                        .did
+                        .as_ref()
+                        .ok_or(FormatterError::CouldNotFormat(
+                            "Identifier of type DID has no related DID".to_string(),
+                        ))?;
 
                 (Some(issuer_did.did.to_string()), None)
             }
             IdentifierType::Certificate => {
-                let certificates =
-                    issuer_identifier
-                        .certificates
-                        .as_ref()
-                        .ok_or(FormatterError::Failed(
-                            "Identifier of type Certificate has no related Certificates"
-                                .to_string(),
-                        ))?;
+                let certificates = issuer_identifier.certificates.as_ref().ok_or(
+                    FormatterError::CouldNotFormat(
+                        "Identifier of type Certificate has no related Certificates".to_string(),
+                    ),
+                )?;
 
                 let certificate = certificates
                     .iter()
@@ -125,15 +119,14 @@ impl JWTFormatter {
                             .as_ref()
                             .is_some_and(|key| key.public_key == auth_fn.get_public_key())
                     })
-                    .ok_or(FormatterError::Failed(
+                    .ok_or(FormatterError::CouldNotFormat(
                         "Valid certificate not found".to_string(),
                     ))?;
 
                 (
                     None,
                     Some(JwtPublicKeyInfo::X5c(
-                        pem_chain_into_x5c(&certificate.chain)
-                            .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                        pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?,
                     )),
                 )
             }
@@ -141,28 +134,28 @@ impl JWTFormatter {
                 let key = issuer_identifier
                     .key
                     .as_ref()
-                    .ok_or(FormatterError::Failed(
+                    .ok_or(FormatterError::CouldNotFormat(
                         "Identifier of type Key missing related key".to_string(),
                     ))?;
 
                 let key_alg = key.key_algorithm_type().ok_or_else(|| {
-                    FormatterError::Failed(format!("Invalid key type {}", key.key_type))
+                    FormatterError::CouldNotFormat(format!("Invalid key type {}", key.key_type))
                 })?;
 
                 let key = key_alg_provider
                     .key_algorithm_from_type(key_alg)
                     .ok_or_else(|| {
-                        FormatterError::Failed(format!("Missing key algorithm {key_alg}"))
+                        FormatterError::CouldNotFormat(format!("Missing key algorithm {key_alg}"))
                     })?
                     .reconstruct_key(&key.public_key, None, None)
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+                    .error_while("reconstructing key")?
                     .public_key_as_jwk()
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+                    .error_while("getting JWK")?;
 
                 (None, Some(JwtPublicKeyInfo::Jwk(key)))
             }
             IdentifierType::CertificateAuthority => {
-                return Err(FormatterError::Failed(format!(
+                return Err(FormatterError::CouldNotFormat(format!(
                     "Invalid issuer identifier type {}",
                     issuer_identifier.r#type
                 )));

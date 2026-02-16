@@ -69,7 +69,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
 
         for credential in &credentials_to_present {
             if !supported_credential_formats.contains(&credential.credential_format) {
-                return Err(FormatterError::Failed(format!(
+                return Err(FormatterError::CouldNotFormat(format!(
                     "Credential format {} not supported",
                     credential.credential_format
                 )));
@@ -106,23 +106,26 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
 
         let jose_alg = holder_binding_fn
             .jose_alg()
-            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
+            .ok_or(FormatterError::CouldNotFormat(
+                "Invalid key algorithm".to_string(),
+            ))?;
 
         let public_key_info = if holder_did.is_none() {
             let key_algorithm = holder_binding_fn
                 .get_key_algorithm()
-                .map_err(FormatterError::Failed)?;
+                .map_err(FormatterError::CouldNotFormat)?;
             let key_algorithm = self
                 .key_algorithm_provider
                 .key_algorithm_from_type(key_algorithm)
-                .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
-            let key = key_algorithm
+                .ok_or(FormatterError::CouldNotFormat(
+                    "Invalid key algorithm".to_string(),
+                ))?;
+            let jwk = key_algorithm
                 .reconstruct_key(&holder_binding_fn.get_public_key(), None, None)
-                .map_err(|e| FormatterError::Failed(e.to_string()))?;
-            Some(JwtPublicKeyInfo::Jwk(
-                key.public_key_as_jwk()
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
-            ))
+                .error_while("reconstructing key")?
+                .public_key_as_jwk()
+                .error_while("getting JWK")?;
+            Some(JwtPublicKeyInfo::Jwk(jwk))
         } else {
             None
         };

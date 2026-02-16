@@ -96,9 +96,7 @@ pub async fn rdf_canonize(
     loader: &impl Loader,
     options: json_ld::Options,
 ) -> Result<String, FormatterError> {
-    canonize(&document, loader, options)
-        .await
-        .map_err(|err| FormatterError::Failed(format!("Canonization failed: {err}")))
+    Ok(canonize(&document, loader, options).await?)
 }
 
 async fn canonize(

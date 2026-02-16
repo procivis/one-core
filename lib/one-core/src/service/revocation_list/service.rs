@@ -169,7 +169,7 @@ impl RevocationListService {
         let extracted_credential = formatter
             .extract_credentials_unverified(credential_content, Some(schema))
             .await
-            .map_err(ServiceError::from)?;
+            .error_while("parsing credential")?;
 
         let status = status_from_lvvc_claims(&extracted_credential.claims.claims)
             .error_while("checking LVVC status")?;
@@ -249,7 +249,9 @@ impl RevocationListService {
         let r#type = self.config.revocation.get_type(&list.r#type)?;
 
         Ok(RevocationListResponseDTO {
-            revocation_list: list.get_status_credential()?,
+            revocation_list: list
+                .get_status_credential()
+                .error_while("parsing status list")?,
             format: list.format,
             r#type,
         })

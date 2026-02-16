@@ -82,9 +82,7 @@ impl KeyVerification {
     }
 
     async fn public_key_from_cert(&self, x5c: &[String]) -> Result<KeyHandle, TokenError> {
-        let pem_chain = x5c_into_pem_chain(x5c).map_err(|err| {
-            TokenError::ValidationFailed(format!("failed to parse x5c header param: {err}"))
-        })?;
+        let pem_chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
 
         let ParsedCertificate { public_key, .. } = self
             .certificate_validator

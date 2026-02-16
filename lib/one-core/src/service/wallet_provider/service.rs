@@ -520,6 +520,7 @@ impl WalletProviderService {
                     &*self.certificate_validator,
                 )
                 .await
+                .map_err(|e| WalletProviderError::AppIntegrityValidationError(e.to_string()))
             }
             WalletUnitOs::Android => {
                 if attestation.is_empty() {
@@ -542,6 +543,7 @@ impl WalletProviderService {
                     &*self.certificate_validator,
                 )
                 .await
+                .map_err(|e| WalletProviderError::AppIntegrityValidationError(e.to_string()))
             }
             WalletUnitOs::Web => Err(WalletProviderError::AppIntegrityValidationError(
                 "Cannot integrity check wallet unit with os 'WEB'".to_string(),
@@ -1058,9 +1060,7 @@ impl WalletProviderService {
                     .ok_or(ServiceError::MappingError(
                         "Cert with matching key not found".to_string(),
                     ))?;
-                let x5c = pem_chain_into_x5c(&cert.chain).map_err(|e| {
-                    ServiceError::MappingError(format!("Failed to create x5c: {e}"))
-                })?;
+                let x5c = pem_chain_into_x5c(&cert.chain).error_while("parsing PEM chain")?;
                 JwtPublicKeyInfo::X5c(x5c)
             }
             IdentifierType::CertificateAuthority => {

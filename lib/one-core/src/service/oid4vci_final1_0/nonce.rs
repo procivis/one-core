@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use one_crypto::{SignerError, utilities};
+use one_crypto::utilities;
 use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -69,19 +69,29 @@ pub(super) fn validate_nonce(
     } = Jwt::decompose_token(nonce).error_while("parsing nonce token")?;
 
     if header.algorithm != "HS256" {
-        return Err(FormatterError::CouldNotVerify("Invalid nonce alg header".to_string()).into());
+        return Err(
+            FormatterError::CouldNotVerify("Invalid nonce alg header".to_string())
+                .error_while("validating algorithm")
+                .into(),
+        );
     };
 
     let (Some(issued_at), Some(expires_at), Some(issuer)) =
         (payload.issued_at, payload.expires_at, payload.issuer)
     else {
-        return Err(FormatterError::CouldNotVerify("Invalid payload".to_string()).into());
+        return Err(
+            FormatterError::CouldNotVerify("Invalid payload".to_string())
+                .error_while("validating payload")
+                .into(),
+        );
     };
     validate_issuance_time(&Some(issued_at), params.leeway)?;
     validate_expiration_time(&Some(expires_at), params.leeway)?;
     if Some(&issuer) != base_url.as_ref() {
         return Err(
-            FormatterError::CouldNotVerify(format!("Invalid nonce issuer: {issuer}")).into(),
+            FormatterError::CouldNotVerify(format!("Invalid nonce issuer: {issuer}"))
+                .error_while("validating issuer")
+                .into(),
         );
     }
     if payload.custom.context != CONTEXT {
@@ -89,22 +99,32 @@ pub(super) fn validate_nonce(
             "Invalid nonce context: {}",
             payload.custom.context
         ))
+        .error_while("validating context")
         .into());
     }
 
-    let id = payload.jwt_id.ok_or(FormatterError::CouldNotVerify(
-        "Missing nonce_id".to_string(),
-    ))?;
+    let id = payload
+        .jwt_id
+        .ok_or(FormatterError::CouldNotVerify(
+            "Missing nonce_id".to_string(),
+        ))
+        .error_while("validating nonce_id")?;
     let id = Uuid::from_str(&id)
-        .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid nonce_id: {e}")))?;
+        .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid nonce_id: {e}")))
+        .error_while("validating nonce_id")?;
 
     let expected_signature = utilities::create_hmac(
         params.signing_key.expose_secret(),
         unverified_jwt.as_bytes(),
     )
-    .ok_or(FormatterError::CouldNotVerify("HMAC failure".to_string()))?;
+    .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
+    .error_while("validating signature")?;
     if expected_signature != signature {
-        return Err(FormatterError::CouldNotVerify("Invalid nonce signature".to_string()).into());
+        return Err(
+            FormatterError::CouldNotVerify("Invalid nonce signature".to_string())
+                .error_while("verifying signature")
+                .into(),
+        );
     }
 
     Ok(id)
@@ -117,8 +137,10 @@ struct HS256Signer {
 #[async_trait::async_trait]
 impl SignatureProvider for HS256Signer {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
-        utilities::create_hmac(self.signing_key.expose_secret(), message)
-            .ok_or(SignerError::CouldNotSign("HMAC failure".to_string()).into())
+        Ok(utilities::create_hmac(
+            self.signing_key.expose_secret(),
+            message,
+        )?)
     }
 
     fn get_key_id(&self) -> Option<String> {

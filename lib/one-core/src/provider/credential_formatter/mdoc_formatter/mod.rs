@@ -125,7 +125,9 @@ impl CredentialFormatter for MdocFormatter {
             .credential_schema
             .and_then(|schema| schema.into_iter().next())
             .ok_or_else(|| {
-                FormatterError::Failed("MDOC credential missing credential schema".to_string())
+                FormatterError::CouldNotFormat(
+                    "MDOC credential missing credential schema".to_string(),
+                )
             })?;
 
         let claims = nest_claims(credential_data.claims.clone())?;
@@ -148,7 +150,7 @@ impl CredentialFormatter for MdocFormatter {
 
                 let key_alg = key
                     .key_algorithm_type()
-                    .ok_or(FormatterError::Failed(format!(
+                    .ok_or(FormatterError::CouldNotFormat(format!(
                         "Invalid key algorithm {}",
                         key.key_type
                     )))?;
@@ -156,12 +158,12 @@ impl CredentialFormatter for MdocFormatter {
                 self.key_algorithm_provider
                     .key_algorithm_from_type(key_alg)
                     .ok_or_else(|| {
-                        FormatterError::Failed(format!("Missing key algorithm {key_alg}"))
+                        FormatterError::CouldNotFormat(format!("Missing key algorithm {key_alg}"))
                     })?
                     .reconstruct_key(&key.public_key, None, None)
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+                    .error_while("reconstructing key")?
                     .public_key_as_jwk()
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+                    .error_while("getting JWK")?
             }
             crate::model::identifier::IdentifierType::Did => {
                 try_extract_did(
@@ -209,26 +211,18 @@ impl CredentialFormatter for MdocFormatter {
             doc_type: credential_schema.id,
             validity_info,
         };
-        let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)
-            .map_err(|err| {
-                FormatterError::Failed(format!(
-                    "CBOR serialization failed for MobileSecurityObjectBytes: {err}"
-                ))
-            })?
-            .into_bytes();
+        let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)?.into_bytes();
 
         let key_algorithm = auth_fn
             .get_key_algorithm()
-            .map_err(|key_type| FormatterError::Failed(format!("Failed mapping algorithm `{key_type}` to name compatible with allowed COSE Algorithms")))?;
+            .map_err(|key_type| FormatterError::CouldNotFormat(format!("Failed mapping algorithm `{key_type}` to name compatible with allowed COSE Algorithms")))?;
 
         let algorithm_header = try_build_algorithm_header(key_algorithm)?;
 
         let x5c = if let Some(certificate) = credential_data.issuer_certificate {
-            pem_chain_into_x5c(&certificate.chain).map_err(|err| {
-                FormatterError::Failed(format!("failed to create x5c header param: {err}"))
-            })?
+            pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?
         } else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "Missing issuer certificate".to_string(),
             ));
         };
@@ -240,7 +234,7 @@ impl CredentialFormatter for MdocFormatter {
             .payload(mso)
             .try_create_signature_with_provider(&[], &*auth_fn)
             .await
-            .map_err(|err| FormatterError::CouldNotSign(err.to_string()))?
+            .error_while("creating signature")?
             .build();
 
         let issuer_signed = IssuerSigned {
@@ -261,7 +255,7 @@ impl CredentialFormatter for MdocFormatter {
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
-        Err(FormatterError::Failed(
+        Err(FormatterError::CouldNotFormat(
             "Cannot format StatusList with MDOC formatter".to_string(),
         ))
     }
@@ -291,7 +285,7 @@ impl CredentialFormatter for MdocFormatter {
         let mut issuer_signed: IssuerSigned = decode_cbor_base64(&credential.token)?;
 
         let Some(namespaces) = issuer_signed.name_spaces.as_mut() else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "IssuerSigned object is missing namespaces".to_owned(),
             ));
         };
@@ -340,7 +334,7 @@ impl CredentialFormatter for MdocFormatter {
         });
 
         if namespaces.is_empty() {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotFormat(
                 "No matching claims were found in namespaces".to_owned(),
             ));
         }
@@ -447,7 +441,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
         let Some(namespaces) = issuer_signed.name_spaces else {
-            return Err(FormatterError::Failed(
+            return Err(FormatterError::CouldNotExtractCredentials(
                 "IssuerSigned object is missing namespaces".to_owned(),
             ));
         };
@@ -563,7 +557,7 @@ async fn extract_credentials_internal(
     .await?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
     let Some(namespaces) = issuer_signed.name_spaces else {
-        return Err(FormatterError::Failed(
+        return Err(FormatterError::CouldNotExtractCredentials(
             "IssuerSigned object is missing namespaces".to_owned(),
         ));
     };
@@ -624,7 +618,7 @@ fn verify_digests(
         let digest_ids = digest_values
             .get(namespace)
             .ok_or(FormatterError::CouldNotVerify(format!(
-                "Missing digest value for namespace {namespace}"
+                "Missing digests for namespace {namespace}"
             )))?;
 
         for signed_item in signed_items {
@@ -692,7 +686,9 @@ fn try_build_namespaces(
 
         let namespace_object = namespace_value
             .as_object()
-            .ok_or(FormatterError::Failed("Expected an object".to_string()))?;
+            .ok_or(FormatterError::JsonMapping(
+                "Expected an object".to_string(),
+            ))?;
 
         for (item_key, item_value) in namespace_object {
             // random has to be minimum 16 bytes
@@ -710,11 +706,7 @@ fn try_build_namespaces(
                 )?,
             };
 
-            namespace.push(EmbeddedCbor::new(signed_item).map_err(|err| {
-                FormatterError::Failed(format!(
-                    "CBOR serialization failed for IssuerSignedItem: {err}"
-                ))
-            })?);
+            namespace.push(EmbeddedCbor::new(signed_item)?);
             digest_id += 1;
         }
     }
@@ -758,13 +750,9 @@ fn build_ciborium_value(
         }
         serde_json::Value::Null => Ok(ciborium::Value::Null),
         _ => {
-            let claim =
-                claims
-                    .iter()
-                    .find(|c| c.key == this_path)
-                    .ok_or(FormatterError::Failed(format!(
-                        "Missing claim: {this_path}"
-                    )))?;
+            let claim = claims.iter().find(|c| c.key == this_path).ok_or(
+                FormatterError::CouldNotFormat(format!("Missing claim: {this_path}")),
+            )?;
             map_to_ciborium_value(claim, datatype_config)
         }
     }
@@ -781,10 +769,12 @@ fn map_to_ciborium_value(
     let data_type = claim
         .datatype
         .as_ref()
-        .ok_or(FormatterError::Failed("Missing data type".to_string()))?;
+        .ok_or(FormatterError::CouldNotFormat(
+            "Missing data type".to_string(),
+        ))?;
     let fields = datatype_config
         .get_fields(data_type)
-        .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+        .error_while("getting datatype config")?;
 
     let value_as_string = claim.value.to_string();
     Ok(match fields.r#type {
@@ -824,21 +814,19 @@ fn map_to_ciborium_value(
         DatatypeType::Picture => {
             let mut file_parts = value_as_string.splitn(2, ',');
 
-            let mime_type = file_parts.next().ok_or(FormatterError::Failed(
+            let mime_type = file_parts.next().ok_or(FormatterError::CouldNotFormat(
                 "Missing data type of base64".to_string(),
             ))?;
 
-            let content = file_parts
-                .next()
-                .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
+            let content = file_parts.next().ok_or(FormatterError::CouldNotFormat(
+                "Missing base64 data".to_string(),
+            ))?;
 
             if let Some(params) = &fields.params
                 && let Some(public) = &params.public
                 && public["encodeAsMdlPortrait"].as_bool().unwrap_or(false)
             {
-                let decoded = Base64::decode_to_vec(content, None).map_err(|e| {
-                    FormatterError::CouldNotFormat(format!("Base64url decoding failed: {e}"))
-                })?;
+                let decoded = Base64::decode_to_vec(content, None)?;
                 return Ok(ciborium::Value::Bytes(decoded));
             }
 
@@ -861,9 +849,7 @@ fn build_x5chain_header(x5c: &[String]) -> Result<Header, FormatterError> {
 
     let mut chain = vec![];
     for cert in x5c {
-        let bytes = Base64::decode_to_vec(cert, None).map_err(|e| {
-            FormatterError::CouldNotFormat(format!("failed to build x5c header: {e}"))
-        })?;
+        let bytes = Base64::decode_to_vec(cert, None)?;
         chain.push(ciborium::Value::Bytes(bytes));
     }
 
@@ -910,7 +896,7 @@ async fn try_extract_did(
     let did_document = did_resolver
         .resolve(holder_did)
         .await
-        .map_err(|err| FormatterError::Failed(format!("Failed resolving did {err}")))?;
+        .error_while("resolving did")?;
 
     for verification_method in did_document.verification_method {
         if holder_key_id.is_some_and(|key_id| key_id != &verification_method.id) {
@@ -926,10 +912,7 @@ async fn try_extract_did(
 }
 
 async fn try_build_cose_key(key: PublicJwk) -> Result<CoseKey, FormatterError> {
-    let base64decode = |v| {
-        Base64UrlSafeNoPadding::decode_to_vec(v, None)
-            .map_err(|err| FormatterError::Failed(format!("Failed base64 decoding key {err}")))
-    };
+    let base64decode = |v| Base64UrlSafeNoPadding::decode_to_vec(v, None);
 
     Ok(match key {
         PublicJwk::Ec(PublicJwkEc {
@@ -953,7 +936,7 @@ async fn try_build_cose_key(key: PublicJwk) -> Result<CoseKey, FormatterError> {
                 .build()
         }
         key => {
-            return Err(FormatterError::Failed(format!(
+            return Err(FormatterError::CouldNotFormat(format!(
                 "Key not available for mdoc {key:?}"
             )));
         }
@@ -975,25 +958,33 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
         Value::Tag(tag, tag_value) => match tag {
             TDATE_TAG => {
                 let datetime = tag_value.into_text().map_err(|v| {
-                    FormatterError::Failed(format!("Expected tdate value. Got: {v:#?}",))
+                    FormatterError::CouldNotExtractCredentials(format!(
+                        "Expected tdate value. Got: {v:#?}",
+                    ))
                 })?;
                 OffsetDateTime::parse(&datetime, &Rfc3339).map_err(|err| {
-                    FormatterError::Failed(format!("Invalid tdate `{datetime}`: {err}",))
+                    FormatterError::CouldNotExtractCredentials(format!(
+                        "Invalid tdate `{datetime}`: {err}",
+                    ))
                 })?;
 
                 Ok(serde_json::Value::String(datetime))
             }
             FULL_DATE_TAG => {
                 let date = tag_value.into_text().map_err(|v| {
-                    FormatterError::Failed(format!("Expected tdate value. Got: {v:#?}",))
+                    FormatterError::CouldNotExtractCredentials(format!(
+                        "Expected tdate value. Got: {v:#?}",
+                    ))
                 })?;
                 Date::parse(&date, FULL_DATE_FORMAT).map_err(|err| {
-                    FormatterError::Failed(format!("Invalid full-date `{date}`: {err}",))
+                    FormatterError::CouldNotExtractCredentials(format!(
+                        "Invalid full-date `{date}`: {err}",
+                    ))
                 })?;
 
                 Ok(serde_json::Value::String(date))
             }
-            _ => Err(FormatterError::Failed(format!(
+            _ => Err(FormatterError::CouldNotExtractCredentials(format!(
                 "Unexpected CBOR tag: {tag}"
             ))),
         },
@@ -1004,13 +995,15 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
             for (key, value) in map {
                 let key = key
                     .as_text()
-                    .ok_or(FormatterError::Failed("Expected a text".to_string()))?;
+                    .ok_or(FormatterError::CouldNotExtractCredentials(
+                        "Expected a text".to_string(),
+                    ))?;
                 map_content.insert(key.to_owned(), build_json_value(value)?);
             }
             Ok(serde_json::Value::Object(map_content))
         }
         Value::Null => Ok(serde_json::Value::Null),
-        _ => Err(FormatterError::Failed(format!(
+        _ => Err(FormatterError::CouldNotExtractCredentials(format!(
             "Unexpected element value. Got: {value:#?}"
         ))),
     }
@@ -1036,15 +1029,21 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
     if array.len() == 2 {
         let data_type_value = array
             .first()
-            .ok_or_else(|| FormatterError::Failed("Invalid index".to_owned()))?
+            .ok_or_else(|| FormatterError::CouldNotExtractCredentials("Invalid index".to_owned()))?
             .as_text()
-            .ok_or_else(|| FormatterError::Failed("Expected String value for key".to_owned()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotExtractCredentials(
+                    "Expected String value for key".to_owned(),
+                )
+            })?;
 
         let bytes = array
             .get(1)
-            .ok_or_else(|| FormatterError::Failed("Invalid index".to_owned()))?
+            .ok_or_else(|| FormatterError::CouldNotExtractCredentials("Invalid index".to_owned()))?
             .as_bytes()
-            .ok_or_else(|| FormatterError::Failed("Not a byte array".to_owned()))?;
+            .ok_or_else(|| {
+                FormatterError::CouldNotExtractCredentials("Not a byte array".to_owned())
+            })?;
         let value = String::from_utf8_lossy(bytes);
 
         return Ok(serde_json::Value::String(format!(
@@ -1052,7 +1051,9 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
         )));
     }
 
-    Err(FormatterError::Failed("Unhandled array".to_owned()))
+    Err(FormatterError::CouldNotExtractCredentials(
+        "Unhandled array".to_owned(),
+    ))
 }
 
 fn is_same_type(a: &Value, b: &Value) -> bool {
@@ -1069,8 +1070,7 @@ fn is_same_type(a: &Value, b: &Value) -> bool {
 }
 
 fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
-    let value = Base64::encode_to_string(bytes)
-        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+    let value = Base64::encode_to_string(bytes)?;
     Ok(serde_json::Value::String(format!(
         "data:image/jpeg;base64,{value}"
     )))
@@ -1282,7 +1282,7 @@ fn parse_claim(
         Value::Map(map) => {
             let mut result = vec![];
             for (key, value) in map {
-                let key = key.as_text().ok_or(FormatterError::Failed(
+                let key = key.as_text().ok_or(FormatterError::JsonMapping(
                     "Expected a text map key".to_string(),
                 ))?;
                 let item_path = format!("{claim_path}/{key}");

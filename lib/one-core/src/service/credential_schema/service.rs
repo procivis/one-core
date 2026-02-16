@@ -90,7 +90,9 @@ impl CredentialSchemaService {
         }
 
         let id = CredentialSchemaId::from(Uuid::new_v4());
-        let schema_id = formatter.credential_schema_id(id, &request, core_base_url)?;
+        let schema_id = formatter
+            .credential_schema_id(id, &request, core_base_url)
+            .error_while("creating schemaId")?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
         let mut credential_schema =
             from_create_request_with_id(id, request, organisation, schema_id, imported_source_url)?;

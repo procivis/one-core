@@ -57,7 +57,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
-        Err(FormatterError::Failed(
+        Err(FormatterError::CouldNotFormat(
             "Cannot format StatusList with PhysicalCard formatter".to_string(),
         ))
     }
@@ -162,7 +162,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         Ok(request
             .schema_id
             .as_ref()
-            .ok_or(FormatterError::Failed(
+            .ok_or(FormatterError::CouldNotFormat(
                 "No schema_id specified for PHYSICAL_CARD".to_string(),
             ))?
             .to_owned())
