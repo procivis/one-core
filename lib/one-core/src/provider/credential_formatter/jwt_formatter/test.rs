@@ -177,13 +177,12 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
 
 #[tokio::test]
 async fn test_format_credential() {
-    let leeway = 45u64;
-
+    let expiration_time = Duration::days(1);
     let formatter = JWTFormatter {
         params: Params {
-            leeway,
+            leeway: 45,
             embed_layout_properties: false,
-            expiration_time: Duration::days(1),
+            expiration_time,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -201,6 +200,8 @@ async fn test_format_credential() {
 
     let context: ContextType = "http://context.com".parse::<Url>().unwrap().into();
     credential_data.vcdm = credential_data.vcdm.add_context(context).add_type("Type1");
+    credential_data.vcdm.valid_from = None;
+    credential_data.vcdm.valid_until = None;
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
@@ -232,9 +233,9 @@ async fn test_format_credential() {
 
     assert_eq!(
         payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+        Some(payload.issued_at.unwrap() + expiration_time),
     );
-    assert_eq!(payload.invalid_before, payload.issued_at,);
+    assert_eq!(payload.invalid_before, None);
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));

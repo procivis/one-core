@@ -62,7 +62,7 @@ impl DisclosureArrayElement {
 }
 
 #[tokio::test]
-async fn test_format_credential_a() {
+async fn test_format_credential() {
     let mut hasher = MockHasher::default();
     hasher
         .expect_hash_base64_url()
@@ -76,7 +76,6 @@ async fn test_format_credential_a() {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let leeway = 45u64;
     let mut credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -91,6 +90,8 @@ async fn test_format_credential_a() {
         .context
         .insert(ContextType::Url("http://context.com".parse().unwrap()));
     credential_data.vcdm.r#type.push("Type1".to_string());
+    credential_data.vcdm.valid_from = None;
+    credential_data.vcdm.valid_until = None;
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -105,16 +106,18 @@ async fn test_format_credential_a() {
     did_method_provider
         .expect_resolve()
         .return_once(move |_| Ok(did_document));
+
+    let expiration_time = Duration::days(1);
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
         params: Params {
-            leeway,
+            leeway: 45,
             embed_layout_properties: false,
             sd_array_elements: true,
-            expiration_time: Duration::days(1),
+            expiration_time,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -169,7 +172,7 @@ async fn test_format_credential_a() {
 
     assert_eq!(
         payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+        Some(payload.issued_at.unwrap() + expiration_time),
     );
     assert_eq!(payload.invalid_before, Some(payload.issued_at.unwrap()),);
 

@@ -67,15 +67,12 @@ async fn test_format_credential() {
     let hasher = Arc::new(hasher);
 
     let mut crypto = MockCryptoProvider::default();
-
     crypto
         .expect_get_hasher()
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let leeway = 45u64;
-
-    let credential_data = get_credential_data(
+    let mut credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
@@ -84,6 +81,9 @@ async fn test_format_credential() {
         },
         "http://base_url",
     );
+    credential_data.vcdm.valid_from = None;
+    credential_data.vcdm.valid_until = None;
+
     let mut did_method_provider = MockDidMethodProvider::new();
 
     let holder_did = credential_data
@@ -119,14 +119,16 @@ async fn test_format_credential() {
             }))
         });
 
+    let expiration_time = Duration::days(1);
+
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
-            leeway,
+            leeway: 45,
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
-            expiration_time: Duration::days(1),
+            expiration_time,
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -188,7 +190,7 @@ async fn test_format_credential() {
 
     assert_time_diff_less_than(
         &payload.expires_at.unwrap(),
-        &(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+        &(payload.issued_at.unwrap() + expiration_time),
         &Duration::seconds(5),
     );
     assert_time_diff_less_than(
