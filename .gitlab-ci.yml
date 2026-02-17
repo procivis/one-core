@@ -492,21 +492,10 @@ deploy:test:
     K8S_NAMESPACE: one-test
     DEPLOY_ENVIRONMENT: Test
 
-deploy:demo:
-  extends:
-    - .deploy_trigger
-    - .rule:deploy:demo
-  variables:
-    VALUES_PATH: values/demo
-    K8S_NAMESPACE: default
-    RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
-    CLUSTER_NAME: $DEMO_CLUSTER_NAME
-    DEPLOY_ENVIRONMENT: Demo
-
 deploy:canivc:
   extends:
     - .deploy_trigger
-    - .rule:deploy:demo
+    - .rule:deploy:trial
   variables:
     VALUES_PATH: values/canivc
     K8S_NAMESPACE: canivc
@@ -515,7 +504,7 @@ deploy:canivc:
 deploy:trial:
   extends:
     - .deploy_trigger
-    - .rule:deploy:demo
+    - .rule:deploy:trial
   variables:
     VALUES_PATH: values/trial
     K8S_NAMESPACE: trial
@@ -526,7 +515,7 @@ deploy:trial:
 deploy:lithuania:
   extends:
     - .deploy_trigger
-    - .rule:deploy:demo
+    - .rule:deploy:trial
   variables:
     VALUES_PATH: values/lithuania
     K8S_NAMESPACE: lithuania
