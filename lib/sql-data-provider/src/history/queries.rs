@@ -427,23 +427,28 @@ fn search_all_condition(search_text: String) -> Condition {
 }
 
 pub(super) struct CountOperationsQuery(pub SelectStatement);
-pub(super) fn count_operations_query(
-    to_exclusive: OffsetDateTime,
-    organisation_id: OrganisationId,
+pub(super) fn count_ops_query(
     entity_type: history::HistoryEntityType,
-    action: &[history::HistoryAction],
+    actions: &[history::HistoryAction],
+    from_inclusive: Option<OffsetDateTime>,
+    to_exclusive: OffsetDateTime,
+    organisation_id: Option<OrganisationId>,
 ) -> CountOperationsQuery {
-    CountOperationsQuery(
-        Query::select()
-            .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
-            .from(history::Entity)
-            // the operations time cutoff is exclusive because the timelines query is inclusive
-            .and_where(Expr::col(history::Column::CreatedDate).lt(to_exclusive))
-            .and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id))
-            .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
-            .and_where(Expr::col(history::Column::Action).is_in(action))
-            .to_owned(),
-    )
+    let mut query = Query::select()
+        .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
+        .from(history::Entity)
+        // the operations time cutoff is exclusive because the timelines query is inclusive
+        .and_where(Expr::col(history::Column::CreatedDate).lt(to_exclusive))
+        .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
+        .and_where(Expr::col(history::Column::Action).is_in(actions))
+        .to_owned();
+    if let Some(from_inclusive) = from_inclusive {
+        query.and_where(Expr::col(history::Column::CreatedDate).gte(from_inclusive));
+    }
+    if let Some(organisation_id) = organisation_id {
+        query.and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id));
+    }
+    CountOperationsQuery(query)
 }
 
 pub(super) fn org_timelines_query(
@@ -496,6 +501,26 @@ pub(super) fn org_timelines_query(
         .order_by(rounded_date, Order::Asc)
         .to_owned();
     Ok(query)
+}
+
+pub(super) fn top_orgs_query(
+    entity_type: history::HistoryEntityType,
+    action: history::HistoryAction,
+    to: OffsetDateTime,
+    num_orgs: usize,
+) -> SelectStatement {
+    let count = Alias::new("count");
+    Query::select()
+        .expr_as(Func::count(ColumnRef::Asterisk), count.clone())
+        .columns([history::Column::OrganisationId])
+        .from(history::Entity)
+        .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
+        .and_where(Expr::col(history::Column::Action).eq(action))
+        .and_where(Expr::col(history::Column::CreatedDate).lte(to))
+        .group_by_col(history::Column::OrganisationId)
+        .order_by(count, Order::Desc)
+        .limit(num_orgs as u64)
+        .to_owned()
 }
 
 impl TimeResolution {

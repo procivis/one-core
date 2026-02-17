@@ -1,6 +1,6 @@
 use one_core::model::history::{
-    GetHistoryList, History, IssuerTimelines, OrganisationStats, OrganisationSummaryStats,
-    OrganisationTimelines, TimeSeriesPoint, VerifierTimelines,
+    GetHistoryList, History, IssuerTimelines, OrganisationOperationsCount, OrganisationStats,
+    OrganisationSummaryStats, OrganisationTimelines, TimeSeriesPoint, VerifierTimelines,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
@@ -10,7 +10,7 @@ use time::{Duration, Month, OffsetDateTime};
 use crate::common::calculate_pages_count;
 use crate::entity::history;
 use crate::entity::history::{HistoryAction, HistoryEntityType};
-use crate::history::model::{TimeResolution, TimeSeriesRow};
+use crate::history::model::{OrganisationOpsCount, TimeResolution, TimeSeriesRow};
 
 impl TryFrom<history::Model> for History {
     type Error = DataLayerError;
@@ -292,4 +292,22 @@ fn zero_point(ts: OffsetDateTime) -> TimeSeriesPoint {
         timestamp: ts,
         count: 0,
     }
+}
+
+pub(super) fn to_ops_org_count(
+    to_ops: &[OrganisationOpsCount],
+    diffs: &[usize],
+) -> Result<Vec<OrganisationOperationsCount>, DataLayerError> {
+    let mut result = Vec::with_capacity(to_ops.len());
+    if to_ops.len() != diffs.len() {
+        return Err(DataLayerError::MappingError);
+    }
+    for (ops, diff) in to_ops.iter().zip(diffs.iter()) {
+        result.push(OrganisationOperationsCount {
+            organisation_id: ops.organisation_id,
+            from_count: ops.count as usize - diff,
+            to_count: ops.count as usize,
+        })
+    }
+    Ok(result)
 }

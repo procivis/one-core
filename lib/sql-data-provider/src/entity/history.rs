@@ -174,6 +174,8 @@ pub enum HistoryEntityType {
     StsOrganisation,
     #[sea_orm(string_value = "STS_IAM_ROLE")]
     StsIamRole,
+    #[sea_orm(string_value = "STS_SESSION")]
+    StsSession,
     #[sea_orm(string_value = "STS_TOKEN")]
     StsToken,
     #[sea_orm(string_value = "SIGNATURE")]

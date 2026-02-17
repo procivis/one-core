@@ -180,6 +180,7 @@ pub enum HistoryEntityTypeBindingEnum {
     StsRole,
     StsOrganisation,
     StsIamRole,
+    StsSession,
     StsToken,
     Signature,
     Notification,

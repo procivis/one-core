@@ -1,4 +1,5 @@
 use sea_orm::FromQueryResult;
+use shared_types::OrganisationId;
 use time::{Duration, OffsetDateTime};
 
 use crate::entity::history::{HistoryAction, HistoryEntityType};
@@ -28,5 +29,11 @@ pub struct TimeSeriesRow {
     pub timestamp: OffsetDateTime,
     pub entity_type: HistoryEntityType,
     pub action: HistoryAction,
+    pub count: u32,
+}
+
+#[derive(FromQueryResult, Debug)]
+pub struct OrganisationOpsCount {
+    pub organisation_id: OrganisationId,
     pub count: u32,
 }

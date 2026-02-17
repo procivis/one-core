@@ -101,6 +101,7 @@ pub enum HistoryEntityType {
     StsRole,
     StsOrganisation,
     StsIamRole,
+    StsSession,
     StsToken,
     Signature,
     Notification,

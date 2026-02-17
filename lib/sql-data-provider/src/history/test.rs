@@ -1,7 +1,8 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
-    HistoryListQuery, HistorySearchEnum, HistorySource, OrganisationStats, TimeSeriesPoint,
+    HistoryListQuery, HistorySearchEnum, HistorySource, OrganisationOperationsCount,
+    OrganisationStats, TimeSeriesPoint,
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::ListPagination;
@@ -1017,6 +1018,281 @@ async fn test_history_org_stats_dummy_data() {
 
     // Every operation exactly once in the middle of a three-day spanning stats window
     assert_timelines(&result, &[0, 1, 0]);
+}
+
+#[tokio::test]
+async fn test_system_history_empty() {
+    let TestSetup { provider, .. } = setup_empty().await;
+
+    let from = OffsetDateTime::now_utc();
+    let to = from + Duration::days(2 * 365);
+    let result = provider.system_stats(from, to, 5).await.unwrap();
+
+    assert_eq!(result.from.issuance_count, 0);
+    assert_eq!(result.from.verification_count, 0);
+    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
+    assert_eq!(result.from.session_token_count, 0);
+    assert_eq!(result.from.active_wallet_unit_count, 0);
+
+    assert_eq!(result.to.issuance_count, 0);
+    assert_eq!(result.to.verification_count, 0);
+    assert_eq!(result.to.credential_lifecycle_operation_count, 0);
+    assert_eq!(result.to.session_token_count, 0);
+    assert_eq!(result.to.active_wallet_unit_count, 0);
+
+    assert!(result.top_verifiers.is_empty());
+    assert!(result.top_issuers.is_empty());
+}
+
+#[tokio::test]
+async fn test_system_history_stats_dummy_data() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+    } = setup_empty().await;
+    let org_id = organisation.id;
+    let now = OffsetDateTime::now_utc();
+
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Offered,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Rejected,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Suspended,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Reactivated,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Revoked,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Errored,
+        org_id,
+        now,
+    )
+    .await;
+
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Accepted,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::StsSession,
+        HistoryAction::Created,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::WalletUnit,
+        HistoryAction::Created,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::WalletUnit,
+        HistoryAction::Activated,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::WalletUnit,
+        HistoryAction::Revoked,
+        org_id,
+        now,
+    )
+    .await;
+
+    let from = now - Duration::days(1);
+    let to = now + Duration::days(1);
+    let result = provider.system_stats(from, to, 5).await.unwrap();
+    assert_eq!(result.to.issuance_count, 1);
+    assert_eq!(result.to.verification_count, 1);
+    assert_eq!(result.to.credential_lifecycle_operation_count, 7);
+    assert_eq!(result.to.session_token_count, 1);
+    assert_eq!(result.to.active_wallet_unit_count, 1); // one activated + one create - one revoked
+    assert_eq!(result.from.issuance_count, 0);
+    assert_eq!(result.from.verification_count, 0);
+    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
+    assert_eq!(result.from.session_token_count, 0);
+    assert_eq!(result.from.active_wallet_unit_count, 0);
+    assert_eq!(
+        result.top_issuers,
+        vec![OrganisationOperationsCount {
+            organisation_id: org_id,
+            from_count: 0,
+            to_count: 1,
+        }]
+    );
+    assert_eq!(
+        result.top_verifiers,
+        vec![OrganisationOperationsCount {
+            organisation_id: org_id,
+            from_count: 0,
+            to_count: 1,
+        }]
+    );
+}
+
+#[tokio::test]
+async fn test_system_history_stats_dummy_data_multiple_orgs() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+    } = setup_empty().await;
+    let org_id = organisation.id;
+    let org2_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+    let now = OffsetDateTime::now_utc();
+
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        org_id,
+        now - Duration::days(3),
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Offered,
+        org2_id,
+        now - Duration::days(3),
+    )
+    .await;
+
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        org_id,
+        now,
+    )
+    .await;
+    for _ in 0..10 {
+        add_history(
+            &db,
+            HistoryEntityType::Credential,
+            HistoryAction::Issued,
+            org2_id,
+            now,
+        )
+        .await;
+    }
+    for _ in 0..8 {
+        add_history(
+            &db,
+            HistoryEntityType::Proof,
+            HistoryAction::Accepted,
+            org_id,
+            now,
+        )
+        .await;
+    }
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Accepted,
+        org2_id,
+        now,
+    )
+    .await;
+
+    let from = now - Duration::days(1);
+    let to = now + Duration::days(1);
+    let result = provider.system_stats(from, to, 5).await.unwrap();
+    assert_eq!(result.from.issuance_count, 1);
+    assert_eq!(result.from.verification_count, 0);
+    assert_eq!(result.from.credential_lifecycle_operation_count, 2);
+    assert_eq!(result.from.session_token_count, 0);
+    assert_eq!(result.from.active_wallet_unit_count, 0);
+    assert_eq!(result.to.issuance_count, 12);
+    assert_eq!(result.to.verification_count, 9);
+    assert_eq!(result.to.credential_lifecycle_operation_count, 13);
+    assert_eq!(result.to.session_token_count, 0);
+    assert_eq!(result.to.active_wallet_unit_count, 0);
+    assert_eq!(
+        result.top_issuers,
+        vec![
+            OrganisationOperationsCount {
+                organisation_id: org2_id,
+                from_count: 0,
+                to_count: 10,
+            },
+            OrganisationOperationsCount {
+                organisation_id: org_id,
+                from_count: 1,
+                to_count: 2,
+            }
+        ]
+    );
+    assert_eq!(
+        result.top_verifiers,
+        vec![
+            OrganisationOperationsCount {
+                organisation_id: org_id,
+                from_count: 0,
+                to_count: 8,
+            },
+            OrganisationOperationsCount {
+                organisation_id: org2_id,
+                from_count: 0,
+                to_count: 1,
+            }
+        ]
+    );
 }
 
 async fn add_history(
