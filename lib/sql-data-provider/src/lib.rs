@@ -149,7 +149,6 @@ impl DataLayer {
 
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
             db: transaction_manager.clone(),
-            claim_schema_repository: claim_schema_repository.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 

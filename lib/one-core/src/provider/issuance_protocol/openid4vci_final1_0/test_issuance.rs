@@ -16,9 +16,7 @@ use crate::config::core_config::{
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -705,6 +703,7 @@ fn dummy_credential() -> Credential {
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
                 metadata: false,
+                required: true,
             }),
         }]),
         issuer_identifier: None,
@@ -720,16 +719,14 @@ fn dummy_credential() -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: claim_schema_id,
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    array: false,
-                    metadata: false,
-                },
+            claim_schemas: Some(vec![ClaimSchema {
+                id: claim_schema_id,
+                key: "key".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                array: false,
+                metadata: false,
                 required: true,
             }]),
             layout_type: LayoutType::Card,

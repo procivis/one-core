@@ -9,7 +9,6 @@ use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::{Identifier, IdentifierState};
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -21,7 +20,7 @@ pub fn parse_claims(
     public_claims: HashMap<String, CredentialClaim>,
     datatype_provider: &dyn DataTypeProvider,
     credential_id: shared_types::CredentialId,
-) -> Result<(Vec<Claim>, Vec<CredentialSchemaClaim>), FormatterError> {
+) -> Result<(Vec<Claim>, Vec<ClaimSchema>), FormatterError> {
     let mut result = vec![];
     for (key, claim_value) in public_claims {
         let claims = parse_claim(&key, &key, claim_value, datatype_provider, credential_id)?;
@@ -53,13 +52,7 @@ pub fn parse_claims(
         };
     }
 
-    let schemas = schemas
-        .values()
-        .map(|schema| CredentialSchemaClaim {
-            schema: schema.to_owned(),
-            required: false,
-        })
-        .collect();
+    let schemas = schemas.into_values().collect();
 
     Ok((result, schemas))
 }
@@ -127,6 +120,7 @@ fn parse_claim(
                     data_type: first.data_type.to_owned(),
                     array: true,
                     metadata: claim_value.metadata,
+                    required: false,
                 }),
             }];
             result.extend(subclaims);
@@ -163,6 +157,7 @@ fn parse_claim(
                     data_type: "OBJECT".to_owned(),
                     array: false,
                     metadata: claim_value.metadata,
+                    required: false,
                 }),
             });
 
@@ -191,6 +186,7 @@ fn parse_claim(
                     data_type: extracted.data_type,
                     array: false,
                     metadata: claim_value.metadata,
+                    required: false,
                 }),
             }]
         }

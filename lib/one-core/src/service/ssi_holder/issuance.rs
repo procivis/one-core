@@ -497,7 +497,7 @@ impl SSIHolderService {
         for (key, value) in credential.claims.claims {
             let claim_schema = claim_schemas
                 .iter()
-                .find(|claim_schema| claim_schema.schema.key == key);
+                .find(|claim_schema| claim_schema.key == key);
             let Some(claim_schema) = claim_schema else {
                 // Legacy compatibility shim: extra metadata claims are allowed, if not in the
                 // schema they are also not stored.
@@ -512,7 +512,7 @@ impl SSIHolderService {
                 claim_schemas,
                 value,
                 now,
-                &claim_schema.schema,
+                claim_schema,
                 &key,
             )?);
         }

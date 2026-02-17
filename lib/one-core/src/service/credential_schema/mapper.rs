@@ -27,7 +27,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             .claim_schemas
             .unwrap_or_default()
             .into_iter()
-            .filter(|schema| !schema.schema.metadata)
+            .filter(|schema| !schema.metadata)
             .collect::<Vec<_>>();
         let claim_schemas = renest_claim_schemas(convert_inner(claim_schemas))?;
 

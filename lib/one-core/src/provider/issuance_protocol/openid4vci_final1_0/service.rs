@@ -93,22 +93,21 @@ fn credential_configurations_supported(
             claims
                 .iter()
                 .filter_map(|claim| {
-                    if claim.schema.data_type == "OBJECT" {
+                    if claim.data_type == "OBJECT" {
                         return None;
                     }
 
-                    if claim.schema.metadata {
+                    if claim.metadata {
                         return None;
                     }
 
                     let path = claim
-                        .schema
                         .key
                         .split('/')
                         .map(|s| s.to_string())
                         .collect::<Vec<String>>();
 
-                    let name = path.last().unwrap_or(&claim.schema.key).to_owned();
+                    let name = path.last().unwrap_or(&claim.key).to_owned();
 
                     Some(OpenID4VCICredentialMetadataClaimResponseDTO {
                         path,

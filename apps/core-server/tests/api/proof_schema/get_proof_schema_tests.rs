@@ -22,7 +22,6 @@ async fn test_get_proof_schema_success() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -92,10 +91,10 @@ async fn test_succeed_to_fetch_claims_just_root_object() {
             &organisation,
             vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
-                    id: root_claim.schema.id,
-                    key: &root_claim.schema.key,
+                    id: root_claim.id,
+                    key: &root_claim.key,
                     required: true,
-                    data_type: &root_claim.schema.data_type,
+                    data_type: &root_claim.data_type,
                     array: false,
                 }],
                 credential_schema: &credential_schema,
@@ -152,10 +151,10 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
             &organisation,
             vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
-                    id: root_claim.schema.id,
-                    key: &root_claim.schema.key,
+                    id: root_claim.id,
+                    key: &root_claim.key,
                     required: true,
-                    data_type: &root_claim.schema.data_type,
+                    data_type: &root_claim.data_type,
                     array: false,
                 }],
                 credential_schema: &credential_schema,

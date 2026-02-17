@@ -504,13 +504,13 @@ impl SDJWTVCFormatter {
             for claim_schema in claim_schemas {
                 let Some(fields) = self
                     .datatype_config
-                    .get_fields(&claim_schema.schema.data_type)
+                    .get_fields(&claim_schema.data_type)
                     .ok()
                 else {
                     continue;
                 };
                 if fields.r#type == DatatypeType::SwiyuPicture {
-                    let path = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
+                    let path = claim_schema.key.split(NESTED_CLAIM_MARKER).collect();
                     post_process_claims(path, &mut jwt.payload.custom.public_claims, |value| {
                         format!("{JPEG_DATA_URI_PREFIX}{value}")
                     })

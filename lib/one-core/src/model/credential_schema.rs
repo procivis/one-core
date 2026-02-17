@@ -35,14 +35,8 @@ pub struct CredentialSchema {
     pub transaction_code: Option<TransactionCode>,
 
     // Relations
-    pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub organisation: Option<Organisation>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CredentialSchemaClaim {
-    pub schema: ClaimSchema,
-    pub required: bool,
 }
 
 #[derive(Debug)]
@@ -58,13 +52,13 @@ pub enum Arrayed<T> {
 
 #[derive(Debug)]
 pub(crate) enum CredentialSchemaClaimsNestedTypeView {
-    Field(CredentialSchemaClaim),
+    Field(ClaimSchema),
     Object(CredentialSchemaClaimsNestedObjectView),
 }
 
 #[derive(Debug)]
 pub(crate) struct CredentialSchemaClaimsNestedObjectView {
-    pub claim: CredentialSchemaClaim,
+    pub claim: ClaimSchema,
     pub fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
 }
 
@@ -170,7 +164,7 @@ pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<Option<RevocationMethodId>>,
     pub format: Option<CredentialFormat>,
-    pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
 }

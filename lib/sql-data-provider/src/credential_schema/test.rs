@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
-    BackgroundProperties, CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-    GetCredentialSchemaQuery, LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
+    BackgroundProperties, CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
+    LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::repository::claim_schema_repository::MockClaimSchemaRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
@@ -27,7 +26,6 @@ use crate::transaction_context::TransactionManagerImpl;
 
 #[derive(Default)]
 struct Repositories {
-    pub claim_schema_repository: MockClaimSchemaRepository,
     pub organisation_repository: MockOrganisationRepository,
 }
 
@@ -54,7 +52,6 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
         ),
         repository: Box::new(CredentialSchemaProvider {
             db: TransactionManagerImpl::new(db.clone()),
-            claim_schema_repository: Arc::from(repositories.claim_schema_repository),
             organisation_repository: Arc::from(repositories.organisation_repository),
         }),
         db,
@@ -123,16 +120,14 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             claim_schemas: Some(
                 new_claim_schemas
                     .into_iter()
-                    .map(|claim| CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: claim.id,
-                            created_date: get_dummy_date(),
-                            last_modified: get_dummy_date(),
-                            key: claim.key.to_owned(),
-                            data_type: claim.datatype.to_owned(),
-                            array: false,
-                            metadata: false,
-                        },
+                    .map(|claim| ClaimSchema {
+                        id: claim.id,
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        key: claim.key.to_owned(),
+                        data_type: claim.datatype.to_owned(),
+                        array: false,
+                        metadata: false,
                         required: claim.required,
                     })
                     .collect(),
@@ -162,28 +157,24 @@ async fn test_create_credential_schema_success() {
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let claim_schemas = vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                key: "key1".to_string(),
-                data_type: "STRING".to_string(),
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            key: "key1".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                key: "key2".to_string(),
-                data_type: "STRING".to_string(),
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            key: "key2".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            metadata: false,
             required: false,
         },
     ];
@@ -316,26 +307,6 @@ async fn test_get_credential_schema_list_deleted_schema() {
 
 #[tokio::test]
 async fn test_get_credential_schema_success() {
-    let mut claim_schema_repository = MockClaimSchemaRepository::default();
-    claim_schema_repository
-        .expect_get_claim_schema_list()
-        .times(1)
-        .withf(|ids, _| ids.len() == 2)
-        .returning(|ids, _| {
-            Ok(ids
-                .into_iter()
-                .map(|id| ClaimSchema {
-                    id,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    key: format!("key{id}"),
-                    data_type: "STRING".to_string(),
-                    array: false,
-                    metadata: false,
-                })
-                .collect())
-        });
-
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -348,7 +319,6 @@ async fn test_get_credential_schema_success() {
         organisation,
         ..
     } = setup_with_schema(Repositories {
-        claim_schema_repository,
         organisation_repository,
     })
     .await;
@@ -378,25 +348,6 @@ async fn test_get_credential_schema_success() {
 
 #[tokio::test]
 async fn test_get_credential_schema_deleted() {
-    let mut claim_schema_repository = MockClaimSchemaRepository::default();
-    claim_schema_repository
-        .expect_get_claim_schema_list()
-        .times(1)
-        .returning(|ids, _| {
-            Ok(ids
-                .into_iter()
-                .map(|id| ClaimSchema {
-                    id,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    key: format!("key{id}"),
-                    data_type: "STRING".to_string(),
-                    array: false,
-                    metadata: false,
-                })
-                .collect())
-        });
-
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -409,7 +360,6 @@ async fn test_get_credential_schema_deleted() {
         db,
         ..
     } = setup_with_schema(Repositories {
-        claim_schema_repository,
         organisation_repository,
     })
     .await;

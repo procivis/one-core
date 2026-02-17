@@ -41,7 +41,6 @@ use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64}
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
@@ -467,19 +466,17 @@ impl CredentialFormatter for MdocFormatter {
                 data_type: "STRING".to_owned(),
                 array: false,
                 metadata: true,
+                required: false,
             }),
         });
 
         // Collect unique claim schemas
-        let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
+        let mut claim_schemas: Vec<ClaimSchema> = vec![];
         for claim in &claims {
             if let Some(schema) = &claim.schema
-                && !claim_schemas.iter().any(|s| s.schema.key == schema.key)
+                && !claim_schemas.iter().any(|s| s.key == schema.key)
             {
-                claim_schemas.push(CredentialSchemaClaim {
-                    schema: schema.clone(),
-                    required: false,
-                });
+                claim_schemas.push(schema.clone());
             }
         }
 
@@ -1158,6 +1155,7 @@ fn parse_claims(
                 data_type: "OBJECT".to_owned(),
                 array: false,
                 metadata: false,
+                required: false,
             }),
         });
     }
@@ -1220,6 +1218,7 @@ fn parse_claim(
                 data_type,
                 array: false,
                 metadata: false,
+                required: false,
             }),
         }]);
     }
@@ -1274,6 +1273,7 @@ fn parse_claim(
                     data_type: first.data_type.to_owned(),
                     array: true,
                     metadata: false,
+                    required: false,
                 }),
             }];
             result.extend(subclaims);
@@ -1313,6 +1313,7 @@ fn parse_claim(
                     data_type: "OBJECT".to_owned(),
                     array: false,
                     metadata: false,
+                    required: false,
                 }),
             });
 
@@ -1339,6 +1340,7 @@ fn parse_claim(
                     data_type,
                     array: false,
                     metadata: false,
+                    required: false,
                 }),
             }]
         }

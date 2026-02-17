@@ -4,7 +4,7 @@ use std::str::FromStr;
 use one_core::model::certificate::CertificateState;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::{CredentialSchemaClaim, KeyStorageSecurity};
+use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
@@ -130,28 +130,24 @@ async fn test_issuance_accept_openid4vc() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: schema_id.into(),
-                            key: "string".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: schema_id.into(),
+                        key: "string".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: metadata_schema_id.into(),
-                            key: "iss".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: true,
-                        },
+                    ClaimSchema {
+                        id: metadata_schema_id.into(),
+                        key: "iss".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: true,
                         required: false,
                     },
                 ]),
@@ -356,28 +352,24 @@ async fn test_issuance_accept_schema_name_already_exists() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: schema_id.into(),
-                            key: "string".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: schema_id.into(),
+                        key: "string".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: metadata_schema_id.into(),
-                            key: "iss".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: true,
-                        },
+                    ClaimSchema {
+                        id: metadata_schema_id.into(),
+                        key: "iss".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: true,
                         required: false,
                     },
                 ]),
@@ -555,16 +547,14 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -730,16 +720,14 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -899,16 +887,14 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -1070,16 +1056,14 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -1208,16 +1192,14 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -2092,16 +2074,14 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -2273,16 +2253,14 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()
@@ -2459,64 +2437,54 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             TestingCreateSchemaParams {
                 format: Some("JSON_LD_CLASSIC".into()),
                 claim_schemas: Some(vec![
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "first name".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "first name".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "last name".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "last name".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "address".to_string(),
-                            data_type: "OBJECT".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "address".to_string(),
+                        data_type: "OBJECT".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "address/postal code".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "address/postal code".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "address/street".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: datetime!(2024-10-20 12:00 +1),
-                            last_modified: datetime!(2024-10-20 12:00 +1),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "address/street".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
                 ]),
@@ -2563,41 +2531,31 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
-                            .schema
-                            .id,
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0].id,
                         path: "first name".to_string(),
                         value: Some("John".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
-                            .schema
-                            .id,
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1].id,
                         path: "last name".to_string(),
                         value: Some("Doe".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[2]
-                            .schema
-                            .id,
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[2].id,
                         path: "address".to_string(),
                         value: None,
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[3]
-                            .schema
-                            .id,
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[3].id,
                         path: "address/postal code".to_string(),
                         value: Some("1234".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[4]
-                            .schema
-                            .id,
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[4].id,
                         path: "address/street".to_string(),
                         value: Some("Via Torino".to_string()),
                         selectively_disclosable: false,
@@ -2853,16 +2811,14 @@ async fn test_wia_pop_iss_equals_wia_sub() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: schema_id.into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
                     required: true,
                 }]),
                 ..Default::default()

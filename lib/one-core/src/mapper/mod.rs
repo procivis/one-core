@@ -16,7 +16,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
+    Arrayed, CredentialSchema, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
 use crate::model::did::KeyRole;
@@ -72,7 +72,7 @@ pub(crate) fn list_response_try_into<T, F: TryInto<T>>(
 
 pub(crate) fn value_to_model_claims(
     credential_id: CredentialId,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     claim_value: CredentialClaim,
     now: OffsetDateTime,
     claim_schema: &ClaimSchema,
@@ -119,7 +119,7 @@ pub(crate) fn value_to_model_claims(
                 let child_schema_name = format!("{this_name}/{key}");
                 let child_credential_schema_claim = claim_schemas
                     .iter()
-                    .find(|claim_schema| claim_schema.schema.key == child_schema_name);
+                    .find(|claim_schema| claim_schema.key == child_schema_name);
                 let Some(child_credential_schema_claim) = child_credential_schema_claim else {
                     return Err(ServiceError::BusinessLogic(
                         BusinessLogicError::MissingClaimSchemas,
@@ -130,7 +130,7 @@ pub(crate) fn value_to_model_claims(
                     claim_schemas,
                     value,
                     now,
-                    &child_credential_schema_claim.schema,
+                    child_credential_schema_claim,
                     &format!("{claim_path}/{key}"),
                 )?);
             }
@@ -156,7 +156,7 @@ pub(crate) fn value_to_model_claims(
 
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     credential_schema: CredentialSchema,
     claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_identifier: Identifier,
@@ -319,17 +319,17 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Form
     Ok(ciborium::de::from_reader(&bytes[..])?)
 }
 
-impl TryFrom<Vec<CredentialSchemaClaim>> for CredentialSchemaClaimsNestedView {
+impl TryFrom<Vec<ClaimSchema>> for CredentialSchemaClaimsNestedView {
     type Error = ServiceError;
 
-    fn try_from(claims: Vec<CredentialSchemaClaim>) -> Result<Self, Self::Error> {
+    fn try_from(claims: Vec<ClaimSchema>) -> Result<Self, Self::Error> {
         let fields = claims
             .iter()
-            .filter(|claim| !claim.schema.key.contains(NESTED_CLAIM_MARKER))
-            .try_fold(HashMap::default(), |mut state, claim| {
+            .filter(|claim_schema| !claim_schema.key.contains(NESTED_CLAIM_MARKER))
+            .try_fold(HashMap::default(), |mut state, claim_schema| {
                 state.insert(
-                    claim.schema.key.clone(),
-                    Arrayed::from_claims_and_prefix(&claims, claim.clone())?,
+                    claim_schema.key.clone(),
+                    Arrayed::from_claims_and_prefix(&claims, claim_schema.clone())?,
                 );
                 Ok::<_, Self::Error>(state)
             })?;
@@ -340,10 +340,10 @@ impl TryFrom<Vec<CredentialSchemaClaim>> for CredentialSchemaClaimsNestedView {
 
 impl Arrayed<CredentialSchemaClaimsNestedTypeView> {
     pub fn from_claims_and_prefix(
-        claims: &[CredentialSchemaClaim],
-        claim: CredentialSchemaClaim,
+        claims: &[ClaimSchema],
+        claim: ClaimSchema,
     ) -> Result<Self, ServiceError> {
-        if claim.schema.array {
+        if claim.array {
             CredentialSchemaClaimsNestedTypeView::from_claims_and_prefix(claims, claim)
                 .map(Self::InArray)
         } else {
@@ -379,16 +379,15 @@ impl Arrayed<CredentialSchemaClaimsNestedTypeView> {
 
 impl CredentialSchemaClaimsNestedTypeView {
     pub(crate) fn from_claims_and_prefix(
-        claims: &[CredentialSchemaClaim],
-        claim: CredentialSchemaClaim,
+        claims: &[ClaimSchema],
+        claim: ClaimSchema,
     ) -> Result<Self, ServiceError> {
         let mut child_claims = claims
             .iter()
             .filter_map(|other_claim| {
                 other_claim
-                    .schema
                     .key
-                    .strip_prefix(&claim.schema.key)
+                    .strip_prefix(&claim.key)
                     .and_then(|v| v.strip_prefix(NESTED_CLAIM_MARKER))
                     .and_then(|v| (!v.contains(NESTED_CLAIM_MARKER)).then_some((v, other_claim)))
             })
@@ -422,15 +421,15 @@ impl CredentialSchemaClaimsNestedTypeView {
 
     pub(crate) fn metadata(&self) -> bool {
         match self {
-            Self::Field(claim) => claim.schema.metadata,
-            Self::Object(object) => object.claim.schema.metadata,
+            Self::Field(claim) => claim.metadata,
+            Self::Object(object) => object.claim.metadata,
         }
     }
 
     pub(crate) fn key(&self) -> &str {
         match self {
-            Self::Field(claim) => &claim.schema.key,
-            Self::Object(object) => &object.claim.schema.key,
+            Self::Field(claim) => &claim.key,
+            Self::Object(object) => &object.claim.key,
         }
     }
 }
@@ -529,6 +528,7 @@ mod tests {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         };
 
         let element_claim_schema = ClaimSchema {
@@ -539,18 +539,10 @@ mod tests {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         };
 
-        let claim_schemas = vec![
-            CredentialSchemaClaim {
-                schema: namespace_claim_schema.clone(),
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: element_claim_schema.clone(),
-                required: true,
-            },
-        ];
+        let claim_schemas = vec![namespace_claim_schema.clone(), element_claim_schema.clone()];
 
         let issuance_date = OffsetDateTime::now_utc();
 

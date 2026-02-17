@@ -13,7 +13,7 @@ use super::dto::{
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
@@ -70,7 +70,7 @@ pub(super) fn proof_input_from_import_request(
 
 fn extract_proof_input_claim_schemas(
     proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
-    credential_schema_claims: &[CredentialSchemaClaim],
+    credential_schema_claims: &[ClaimSchema],
 ) -> Result<Vec<ProofInputClaimSchema>, ServiceError> {
     let proof_input_claim_schemas = extract_proof_input_claim_schemas_nested(
         proof_schema_claims,
@@ -92,7 +92,7 @@ fn extract_proof_input_claim_schemas(
 
 fn extract_proof_input_claim_schemas_nested(
     proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
-    credential_schema_claims: &[CredentialSchemaClaim],
+    credential_schema_claims: &[ClaimSchema],
     parent_path_prefix: Option<String>,
 ) -> Result<Vec<ProofInputClaimSchema>, ServiceError> {
     let mut result: Vec<ProofInputClaimSchema> = vec![];
@@ -110,13 +110,13 @@ fn extract_proof_input_claim_schemas_nested(
         if proof_schema_claim.requested {
             let claim_schema = credential_schema_claims
                 .iter()
-                .find(|credential_schema_claim| credential_schema_claim.schema.key == path)
+                .find(|credential_schema_claim| credential_schema_claim.key == path)
                 .ok_or_else(|| {
                     ServiceError::MappingError(format!("claim_schema for path '{path}' missing"))
                 })?;
 
             result.push(ProofInputClaimSchema {
-                schema: claim_schema.schema.to_owned(),
+                schema: claim_schema.to_owned(),
                 required: proof_schema_claim.required,
                 order: 0, // ordering is done once all claim schemas have been collected in `extract_proof_input_claim_schemas`
             });
@@ -167,7 +167,7 @@ fn convert_input_schema_to_response(
 
 fn append_object_claim_schemas(
     mut proof_claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
-    credential_claim_schemas: &[CredentialSchemaClaim],
+    credential_claim_schemas: &[ClaimSchema],
     datatype_config: &DatatypeConfig,
 ) -> Result<Vec<ProofClaimSchemaResponseDTO>, ServiceError> {
     let mut nested_claim_schemas: Vec<_> = proof_claim_schemas
@@ -180,18 +180,17 @@ fn append_object_claim_schemas(
                 .iter()
                 .filter(|claim| {
                     claim
-                        .schema
                         .key
                         .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", os.key))
                 })
                 .map(|child_claim| ProofClaimSchemaResponseDTO {
-                    id: child_claim.schema.id,
+                    id: child_claim.id,
                     requested: false,
                     required: os.required && child_claim.required,
-                    key: child_claim.schema.key.to_owned(),
-                    data_type: child_claim.schema.data_type.to_owned(),
+                    key: child_claim.key.to_owned(),
+                    data_type: child_claim.data_type.to_owned(),
                     claims: vec![],
-                    array: child_claim.schema.array,
+                    array: child_claim.array,
                 })
                 .collect::<Vec<_>>()
         })
@@ -202,17 +201,17 @@ fn append_object_claim_schemas(
     // Blanket add all object claims so that the parent object claims of nested requested claims
     // are definitely included when going into `nest_claim_schemas`.
     credential_claim_schemas.iter().try_for_each(|value| {
-        if is_object(&value.schema.data_type, datatype_config)?
-            && !proof_claim_schemas.iter().any(|c| c.id == value.schema.id)
+        if is_object(&value.data_type, datatype_config)?
+            && !proof_claim_schemas.iter().any(|c| c.id == value.id)
         {
             proof_claim_schemas.push(ProofClaimSchemaResponseDTO {
-                id: value.schema.id,
+                id: value.id,
                 requested: false,
                 required: false,
-                key: value.schema.key.to_owned(),
-                data_type: value.schema.data_type.to_owned(),
+                key: value.key.to_owned(),
+                data_type: value.data_type.to_owned(),
                 claims: vec![],
-                array: value.schema.array,
+                array: value.array,
             });
         }
 

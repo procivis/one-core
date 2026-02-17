@@ -17,8 +17,8 @@ use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    BackgroundProperties, CodeProperties, CredentialSchema, CredentialSchemaClaim,
-    LayoutProperties, LayoutType, LogoProperties,
+    BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LayoutType,
+    LogoProperties,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
@@ -184,7 +184,7 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn parse_layout_properties(
         &self,
         layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
-        claim_schemas: &[CredentialSchemaClaim],
+        claim_schemas: &[ClaimSchema],
         formatter: &dyn CredentialFormatter,
     ) -> Result<Option<LayoutProperties>, Error> {
         if layout_properties.is_some()
@@ -270,7 +270,7 @@ impl CredentialSchemaImportParserImpl {
         format: &FormatType,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<CredentialSchemaClaim>, Error> {
+    ) -> Result<Vec<ClaimSchema>, Error> {
         if claim_schemas.is_empty() {
             return Err(ValidationError::CredentialSchemaMissingClaims
                 .error_while("checking claims")
@@ -286,7 +286,7 @@ impl CredentialSchemaImportParserImpl {
         parent_key: Option<&str>,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<CredentialSchemaClaim>, Error> {
+    ) -> Result<Vec<ClaimSchema>, Error> {
         self.validate_claim_schema_keys_unique(&claim_schemas)
             .error_while("checking claims")?;
 
@@ -303,26 +303,24 @@ impl CredentialSchemaImportParserImpl {
         parent_key: Option<&str>,
         claim_schema_dto: ImportCredentialSchemaClaimSchemaDTO,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<CredentialSchemaClaim>, Error> {
+    ) -> Result<Vec<ClaimSchema>, Error> {
         let mut flattened_claim_schemas = vec![];
         let key = claim_schema_dto.key.clone();
         let flattened_key =
             self.parse_claim_schema_key(parent_key, claim_schema_dto.key, formatter)?;
-        let claim_schema = CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: flattened_key.clone(),
-                data_type: self.parse_claim_schema_datatype(
-                    &key,
-                    &claim_schema_dto.claims,
-                    claim_schema_dto.datatype,
-                    formatter,
-                )?,
-                created_date: now,
-                last_modified: now,
-                array: self.parse_claim_schema_array(&key, claim_schema_dto.array, formatter)?,
-                metadata: false,
-            },
+        let claim_schema = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: flattened_key.clone(),
+            data_type: self.parse_claim_schema_datatype(
+                &key,
+                &claim_schema_dto.claims,
+                claim_schema_dto.datatype,
+                formatter,
+            )?,
+            created_date: now,
+            last_modified: now,
+            array: self.parse_claim_schema_array(&key, claim_schema_dto.array, formatter)?,
+            metadata: false,
             required: claim_schema_dto.required,
         };
         let mut childs = self.parse_level_claim_schemas(
@@ -547,7 +545,7 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn parse_layout_attribute(
         &self,
         attribute: String,
-        claim_schemas: &[CredentialSchemaClaim],
+        claim_schemas: &[ClaimSchema],
         attribute_name: &str,
     ) -> Result<String, Error> {
         tracing::debug!(
@@ -556,7 +554,7 @@ impl CredentialSchemaImportParserImpl {
             &claim_schemas,
             &attribute_name
         );
-        if claim_schemas.iter().any(|c| c.schema.key == attribute) {
+        if claim_schemas.iter().any(|c| c.key == attribute) {
             Ok(attribute)
         } else {
             Err(
@@ -570,11 +568,11 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn parse_code_attribute(
         &self,
         code_properties: CredentialSchemaCodePropertiesDTO,
-        claim_schemas: &[CredentialSchemaClaim],
+        claim_schemas: &[ClaimSchema],
     ) -> Result<CodeProperties, Error> {
         if claim_schemas
             .iter()
-            .any(|c| c.schema.key == code_properties.attribute)
+            .any(|c| c.key == code_properties.attribute)
         {
             Ok(CodeProperties {
                 attribute: code_properties.attribute,
@@ -604,7 +602,7 @@ mod test {
     };
     use crate::error::{ErrorCode, ErrorCodeMixin};
     use crate::model::claim_schema::ClaimSchema;
-    use crate::model::credential_schema::{CodeTypeEnum, CredentialSchemaClaim};
+    use crate::model::credential_schema::CodeTypeEnum;
     use crate::proto::credential_schema::dto::{
         CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
         CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
@@ -956,16 +954,14 @@ mod test {
         );
 
         let now = OffsetDateTime::now_utc();
-        let claim_schemas = vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "claim1".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        let claim_schemas = vec![ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "claim1".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: true,
         }];
 
@@ -1026,16 +1022,14 @@ mod test {
         );
 
         let now = OffsetDateTime::now_utc();
-        let claim_schemas = vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "claim1".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        let claim_schemas = vec![ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "claim1".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: true,
         }];
 
@@ -1237,16 +1231,14 @@ mod test {
         );
 
         let now = OffsetDateTime::now_utc();
-        let claim_schemas = vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "code_claim".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        let claim_schemas = vec![ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "code_claim".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: true,
         }];
 
@@ -1569,8 +1561,8 @@ mod test {
         // then
         let_assert!(Ok(schemas) = result);
         assert!(1 == schemas.len());
-        assert!("name" == schemas[0].schema.key);
-        assert!("STRING" == schemas[0].schema.data_type);
+        assert!("name" == schemas[0].key);
+        assert!("STRING" == schemas[0].data_type);
         assert!(schemas[0].required);
     }
 
@@ -1618,8 +1610,8 @@ mod test {
         // then
         let_assert!(Ok(schemas) = result);
         assert!(2 == schemas.len());
-        assert!("address" == schemas[0].schema.key);
-        assert!("address/street" == schemas[1].schema.key);
+        assert!("address" == schemas[0].key);
+        assert!("address/street" == schemas[1].key);
     }
 
     #[test]

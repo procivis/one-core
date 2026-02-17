@@ -26,7 +26,6 @@ async fn test_list_proof_schema_success() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     for i in 1..15 {
@@ -89,7 +88,6 @@ async fn test_list_proof_schema_filter_by_date() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let schema = fixtures::create_proof_schema(

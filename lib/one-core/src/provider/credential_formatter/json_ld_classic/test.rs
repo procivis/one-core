@@ -12,10 +12,9 @@ use time::{Duration, OffsetDateTime};
 use super::{JsonLdClassic, Params};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::CredentialRole;
-use crate::model::credential_schema::{
-    BackgroundProperties, CredentialSchemaClaim, LayoutProperties, LayoutType,
-};
+use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::HttpClient;
@@ -289,22 +288,22 @@ async fn test_parse_credential() {
     let claim_schemas = schema.claim_schemas.as_ref().unwrap();
     assert_eq!(claim_schemas.len(), 6);
 
-    let get_claim_schema_keys = |filter: &dyn Fn(&CredentialSchemaClaim) -> bool| {
+    let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {
         HashSet::from_iter(
             claim_schemas
                 .iter()
                 .filter(|schema| filter(schema))
-                .map(|schema| schema.schema.key.as_str()),
+                .map(|schema| schema.key.as_str()),
         )
     };
 
     assert_eq!(
-        get_claim_schema_keys(&|schema| !schema.schema.metadata),
+        get_claim_schema_keys(&|schema| !schema.metadata),
         hashset! { "str", "arr", "obj", "obj/nested" }
     );
 
     assert_eq!(
-        get_claim_schema_keys(&|schema| schema.schema.metadata),
+        get_claim_schema_keys(&|schema| schema.metadata),
         hashset! { "id", "type" }
     );
 }

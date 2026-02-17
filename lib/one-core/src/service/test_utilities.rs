@@ -17,9 +17,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -346,6 +344,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
                 metadata: false,
+                required: true,
             }),
         }]),
         issuer_identifier: Some(Identifier {
@@ -364,16 +363,14 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             format: "format".into(),
             imported_source_url: "CORE_URL".to_string(),
             revocation_method: Some("revocation method".into()),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: claim_schema_id,
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    array: false,
-                    metadata: false,
-                },
+            claim_schemas: Some(vec![ClaimSchema {
+                id: claim_schema_id,
+                key: "key".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                array: false,
+                metadata: false,
                 required: true,
             }]),
             organisation: Some(dummy_organisation(None)),
@@ -554,6 +551,7 @@ pub fn dummy_claim_schema() -> ClaimSchema {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: true,
     }
 }
 

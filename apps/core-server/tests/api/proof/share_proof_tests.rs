@@ -30,7 +30,6 @@ async fn test_share_proof_success() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -98,7 +97,6 @@ async fn test_share_proof_key_storage_disabled_success() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -158,7 +156,6 @@ async fn test_share_proof_twice() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -589,7 +586,6 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -762,7 +758,6 @@ async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -825,7 +820,6 @@ async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(

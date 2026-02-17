@@ -16,8 +16,8 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
-    KeyStorageSecurity, LayoutType, TransactionCodeType,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, KeyStorageSecurity,
+    LayoutType, TransactionCodeType,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -101,16 +101,14 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "testName".to_string(),
         format: "".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "".to_string(),
-                data_type: "".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        claim_schemas: Some(vec![ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "".to_string(),
+            data_type: "".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: true,
         }]),
         organisation: Some(dummy_organisation(None)),

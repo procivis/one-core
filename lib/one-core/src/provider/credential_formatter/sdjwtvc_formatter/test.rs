@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType};
+use crate::model::credential_schema::LayoutType;
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -649,16 +649,14 @@ async fn test_extract_credentials_swiyu() {
         imported_source_url: "".to_string(),
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "portrait".to_string(),
-                data_type: "SWIYU_PICTURE".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        claim_schemas: Some(vec![ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "portrait".to_string(),
+            data_type: "SWIYU_PICTURE".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: false,
         }]),
         organisation: None,
@@ -1647,7 +1645,7 @@ async fn test_parse_credential_eudi() {
     // Verify claim schema keys
     let schema_keys: Vec<(&str, bool)> = claim_schemas
         .iter()
-        .map(|cs| (cs.schema.key.as_str(), cs.schema.array))
+        .map(|cs| (cs.key.as_str(), cs.array))
         .collect();
 
     // Metadata schemas
@@ -1671,9 +1669,8 @@ async fn test_parse_credential_eudi() {
     // Verify array elements reuse the array schema's ID
     let nat_array_schema_id = claim_schemas
         .iter()
-        .find(|cs| cs.schema.key == "nationalities" && cs.schema.array)
+        .find(|cs| cs.key == "nationalities" && cs.array)
         .unwrap()
-        .schema
         .id;
     let nat0_schema_id = claims
         .iter()
@@ -1876,10 +1873,7 @@ async fn test_parse_credential() {
     assert_eq!(claim_schemas.len(), 11);
 
     // Verify claim schema keys
-    let schema_keys: Vec<&str> = claim_schemas
-        .iter()
-        .map(|cs| cs.schema.key.as_str())
-        .collect();
+    let schema_keys: Vec<&str> = claim_schemas.iter().map(|cs| cs.key.as_str()).collect();
 
     // Metadata schemas
     assert!(schema_keys.contains(&"vct"));

@@ -926,8 +926,8 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![ClaimData {
-                    schema_id: first_claim_schema.schema.id,
-                    path: first_claim_schema.schema.key.to_owned(),
+                    schema_id: first_claim_schema.id,
+                    path: first_claim_schema.key.to_owned(),
                     value: Some("value".to_string()),
                     selectively_disclosable: false,
                 }]),
@@ -947,14 +947,14 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: first_claim_schema.schema.id,
-                        path: first_claim_schema.schema.key.to_owned(),
+                        schema_id: first_claim_schema.id,
+                        path: first_claim_schema.key.to_owned(),
                         value: Some("value".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: second_claim_schema.schema.id,
-                        path: second_claim_schema.schema.key.to_owned(),
+                        schema_id: second_claim_schema.id,
+                        path: second_claim_schema.key.to_owned(),
                         value: Some("true".to_string()),
                         selectively_disclosable: false,
                     },
@@ -1031,14 +1031,14 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                                         }
                                     },
                                     {
-                                        "id": first_claim_schema.schema.id,
+                                        "id": first_claim_schema.id,
                                         "path": [
                                             "$.vc.credentialSubject.firstName"
                                         ],
                                         "optional": false
                                     },
-                                                                    {
-                                        "id": second_claim_schema.schema.id,
+                                    {
+                                        "id": second_claim_schema.id,
                                         "path": [
                                             "$.vc.credentialSubject.isOver18"
                                         ],

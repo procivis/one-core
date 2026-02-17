@@ -12,6 +12,7 @@ impl From<claim_schema::Model> for ClaimSchema {
             data_type: value.datatype,
             array: value.array,
             metadata: value.metadata,
+            required: value.required,
         }
     }
 }

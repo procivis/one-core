@@ -8,9 +8,7 @@ use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialRelations, CredentialRole,
     CredentialStateEnum, UpdateCredentialRequest,
 };
-use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-};
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations, LayoutType};
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
@@ -106,16 +104,14 @@ async fn setup_empty() -> TestSetup {
         claim_schemas: Some(
             new_claim_schemas
                 .into_iter()
-                .map(|schema| CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema.id,
-                        key: schema.key.to_string(),
-                        data_type: schema.datatype.to_string(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        array: false,
-                        metadata: false,
-                    },
+                .map(|schema| ClaimSchema {
+                    id: schema.id,
+                    key: schema.key.to_string(),
+                    data_type: schema.datatype.to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    array: false,
+                    metadata: false,
                     required: true,
                 })
                 .collect(),
@@ -300,9 +296,7 @@ async fn test_create_credential_success() {
     );
 
     let credential_id = Uuid::new_v4().into();
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .to_owned()
-        .schema;
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
@@ -428,9 +422,7 @@ async fn test_create_credential_already_exists() {
 
     let provider = credential_repository(db.clone(), None);
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .to_owned()
-        .schema;
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
     let claims = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id,
@@ -779,9 +771,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         ..
     } = setup_with_credential().await;
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .to_owned()
-        .schema;
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
     let claims = [Claim {
         id: Uuid::new_v4().into(),
         credential_id,
@@ -880,12 +870,8 @@ async fn test_get_credential_success() {
     .unwrap()
     .id;
 
-    let claim_schema1 = credential_schema.claim_schemas.as_ref().unwrap()[1]
-        .to_owned()
-        .schema;
-    let claim_schema2 = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .to_owned()
-        .schema;
+    let claim_schema1 = credential_schema.claim_schemas.as_ref().unwrap()[1].to_owned();
+    let claim_schema2 = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
@@ -1276,9 +1262,7 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .to_owned()
-        .schema;
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
     let claim = Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id,

@@ -159,6 +159,7 @@ async fn test_presentation_definition_success() {
                                     last_modified: get_dummy_date(),
                                     array: false,
                                     metadata: false,
+                                    required: true,
                                 },
                                 required: true,
                                 order: 0,

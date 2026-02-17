@@ -35,7 +35,6 @@ async fn test_create_proof_success_without_related_key() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -97,7 +96,6 @@ async fn test_create_proof_wrong_identifier_type() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -152,7 +150,6 @@ async fn test_create_proof_success_with_related_key() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -232,7 +229,6 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -311,7 +307,6 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
@@ -431,7 +426,6 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -527,7 +521,6 @@ async fn test_create_proof_success_without_key_agreement_key() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -611,7 +604,6 @@ async fn test_create_proof_success_with_certificate() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -665,7 +657,6 @@ async fn test_create_proof_success_with_profile() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -734,7 +725,6 @@ async fn test_create_proof_fails_with_engagement_on_non_iso_mdl_protocol() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -803,7 +793,6 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_none_engagement() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context
@@ -873,7 +862,6 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context

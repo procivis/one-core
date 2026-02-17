@@ -600,7 +600,7 @@ fn proof_input_schema_to_doc_request(input: &ProofInputSchema) -> anyhow::Result
                 .as_ref()
                 .context("claim_schemas missing in credential_schema")?
                 .iter()
-                .map(|claim_schema| &claim_schema.schema.key)
+                .map(|claim_schema| &claim_schema.key)
                 .filter(|k| k.starts_with(&format!("{key}{NESTED_CLAIM_MARKER}")))
                 .collect()
         };

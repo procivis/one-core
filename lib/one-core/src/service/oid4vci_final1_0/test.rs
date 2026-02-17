@@ -17,8 +17,7 @@ use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, KeyStorageSecurity,
-    LayoutType,
+    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
@@ -116,17 +115,15 @@ fn generic_credential_schema() -> CredentialSchema {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
+        claim_schemas: Some(vec![ClaimSchema {
+            array: false,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            data_type: "STRING".to_string(),
+            key: "key".to_string(),
+            id: Uuid::new_v4().into(),
+            metadata: false,
             required: true,
-            schema: ClaimSchema {
-                array: false,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                data_type: "STRING".to_string(),
-                key: "key".to_string(),
-                id: Uuid::new_v4().into(),
-                metadata: false,
-            },
         }]),
         organisation: None,
         layout_type: LayoutType::Card,
@@ -480,28 +477,24 @@ async fn test_get_issuer_metadata_mdoc() {
     schema.organisation = Some(generic_organisation());
     let now = OffsetDateTime::now_utc();
     schema.claim_schemas = Some(vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "location".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "location".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "location/X".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "location/X".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: true,
         },
     ]);

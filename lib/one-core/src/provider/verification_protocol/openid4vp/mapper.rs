@@ -33,7 +33,7 @@ use crate::mapper::{
 };
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -484,7 +484,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
 
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     credential_schema: CredentialSchema,
     claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_details: IdentifierDetails,

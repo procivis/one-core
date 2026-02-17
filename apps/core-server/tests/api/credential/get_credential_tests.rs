@@ -1,7 +1,6 @@
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::CredentialSchemaClaim;
 use one_core::service::credential::dto::WalletInstanceAttestationDTO;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -191,28 +190,24 @@ async fn test_get_credential_success_metadata() {
                 schema_id: Some("https://example.org/foo".to_owned()),
                 format: Some("SD_JWT_VC".into()),
                 claim_schemas: Some(vec![
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: claim_schema_id.into(),
-                            key: "string_claim".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: get_dummy_date(),
-                            last_modified: get_dummy_date(),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: claim_schema_id.into(),
+                        key: "string_claim".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: metadata_claim_schema_id.into(),
-                            key: "iss".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: get_dummy_date(),
-                            last_modified: get_dummy_date(),
-                            array: false,
-                            metadata: true,
-                        },
+                    ClaimSchema {
+                        id: metadata_claim_schema_id.into(),
+                        key: "iss".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        array: false,
+                        metadata: true,
                         required: false,
                     },
                 ]),

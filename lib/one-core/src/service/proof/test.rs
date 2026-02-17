@@ -28,8 +28,7 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, KeyStorageSecurity,
-    LayoutType,
+    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
@@ -306,6 +305,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                         last_modified: OffsetDateTime::now_utc(),
                         array: false,
                         metadata: false,
+                        required: true,
                     },
                     required: true,
                     order: 0,
@@ -423,6 +423,7 @@ async fn test_get_proof_exists() {
                         last_modified: OffsetDateTime::now_utc(),
                         array: false,
                         metadata: false,
+                        required: true,
                     },
                     required: true,
                     order: 0,
@@ -437,16 +438,14 @@ async fn test_get_proof_exists() {
                     name: "credential schema".to_string(),
                     format: "JWT".into(),
                     revocation_method: None,
-                    claim_schemas: Some(vec![CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "ClaimKey".to_owned(),
-                            data_type: "STRING".to_owned(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            array: false,
-                            metadata: false,
-                        },
+                    claim_schemas: Some(vec![ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "ClaimKey".to_owned(),
+                        data_type: "STRING".to_owned(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        array: false,
+                        metadata: false,
                         required: true,
                     }]),
                     organisation: None,
@@ -577,6 +576,7 @@ async fn test_get_proof_with_array_holder() {
         last_modified: OffsetDateTime::now_utc(),
         array: true,
         metadata: false,
+        required: true,
     };
 
     let credential_schema = CredentialSchema {
@@ -589,10 +589,7 @@ async fn test_get_proof_with_array_holder() {
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: claim_schema.clone(),
-            required: true,
-        }]),
+        claim_schemas: Some(vec![claim_schema.clone()]),
         organisation: Some(organisation.clone()),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -813,28 +810,24 @@ async fn test_get_proof_with_array_in_object_holder() {
 
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key/address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: true,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key/address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: true,
+            metadata: false,
             required: true,
         },
     ];
@@ -879,7 +872,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -889,7 +882,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 value: None,
                 path: "key/address".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -899,7 +892,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -909,7 +902,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 value: Some("foo2".into()),
                 path: "key/address/1".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
         ]),
         issuer_identifier: None,
@@ -1085,28 +1078,24 @@ async fn test_get_proof_with_object_array_holder() {
 
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: true,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: true,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key/address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key/address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
     ];
@@ -1151,7 +1140,7 @@ async fn test_get_proof_with_object_array_holder() {
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1161,7 +1150,7 @@ async fn test_get_proof_with_object_array_holder() {
                 value: None,
                 path: "key/0".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1171,7 +1160,7 @@ async fn test_get_proof_with_object_array_holder() {
                 value: None,
                 path: "key/1".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1181,7 +1170,7 @@ async fn test_get_proof_with_object_array_holder() {
                 value: Some("foo1".into()),
                 path: "key/0/address".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1191,7 +1180,7 @@ async fn test_get_proof_with_object_array_holder() {
                 value: Some("foo2".into()),
                 path: "key/1/address".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
         ]),
         issuer_identifier: None,
@@ -1382,6 +1371,7 @@ async fn test_get_proof_with_array() {
         last_modified: OffsetDateTime::now_utc(),
         array: true,
         metadata: false,
+        required: true,
     };
 
     let credential_schema = CredentialSchema {
@@ -1394,10 +1384,7 @@ async fn test_get_proof_with_array() {
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: claim_schema.clone(),
-            required: true,
-        }]),
+        claim_schemas: Some(vec![claim_schema.clone()]),
         organisation: Some(organisation.clone()),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -1626,28 +1613,24 @@ async fn test_get_proof_with_array_in_object() {
 
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key/address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: true,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key/address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: true,
+            metadata: false,
             required: true,
         },
     ];
@@ -1692,7 +1675,7 @@ async fn test_get_proof_with_array_in_object() {
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1702,7 +1685,7 @@ async fn test_get_proof_with_array_in_object() {
                 value: None,
                 path: "key/address".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1712,7 +1695,7 @@ async fn test_get_proof_with_array_in_object() {
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1722,7 +1705,7 @@ async fn test_get_proof_with_array_in_object() {
                 value: Some("foo2".into()),
                 path: "key/address/1".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
         ]),
         issuer_identifier: None,
@@ -1759,7 +1742,7 @@ async fn test_get_proof_with_array_in_object() {
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
-                    schema: claim_schemas[0].schema.clone(),
+                    schema: claim_schemas[0].clone(),
                     required: true,
                     order: 0,
                 }]),
@@ -1907,28 +1890,24 @@ async fn test_get_proof_with_object_array() {
 
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: true,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: true,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key/address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-                metadata: false,
-            },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "key/address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
     ];
@@ -1973,7 +1952,7 @@ async fn test_get_proof_with_object_array() {
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1983,7 +1962,7 @@ async fn test_get_proof_with_object_array() {
                 value: None,
                 path: "key/0".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -1993,7 +1972,7 @@ async fn test_get_proof_with_object_array() {
                 value: None,
                 path: "key/1".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[0].schema.clone()),
+                schema: Some(claim_schemas[0].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -2003,7 +1982,7 @@ async fn test_get_proof_with_object_array() {
                 value: Some("foo1".into()),
                 path: "key/0/address".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
             Claim {
                 id: Uuid::new_v4().into(),
@@ -2013,7 +1992,7 @@ async fn test_get_proof_with_object_array() {
                 value: Some("foo2".into()),
                 path: "key/1/address".into(),
                 selectively_disclosable: false,
-                schema: Some(claim_schemas[1].schema.clone()),
+                schema: Some(claim_schemas[1].clone()),
             },
         ]),
         issuer_identifier: None,
@@ -2050,7 +2029,7 @@ async fn test_get_proof_with_object_array() {
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
-                    schema: claim_schemas[0].schema.clone(),
+                    schema: claim_schemas[0].clone(),
                     required: true,
                     order: 0,
                 }]),

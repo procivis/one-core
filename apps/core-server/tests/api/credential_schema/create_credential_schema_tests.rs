@@ -42,17 +42,8 @@ async fn test_create_credential_schema_success() {
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
     assert_eq!(credential_schema.format.as_ref(), "JWT");
     let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
-    assert_eq!(
-        claim_schemas
-            .iter()
-            .filter(|cs| !cs.schema.metadata)
-            .count(),
-        2
-    );
-    assert_eq!(
-        claim_schemas.iter().filter(|cs| cs.schema.metadata).count(),
-        10
-    );
+    assert_eq!(claim_schemas.iter().filter(|cs| !cs.metadata).count(), 2);
+    assert_eq!(claim_schemas.iter().filter(|cs| cs.metadata).count(), 10);
     assert_eq!(
         credential_schema.schema_id,
         format!("{}/ssi/schema/v1/{id}", context.config.app.core_base_url)
@@ -93,7 +84,7 @@ async fn test_create_credential_schema_remote_secure_element_success() {
             .claim_schemas
             .unwrap()
             .iter()
-            .filter(|claim_schema| !claim_schema.schema.metadata)
+            .filter(|claim_schema| !claim_schema.metadata)
             .count(),
         2
     );

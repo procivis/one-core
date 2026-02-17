@@ -15,8 +15,8 @@ use crate::config::core_config::{CoreConfig, FormatType};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -1153,7 +1153,7 @@ fn dcql_path_exactly_matches_claim(
 /// Predicate that checks if the DCQL path matches a metadata claim.
 fn dcql_path_matches_metadata(
     dcql_path: &ClaimPath,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     user_claim_path: &[String],
 ) -> bool {
     let array_selector_count = dcql_path
@@ -1198,8 +1198,8 @@ fn dcql_path_matches_metadata(
         .join("/");
     claim_schemas
         .iter()
-        .filter(|cs| cs.schema.metadata)
-        .any(|cs| cs.schema.key == dcql_key || cs.schema.key.starts_with(&format!("{dcql_key}/")))
+        .filter(|cs| cs.metadata)
+        .any(|cs| cs.key == dcql_key || cs.key.starts_with(&format!("{dcql_key}/")))
 }
 
 fn dcql_path_to_absent_claim_key(

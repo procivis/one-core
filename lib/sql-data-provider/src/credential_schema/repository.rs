@@ -3,9 +3,10 @@ use autometrics::autometrics;
 use futures::FutureExt;
 use futures::stream::{self, StreamExt};
 use itertools::Either;
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
-    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, GetCredentialSchemaQuery,
+    UpdateCredentialSchemaRequest,
 };
 use one_core::model::organisation::Organisation;
 use one_core::proto::transaction_manager::IsolationLevel;
@@ -17,7 +18,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, Unchanged,
 };
-use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::common::calculate_pages_count;
@@ -108,7 +109,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             return Ok(None);
         };
 
-        let claim_schemas = if let Some(claim_schema_relations) = &relations.claim_schemas {
+        let claim_schemas = if let Some(_claim_schema_relations) = &relations.claim_schemas {
             let models = claim_schema::Entity::find()
                 .filter(claim_schema::Column::CredentialSchemaId.eq(id.to_string()))
                 .order_by_asc(claim_schema::Column::Order)
@@ -116,24 +117,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids: Vec<ClaimSchemaId> =
-                models.iter().map(|model| model.id).collect();
+            let claim_schemas: Vec<ClaimSchema> = models.into_iter().map(Into::into).collect();
 
-            let claim_schemas = self
-                .claim_schema_repository
-                .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
-                .await?;
-
-            Some(
-                claim_schemas
-                    .into_iter()
-                    .zip(models)
-                    .map(|(claim_schema, model)| CredentialSchemaClaim {
-                        schema: claim_schema,
-                        required: model.required,
-                    })
-                    .collect(),
-            )
+            Some(claim_schemas)
         } else {
             None
         };
@@ -189,7 +175,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
         let credential_schemas = credential_schemas.map_err(|e| DataLayerError::Db(e.into()))?;
 
-        let claims = if let Some(claim_schemas) = &relations.claim_schemas {
+        let claims = if let Some(_claim_schemas) = &relations.claim_schemas {
             Either::Left(
                 stream::iter(&credential_schemas)
                     .then(|credential_schema| async {
@@ -203,24 +189,10 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                             .await
                             .map_err(to_data_layer_error)?;
 
-                        let claim_schema_ids: Vec<ClaimSchemaId> =
-                            models.iter().map(|model| model.id).collect();
+                        let claim_schemas: Vec<ClaimSchema> =
+                            models.into_iter().map(Into::into).collect();
 
-                        let claim_schemas = self
-                            .claim_schema_repository
-                            .get_claim_schema_list(claim_schema_ids, claim_schemas)
-                            .await?;
-
-                        Ok::<_, DataLayerError>(Some(
-                            claim_schemas
-                                .into_iter()
-                                .zip(models)
-                                .map(|(claim_schema, model)| CredentialSchemaClaim {
-                                    schema: claim_schema,
-                                    required: model.required,
-                                })
-                                .collect::<Vec<_>>(),
-                        ))
+                        Ok::<_, DataLayerError>(Some(claim_schemas))
                     })
                     .collect::<Vec<_>>()
                     .await
@@ -228,7 +200,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     .collect::<Result<Vec<_>, _>>()?,
             )
         } else {
-            Either::Right(std::iter::repeat(None::<Vec<CredentialSchemaClaim>>))
+            Either::Right(std::iter::repeat(None::<Vec<ClaimSchema>>))
         };
 
         let organisations = if let Some(organisations) = &relations.organisation {
@@ -372,17 +344,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 return Err(DataLayerError::MappingError);
             }
 
-            claim_schemas = Some(
-                schemas
-                    .into_iter()
-                    .map(|claim_schema| {
-                        Ok(CredentialSchemaClaim {
-                            required: claim_schema.required,
-                            schema: claim_schema.into(),
-                        })
-                    })
-                    .collect::<Result<_, DataLayerError>>()?,
-            );
+            claim_schemas = Some(schemas.into_iter().map(ClaimSchema::from).collect());
         }
 
         let mut organisation = None;

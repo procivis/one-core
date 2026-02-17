@@ -21,7 +21,7 @@ async fn test_create_proof_schema_success() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -66,7 +66,7 @@ async fn test_create_proof_schema_fails_deactivated_organisation() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -104,7 +104,7 @@ async fn test_create_nested_proof_schema_success() {
         .unwrap()
         .iter()
         .take(1)
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -157,8 +157,8 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
         .as_ref()
         .unwrap()
         .iter()
-        .filter(|v| v.schema.data_type != "OBJECT")
-        .map(|v| (v.schema.id, v.required));
+        .filter(|v| v.data_type != "OBJECT")
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -193,7 +193,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     let resp = context
         .api
@@ -220,7 +220,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     let resp1 = context
         .api
@@ -253,7 +253,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -274,7 +274,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     let resp = context
         .api
@@ -308,9 +308,9 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0];
 
     let proof_schema = context
         .db
@@ -373,7 +373,7 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -414,7 +414,7 @@ async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -455,7 +455,7 @@ async fn test_fail_missing_validity_constraint_for_lvvc() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -518,7 +518,7 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
         .iter()
         .map(|v| {
             serde_json::json!({
-                "id": v.schema.id,
+                "id": v.id,
                 "required": v.required
             })
         })
@@ -531,7 +531,7 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
         .iter()
         .map(|v| {
             serde_json::json!({
-                "id": v.schema.id,
+                "id": v.id,
                 "required": v.required
             })
         })
@@ -601,7 +601,7 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
         .iter()
         .map(|v| {
             serde_json::json!({
-                "id": v.schema.id,
+                "id": v.id,
                 "required": v.required
             })
         })
@@ -614,7 +614,7 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
         .iter()
         .map(|v| {
             serde_json::json!({
-                "id": v.schema.id,
+                "id": v.id,
                 "required": v.required
             })
         })
@@ -670,7 +670,7 @@ async fn test_create_proof_schema_with_single_schema_without_combined_presentati
         .as_ref()
         .unwrap()
         .iter()
-        .map(|v| (v.schema.id, v.required));
+        .map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context

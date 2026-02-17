@@ -295,7 +295,7 @@ async fn setup_proof_schema(context: &TestContext, organisation: &Organisation) 
         .await;
 
     // Select a root claim.
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0];
 
     context
         .db

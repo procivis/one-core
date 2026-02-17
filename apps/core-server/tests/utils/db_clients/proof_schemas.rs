@@ -57,6 +57,7 @@ impl ProofSchemasDB {
                         last_modified: get_dummy_date(),
                         array: claim.array,
                         metadata: false,
+                        required: true,
                     },
                     required: claim.required,
                     order: order as _,

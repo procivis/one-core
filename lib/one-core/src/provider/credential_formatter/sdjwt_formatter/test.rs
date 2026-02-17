@@ -1247,11 +1247,9 @@ async fn test_parse_credential() {
     let claim_schemas = schema.claim_schemas.as_ref().unwrap();
 
     // Array schema should be present (array:true)
-    let nationalities_schema = claim_schemas
-        .iter()
-        .find(|s| s.schema.key == "Nationalities");
+    let nationalities_schema = claim_schemas.iter().find(|s| s.key == "Nationalities");
     assert!(nationalities_schema.is_some());
-    assert_eq!(nationalities_schema.unwrap().schema.array, true);
+    assert_eq!(nationalities_schema.unwrap().array, true);
 
     // Individual claims should reuse schema IDs
     let ch_schema_id = ch_claim.schema.as_ref().unwrap().id;

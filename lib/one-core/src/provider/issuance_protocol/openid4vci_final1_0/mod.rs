@@ -2186,7 +2186,7 @@ fn prepare_credential_schema_updates(
     for parsed_claim_schema in parsed_claim_schemas {
         let stored_claim_schema = stored_claim_schemas
             .iter()
-            .find(|schema| schema.schema.key == parsed_claim_schema.schema.key);
+            .find(|schema| schema.key == parsed_claim_schema.key);
 
         if let Some(stored_claim_schema) = stored_claim_schema {
             // link all matching credential claims to the stored claim_schema
@@ -2196,10 +2196,10 @@ fn prepare_credential_schema_updates(
                     claim
                         .schema
                         .as_ref()
-                        .is_some_and(|schema| schema.id == parsed_claim_schema.schema.id)
+                        .is_some_and(|schema| schema.id == parsed_claim_schema.id)
                 })
                 .for_each(|claim| {
-                    claim.schema = Some(stored_claim_schema.schema.to_owned());
+                    claim.schema = Some(stored_claim_schema.to_owned());
                 });
         } else {
             new_claim_schemas.push(parsed_claim_schema);

@@ -10,8 +10,9 @@ use super::dto::{
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
 use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedTypeView,
+    Arrayed, CredentialSchema, CredentialSchemaClaimsNestedTypeView,
     CredentialSchemaClaimsNestedView,
 };
 use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
@@ -33,14 +34,14 @@ impl Default for JsonLDContextDTO {
 }
 
 pub(crate) fn generate_jsonld_context_response(
-    claim_schemas: &Vec<CredentialSchemaClaim>,
+    claim_schemas: &Vec<ClaimSchema>,
     base_url: &str,
 ) -> Result<HashMap<String, JsonLDEntityDTO>, ServiceError> {
     let mut entities: HashMap<String, JsonLDEntityDTO> = HashMap::new();
     for claim_schema in claim_schemas {
         // Metadata claims are not part of our JSON-LD context
-        if claim_schema.schema.data_type != "OBJECT" && !claim_schema.schema.metadata {
-            let key_parts: Vec<&str> = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
+        if claim_schema.data_type != "OBJECT" && !claim_schema.metadata {
+            let key_parts: Vec<&str> = claim_schema.key.split(NESTED_CLAIM_MARKER).collect();
             insert_claim(&mut entities, &key_parts, base_url, 0)?;
         }
     }

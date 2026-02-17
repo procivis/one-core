@@ -21,8 +21,7 @@ use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, KeyStorageSecurity,
-    LayoutProperties, LayoutType,
+    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutProperties, LayoutType,
 };
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
@@ -516,11 +515,9 @@ pub async fn create_credential_schema(
         last_modified: get_dummy_date(),
         array: false,
         metadata: false,
-    };
-    let claim_schemas = vec![CredentialSchemaClaim {
-        schema: claim_schema.to_owned(),
         required: true,
-    }];
+    };
+    let claim_schemas = vec![claim_schema.to_owned()];
 
     let params = params.unwrap_or_default();
     let now = OffsetDateTime::now_utc();
@@ -567,20 +564,16 @@ pub async fn create_credential_schema_with_claims(
 
     let claim_schemas = claims
         .iter()
-        .map(
-            |(id, key, required, data_type, array)| CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: (*id).into(),
-                    key: key.to_string(),
-                    data_type: data_type.to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: *array,
-                    metadata: false,
-                },
-                required: required.to_owned(),
-            },
-        )
+        .map(|(id, key, required, data_type, array)| ClaimSchema {
+            id: (*id).into(),
+            key: key.to_string(),
+            data_type: data_type.to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: *array,
+            metadata: false,
+            required: required.to_owned(),
+        })
         .collect();
     let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
@@ -636,6 +629,7 @@ pub async fn create_proof_schema(
                         last_modified: get_dummy_date(),
                         array: false,
                         metadata: false,
+                        required: true,
                     },
                     required: claim.required.to_owned(),
                     order: order as _,
@@ -764,8 +758,8 @@ pub async fn create_credential(
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("test".to_string()),
-            schema: Some(claim_schema.schema.to_owned()),
-            path: claim_schema.schema.key.clone(),
+            schema: Some(claim_schema.to_owned()),
+            path: claim_schema.key.clone(),
             selectively_disclosable: false,
         })
         .collect();
@@ -945,8 +939,7 @@ pub fn key_to_claim_schema_id(key: &str, credential_schema: &CredentialSchema) -
         .clone()
         .unwrap()
         .into_iter()
-        .find(|claim| claim.schema.key == key)
+        .find(|claim| claim.key == key)
         .unwrap()
-        .schema
         .id
 }

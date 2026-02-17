@@ -17,7 +17,8 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::model::certificate::Certificate;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::History;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -34,18 +35,17 @@ use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 
 fn build_claim_from_credential_claims(
-    claims: &[CredentialSchemaClaim],
+    claims: &[ClaimSchema],
     key: &str,
     path: String,
     required: bool,
 ) -> Result<ProofClaimDTO, ServiceError> {
     let claim_schema = &claims
         .iter()
-        .find(|claim_schema| claim_schema.schema.key == key)
+        .find(|claim_schema| claim_schema.key == key)
         .ok_or(ServiceError::MappingError(
             "nested claim is not found by key".into(),
-        ))?
-        .schema;
+        ))?;
     Ok(ProofClaimDTO {
         schema: ProofClaimSchemaResponseDTO {
             id: claim_schema.id,
@@ -65,7 +65,7 @@ fn get_or_insert_proof_container_claim<'a>(
     proof_claims: &'a mut Vec<ProofClaimDTO>,
     path: &str,
     original_key: &str,
-    credential_claim_schemas: &[CredentialSchemaClaim],
+    credential_claim_schemas: &[ClaimSchema],
     required: bool,
 ) -> Result<&'a mut ProofClaimDTO, ServiceError> {
     match path.rsplit_once(NESTED_CLAIM_MARKER) {
@@ -289,7 +289,7 @@ pub(super) async fn get_verifier_proof_detail(
                 credential_claim_schemas
                     .iter()
                     .filter(|c| {
-                        c.schema.key.starts_with(&format!(
+                        c.key.starts_with(&format!(
                             "{}{NESTED_CLAIM_MARKER}",
                             parent_input_claim.schema.key
                         ))
@@ -303,18 +303,18 @@ pub(super) async fn get_verifier_proof_detail(
                             && credential_claim_schemas
                                 .iter()
                                 .filter(|claim_in_between| {
-                                    claim_in_between.schema.key.starts_with(&format!(
+                                    claim_in_between.key.starts_with(&format!(
                                         "{}{NESTED_CLAIM_MARKER}",
                                         parent_input_claim.schema.key
-                                    )) && c.schema.key.starts_with(&format!(
+                                    )) && c.key.starts_with(&format!(
                                         "{}{NESTED_CLAIM_MARKER}",
-                                        claim_in_between.schema.key
+                                        claim_in_between.key
                                     ))
                                 })
                                 .all(|claim_in_between| claim_in_between.required);
 
                         ProofInputClaimSchema {
-                            schema: c.schema.clone(),
+                            schema: c.clone(),
                             required,
                             order: i as u32,
                         }
@@ -437,7 +437,7 @@ pub(super) async fn get_verifier_proof_detail(
 
 fn nest_proof_claims(
     flat_claims: &[ProofClaim],
-    credential_claim_schemas: &[CredentialSchemaClaim],
+    credential_claim_schemas: &[ClaimSchema],
     input_claim_schemas: Option<&[ProofInputClaimSchema]>,
 ) -> Result<Vec<ProofClaimDTO>, ServiceError> {
     let mut proof_input_claims = vec![];
@@ -463,18 +463,18 @@ fn nest_proof_claims(
         } else {
             let credential_schema_claim = credential_claim_schemas
                 .iter()
-                .find(|schema| schema.schema.id == claim_schema.id)
+                .find(|schema| schema.id == claim_schema.id)
                 .ok_or(ServiceError::MappingError(format!(
                     "missing credential claim schema with id {}",
                     claim_schema.id
                 )))?;
 
             ProofClaimSchemaResponseDTO {
-                id: credential_schema_claim.schema.id,
-                key: credential_schema_claim.schema.key.to_owned(),
-                data_type: credential_schema_claim.schema.data_type.to_owned(),
+                id: credential_schema_claim.id,
+                key: credential_schema_claim.key.to_owned(),
+                data_type: credential_schema_claim.data_type.to_owned(),
                 claims: vec![],
-                array: credential_schema_claim.schema.array,
+                array: credential_schema_claim.array,
                 // we don't have that information on holder side, so guessing flags here
                 requested: true,
                 required: credential_schema_claim.required,

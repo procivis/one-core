@@ -13,7 +13,6 @@ use uuid::Uuid;
 
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -493,21 +492,17 @@ fn test_data(
     };
     let claim_schema_required = ClaimSchema {
         key: "required_key".to_string(),
+        required: true,
         ..dummy_claim_schema()
     };
     let claim_schema_optional = ClaimSchema {
         key: "optional_key".to_string(),
+        required: false,
         ..dummy_claim_schema()
     };
     credential_schema.claim_schemas = Some(vec![
-        CredentialSchemaClaim {
-            schema: claim_schema_required.clone(),
-            required: true,
-        },
-        CredentialSchemaClaim {
-            schema: claim_schema_optional.clone(),
-            required: false,
-        },
+        claim_schema_required.clone(),
+        claim_schema_optional.clone(),
     ]);
     let proof = Proof {
         id: proof_id,

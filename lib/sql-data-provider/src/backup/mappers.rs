@@ -1,29 +1,17 @@
 use one_core::model::claim::Claim;
 use one_core::model::credential::Credential;
-use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, TransactionCode,
-};
+use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 
 use super::models::{ClaimWithSchema, UnexportableCredentialModel};
-use crate::entity::claim_schema;
 
 impl From<ClaimWithSchema> for Claim {
     fn from(value: ClaimWithSchema) -> Self {
         let mut claim: Claim = value.claim.into();
         claim.schema = Some(value.claim_schema.into());
         claim
-    }
-}
-
-impl From<claim_schema::Model> for CredentialSchemaClaim {
-    fn from(value: claim_schema::Model) -> Self {
-        Self {
-            required: value.required,
-            schema: value.into(),
-        }
     }
 }
 

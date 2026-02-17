@@ -184,6 +184,7 @@ async fn test_create_proof_schema_already_exists() {
                         last_modified: get_dummy_date(),
                         array: false,
                         metadata: false,
+                        required: true,
                     },
                     required: false,
                     order: 0,
@@ -283,6 +284,7 @@ async fn test_create_proof_schema_success() {
                         last_modified: get_dummy_date(),
                         array: false,
                         metadata: false,
+                        required: true,
                     },
                     required: false,
                     order: 0,
@@ -481,6 +483,7 @@ async fn test_get_proof_schema_with_relations() {
                     last_modified: get_dummy_date(),
                     array: false,
                     metadata: false,
+                    required: true,
                 })
                 .collect())
         });
@@ -620,6 +623,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                     last_modified: get_dummy_date(),
                     array: false,
                     metadata: false,
+                    required: true,
                 })
                 .collect())
         });

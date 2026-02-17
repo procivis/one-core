@@ -14,7 +14,6 @@ use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
@@ -164,25 +163,24 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
 
             if group.claims.iter().all(|requested_claim| {
                 !requested_claim.required
-                    || claim_schemas.iter().any(|claim_schema| {
-                        claim_schema.schema.key.starts_with(&requested_claim.key)
-                    })
+                    || claim_schemas
+                        .iter()
+                        .any(|claim_schema| claim_schema.key.starts_with(&requested_claim.key))
             }) {
                 // For each requested claim
                 if group.claims.iter().all(|requested_claim| {
                     claim_schemas.iter().any(|claim_schema| {
                         // Find the claim schema
-                        claim_schema.schema.key == requested_claim.key
+                        claim_schema.key == requested_claim.key
                             // And make sure a parent element is not an array
                             && claim_schemas
                                 .iter()
                                 .filter(|other_schema| {
                                     claim_schema
-                                        .schema
                                         .key
-                                        .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", &other_schema.schema.key))
+                                        .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", &other_schema.key))
                                 })
-                                .any(|other_schema| other_schema.schema.array)
+                                .any(|other_schema| other_schema.array)
                     })
                 }) {
                     return Err(VerificationProtocolError::Failed(
@@ -237,17 +235,17 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
 fn is_requested_claim_present_in_credential(
     requested_claim: &CredentialGroupItem,
     credential_claims_schemas: &[&ClaimSchema],
-    credential_schema_claim_schemas: &[CredentialSchemaClaim],
+    credential_schema_claim_schemas: &[ClaimSchema],
     object_datatypes: &HashSet<&str>,
 ) -> bool {
     // Find the claim schema
     let requested_claim_schema = credential_schema_claim_schemas
         .iter()
-        .find(|claim_schema| claim_schema.schema.key == requested_claim.key);
+        .find(|claim_schema| claim_schema.key == requested_claim.key);
 
     if let Some(requested_claim_schema) = requested_claim_schema {
         // in case a whole object is requested, then we need to search for any claim under this object
-        if object_datatypes.contains(requested_claim_schema.schema.data_type.as_str()) {
+        if object_datatypes.contains(requested_claim_schema.data_type.as_str()) {
             credential_claims_schemas.iter().any(|schema| {
                 schema
                     .key

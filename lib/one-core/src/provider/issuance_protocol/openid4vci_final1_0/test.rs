@@ -22,9 +22,7 @@ use crate::config::core_config::{
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -219,6 +217,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
 
     let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -266,10 +265,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: claim_schema,
-                required: true,
-            }]),
+            claim_schemas: Some(vec![claim_schema]),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),

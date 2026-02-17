@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use one_core::model::claim::{Claim, ClaimRelations};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
-use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-};
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::repository::credential_repository::CredentialRepository;
 use rand::{RngCore, thread_rng};
@@ -69,7 +68,7 @@ impl CredentialsDB {
                 .map(|new_claim| {
                     let claim_schema = claim_schemas
                         .iter()
-                        .find(|schema| schema.schema.id == new_claim.schema_id)
+                        .find(|schema| schema.id == new_claim.schema_id)
                         .expect("Missing claim schema id");
 
                     Claim {
@@ -80,22 +79,20 @@ impl CredentialsDB {
                         value: new_claim.value,
                         path: new_claim.path,
                         selectively_disclosable: new_claim.selectively_disclosable,
-                        schema: Some(claim_schema.schema.to_owned()),
+                        schema: Some(claim_schema.to_owned()),
                     }
                 })
                 .collect()
         } else {
             claim_schemas
                 .iter()
-                .filter(|claim_schema| {
-                    claim_schema.schema.data_type != "OBJECT" && !claim_schema.schema.array
-                })
+                .filter(|claim_schema| claim_schema.data_type != "OBJECT" && !claim_schema.array)
                 .flat_map(|claim_schema| {
                     let path = add_intermediary_indices_to_claim_schema_key(
-                        &claim_schema.schema.key,
+                        &claim_schema.key,
                         claim_schemas,
                     );
-                    if claim_schema.schema.array {
+                    if claim_schema.array {
                         vec![
                             Claim {
                                 id: Uuid::new_v4().into(),
@@ -105,7 +102,7 @@ impl CredentialsDB {
                                 value: schema_to_dummy_value(claim_schema, params.random_claims),
                                 path: format!("{path}/0"),
                                 selectively_disclosable: false,
-                                schema: Some(claim_schema.schema.to_owned()),
+                                schema: Some(claim_schema.to_owned()),
                             },
                             Claim {
                                 id: Uuid::new_v4().into(),
@@ -115,7 +112,7 @@ impl CredentialsDB {
                                 value: None,
                                 path,
                                 selectively_disclosable: false,
-                                schema: Some(claim_schema.schema.to_owned()),
+                                schema: Some(claim_schema.to_owned()),
                             },
                         ]
                     } else {
@@ -127,7 +124,7 @@ impl CredentialsDB {
                             value: schema_to_dummy_value(claim_schema, params.random_claims),
                             path,
                             selectively_disclosable: false,
-                            schema: Some(claim_schema.schema.to_owned()),
+                            schema: Some(claim_schema.to_owned()),
                         }]
                     }
                 })
@@ -179,7 +176,7 @@ impl CredentialsDB {
 
 fn add_intermediary_indices_to_claim_schema_key(
     schema_key: &str,
-    schemas: &[CredentialSchemaClaim],
+    schemas: &[ClaimSchema],
 ) -> String {
     let mut current_schema_key = "".to_string();
     let mut claim_path = vec![];
@@ -189,9 +186,8 @@ fn add_intermediary_indices_to_claim_schema_key(
         if current_schema_key != schema_key // otherwise we're at the end
             && schemas
                 .iter()
-                .find(|schema| schema.schema.key == current_schema_key)
+                .find(|schema| schema.key == current_schema_key)
                 .expect("schema not found")
-                .schema
                 .array
         {
             claim_path.push("0".to_string())
@@ -201,11 +197,8 @@ fn add_intermediary_indices_to_claim_schema_key(
     claim_path.join("/")
 }
 
-fn schema_to_dummy_value(
-    claim_schema: &CredentialSchemaClaim,
-    random_claims: bool,
-) -> Option<String> {
-    let data_type = &claim_schema.schema.data_type;
+fn schema_to_dummy_value(claim_schema: &ClaimSchema, random_claims: bool) -> Option<String> {
+    let data_type = &claim_schema.data_type;
     if data_type == "OBJECT" {
         return None;
     }

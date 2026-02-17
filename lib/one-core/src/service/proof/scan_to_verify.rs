@@ -9,7 +9,6 @@ use crate::error::ErrorCode::BR_0000;
 use crate::mapper::extracted_credential_to_model;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
@@ -191,7 +190,7 @@ impl ProofService {
                     "claim_schemas is None".to_string(),
                 ))?;
 
-        let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
+        let mut claim_schemas: Vec<ClaimSchema> = vec![];
         let mut claims: Vec<(CredentialClaim, ClaimSchema)> = vec![];
         for proof_claim_schema in proof_claim_schemas {
             let value = credential.claims.claims.get(&proof_claim_schema.schema.key);
@@ -211,7 +210,7 @@ impl ProofService {
 
             let claim_schema = credential_schema_claims
                 .iter()
-                .find(|claim| claim.schema.id == proof_claim_schema.schema.id)
+                .find(|claim| claim.id == proof_claim_schema.schema.id)
                 .ok_or(ServiceError::MappingError(
                     "claim_schema missing".to_string(),
                 ))?;

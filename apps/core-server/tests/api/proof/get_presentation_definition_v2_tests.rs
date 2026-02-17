@@ -906,9 +906,8 @@ fn claim_data(
         .as_ref()
         .expect("missing claim schemas")
         .iter()
-        .find(|claim_schema| claim_schema.schema.key == key)
+        .find(|claim_schema| claim_schema.key == key)
         .expect("claim schema not found")
-        .schema
         .id;
 
     ClaimData {

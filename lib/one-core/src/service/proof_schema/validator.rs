@@ -13,7 +13,7 @@ use crate::config::core_config::{ConfigExt, CoreConfig, RevocationType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -155,8 +155,8 @@ pub fn extract_claims_from_credential_schema(
             Ok::<_, ServiceError>(proof_input.claim_schemas.iter().map(move |proof_claim| {
                 claims
                     .iter()
-                    .find(|schema_claim| schema_claim.schema.id == proof_claim.id)
-                    .map(|schema_claim| schema_claim.schema.clone())
+                    .find(|schema_claim| schema_claim.id == proof_claim.id)
+                    .cloned()
                     .ok_or_else(|| {
                         ServiceError::BusinessLogic(BusinessLogicError::MissingClaimSchema {
                             claim_schema_id: proof_claim.id,
@@ -190,11 +190,11 @@ fn validate_proof_schema_claim_not_in_array(
     }
 }
 
-fn collect_lists(claims: &[CredentialSchemaClaim]) -> HashSet<String> {
+fn collect_lists(claims: &[ClaimSchema]) -> HashSet<String> {
     claims
         .iter()
-        .filter_map(|c| match c.schema.array {
-            true => Some(c.schema.key.to_owned()),
+        .filter_map(|c| match c.array {
+            true => Some(c.key.to_owned()),
             _ => None,
         })
         .collect()

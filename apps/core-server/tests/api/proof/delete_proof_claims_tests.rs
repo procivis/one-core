@@ -30,7 +30,6 @@ async fn test_delete_proof_claims_success() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context

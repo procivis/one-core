@@ -18,8 +18,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
-    KeyStorageSecurity, LayoutType,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, KeyStorageSecurity,
+    LayoutType,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -348,6 +348,7 @@ async fn test_create_proof_schema_success() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -386,10 +387,7 @@ async fn test_create_proof_schema_success() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: claim_schema.clone(),
-                    required: false,
-                }]),
+                claim_schemas: Some(vec![claim_schema.clone()]),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -494,6 +492,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_hardware_id = Uuid::new_v4().into();
@@ -519,10 +518,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: claim_schema_software.clone(),
-                    required: false,
-                }]),
+                claim_schemas: Some(vec![claim_schema_software.clone()]),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -537,10 +533,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 name: "hardware".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "hardware".to_owned(),
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: claim_schema_hardware.clone(),
-                    required: false,
-                }]),
+                claim_schemas: Some(vec![claim_schema_hardware.clone()]),
                 ..schema_software.clone()
             };
 
@@ -631,6 +624,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let organisation_id = Uuid::new_v4().into();
@@ -657,10 +651,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: claim_schema.clone(),
-                    required: false,
-                }]),
+                claim_schemas: Some(vec![claim_schema.clone()]),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -758,6 +749,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_id_2 = Uuid::new_v4().into();
@@ -769,6 +761,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -807,10 +800,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 format: "PHYSICAL_CARD".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: claim_schema.clone(),
-                    required: false,
-                }]),
+                claim_schemas: Some(vec![claim_schema.clone()]),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -830,10 +820,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 format: "PHYSICAL_CARD".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: claim_schem_2.clone(),
-                    required: false,
-                }]),
+                claim_schemas: Some(vec![claim_schem_2.clone()]),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -913,6 +900,7 @@ async fn test_create_proof_schema_array_object_fail() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_array = ClaimSchema {
@@ -923,6 +911,7 @@ async fn test_create_proof_schema_array_object_fail() {
         last_modified: OffsetDateTime::now_utc(),
         array: true,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_array_object = ClaimSchema {
@@ -933,6 +922,7 @@ async fn test_create_proof_schema_array_object_fail() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_array_object_item = ClaimSchema {
@@ -943,6 +933,7 @@ async fn test_create_proof_schema_array_object_fail() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_id = claim_schema_array_object_item.id;
@@ -987,22 +978,10 @@ async fn test_create_proof_schema_array_object_fail() {
                 revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: Some(vec![
-                    CredentialSchemaClaim {
-                        schema: claim_schema_root.clone(),
-                        required: false,
-                    },
-                    CredentialSchemaClaim {
-                        schema: claim_schema_array.clone(),
-                        required: false,
-                    },
-                    CredentialSchemaClaim {
-                        schema: claim_schema_array_object.clone(),
-                        required: false,
-                    },
-                    CredentialSchemaClaim {
-                        schema: claim_schema_array_object_item.clone(),
-                        required: false,
-                    },
+                    claim_schema_root.clone(),
+                    claim_schema_array.clone(),
+                    claim_schema_array_object.clone(),
+                    claim_schema_array_object_item.clone(),
                 ]),
                 organisation: None,
                 layout_type: LayoutType::Card,
@@ -1074,6 +1053,7 @@ async fn test_create_proof_schema_array_success() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_array = ClaimSchema {
@@ -1084,6 +1064,7 @@ async fn test_create_proof_schema_array_success() {
         last_modified: OffsetDateTime::now_utc(),
         array: true,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_array_object = ClaimSchema {
@@ -1094,6 +1075,7 @@ async fn test_create_proof_schema_array_success() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_schema_array_object_item = ClaimSchema {
@@ -1104,6 +1086,7 @@ async fn test_create_proof_schema_array_success() {
         last_modified: OffsetDateTime::now_utc(),
         array: false,
         metadata: false,
+        required: false,
     };
 
     let claim_id = claim_schema_array.id;
@@ -1149,22 +1132,10 @@ async fn test_create_proof_schema_array_success() {
                 revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: Some(vec![
-                    CredentialSchemaClaim {
-                        schema: claim_schema_root.clone(),
-                        required: false,
-                    },
-                    CredentialSchemaClaim {
-                        schema: claim_schema_array.clone(),
-                        required: false,
-                    },
-                    CredentialSchemaClaim {
-                        schema: claim_schema_array_object.clone(),
-                        required: false,
-                    },
-                    CredentialSchemaClaim {
-                        schema: claim_schema_array_object_item.clone(),
-                        required: false,
-                    },
+                    claim_schema_root.clone(),
+                    claim_schema_array.clone(),
+                    claim_schema_array_object.clone(),
+                    claim_schema_array_object_item.clone(),
                 ]),
                 organisation: None,
                 layout_type: LayoutType::Card,
@@ -1313,16 +1284,14 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "key".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "key".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    array: false,
+                    metadata: false,
                     required: false,
                 }]),
                 organisation: None,
@@ -1938,16 +1907,14 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "iso-org-test123".to_string(),
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root/name".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: get_dummy_date(),
-                        array: false,
-                        last_modified: get_dummy_date(),
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "root/name".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: get_dummy_date(),
+                    array: false,
+                    last_modified: get_dummy_date(),
+                    metadata: false,
                     required: true,
                 }]),
                 organisation: None,
@@ -2304,6 +2271,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
     let location_x_claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2313,6 +2281,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2324,14 +2293,8 @@ async fn test_get_proof_schema_success_nested_claims() {
             order: 0,
         }]),
         credential_schema: Some(credential_schema_with_claims(vec![
-            CredentialSchemaClaim {
-                schema: location_claim_schema,
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: location_x_claim_schema.to_owned(),
-                required: true,
-            },
+            location_claim_schema,
+            location_x_claim_schema.to_owned(),
         ])),
     }]);
 
@@ -2365,6 +2328,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
     let location_x_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2374,6 +2338,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
     let location_foo_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2383,6 +2348,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: false,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2394,18 +2360,9 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
             order: 0,
         }]),
         credential_schema: Some(credential_schema_with_claims(vec![
-            CredentialSchemaClaim {
-                schema: location_cs,
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: location_x_cs,
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: location_foo_cs.to_owned(),
-                required: false,
-            },
+            location_cs,
+            location_x_cs,
+            location_foo_cs.to_owned(),
         ])),
     }]);
 
@@ -2439,6 +2396,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
     let location_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2448,6 +2406,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: false,
     };
     let location_x_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2457,6 +2416,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         last_modified: now,
         array: false,
         metadata: false,
+        required: true,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2475,18 +2435,9 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
             },
         ]),
         credential_schema: Some(credential_schema_with_claims(vec![
-            CredentialSchemaClaim {
-                schema: bar_cs,
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: location_cs,
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: location_x_cs,
-                required: true,
-            },
+            bar_cs,
+            location_cs,
+            location_x_cs,
         ])),
     }]);
 
@@ -2529,7 +2480,7 @@ fn proof_schema_repo_expecting_get(proof_schema: ProofSchema) -> MockProofSchema
     proof_schema_repository
 }
 
-fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> CredentialSchema {
+fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
     let now = OffsetDateTime::now_utc();
     CredentialSchema {
         id: Uuid::new_v4().into(),
@@ -2751,6 +2702,7 @@ async fn test_create_proof_schema_verify_nested_generic(
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         })
         .collect();
 
@@ -2794,15 +2746,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(
-                    claim_schemas_cloned
-                        .into_iter()
-                        .map(|schema| CredentialSchemaClaim {
-                            required: true,
-                            schema,
-                        })
-                        .collect(),
-                ),
+                claim_schemas: Some(claim_schemas_cloned),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,

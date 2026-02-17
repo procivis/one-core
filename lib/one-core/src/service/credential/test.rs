@@ -16,9 +16,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, GetCredentialList,
 };
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -99,6 +97,7 @@ fn generic_credential() -> Credential {
         created_date: now,
         last_modified: now,
         metadata: false,
+        required: true,
     };
     let organisation = dummy_organisation(None);
 
@@ -178,10 +177,7 @@ fn generic_credential() -> Credential {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: claim_schema,
-                required: true,
-            }]),
+            claim_schemas: Some(vec![claim_schema]),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1254,28 +1250,24 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
         claim_schemas: Some(vec![
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    array: false,
-                    id: Uuid::new_v4().into(),
-                    key: "required".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    metadata: false,
-                },
+            ClaimSchema {
+                array: false,
+                id: Uuid::new_v4().into(),
+                key: "required".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                metadata: false,
                 required: true,
             },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    array: false,
-                    id: Uuid::new_v4().into(),
-                    key: "optional".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    metadata: false,
-                },
+            ClaimSchema {
+                array: false,
+                id: Uuid::new_v4().into(),
+                key: "optional".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                metadata: false,
                 required: false,
             },
         ]),
@@ -1346,7 +1338,6 @@ async fn test_create_credential_one_required_claim_missing_success() {
     });
 
     let required_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .schema
         .id
         .to_owned();
     let create_request_template = CreateCredentialRequestDTO {
@@ -1377,7 +1368,6 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 claim_schema_id: required_claim_schema_id,
                 value: "value".to_string(),
                 path: credential_schema.claim_schemas.as_ref().unwrap()[0]
-                    .schema
                     .key
                     .to_owned(),
             }],
@@ -1395,28 +1385,24 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
         claim_schemas: Some(vec![
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    array: false,
-                    id: Uuid::new_v4().into(),
-                    key: "required".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    metadata: false,
-                },
+            ClaimSchema {
+                array: false,
+                id: Uuid::new_v4().into(),
+                key: "required".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                metadata: false,
                 required: true,
             },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    array: false,
-                    id: Uuid::new_v4().into(),
-                    key: "optional".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    metadata: false,
-                },
+            ClaimSchema {
+                array: false,
+                id: Uuid::new_v4().into(),
+                key: "optional".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                metadata: false,
                 required: false,
             },
         ]),
@@ -1480,7 +1466,6 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     });
 
     let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[1]
-        .schema
         .id
         .to_owned();
     let create_request_template = CreateCredentialRequestDTO {
@@ -1511,7 +1496,6 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 claim_schema_id: optional_claim_schema_id,
                 value: "value".to_string(),
                 path: credential_schema.claim_schemas.as_ref().unwrap()[1]
-                    .schema
                     .key
                     .to_owned(),
             }],
@@ -1594,7 +1578,6 @@ async fn test_create_credential_schema_deleted() {
     });
 
     let claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .schema
         .id
         .to_owned();
 
@@ -1619,7 +1602,6 @@ async fn test_create_credential_schema_deleted() {
                 claim_schema_id,
                 value: "value".to_string(),
                 path: credential_schema.claim_schemas.as_ref().unwrap()[0]
-                    .schema
                     .key
                     .to_owned(),
             }],
@@ -2547,7 +2529,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 }
 
 fn generate_credential_schema_with_claim_schemas(
-    claim_schemas: Vec<CredentialSchemaClaim>,
+    claim_schemas: Vec<ClaimSchema>,
 ) -> CredentialSchema {
     let now = OffsetDateTime::now_utc();
     CredentialSchema {
@@ -2580,52 +2562,44 @@ fn test_validate_create_request_all_nested_claims_are_required() {
 
     let now = OffsetDateTime::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: address_claim_id,
-                key: "address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: address_claim_id,
+            key: "address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_claim_id,
-                key: "location".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_claim_id,
+            key: "location".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_x_claim_id,
-                key: "location/x".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_x_claim_id,
+            key: "location/x".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_y_claim_id,
-                key: "location/y".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_y_claim_id,
+            key: "location/y".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
     ]);
@@ -2672,52 +2646,44 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     let now = OffsetDateTime::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: address_claim_id,
-                key: "address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: address_claim_id,
+            key: "address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_claim_id,
-                key: "location".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_claim_id,
+            key: "location".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: false,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_x_claim_id,
-                key: "location/x".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_x_claim_id,
+            key: "location/x".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_y_claim_id,
-                key: "location/y".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_y_claim_id,
+            key: "location/y".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
     ]);
@@ -2795,52 +2761,44 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     let now = OffsetDateTime::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: address_claim_id,
-                key: "address".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: address_claim_id,
+            key: "address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_claim_id,
-                key: "location".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_claim_id,
+            key: "location".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_x_claim_id,
-                key: "location/x".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_x_claim_id,
+            key: "location/x".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: true,
         },
-        CredentialSchemaClaim {
-            schema: ClaimSchema {
-                array: false,
-                id: location_y_claim_id,
-                key: "location/y".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                metadata: false,
-            },
+        ClaimSchema {
+            array: false,
+            id: location_y_claim_id,
+            key: "location/y".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+            metadata: false,
             required: false,
         },
     ]);
@@ -2923,6 +2881,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         created_date: now,
         last_modified: now,
         metadata: false,
+        required: false,
     };
     let location_x_claim_schema = ClaimSchema {
         array: false,
@@ -2932,6 +2891,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         created_date: now,
         last_modified: now,
         metadata: false,
+        required: false,
     };
 
     let mut credential = generic_credential();
@@ -2942,16 +2902,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         .unwrap()
         .claim_schemas
         .as_mut()
-        .unwrap() = vec![
-        CredentialSchemaClaim {
-            schema: location_claim_schema,
-            required: false,
-        },
-        CredentialSchemaClaim {
-            schema: location_x_claim_schema.to_owned(),
-            required: false,
-        },
-    ];
+        .unwrap() = vec![location_claim_schema, location_x_claim_schema.to_owned()];
 
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
@@ -3000,6 +2951,7 @@ fn generate_claim_schema(key: &str, datatype: &str, array: bool) -> ClaimSchema 
         created_date: now,
         last_modified: now,
         metadata: false,
+        required: true,
     }
 }
 
@@ -3143,15 +3095,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
+            claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -3712,15 +3656,7 @@ async fn test_get_credential_success_array_index_sorting() {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
+            claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -4030,15 +3966,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             key_storage_security: None,
             format: "MDOC".into(),
             revocation_method: None,
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
+            claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -4251,15 +4179,7 @@ async fn test_get_credential_success_array_single_element() {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
+            claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -4380,15 +4300,7 @@ async fn test_create_credential_array(
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        claim_schemas: Some(
-            claim_schemas
-                .iter()
-                .map(|schema| CredentialSchemaClaim {
-                    schema: schema.to_owned(),
-                    required: true,
-                })
-                .collect(),
-        ),
+        claim_schemas: Some(claim_schemas),
         organisation: Some(organisation.to_owned()),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,

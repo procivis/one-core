@@ -14,7 +14,7 @@ use crate::config::core_config::VerificationEngagement;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -264,81 +264,74 @@ async fn test_get_presentation_definition_ok() {
     let credential_schema_id = Uuid::new_v4().into();
 
     let claim_schemas = hashmap![
-       "org.iso.18013.5.1.mDL" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+       "org.iso.18013.5.1.mDL" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-        "org.iso.18013.5.1.mDL/name" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL/name".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+        "org.iso.18013.5.1.mDL/name" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL/name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-       "org.iso.18013.5.1.mDL/age" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL/age".to_string(),
-                data_type: "NUMBER".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+       "org.iso.18013.5.1.mDL/age" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL/age".to_string(),
+            data_type: "NUMBER".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-       "org.iso.18013.5.1.mDL/country" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL/country".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+       "org.iso.18013.5.1.mDL/country" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL/country".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-       "org.iso.18013.5.1.mDL/country_code" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL/country_code".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+       "org.iso.18013.5.1.mDL/country_code" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL/country_code".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-        "org.iso.18013.5.1.mDL/info" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL/info".to_string(),
-                data_type: "OBJECT".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+        "org.iso.18013.5.1.mDL/info" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL/info".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
-        "org.iso.18013.5.1.mDL/info/code" => CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "org.iso.18013.5.1.mDL/info/code".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-            metadata: false,},
+        "org.iso.18013.5.1.mDL/info/code" => ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "org.iso.18013.5.1.mDL/info/code".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: true,
         },
     ];
@@ -368,7 +361,7 @@ async fn test_get_presentation_definition_ok() {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/name"].schema.clone()),
+            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/name"].clone()),
             path: "org.iso.18013.5.1.mDL/name".to_string(),
             value: Some("John".to_string()),
             selectively_disclosable: false,
@@ -378,7 +371,7 @@ async fn test_get_presentation_definition_ok() {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/age"].schema.clone()),
+            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/age"].clone()),
             path: "org.iso.18013.5.1.mDL/age".to_string(),
             value: Some("55".to_string()),
             selectively_disclosable: false,
@@ -388,11 +381,7 @@ async fn test_get_presentation_definition_ok() {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            schema: Some(
-                claim_schemas["org.iso.18013.5.1.mDL/country"]
-                    .schema
-                    .clone(),
-            ),
+            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/country"].clone()),
             path: "org.iso.18013.5.1.mDL/country".to_string(),
             value: Some("Germany".to_string()),
             selectively_disclosable: false,
@@ -402,11 +391,7 @@ async fn test_get_presentation_definition_ok() {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            schema: Some(
-                claim_schemas["org.iso.18013.5.1.mDL/country_code"]
-                    .schema
-                    .clone(),
-            ),
+            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/country_code"].clone()),
             path: "org.iso.18013.5.1.mDL/country_code".to_string(),
             value: Some("DE".to_string()),
             selectively_disclosable: false,
@@ -416,11 +401,7 @@ async fn test_get_presentation_definition_ok() {
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            schema: Some(
-                claim_schemas["org.iso.18013.5.1.mDL/info/code"]
-                    .schema
-                    .clone(),
-            ),
+            schema: Some(claim_schemas["org.iso.18013.5.1.mDL/info/code"].clone()),
             path: "org.iso.18013.5.1.mDL/info/code".to_string(),
             value: Some("ABCDEFG".to_string()),
             selectively_disclosable: false,

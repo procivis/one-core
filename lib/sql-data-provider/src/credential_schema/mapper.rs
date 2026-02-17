@@ -1,5 +1,6 @@
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn, TransactionCode,
+    CredentialSchema, SortableCredentialSchemaColumn, TransactionCode,
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
@@ -97,20 +98,20 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
 }
 
 pub(super) fn claim_schemas_to_model_vec(
-    claim_schemas: Vec<CredentialSchemaClaim>,
+    claim_schemas: Vec<ClaimSchema>,
     credential_schema_id: &CredentialSchemaId,
 ) -> Vec<claim_schema::ActiveModel> {
     claim_schemas
         .into_iter()
         .enumerate()
         .map(|(index, claim_schema)| claim_schema::ActiveModel {
-            id: Set(claim_schema.schema.id),
-            created_date: Set(claim_schema.schema.created_date),
-            last_modified: Set(claim_schema.schema.last_modified),
-            key: Set(claim_schema.schema.key),
-            datatype: Set(claim_schema.schema.data_type),
-            array: Set(claim_schema.schema.array),
-            metadata: Set(claim_schema.schema.metadata),
+            id: Set(claim_schema.id),
+            created_date: Set(claim_schema.created_date),
+            last_modified: Set(claim_schema.last_modified),
+            key: Set(claim_schema.key),
+            datatype: Set(claim_schema.data_type),
+            array: Set(claim_schema.array),
+            metadata: Set(claim_schema.metadata),
             credential_schema_id: Set(*credential_schema_id),
             required: Set(claim_schema.required),
             order: Set(index as u32),
@@ -120,7 +121,7 @@ pub(super) fn claim_schemas_to_model_vec(
 
 pub(super) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
-    claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    claim_schemas: Option<Vec<ClaimSchema>>,
     organisation: Option<Organisation>,
     skip_layout_properties: bool,
 ) -> Result<CredentialSchema, DataLayerError> {

@@ -1071,12 +1071,12 @@ async fn test_parse_credential() {
     let claim_schemas = schema.claim_schemas.unwrap();
     assert_eq!(claim_schemas.len(), 7);
 
-    let get_claim_schema_keys = |filter: &dyn Fn(&CredentialSchemaClaim) -> bool| {
+    let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {
         HashSet::from_iter(
             claim_schemas
                 .iter()
                 .filter(|schema| filter(schema))
-                .map(|schema| schema.schema.key.as_str()),
+                .map(|schema| schema.key.as_str()),
         )
     };
 
@@ -1090,12 +1090,12 @@ async fn test_parse_credential() {
     );
 
     assert_eq!(
-        get_claim_schema_keys(&|schema| schema.schema.metadata),
+        get_claim_schema_keys(&|schema| schema.metadata),
         hashset! { "doctype" }
     );
 
     assert_eq!(
-        get_claim_schema_keys(&|schema| schema.schema.data_type == "OBJECT"),
+        get_claim_schema_keys(&|schema| schema.data_type == "OBJECT"),
         hashset! {
             "namespace1", "namespace1/obj",
             "namespace2"
@@ -1103,7 +1103,7 @@ async fn test_parse_credential() {
     );
 
     assert_eq!(
-        get_claim_schema_keys(&|schema| schema.schema.data_type == "STRING"),
+        get_claim_schema_keys(&|schema| schema.data_type == "STRING"),
         hashset! {
             "namespace1/str", "namespace1/obj/nestedStr",
             "namespace2/arr",
@@ -1112,7 +1112,7 @@ async fn test_parse_credential() {
     );
 
     assert_eq!(
-        get_claim_schema_keys(&|schema| schema.schema.array),
+        get_claim_schema_keys(&|schema| schema.array),
         hashset! { "namespace2/arr" }
     );
 }

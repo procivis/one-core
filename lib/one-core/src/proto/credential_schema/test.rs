@@ -11,8 +11,7 @@ use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList, KeyStorageSecurity,
-    LayoutType, TransactionCodeType,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType, TransactionCodeType,
 };
 use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
@@ -236,16 +235,14 @@ async fn test_importer_import_credential_schema_success() {
         name: "Test Schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "claim1".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                array: false,
-                metadata: false,
-            },
+        claim_schemas: Some(vec![ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "claim1".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+            metadata: false,
             required: true,
         }]),
         organisation: Some(dummy_organisation(None)),

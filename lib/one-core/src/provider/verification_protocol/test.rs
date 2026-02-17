@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::provider::verification_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::verification_protocol::mapper::get_relevant_credentials_to_credential_schemas;
@@ -69,16 +69,14 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
         .claim_schemas
         .as_mut()
         .unwrap()
-        .push(CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "optkey".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                array: false,
-                metadata: false,
-            },
+        .push(ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "optkey".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+            metadata: false,
             required: false,
         });
 
@@ -207,6 +205,7 @@ fn mdoc_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -216,22 +215,14 @@ fn mdoc_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         },
     ];
 
     credential.state = CredentialStateEnum::Accepted;
     let schema = credential.schema.as_mut().unwrap();
     schema.format = "MDOC".into();
-    *schema.claim_schemas.as_mut().unwrap() = vec![
-        CredentialSchemaClaim {
-            schema: new_claim_schemas[0].to_owned(),
-            required: true,
-        },
-        CredentialSchemaClaim {
-            schema: new_claim_schemas[1].to_owned(),
-            required: true,
-        },
-    ];
+    *schema.claim_schemas.as_mut().unwrap() = new_claim_schemas.to_vec();
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
@@ -333,6 +324,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -342,6 +334,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -351,6 +344,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -360,6 +354,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -369,17 +364,12 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
             metadata: false,
+            required: true,
         },
     ];
 
     let schema = credential.schema.as_mut().unwrap();
-    *schema.claim_schemas.as_mut().unwrap() = new_claim_schemas
-        .iter()
-        .map(|claim_schema| CredentialSchemaClaim {
-            schema: claim_schema.to_owned(),
-            required: claim_schema.key.as_str() != "namespaceOpt",
-        })
-        .collect();
+    *schema.claim_schemas.as_mut().unwrap() = new_claim_schemas.to_vec();
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
@@ -462,6 +452,7 @@ fn dummy_credential() -> Credential {
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
                 metadata: false,
+                required: true,
             }),
         }]),
         issuer_identifier: None,
@@ -477,16 +468,14 @@ fn dummy_credential() -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: Some("revocation method".into()),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: claim_schema_id,
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    array: false,
-                    metadata: false,
-                },
+            claim_schemas: Some(vec![ClaimSchema {
+                id: claim_schema_id,
+                key: "key".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                array: false,
+                metadata: false,
                 required: true,
             }]),
             layout_type: LayoutType::Card,

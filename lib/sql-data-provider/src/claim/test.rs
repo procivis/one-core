@@ -120,6 +120,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
                 last_modified: get_dummy_date(),
                 array: false,
                 metadata: false,
+                required: true,
             })
             .collect(),
         identifier_id,
@@ -393,6 +394,7 @@ async fn test_get_claim_list_with_relation() {
                     last_modified: get_dummy_date(),
                     array: false,
                     metadata: false,
+                    required: true,
                 })
                 .collect())
         });

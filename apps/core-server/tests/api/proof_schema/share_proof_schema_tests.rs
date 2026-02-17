@@ -20,7 +20,6 @@ async fn test_share_proof_schema() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context

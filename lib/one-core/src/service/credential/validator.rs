@@ -9,7 +9,8 @@ use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, Issua
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
@@ -46,7 +47,7 @@ pub(crate) fn validate_create_request(
         let claim_schema_id = claim.claim_schema_id;
         let schema = claim_schemas
             .iter()
-            .find(|schema| schema.schema.id == claim_schema_id);
+            .find(|schema| schema.id == claim_schema_id);
 
         match schema {
             None => return Err(BusinessLogicError::MissingClaimSchema { claim_schema_id }.into()),
@@ -56,12 +57,12 @@ pub(crate) fn validate_create_request(
                 validate_object_value_non_empty(claim, schema)?;
                 validate_value_non_empty(claim)?;
 
-                validate_datatype_value(&claim.value, &schema.schema.data_type, &config.datatype)
+                validate_datatype_value(&claim.value, &schema.data_type, &config.datatype)
                     .map_err(|err| ValidationError::InvalidDatatype {
-                    value: claim.value.clone(),
-                    datatype: schema.schema.data_type.clone(),
-                    source: err,
-                })?;
+                        value: claim.value.clone(),
+                        datatype: schema.data_type.clone(),
+                        source: err,
+                    })?;
 
                 paths.push(claim.path.as_str());
             }
@@ -77,18 +78,18 @@ pub(crate) fn validate_create_request(
     claim_schemas
         .iter()
         .map(|claim_schema| {
-            let datatype = &claim_schema.schema.data_type;
+            let datatype = &claim_schema.data_type;
             let config = config.datatype.get_fields(datatype)?;
 
             if claim_schema.required
-                && !claim_schema.schema.metadata // Clients are not expected to submit _metadata_ claims.
+                && !claim_schema.metadata // Clients are not expected to submit _metadata_ claims.
                 && config.r#type != DatatypeType::Object
             {
                 claims
                     .iter()
-                    .find(|claim| claim.claim_schema_id == claim_schema.schema.id)
+                    .find(|claim| claim.claim_schema_id == claim_schema.id)
                     .ok_or(ValidationError::CredentialMissingClaim {
-                        claim_schema_id: claim_schema.schema.id,
+                        claim_schema_id: claim_schema.id,
                     })?;
             }
             Ok(())
@@ -262,10 +263,7 @@ fn get_first_path_element(path: &str) -> (&str, &str) {
     }
 }
 
-fn validate_continuity(
-    paths: &[&str],
-    claim_schemas: &[CredentialSchemaClaim],
-) -> Result<(), ServiceError> {
+fn validate_continuity(paths: &[&str], claim_schemas: &[ClaimSchema]) -> Result<(), ServiceError> {
     let mut tree = PathNode {
         key: None,
         subnodes: vec![],
@@ -276,8 +274,8 @@ fn validate_continuity(
     let array_paths = claim_schemas
         .iter()
         .filter_map(|schema| {
-            if schema.schema.array {
-                Some(schema.schema.key.as_str())
+            if schema.array {
+                Some(schema.key.as_str())
             } else {
                 None
             }
@@ -300,9 +298,9 @@ fn validate_value_non_empty(claim: &CredentialRequestClaimDTO) -> Result<(), Ser
 
 fn validate_object_value_non_empty(
     claim: &CredentialRequestClaimDTO,
-    schema: &CredentialSchemaClaim,
+    schema: &ClaimSchema,
 ) -> Result<(), ServiceError> {
-    if claim.path.contains(NESTED_CLAIM_MARKER) && !schema.schema.array && claim.value.is_empty() {
+    if claim.path.contains(NESTED_CLAIM_MARKER) && !schema.array && claim.value.is_empty() {
         return Err(ValidationError::EmptyObjectNotAllowed.into());
     }
 
@@ -311,9 +309,9 @@ fn validate_object_value_non_empty(
 
 fn validate_array_value_non_empty(
     claim: &CredentialRequestClaimDTO,
-    schema: &CredentialSchemaClaim,
+    schema: &ClaimSchema,
 ) -> Result<(), ServiceError> {
-    if claim.value.is_empty() && schema.schema.array {
+    if claim.value.is_empty() && schema.array {
         return Err(ValidationError::EmptyArrayValueNotAllowed.into());
     }
 
@@ -362,15 +360,15 @@ fn get_nth_segment_of_key(key: &str, index: usize) -> Result<&str, ServiceError>
 
 fn validate_path(
     claim: &CredentialRequestClaimDTO,
-    schema: &CredentialSchemaClaim,
-    claim_schemas: &[CredentialSchemaClaim],
+    schema: &ClaimSchema,
+    claim_schemas: &[ClaimSchema],
 ) -> Result<(), ServiceError> {
     let related_claim_schemas = resolve_parent_claim_schemas(schema, claim_schemas)?;
 
     let segments = claim.path.split(NESTED_CLAIM_MARKER).collect::<Vec<&str>>();
     let expected_segments = related_claim_schemas
         .iter()
-        .map(|schema| if schema.schema.array { 2 } else { 1 })
+        .map(|schema| if schema.array { 2 } else { 1 })
         .sum::<usize>();
 
     if segments.len() != expected_segments {
@@ -386,7 +384,7 @@ fn validate_path(
         let related_schema = related_claim_schemas.get(schema_index).ok_or_else(|| {
             ServiceError::MappingError(format!("Could not find schema index: {schema_index}"))
         })?;
-        let key_segment = get_nth_segment_of_key(&related_schema.schema.key, schema_index)?;
+        let key_segment = get_nth_segment_of_key(&related_schema.key, schema_index)?;
         let segment = segments.get(segment_index).ok_or_else(|| {
             ServiceError::MappingError(format!("Could not find segment index: {segment_index}"))
         })?;
@@ -396,7 +394,7 @@ fn validate_path(
             )));
         }
 
-        if related_schema.schema.array {
+        if related_schema.array {
             segment_index += 1;
             let segment = segments.get(segment_index).ok_or_else(|| {
                 ServiceError::MappingError(format!("Could not find segment index: {segment_index}"))
@@ -420,41 +418,38 @@ fn validate_path(
 }
 
 fn adapt_required_state_based_on_claim_presence(
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     claims: &[CredentialRequestClaimDTO],
     config: &CoreConfig,
-) -> Result<Vec<CredentialSchemaClaim>, ServiceError> {
+) -> Result<Vec<ClaimSchema>, ServiceError> {
     let claims_with_names = claims
         .iter()
         .map(|claim| {
             let matching_claim_schema = claim_schemas
                 .iter()
-                .find(|claim_schema| claim_schema.schema.id == claim.claim_schema_id)
+                .find(|claim_schema| claim_schema.id == claim.claim_schema_id)
                 .ok_or(ValidationError::CredentialSchemaMissingClaims)?;
-            Ok((claim, matching_claim_schema.schema.key.to_owned()))
+            Ok((claim, matching_claim_schema.key.to_owned()))
         })
         .collect::<Result<Vec<(&CredentialRequestClaimDTO, String)>, ValidationError>>()?;
 
     let mut result = claim_schemas.to_vec();
     claim_schemas.iter().try_for_each(|claim_schema| {
-        let prefix = format!("{}/", claim_schema.schema.key);
+        let prefix = format!("{}/", claim_schema.key);
 
         let is_parent_schema_of_provided_claim = claims_with_names
             .iter()
             .any(|(_, claim_name)| claim_name.starts_with(&prefix));
 
-        let is_object = config
-            .datatype
-            .get_fields(&claim_schema.schema.data_type)?
-            .r#type
-            == DatatypeType::Object;
+        let is_object =
+            config.datatype.get_fields(&claim_schema.data_type)?.r#type == DatatypeType::Object;
 
         let should_make_all_child_claims_non_required =
             !is_parent_schema_of_provided_claim && is_object && !claim_schema.required;
 
         if should_make_all_child_claims_non_required {
             result.iter_mut().for_each(|result_schema| {
-                if result_schema.schema.key.starts_with(&prefix) {
+                if result_schema.key.starts_with(&prefix) {
                     result_schema.required = false;
                 }
             });
@@ -508,14 +503,10 @@ pub(crate) fn validate_format_and_did_method_compatibility(
 }
 
 fn resolve_parent_claim_schemas<'a>(
-    schema: &'a CredentialSchemaClaim,
-    claim_schemas: &'a [CredentialSchemaClaim],
-) -> Result<Vec<&'a CredentialSchemaClaim>, ServiceError> {
-    let splits = schema
-        .schema
-        .key
-        .split(NESTED_CLAIM_MARKER)
-        .collect::<Vec<&str>>();
+    schema: &'a ClaimSchema,
+    claim_schemas: &'a [ClaimSchema],
+) -> Result<Vec<&'a ClaimSchema>, ServiceError> {
+    let splits = schema.key.split(NESTED_CLAIM_MARKER).collect::<Vec<&str>>();
 
     let mut result = vec![];
 
@@ -527,10 +518,10 @@ fn resolve_parent_claim_schemas<'a>(
         result.push(
             claim_schemas
                 .iter()
-                .find(|schema| schema.schema.key == current_str)
+                .find(|schema| schema.key == current_str)
                 .ok_or(ServiceError::BusinessLogic(
                     BusinessLogicError::MissingParentClaimSchema {
-                        claim_schema_id: schema.schema.id,
+                        claim_schema_id: schema.id,
                     },
                 ))?,
         );

@@ -12,9 +12,7 @@ use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
 use crate::repository::backup_repository::MockBackupRepository;
@@ -72,6 +70,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     last_modified: OffsetDateTime::now_utc(),
                     array: false,
                     metadata: false,
+                    required: false,
                 }),
             }]),
             issuer_identifier: None,
@@ -87,16 +86,14 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 name: "name".into(),
                 format: "format".into(),
                 revocation_method: Some("revocation_method".into()),
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: claim_schema_id,
-                        key: "key".into(),
-                        data_type: "STRING".into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        array: false,
-                        metadata: false,
-                    },
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: claim_schema_id,
+                    key: "key".into(),
+                    data_type: "STRING".into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    array: false,
+                    metadata: false,
                     required: false,
                 }]),
                 organisation: Some(dummy_organisation(None)),

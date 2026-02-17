@@ -20,7 +20,7 @@ use crate::config::core_config::TransportType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchemaClaim, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -802,6 +802,7 @@ async fn test_submit_proof_repeating_claims() {
                         last_modified: OffsetDateTime::now_utc(),
                         array: false,
                         metadata: false,
+                        required: true,
                     }),
                 }]),
                 holder_identifier: Some(identifier.clone()),
@@ -1648,16 +1649,14 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "key1".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    array: false,
-                    metadata: false,
-                },
+            claim_schemas: Some(vec![ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "key1".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                array: false,
+                metadata: false,
                 required: true,
             }]),
             organisation: Some(dummy_organisation(organisation_id)),

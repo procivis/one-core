@@ -21,7 +21,6 @@ async fn test_get_proof_schema_success() {
         .unwrap()
         .first()
         .unwrap()
-        .schema
         .to_owned();
 
     let proof_schema = context

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential_schema::CredentialSchemaClaim;
 use serde_json::json;
 use shared_types::ProofSchemaId;
 use similar_asserts::assert_eq;
@@ -58,12 +57,12 @@ async fn test_import_proof_schema_ok() {
               "keyStorageSecurity": original_credential_schema.key_storage_security,
               "allowSuspension": original_credential_schema.allow_suspension,
               "claims": claim_schemas.iter().map(|schema| json!({
-                  "array": schema.schema.array,
+                  "array": schema.array,
                   "createdDate": now,
                   "lastModified": now,
-                  "datatype": schema.schema.data_type,
-                  "id": schema.schema.id,
-                  "key": schema.schema.key,
+                  "datatype": schema.data_type,
+                  "id": schema.id,
+                  "key": schema.key,
                   "required": schema.required
               })).collect::<Vec<_>>()
             }),
@@ -90,8 +89,8 @@ async fn test_import_proof_schema_ok() {
                     "id": Uuid::new_v4(),
                     "requested": true,
                     "required": true,
-                    "key": requested_claim_schema.schema.key,
-                    "dataType": requested_claim_schema.schema.data_type,
+                    "key": requested_claim_schema.key,
+                    "dataType": requested_claim_schema.data_type,
                     "array": false,
                 }],
                 "credentialSchema": {
@@ -138,7 +137,7 @@ async fn test_import_proof_schema_ok() {
 
     let claims = proof_input_schemas[0].claim_schemas.as_ref().unwrap();
     assert_eq!(1, claims.len());
-    assert_eq!(requested_claim_schema.schema.key, claims[0].schema.key);
+    assert_eq!(requested_claim_schema.key, claims[0].schema.key);
 }
 
 #[tokio::test]
@@ -173,11 +172,11 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
         "proofInputSchemas": [
             {
                 "claimSchemas": [{
-                    "id": requested_claim_schema.schema.id,
+                    "id": requested_claim_schema.id,
                     "requested": true,
                     "required": requested_claim_schema.required,
-                    "key": requested_claim_schema.schema.key,
-                    "dataType": requested_claim_schema.schema.data_type,
+                    "key": requested_claim_schema.key,
+                    "dataType": requested_claim_schema.data_type,
                     "claims": [],
                     "array": false,
                 }],
@@ -242,11 +241,11 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         "proofInputSchemas": [
             {
                 "claimSchemas": [{
-                    "id": requested_claim_schema.schema.id,
+                    "id": requested_claim_schema.id,
                     "requested": true,
                     "required": requested_claim_schema.required,
-                    "key": requested_claim_schema.schema.key,
-                    "dataType": requested_claim_schema.schema.data_type,
+                    "key": requested_claim_schema.key,
+                    "dataType": requested_claim_schema.data_type,
                     "claims": [],
                     "array": false,
                 }],
@@ -296,7 +295,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|c| c.schema.key.as_str())
+        .map(|c| c.key.as_str())
         .collect();
     assert_eq!(
         original_credential_schema.claim_schemas.unwrap().len(),
@@ -305,7 +304,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
 
     let claims = proof_input_schemas[0].claim_schemas.as_ref().unwrap();
     assert_eq!(1, claims.len());
-    assert_eq!(requested_claim_schema.schema.key, claims[0].schema.key);
+    assert_eq!(requested_claim_schema.key, claims[0].schema.key);
 }
 
 #[tokio::test]
@@ -315,16 +314,14 @@ async fn test_import_proof_schema_nested_array() {
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
-    let root_object_array_claim = CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "root".to_string(),
-            data_type: "OBJECT".to_string(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            array: true,
-            metadata: false,
-        },
+    let root_object_array_claim = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        array: true,
+        metadata: false,
         required: true,
     };
 
@@ -338,16 +335,14 @@ async fn test_import_proof_schema_nested_array() {
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     root_object_array_claim.clone(),
-                    CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "root/field".to_string(),
-                            data_type: "STRING".to_string(),
-                            created_date: get_dummy_date(),
-                            last_modified: get_dummy_date(),
-                            array: false,
-                            metadata: false,
-                        },
+                    ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "root/field".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        array: false,
+                        metadata: false,
                         required: true,
                     },
                 ]),
@@ -369,11 +364,11 @@ async fn test_import_proof_schema_nested_array() {
         "proofInputSchemas": [
             {
                 "claimSchemas": [{
-                    "id": requested_claim_schema.schema.id,
+                    "id": requested_claim_schema.id,
                     "requested": true,
                     "required": requested_claim_schema.required,
-                    "key": requested_claim_schema.schema.key,
-                    "dataType": requested_claim_schema.schema.data_type,
+                    "key": requested_claim_schema.key,
+                    "dataType": requested_claim_schema.data_type,
                     "claims": [{
                         "id": "06155d27-ea07-4be4-b5e3-c057c741d959",
                         "requested": false,
@@ -430,7 +425,7 @@ async fn test_import_proof_schema_nested_array() {
         .as_ref()
         .unwrap()
         .iter()
-        .map(|c| c.schema.key.as_str())
+        .map(|c| c.key.as_str())
         .collect();
     assert_eq!(
         original_credential_schema.claim_schemas.unwrap().len(),
@@ -439,5 +434,5 @@ async fn test_import_proof_schema_nested_array() {
 
     let claims = proof_input_schemas[0].claim_schemas.as_ref().unwrap();
     assert_eq!(1, claims.len());
-    assert_eq!(requested_claim_schema.schema.key, claims[0].schema.key);
+    assert_eq!(requested_claim_schema.key, claims[0].schema.key);
 }

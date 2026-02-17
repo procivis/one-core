@@ -28,9 +28,9 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     Arrayed, BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
-    CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
-    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, KeyStorageSecurity,
-    LayoutProperties, LogoProperties, TransactionCode,
+    CredentialSchemaClaimsNestedObjectView, CredentialSchemaClaimsNestedTypeView,
+    CredentialSchemaClaimsNestedView, KeyStorageSecurity, LayoutProperties, LogoProperties,
+    TransactionCode,
 };
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
@@ -82,7 +82,7 @@ pub(crate) fn prepare_nested_representation(
     claim_schemas
         .iter()
         // Metadata claims should not be listed in credential configurations
-        .filter(|schema| !schema.schema.metadata)
+        .filter(|schema| !schema.metadata)
         .try_fold(Default::default(), |state, claim_schema| {
             insert_claim_schema(state, claim_schema, claim_schemas, &object_types)
         })
@@ -90,21 +90,21 @@ pub(crate) fn prepare_nested_representation(
 
 fn insert_claim_schema(
     mut root: OpenID4VCICredentialSubjectItem,
-    claim_schema: &CredentialSchemaClaim,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schema: &ClaimSchema,
+    claim_schemas: &[ClaimSchema],
     object_types: &Vec<&str>,
 ) -> Result<OpenID4VCICredentialSubjectItem, OpenID4VCIError> {
-    let (parent_claim, tail) = match claim_schema.schema.key.rsplit_once(NESTED_CLAIM_MARKER) {
+    let (parent_claim, tail) = match claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER) {
         Some((head, tail)) => (
             get_or_insert(&mut root, head, claim_schemas, object_types)?,
             tail,
         ),
-        None => (&mut root, claim_schema.schema.key.as_str()),
+        None => (&mut root, claim_schema.key.as_str()),
     };
 
     match (
-        claim_schema.schema.array,
-        object_types.contains(&claim_schema.schema.data_type.as_str()),
+        claim_schema.array,
+        object_types.contains(&claim_schema.data_type.as_str()),
     ) {
         // Array of object descriptions goes like this:
         //"array of objects": [
@@ -136,10 +136,7 @@ fn insert_claim_schema(
             parent_claims.insert(
                 tail.to_owned(),
                 OpenID4VCICredentialSubjectItem {
-                    value_type: Some(format!(
-                        "{}[]",
-                        claim_schema.schema.data_type.to_lowercase()
-                    )),
+                    value_type: Some(format!("{}[]", claim_schema.data_type.to_lowercase())),
                     mandatory: Some(claim_schema.required),
                     ..Default::default()
                 },
@@ -153,7 +150,7 @@ fn insert_claim_schema(
                 (None, None)
             } else {
                 (
-                    Some(claim_schema.schema.data_type.to_lowercase()),
+                    Some(claim_schema.data_type.to_lowercase()),
                     Some(claim_schema.required),
                 )
             };
@@ -175,12 +172,12 @@ fn insert_claim_schema(
 fn get_or_insert<'a>(
     root: &'a mut OpenID4VCICredentialSubjectItem,
     path: &str,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     object_types: &Vec<&str>,
 ) -> Result<&'a mut OpenID4VCICredentialSubjectItem, OpenID4VCIError> {
     let item_schema = claim_schemas
         .iter()
-        .find(|schema| schema.schema.key == path)
+        .find(|schema| schema.key == path)
         .ok_or_else(|| OpenID4VCIError::RuntimeError("missing claim schema".into()))?;
 
     let (parent_claim, tail) = match path.rsplit_once(NESTED_CLAIM_MARKER) {
@@ -188,12 +185,12 @@ fn get_or_insert<'a>(
             get_or_insert(root, head, claim_schemas, object_types)?,
             tail,
         ),
-        None => (root, item_schema.schema.key.as_str()),
+        None => (root, item_schema.key.as_str()),
     };
 
     let result = match (
-        item_schema.schema.array,
-        object_types.contains(&item_schema.schema.data_type.as_str()),
+        item_schema.array,
+        object_types.contains(&item_schema.data_type.as_str()),
     ) {
         // Array of objects
         (true, true) => {
@@ -237,7 +234,7 @@ fn get_or_insert<'a>(
                         Ok(vacant_entry.insert(OpenID4VCICredentialSubjectItem::default()))
                     } else {
                         Ok(vacant_entry.insert(OpenID4VCICredentialSubjectItem {
-                            value_type: Some(item_schema.schema.data_type.to_lowercase()),
+                            value_type: Some(item_schema.data_type.to_lowercase()),
                             mandatory: Some(item_schema.required),
                             order: None,
                             ..Default::default()
@@ -254,23 +251,21 @@ fn get_or_insert<'a>(
 pub(super) fn create_claims_from_credential_definition(
     credential_id: CredentialId,
     claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
-) -> Result<(Vec<CredentialSchemaClaim>, Vec<Claim>), IssuanceProtocolError> {
+) -> Result<(Vec<ClaimSchema>, Vec<Claim>), IssuanceProtocolError> {
     let now = OffsetDateTime::now_utc();
-    let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
+    let mut claim_schemas: Vec<ClaimSchema> = vec![];
     let mut claims: Vec<Claim> = vec![];
     let mut object_claim_schemas: Vec<&str> = vec![];
 
     for (key, value_details) in claim_keys {
-        let new_schema_claim = CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: key.to_string(),
-                data_type: value_details.value_type.to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        let new_schema_claim = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: key.to_string(),
+            data_type: value_details.value_type.to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: false,
         };
 
@@ -281,9 +276,9 @@ pub(super) fn create_claims_from_credential_definition(
                 created_date: now,
                 last_modified: now,
                 value: Some(value),
-                path: new_schema_claim.schema.key.to_owned(),
+                path: new_schema_claim.key.to_owned(),
                 selectively_disclosable: false,
-                schema: Some(new_schema_claim.schema.to_owned()),
+                schema: Some(new_schema_claim.to_owned()),
             };
 
             claims.push(claim);
@@ -301,16 +296,14 @@ pub(super) fn create_claims_from_credential_definition(
     }
 
     for object_claim in object_claim_schemas {
-        claim_schemas.push(CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: object_claim.into(),
-                data_type: DatatypeType::Object.to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-            },
+        claim_schemas.push(ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: object_claim.into(),
+            data_type: DatatypeType::Object.to_string(),
+            created_date: now,
+            last_modified: now,
+            array: false,
+            metadata: false,
             required: false,
         })
     }
@@ -419,17 +412,15 @@ fn from_jwt_request_claim_schema(
     datatype: String,
     required: bool,
     array: Option<bool>,
-) -> CredentialSchemaClaim {
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id,
-            key,
-            data_type: datatype,
-            created_date: now,
-            last_modified: now,
-            array: array.unwrap_or(false),
-            metadata: false,
-        },
+) -> ClaimSchema {
+    ClaimSchema {
+        id,
+        key,
+        data_type: datatype,
+        created_date: now,
+        last_modified: now,
+        array: array.unwrap_or(false),
+        metadata: false,
         required,
     }
 }
@@ -581,7 +572,7 @@ fn validate_and_collect_claims(
 fn visit_nested_field_field(
     credential_id: CredentialId,
     now: OffsetDateTime,
-    claim: &CredentialSchemaClaim,
+    claim: &ClaimSchema,
     nested_claim_view: &ClaimsNestedFieldView,
 ) -> Result<Vec<Claim>, IssuanceProtocolError> {
     match nested_claim_view {
@@ -596,14 +587,14 @@ fn visit_nested_field_field(
                     value: Some(value),
                     path: key.clone(),
                     selectively_disclosable: false,
-                    schema: Some(claim.schema.clone()),
+                    schema: Some(claim.clone()),
                 });
             }
             Ok(res)
         }
         ClaimsNestedFieldView::Nodes(_) => Err(IssuanceProtocolError::Failed(format!(
             "Validation Error. Claim key {} has wrong type",
-            claim.schema.key,
+            claim.key,
         ))),
     }
 }
@@ -619,13 +610,13 @@ fn visit_nested_object_field(
         ClaimsNestedFieldView::Leaf { .. } => {
             return Err(IssuanceProtocolError::Failed(format!(
                 "Validation Error. Claim key {} has wrong type",
-                object.claim.schema.key,
+                object.claim.key,
             )));
         }
         ClaimsNestedFieldView::Nodes(claims) => claims,
     };
     let path_container_to_root = if path_to_root.is_empty() {
-        object.claim.schema.key.clone()
+        object.claim.key.clone()
     } else {
         path_to_root.to_string()
     };
@@ -655,7 +646,7 @@ fn visit_nested_object_field(
             value: None,
             path: path_container_to_root,
             selectively_disclosable: false,
-            schema: Some(object.claim.schema.clone()),
+            schema: Some(object.claim.clone()),
         })
     }
 
@@ -724,8 +715,8 @@ fn visit_nested_array_field(
     }
 
     let array_schema = match array {
-        CredentialSchemaClaimsNestedTypeView::Field(field) => field.schema.clone(),
-        CredentialSchemaClaimsNestedTypeView::Object(obj) => obj.claim.schema.clone(),
+        CredentialSchemaClaimsNestedTypeView::Field(field) => field.clone(),
+        CredentialSchemaClaimsNestedTypeView::Object(obj) => obj.claim.clone(),
     };
     let path_container_to_root = if path_to_root.is_empty() {
         array_schema.key.clone()
@@ -996,16 +987,16 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
     }
 }
 
-impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
-    fn from(value: CredentialSchemaClaim) -> Self {
+impl From<ClaimSchema> for CredentialClaimSchemaDTO {
+    fn from(value: ClaimSchema) -> Self {
         Self {
-            id: value.schema.id,
-            created_date: value.schema.created_date,
-            last_modified: value.schema.last_modified,
-            key: value.schema.key,
-            datatype: value.schema.data_type,
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            key: value.key,
+            datatype: value.data_type,
             required: value.required,
-            array: value.schema.array,
+            array: value.array,
             claims: vec![],
         }
     }
@@ -1017,7 +1008,7 @@ pub(super) fn credentials_supported_mdoc(
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
-    let claim_schemas: &Vec<CredentialSchemaClaim> =
+    let claim_schemas: &Vec<ClaimSchema> =
         schema
             .claim_schemas
             .as_ref()
@@ -1028,17 +1019,16 @@ pub(super) fn credentials_supported_mdoc(
     // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
     let element_order: Vec<String> = claim_schemas
         .iter()
-        .filter(|claim| !claim.schema.metadata)
+        .filter(|claim| !claim.metadata)
         .filter(|claim| {
             claim
-                .schema
                 .key
                 .chars()
                 .filter(|c| *c == NESTED_CLAIM_MARKER)
                 .count()
                 == 1
         })
-        .map(|element| element.schema.key.replace(NESTED_CLAIM_MARKER, "~"))
+        .map(|element| element.key.replace(NESTED_CLAIM_MARKER, "~"))
         .collect();
 
     let claim_schema = prepare_nested_representation(&schema, config)

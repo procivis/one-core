@@ -172,11 +172,7 @@ impl CredentialSchemaImporterProto {
         let metadata_claims = formatter
             .get_metadata_claims()
             .into_iter()
-            .filter(|metadata_claim| {
-                !claim_schemas
-                    .iter()
-                    .any(|cs| cs.schema.key == metadata_claim.key)
-            })
+            .filter(|metadata_claim| !claim_schemas.iter().any(|cs| cs.key == metadata_claim.key))
             .map(|metadata_claim| {
                 claim_schema_from_metadata_claim_schema(
                     metadata_claim,

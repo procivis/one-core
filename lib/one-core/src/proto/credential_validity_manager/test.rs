@@ -15,7 +15,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -700,6 +700,7 @@ fn generic_credential() -> Credential {
         created_date: now,
         last_modified: now,
         metadata: false,
+        required: true,
     };
     let organisation = dummy_organisation(None);
 
@@ -779,10 +780,7 @@ fn generic_credential() -> Credential {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: Some("REVOCATION_METHOD".to_string().into()),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: claim_schema,
-                required: true,
-            }]),
+            claim_schemas: Some(vec![claim_schema]),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,

@@ -14,8 +14,9 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::validity_credential::ValidityCredential;
@@ -119,7 +120,7 @@ fn from_vec_claim(
 fn insert_claim(
     mut root: Vec<DetailCredentialClaimResponseDTO>,
     claim: Claim,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
     match (claim.path.rsplit_once(NESTED_CLAIM_MARKER), &claim.value) {
@@ -135,12 +136,12 @@ fn insert_claim(
 
                     let mut credential_claim_schema = claim_schemas
                         .iter()
-                        .find(|value| value.schema.key == claim_schema.key)
+                        .find(|value| value.key == claim_schema.key)
                         .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?
                         .clone();
 
                     if parent_claim.schema.array {
-                        credential_claim_schema.schema.array = false;
+                        credential_claim_schema.array = false;
                     }
 
                     claims.push(claim_to_dto(&claim, &credential_claim_schema, config)?);
@@ -160,7 +161,7 @@ fn insert_claim(
 
             let claim_schema = claim_schemas
                 .iter()
-                .find(|value| value.schema.key == claim_schema.key)
+                .find(|value| value.key == claim_schema.key)
                 .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?;
 
             root.push(claim_to_dto(&claim, claim_schema, config)?);
@@ -177,7 +178,7 @@ fn insert_claim(
 fn get_or_insert<'a>(
     root: &'a mut Vec<DetailCredentialClaimResponseDTO>,
     path: &str,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
 ) -> Result<&'a mut DetailCredentialClaimResponseDTO, ServiceError> {
     match path.rsplit_once(NESTED_CLAIM_MARKER) {
         Some((head, _)) => {
@@ -193,12 +194,12 @@ fn get_or_insert<'a>(
                     } else {
                         let mut item_schema = claim_schemas
                             .iter()
-                            .find(|schema| schema.schema.key == key)
+                            .find(|schema| schema.key == key)
                             .ok_or_else(|| ServiceError::Other("missing claim schema".into()))?
                             .to_owned();
 
                         if parent_claim.schema.array {
-                            item_schema.schema.array = false;
+                            item_schema.array = false;
                         }
 
                         claims.push(DetailCredentialClaimResponseDTO {
@@ -227,7 +228,7 @@ fn get_or_insert<'a>(
                     path: path.to_owned(),
                     schema: claim_schemas
                         .iter()
-                        .find(|schema| schema.schema.key == path)
+                        .find(|schema| schema.key == path)
                         .ok_or_else(|| ServiceError::Other("missing claim schema".into()))?
                         .to_owned()
                         .into(),
@@ -259,7 +260,7 @@ fn from_path_to_key(
 
 fn claim_to_dto(
     claim: &Claim,
-    claim_schema: &CredentialSchemaClaim,
+    claim_schema: &ClaimSchema,
     config: &CoreConfig,
 ) -> Result<DetailCredentialClaimResponseDTO, ServiceError> {
     let claim_value = claim
@@ -269,11 +270,7 @@ fn claim_to_dto(
             "Missing value on leaf claim: {}",
             claim.id
         )))?;
-    let value = match config
-        .datatype
-        .get_fields(&claim_schema.schema.data_type)?
-        .r#type
-    {
+    let value = match config.datatype.get_fields(&claim_schema.data_type)?.r#type {
         DatatypeType::Number => {
             if let Ok(number) = claim_value.parse::<i64>() {
                 DetailCredentialClaimValueResponseDTO::Integer(number)
@@ -388,7 +385,7 @@ pub(super) fn from_create_request(
 pub(super) fn claims_from_create_request(
     credential_id: CredentialId,
     claims: Vec<CredentialRequestClaimDTO>,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[ClaimSchema],
 ) -> Result<Vec<Claim>, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let mut claims_map = HashMap::<String, Claim>::new();
@@ -397,7 +394,7 @@ pub(super) fn claims_from_create_request(
         let claim_schema_id = claim_dto.claim_schema_id;
         let schema = claim_schemas
             .iter()
-            .find(|schema| schema.schema.id == claim_schema_id)
+            .find(|schema| schema.id == claim_schema_id)
             .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
         let claim = Claim {
             id: Uuid::new_v4().into(),
@@ -407,14 +404,14 @@ pub(super) fn claims_from_create_request(
             value: Some(claim_dto.value),
             path: claim_dto.path.clone(),
             selectively_disclosable: false,
-            schema: Some(schema.schema.clone()),
+            schema: Some(schema.clone()),
         };
         claims_map.insert(claim_dto.path.clone(), claim);
         let mut current_path = claim_dto.path;
         current_path =
             insert_array_parent(schema, credential_id, now, &mut claims_map, current_path)?;
 
-        let mut current_schema_path = schema.schema.key.clone();
+        let mut current_schema_path = schema.key.clone();
         let mut current_path_split = current_path.rsplit_once('/');
 
         // Step through the tree starting from the leaf up to the root and create intermediary
@@ -432,7 +429,7 @@ pub(super) fn claims_from_create_request(
             };
             let schema = claim_schemas
                 .iter()
-                .find(|schema| schema.schema.key == parent_schema_path)
+                .find(|schema| schema.key == parent_schema_path)
                 .ok_or(ServiceError::MappingError(format!(
                     "Schema not found for array or object claim with path {current_path}",
                 )))?;
@@ -444,7 +441,7 @@ pub(super) fn claims_from_create_request(
                 value: None,
                 path: current_path.clone(),
                 selectively_disclosable: false,
-                schema: Some(schema.schema.clone()),
+                schema: Some(schema.clone()),
             };
             claims_map.insert(current_path.clone(), parent_claim);
             current_path =
@@ -457,13 +454,13 @@ pub(super) fn claims_from_create_request(
 }
 
 fn insert_array_parent(
-    schema: &CredentialSchemaClaim,
+    schema: &ClaimSchema,
     credential_id: CredentialId,
     now: OffsetDateTime,
     claims_map: &mut HashMap<String, Claim>,
     current_path: String,
 ) -> Result<String, ServiceError> {
-    if schema.schema.array {
+    if schema.array {
         let Some((array_path, _)) = current_path.rsplit_once("/") else {
             return Err(ServiceError::MappingError(format!(
                 "Expected '{current_path}' to contain array element index",
@@ -478,7 +475,7 @@ fn insert_array_parent(
                 value: None,
                 path: array_path.to_owned(),
                 selectively_disclosable: false,
-                schema: Some(schema.schema.clone()),
+                schema: Some(schema.clone()),
             };
             claims_map.insert(array_path.to_owned(), parent_claim);
         }

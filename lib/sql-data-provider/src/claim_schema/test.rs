@@ -63,6 +63,7 @@ async fn test_get_claim_schema_list() {
             last_modified: get_dummy_date(),
             array: false,
             metadata: false,
+            required: true,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -72,6 +73,7 @@ async fn test_get_claim_schema_list() {
             last_modified: get_dummy_date(),
             array: false,
             metadata: false,
+            required: true,
         },
     ];
 
@@ -85,7 +87,7 @@ async fn test_get_claim_schema_list() {
             array: Set(claim.array),
             metadata: Set(claim.metadata),
             credential_schema_id: Set(credential_schema_id),
-            required: Set(true),
+            required: Set(claim.required),
             order: Set(index as _),
         }
         .insert(&db)
