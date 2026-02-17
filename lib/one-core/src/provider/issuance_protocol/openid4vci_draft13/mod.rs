@@ -621,7 +621,7 @@ impl OpenID4VCI13 {
             result: issuer_response,
             update_credential_schema: Some(UpdateCredentialSchemaRequest {
                 id: schema.id,
-                revocation_method: Some(revocation_method),
+                revocation_method: revocation_method.map(Some),
                 format: Some(real_format),
                 claim_schemas: None,
                 layout_type,
