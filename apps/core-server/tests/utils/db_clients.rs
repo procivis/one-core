@@ -9,6 +9,7 @@ use self::dids::DidsDB;
 use self::histories::HistoriesDB;
 use self::interactions::InteractionsDB;
 use self::keys::KeysDB;
+use self::notifications::NotificationsDB;
 use self::organisations::OrganisationsDB;
 use self::proof_schemas::ProofSchemasDB;
 use self::proofs::ProofsDB;
@@ -32,6 +33,7 @@ pub mod holder_wallet_unit;
 pub mod identifiers;
 pub mod interactions;
 pub mod keys;
+pub mod notifications;
 pub mod organisations;
 pub mod proof_schemas;
 pub mod proofs;
@@ -53,6 +55,7 @@ pub struct DbClient {
     pub histories: HistoriesDB,
     pub remote_entities: RemoteEntityCacheDB,
     pub keys: KeysDB,
+    pub notifications: NotificationsDB,
     pub validity_credentials: ValidityCredentialsDB,
     pub revocation_lists: RevocationListsDB,
     pub proof_schemas: ProofSchemasDB,
@@ -82,6 +85,7 @@ impl DbClient {
             histories: HistoriesDB::new(layer.get_history_repository()),
             remote_entities: RemoteEntityCacheDB::new(layer.get_remote_entity_cache_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
+            notifications: NotificationsDB::new(layer.get_notification_repository()),
             validity_credentials: ValidityCredentialsDB::new(
                 layer.get_validity_credential_repository(),
             ),

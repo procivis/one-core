@@ -1569,45 +1569,49 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .with(eq(IMPORT_URL))
         .returning(|url| {
             let mut inner_client = MockHttpClient::new();
-            inner_client.expect_send().once().returning(|_, _, _, _| {
-                Ok(Response {
-                    body: json!({
-                        "createdDate": "2023-06-09T14:19:57.000Z",
-                        "lastModified": "2023-06-09T14:19:57.000Z",
-                        "format": "JWT",
-                        "id": Uuid::new_v4(),
-                        "importedSourceUrl": "http://import.credential.schema",
-                        "name": "test-credential-schema",
-                        "organisationId": Uuid::new_v4(),
-                        "revocationMethod": null,
-                        "schemaId": "iso-org-test123",
-                        "schemaType": "ProcivisOneSchema2024",
-                        "walletStorageType": "HARDWARE",
-                        "allowSuspension": false,
-                        "claims": [{
-                            "array": false,
+            inner_client
+                .expect_send()
+                .once()
+                .returning(|_, _, _, _, _| {
+                    Ok(Response {
+                        body: json!({
                             "createdDate": "2023-06-09T14:19:57.000Z",
                             "lastModified": "2023-06-09T14:19:57.000Z",
-                            "datatype": "STRING",
+                            "format": "JWT",
                             "id": Uuid::new_v4(),
-                            "key": "field",
-                            "required": true
-                        }]
+                            "importedSourceUrl": "http://import.credential.schema",
+                            "name": "test-credential-schema",
+                            "organisationId": Uuid::new_v4(),
+                            "revocationMethod": null,
+                            "schemaId": "iso-org-test123",
+                            "schemaType": "ProcivisOneSchema2024",
+                            "walletStorageType": "HARDWARE",
+                            "allowSuspension": false,
+                            "claims": [{
+                                "array": false,
+                                "createdDate": "2023-06-09T14:19:57.000Z",
+                                "lastModified": "2023-06-09T14:19:57.000Z",
+                                "datatype": "STRING",
+                                "id": Uuid::new_v4(),
+                                "key": "field",
+                                "required": true
+                            }]
 
-                    })
-                    .to_string()
-                    .as_bytes()
-                    .to_vec(),
-                    headers: Default::default(),
-                    status: StatusCode(200),
-                    request: Request {
-                        body: None,
+                        })
+                        .to_string()
+                        .as_bytes()
+                        .to_vec(),
                         headers: Default::default(),
-                        method: Method::Get,
-                        url: IMPORT_URL.to_string(),
-                    },
-                })
-            });
+                        status: StatusCode(200),
+                        request: Request {
+                            body: None,
+                            headers: Default::default(),
+                            method: Method::Get,
+                            url: IMPORT_URL.to_string(),
+                            timeout: None,
+                        },
+                    })
+                });
 
             RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
         });
@@ -1774,45 +1778,49 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .with(eq(IMPORT_URL))
         .returning(|url| {
             let mut inner_client = MockHttpClient::new();
-            inner_client.expect_send().once().returning(|_, _, _, _| {
-                Ok(Response {
-                    body: json!({
-                        "createdDate": "2023-06-09T14:19:57.000Z",
-                        "lastModified": "2023-06-09T14:19:57.000Z",
-                        "format": "JWT",
-                        "id": Uuid::new_v4(),
-                        "importedSourceUrl": "http://import.credential.schema",
-                        "name": "test-credential-schema",
-                        "organisationId": Uuid::new_v4(),
-                        "revocationMethod": null,
-                        "schemaId": "iso-org-test123",
-                        "schemaType": "ProcivisOneSchema2024",
-                        "walletStorageType": "HARDWARE",
-                        "allowSuspension": false,
-                        "claims": [{
-                            "array": false,
+            inner_client
+                .expect_send()
+                .once()
+                .returning(|_, _, _, _, _| {
+                    Ok(Response {
+                        body: json!({
                             "createdDate": "2023-06-09T14:19:57.000Z",
                             "lastModified": "2023-06-09T14:19:57.000Z",
-                            "datatype": "STRING",
+                            "format": "JWT",
                             "id": Uuid::new_v4(),
-                            "key": "field",
-                            "required": true
-                        }]
+                            "importedSourceUrl": "http://import.credential.schema",
+                            "name": "test-credential-schema",
+                            "organisationId": Uuid::new_v4(),
+                            "revocationMethod": null,
+                            "schemaId": "iso-org-test123",
+                            "schemaType": "ProcivisOneSchema2024",
+                            "walletStorageType": "HARDWARE",
+                            "allowSuspension": false,
+                            "claims": [{
+                                "array": false,
+                                "createdDate": "2023-06-09T14:19:57.000Z",
+                                "lastModified": "2023-06-09T14:19:57.000Z",
+                                "datatype": "STRING",
+                                "id": Uuid::new_v4(),
+                                "key": "field",
+                                "required": true
+                            }]
 
-                    })
-                    .to_string()
-                    .as_bytes()
-                    .to_vec(),
-                    headers: Default::default(),
-                    status: StatusCode(200),
-                    request: Request {
-                        body: None,
+                        })
+                        .to_string()
+                        .as_bytes()
+                        .to_vec(),
                         headers: Default::default(),
-                        method: Method::Get,
-                        url: crate::service::proof_schema::test::IMPORT_URL.to_string(),
-                    },
-                })
-            });
+                        status: StatusCode(200),
+                        request: Request {
+                            body: None,
+                            headers: Default::default(),
+                            method: Method::Get,
+                            url: crate::service::proof_schema::test::IMPORT_URL.to_string(),
+                            timeout: None,
+                        },
+                    })
+                });
 
             RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
         });

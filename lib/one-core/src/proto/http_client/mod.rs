@@ -10,6 +10,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use strum::Display;
 use thiserror::Error;
+use time::Duration;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 
@@ -27,12 +28,13 @@ pub trait HttpClient: Send + Sync {
         body: Option<Vec<u8>>,
         headers: Option<Headers>,
         method: Method,
+        timeout: Option<Duration>,
     ) -> Result<Response, Error>;
 }
 
 pub type Headers = HashMap<String, String>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct StatusCode(pub u16);
 
 #[derive(Debug)]
@@ -41,6 +43,7 @@ pub struct Request {
     pub headers: Headers,
     pub method: Method,
     pub url: String,
+    pub timeout: Option<Duration>,
 }
 
 #[derive(Debug)]
@@ -68,6 +71,8 @@ pub enum Error {
     InvalidHeaderName(#[from] InvalidHeaderName),
     #[error("Invalid header value: {0}")]
     InvalidHeaderValue(#[from] InvalidHeaderValue),
+    #[error("Invalid time conversion: {0}")]
+    ConversionRange(#[from] time::error::ConversionRange),
 }
 
 impl Error {
@@ -88,7 +93,8 @@ impl ErrorCodeMixin for Error {
             Error::UrlEncode(_)
             | Error::ToStrError(_)
             | Error::InvalidHeaderName(_)
-            | Error::InvalidHeaderValue(_) => ErrorCode::BR_0348,
+            | Error::InvalidHeaderValue(_)
+            | Error::ConversionRange(_) => ErrorCode::BR_0348,
         }
     }
 }
@@ -188,6 +194,7 @@ pub struct RequestBuilder {
     headers: Headers,
     method: Method,
     url: String,
+    timeout: Option<Duration>,
 }
 
 impl RequestBuilder {
@@ -198,6 +205,7 @@ impl RequestBuilder {
             headers: Headers::default(),
             method,
             url: url.to_string(),
+            timeout: None,
         }
     }
 
@@ -208,6 +216,11 @@ impl RequestBuilder {
 
     pub fn body(mut self, body: Vec<u8>) -> Self {
         self.body = Some(body);
+        self
+    }
+
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
         self
     }
 
@@ -259,7 +272,7 @@ impl RequestBuilder {
         };
 
         self.client
-            .send(&self.url, self.body, headers, self.method)
+            .send(&self.url, self.body, headers, self.method, self.timeout)
             .await
             .map(|response| response.log_success())
             .map_err(|e| {
@@ -275,6 +288,7 @@ impl RequestBuilder {
             headers: self.headers.clone(),
             method: self.method,
             url: self.url.clone(),
+            timeout: self.timeout,
         }
     }
 }

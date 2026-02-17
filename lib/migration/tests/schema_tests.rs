@@ -21,6 +21,8 @@ mod identifier_tests;
 mod interaction_tests;
 #[path = "test/key.rs"]
 mod key_tests;
+#[path = "test/notification.rs"]
+mod notification_tests;
 #[path = "test/organisation.rs"]
 mod organisation_tests;
 #[path = "test/proof_schema.rs"]

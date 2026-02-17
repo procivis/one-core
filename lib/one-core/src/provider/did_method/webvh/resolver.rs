@@ -291,6 +291,7 @@ mod test {
                     headers: Default::default(),
                     method: Method::Get,
                     url: url.to_string(),
+                    timeout: None,
                 },
             },
         );
@@ -359,6 +360,7 @@ mod test {
                     headers: Default::default(),
                     method: Method::Get,
                     url: url.to_string(),
+                    timeout: None,
                 },
             },
         );
@@ -397,6 +399,7 @@ mod test {
                     headers: Default::default(),
                     method: Method::Get,
                     url: url.to_string(),
+                    timeout: None,
                 },
             },
         );
@@ -506,6 +509,7 @@ mod test {
                         headers: Default::default(),
                         method: Method::Get,
                         url,
+                        timeout: None,
                     },
                 },
             );

@@ -154,6 +154,7 @@ pub enum HistoryActionBindingEnum {
     InteractionCreated,
     InteractionErrored,
     InteractionExpired,
+    Delivered,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -181,6 +182,7 @@ pub enum HistoryEntityTypeBindingEnum {
     StsIamRole,
     StsToken,
     Signature,
+    Notification,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]

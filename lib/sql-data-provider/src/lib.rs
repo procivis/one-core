@@ -23,6 +23,7 @@ use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitReposit
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::notification_repository::NotificationRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::proof_repository::ProofRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
@@ -49,6 +50,7 @@ use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
 use crate::holder_wallet_unit::HolderWalletUnitProvider;
 use crate::key::KeyProvider;
+use crate::notification::NotificationProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
 use crate::transaction_context::TransactionManagerImpl;
@@ -73,6 +75,7 @@ pub mod history;
 pub mod identifier;
 pub mod interaction;
 pub mod key;
+pub mod notification;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
@@ -112,6 +115,7 @@ pub struct DataLayer {
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
     blob_repository: Arc<dyn BlobRepository>,
+    notification_repository: Arc<dyn NotificationRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
@@ -234,6 +238,10 @@ impl DataLayer {
             db: transaction_manager.clone(),
         });
 
+        let notification_repository = Arc::new(NotificationProvider {
+            db: transaction_manager.clone(),
+        });
+
         let wallet_unit_attested_key_repository = Arc::new(WalletUnitAttestedKeyProvider {
             db: transaction_manager.clone(),
             revocation_list_repository: revocation_list_repository.clone(),
@@ -280,6 +288,7 @@ impl DataLayer {
             identifier_repository,
             certificate_repository,
             blob_repository,
+            notification_repository,
             wallet_unit_repository,
             holder_wallet_unit_repository,
             wallet_unit_attestation_repository,
@@ -347,9 +356,11 @@ impl DataRepository for DataLayer {
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
         self.trust_entity_repository.clone()
     }
-
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {
         self.blob_repository.clone()
+    }
+    fn get_notification_repository(&self) -> Arc<dyn NotificationRepository> {
+        self.notification_repository.clone()
     }
 
     fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {

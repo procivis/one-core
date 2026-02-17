@@ -31,7 +31,7 @@ pub(crate) async fn post_task(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<TaskRequestRestDTO>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<TaskResponseRestDTO> {
-    let result = state.core.task_service.run(&request.name).await;
+    let result = state.core.task_service.run(&request.name.into()).await;
     OkOrErrorResponse::from_result(
         result.map(|result| TaskResponseRestDTO { result }),
         state,

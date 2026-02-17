@@ -14,6 +14,7 @@ pub mod holder_wallet_unit_repository;
 pub mod identifier_repository;
 pub mod interaction_repository;
 pub mod key_repository;
+pub mod notification_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
 pub mod proof_schema_repository;
@@ -42,6 +43,7 @@ use holder_wallet_unit_repository::HolderWalletUnitRepository;
 use identifier_repository::IdentifierRepository;
 use interaction_repository::InteractionRepository;
 use key_repository::KeyRepository;
+use notification_repository::NotificationRepository;
 use organisation_repository::OrganisationRepository;
 use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
@@ -78,7 +80,7 @@ pub trait DataRepository: Send + Sync {
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository>;
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository>;
     fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository>;
-
+    fn get_notification_repository(&self) -> Arc<dyn NotificationRepository>;
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository>;
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository>;
     fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository>;

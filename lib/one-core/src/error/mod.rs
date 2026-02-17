@@ -809,6 +809,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Encryption Error")]
     BR_0368,
+
+    #[strum(message = "Disallowed notification URL host")]
+    BR_0369,
+
+    #[strum(message = "Forbidden notification URL scheme")]
+    BR_0370,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

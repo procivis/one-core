@@ -113,7 +113,7 @@ async fn run_server(config: ServerConfig, core: OneCore) {
 
 #[expect(clippy::expect_used)]
 async fn run_task(task: String, core: OneCore) {
-    match core.task_service.run(&task).await {
+    match core.task_service.run(&task.into()).await {
         Ok(result) => {
             print!(
                 "{}",

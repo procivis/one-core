@@ -762,19 +762,23 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         .with(eq(ISSUER_URL))
         .returning(|url| {
             let mut inner_client = MockHttpClient::new();
-            inner_client.expect_send().once().returning(|_, _, _, _| {
-                Ok(Response {
-                    body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
-                    headers: Default::default(),
-                    status: StatusCode(200),
-                    request: Request {
-                        body: None,
+            inner_client
+                .expect_send()
+                .once()
+                .returning(|_, _, _, _, _| {
+                    Ok(Response {
+                        body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
                         headers: Default::default(),
-                        method: Method::Get,
-                        url: ISSUER_URL.to_string(),
-                    },
-                })
-            });
+                        status: StatusCode(200),
+                        request: Request {
+                            body: None,
+                            headers: Default::default(),
+                            method: Method::Get,
+                            url: ISSUER_URL.to_string(),
+                            timeout: None,
+                        },
+                    })
+                });
 
             RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
         });
@@ -1701,19 +1705,23 @@ async fn test_parse_credential() {
 
     client.expect_get().with(eq(ISSUER_URL)).returning(|url| {
         let mut inner_client = MockHttpClient::new();
-        inner_client.expect_send().once().returning(|_, _, _, _| {
-            Ok(Response {
-                body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
-                headers: Default::default(),
-                status: StatusCode(200),
-                request: Request {
-                    body: None,
+        inner_client
+            .expect_send()
+            .once()
+            .returning(|_, _, _, _, _| {
+                Ok(Response {
+                    body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
                     headers: Default::default(),
-                    method: Method::Get,
-                    url: ISSUER_URL.to_string(),
-                },
-            })
-        });
+                    status: StatusCode(200),
+                    request: Request {
+                        body: None,
+                        headers: Default::default(),
+                        method: Method::Get,
+                        url: ISSUER_URL.to_string(),
+                        timeout: None,
+                    },
+                })
+            });
 
         RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
     });

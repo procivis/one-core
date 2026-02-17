@@ -165,6 +165,7 @@ pub enum HistoryAction {
     InteractionCreated,
     InteractionErrored,
     InteractionExpired,
+    Delivered,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
@@ -193,6 +194,7 @@ pub enum HistoryEntityType {
     StsIamRole,
     StsToken,
     Signature,
+    Notification,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

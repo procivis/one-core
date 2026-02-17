@@ -2,8 +2,8 @@ use one_crypto::CryptoProviderError;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
     HolderWalletUnitId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId,
-    RevocationListEntryId, RevocationListId, RevocationMethodId, TrustAnchorId, TrustEntityId,
-    TrustEntityKey, WalletUnitId,
+    RevocationListEntryId, RevocationListId, RevocationMethodId, TaskId, TrustAnchorId,
+    TrustEntityId, TrustEntityKey, WalletUnitId,
 };
 use thiserror::Error;
 
@@ -643,7 +643,7 @@ pub enum MissingProviderError {
     ExchangeProtocol(String),
 
     #[error("Cannot find task `{0}`")]
-    Task(String),
+    Task(TaskId),
 
     #[error("Cannot find trust manager `{0}`")]
     TrustManager(String),

@@ -72,7 +72,7 @@ STsfRXkSUfgzmbAsuDE=
         .with(eq(CRL_URL))
         .returning(|_| {
             let mut client = MockHttpClient::new();
-            client.expect_send().returning(|_, _, _, _| {
+            client.expect_send().returning(|_, _, _, _, _| {
                 Ok(Response {
                     body: vec![],
                     headers: Default::default(),
@@ -82,6 +82,7 @@ STsfRXkSUfgzmbAsuDE=
                         headers: Default::default(),
                         method: Method::Get,
                         url: CRL_URL.to_owned(),
+                        timeout: None,
                     },
                 })
             });

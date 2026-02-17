@@ -299,8 +299,14 @@ fn mock_http_post(url: &str) -> MockHttpClient {
             let url_for_response = url.clone();
             inner_client
                 .expect_send()
-                .with(eq(url.clone()), always(), always(), eq(Method::Post))
-                .return_once(move |_, _, _, _| {
+                .with(
+                    eq(url.clone()),
+                    always(),
+                    always(),
+                    eq(Method::Post),
+                    always(),
+                )
+                .return_once(move |_, _, _, _, _| {
                     Ok(Response {
                         body: b"{}".to_vec(),
                         headers: Default::default(),
@@ -310,6 +316,7 @@ fn mock_http_post(url: &str) -> MockHttpClient {
                             headers: Default::default(),
                             method: Method::Post,
                             url: url_for_response,
+                            timeout: None,
                         },
                     })
                 });

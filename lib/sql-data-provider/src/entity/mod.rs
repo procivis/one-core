@@ -13,6 +13,7 @@ pub mod identifier;
 pub mod interaction;
 pub mod key;
 pub mod key_did;
+pub mod notification;
 pub mod organisation;
 pub mod proof;
 pub mod proof_claim;

@@ -280,3 +280,8 @@ signer:
           maxValidityDuration: 157680000 # 5 years
           allowCaSigning: true
         revocationMethod: CRL
+task:
+  WEBHOOK_NOTIFY:
+    params:
+      public:
+        allowInsecureHttpTransport: true

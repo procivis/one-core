@@ -21,7 +21,7 @@ use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
@@ -30,6 +30,7 @@ use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::db_clients::notifications::TestingNotificationParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
@@ -1147,4 +1148,190 @@ async fn test_run_interaction_expiration_check_with_update() {
         proof_history.values[0].action,
         HistoryAction::InteractionExpired
     );
+}
+
+#[tokio::test]
+async fn test_run_webhook_notify_no_data() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.tasks.run("WEBHOOK_NOTIFY").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["delivered"].as_array().unwrap().len(), 0);
+    assert_eq!(resp["failed"].as_array().unwrap().len(), 0);
+    assert_eq!(resp["rescheduled"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn test_run_webhook_notify_delivery_rescheduled() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let notification = context
+        .db
+        .notifications
+        .create(
+            organisation.id,
+            TestingNotificationParams {
+                // not responding URL will reschedule the notification
+                url: Some("https://invalid.endpoint/notify".to_string()),
+                r#type: Some("WEBHOOK_NOTIFY".into()),
+                next_try_date: Some(OffsetDateTime::now_utc()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("WEBHOOK_NOTIFY").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["delivered"].as_array().unwrap().len(), 0);
+    let rescheduled = resp["rescheduled"].as_array().unwrap();
+    assert_eq!(rescheduled.len(), 1);
+    assert_eq!(
+        rescheduled[0].as_str().unwrap(),
+        notification.id.to_string()
+    );
+    assert_eq!(resp["failed"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn test_run_webhook_notify_delivered() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let mock_server = MockServer::builder().start().await;
+    let url = format!("{}/notify", mock_server.uri());
+    let payload = json!({ "message": "test" });
+
+    let notification = context
+        .db
+        .notifications
+        .create(
+            organisation.id,
+            TestingNotificationParams {
+                r#type: Some("WEBHOOK_NOTIFY".into()),
+                url: Some(url),
+                payload: Some(payload.to_string().as_bytes().to_vec()),
+                next_try_date: Some(OffsetDateTime::now_utc()),
+                history_target: Some("history-target".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notify"))
+        .and(body_json(payload))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("WEBHOOK_NOTIFY").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let delivered = resp["delivered"].as_array().unwrap();
+    assert_eq!(delivered.len(), 1);
+    assert_eq!(delivered[0].as_str().unwrap(), notification.id.to_string());
+    assert_eq!(resp["failed"].as_array().unwrap().len(), 0);
+    assert_eq!(resp["rescheduled"].as_array().unwrap().len(), 0);
+
+    // notification removed
+    assert!(
+        context
+            .db
+            .notifications
+            .get(&notification.id)
+            .await
+            .is_none()
+    );
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&notification.id.into())
+        .await;
+    assert_eq!(history.values.len(), 1);
+    let history = &history.values[0];
+    assert_eq!(history.entity_type, HistoryEntityType::Notification);
+    assert_eq!(history.action, HistoryAction::Delivered);
+    assert_eq!(history.target.as_ref().unwrap(), "history-target");
+}
+
+#[tokio::test]
+async fn test_run_webhook_notify_failed() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let mock_server = MockServer::builder().start().await;
+    let url = format!("{}/notify", mock_server.uri());
+    let payload = json!({ "message": "test" });
+
+    let notification = context
+        .db
+        .notifications
+        .create(
+            organisation.id,
+            TestingNotificationParams {
+                r#type: Some("WEBHOOK_NOTIFY".into()),
+                url: Some(url),
+                payload: Some(payload.to_string().as_bytes().to_vec()),
+                next_try_date: Some(OffsetDateTime::now_utc()),
+                history_target: Some("history-target".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notify"))
+        .and(body_json(payload))
+        .respond_with(ResponseTemplate::new(400))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("WEBHOOK_NOTIFY").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["delivered"].as_array().unwrap().len(), 0);
+    let failed = resp["failed"].as_array().unwrap();
+    assert_eq!(failed.len(), 1);
+    assert_eq!(failed[0].as_str().unwrap(), notification.id.to_string());
+    assert_eq!(resp["rescheduled"].as_array().unwrap().len(), 0);
+
+    // notification removed
+    assert!(
+        context
+            .db
+            .notifications
+            .get(&notification.id)
+            .await
+            .is_none()
+    );
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&notification.id.into())
+        .await;
+    assert_eq!(history.values.len(), 1);
+    let history = &history.values[0];
+    assert_eq!(history.entity_type, HistoryEntityType::Notification);
+    assert_eq!(history.action, HistoryAction::Errored);
+    assert_eq!(history.target.as_ref().unwrap(), "history-target");
 }

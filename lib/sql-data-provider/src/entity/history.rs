@@ -119,6 +119,8 @@ pub enum HistoryAction {
     InteractionErrored,
     #[sea_orm(string_value = "INTERACTION_EXPIRED")]
     InteractionExpired,
+    #[sea_orm(string_value = "DELIVERED")]
+    Delivered,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
@@ -168,6 +170,8 @@ pub enum HistoryEntityType {
     StsToken,
     #[sea_orm(string_value = "SIGNATURE")]
     Signature,
+    #[sea_orm(string_value = "NOTIFICATION")]
+    Notification,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use time::Duration;
 
 use super::{Error, Headers, HttpClient, Method, Request, RequestBuilder, Response, StatusCode};
 #[derive(Clone)]
@@ -47,12 +48,14 @@ impl HttpClient for ReqwestClient {
         body: Option<Vec<u8>>,
         headers: Option<Headers>,
         method: Method,
+        timeout: Option<Duration>,
     ) -> Result<Response, Error> {
         let request = Request {
             body: body.clone(),
             headers: headers.clone().unwrap_or_default(),
             method,
             url: url.to_string(),
+            timeout,
         };
 
         let mut builder = match method {
@@ -67,6 +70,9 @@ impl HttpClient for ReqwestClient {
         }
         if let Some(body) = body {
             builder = builder.body(body);
+        }
+        if let Some(timeout) = timeout {
+            builder = builder.timeout(timeout.try_into()?);
         }
 
         let response = builder.send().await?;

@@ -682,6 +682,17 @@ task:
     type: "INTERACTION_EXPIRATION_CHECK"
     display: "task.interactionExpirationCheck"
     order: 4
+  WEBHOOK_NOTIFY:
+    type: "WEBHOOK_NOTIFY"
+    display: "task.webhookNotify"
+    order: 5
+    params:
+      private:
+        requestTimeout: 30
+        retries:
+          interval: 1
+          maxAttempts: 5
+          exponentialFactor: 2.5
 cacheEntities:
   X509_CRL:
     cacheType: DB

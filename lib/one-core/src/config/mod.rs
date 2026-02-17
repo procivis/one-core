@@ -1,4 +1,4 @@
-use shared_types::RevocationMethodId;
+use shared_types::{RevocationMethodId, TaskId};
 use strum::Display;
 
 use self::validator::datatype::DatatypeValidationError;
@@ -44,6 +44,8 @@ pub struct IncompatibleProviderRef {
 pub enum ProviderReference {
     #[strum(to_string = "revocation method `{0}`")]
     RevocationMethod(RevocationMethodId),
+    #[strum(to_string = "task `{0}`")]
+    Task(TaskId),
 }
 
 #[derive(thiserror::Error, Debug)]

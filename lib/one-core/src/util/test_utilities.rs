@@ -13,8 +13,14 @@ pub fn mock_http_get_request(http_client: &mut MockHttpClient, url: String, resp
     let mut new_client = MockHttpClient::new();
     new_client
         .expect_send()
-        .with(eq(url.clone()), always(), always(), eq(Method::Get))
-        .return_once(move |_, _, _, _| Ok(response));
+        .with(
+            eq(url.clone()),
+            always(),
+            always(),
+            eq(Method::Get),
+            always(),
+        )
+        .return_once(move |_, _, _, _, _| Ok(response));
 
     http_client
         .expect_get()

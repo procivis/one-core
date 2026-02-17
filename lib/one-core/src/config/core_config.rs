@@ -17,7 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialFormat, RevocationMethodId};
+use shared_types::{CredentialFormat, RevocationMethodId, TaskId};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
@@ -666,7 +666,7 @@ impl ConfigFields for IdentifierFields {
     }
 }
 
-pub type TaskConfig = ConfigBlock<String, TaskType>;
+pub type TaskConfig = ConfigBlock<TaskId, TaskType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -687,6 +687,9 @@ pub enum TaskType {
     #[serde(rename = "INTERACTION_EXPIRATION_CHECK")]
     #[strum(serialize = "INTERACTION_EXPIRATION_CHECK")]
     InteractionExpirationCheck,
+    #[serde(rename = "WEBHOOK_NOTIFY")]
+    #[strum(serialize = "WEBHOOK_NOTIFY")]
+    WebhookNotify,
 }
 
 pub type TrustManagementConfig = ConfigBlock<String, TrustManagementType>;

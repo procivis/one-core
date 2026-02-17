@@ -26,6 +26,7 @@ use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
+use crate::repository::notification_repository::NotificationRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -121,6 +122,9 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {
         self.data_provider.get_wallet_unit_repository()
+    }
+    fn get_notification_repository(&self) -> Arc<dyn NotificationRepository> {
+        self.data_provider.get_notification_repository()
     }
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository> {
         self.data_provider.get_holder_wallet_unit_repository()
