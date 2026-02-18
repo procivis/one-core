@@ -13,7 +13,8 @@ pub enum TimeResolution {
 }
 
 impl TimeResolution {
-    pub fn new(from: OffsetDateTime, to: OffsetDateTime) -> Self {
+    pub fn new(from: Option<OffsetDateTime>, to: OffsetDateTime) -> Self {
+        let Some(from) = from else { return Self::Year };
         let time_diff = to - from;
         match time_diff {
             duration if duration <= Duration::days(1) => Self::Hour,
@@ -22,6 +23,15 @@ impl TimeResolution {
             _ => Self::Year,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct WindowCount {
+    /// Event count in previous time window
+    /// Not available if there is no previous window
+    pub previous: Option<usize>,
+    /// Event count in current time window
+    pub current: usize,
 }
 
 #[derive(FromQueryResult, Debug)]

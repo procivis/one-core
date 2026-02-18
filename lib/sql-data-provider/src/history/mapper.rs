@@ -1,6 +1,6 @@
 use one_core::model::history::{
-    GetHistoryList, History, IssuerTimelines, OrganisationOperationsCount, OrganisationStats,
-    OrganisationSummaryStats, OrganisationTimelines, TimeSeriesPoint, VerifierTimelines,
+    GetHistoryList, History, IssuerTimelines, OrganisationOperationsCount, OrganisationTimelines,
+    TimeSeriesPoint, VerifierTimelines,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
@@ -80,43 +80,40 @@ pub(super) fn create_list_response(
 
 pub(super) fn map_to_stats(
     rows: &[TimeSeriesRow],
-    from_summary_stats: OrganisationSummaryStats,
-    from: OffsetDateTime,
+    from: Option<OffsetDateTime>,
     to: OffsetDateTime,
-) -> Result<OrganisationStats, DataLayerError> {
+) -> Result<OrganisationTimelines, DataLayerError> {
     let resolution = TimeResolution::new(from, to);
     // Align timestamps to start of their respective bucket boundary
-    let from = floor(from, resolution)?;
     let to = floor(to, resolution)?;
 
-    let mut result = OrganisationStats {
-        from: from_summary_stats.clone(),
-        // to counts will be increased as the code iterates over the time series
-        to: from_summary_stats,
-        timelines: OrganisationTimelines {
-            issuer: IssuerTimelines {
-                offered: vec![],
-                issued: vec![],
-                rejected: vec![],
-                suspended: vec![],
-                reactivated: vec![],
-                revoked: vec![],
-                error: vec![],
-            },
-            verifier: VerifierTimelines {
-                pending: vec![],
-                accepted: vec![],
-                rejected: vec![],
-                error: vec![],
-            },
+    let mut result = OrganisationTimelines {
+        issuer: IssuerTimelines {
+            offered: vec![],
+            issued: vec![],
+            rejected: vec![],
+            suspended: vec![],
+            reactivated: vec![],
+            revoked: vec![],
+            error: vec![],
+        },
+        verifier: VerifierTimelines {
+            pending: vec![],
+            accepted: vec![],
+            rejected: vec![],
+            error: vec![],
         },
     };
 
     let Some(first) = rows.first() else {
+        // The empty time series needs to start somewhere. If we're not given a start, fall back to now.
+        let from = floor(from.unwrap_or(OffsetDateTime::now_utc()), resolution)?;
         // Empty rows, create zero time series
         fill_missing_zeros(&mut result, resolution, from, to, FillMode::Inclusive)?;
         return Ok(result);
     };
+    // Deduce the start of the time series from the first row if no explicit start was given.
+    let from = floor(from.unwrap_or(first.timestamp), resolution)?;
 
     // Fill in zeros up to the first timestamp
     fill_missing_zeros(
@@ -142,38 +139,42 @@ pub(super) fn map_to_stats(
                 FillMode::Exclusive,
             )?;
         }
-        let count = row.count as usize;
         let point = TimeSeriesPoint {
             timestamp: row.timestamp,
-            count,
+            count: row.count as usize,
         };
-        match row.entity_type {
-            HistoryEntityType::Credential => {
-                result.to.credential_lifecycle_operation_count += count;
-                match row.action {
-                    HistoryAction::Offered => result.timelines.issuer.offered.push(point),
-                    HistoryAction::Issued => {
-                        result.to.issuance_count += count;
-                        result.timelines.issuer.issued.push(point)
-                    }
-                    HistoryAction::Rejected => result.timelines.issuer.rejected.push(point),
-                    HistoryAction::Suspended => result.timelines.issuer.suspended.push(point),
-                    HistoryAction::Reactivated => result.timelines.issuer.reactivated.push(point),
-                    HistoryAction::Revoked => result.timelines.issuer.revoked.push(point),
-                    HistoryAction::Errored => result.timelines.issuer.error.push(point),
-                    _ => return Err(DataLayerError::MappingError),
-                }
+        match (row.entity_type, row.action) {
+            (HistoryEntityType::Credential, HistoryAction::Offered) => {
+                result.issuer.offered.push(point)
             }
-            HistoryEntityType::Proof => match row.action {
-                HistoryAction::Pending => result.timelines.verifier.pending.push(point),
-                HistoryAction::Accepted => {
-                    result.to.verification_count += count;
-                    result.timelines.verifier.accepted.push(point)
-                }
-                HistoryAction::Rejected => result.timelines.verifier.rejected.push(point),
-                HistoryAction::Errored => result.timelines.verifier.error.push(point),
-                _ => return Err(DataLayerError::MappingError),
-            },
+            (HistoryEntityType::Credential, HistoryAction::Issued) => {
+                result.issuer.issued.push(point)
+            }
+            (HistoryEntityType::Credential, HistoryAction::Rejected) => {
+                result.issuer.rejected.push(point)
+            }
+            (HistoryEntityType::Credential, HistoryAction::Suspended) => {
+                result.issuer.suspended.push(point)
+            }
+            (HistoryEntityType::Credential, HistoryAction::Reactivated) => {
+                result.issuer.reactivated.push(point)
+            }
+            (HistoryEntityType::Credential, HistoryAction::Revoked) => {
+                result.issuer.revoked.push(point)
+            }
+            (HistoryEntityType::Credential, HistoryAction::Errored) => {
+                result.issuer.error.push(point)
+            }
+            (HistoryEntityType::Proof, HistoryAction::Pending) => {
+                result.verifier.pending.push(point)
+            }
+            (HistoryEntityType::Proof, HistoryAction::Accepted) => {
+                result.verifier.accepted.push(point)
+            }
+            (HistoryEntityType::Proof, HistoryAction::Rejected) => {
+                result.verifier.rejected.push(point)
+            }
+            (HistoryEntityType::Proof, HistoryAction::Errored) => result.verifier.error.push(point),
             _ => return Err(DataLayerError::MappingError),
         }
     }
@@ -189,13 +190,13 @@ enum FillMode {
 }
 
 fn fill_missing_zeros(
-    stats: &mut OrganisationStats,
+    timelines: &mut OrganisationTimelines,
     resolution: TimeResolution,
     from: OffsetDateTime,
     to: OffsetDateTime,
     mode: FillMode,
 ) -> Result<(), DataLayerError> {
-    let issuer = &mut stats.timelines.issuer;
+    let issuer = &mut timelines.issuer;
     fill_zeros(&mut issuer.offered, resolution, from, to, mode)?;
     fill_zeros(&mut issuer.issued, resolution, from, to, mode)?;
     fill_zeros(&mut issuer.rejected, resolution, from, to, mode)?;
@@ -203,7 +204,7 @@ fn fill_missing_zeros(
     fill_zeros(&mut issuer.reactivated, resolution, from, to, mode)?;
     fill_zeros(&mut issuer.revoked, resolution, from, to, mode)?;
     fill_zeros(&mut issuer.error, resolution, from, to, mode)?;
-    let verifier = &mut stats.timelines.verifier;
+    let verifier = &mut timelines.verifier;
     fill_zeros(&mut verifier.pending, resolution, from, to, mode)?;
     fill_zeros(&mut verifier.accepted, resolution, from, to, mode)?;
     fill_zeros(&mut verifier.rejected, resolution, from, to, mode)?;
@@ -295,19 +296,31 @@ fn zero_point(ts: OffsetDateTime) -> TimeSeriesPoint {
 }
 
 pub(super) fn to_ops_org_count(
-    to_ops: &[OrganisationOpsCount],
-    diffs: &[usize],
+    current_counts: &[OrganisationOpsCount],
+    prev_counts: Option<&[usize]>,
 ) -> Result<Vec<OrganisationOperationsCount>, DataLayerError> {
-    let mut result = Vec::with_capacity(to_ops.len());
-    if to_ops.len() != diffs.len() {
+    let Some(prev_counts) = prev_counts else {
+        let result = current_counts
+            .iter()
+            .map(|current| OrganisationOperationsCount {
+                organisation_id: current.organisation_id,
+                current: current.count as usize,
+                previous: None,
+            })
+            .collect();
+        return Ok(result);
+    };
+    if current_counts.len() != prev_counts.len() {
         return Err(DataLayerError::MappingError);
     }
-    for (ops, diff) in to_ops.iter().zip(diffs.iter()) {
-        result.push(OrganisationOperationsCount {
-            organisation_id: ops.organisation_id,
-            from_count: ops.count as usize - diff,
-            to_count: ops.count as usize,
+    let result = current_counts
+        .iter()
+        .zip(prev_counts.iter())
+        .map(|(current, prev)| OrganisationOperationsCount {
+            organisation_id: current.organisation_id,
+            current: current.count as usize,
+            previous: Some(*prev),
         })
-    }
+        .collect();
     Ok(result)
 }

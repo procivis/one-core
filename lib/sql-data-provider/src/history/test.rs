@@ -2,7 +2,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
     HistoryListQuery, HistorySearchEnum, HistorySource, OrganisationOperationsCount,
-    OrganisationStats, TimeSeriesPoint,
+    OrganisationStats, OrganisationTimelines, TimeSeriesPoint,
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::ListPagination;
@@ -784,7 +784,7 @@ async fn test_history_org_stats_empty_hourly() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(1);
     let result = provider
-        .organisation_stats(from, to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id)
         .await
         .unwrap();
 
@@ -803,7 +803,7 @@ async fn test_history_org_stats_empty_daily() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(30);
     let result = provider
-        .organisation_stats(from, to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id)
         .await
         .unwrap();
 
@@ -822,7 +822,7 @@ async fn test_history_org_stats_empty_monthly() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(365);
     let result = provider
-        .organisation_stats(from, to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id)
         .await
         .unwrap();
 
@@ -841,7 +841,7 @@ async fn test_history_org_stats_empty_yearly() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(2 * 365);
     let result = provider
-        .organisation_stats(from, to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id)
         .await
         .unwrap();
 
@@ -902,7 +902,10 @@ async fn test_history_org_stats_ignore_irrelevant() {
 
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
-    let result = provider.organisation_stats(from, to, org_id).await.unwrap();
+    let result = provider
+        .organisation_stats(Some(from), to, org_id)
+        .await
+        .unwrap();
     assert_zeroes(&result, 3);
 }
 
@@ -1008,16 +1011,20 @@ async fn test_history_org_stats_dummy_data() {
 
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
-    let result = provider.organisation_stats(from, to, org_id).await.unwrap();
-    assert_eq!(result.to.issuance_count, 1);
-    assert_eq!(result.to.verification_count, 1);
-    assert_eq!(result.to.credential_lifecycle_operation_count, 7);
-    assert_eq!(result.from.issuance_count, 0);
-    assert_eq!(result.from.verification_count, 0);
-    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
+    let result = provider
+        .organisation_stats(Some(from), to, org_id)
+        .await
+        .unwrap();
+    assert_eq!(result.current.issuance_count, 1);
+    assert_eq!(result.current.verification_count, 1);
+    assert_eq!(result.current.credential_lifecycle_operation_count, 7);
+    let previous = result.previous.unwrap();
+    assert_eq!(previous.issuance_count, 0);
+    assert_eq!(previous.verification_count, 0);
+    assert_eq!(previous.credential_lifecycle_operation_count, 0);
 
     // Every operation exactly once in the middle of a three-day spanning stats window
-    assert_timelines(&result, &[0, 1, 0]);
+    assert_timelines(&result.timelines, &[0, 1, 0]);
 }
 
 #[tokio::test]
@@ -1026,19 +1033,20 @@ async fn test_system_history_empty() {
 
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(2 * 365);
-    let result = provider.system_stats(from, to, 5).await.unwrap();
+    let result = provider.system_stats(Some(from), to, 5).await.unwrap();
 
-    assert_eq!(result.from.issuance_count, 0);
-    assert_eq!(result.from.verification_count, 0);
-    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
-    assert_eq!(result.from.session_token_count, 0);
-    assert_eq!(result.from.active_wallet_unit_count, 0);
+    assert_eq!(result.current.issuance_count, 0);
+    assert_eq!(result.current.verification_count, 0);
+    assert_eq!(result.current.credential_lifecycle_operation_count, 0);
+    assert_eq!(result.current.session_token_count, 0);
+    assert_eq!(result.current.active_wallet_unit_count, 0);
 
-    assert_eq!(result.to.issuance_count, 0);
-    assert_eq!(result.to.verification_count, 0);
-    assert_eq!(result.to.credential_lifecycle_operation_count, 0);
-    assert_eq!(result.to.session_token_count, 0);
-    assert_eq!(result.to.active_wallet_unit_count, 0);
+    let previous = result.previous.unwrap();
+    assert_eq!(previous.issuance_count, 0);
+    assert_eq!(previous.verification_count, 0);
+    assert_eq!(previous.credential_lifecycle_operation_count, 0);
+    assert_eq!(previous.session_token_count, 0);
+    assert_eq!(previous.active_wallet_unit_count, 0);
 
     assert!(result.top_verifiers.is_empty());
     assert!(result.top_issuers.is_empty());
@@ -1154,31 +1162,32 @@ async fn test_system_history_stats_dummy_data() {
 
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
-    let result = provider.system_stats(from, to, 5).await.unwrap();
-    assert_eq!(result.to.issuance_count, 1);
-    assert_eq!(result.to.verification_count, 1);
-    assert_eq!(result.to.credential_lifecycle_operation_count, 7);
-    assert_eq!(result.to.session_token_count, 1);
-    assert_eq!(result.to.active_wallet_unit_count, 1); // one activated + one create - one revoked
-    assert_eq!(result.from.issuance_count, 0);
-    assert_eq!(result.from.verification_count, 0);
-    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
-    assert_eq!(result.from.session_token_count, 0);
-    assert_eq!(result.from.active_wallet_unit_count, 0);
+    let result = provider.system_stats(Some(from), to, 5).await.unwrap();
+    assert_eq!(result.current.issuance_count, 1);
+    assert_eq!(result.current.verification_count, 1);
+    assert_eq!(result.current.credential_lifecycle_operation_count, 7);
+    assert_eq!(result.current.session_token_count, 1);
+    assert_eq!(result.current.active_wallet_unit_count, 1); // one activated + one create - one revoked
+    let previous = result.previous.unwrap();
+    assert_eq!(previous.issuance_count, 0);
+    assert_eq!(previous.verification_count, 0);
+    assert_eq!(previous.credential_lifecycle_operation_count, 0);
+    assert_eq!(previous.session_token_count, 0);
+    assert_eq!(previous.active_wallet_unit_count, 0);
     assert_eq!(
         result.top_issuers,
         vec![OrganisationOperationsCount {
             organisation_id: org_id,
-            from_count: 0,
-            to_count: 1,
+            previous: Some(0),
+            current: 1,
         }]
     );
     assert_eq!(
         result.top_verifiers,
         vec![OrganisationOperationsCount {
             organisation_id: org_id,
-            from_count: 0,
-            to_count: 1,
+            previous: Some(0),
+            current: 1,
         }]
     );
 }
@@ -1196,6 +1205,7 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
         .unwrap();
     let now = OffsetDateTime::now_utc();
 
+    // ignored because it is too old
     add_history(
         &db,
         HistoryEntityType::Credential,
@@ -1204,12 +1214,40 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
         now - Duration::days(3),
     )
     .await;
+
+    // prev window
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        org_id,
+        now - Duration::days(2),
+    )
+    .await;
     add_history(
         &db,
         HistoryEntityType::Credential,
         HistoryAction::Offered,
         org2_id,
-        now - Duration::days(3),
+        now - Duration::days(2),
+    )
+    .await;
+
+    // current window
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        org_id,
+        now - Duration::days(1),
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Offered,
+        org2_id,
+        now - Duration::days(1),
     )
     .await;
 
@@ -1250,31 +1288,42 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
     )
     .await;
 
+    // ignored because it is outside of current
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Accepted,
+        org2_id,
+        now + Duration::days(1),
+    )
+    .await;
+
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
-    let result = provider.system_stats(from, to, 5).await.unwrap();
-    assert_eq!(result.from.issuance_count, 1);
-    assert_eq!(result.from.verification_count, 0);
-    assert_eq!(result.from.credential_lifecycle_operation_count, 2);
-    assert_eq!(result.from.session_token_count, 0);
-    assert_eq!(result.from.active_wallet_unit_count, 0);
-    assert_eq!(result.to.issuance_count, 12);
-    assert_eq!(result.to.verification_count, 9);
-    assert_eq!(result.to.credential_lifecycle_operation_count, 13);
-    assert_eq!(result.to.session_token_count, 0);
-    assert_eq!(result.to.active_wallet_unit_count, 0);
+    let result = provider.system_stats(Some(from), to, 5).await.unwrap();
+    assert_eq!(result.current.issuance_count, 12);
+    assert_eq!(result.current.verification_count, 9);
+    assert_eq!(result.current.credential_lifecycle_operation_count, 13);
+    assert_eq!(result.current.session_token_count, 0);
+    assert_eq!(result.current.active_wallet_unit_count, 0);
+    let previous = result.previous.unwrap();
+    assert_eq!(previous.issuance_count, 2);
+    assert_eq!(previous.verification_count, 0);
+    assert_eq!(previous.credential_lifecycle_operation_count, 3);
+    assert_eq!(previous.session_token_count, 0);
+    assert_eq!(previous.active_wallet_unit_count, 0);
     assert_eq!(
         result.top_issuers,
         vec![
             OrganisationOperationsCount {
                 organisation_id: org2_id,
-                from_count: 0,
-                to_count: 10,
+                previous: Some(0),
+                current: 10,
             },
             OrganisationOperationsCount {
                 organisation_id: org_id,
-                from_count: 1,
-                to_count: 2,
+                previous: Some(2),
+                current: 2,
             }
         ]
     );
@@ -1283,13 +1332,13 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
         vec![
             OrganisationOperationsCount {
                 organisation_id: org_id,
-                from_count: 0,
-                to_count: 8,
+                previous: Some(0),
+                current: 8,
             },
             OrganisationOperationsCount {
                 organisation_id: org2_id,
-                from_count: 0,
-                to_count: 1,
+                previous: Some(0),
+                current: 1,
             }
         ]
     );
@@ -1322,12 +1371,13 @@ async fn add_history(
 }
 
 fn assert_zeroes(result: &OrganisationStats, expected_len: usize) {
-    assert_eq!(result.to.issuance_count, 0);
-    assert_eq!(result.to.verification_count, 0);
-    assert_eq!(result.to.credential_lifecycle_operation_count, 0);
-    assert_eq!(result.from.issuance_count, 0);
-    assert_eq!(result.from.verification_count, 0);
-    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
+    assert_eq!(result.current.issuance_count, 0);
+    assert_eq!(result.current.verification_count, 0);
+    assert_eq!(result.current.credential_lifecycle_operation_count, 0);
+    let previous = result.previous.as_ref().unwrap();
+    assert_eq!(previous.issuance_count, 0);
+    assert_eq!(previous.verification_count, 0);
+    assert_eq!(previous.credential_lifecycle_operation_count, 0);
     assert_zeroes_series(&result.timelines.issuer.offered, expected_len);
     assert_zeroes_series(&result.timelines.issuer.issued, expected_len);
     assert_zeroes_series(&result.timelines.issuer.rejected, expected_len);
@@ -1346,18 +1396,18 @@ fn assert_zeroes_series(data: &[TimeSeriesPoint], expected_len: usize) {
     assert!(data.iter().all(|bucket| bucket.count == 0))
 }
 
-fn assert_timelines(result: &OrganisationStats, expected: &[usize]) {
-    assert_counts(&result.timelines.issuer.offered, expected);
-    assert_counts(&result.timelines.issuer.issued, expected);
-    assert_counts(&result.timelines.issuer.rejected, expected);
-    assert_counts(&result.timelines.issuer.suspended, expected);
-    assert_counts(&result.timelines.issuer.reactivated, expected);
-    assert_counts(&result.timelines.issuer.rejected, expected);
-    assert_counts(&result.timelines.issuer.error, expected);
-    assert_counts(&result.timelines.verifier.pending, expected);
-    assert_counts(&result.timelines.verifier.accepted, expected);
-    assert_counts(&result.timelines.verifier.rejected, expected);
-    assert_counts(&result.timelines.verifier.error, expected);
+fn assert_timelines(result: &OrganisationTimelines, expected: &[usize]) {
+    assert_counts(&result.issuer.offered, expected);
+    assert_counts(&result.issuer.issued, expected);
+    assert_counts(&result.issuer.rejected, expected);
+    assert_counts(&result.issuer.suspended, expected);
+    assert_counts(&result.issuer.reactivated, expected);
+    assert_counts(&result.issuer.rejected, expected);
+    assert_counts(&result.issuer.error, expected);
+    assert_counts(&result.verifier.pending, expected);
+    assert_counts(&result.verifier.accepted, expected);
+    assert_counts(&result.verifier.rejected, expected);
+    assert_counts(&result.verifier.error, expected);
 }
 
 fn assert_counts(actual: &[TimeSeriesPoint], expected: &[usize]) {

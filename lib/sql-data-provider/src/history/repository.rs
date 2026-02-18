@@ -17,7 +17,7 @@ use super::mapper::{create_list_response, map_to_stats, to_ops_org_count};
 use crate::entity::history;
 use crate::entity::history::HistoryEntityType;
 use crate::history::HistoryProvider;
-use crate::history::model::{OrganisationOpsCount, TimeSeriesRow};
+use crate::history::model::{OrganisationOpsCount, TimeSeriesRow, WindowCount};
 use crate::history::queries::{
     CountOperationsQuery, count_ops_query, org_timelines_query, top_orgs_query,
 };
@@ -102,55 +102,76 @@ impl HistoryRepository for HistoryProvider {
 
     async fn organisation_stats(
         &self,
-        from: OffsetDateTime,
+        from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_id: OrganisationId,
     ) -> Result<OrganisationStats, DataLayerError> {
         let db_backend = self.db.get_database_backend();
-        let issuance_count_query = count_ops_query(
+        let issuance_count_query = self.window_counts(
             HistoryEntityType::Credential,
             &[history::HistoryAction::Issued],
-            None,
             from,
+            to,
             Some(organisation_id),
         );
-        let verification_count_query = count_ops_query(
+        let verification_count_query = self.window_counts(
             HistoryEntityType::Proof,
             &[history::HistoryAction::Accepted],
-            None,
             from,
+            to,
             Some(organisation_id),
         );
-        let credential_lifecycle_count_query = count_ops_query(
+        let credential_lifecycle_count_query = self.window_counts(
             HistoryEntityType::Credential,
             &CREDENTIAL_LIFECYCLE_OPS,
-            None,
             from,
+            to,
             Some(organisation_id),
         );
         let timelines_query = org_timelines_query(from, to, organisation_id, &db_backend)?;
-        let (issuance_count, verification_count, credential_lifecycle_count, timelines) = tokio::join!(
-            self.count(&issuance_count_query),
-            self.count(&verification_count_query),
-            self.count(&credential_lifecycle_count_query),
-            TimeSeriesRow::find_by_statement(db_backend.build(&timelines_query)).all(&self.db)
-        );
-        let summary_stats = OrganisationSummaryStats {
-            issuance_count: issuance_count?,
-            verification_count: verification_count?,
-            credential_lifecycle_operation_count: credential_lifecycle_count?,
+        let (issuance_count, verification_count, credential_lifecycle_count, timelines) = tokio::try_join!(
+            issuance_count_query,
+            verification_count_query,
+            credential_lifecycle_count_query,
+            async {
+                TimeSeriesRow::find_by_statement(db_backend.build(&timelines_query))
+                    .all(&self.db)
+                    .await
+                    .map_err(|err| DataLayerError::Db(err.into()))
+            }
+        )?;
+        let timelines = map_to_stats(&timelines, from, to)?;
+        let previous = match (
+            issuance_count.previous,
+            verification_count.previous,
+            credential_lifecycle_count.previous,
+        ) {
+            (
+                Some(issuance_count),
+                Some(verification_count),
+                Some(credential_lifecycle_operation_count),
+            ) => Some(OrganisationSummaryStats {
+                issuance_count,
+                verification_count,
+                credential_lifecycle_operation_count,
+            }),
+            (None, None, None) => None,
+            _ => Err(DataLayerError::MappingError)?,
         };
-        map_to_stats(
-            &timelines.map_err(|err| DataLayerError::Db(err.into()))?,
-            summary_stats,
-            from,
-            to,
-        )
+        Ok(OrganisationStats {
+            previous,
+            current: OrganisationSummaryStats {
+                issuance_count: issuance_count.current,
+                verification_count: verification_count.current,
+                credential_lifecycle_operation_count: credential_lifecycle_count.current,
+            },
+            timelines,
+        })
     }
 
     async fn system_stats(
         &self,
-        from: OffsetDateTime,
+        from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_count: usize,
     ) -> Result<SystemStats, DataLayerError> {
@@ -158,16 +179,18 @@ impl HistoryRepository for HistoryProvider {
         let top_issuers = top_orgs_query(
             HistoryEntityType::Credential,
             history::HistoryAction::Issued,
+            from,
             to,
             organisation_count,
         );
         let top_verifiers = top_orgs_query(
             HistoryEntityType::Proof,
             history::HistoryAction::Accepted,
+            from,
             to,
             organisation_count,
         );
-        let (top_issuers, top_verifiers, (system_stats_from, system_stats_to)) = tokio::try_join!(
+        let (top_issuers, top_verifiers, (system_stats_current, system_stats_previous)) = tokio::try_join!(
             async {
                 OrganisationOpsCount::find_by_statement(db_backend.build(&top_issuers))
                     .all(&self.db)
@@ -182,45 +205,53 @@ impl HistoryRepository for HistoryProvider {
             },
             self.system_operations_counts(from, to)
         )?;
-        let mut top_iss_diffs = vec![];
+
+        let Some(from) = from else {
+            return Ok(SystemStats {
+                current: system_stats_current,
+                previous: system_stats_previous,
+                top_issuers: to_ops_org_count(&top_issuers, None)?,
+                top_verifiers: to_ops_org_count(&top_verifiers, None)?,
+            });
+        };
+        let window_size = to - from;
+        let prev_window_start = from - window_size;
+        let mut top_iss_prev = vec![];
+        let mut top_verifier_prev = vec![];
         for issuer in &top_issuers {
             let count = async move {
                 let query = count_ops_query(
                     HistoryEntityType::Credential,
                     &[history::HistoryAction::Issued],
-                    Some(from),
-                    to,
+                    Some(prev_window_start),
+                    from,
                     Some(issuer.organisation_id),
                 );
                 self.count(&query).await
             };
-            top_iss_diffs.push(count);
+            top_iss_prev.push(count);
         }
-        let mut top_verifier_diffs = vec![];
         for verifier in &top_verifiers {
             let count = async move {
                 let query = count_ops_query(
                     HistoryEntityType::Proof,
                     &[history::HistoryAction::Accepted],
-                    Some(from),
-                    to,
+                    Some(prev_window_start),
+                    from,
                     Some(verifier.organisation_id),
                 );
                 self.count(&query).await
             };
-            top_verifier_diffs.push(count);
+            top_verifier_prev.push(count);
         }
 
-        let (diffs_issuers, diffs_verifiers) = tokio::try_join!(
-            try_join_all(top_iss_diffs),
-            try_join_all(top_verifier_diffs)
-        )?;
-
+        let (prev_issuers, prev_verifiers) =
+            tokio::try_join!(try_join_all(top_iss_prev), try_join_all(top_verifier_prev))?;
         Ok(SystemStats {
-            from: system_stats_from,
-            to: system_stats_to,
-            top_issuers: to_ops_org_count(&top_issuers, &diffs_issuers)?,
-            top_verifiers: to_ops_org_count(&top_verifiers, &diffs_verifiers)?,
+            current: system_stats_current,
+            previous: system_stats_previous,
+            top_issuers: to_ops_org_count(&top_issuers, Some(&prev_issuers))?,
+            top_verifiers: to_ops_org_count(&top_verifiers, Some(&prev_verifiers))?,
         })
     }
 }
@@ -240,63 +271,102 @@ impl HistoryProvider {
 
     async fn system_operations_counts(
         &self,
-        from: OffsetDateTime,
+        from: Option<OffsetDateTime>,
         to: OffsetDateTime,
-    ) -> Result<(SystemOperationsCount, SystemOperationsCount), DataLayerError> {
+    ) -> Result<(SystemOperationsCount, Option<SystemOperationsCount>), DataLayerError> {
         use HistoryEntityType::*;
         use history::HistoryAction::*;
-        let issuances = self.system_ops_count_from_to(Credential, &[Issued], from, to);
-        let verifications = self.system_ops_count_from_to(Proof, &[Accepted], from, to);
-        let cred_lifecyle_ops =
-            self.system_ops_count_from_to(Credential, &CREDENTIAL_LIFECYCLE_OPS, from, to);
-        let sessions = self.system_ops_count_from_to(StsSession, &[Created], from, to);
+        let issuances = self.window_counts(Credential, &[Issued], from, to, None);
+        let verifications = self.window_counts(Proof, &[Accepted], from, to, None);
+        let credential_lifecycle =
+            self.window_counts(Credential, &CREDENTIAL_LIFECYCLE_OPS, from, to, None);
+        let sessions = self.window_counts(StsSession, &[Created], from, to, None);
         let wallet_units_new =
-            self.system_ops_count_from_to(WalletUnit, &[Created, Activated], from, to);
-        let wallet_units_revoked = self.system_ops_count_from_to(WalletUnit, &[Revoked], from, to);
+            self.window_counts(WalletUnit, &[Created, Activated], from, to, None);
+        let wallet_units_revoked = self.window_counts(WalletUnit, &[Revoked], from, to, None);
         let (
-            (issuances_from, issuances_to),
-            (verifications_from, verifications_to),
-            (cred_lifecyle_ops_from, cred_lifecyle_ops_to),
-            (sessions_from, sessions_to),
-            (wallet_units_new_from, wallet_units_new_to),
-            (wallet_units_revoked_from, wallet_units_revoked_to),
+            issuance_count,
+            verification_count,
+            credential_lifecycle_count,
+            session_count,
+            wallet_unit_new_count,
+            wallet_unit_revoked_count,
         ) = tokio::try_join!(
             issuances,
             verifications,
-            cred_lifecyle_ops,
+            credential_lifecycle,
             sessions,
             wallet_units_new,
             wallet_units_revoked
         )?;
-        let from_stats = SystemOperationsCount {
-            issuance_count: issuances_from,
-            verification_count: verifications_from,
-            credential_lifecycle_operation_count: cred_lifecyle_ops_from,
-            session_token_count: sessions_from,
-            active_wallet_unit_count: wallet_units_new_from - wallet_units_revoked_from,
+
+        let current = SystemOperationsCount {
+            issuance_count: issuance_count.current,
+            verification_count: verification_count.current,
+            credential_lifecycle_operation_count: credential_lifecycle_count.current,
+            session_token_count: session_count.current,
+            active_wallet_unit_count: wallet_unit_new_count.current
+                - wallet_unit_revoked_count.current,
         };
-        let to_stats = SystemOperationsCount {
-            issuance_count: issuances_to,
-            verification_count: verifications_to,
-            credential_lifecycle_operation_count: cred_lifecyle_ops_to,
-            session_token_count: sessions_to,
-            active_wallet_unit_count: wallet_units_new_to - wallet_units_revoked_to,
+
+        let previous = match (
+            issuance_count.previous,
+            verification_count.previous,
+            credential_lifecycle_count.previous,
+            session_count.previous,
+            wallet_unit_new_count.previous,
+            wallet_unit_revoked_count.previous,
+        ) {
+            (
+                Some(issuance_count),
+                Some(verification_count),
+                Some(credential_lifecycle_operation_count),
+                Some(session_token_count),
+                Some(wallet_unit_new_count),
+                Some(wallet_unit_revoked_count),
+            ) => Some(SystemOperationsCount {
+                issuance_count,
+                verification_count,
+                credential_lifecycle_operation_count,
+                session_token_count,
+                active_wallet_unit_count: wallet_unit_new_count - wallet_unit_revoked_count,
+            }),
+            (None, None, None, None, None, None) => None,
+            _ => Err(DataLayerError::MappingError)?,
         };
-        Ok((from_stats, to_stats))
+
+        Ok((current, previous))
     }
 
-    async fn system_ops_count_from_to(
+    async fn window_counts(
         &self,
         entity_type: HistoryEntityType,
         actions: &[history::HistoryAction],
-        from: OffsetDateTime,
+        from: Option<OffsetDateTime>,
         to: OffsetDateTime,
-    ) -> Result<(usize, usize), DataLayerError> {
-        let from_query = count_ops_query(entity_type, actions, None, from, None);
-        let diff_query = count_ops_query(entity_type, actions, Some(from), to, None);
-        let (from_count, diff) = tokio::join!(self.count(&from_query), self.count(&diff_query));
-        let from_count = from_count?;
-        let to_count = from_count + diff?;
-        Ok((from_count, to_count))
+        organisation_id: Option<OrganisationId>,
+    ) -> Result<WindowCount, DataLayerError> {
+        let current_query = count_ops_query(entity_type, actions, from, to, organisation_id);
+        let Some(from) = from else {
+            return Ok(WindowCount {
+                current: self.count(&current_query).await?,
+                previous: None,
+            });
+        };
+        let window_size = to - from;
+        let prev_window_start = from - window_size;
+        let prev_query = count_ops_query(
+            entity_type,
+            actions,
+            Some(prev_window_start),
+            from,
+            organisation_id,
+        );
+        let (current, prev) =
+            tokio::try_join!(self.count(&current_query), self.count(&prev_query))?;
+        Ok(WindowCount {
+            current,
+            previous: Some(prev),
+        })
     }
 }

@@ -163,8 +163,8 @@ pub type HistoryListQuery = ListQuery<SortableHistoryColumn, HistoryFilterValue>
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OrganisationStats {
-    pub from: OrganisationSummaryStats,
-    pub to: OrganisationSummaryStats,
+    pub previous: Option<OrganisationSummaryStats>,
+    pub current: OrganisationSummaryStats,
     pub timelines: OrganisationTimelines,
 }
 
@@ -208,8 +208,8 @@ pub struct TimeSeriesPoint {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemStats {
-    pub from: SystemOperationsCount,
-    pub to: SystemOperationsCount,
+    pub previous: Option<SystemOperationsCount>,
+    pub current: SystemOperationsCount,
     pub top_issuers: Vec<OrganisationOperationsCount>,
     pub top_verifiers: Vec<OrganisationOperationsCount>,
 }
@@ -217,8 +217,8 @@ pub struct SystemStats {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OrganisationOperationsCount {
     pub organisation_id: OrganisationId,
-    pub from_count: usize,
-    pub to_count: usize,
+    pub current: usize,
+    pub previous: Option<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

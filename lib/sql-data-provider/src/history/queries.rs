@@ -452,14 +452,14 @@ pub(super) fn count_ops_query(
 }
 
 pub(super) fn org_timelines_query(
-    from: OffsetDateTime,
+    from: Option<OffsetDateTime>,
     to: OffsetDateTime,
     organisation_id: OrganisationId,
     db_backend: &DbBackend,
 ) -> Result<SelectStatement, DataLayerError> {
     let resolution = TimeResolution::new(from, to);
     let rounded_date = Alias::new("timestamp");
-    let query = Query::select()
+    let mut query = Query::select()
         .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
         .expr_as(
             resolution.floored_time_format_expr("created_date", db_backend)?,
@@ -467,9 +467,16 @@ pub(super) fn org_timelines_query(
         )
         .columns([history::Column::EntityType, history::Column::Action])
         .from(history::Entity)
-        // Align to bucket windows to selected resolution (lower inclusive, upper exclusive)
-        // otherwise first and last bucket will have missing values.
-        .and_where(Expr::col(history::Column::CreatedDate).gte(floor(from, resolution)?))
+        .to_owned();
+
+    if let Some(from) = from {
+        query
+            // Align to bucket windows to selected resolution (lower inclusive, upper exclusive)
+            // otherwise first and last bucket will have missing values.
+            .and_where(Expr::col(history::Column::CreatedDate).gte(floor(from, resolution)?));
+    }
+
+    query
         .and_where(Expr::col(history::Column::CreatedDate).lt(ceil(to, resolution)?))
         .and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id))
         .and_where(
@@ -498,29 +505,34 @@ pub(super) fn org_timelines_query(
             history::Column::EntityType.into_column_ref(),
             history::Column::Action.into_column_ref(),
         ])
-        .order_by(rounded_date, Order::Asc)
-        .to_owned();
+        .order_by(rounded_date, Order::Asc);
     Ok(query)
 }
 
 pub(super) fn top_orgs_query(
     entity_type: history::HistoryEntityType,
     action: history::HistoryAction,
+    from: Option<OffsetDateTime>,
     to: OffsetDateTime,
     num_orgs: usize,
 ) -> SelectStatement {
     let count = Alias::new("count");
-    Query::select()
+    let mut query = Query::select()
         .expr_as(Func::count(ColumnRef::Asterisk), count.clone())
         .columns([history::Column::OrganisationId])
         .from(history::Entity)
         .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
         .and_where(Expr::col(history::Column::Action).eq(action))
-        .and_where(Expr::col(history::Column::CreatedDate).lte(to))
+        .to_owned();
+    if let Some(from) = from {
+        query.and_where(Expr::col(history::Column::CreatedDate).gte(from));
+    }
+    query
+        .and_where(Expr::col(history::Column::CreatedDate).lt(to))
         .group_by_col(history::Column::OrganisationId)
         .order_by(count, Order::Desc)
-        .limit(num_orgs as u64)
-        .to_owned()
+        .limit(num_orgs as u64);
+    query
 }
 
 impl TimeResolution {

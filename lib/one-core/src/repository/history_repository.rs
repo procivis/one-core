@@ -25,14 +25,14 @@ pub trait HistoryRepository: Send + Sync {
 
     async fn organisation_stats(
         &self,
-        from: OffsetDateTime,
+        from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_id: OrganisationId,
     ) -> Result<OrganisationStats, DataLayerError>;
 
     async fn system_stats(
         &self,
-        from: OffsetDateTime,
+        from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_count: usize,
     ) -> Result<SystemStats, DataLayerError>;
