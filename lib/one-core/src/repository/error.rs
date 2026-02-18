@@ -40,6 +40,9 @@ pub enum DataLayerError {
 
     #[error("Transaction error: {0}")]
     TransactionError(String),
+
+    #[error("Unsupported database backend")]
+    UnsupportedDbBackend,
 }
 
 impl ErrorCodeMixin for DataLayerError {
@@ -56,7 +59,8 @@ impl ErrorCodeMixin for DataLayerError {
             | Self::MissingProofState { .. }
             | Self::MissingRequiredRelation { .. }
             | Self::MissingClaimsSchemaForClaim(_, _)
-            | Self::TransactionError(_) => ErrorCode::BR_0000,
+            | Self::TransactionError(_)
+            | Self::UnsupportedDbBackend => ErrorCode::BR_0000,
         }
     }
 }

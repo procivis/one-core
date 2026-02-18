@@ -159,3 +159,72 @@ impl ListFilterValue for HistoryFilterValue {}
 
 pub type GetHistoryList = GetListResponse<History>;
 pub type HistoryListQuery = ListQuery<SortableHistoryColumn, HistoryFilterValue>;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OrganisationStats {
+    pub from: OrganisationSummaryStats,
+    pub to: OrganisationSummaryStats,
+    pub timelines: OrganisationTimelines,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OrganisationSummaryStats {
+    pub issuance_count: usize,
+    pub verification_count: usize,
+    pub credential_lifecycle_operation_count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OrganisationTimelines {
+    pub issuer: IssuerTimelines,
+    pub verifier: VerifierTimelines,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IssuerTimelines {
+    pub offered: Vec<TimeSeriesPoint>,
+    pub issued: Vec<TimeSeriesPoint>,
+    pub rejected: Vec<TimeSeriesPoint>,
+    pub suspended: Vec<TimeSeriesPoint>,
+    pub reactivated: Vec<TimeSeriesPoint>,
+    pub revoked: Vec<TimeSeriesPoint>,
+    pub error: Vec<TimeSeriesPoint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifierTimelines {
+    pub pending: Vec<TimeSeriesPoint>,
+    pub accepted: Vec<TimeSeriesPoint>,
+    pub rejected: Vec<TimeSeriesPoint>,
+    pub error: Vec<TimeSeriesPoint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TimeSeriesPoint {
+    pub timestamp: OffsetDateTime,
+    pub count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemStats {
+    pub from: SystemOperationsCount,
+    pub to: SystemOperationsCount,
+    pub top_issuers: Vec<OrganisationOperationsCount>,
+    pub top_verifiers: Vec<OrganisationOperationsCount>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OrganisationOperationsCount {
+    pub organisation_id: OrganisationId,
+    pub from_count: usize,
+    pub to_count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemOperationsCount {
+    pub issuance_count: usize,
+    pub verification_count: usize,
+    pub credential_lifecycle_operation_count: usize,
+    pub session_token_count: usize,
+    pub active_wallet_unit_count: usize,
+}

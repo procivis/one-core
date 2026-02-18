@@ -3,7 +3,9 @@ use one_core::model::history::{
     HistorySource as ModelHistorySource,
 };
 use one_dto_mapper::{From, Into};
+use sea_orm::IntoSimpleExpr;
 use sea_orm::entity::prelude::*;
+use sea_orm::sea_query::SimpleExpr;
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -121,6 +123,12 @@ pub enum HistoryAction {
     InteractionExpired,
     #[sea_orm(string_value = "DELIVERED")]
     Delivered,
+}
+
+impl From<&HistoryAction> for SimpleExpr {
+    fn from(val: &HistoryAction) -> Self {
+        SimpleExpr::Constant(val.to_value().into())
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

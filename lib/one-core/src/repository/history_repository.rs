@@ -1,6 +1,9 @@
-use shared_types::{EntityId, HistoryId};
+use shared_types::{EntityId, HistoryId, OrganisationId};
+use time::OffsetDateTime;
 
-use crate::model::history::{GetHistoryList, History, HistoryListQuery};
+use crate::model::history::{
+    GetHistoryList, History, HistoryListQuery, OrganisationStats, SystemStats,
+};
 use crate::repository::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -19,4 +22,18 @@ pub trait HistoryRepository: Send + Sync {
         &self,
         history_id: HistoryId,
     ) -> Result<Option<History>, DataLayerError>;
+
+    async fn organisation_stats(
+        &self,
+        from: OffsetDateTime,
+        to: OffsetDateTime,
+        organisation_id: OrganisationId,
+    ) -> Result<OrganisationStats, DataLayerError>;
+
+    async fn system_stats(
+        &self,
+        from: OffsetDateTime,
+        to: OffsetDateTime,
+        organisation_count: usize,
+    ) -> Result<SystemStats, DataLayerError>;
 }

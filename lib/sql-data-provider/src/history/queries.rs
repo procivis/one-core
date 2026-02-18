@@ -1,18 +1,24 @@
 use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{
-    ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
+    Alias, ColumnRef, Condition, Expr, Func, IntoColumnRef, IntoCondition, IntoIden, IntoTableRef,
+    Query, SelectStatement, SimpleExpr,
 };
 use sea_orm::{
-    ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QuerySelect, QueryTrait,
-    RelationTrait,
+    ColumnTrait, DbBackend, EntityTrait, IntoSimpleExpr, JoinType, Order, QueryFilter, QuerySelect,
+    QueryTrait, RelationTrait,
 };
+use shared_types::OrganisationId;
+use time::OffsetDateTime;
 
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, did, history, identifier, proof,
     proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
 };
+use crate::history::mapper::{ceil, floor};
+use crate::history::model::TimeResolution;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition,
@@ -418,4 +424,97 @@ fn search_all_condition(search_text: String) -> Condition {
     .fold(Condition::any(), |cond, entry| {
         cond.add(search_query_filter(search_text.to_owned(), entry))
     })
+}
+
+pub(super) struct CountOperationsQuery(pub SelectStatement);
+pub(super) fn count_operations_query(
+    to_exclusive: OffsetDateTime,
+    organisation_id: OrganisationId,
+    entity_type: history::HistoryEntityType,
+    action: &[history::HistoryAction],
+) -> CountOperationsQuery {
+    CountOperationsQuery(
+        Query::select()
+            .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
+            .from(history::Entity)
+            // the operations time cutoff is exclusive because the timelines query is inclusive
+            .and_where(Expr::col(history::Column::CreatedDate).lt(to_exclusive))
+            .and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id))
+            .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
+            .and_where(Expr::col(history::Column::Action).is_in(action))
+            .to_owned(),
+    )
+}
+
+pub(super) fn org_timelines_query(
+    from: OffsetDateTime,
+    to: OffsetDateTime,
+    organisation_id: OrganisationId,
+    db_backend: &DbBackend,
+) -> Result<SelectStatement, DataLayerError> {
+    let resolution = TimeResolution::new(from, to);
+    let rounded_date = Alias::new("timestamp");
+    let query = Query::select()
+        .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
+        .expr_as(
+            resolution.floored_time_format_expr("created_date", db_backend)?,
+            rounded_date.clone(),
+        )
+        .columns([history::Column::EntityType, history::Column::Action])
+        .from(history::Entity)
+        // Align to bucket windows to selected resolution (lower inclusive, upper exclusive)
+        // otherwise first and last bucket will have missing values.
+        .and_where(Expr::col(history::Column::CreatedDate).gte(floor(from, resolution)?))
+        .and_where(Expr::col(history::Column::CreatedDate).lt(ceil(to, resolution)?))
+        .and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id))
+        .and_where(
+            Expr::col(history::Column::EntityType)
+                .eq(history::HistoryEntityType::Credential)
+                .and(Expr::col(history::Column::Action).is_in([
+                    history::HistoryAction::Offered,
+                    history::HistoryAction::Issued,
+                    history::HistoryAction::Rejected,
+                    history::HistoryAction::Suspended,
+                    history::HistoryAction::Reactivated,
+                    history::HistoryAction::Revoked,
+                    history::HistoryAction::Errored,
+                ]))
+                .or(Expr::col(history::Column::EntityType)
+                    .eq(history::HistoryEntityType::Proof)
+                    .and(Expr::col(history::Column::Action).is_in([
+                        history::HistoryAction::Pending,
+                        history::HistoryAction::Accepted,
+                        history::HistoryAction::Rejected,
+                        history::HistoryAction::Errored,
+                    ]))),
+        )
+        .group_by_columns([
+            rounded_date.clone().into_column_ref(),
+            history::Column::EntityType.into_column_ref(),
+            history::Column::Action.into_column_ref(),
+        ])
+        .order_by(rounded_date, Order::Asc)
+        .to_owned();
+    Ok(query)
+}
+
+impl TimeResolution {
+    fn floored_time_format_expr(
+        &self,
+        col: &str,
+        db_backend: &DbBackend,
+    ) -> Result<SimpleExpr, DataLayerError> {
+        let format = match self {
+            TimeResolution::Hour => "%Y-%m-%dT%H:00:00Z",
+            TimeResolution::Day => "%Y-%m-%dT00:00:00Z",
+            TimeResolution::Month => "%Y-%m-01T00:00:00Z",
+            TimeResolution::Year => "%Y-01-01T00:00:00Z",
+        };
+        let expr = match db_backend {
+            DbBackend::MySql => Expr::cust(format!("DATE_FORMAT({col}, '{format}')")),
+            DbBackend::Sqlite => Expr::cust(format!("strftime('{format}', {col})")),
+            DbBackend::Postgres => return Err(DataLayerError::UnsupportedDbBackend),
+        };
+        Ok(expr)
+    }
 }

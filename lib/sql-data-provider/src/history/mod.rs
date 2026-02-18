@@ -4,6 +4,8 @@ pub mod mapper;
 pub mod queries;
 pub mod repository;
 
+mod model;
+
 pub(crate) struct HistoryProvider {
     pub db: TransactionManagerImpl,
 }

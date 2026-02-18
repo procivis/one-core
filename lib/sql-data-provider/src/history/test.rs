@@ -1,19 +1,22 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
-    HistoryListQuery, HistorySearchEnum, HistorySource,
+    HistoryListQuery, HistorySearchEnum, HistorySource, OrganisationStats, TimeSeriesPoint,
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use shared_types::{
     ClaimId, CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::credential_schema::KeyStorageSecurity;
+use crate::entity::history;
 use crate::entity::key_did::KeyRole;
 use crate::history::HistoryProvider;
 use crate::test_utilities::*;
@@ -767,4 +770,320 @@ async fn test_get_history_list_search_all_query() {
         2, /* create credential, proof */
         search_for_claim_schema_name,
     );
+}
+
+#[tokio::test]
+async fn test_history_org_stats_empty_hourly() {
+    let TestSetup {
+        provider,
+        organisation,
+        ..
+    } = setup_empty().await;
+
+    let from = OffsetDateTime::now_utc();
+    let to = from + Duration::days(1);
+    let result = provider
+        .organisation_stats(from, to, organisation.id)
+        .await
+        .unwrap();
+
+    // Start and end bucket with the same daily hour
+    assert_zeroes(&result, 25);
+}
+
+#[tokio::test]
+async fn test_history_org_stats_empty_daily() {
+    let TestSetup {
+        provider,
+        organisation,
+        ..
+    } = setup_empty().await;
+
+    let from = OffsetDateTime::now_utc();
+    let to = from + Duration::days(30);
+    let result = provider
+        .organisation_stats(from, to, organisation.id)
+        .await
+        .unwrap();
+
+    // Start and end bucket with the same day
+    assert_zeroes(&result, 31);
+}
+
+#[tokio::test]
+async fn test_history_org_stats_empty_monthly() {
+    let TestSetup {
+        provider,
+        organisation,
+        ..
+    } = setup_empty().await;
+
+    let from = OffsetDateTime::now_utc();
+    let to = from + Duration::days(365);
+    let result = provider
+        .organisation_stats(from, to, organisation.id)
+        .await
+        .unwrap();
+
+    // Start and end bucket with the same month
+    assert_zeroes(&result, 13);
+}
+
+#[tokio::test]
+async fn test_history_org_stats_empty_yearly() {
+    let TestSetup {
+        provider,
+        organisation,
+        ..
+    } = setup_empty().await;
+
+    let from = OffsetDateTime::now_utc();
+    let to = from + Duration::days(2 * 365);
+    let result = provider
+        .organisation_stats(from, to, organisation.id)
+        .await
+        .unwrap();
+
+    // Start and end spans 3 years
+    assert_zeroes(&result, 3);
+}
+
+#[tokio::test]
+async fn test_history_org_stats_ignore_irrelevant() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+    } = setup_empty().await;
+    let org2_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+
+    let org_id = organisation.id;
+    let now = OffsetDateTime::now_utc();
+
+    // Irrelevant: wrong action
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Created,
+        org_id,
+        now,
+    )
+    .await;
+    // Irrelevant: wrong entity
+    add_history(
+        &db,
+        HistoryEntityType::TrustEntity,
+        HistoryAction::Accepted,
+        org_id,
+        now,
+    )
+    .await;
+    // Irrelevant: wrong org
+    add_history(
+        &db,
+        HistoryEntityType::TrustEntity,
+        HistoryAction::Accepted,
+        org2_id,
+        now,
+    )
+    .await;
+    // Irrelevant: too far into the future
+    add_history(
+        &db,
+        HistoryEntityType::TrustEntity,
+        HistoryAction::Accepted,
+        org_id,
+        now + Duration::days(2),
+    )
+    .await;
+
+    let from = now - Duration::days(1);
+    let to = now + Duration::days(1);
+    let result = provider.organisation_stats(from, to, org_id).await.unwrap();
+    assert_zeroes(&result, 3);
+}
+
+#[tokio::test]
+async fn test_history_org_stats_dummy_data() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+    } = setup_empty().await;
+    let org_id = organisation.id;
+    let now = OffsetDateTime::now_utc();
+
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Offered,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Rejected,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Suspended,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Reactivated,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Revoked,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Errored,
+        org_id,
+        now,
+    )
+    .await;
+
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Pending,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Accepted,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Rejected,
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Proof,
+        HistoryAction::Errored,
+        org_id,
+        now,
+    )
+    .await;
+
+    let from = now - Duration::days(1);
+    let to = now + Duration::days(1);
+    let result = provider.organisation_stats(from, to, org_id).await.unwrap();
+    assert_eq!(result.to.issuance_count, 1);
+    assert_eq!(result.to.verification_count, 1);
+    assert_eq!(result.to.credential_lifecycle_operation_count, 7);
+    assert_eq!(result.from.issuance_count, 0);
+    assert_eq!(result.from.verification_count, 0);
+    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
+
+    // Every operation exactly once in the middle of a three-day spanning stats window
+    assert_timelines(&result, &[0, 1, 0]);
+}
+
+async fn add_history(
+    database: &DatabaseConnection,
+    entity_type: HistoryEntityType,
+    action: HistoryAction,
+    organisation_id: OrganisationId,
+    created_date: OffsetDateTime,
+) {
+    let id = Uuid::new_v4();
+    history::ActiveModel {
+        id: Set(id.into()),
+        created_date: Set(created_date),
+        action: Set(action.into()),
+        name: Set(id.into()),
+        entity_id: Set(None),
+        entity_type: Set(entity_type.into()),
+        metadata: Set(None),
+        organisation_id: Set(Some(organisation_id)),
+        source: Set(history::HistorySource::Core),
+        target: Set(None),
+        user: Set(None),
+    }
+    .insert(database)
+    .await
+    .unwrap();
+}
+
+fn assert_zeroes(result: &OrganisationStats, expected_len: usize) {
+    assert_eq!(result.to.issuance_count, 0);
+    assert_eq!(result.to.verification_count, 0);
+    assert_eq!(result.to.credential_lifecycle_operation_count, 0);
+    assert_eq!(result.from.issuance_count, 0);
+    assert_eq!(result.from.verification_count, 0);
+    assert_eq!(result.from.credential_lifecycle_operation_count, 0);
+    assert_zeroes_series(&result.timelines.issuer.offered, expected_len);
+    assert_zeroes_series(&result.timelines.issuer.issued, expected_len);
+    assert_zeroes_series(&result.timelines.issuer.rejected, expected_len);
+    assert_zeroes_series(&result.timelines.issuer.suspended, expected_len);
+    assert_zeroes_series(&result.timelines.issuer.reactivated, expected_len);
+    assert_zeroes_series(&result.timelines.issuer.rejected, expected_len);
+    assert_zeroes_series(&result.timelines.issuer.error, expected_len);
+    assert_zeroes_series(&result.timelines.verifier.pending, expected_len);
+    assert_zeroes_series(&result.timelines.verifier.accepted, expected_len);
+    assert_zeroes_series(&result.timelines.verifier.rejected, expected_len);
+    assert_zeroes_series(&result.timelines.verifier.error, expected_len);
+}
+
+fn assert_zeroes_series(data: &[TimeSeriesPoint], expected_len: usize) {
+    assert_eq!(data.len(), expected_len);
+    assert!(data.iter().all(|bucket| bucket.count == 0))
+}
+
+fn assert_timelines(result: &OrganisationStats, expected: &[usize]) {
+    assert_counts(&result.timelines.issuer.offered, expected);
+    assert_counts(&result.timelines.issuer.issued, expected);
+    assert_counts(&result.timelines.issuer.rejected, expected);
+    assert_counts(&result.timelines.issuer.suspended, expected);
+    assert_counts(&result.timelines.issuer.reactivated, expected);
+    assert_counts(&result.timelines.issuer.rejected, expected);
+    assert_counts(&result.timelines.issuer.error, expected);
+    assert_counts(&result.timelines.verifier.pending, expected);
+    assert_counts(&result.timelines.verifier.accepted, expected);
+    assert_counts(&result.timelines.verifier.rejected, expected);
+    assert_counts(&result.timelines.verifier.error, expected);
+}
+
+fn assert_counts(actual: &[TimeSeriesPoint], expected: &[usize]) {
+    assert_eq!(actual.iter().map(|p| p.count).collect::<Vec<_>>(), expected);
 }

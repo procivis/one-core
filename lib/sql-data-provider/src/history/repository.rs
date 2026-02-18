@@ -1,17 +1,23 @@
 use autometrics::autometrics;
 use one_core::model::history::{
-    GetHistoryList, History, HistoryAction, HistoryListQuery, HistoryMetadata,
+    GetHistoryList, History, HistoryAction, HistoryListQuery, HistoryMetadata, OrganisationStats,
+    OrganisationSummaryStats, SystemStats,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, PaginatorTrait,
+    QueryFilter, QueryOrder,
 };
-use shared_types::{EntityId, HistoryId};
+use shared_types::{EntityId, HistoryId, OrganisationId};
+use time::OffsetDateTime;
 
-use super::mapper::create_list_response;
+use super::mapper::{create_list_response, map_to_stats};
 use crate::entity::history;
+use crate::entity::history::HistoryEntityType;
 use crate::history::HistoryProvider;
+use crate::history::model::TimeSeriesRow;
+use crate::history::queries::{CountOperationsQuery, count_operations_query, org_timelines_query};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
 
@@ -79,5 +85,81 @@ impl HistoryRepository for HistoryProvider {
             .map_err(to_data_layer_error)?
             .map(TryInto::try_into)
             .transpose()
+    }
+
+    async fn organisation_stats(
+        &self,
+        from: OffsetDateTime,
+        to: OffsetDateTime,
+        organisation_id: OrganisationId,
+    ) -> Result<OrganisationStats, DataLayerError> {
+        let db_backend = self.db.get_database_backend();
+        let issuance_count_query = count_operations_query(
+            from,
+            organisation_id,
+            HistoryEntityType::Credential,
+            &[history::HistoryAction::Issued],
+        );
+        let verification_count_query = count_operations_query(
+            from,
+            organisation_id,
+            HistoryEntityType::Proof,
+            &[history::HistoryAction::Accepted],
+        );
+        let credential_lifecycle_count_query = count_operations_query(
+            from,
+            organisation_id,
+            HistoryEntityType::Credential,
+            &[
+                history::HistoryAction::Offered,
+                history::HistoryAction::Issued,
+                history::HistoryAction::Rejected,
+                history::HistoryAction::Suspended,
+                history::HistoryAction::Reactivated,
+                history::HistoryAction::Revoked,
+                history::HistoryAction::Errored,
+            ],
+        );
+        let timelines_query = org_timelines_query(from, to, organisation_id, &db_backend)?;
+        let (issuance_count, verification_count, credential_lifecycle_count, timelines) = tokio::join!(
+            self.count(&issuance_count_query),
+            self.count(&verification_count_query),
+            self.count(&credential_lifecycle_count_query),
+            TimeSeriesRow::find_by_statement(db_backend.build(&timelines_query)).all(&self.db)
+        );
+        let summary_stats = OrganisationSummaryStats {
+            issuance_count: issuance_count?,
+            verification_count: verification_count?,
+            credential_lifecycle_operation_count: credential_lifecycle_count?,
+        };
+        map_to_stats(
+            &timelines.map_err(|err| DataLayerError::Db(err.into()))?,
+            summary_stats,
+            from,
+            to,
+        )
+    }
+
+    async fn system_stats(
+        &self,
+        _from: OffsetDateTime,
+        _to: OffsetDateTime,
+        _organisation_count: usize,
+    ) -> Result<SystemStats, DataLayerError> {
+        todo!()
+    }
+}
+
+impl HistoryProvider {
+    async fn count(&self, stmt: &CountOperationsQuery) -> Result<usize, DataLayerError> {
+        let result = self
+            .db
+            .query_one(self.db.get_database_backend().build(&stmt.0))
+            .await
+            .map_err(|err| DataLayerError::Db(err.into()))?
+            .ok_or(DataLayerError::MappingError)?;
+        Ok(result
+            .try_get::<u32>("", "count")
+            .map_err(|err| DataLayerError::Db(err.into()))? as usize)
     }
 }
