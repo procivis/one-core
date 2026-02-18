@@ -17,10 +17,11 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    Feature, FormattedCredentialPresentation, InvitationResponseDTO,
+    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionVersion, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
     OpenID4VC20PresentationVerifierParams, OpenID4VP20AuthorizationRequest,
@@ -52,6 +53,9 @@ pub(crate) struct OpenID4Vp20SwiyuParams {
     pub redirect_uri: OpenID4VCRedirectUriParams,
     #[serde(default)]
     pub verifier: Option<OpenID4Vp20SwiyuPresentationVerifierParams>,
+
+    #[serde(flatten)]
+    pub common: CommonParams,
 }
 
 #[serde_as]
@@ -93,6 +97,7 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
                 },
                 ..Default::default()
             }),
+            common: value.common,
         }
     }
 }
@@ -133,7 +138,19 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
+        let mut features = vec![];
+
+        if self
+            .inner
+            .get_capabilities()
+            .features
+            .contains(&Feature::SupportsWebhooks)
+        {
+            features.push(Feature::SupportsWebhooks);
+        }
+
         VerificationProtocolCapabilities {
+            features,
             supported_transports: vec![TransportType::Http],
             did_methods: vec![DidType::WebVh],
             verifier_identifier_types: vec![IdentifierType::Did],

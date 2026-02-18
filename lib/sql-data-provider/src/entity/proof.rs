@@ -24,6 +24,7 @@ pub struct Model {
     pub profile: Option<String>,
     pub proof_blob_id: Option<BlobId>,
     pub engagement: Option<String>,
+    pub webhook_url: Option<String>,
 
     pub verifier_identifier_id: Option<IdentifierId>,
     pub proof_schema_id: Option<ProofSchemaId>,

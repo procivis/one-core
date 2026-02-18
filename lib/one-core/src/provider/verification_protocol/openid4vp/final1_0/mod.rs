@@ -38,9 +38,10 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Hando
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
-    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    Feature, FormattedCredentialPresentation, InvitationResponseDTO,
+    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionVersion, PresentationReference, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -345,6 +346,11 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh];
         let mut verifier_identifier_types = HashSet::new();
         let schemes = &self.params.verifier.supported_client_id_schemes;
+        let mut features = vec![];
+
+        if self.params.common.webhook_task.is_some() {
+            features.push(Feature::SupportsWebhooks);
+        }
 
         if [
             ClientIdScheme::Did,
@@ -364,6 +370,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         }
 
         VerificationProtocolCapabilities {
+            features,
             supported_transports: vec![TransportType::Http],
             did_methods,
             verifier_identifier_types: verifier_identifier_types.into_iter().collect(),

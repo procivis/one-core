@@ -38,6 +38,7 @@ pub struct CredentialListItemResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub protocol: String,
     pub profile: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -71,6 +72,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub profile: Option<String>,
     pub wallet_instance_attestation: Option<WalletInstanceAttestationDTO>,
     pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -194,6 +196,7 @@ pub struct CreateCredentialRequestDTO {
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,
     pub profile: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug)]

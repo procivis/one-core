@@ -711,6 +711,68 @@ async fn test_create_proof_success_with_profile() {
 }
 
 #[tokio::test]
+async fn test_create_proof_success_with_webhook_url() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let webhook_url = "https://testing.url";
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            webhook_destination_url: Some(webhook_url),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp: Value = resp.json().await;
+
+    assert!(resp.get("id").is_some());
+
+    let proof = context.db.proofs.get(&resp["id"].parse()).await;
+    assert_eq!(proof.webhook_url.unwrap(), webhook_url);
+}
+
+#[tokio::test]
 async fn test_create_proof_fails_with_engagement_on_non_iso_mdl_protocol() {
     // GIVEN
     let (context, organisation, did, ..) = TestContext::new_with_did(None).await;

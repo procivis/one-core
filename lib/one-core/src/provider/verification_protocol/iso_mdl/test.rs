@@ -182,6 +182,7 @@ async fn test_presentation_reject_ok() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
 
     let result = provider.holder_reject_proof(&proof).await;
@@ -258,6 +259,7 @@ async fn test_get_presentation_definition_ok() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
 
     let credential_id = Uuid::new_v4().into();
@@ -435,6 +437,7 @@ async fn test_get_presentation_definition_ok() {
                 credential_blob_id: None,
                 wallet_unit_attestation_blob_id: None,
                 wallet_instance_attestation_blob_id: None,
+                webhook_url: None,
             }])
         });
 

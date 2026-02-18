@@ -75,6 +75,7 @@ use crate::service::error::{
 use crate::service::proof::dto::ProposeProofRequestDTO;
 use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
+    validate_webhook_url,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -317,6 +318,12 @@ impl ProofService {
             &request.protocol,
             request.redirect_uri.as_deref(),
             &self.config.verification_protocol,
+        )?;
+        validate_webhook_url(
+            request.webhook_destination_url.as_ref(),
+            &request.protocol,
+            &self.config,
+            self.notification_scheduler.as_ref(),
         )?;
 
         let now = OffsetDateTime::now_utc();
@@ -925,6 +932,7 @@ impl ProofService {
                 interaction: Some(interaction.clone()),
                 proof_blob_id: None,
                 engagement: None,
+                webhook_url: None,
             })
             .await
             .error_while("creating proof")?;

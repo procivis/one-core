@@ -192,8 +192,9 @@ impl BackupRepository for BackupProvider {
                 credential::Column::SuspendEndDate,
                 credential::Column::CreatedDate,
                 credential::Column::CredentialBlobId,
+                credential::Column::Protocol,
+                credential::Column::WebhookUrl,
             ])
-            .column_as(credential::Column::Protocol, "protocol")
             .column_as(credential_schema::Column::Id, "credential_schema_id")
             .column_as(
                 credential_schema::Column::DeletedAt,

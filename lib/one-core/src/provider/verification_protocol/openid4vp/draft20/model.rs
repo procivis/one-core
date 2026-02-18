@@ -10,6 +10,7 @@ use url::Url;
 use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::proto::jwt::{Jwt, TokenError};
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::AuthenticationFn;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -40,6 +41,9 @@ pub(crate) struct OpenID4Vp20Params {
     // Required to handle SWIYU verification requests that have invalid client_metadata.
     // Remove when the SWIYU provider is removed.
     pub predefined_client_metadata: Option<OpenID4VPDraftClientMetadata>,
+
+    #[serde(flatten)]
+    pub common: CommonParams,
 }
 
 #[serde_as]

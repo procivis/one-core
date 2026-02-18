@@ -57,6 +57,7 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     /// Profile associated with this credential
     #[from(with_fn = convert_inner)]
     pub profile: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -150,6 +151,7 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// credential was issued, a requirement for the issuance of certain
     /// credentials such as EU PIDs.
     pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
@@ -409,6 +411,8 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     pub redirect_uri: Option<String>,
     /// Optional profile to associate with this credential
     pub profile: Option<String>,
+    /// If set, notifications about state changes of the credential will be posted on this webhook URL
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

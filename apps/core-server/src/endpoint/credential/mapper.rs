@@ -210,6 +210,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             profile: value.profile,
             wallet_instance_attestation: convert_inner(value.wallet_instance_attestation),
             wallet_unit_attestation: convert_inner(value.wallet_unit_attestation),
+            webhook_destination_url: value.webhook_destination_url,
         })
     }
 }

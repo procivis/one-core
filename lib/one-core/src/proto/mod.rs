@@ -13,6 +13,7 @@ pub mod jwt;
 pub mod key_verification;
 pub mod mqtt_client;
 pub mod nfc;
+pub(crate) mod notification_decorator;
 pub(crate) mod notification_scheduler;
 pub(crate) mod oauth_client;
 pub(crate) mod openid4vp_proof_validator;

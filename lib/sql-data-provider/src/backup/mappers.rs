@@ -93,6 +93,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
+            webhook_url: value.webhook_url,
         })
     }
 }

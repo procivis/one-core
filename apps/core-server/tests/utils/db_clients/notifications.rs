@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use one_core::model::notification::Notification;
+use one_core::model::list_filter::ListFilterValue;
+use one_core::model::notification::{Notification, NotificationFilterValue, NotificationListQuery};
 use one_core::repository::notification_repository::NotificationRepository;
 use shared_types::{NotificationId, OrganisationId, TaskId};
 use time::OffsetDateTime;
@@ -54,5 +55,16 @@ impl NotificationsDB {
 
     pub async fn get(&self, id: impl Into<NotificationId>) -> Option<Notification> {
         self.repository.get(&id.into(), None).await.unwrap()
+    }
+
+    pub async fn list(&self, r#type: impl Into<TaskId>) -> Vec<Notification> {
+        self.repository
+            .list(NotificationListQuery {
+                filtering: Some(NotificationFilterValue::Types(vec![r#type.into()]).condition()),
+                ..Default::default()
+            })
+            .await
+            .unwrap()
+            .values
     }
 }

@@ -395,6 +395,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 
@@ -476,6 +477,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 

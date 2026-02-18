@@ -46,6 +46,8 @@ pub struct Model {
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
+
+    pub webhook_url: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

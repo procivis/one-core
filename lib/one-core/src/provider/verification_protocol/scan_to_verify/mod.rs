@@ -176,6 +176,7 @@ impl VerificationProtocol for ScanToVerify {
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
         VerificationProtocolCapabilities {
+            features: vec![],
             supported_transports: vec![TransportType::Http],
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh],
             verifier_identifier_types: vec![IdentifierType::Did],

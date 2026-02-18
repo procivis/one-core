@@ -71,6 +71,7 @@ pub(crate) fn proof_from_handle_invitation(
         verifier_certificate: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 

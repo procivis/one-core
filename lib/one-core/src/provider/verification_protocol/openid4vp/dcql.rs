@@ -397,6 +397,7 @@ fn map_to_filtered_dto(
         profile: full_dto.profile,
         wallet_instance_attestation: None,
         wallet_unit_attestation: None,
+        webhook_destination_url: full_dto.webhook_destination_url,
     }
 }
 

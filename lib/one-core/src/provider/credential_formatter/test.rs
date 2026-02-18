@@ -64,6 +64,7 @@ fn generate_credential_detail_response(
         profile: None,
         wallet_instance_attestation: None,
         wallet_unit_attestation: None,
+        webhook_destination_url: None,
     }
 }
 
@@ -161,6 +162,7 @@ fn generate_credential_matching_detail(
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 

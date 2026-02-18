@@ -5,6 +5,7 @@ use standardized_types::openid4vp::ResponseMode;
 use time::Duration;
 use url::Url;
 
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
@@ -25,6 +26,9 @@ pub(crate) struct OpenID4Vp25Params {
     pub holder: OpenID4VCPresentationHolderParams,
     pub verifier: OpenID4VC25PresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
+
+    #[serde(flatten)]
+    pub common: CommonParams,
 }
 
 #[serde_as]

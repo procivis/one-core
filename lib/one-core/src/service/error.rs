@@ -617,6 +617,9 @@ pub enum ValidationError {
 
     #[error("Invalid transaction code description length")]
     InvalidTransactionCodeDescriptionLength,
+
+    #[error("Notifications not allowed for protocol: `{protocol}`")]
+    NotificationsNotAllowed { protocol: String },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -867,6 +870,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::TransactionCodeNotSupported => ErrorCode::BR_0337,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
             Self::InvalidTransactionCodeDescriptionLength => ErrorCode::BR_0346,
+            Self::NotificationsNotAllowed { .. } => ErrorCode::BR_0372,
         }
     }
 }

@@ -109,6 +109,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
+            webhook_url: None,
         }],
         keys: vec![dummy_key()],
         dids: vec![dummy_did()],

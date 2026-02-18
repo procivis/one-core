@@ -33,6 +33,7 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::repository::error::DataLayerError;
+use crate::service::credential::validator::validate_webhook_url;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -185,6 +186,12 @@ impl CredentialService {
             &request.protocol,
             request.redirect_uri.as_deref(),
             &self.config,
+        )?;
+        validate_webhook_url(
+            request.webhook_destination_url.as_ref(),
+            &request.protocol,
+            &self.config,
+            self.notification_scheduler.as_ref(),
         )?;
 
         let credential_id = Uuid::new_v4().into();

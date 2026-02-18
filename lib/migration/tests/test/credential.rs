@@ -27,6 +27,7 @@ async fn test_db_schema_credential() {
             "credential_blob_id",
             "wallet_unit_attestation_blob_id",
             "wallet_instance_attestation_blob_id",
+            "webhook_url",
         ])
         .index("index-Credential-CreatedDate", false, &["created_date"])
         .index("index-Credential-Role", false, &["role"])
@@ -146,6 +147,10 @@ async fn test_db_schema_credential() {
             "blob_storage",
             "id",
         );
+    credential
+        .column("webhook_url")
+        .r#type(ColumnType::Text)
+        .nullable(true);
 }
 
 #[tokio::test]

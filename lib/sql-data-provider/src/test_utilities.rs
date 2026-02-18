@@ -87,6 +87,7 @@ pub async fn insert_credential(
         credential_blob_id: Set(Some(credential_blob_id)),
         wallet_unit_attestation_blob_id: Set(None),
         wallet_instance_attestation_blob_id: Set(None),
+        webhook_url: Set(None),
     }
     .insert(db)
     .await?;
@@ -239,6 +240,7 @@ pub async fn insert_proof_request_to_database(
         profile: Set(None),
         proof_blob_id: Set(proof_blob_id),
         engagement: Set(engagement),
+        webhook_url: Set(None),
     }
     .insert(database)
     .await?;

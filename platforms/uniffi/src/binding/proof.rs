@@ -12,10 +12,9 @@ use one_core::provider::verification_protocol::dto::{
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
-    CreateProofRequestDTO, GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO,
-    ProposeProofRequestDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
-    ScanToVerifyRequestDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
-    ShareProofResponseDTO,
+    GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO, ProposeProofRequestDTO,
+    ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
+    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
 };
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
@@ -36,7 +35,7 @@ use super::mapper::{optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofRequestClaimBindingDTO};
 use crate::OneCoreBinding;
 use crate::error::BindingError;
-use crate::utils::{TimestampFormat, into_id, into_id_opt};
+use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -196,32 +195,19 @@ impl OneCoreBinding {
 /// configuration. `iso_mdl_engagement` accepts either QR code content
 /// (for QR device engagement) or NFC engagement parameters from
 /// `nfc_read_iso_mdl_engagement`.
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = CreateProofRequestDTO, Error = ServiceError)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct CreateProofRequestBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
     pub proof_schema_id: String,
-    #[try_into(with_fn = into_id_opt)]
     pub verifier_did_id: Option<String>,
-    #[try_into(with_fn = into_id_opt)]
     pub verifier_identifier_id: Option<String>,
-    #[try_into(infallible)]
     pub protocol: String,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub redirect_uri: Option<String>,
-    #[try_into(with_fn = into_id_opt)]
     pub verifier_key: Option<String>,
-    #[try_into(with_fn = into_id_opt)]
     pub verifier_certificate: Option<String>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub scan_to_verify: Option<ScanToVerifyRequestBindingDTO>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub iso_mdl_engagement: Option<String>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub transport: Option<Vec<String>>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub profile: Option<String>,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub engagement: Option<String>,
 }
 

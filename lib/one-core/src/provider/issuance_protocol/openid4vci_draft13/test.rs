@@ -46,7 +46,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, OpenID4VCRedirectUriParams,
+    CommonParams, InvitationResponseEnum, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
     BuildCredentialSchemaResponse, MockHandleInvitationOperations,
@@ -128,6 +128,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         }),
         Arc::new(inputs.handle_invitation_operations),
     )
@@ -329,6 +330,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 
@@ -508,6 +510,7 @@ async fn test_generate_share_credentials_offer_by_value() {
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         }),
         ..Default::default()
     });
@@ -1390,6 +1393,7 @@ async fn test_holder_reject_credential() {
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         }),
         ..Default::default()
     });
@@ -2567,5 +2571,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIDraft13Params {
             allowed_schemes: vec!["https".to_string()],
         },
         enable_credential_preview: true,
+        common: CommonParams { webhook_task: None },
     }
 }

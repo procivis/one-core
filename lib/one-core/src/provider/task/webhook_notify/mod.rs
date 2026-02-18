@@ -6,7 +6,6 @@ use num_traits::pow;
 use serde_json::Value;
 use shared_types::{NotificationId, TaskId};
 use time::{Duration, OffsetDateTime};
-use url::Url;
 use uuid::Uuid;
 
 use self::dto::WebhookNotificationResultDTO;
@@ -276,8 +275,7 @@ impl WebhookNotify {
     }
 
     fn validate_url(&self, url: &str) -> Result<(), ServiceError> {
-        let url = Url::parse(url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-        Ok(validate_url(&url, &self.params).error_while("validating notification URL")?)
+        Ok(validate_url(url, &self.params).error_while("validating notification URL")?)
     }
 }
 

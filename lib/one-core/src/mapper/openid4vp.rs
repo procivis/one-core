@@ -68,6 +68,7 @@ pub(crate) async fn credential_from_proved(
         wallet_instance_attestation_blob_id: proved_credential
             .credential
             .wallet_instance_attestation_blob_id,
+        webhook_url: None,
     })
 }
 

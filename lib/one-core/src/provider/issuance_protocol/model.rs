@@ -1,7 +1,7 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, InteractionId, OrganisationId};
+use shared_types::{CredentialId, InteractionId, OrganisationId, TaskId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -23,6 +23,12 @@ pub(super) fn default_issuance_url_scheme() -> String {
 
 pub(super) fn default_enable_credential_preview() -> bool {
     true
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CommonParams {
+    pub webhook_task: Option<TaskId>,
 }
 
 #[derive(Clone, Debug)]

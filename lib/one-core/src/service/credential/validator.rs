@@ -8,10 +8,13 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::protocol::validate_protocol_type;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
+use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::issuance_protocol::model::CommonParams;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
@@ -148,6 +151,30 @@ pub(super) fn validate_redirect_uri(
     }
 
     Ok(())
+}
+
+pub(super) fn validate_webhook_url(
+    url: Option<&String>,
+    issuance_protocol: &str,
+    config: &CoreConfig,
+    notification_scheduler: &dyn NotificationScheduler,
+) -> Result<(), ServiceError> {
+    let Some(url) = url else {
+        return Ok(());
+    };
+
+    let params: CommonParams = config.issuance_protocol.get(issuance_protocol)?;
+
+    let Some(task_id) = params.webhook_task else {
+        return Err(ValidationError::NotificationsNotAllowed {
+            protocol: issuance_protocol.to_string(),
+        }
+        .into());
+    };
+
+    Ok(notification_scheduler
+        .validate_url(url, &task_id)
+        .error_while("validating webhook URL")?)
 }
 
 struct PathNode {

@@ -407,6 +407,7 @@ async fn test_submit_proof_succeeds() {
         .expect_get_capabilities()
         .times(1)
         .returning(|| VerificationProtocolCapabilities {
+            features: vec![],
             supported_transports: vec![TransportType::Http],
             did_methods: vec![core_config::DidType::Key],
             verifier_identifier_types: vec![core_config::IdentifierType::Did],
@@ -639,6 +640,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .expect_get_capabilities()
         .times(1)
         .returning(|| VerificationProtocolCapabilities {
+            features: vec![],
             supported_transports: vec![TransportType::Http],
             did_methods: vec![core_config::DidType::Key],
             verifier_identifier_types: vec![core_config::IdentifierType::Did],
@@ -884,6 +886,7 @@ async fn test_submit_proof_repeating_claims() {
         .expect_get_capabilities()
         .times(1)
         .returning(|| VerificationProtocolCapabilities {
+            features: vec![],
             supported_transports: vec![TransportType::Http],
             did_methods: vec![core_config::DidType::Key],
             verifier_identifier_types: vec![core_config::IdentifierType::Did],
@@ -1682,6 +1685,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         credential_blob_id: Some(Uuid::new_v4().into()),
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 

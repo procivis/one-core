@@ -8,16 +8,19 @@ use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
 use crate::model::proof::ProofStateEnum::Requested;
 use crate::model::proof::{Proof, ProofRole};
 use crate::model::proof_schema::ProofSchema;
+use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp25Params;
 use crate::service::error::{
@@ -231,6 +234,30 @@ pub(super) fn validate_redirect_uri(
         }
     }
     Ok(())
+}
+
+pub(super) fn validate_webhook_url(
+    url: Option<&String>,
+    verification_protocol: &str,
+    config: &CoreConfig,
+    notification_scheduler: &dyn NotificationScheduler,
+) -> Result<(), ServiceError> {
+    let Some(url) = url else {
+        return Ok(());
+    };
+
+    let params: CommonParams = config.verification_protocol.get(verification_protocol)?;
+
+    let Some(task_id) = params.webhook_task else {
+        return Err(ValidationError::NotificationsNotAllowed {
+            protocol: verification_protocol.to_string(),
+        }
+        .into());
+    };
+
+    Ok(notification_scheduler
+        .validate_url(url, &task_id)
+        .error_while("validating webhook URL")?)
 }
 
 pub(super) fn validate_verification_key_storage_compatibility(

@@ -1,3 +1,4 @@
+use serde::Serialize;
 use shared_types::{BlobId, IdentifierId, InteractionId, ProofId};
 use strum::Display;
 use time::OffsetDateTime;
@@ -29,6 +30,7 @@ pub struct Proof {
     pub profile: Option<String>,
     pub proof_blob_id: Option<BlobId>,
     pub engagement: Option<String>,
+    pub webhook_url: Option<String>,
 
     // Relations
     pub schema: Option<ProofSchema>,
@@ -39,7 +41,8 @@ pub struct Proof {
     pub interaction: Option<Interaction>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Display)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ProofStateEnum {
     Created,
     Pending,

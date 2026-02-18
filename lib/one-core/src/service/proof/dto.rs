@@ -32,6 +32,7 @@ pub struct CreateProofRequestDTO {
     pub transport: Option<Vec<String>>,
     pub profile: Option<String>,
     pub engagement: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -74,6 +75,7 @@ pub struct ProofDetailResponseDTO {
     pub proof_inputs: Vec<ProofInputDTO>,
     pub claims_removed_at: Option<OffsetDateTime>,
     pub profile: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -92,6 +94,7 @@ pub struct ProofListItemResponseDTO {
     pub role: ProofRole,
     pub schema: Option<GetProofSchemaListItemDTO>,
     pub profile: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Clone, Debug)]

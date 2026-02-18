@@ -1,7 +1,7 @@
 use shared_types::{ClaimId, ClaimSchemaId, ProofId};
 use thiserror::Error;
 
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error)]
 pub enum DataLayerError {
@@ -16,12 +16,6 @@ pub enum DataLayerError {
 
     #[error("Response could not be mapped")]
     MappingError,
-
-    #[error("Database error: {0}")]
-    Db(#[from] anyhow::Error),
-
-    #[error("UUID error: {0}")]
-    UUIDError(#[from] uuid::Error),
 
     #[error("Missing required relation {relation} for {id}")]
     MissingRequiredRelation { relation: &'static str, id: String },
@@ -43,6 +37,15 @@ pub enum DataLayerError {
 
     #[error("Unsupported database backend")]
     UnsupportedDbBackend,
+
+    #[error("Database error: {0}")]
+    Db(#[from] anyhow::Error),
+
+    #[error("UUID error: {0}")]
+    UUIDError(#[from] uuid::Error),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for DataLayerError {
@@ -61,6 +64,7 @@ impl ErrorCodeMixin for DataLayerError {
             | Self::MissingClaimsSchemaForClaim(_, _)
             | Self::TransactionError(_)
             | Self::UnsupportedDbBackend => ErrorCode::BR_0000,
+            Self::Nested(nested) => nested.error_code(),
         }
     }
 }

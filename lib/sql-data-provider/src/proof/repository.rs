@@ -243,9 +243,10 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::Profile,
             proof::Column::ProofBlobId,
             proof::Column::Engagement,
+            proof::Column::WebhookUrl,
+            proof::Column::Protocol,
+            proof::Column::Transport,
         ])
-        .column_as(proof::Column::Protocol, "protocol")
-        .column_as(proof::Column::Transport, "transport")
         // add related verifierIdentifier
         .join(
             sea_orm::JoinType::LeftJoin,

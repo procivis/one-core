@@ -7,6 +7,16 @@ use shared_types::{CredentialId, HolderWalletUnitId};
 use time::Duration;
 use url::Url;
 
+use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
+use super::error::IssuanceProtocolError;
+use super::model::{
+    CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+};
+use super::openid4vci_draft13::OpenID4VCI13;
+use super::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperations;
+use super::openid4vci_draft13::model::OpenID4VCIDraft13Params;
+use super::{HolderBindingInput, IssuanceProtocol};
 use crate::config::core_config::DidType::WebVh;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::mapper::params::deserialize_encryption_key;
@@ -21,16 +31,7 @@ use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
-use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
-};
-use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
-use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperations;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
-use crate::provider::issuance_protocol::{HolderBindingInput, IssuanceProtocol};
+use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -55,6 +56,9 @@ pub(crate) struct OpenID4VCISwiyuParams {
     #[serde(deserialize_with = "deserialize_encryption_key")]
     pub encryption: SecretSlice<u8>,
     pub redirect_uri: OpenID4VCRedirectUriParams,
+
+    #[serde(flatten)]
+    pub common: CommonParams,
 }
 
 impl From<OpenID4VCISwiyuParams> for OpenID4VCIDraft13Params {
@@ -68,6 +72,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIDraft13Params {
             url_scheme: "swiyu".to_string(),
             redirect_uri: value.redirect_uri,
             enable_credential_preview: false,
+            common: value.common,
         }
     }
 }
@@ -215,8 +220,18 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
+        let mut features = vec![];
+        if self
+            .inner
+            .get_capabilities()
+            .features
+            .contains(&Features::SupportsWebhooks)
+        {
+            features.push(Features::SupportsWebhooks);
+        }
+
         IssuanceProtocolCapabilities {
-            features: vec![],
+            features,
             did_methods: vec![WebVh],
         }
     }

@@ -32,7 +32,7 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
+use crate::provider::issuance_protocol::model::{CommonParams, OpenID4VCRedirectUriParams};
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
@@ -198,6 +198,7 @@ async fn test_issuer_submit_succeeds() {
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         },
         Arc::new(MockHandleInvitationOperations::new()),
     );
@@ -344,6 +345,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         },
         Arc::new(MockHandleInvitationOperations::new()),
     );
@@ -479,6 +481,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         },
         Arc::new(MockHandleInvitationOperations::new()),
     );
@@ -577,6 +580,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
                 allowed_schemes: vec!["https".to_string()],
             },
             enable_credential_preview: true,
+            common: CommonParams { webhook_task: None },
         },
         Arc::new(MockHandleInvitationOperations::new()),
     );
@@ -717,6 +721,7 @@ fn dummy_credential() -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 

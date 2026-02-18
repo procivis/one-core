@@ -90,10 +90,17 @@ pub(crate) struct CredentialGroupItem {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct VerificationProtocolCapabilities {
+    pub features: Vec<Feature>,
     pub supported_transports: Vec<TransportType>,
     pub did_methods: Vec<DidType>,
     pub verifier_identifier_types: Vec<IdentifierType>,
     pub supported_presentation_definition: Vec<PresentationDefinitionVersion>,
+}
+
+#[derive(Debug, Serialize, Clone, Eq, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum Feature {
+    SupportsWebhooks,
 }
 
 #[derive(Debug, Copy, Clone, Display, EnumString, Serialize, AsRefStr, Eq, PartialEq)]

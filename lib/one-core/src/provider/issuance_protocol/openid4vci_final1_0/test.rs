@@ -43,7 +43,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, OpenID4VCRedirectUriParams,
+    CommonParams, InvitationResponseEnum, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -124,6 +124,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
@@ -291,6 +292,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 
@@ -372,6 +374,7 @@ async fn test_generate_share_credentials_offer_by_value() {
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         }),
         ..Default::default()
     });
@@ -1256,6 +1259,7 @@ async fn test_holder_reject_credential() {
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         }),
         ..Default::default()
     });
@@ -1691,5 +1695,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
         nonce: None,
         oauth_attestation_leeway: 60,
         key_attestation_leeway: 60,
+        common: CommonParams { webhook_task: None },
     }
 }

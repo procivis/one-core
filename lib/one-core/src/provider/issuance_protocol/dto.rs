@@ -13,6 +13,7 @@ pub(crate) struct IssuanceProtocolCapabilities {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum Features {
     SupportsRejection,
+    SupportsWebhooks,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

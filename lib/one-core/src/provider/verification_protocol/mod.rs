@@ -24,6 +24,7 @@ pub mod dto;
 pub mod error;
 pub mod iso_mdl;
 mod mapper;
+pub(crate) mod model;
 pub mod openid4vp;
 
 pub(crate) mod provider;

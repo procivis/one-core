@@ -1,8 +1,9 @@
+use std::borrow::Cow;
 use std::fmt::Display;
 
 use one_core::model::credential::CredentialListIncludeEntityTypeEnum;
 use serde_json::json;
-use shared_types::{CertificateId, CredentialId, DidId, IdentifierId, KeyId};
+use shared_types::{CredentialId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -55,35 +56,56 @@ impl<'a> Filters<'a> {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct CreateCredentialTestParams {
+    pub issuer: Option<Cow<'static, str>>,
+    pub issuer_did: Option<Cow<'static, str>>,
+    pub issuer_key: Option<Cow<'static, str>>,
+    pub issuer_certificate: Option<Cow<'static, str>>,
+    pub profile: Option<&'static str>,
+    pub webhook_destination_url: Option<&'static str>,
+}
+
 impl CredentialsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
     }
 
-    #[expect(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         credential_schema_id: impl Into<Uuid>,
         protocol: impl Into<String>,
-        issuer: impl Into<Option<IdentifierId>>,
         claims: serde_json::Value,
-        issuer_did: impl Into<Option<DidId>>,
-        issuer_key: impl Into<Option<KeyId>>,
-        issuer_certificate: impl Into<Option<CertificateId>>,
-        profile: Option<&str>,
+        params: CreateCredentialTestParams,
     ) -> Response {
         let mut body = json!({
           "credentialSchemaId": credential_schema_id.into(),
           "protocol": protocol.into(),
-          "issuer": issuer.into(),
-          "issuerDid": issuer_did.into(),
-          "issuerKey": issuer_key.into(),
-          "issuerCertificate": issuer_certificate.into(),
           "claimValues": claims
         });
 
-        if let Some(profile) = profile {
+        if let Some(issuer) = params.issuer {
+            body["issuer"] = issuer.into();
+        }
+
+        if let Some(issuer_did) = params.issuer_did {
+            body["issuerDid"] = issuer_did.into();
+        }
+
+        if let Some(issuer_key) = params.issuer_key {
+            body["issuerKey"] = issuer_key.into();
+        }
+
+        if let Some(issuer_certificate) = params.issuer_certificate {
+            body["issuerCertificate"] = issuer_certificate.into();
+        }
+
+        if let Some(profile) = params.profile {
             body["profile"] = profile.into();
+        }
+
+        if let Some(webhook_destination_url) = params.webhook_destination_url {
+            body["webhookDestinationUrl"] = webhook_destination_url.into();
         }
 
         self.client.post("/api/credential/v1", body).await

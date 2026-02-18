@@ -1,7 +1,7 @@
 mod certificate;
 mod credential;
 mod credential_schema;
-pub(crate) mod decorated_data_provider;
+pub(crate) mod decorator;
 mod did;
 mod identifier;
 mod key;

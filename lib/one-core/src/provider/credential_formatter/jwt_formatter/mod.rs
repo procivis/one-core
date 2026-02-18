@@ -447,6 +447,7 @@ impl CredentialFormatter for JWTFormatter {
             schema: Some(schema),
             interaction: None,
             key: None,
+            webhook_url: None,
         })
     }
 }

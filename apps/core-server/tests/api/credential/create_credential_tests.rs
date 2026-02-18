@@ -2,11 +2,12 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
-use shared_types::{CredentialId, KeyId};
+use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
+use crate::utils::api_clients::credentials::CreateCredentialTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
@@ -31,7 +32,6 @@ async fn test_create_credential_success() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -44,10 +44,10 @@ async fn test_create_credential_success() {
                     "path": "isOver18"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -98,7 +98,6 @@ async fn test_create_credential_with_array_success() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id_root_field.to_string(),
@@ -131,10 +130,10 @@ async fn test_create_credential_with_array_success() {
                     "path": "namespace/root_array/1/nested/1/field"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -231,7 +230,6 @@ async fn test_create_credential_success_with_nested_claims() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": street_claim_id.to_string(),
@@ -249,10 +247,10 @@ async fn test_create_credential_success_with_nested_claims() {
                     "path": "address/coordinates/y"
                 },
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -345,7 +343,6 @@ async fn test_create_credential_with_issuer_key() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -353,10 +350,11 @@ async fn test_create_credential_with_issuer_key() {
                     "path": "firstName"
                 }
             ]),
-            did.id,
-            Some(key3.id),
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                issuer_key: Some(key3.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -423,7 +421,6 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -431,10 +428,11 @@ async fn test_fail_to_create_credential_invalid_key_role() {
                     "path": "firstName"
                 }
             ]),
-            did.id,
-            Some(key.id),
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                issuer_key: Some(key.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -461,7 +459,6 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -469,10 +466,11 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                     "path": "firstName"
                 }
             ]),
-            did.id,
-            KeyId::from(Uuid::new_v4()),
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                issuer_key: Some(Uuid::new_v4().to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -530,7 +528,6 @@ async fn test_create_credential_with_certificate_identifier() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            identifier.id,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -538,10 +535,10 @@ async fn test_create_credential_with_certificate_identifier() {
                     "path": "firstName"
                 }
             ]),
-            None,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer: Some(identifier.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -620,7 +617,6 @@ async fn test_create_credential_with_certificate_selection() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            identifier.id,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -628,10 +624,11 @@ async fn test_create_credential_with_certificate_selection() {
                     "path": "firstName"
                 }
             ]),
-            None,
-            None,
-            Some(certificate.id),
-            None,
+            CreateCredentialTestParams {
+                issuer: Some(identifier.id.to_string().into()),
+                issuer_certificate: Some(certificate.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -693,7 +690,6 @@ async fn test_create_credential_with_invalid_certificate_id() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            identifier.id,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -701,10 +697,11 @@ async fn test_create_credential_with_invalid_certificate_id() {
                     "path": "firstName"
                 }
             ]),
-            None,
-            None,
-            Some(Uuid::new_v4().into()),
-            None,
+            CreateCredentialTestParams {
+                issuer: Some(identifier.id.to_string().into()),
+                issuer_certificate: Some(Uuid::new_v4().to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -762,7 +759,6 @@ async fn test_create_credential_fail_with_only_certificate_id() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -770,10 +766,10 @@ async fn test_create_credential_fail_with_only_certificate_id() {
                     "path": "firstName"
                 }
             ]),
-            None,
-            None,
-            Some(certificate.id),
-            None,
+            CreateCredentialTestParams {
+                issuer_certificate: Some(certificate.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -803,7 +799,6 @@ async fn test_create_credential_with_big_picture_success() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -811,10 +806,10 @@ async fn test_create_credential_with_big_picture_success() {
                     "path": "firstName"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -849,7 +844,6 @@ async fn test_create_credential_failed_specified_object_claim() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": object_claim_id.to_string(),
@@ -857,10 +851,10 @@ async fn test_create_credential_failed_specified_object_claim() {
                     "path": "address"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -888,7 +882,6 @@ async fn test_create_credential_boolean_value_wrong() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -901,10 +894,10 @@ async fn test_create_credential_boolean_value_wrong() {
                     "path": "isOver18"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -943,16 +936,15 @@ async fn test_fail_create_credential_with_empty_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
                 "value": "",
                 "path": "root"
             }]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -962,15 +954,14 @@ async fn test_fail_create_credential_with_empty_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
                 "path": "root"
             }]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1014,7 +1005,6 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": str_array_claim_id.to_string(),
@@ -1027,10 +1017,10 @@ async fn test_fail_create_credential_with_empty_array_value() {
                     "path": "root/str_array/1"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1040,7 +1030,6 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": str_array_claim_id.to_string(),
@@ -1052,10 +1041,10 @@ async fn test_fail_create_credential_with_empty_array_value() {
                     "path": "root/str_array/1"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
     // THEN
@@ -1115,7 +1104,6 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": name_claim_id.to_string(),
@@ -1123,10 +1111,10 @@ async fn test_fail_create_credential_with_empty_object_value() {
                     "path": "root/name"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1136,17 +1124,16 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": name_claim_id.to_string(),
                     "path": "root/name"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1156,7 +1143,6 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": nested_object_name_claim_id.to_string(),
@@ -1164,10 +1150,10 @@ async fn test_fail_create_credential_with_empty_object_value() {
                     "path": "root/nested/name"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1177,17 +1163,16 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": nested_object_name_claim_id.to_string(),
                     "path": "root/nested/name"
                 }
             ]),
-            did.id,
-            None,
-            None,
-            None,
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1226,7 +1211,6 @@ async fn test_create_credential_success_with_profile() {
         .create(
             credential_schema.id,
             "OPENID4VCI_DRAFT13",
-            None,
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -1239,10 +1223,11 @@ async fn test_create_credential_success_with_profile() {
                     "path": "isOver18"
                 }
             ]),
-            Some(did.id),
-            None,
-            None,
-            Some(test_profile),
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                profile: Some(test_profile),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1257,4 +1242,53 @@ async fn test_create_credential_success_with_profile() {
 
     // Verify the profile is correctly stored
     assert_eq!(credential.profile.as_ref().unwrap(), test_profile);
+}
+
+#[tokio::test]
+async fn test_create_credential_success_with_webhook_url() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].id;
+
+    let webhook_url = "https://webhook.url";
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_DRAFT13",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
+                    "path": "isOver18"
+                }
+            ]),
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                webhook_destination_url: Some(webhook_url),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(credential.webhook_url.unwrap(), webhook_url);
 }

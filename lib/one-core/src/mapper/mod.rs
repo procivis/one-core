@@ -207,6 +207,7 @@ pub(crate) fn extracted_credential_to_model(
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     })
 }
 

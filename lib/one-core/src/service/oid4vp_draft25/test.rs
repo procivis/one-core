@@ -140,6 +140,7 @@ async fn test_presentation_definition_success() {
                     profile: None,
                     proof_blob_id: None,
                     engagement: None,
+                    webhook_url: None,
                     schema: Some(ProofSchema {
                         id: Uuid::default().into(),
                         created_date: now,
@@ -648,6 +649,7 @@ async fn test_get_client_metadata_success() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         proof_repository

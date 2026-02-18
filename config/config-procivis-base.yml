@@ -120,6 +120,7 @@ issuanceProtocol:
     type: "OPENID4VCI_DRAFT13"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -134,6 +135,7 @@ issuanceProtocol:
     type: "OPENID4VCI_DRAFT13_SWIYU"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -146,6 +148,7 @@ issuanceProtocol:
     type: "OPENID4VCI_FINAL1"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
@@ -162,6 +165,7 @@ issuanceProtocol:
     type: "OPENID4VCI_FINAL1"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         urlScheme: "haip-vci"
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
@@ -178,6 +182,7 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT20"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
         urlScheme: openid4vp-draft20
         verifier:
@@ -198,6 +203,7 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT20"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
         urlScheme: mdoc-openid4vp
         verifier:
@@ -216,6 +222,7 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT20_SWIYU"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -227,6 +234,7 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT25"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
         urlScheme: openid4vp-draft25
         verifier:
@@ -248,6 +256,7 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT25"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
         urlScheme: openid4vp
         verifier:
@@ -279,6 +288,7 @@ verificationProtocol:
     type: "OPENID4VP_FINAL1"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
         verifier:
           interactionExpiresIn: 3600
@@ -310,6 +320,7 @@ verificationProtocol:
     type: "OPENID4VP_FINAL1"
     params:
       public:
+        webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
         urlScheme: haip-vp
         verifier:

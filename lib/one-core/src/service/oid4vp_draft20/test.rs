@@ -204,6 +204,7 @@ async fn test_presentation_definition_success() {
                     profile: None,
                     proof_blob_id: None,
                     engagement: None,
+                    webhook_url: None,
                 }))
             });
     }
@@ -467,6 +468,7 @@ async fn test_get_client_metadata_success() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         proof_repository
@@ -639,6 +641,7 @@ async fn test_get_client_metadata_success_no_encryption() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         proof_repository

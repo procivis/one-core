@@ -175,6 +175,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             interaction: None,
             proof_blob_id: value.proof_blob_id,
             engagement: value.engagement,
+            webhook_url: value.webhook_url,
         })
     }
 }
@@ -201,6 +202,7 @@ impl From<proof::Model> for Proof {
             verifier_key: None,
             verifier_certificate: None,
             interaction: None,
+            webhook_url: value.webhook_url,
         }
     }
 }
@@ -229,6 +231,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             profile: Set(value.profile),
             proof_blob_id: Set(value.proof_blob_id),
             engagement: Set(value.engagement),
+            webhook_url: Set(value.webhook_url),
         })
     }
 }

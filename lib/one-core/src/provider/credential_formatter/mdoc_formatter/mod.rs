@@ -536,6 +536,7 @@ impl CredentialFormatter for MdocFormatter {
             interaction: None,
             key: None,
             claims: Some(claims),
+            webhook_url: None,
         })
     }
 }

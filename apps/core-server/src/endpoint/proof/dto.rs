@@ -128,6 +128,8 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// engagement type.
     #[into(with_fn = convert_inner)]
     pub engagement: Option<String>,
+    /// If set, notifications about state changes of the proof will be posted on this webhook URL
+    pub webhook_destination_url: Option<String>,
 }
 
 /// Only for use when verifying VC Barcodes.
@@ -287,8 +289,8 @@ pub(crate) struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
     /// Profile associated with this proof request
-    #[from(with_fn = convert_inner)]
     pub profile: Option<String>,
+    pub webhook_destination_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -428,7 +430,7 @@ pub(crate) struct ProofDetailResponseRestDTO {
     #[try_from(with_fn = convert_inner, infallible)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 
-    #[try_from(with_fn = convert_inner, infallible)]
+    #[try_from(infallible)]
     pub redirect_uri: Option<String>,
 
     #[try_from(with_fn = try_convert_inner)]
@@ -439,8 +441,11 @@ pub(crate) struct ProofDetailResponseRestDTO {
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub claims_removed_at: Option<OffsetDateTime>,
 
-    #[try_from(with_fn = convert_inner, infallible)]
+    #[try_from(infallible)]
     pub profile: Option<String>,
+
+    #[try_from(infallible)]
+    pub webhook_destination_url: Option<String>,
 }
 
 #[options_not_nullable]

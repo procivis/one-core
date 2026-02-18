@@ -42,6 +42,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VC20PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -111,6 +112,7 @@ fn generic_params() -> OpenID4Vp20Params {
             allowed_schemes: vec!["https".to_string()],
         },
         predefined_client_metadata: None,
+        common: CommonParams { webhook_task: None },
     }
 }
 
@@ -418,6 +420,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 
@@ -1063,5 +1066,6 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
             allowed_schemes: vec!["https".to_string()],
         },
         predefined_client_metadata: None,
+        common: CommonParams { webhook_task: None },
     }
 }

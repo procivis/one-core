@@ -162,6 +162,7 @@ impl CredentialsDB {
             credential_blob_id: params.credential_blob_id,
             wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
+            webhook_url: params.webhook_url,
         };
 
         let id = self

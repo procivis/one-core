@@ -43,6 +43,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
     OpenID4VPClientMetadata, OpenID4VPHolderInteractionData,
@@ -105,6 +106,7 @@ fn generic_params() -> Params {
             enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
+        common: CommonParams { webhook_task: None },
     }
 }
 
@@ -201,6 +203,7 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 
@@ -283,6 +286,7 @@ fn test_holder_proof(
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 

@@ -35,7 +35,7 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
+use crate::provider::issuance_protocol::model::{CommonParams, OpenID4VCRedirectUriParams};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
@@ -202,6 +202,7 @@ async fn test_issuer_submit_succeeds() {
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
@@ -362,6 +363,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
@@ -501,6 +503,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
@@ -602,6 +605,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             nonce: None,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
+            common: CommonParams { webhook_task: None },
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
@@ -752,6 +756,7 @@ fn dummy_credential() -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 

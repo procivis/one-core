@@ -15,12 +15,14 @@ use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
-use crate::proto::history_decorator::decorated_data_provider::decorate_data_provider;
+use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
 use crate::proto::mqtt_client::rumqttc_client::RumqttcClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::scanner::NfcScanner;
+use crate::proto::notification_decorator::decorator::decorate_data_provider as decorate_notification;
+use crate::proto::notification_scheduler::NotificationSchedulerImpl;
 use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorProto;
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::SessionProvider;
@@ -171,10 +173,21 @@ impl OneCore {
         let crypto = initialize_crypto_provider();
 
         // data_provider variable gets replaced with the decorated variant, so that it cannot be misued later
-        let data_provider = decorate_data_provider(
+        let data_provider = decorate_history(
             data_provider,
             session_provider.clone(),
             core_base_url.clone(),
+        );
+
+        let notification_scheduler = Arc::new(NotificationSchedulerImpl::new(
+            data_provider.get_notification_repository(),
+            Arc::new(config.clone()),
+        ));
+
+        let data_provider = decorate_notification(
+            data_provider,
+            notification_scheduler.clone(),
+            Arc::new(config.clone()),
         );
 
         let key_algorithm_provider = key_algorithm_provider_from_config(&mut config)?;
@@ -397,6 +410,7 @@ impl OneCore {
             blob_storage_provider.clone(),
             session_provider.clone(),
             credential_validity_manager.clone(),
+            notification_scheduler.clone(),
         );
 
         let task_provider = task_provider_from_config(
@@ -636,6 +650,7 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator,
+                notification_scheduler,
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),

@@ -1465,8 +1465,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
+        let mut features = vec![Features::SupportsRejection];
+        if self.params.common.webhook_task.is_some() {
+            features.push(Features::SupportsWebhooks);
+        }
+
         IssuanceProtocolCapabilities {
-            features: vec![Features::SupportsRejection],
+            features,
             did_methods: vec![
                 ConfigDidType::Key,
                 ConfigDidType::Jwk,

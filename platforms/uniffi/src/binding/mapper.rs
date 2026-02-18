@@ -30,7 +30,8 @@ use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
 };
 use one_core::service::proof::dto::{
-    GetProofQueryDTO, ProofClaimValueDTO, ProofDetailResponseDTO, ProofFilterValue,
+    CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
+    ProofFilterValue,
 };
 use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
@@ -68,9 +69,9 @@ use crate::binding::organisation::{
     CreateOrganisationRequestBindingDTO, UpsertOrganisationRequestBindingDTO,
 };
 use crate::binding::proof::{
-    ApplicableCredentialOrFailureHintBindingEnum, PresentationDefinitionFieldBindingDTO,
-    PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionV2ClaimBindingDTO,
-    PresentationDefinitionV2ClaimValueBindingDTO,
+    ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
+    PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestedCredentialBindingDTO,
+    PresentationDefinitionV2ClaimBindingDTO, PresentationDefinitionV2ClaimValueBindingDTO,
     PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
     ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
 };
@@ -85,7 +86,7 @@ use crate::binding::trust_entity::{
     ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
 };
 use crate::error::ErrorResponseBindingDTO;
-use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_timestamp};
+use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_id_opt, into_timestamp};
 
 impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
     for CredentialDetailBindingDTO
@@ -563,6 +564,28 @@ impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
             }),
             filtering: Some(filtering),
             include: None,
+        })
+    }
+}
+
+impl TryFrom<CreateProofRequestBindingDTO> for CreateProofRequestDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: CreateProofRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            proof_schema_id: into_id(value.proof_schema_id)?,
+            verifier_did_id: into_id_opt(value.verifier_did_id)?,
+            verifier_identifier_id: into_id_opt(value.verifier_identifier_id)?,
+            protocol: value.protocol,
+            redirect_uri: value.redirect_uri,
+            verifier_key: into_id_opt(value.verifier_key)?,
+            verifier_certificate: into_id_opt(value.verifier_certificate)?,
+            scan_to_verify: convert_inner(value.scan_to_verify),
+            iso_mdl_engagement: value.iso_mdl_engagement,
+            transport: value.transport,
+            profile: value.profile,
+            engagement: value.engagement,
+            webhook_destination_url: None,
         })
     }
 }

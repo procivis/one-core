@@ -146,6 +146,7 @@ impl From<credential::Model> for Credential {
             credential_blob_id: credential.credential_blob_id,
             wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
             wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+            webhook_url: credential.webhook_url,
         }
     }
 }
@@ -184,6 +185,7 @@ pub(super) fn request_to_active_model(
         credential_blob_id: Set(credential_blob_id),
         wallet_unit_attestation_blob_id: Set(wallet_unit_attestation_blob_id),
         wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
+        webhook_url: Set(request.webhook_url.to_owned()),
     }
 }
 
@@ -281,6 +283,7 @@ pub(super) fn credential_list_model_to_repository_model(
         credential_blob_id: credential.credential_blob_id,
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+        webhook_url: credential.webhook_url,
     })
 }
 

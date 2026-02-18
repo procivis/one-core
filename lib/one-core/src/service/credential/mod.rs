@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::credential_validity_manager::CredentialValidityManager;
+use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -31,6 +32,7 @@ pub struct CredentialService {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
+    notification_scheduler: Arc<dyn NotificationScheduler>,
 }
 
 impl CredentialService {
@@ -47,6 +49,7 @@ impl CredentialService {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         credential_validity_manager: Arc<dyn CredentialValidityManager>,
+        notification_scheduler: Arc<dyn NotificationScheduler>,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -55,12 +58,12 @@ impl CredentialService {
             interaction_repository,
             formatter_provider,
             protocol_provider,
-
             config,
             validity_credential_repository: lvvc_repository,
             blob_storage_provider,
             session_provider,
             credential_validity_manager,
+            notification_scheduler,
         }
     }
 }

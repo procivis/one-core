@@ -162,6 +162,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             role: value.role,
             schema: value.schema.map(|schema| schema.into()),
             profile: value.profile,
+            webhook_destination_url: value.webhook_url,
         })
     }
 }
@@ -432,6 +433,7 @@ pub(super) async fn get_verifier_proof_detail(
         proof_inputs,
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
+        webhook_destination_url: list_item_response.webhook_destination_url,
     })
 }
 
@@ -682,6 +684,7 @@ pub(super) async fn get_holder_proof_detail(
         proof_inputs,
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
+        webhook_destination_url: list_item_response.webhook_destination_url,
     })
 }
 
@@ -716,6 +719,7 @@ pub(super) fn proof_from_create_request(
         interaction,
         proof_blob_id: None,
         engagement: request.engagement,
+        webhook_url: request.webhook_destination_url,
     }
 }
 
@@ -756,6 +760,7 @@ pub fn proof_for_scan_to_verify(
         }),
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 

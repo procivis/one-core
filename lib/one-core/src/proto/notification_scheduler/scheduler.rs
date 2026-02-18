@@ -1,51 +1,34 @@
-use shared_types::{NotificationId, OrganisationId, TaskId};
+use serde::Serialize;
+use serde_with::skip_serializing_none;
+use shared_types::{CredentialId, NotificationId, OrganisationId, ProofId, TaskId};
 use time::OffsetDateTime;
 use url::{Host, Url};
 use uuid::Uuid;
 
-use super::{Error, NotificationScheduler, NotificationSchedulerImpl};
+use super::{Error, NotificationPayload, NotificationScheduler, NotificationSchedulerImpl};
 use crate::config::core_config::TaskType;
 use crate::config::{ConfigValidationError, ProviderReference};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::notification::Notification;
+use crate::model::proof::ProofStateEnum;
 use crate::provider::task::webhook_notify::model::WebhookNotifyParams;
+use crate::service::credential::dto::CredentialStateEnum;
 use crate::validator::x509::is_dns_name_matching;
 
 #[async_trait::async_trait]
 impl NotificationScheduler for NotificationSchedulerImpl {
     async fn schedule(
         &self,
-        url: Url,
-        payload: Vec<u8>,
+        url: &str,
+        payload: NotificationPayload,
         r#type: TaskId,
         organisation_id: OrganisationId,
         history_target: Option<String>,
     ) -> Result<NotificationId, Error> {
-        let config = self
-            .config
-            .task
-            .get_fields(&r#type)
-            .error_while("getting notification task provider config")?;
+        let params = self.get_task_params(&r#type)?;
+        validate_url(url, &params)?;
 
-        if config.r#type != TaskType::WebhookNotify {
-            return Err(ConfigValidationError::incompatible_provider_ref::<String>(
-                "notification".to_string(),
-                ProviderReference::Task(r#type),
-                &[],
-            )
-            .error_while("checking config")
-            .into());
-        }
-
-        let params: WebhookNotifyParams = config
-            .deserialize()
-            .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                key: r#type.to_string(),
-                source,
-            })
-            .error_while("parsing config")?;
-
-        validate_url(&url, &params)?;
+        let payload = Payload::from(payload);
 
         let id = self
             .notification_repository
@@ -53,7 +36,7 @@ impl NotificationScheduler for NotificationSchedulerImpl {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 url: url.to_string(),
-                payload,
+                payload: serde_json::to_vec(&payload)?,
                 next_try_date: OffsetDateTime::now_utc(),
                 tries_count: 0,
                 r#type,
@@ -65,9 +48,81 @@ impl NotificationScheduler for NotificationSchedulerImpl {
 
         Ok(id)
     }
+
+    fn validate_url(&self, url: &str, r#type: &TaskId) -> Result<(), Error> {
+        let params = self.get_task_params(r#type)?;
+        validate_url(url, &params)?;
+
+        Ok(())
+    }
 }
 
-pub(crate) fn validate_url(url: &Url, params: &WebhookNotifyParams) -> Result<(), Error> {
+impl NotificationSchedulerImpl {
+    fn get_task_params(&self, r#type: &TaskId) -> Result<WebhookNotifyParams, Error> {
+        let config = self
+            .config
+            .task
+            .get_fields(r#type)
+            .error_while("getting notification task provider config")?;
+
+        if config.r#type != TaskType::WebhookNotify {
+            return Err(ConfigValidationError::incompatible_provider_ref::<String>(
+                "notification".to_string(),
+                ProviderReference::Task(r#type.to_owned()),
+                &[],
+            )
+            .error_while("checking config")
+            .into());
+        }
+
+        Ok(config
+            .deserialize()
+            .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                key: r#type.to_string(),
+                source,
+            })
+            .error_while("parsing config")?)
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Payload {
+    pub credential_id: Option<CredentialId>,
+    #[serde(rename = "status")]
+    pub credential_state: Option<CredentialStateEnum>,
+    pub proof_id: Option<ProofId>,
+    #[serde(rename = "status")]
+    pub proof_state: Option<ProofStateEnum>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub event_timestamp: OffsetDateTime,
+}
+
+impl From<NotificationPayload> for Payload {
+    fn from(value: NotificationPayload) -> Self {
+        match value {
+            NotificationPayload::Credential(credential_id, credential_state) => Self {
+                credential_id: Some(credential_id),
+                credential_state: Some(credential_state.into()),
+                proof_id: None,
+                proof_state: None,
+                event_timestamp: OffsetDateTime::now_utc(),
+            },
+            NotificationPayload::Proof(proof_id, proof_state) => Self {
+                credential_id: None,
+                credential_state: None,
+                proof_id: Some(proof_id),
+                proof_state: Some(proof_state),
+                event_timestamp: OffsetDateTime::now_utc(),
+            },
+        }
+    }
+}
+
+pub(crate) fn validate_url(url: &str, params: &WebhookNotifyParams) -> Result<(), Error> {
+    let url = Url::parse(url)?;
+
     match url.scheme() {
         "https" => {}
         "http" => {
@@ -126,19 +181,19 @@ mod test {
 
     #[test]
     fn test_validate_url_scheme() {
-        let https_url = "https://correct.address.com/notify".parse().unwrap();
-        validate_url(&https_url, &PARAMS_ALL_HTTPS).unwrap();
+        let https_url = "https://correct.address.com/notify";
+        validate_url(https_url, &PARAMS_ALL_HTTPS).unwrap();
 
-        let http_url = "http://correct.address.com/notify".parse().unwrap();
-        validate_url(&http_url, &PARAMS_ALLOW_ALL).unwrap();
+        let http_url = "http://correct.address.com/notify";
+        validate_url(http_url, &PARAMS_ALLOW_ALL).unwrap();
         assert!(matches!(
-            validate_url(&http_url, &PARAMS_ALL_HTTPS),
+            validate_url(http_url, &PARAMS_ALL_HTTPS),
             Err(Error::InvalidUrlScheme(_))
         ));
 
-        let did_url = "did:unknown:123".parse().unwrap();
+        let did_url = "did:unknown:123";
         assert!(matches!(
-            validate_url(&did_url, &PARAMS_ALLOW_ALL),
+            validate_url(did_url, &PARAMS_ALLOW_ALL),
             Err(Error::InvalidUrlScheme(_))
         ));
     }
@@ -155,15 +210,21 @@ mod test {
             retries: None,
         };
 
-        let allowed_domain_url = "https://correct.address.com/notify".parse().unwrap();
-        validate_url(&allowed_domain_url, &params_with_hosts).unwrap();
+        let allowed_domain_url = "https://correct.address.com/notify";
+        validate_url(allowed_domain_url, &params_with_hosts).unwrap();
 
-        let allowed_ip_url = "http://11.22.33.44/notify".parse().unwrap();
-        validate_url(&allowed_ip_url, &params_with_hosts).unwrap();
+        let allowed_ip_url = "http://11.22.33.44/notify";
+        validate_url(allowed_ip_url, &params_with_hosts).unwrap();
 
-        let disallowed_domain_url = "https://incorrect.address.com/notify".parse().unwrap();
+        let disallowed_domain_url = "https://incorrect.address.com/notify";
         assert!(matches!(
-            validate_url(&disallowed_domain_url, &params_with_hosts),
+            validate_url(disallowed_domain_url, &params_with_hosts),
+            Err(Error::InvalidUrlHost(_))
+        ));
+
+        let disallowed_ip_url = "https://44.33.22.11/notify";
+        assert!(matches!(
+            validate_url(disallowed_ip_url, &params_with_hosts),
             Err(Error::InvalidUrlHost(_))
         ));
     }

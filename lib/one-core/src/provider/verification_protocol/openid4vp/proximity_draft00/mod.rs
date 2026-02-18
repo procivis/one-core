@@ -53,12 +53,14 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Hando
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
-    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    Feature, FormattedCredentialPresentation, InvitationResponseDTO,
+    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionVersion, PresentationReference, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
+use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_presentation_definition;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::{
@@ -84,6 +86,9 @@ pub(crate) struct OpenID4VPProximityDraft00Params {
     pub url_scheme: String,
     #[serde(default)]
     pub verifier: Option<OpenID4VPProximityDraft00PresentationVerifierParams>,
+
+    #[serde(flatten)]
+    pub common: CommonParams,
 }
 
 #[serde_as]
@@ -579,8 +584,14 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
         let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh];
+        let mut features = vec![];
+
+        if self.params.common.webhook_task.is_some() {
+            features.push(Feature::SupportsWebhooks);
+        }
 
         VerificationProtocolCapabilities {
+            features,
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods,
             verifier_identifier_types: vec![IdentifierType::Did],

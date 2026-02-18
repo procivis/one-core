@@ -92,6 +92,7 @@ pub(crate) fn credential_detail_response_from_model(
             .wallet_unit_attestation_blob
             .map(TryInto::try_into)
             .transpose()?,
+        webhook_destination_url: value.webhook_url,
     })
 }
 
@@ -331,6 +332,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             suspend_end_date: value.suspend_end_date,
             protocol: value.protocol,
             profile: value.profile,
+            webhook_destination_url: value.webhook_url,
         })
     }
 }
@@ -379,6 +381,7 @@ pub(super) fn from_create_request(
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: request.webhook_destination_url,
     }
 }
 

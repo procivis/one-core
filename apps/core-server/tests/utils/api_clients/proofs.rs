@@ -44,6 +44,7 @@ pub struct CreateProofTestParams {
     pub profile: Option<&'static str>,
     pub iso_mdl_engagement: Option<&'static str>,
     pub engagement: Option<&'static str>,
+    pub webhook_destination_url: Option<&'static str>,
 }
 
 impl ProofsApi {
@@ -76,6 +77,10 @@ impl ProofsApi {
 
         if let Some(iso_mdl_engagement) = params.iso_mdl_engagement {
             body["isoMdlEngagement"] = iso_mdl_engagement.into();
+        }
+
+        if let Some(webhook_destination_url) = params.webhook_destination_url {
+            body["webhookDestinationUrl"] = webhook_destination_url.into();
         }
 
         self.client.post("/api/proof-request/v1", body).await

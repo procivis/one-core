@@ -523,6 +523,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             schema: Some(schema),
             interaction: None,
             key: None,
+            webhook_url: None,
         })
     }
 }

@@ -257,6 +257,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::CredentialBlobId,
             credential::Column::WalletUnitAttestationBlobId,
             credential::Column::WalletInstanceAttestationBlobId,
+            credential::Column::WebhookUrl,
         ])
         .join(
             sea_orm::JoinType::InnerJoin,

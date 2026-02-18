@@ -52,6 +52,7 @@ use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
+use crate::proto::notification_scheduler::MockNotificationScheduler;
 use crate::proto::openid4vp_proof_validator::MockOpenId4VpProofValidator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
@@ -125,6 +126,7 @@ struct Repositories {
     pub session_provider: Option<Arc<dyn SessionProvider>>,
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
+    pub notification_scheduler: MockNotificationScheduler,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -161,6 +163,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.identifier_creator),
         Arc::new(NoTransactionManager),
         Arc::new(repositories.proof_validator),
+        Arc::new(repositories.notification_scheduler),
     )
 }
 
@@ -240,6 +243,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     }
 }
 
@@ -356,6 +360,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
 
     {
@@ -482,6 +487,7 @@ async fn test_get_proof_exists() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -652,6 +658,7 @@ async fn test_get_proof_with_array_holder() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     let proof = Proof {
@@ -709,6 +716,7 @@ async fn test_get_proof_with_array_holder() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -915,6 +923,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     let proof = Proof {
@@ -972,6 +981,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -1193,6 +1203,7 @@ async fn test_get_proof_with_object_array_holder() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     let proof = Proof {
@@ -1250,6 +1261,7 @@ async fn test_get_proof_with_object_array_holder() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -1447,6 +1459,7 @@ async fn test_get_proof_with_array() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     let proof = Proof {
@@ -1512,6 +1525,7 @@ async fn test_get_proof_with_array() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -1718,6 +1732,7 @@ async fn test_get_proof_with_array_in_object() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     let proof = Proof {
@@ -1783,6 +1798,7 @@ async fn test_get_proof_with_array_in_object() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -2005,6 +2021,7 @@ async fn test_get_proof_with_object_array() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     let proof = Proof {
@@ -2070,6 +2087,7 @@ async fn test_get_proof_with_object_array() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -2248,6 +2266,7 @@ async fn test_get_proof_list_success() {
         profile: None,
         proof_blob_id: None,
         engagement: None,
+        webhook_url: None,
     };
     {
         let res_clone = proof.clone();
@@ -2321,6 +2340,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2371,6 +2391,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -2415,6 +2436,7 @@ async fn test_create_proof_using_invalid_did_method() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2499,6 +2521,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -2543,6 +2566,7 @@ async fn test_create_proof_using_identifier() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2634,6 +2658,7 @@ async fn test_create_proof_using_identifier() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -2674,6 +2699,7 @@ async fn test_create_proof_without_related_key() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2769,6 +2795,7 @@ async fn test_create_proof_without_related_key() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -2810,6 +2837,7 @@ async fn test_create_proof_with_related_key() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2902,6 +2930,7 @@ async fn test_create_proof_with_related_key() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -2942,6 +2971,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_input_schema = generic_proof_input_schema();
@@ -3032,6 +3062,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -3074,6 +3105,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3140,6 +3172,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -3182,6 +3215,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3244,6 +3278,7 @@ async fn test_create_proof_did_deactivated_error() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3310,6 +3345,7 @@ async fn test_create_proof_did_deactivated_error() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -3379,6 +3415,7 @@ async fn test_create_proof_schema_deleted() {
             transport: None,
             profile: None,
             engagement: None,
+            webhook_destination_url: None,
         })
         .await;
     assert2::assert!(
@@ -3446,6 +3483,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
             transport: None,
             profile: None,
             engagement: None,
+            webhook_destination_url: None,
         })
         .await;
     assert2::assert!(
@@ -3469,6 +3507,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         transport: None,
         profile: None,
         engagement: None,
+        webhook_destination_url: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3553,6 +3592,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
@@ -3602,12 +3642,43 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             transport: None,
             profile: None,
             engagement: None,
+            webhook_destination_url: None,
         })
         .await;
     assert!(matches!(
         result.unwrap_err(),
         ServiceError::Validation(ValidationError::InvalidRedirectUri)
     ));
+}
+
+#[tokio::test]
+async fn test_create_proof_fail_webhook_not_allowed() {
+    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4().into(),
+        verifier_did_id: None,
+        verifier_identifier_id: Some(Uuid::new_v4().into()),
+        protocol: exchange_type.to_string(),
+        redirect_uri: None,
+        verifier_key: None,
+        verifier_certificate: None,
+        scan_to_verify: None,
+        iso_mdl_engagement: None,
+        transport: None,
+        profile: None,
+        engagement: None,
+        webhook_destination_url: Some("http://webhook.url".to_string()),
+    };
+
+    let service = setup_service(Repositories {
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request).await;
+    assert2::assert!(
+        let ServiceError::Validation(ValidationError::NotificationsNotAllowed {..}) = result.err().unwrap()
+    );
 }
 
 #[tokio::test]
@@ -4499,6 +4570,7 @@ async fn test_create_proof_session_org_mismatch() {
             transport: None,
             profile: None,
             engagement: None,
+            webhook_destination_url: None,
         })
         .await;
     assert!(matches!(

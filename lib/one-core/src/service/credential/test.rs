@@ -24,6 +24,7 @@ use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::credential_validity_manager::MockCredentialValidityManager;
+use crate::proto::notification_scheduler::MockNotificationScheduler;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
@@ -65,6 +66,7 @@ struct Repositories {
     pub lvvc_repository: MockValidityCredentialRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub credential_validity_manager: MockCredentialValidityManager,
+    pub notification_scheduler: MockNotificationScheduler,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
@@ -83,6 +85,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
             .session_provider
             .unwrap_or(Arc::new(NoSessionProvider)),
         Arc::new(repositories.credential_validity_manager),
+        Arc::new(repositories.notification_scheduler),
     )
 }
 
@@ -192,6 +195,7 @@ fn generic_credential() -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 
@@ -263,6 +267,7 @@ fn generic_credential_list_entity() -> Credential {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     }
 }
 
@@ -774,6 +779,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -864,6 +870,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -923,6 +930,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1032,6 +1040,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1143,6 +1152,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1233,6 +1243,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             claim_values: vec![],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1359,6 +1370,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         claim_values: vec![],
         redirect_uri: None,
         profile: None,
+        webhook_destination_url: None,
     };
 
     // create a credential with required claims only succeeds
@@ -1487,6 +1499,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         claim_values: vec![],
         redirect_uri: None,
         profile: None,
+        webhook_destination_url: None,
     };
 
     // create a credential with only an optional claim fails
@@ -1607,6 +1620,7 @@ async fn test_create_credential_schema_deleted() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1723,6 +1737,7 @@ async fn test_create_credential_key_with_issuer_key() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1862,6 +1877,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -1974,6 +1990,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -2080,6 +2097,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -2197,6 +2215,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -2314,6 +2333,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -2417,6 +2437,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             }],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -2517,6 +2538,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             }],
             redirect_uri: Some("invalid://domain.com".to_string()),
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 
@@ -2526,6 +2548,91 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             ValidationError::InvalidRedirectUri
         ))
     ));
+}
+
+#[tokio::test]
+async fn test_create_credential_fail_webhook_not_allowed() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
+
+    let credential = generic_credential();
+    {
+        let issuer_identifier = credential.issuer_identifier.clone().unwrap();
+        let credential_schema = credential.schema.clone().unwrap();
+
+        identifier_repository
+            .expect_get()
+            .return_once(|_, _| Ok(Some(issuer_identifier)));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+    }
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let mut dummy_protocol = MockIssuanceProtocol::default();
+    dummy_protocol
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        identifier_repository,
+        formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer: Some(credential.issuer_identifier.as_ref().unwrap().id),
+            issuer_did: None,
+            issuer_key: None,
+            issuer_certificate: None,
+            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0]
+                    .value
+                    .to_owned()
+                    .unwrap(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
+            }],
+            redirect_uri: None,
+            profile: None,
+            webhook_destination_url: Some("http://webhook.url".to_string()),
+        })
+        .await;
+
+    assert2::assert!(
+        let ServiceError::Validation(ValidationError::NotificationsNotAllowed {..}) = result.err().unwrap()
+    );
 }
 
 fn generate_credential_schema_with_claim_schemas(
@@ -3110,6 +3217,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     {
@@ -3671,6 +3779,7 @@ async fn test_get_credential_success_array_index_sorting() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     {
@@ -3981,6 +4090,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     {
@@ -4194,6 +4304,7 @@ async fn test_get_credential_success_array_single_element() {
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
     };
 
     {
@@ -4387,6 +4498,7 @@ async fn test_create_credential_array(
                 .collect(),
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await
 }
@@ -4645,6 +4757,7 @@ async fn test_create_credential_session_org_mismatch() {
             claim_values: vec![],
             redirect_uri: None,
             profile: None,
+            webhook_destination_url: None,
         })
         .await;
 

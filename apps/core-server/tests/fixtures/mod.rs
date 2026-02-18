@@ -733,6 +733,7 @@ pub struct TestingCredentialParams {
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
+    pub webhook_url: Option<String>,
 }
 
 pub async fn create_credential(
@@ -786,6 +787,7 @@ pub async fn create_credential(
         credential_blob_id: params.credential_blob_id,
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
+        webhook_url: params.webhook_url,
     };
 
     data_layer
@@ -846,6 +848,7 @@ pub async fn create_proof(
         profile,
         proof_blob_id: None,
         engagement,
+        webhook_url: None,
     };
 
     data_layer

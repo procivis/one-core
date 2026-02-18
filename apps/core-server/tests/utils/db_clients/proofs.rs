@@ -126,6 +126,7 @@ impl ProofsDB {
             profile,
             proof_blob_id,
             engagement,
+            webhook_url: None,
         };
 
         let proof_id = self.repository.create_proof(proof.clone()).await.unwrap();
