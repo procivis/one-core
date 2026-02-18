@@ -4,6 +4,7 @@ edition.workspace = true
 license.workspace = true
 name              = "standardized-types"
 version.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace     = true

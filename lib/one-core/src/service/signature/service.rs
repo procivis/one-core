@@ -15,10 +15,11 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListRelations};
+use crate::proto::session_provider::SessionExt;
 use crate::provider::signer::dto::{CreateSignatureResponseDTO, Issuer};
 use crate::service::signature::dto::{CreateSignatureRequestDTO, SignatureStatusInfo};
 use crate::service::signature::error::SignatureServiceError;
-use crate::validator::permissions::RequiredPermssions;
+use crate::validator::permissions::RequiredPermissions;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -90,7 +91,7 @@ impl SignatureService {
                 name: signature_type.to_owned(),
                 target: Some(issuer_id.to_string()),
                 organisation_id: Some(organisation_id),
-                user: self.session_provider.session().map(|s| s.user_id),
+                user: self.session_provider.session().user(),
             })
             .await
         {
@@ -112,7 +113,7 @@ impl SignatureService {
             .get_for_signature_id(id)
             .await
             .error_while("getting signer provider")?;
-        RequiredPermssions::at_least_one(signer.get_capabilities().revoke_required_permissions)
+        RequiredPermissions::at_least_one(signer.get_capabilities().revoke_required_permissions)
             .check(&*self.session_provider)
             .error_while("validating provider required permissions")?;
 
@@ -164,7 +165,7 @@ impl SignatureService {
                 name: signer_name,
                 target: Some(issuer.id.to_string()),
                 organisation_id: None,
-                user: self.session_provider.session().map(|s| s.user_id),
+                user: self.session_provider.session().user(),
             })
             .await
         {

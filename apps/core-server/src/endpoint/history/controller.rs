@@ -49,7 +49,7 @@ pub(crate) async fn get_history_list(
                 .into();
 
             if show_system_history {
-                if !has_permission(&authorization, &state, Permission::SystemHistoryList) {
+                if !has_permission(&authorization, Permission::SystemHistoryList) {
                     tracing::error!("Querying system history list without permission");
                     return Err(ValidationError::Forbidden.into());
                 }
@@ -140,7 +140,7 @@ pub(crate) async fn get_history_entry(
         let entry = state.core.history_service.get_history_entry(id).await?;
 
         if let Some(session) = CoreServerSessionProvider.session()
-            && !has_permission(&authorization, &state, Permission::SystemHistoryDetail)
+            && !has_permission(&authorization, Permission::SystemHistoryDetail)
         {
             match (session.organisation_id, entry.organisation_id) {
                 (Some(a), Some(b)) if a == b => {
@@ -161,10 +161,6 @@ pub(crate) async fn get_history_entry(
     OkOrErrorResponse::from_result(result, state, "getting history entry")
 }
 
-fn has_permission(
-    authorization: &Authorized,
-    state: &State<AppState>,
-    permission: Permission,
-) -> bool {
-    permission_check(authorization, &state.config, &[permission]).is_ok()
+fn has_permission(authorization: &Authorized, permission: Permission) -> bool {
+    permission_check(authorization, &[permission]).is_ok()
 }

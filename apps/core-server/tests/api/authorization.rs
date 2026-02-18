@@ -1,5 +1,6 @@
 use reqwest::{Method, StatusCode};
 use serde::Serialize;
+use uuid::Uuid;
 
 use crate::fixtures::sts::{StsSetup, setup_sts};
 use crate::utils::api_clients::http_client;
@@ -10,7 +11,7 @@ use crate::utils::context::TestContext;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StsToken {
-    pub organisation_id: Option<()>,
+    pub organisation_id: Option<Uuid>,
     pub permissions: Vec<&'static str>,
 }
 

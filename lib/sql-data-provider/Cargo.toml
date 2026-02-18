@@ -5,6 +5,7 @@ license           = "Apache-2.0"
 name              = "sql-data-provider"
 publish           = false
 version.workspace = true
+rust-version.workspace = true
 
 [features]
 # Treat build warnings as error

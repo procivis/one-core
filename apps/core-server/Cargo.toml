@@ -6,6 +6,7 @@ license           = "Apache-2.0"
 name              = "core-server"
 publish           = false
 version           = "0.1.0"
+rust-version = "1.92"
 
 # disable doctests
 [lib]

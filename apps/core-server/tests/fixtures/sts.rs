@@ -21,7 +21,8 @@ pub struct StsSetup {
     pub token: String,
     pub mock_server: MockServer,
 }
-pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
+
+pub async fn setup_sts_with_payload(payload: JWTPayload<StsToken>) -> StsSetup {
     let mock_server = MockServer::builder().start().await;
     let config = indoc::formatdoc! {"
       app:
@@ -59,26 +60,12 @@ pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
         .mount(&mock_server)
         .await;
 
-    let now = OffsetDateTime::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
         Some(JwtPublicKeyInfo::Jwk(jwk)),
-        JWTPayload {
-            issued_at: Some(now),
-            expires_at: Some(now + Duration::from_secs(3600)),
-            invalid_before: None,
-            issuer: Some("bff".to_string()),
-            subject: Some(Uuid::new_v4().to_string()),
-            audience: Some(vec!["core".to_string()]),
-            jwt_id: None,
-            proof_of_possession_key: None,
-            custom: StsToken {
-                organisation_id: None,
-                permissions,
-            },
-        },
+        payload,
     );
 
     let mut tokenized = token.tokenize(None).await.unwrap();
@@ -92,4 +79,23 @@ pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
         token: tokenized,
         mock_server,
     }
+}
+
+pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
+    let now = OffsetDateTime::now_utc();
+    setup_sts_with_payload(JWTPayload {
+        issued_at: Some(now),
+        expires_at: Some(now + Duration::from_secs(3600)),
+        invalid_before: None,
+        issuer: Some("bff".to_string()),
+        subject: Some(Uuid::new_v4().to_string()),
+        audience: Some(vec!["core".to_string()]),
+        jwt_id: None,
+        proof_of_possession_key: None,
+        custom: StsToken {
+            organisation_id: None,
+            permissions,
+        },
+    })
+    .await
 }

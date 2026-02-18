@@ -3,14 +3,14 @@ use shared_types::Permission;
 use crate::proto::session_provider::SessionProvider;
 use crate::service::error::{ServiceError, ValidationError};
 
-pub(crate) struct RequiredPermssions {
+pub(crate) struct RequiredPermissions {
     /// At least one of the permissions must be present
     pub at_least_one: Vec<Permission>,
     /// All permissions must be present
     pub all: Vec<Permission>,
 }
 
-impl RequiredPermssions {
+impl RequiredPermissions {
     #[expect(unused)]
     pub(crate) fn all(permissions: Vec<Permission>) -> Self {
         Self {
@@ -33,7 +33,7 @@ impl RequiredPermssions {
 
 /// Checks if the current session (if any) has the required permissions.
 pub(crate) fn check_permissions(
-    permission_check: &RequiredPermssions,
+    permission_check: &RequiredPermissions,
     session_provider: &dyn SessionProvider,
 ) -> Result<(), ServiceError> {
     let Some(session) = session_provider.session() else {

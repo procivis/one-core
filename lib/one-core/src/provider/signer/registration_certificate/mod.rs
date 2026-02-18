@@ -34,7 +34,7 @@ use crate::provider::signer::registration_certificate::model::{
 };
 use crate::provider::signer::validity::{SignatureValidity, calculate_signature_validity};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
-use crate::validator::permissions::RequiredPermssions;
+use crate::validator::permissions::RequiredPermissions;
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -133,7 +133,7 @@ impl Signer for RegistrationCertificate {
         request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
         // Check permissions in provider because internal calls for `Issuer::Key` do _not_ go through the service
-        RequiredPermssions::at_least_one(self.get_capabilities().sign_required_permissions)
+        RequiredPermissions::at_least_one(self.get_capabilities().sign_required_permissions)
             .check(&*self.session_provider)
             .error_while("validating provider required permissions")?;
 

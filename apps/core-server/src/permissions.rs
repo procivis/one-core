@@ -1,154 +1,100 @@
 use shared_types::Permission;
 
 use crate::dto::response::ErrorResponse;
-use crate::middleware::Authorized;
-use crate::{AuthMode, ServerConfig};
+use crate::middleware::{Authorized, Permissions};
 
 pub fn permission_check(
     authorized: &Authorized,
-    config: &ServerConfig,
     required_permissions: &[Permission],
 ) -> Result<(), ErrorResponse> {
-    let AuthMode::SecurityTokenService { .. } = config.auth else {
-        return Ok(());
-    };
-    if !authorized
-        .permissions
-        .iter()
-        .any(|p| required_permissions.contains(p))
-    {
-        tracing::debug!(
-            "Permission check failed: authorized permissions are {:?}, required are any of {required_permissions:?}",
-            authorized.permissions
-        );
+    if required_permissions.is_empty() {
+        tracing::error!("Required permissions are empty.");
         return Err(ErrorResponse::Forbidden);
-    };
-    Ok(())
+    }
+
+    match &authorized.permissions {
+        Permissions::All => Ok(()),
+        Permissions::Subset(permissions) => {
+            if !permissions.iter().any(|p| required_permissions.contains(p)) {
+                tracing::info!(
+                    "Permission check failed: authorized permissions are {:?}, required are any of {required_permissions:?}",
+                    authorized.permissions
+                );
+                Err(ErrorResponse::Forbidden)
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{AuthMode, StsTokenValidation};
 
     #[test]
-    fn check_permissions_success() {
+    fn check_permissions_success_subset_exactly_one_match() {
         let authorized = Authorized {
-            permissions: vec![Permission::HistoryDetail, Permission::HistoryList],
+            permissions: Permissions::Subset(vec![
+                Permission::HistoryDetail,
+                Permission::HistoryList,
+            ]),
         };
         let required = vec![Permission::HistoryDetail];
 
-        assert!(permission_check(&authorized, &dummy_server_config(sts_auth()), &required).is_ok());
+        assert!(permission_check(&authorized, &required).is_ok());
     }
 
     #[test]
-    fn check_permissions_failure_mismatch() {
+    fn check_permissions_success_subset_at_least_one_match() {
         let authorized = Authorized {
-            permissions: vec![Permission::HistoryDetail],
+            permissions: Permissions::Subset(vec![
+                Permission::HistoryDetail,
+                Permission::HistoryList,
+            ]),
+        };
+        let required = vec![Permission::HistoryDetail, Permission::HistoryCreate];
+
+        assert!(permission_check(&authorized, &required).is_ok());
+    }
+
+    #[test]
+    fn check_permissions_failure_subset_mismatch() {
+        let authorized = Authorized {
+            permissions: Permissions::Subset(vec![Permission::HistoryDetail]),
         };
         let required = vec![Permission::HistoryList];
 
-        assert!(
-            permission_check(&authorized, &dummy_server_config(sts_auth()), &required).is_err()
-        );
+        assert!(permission_check(&authorized, &required).is_err());
     }
 
     #[test]
-    fn check_permissions_failure_empty_required() {
+    fn check_permissions_success_all_permissions() {
         let authorized = Authorized {
-            permissions: vec![Permission::HistoryDetail],
+            permissions: Permissions::All,
+        };
+        let required = vec![Permission::HistoryList];
+
+        assert!(permission_check(&authorized, &required).is_ok());
+    }
+
+    #[test]
+    fn check_permissions_failure_subset_empty_required() {
+        let authorized = Authorized {
+            permissions: Permissions::Subset(vec![Permission::HistoryDetail]),
         };
         let required = vec![];
 
-        assert!(
-            permission_check(&authorized, &dummy_server_config(sts_auth()), &required).is_err()
-        );
+        assert!(permission_check(&authorized, &required).is_err());
     }
 
     #[test]
-    fn check_permissions_failure_empty_authorized() {
+    fn check_permissions_failure_all_permissions_empty_required() {
         let authorized = Authorized {
-            permissions: vec![],
+            permissions: Permissions::All,
         };
-        let required = vec![Permission::HistoryList];
+        let required = vec![];
 
-        assert!(
-            permission_check(&authorized, &dummy_server_config(sts_auth()), &required).is_err()
-        );
-    }
-
-    #[test]
-    fn check_permissions_success_none_auth() {
-        let authorized = Authorized {
-            permissions: vec![],
-        };
-        let required = vec![Permission::HistoryList];
-
-        // ok despite having fewer than required permissions, due to auth mode
-        assert!(
-            permission_check(
-                &authorized,
-                &dummy_server_config(AuthMode::UnsafeNone),
-                &required
-            )
-            .is_ok()
-        );
-    }
-
-    #[test]
-    fn check_permissions_success_static_auth() {
-        let authorized = Authorized {
-            permissions: vec![],
-        };
-        let required = vec![Permission::HistoryList];
-
-        // ok despite having fewer than required permissions, due to auth mode
-        assert!(
-            permission_check(
-                &authorized,
-                &dummy_server_config(AuthMode::UnsafeStatic {
-                    static_token: "test".to_string()
-                }),
-                &required
-            )
-            .is_ok()
-        );
-    }
-
-    fn sts_auth() -> AuthMode {
-        AuthMode::SecurityTokenService {
-            sts_token_validation: StsTokenValidation {
-                aud: "".to_string(),
-                iss: "".to_string(),
-                jwks_uri: "".to_string(),
-                ttl_jwks: 0,
-                leeway: 0,
-            },
-        }
-    }
-
-    fn dummy_server_config(auth: AuthMode) -> ServerConfig {
-        ServerConfig {
-            database_url: "".to_string(),
-            server_ip: None,
-            server_port: None,
-            trace_json: None,
-            core_base_url: "".to_string(),
-            sentry_dsn: None,
-            sentry_environment: None,
-            trace_level: None,
-            hide_error_response_cause: false,
-            allow_insecure_http_transport: false,
-            insecure_vc_api_endpoints_enabled: false,
-            enable_metrics: false,
-            enable_server_info: false,
-            enable_open_api: false,
-            enable_external_endpoints: false,
-            enable_management_endpoints: false,
-            enable_wallet_provider: false,
-            enable_history_create_endpoint: false,
-            enable_signature_endpoints: false,
-            auth,
-        }
+        assert!(permission_check(&authorized, &required).is_err());
     }
 }

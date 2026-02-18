@@ -5,6 +5,7 @@ license           = "Apache-2.0"
 name              = "migration"
 publish           = false
 version           = "0.1.0"
+rust-version.workspace = true
 
 [dependencies]
 sea-orm                = { workspace = true, features = ["with-time", "with-uuid"] }

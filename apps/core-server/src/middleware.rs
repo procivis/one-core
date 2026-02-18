@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -10,9 +11,11 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use headers::HeaderValue;
 use http_body_util::BodyExt;
+use one_core::proto::jwt::Jwt;
 use one_core::proto::session_provider::Session;
 use sentry::{Hub, SentryFutureExt};
 use serde::Deserialize;
+use serde_json::Value;
 use shared_types::{OrganisationId, Permission};
 use uuid::Uuid;
 
@@ -30,7 +33,13 @@ pub struct StsToken {
 
 #[derive(Debug, Clone)]
 pub struct Authorized {
-    pub permissions: Vec<Permission>,
+    pub permissions: Permissions,
+}
+
+#[derive(Debug, Clone)]
+pub enum Permissions {
+    All,
+    Subset(Vec<Permission>),
 }
 
 pub struct HttpRequestContext<'a> {
@@ -93,15 +102,15 @@ pub async fn authorization_check(
     let response = match authentication {
         Authentication::None => {
             request.extensions_mut().insert(Authorized {
-                permissions: vec![],
+                permissions: Permissions::All,
             });
             next.run(request).await
         }
         Authentication::Static(static_token) => {
-            let token = extract_auth_token(&request)?;
+            let token = extract_auth_token(&request).ok_or(StatusCode::UNAUTHORIZED)?;
             if !token.is_empty() && token == static_token {
                 request.extensions_mut().insert(Authorized {
-                    permissions: vec![],
+                    permissions: Permissions::All,
                 });
             } else {
                 tracing::warn!(
@@ -112,7 +121,7 @@ pub async fn authorization_check(
             next.run(request).await
         }
         Authentication::SecurityTokenService(security_token_service) => {
-            let token = extract_auth_token(&request)?;
+            let token = extract_auth_token(&request).ok_or(StatusCode::UNAUTHORIZED)?;
             let decomposed_token = security_token_service
                 .validate_sts_token::<StsToken>(token)
                 .await
@@ -121,7 +130,9 @@ pub async fn authorization_check(
                 })
                 .map_err(|_| StatusCode::UNAUTHORIZED)?;
             request.extensions_mut().insert(Authorized {
-                permissions: decomposed_token.payload.custom.permissions.clone(),
+                permissions: Permissions::Subset(
+                    decomposed_token.payload.custom.permissions.clone(),
+                ),
             });
             // Initialize session scoped to this request
             let session = Session {
@@ -140,23 +151,39 @@ pub async fn authorization_check(
     Ok(response)
 }
 
-fn extract_auth_token(request: &Request<Body>) -> Result<&str, StatusCode> {
-    let auth_header = request
-        .headers()
-        .get("Authorization")
-        .and_then(|header| header.to_str().ok());
-
-    let auth_header = if let Some(auth_header) = auth_header {
-        auth_header
-    } else {
-        tracing::warn!("Authorization header not found.");
-        return Err(StatusCode::UNAUTHORIZED);
+pub async fn user_init(mut request: Request<Body>, next: Next) -> axum::response::Response {
+    let Some(token) = extract_auth_token(&request) else {
+        return next.run(request).await;
+    };
+    let Some(mut jwt) = Jwt::<HashMap<String, Value>>::decompose_token(token).ok() else {
+        return next.run(request).await;
     };
 
-    let token = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-    Ok(token)
+    request.extensions_mut().insert(UserInfo {
+        user_id: jwt.payload.subject,
+        organisation_id: jwt.payload.custom.remove("organisationId").and_then(|o| {
+            if let Value::String(s) = o {
+                Some(s)
+            } else {
+                None
+            }
+        }),
+    });
+    next.run(request).await
+}
+
+#[derive(Debug, Clone)]
+pub struct UserInfo {
+    pub user_id: Option<String>,
+    pub organisation_id: Option<String>,
+}
+
+fn extract_auth_token(request: &Request<Body>) -> Option<&str> {
+    request
+        .headers()
+        .get("Authorization")
+        .and_then(|header| header.to_str().ok())
+        .and_then(|header| header.strip_prefix("Bearer "))
 }
 
 pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext<'_> {

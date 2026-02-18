@@ -5,6 +5,7 @@ license           = "Apache-2.0"
 name              = "shared-types"
 publish           = false
 version.workspace = true
+rust-version.workspace = true
 
 # disable doctests
 [lib]

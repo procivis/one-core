@@ -13,10 +13,9 @@ use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router, middleware};
 use indexmap::IndexMap;
 use one_core::OneCore;
-use one_core::proto::session_provider::Session;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{Span, error_span, info, warn};
+use tracing::Span;
 use utoipa::openapi::PathItem;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -28,7 +27,7 @@ use crate::endpoint::{
     holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
     proof_schema, signature, ssi, task, trust_anchor, trust_entity, vc_api, wallet_provider,
 };
-use crate::middleware::get_http_request_context;
+use crate::middleware::{UserInfo, get_http_request_context};
 use crate::openapi::gen_openapi_documentation;
 
 pub(crate) struct InternalAppState {
@@ -50,7 +49,7 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
     });
 
     let addr = listener.local_addr().expect("Invalid TCP listener");
-    info!("Starting server at http://{addr}");
+    tracing::info!("Starting server at http://{addr}");
 
     let authentication = authentication(&config)
         .await
@@ -75,7 +74,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
     let mut openapi_paths = openapi_documentation.as_mut().map(|d| &mut d.paths.paths);
 
     if !config.enable_management_endpoints && !config.enable_external_endpoints {
-        warn!("Management APIs and External APIs disabled.");
+        tracing::warn!("Management APIs and External APIs disabled.");
     }
 
     let management_endpoints =
@@ -168,17 +167,20 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
                     let context = get_http_request_context(request);
-                    error_span!(
+                    let user_info = request.extensions().get::<UserInfo>();
+                    tracing::error_span!(
                         "http_request",
                         method = context.method,
                         path = context.path,
                         service = "one-core",
                         requestId = context.request_id.as_ref(),
-                        sessionId = context.session_id, // Derived from x-session-id header
+                        sessionId = context.session_id, // Derived from x-session-id header,
+                        organisation = user_info.and_then(|s| s.organisation_id.clone()),
+                        user = user_info.and_then(|s| s.user_id.clone())
                     )
                 })
                 .on_request(|request: &Request<_>, _span: &Span| {
-                    tracing::debug!(
+                    tracing::info!(
                         "SERVICE CALL START {} {}",
                         request.method(),
                         request.uri().path()
@@ -186,13 +188,14 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 })
                 .on_failure(|_, _, _: &_| {}) // override default on_failure handler
                 .on_response(|response: &Response<_>, duration: Duration, _: &_| {
-                    tracing::debug!(
+                    tracing::info!(
                         "SERVICE CALL END {} ({} ms)",
                         response.status(),
                         duration.as_millis()
                     );
                 }),
         )
+        .layer(middleware::from_fn(crate::middleware::user_init))
         .with_state(state)
 }
 
@@ -489,25 +492,6 @@ fn get_management_endpoints(
         }
 
         router
-            .layer(
-                TraceLayer::new_for_http()
-                    .make_span_with(|request: &Request<_>| {
-                        let session = request.extensions().get::<Session>();
-                        let Some(session) = session else {
-                            return Span::current();
-                        };
-                        let user = session.user_id.as_str();
-                        let organisation = session.organisation_id.map(|id| id.to_string());
-                        error_span!("session", user = user, organisation = organisation) // Derived from the authorization header
-                    })
-                    .on_request(|request: &Request<_>, _: &_| {
-                        if let Some(_session) = request.extensions().get::<Session>() {
-                            tracing::debug!("SESSION INITIALIZED")
-                        }
-                    })
-                    .on_response(|_: &_, _, _: &_| {})
-                    .on_failure(|_, _, _: &_| {}),
-            )
             .layer(middleware::from_fn(crate::middleware::authorization_check))
             .layer(Extension(authentication))
     } else {
