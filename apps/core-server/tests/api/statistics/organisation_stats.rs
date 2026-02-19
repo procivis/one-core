@@ -72,7 +72,6 @@ async fn test_organisation_stats() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    println!("{}", serde_json::to_string_pretty(&resp).unwrap());
     assert_eq!(resp["current"]["issuanceCount"], 0);
     assert_eq!(resp["current"]["credentialLifecycleOperationCount"], 0);
     assert_eq!(resp["current"]["verificationCount"], 1);

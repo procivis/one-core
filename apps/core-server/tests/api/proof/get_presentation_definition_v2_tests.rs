@@ -783,7 +783,6 @@ async fn test_get_presentation_definition_2_inapplicable_credential_with_schema(
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    println!("{}", serde_json::to_string_pretty(&body).unwrap());
     body["credentialQueries"]["test_query_id"]["failureHint"]["credentialSchema"]["id"]
         .assert_eq(&schema.id);
     body["credentialQueries"]["test_query_id"]["failureHint"]["reason"]
