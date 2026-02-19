@@ -367,11 +367,6 @@ impl OpenId4VpProofValidatorProto {
         validate_issuance_time(&credential.valid_from, formatter.get_leeway())?;
         validate_expiration_time(&credential.valid_until, formatter.get_leeway())?;
 
-        // TODO (ONE-8761): is this correct? it can make the revocation check etc. skipped
-        if is_revocation_credential(&credential) {
-            return Ok((credential, None));
-        };
-
         for credential_status in credential.status.iter() {
             let (revocation_method, _) = self
                 .revocation_method_provider
@@ -716,11 +711,6 @@ impl OpenId4VpProofValidatorProto {
         }
         Ok(presentation)
     }
-}
-
-fn is_revocation_credential(credential: &DetailCredential) -> bool {
-    credential.claims.claims.contains_key("encodedList")
-        && credential.claims.claims.contains_key("statusPurpose")
 }
 
 /// it can happen that credential holder binding is a key, while proof issuer is a did
