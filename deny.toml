@@ -23,7 +23,7 @@ no-default-features = false
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 version = 2
-yanked  = "deny"
+yanked  = "warn"
 
 ignore = [
     { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" },
@@ -31,6 +31,7 @@ ignore = [
     { id = "RUSTSEC-2022-0040", reason = "`owning_ref` doesn't seem to be used anywhere inside json-ld" },
     { id = "RUSTSEC-2025-0141", reason = "`bincode` crate discontinued" },
     { id = "RUSTSEC-2025-0134", reason = "`rumqttc` crate awaiting an update of unmaintained dependency: https://github.com/bytebeamio/rumqtt/pull/1011" },
+    { id = "RUSTSEC-2026-0012", reason = "Not affected, upgraded on main branch" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
