@@ -129,7 +129,6 @@ pub(super) fn map_to_stats(
         if let Some(prev_ts) = prev_timestamp
             && prev_ts != row.timestamp
         {
-            prev_timestamp = Some(row.timestamp);
             // Immediately fill gaps, if any
             fill_missing_zeros(
                 &mut result,
@@ -139,6 +138,7 @@ pub(super) fn map_to_stats(
                 FillMode::Exclusive,
             )?;
         }
+        prev_timestamp = Some(row.timestamp);
         let point = TimeSeriesPoint {
             timestamp: row.timestamp,
             count: row.count as usize,
@@ -218,6 +218,10 @@ fn fill_zeros(
     to: OffsetDateTime,
     mode: FillMode,
 ) -> Result<(), DataLayerError> {
+    if limit_reached(&from, &to, mode) {
+        // Don't need to fill anything, the requested time range is empty.
+        return Ok(());
+    }
     let from = if let Some(last_point) = stats.last() {
         last_point.timestamp
     } else {
@@ -225,14 +229,18 @@ fn fill_zeros(
         from
     };
     let mut next_ts = next_timestamp(from, time_resolution)?;
-    while match mode {
-        FillMode::Inclusive => next_ts <= to,
-        FillMode::Exclusive => next_ts < to,
-    } {
+    while !limit_reached(&next_ts, &to, mode) {
         stats.push(zero_point(next_ts));
         next_ts = next_timestamp(next_ts, time_resolution)?;
     }
     Ok(())
+}
+
+fn limit_reached(timestamp: &OffsetDateTime, limit: &OffsetDateTime, mode: FillMode) -> bool {
+    match mode {
+        FillMode::Inclusive => timestamp > limit,
+        FillMode::Exclusive => timestamp >= limit,
+    }
 }
 
 fn next_timestamp(

@@ -147,7 +147,7 @@ static MARIADB_DB_INIT_STMNTS: tokio::sync::OnceCell<Vec<String>> =
 pub async fn create_db(_config: &AppConfig<ServerConfig>) -> DbConn {
     let env_db_url = std::env::var("ONE_app__databaseUrl").ok();
     match env_db_url {
-        Some(url) if url != "sqlite::memory:" => {
+        Some(url) if !url.starts_with("sqlite") => {
             let mut url: Url = url.parse().unwrap();
             // remove path to connect to cluster
             url.set_path("");
@@ -183,6 +183,9 @@ pub async fn create_db(_config: &AppConfig<ServerConfig>) -> DbConn {
                 sql_data_provider::db_conn(url, true).await.unwrap()
             }
         }
+        // Allows to run API test locally against persistent SQLite DB using e.g.
+        // ONE_app__databaseUrl="sqlite://database.sqlite3?mode=rwc";RUST_BACKTRACE=1
+        Some(url) => sql_data_provider::db_conn(url, true).await.unwrap(),
         _ => {
             /*
              * When dealing with in-memory SQLite databases, prepare an "init"

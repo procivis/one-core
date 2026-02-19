@@ -17,6 +17,7 @@ pub mod proof;
 pub mod proof_schema;
 pub mod signature;
 pub mod ssi;
+pub mod statistics;
 pub mod task;
 pub mod trust_anchor;
 pub mod trust_entity;

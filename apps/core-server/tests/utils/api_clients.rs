@@ -4,6 +4,7 @@ use headers::HeaderMap;
 use jsonld::JsonLdApi;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use statistics::StatisticsApi;
 
 use self::certificates::CertificatesApi;
 use self::config::ConfigApi;
@@ -54,6 +55,7 @@ pub mod trust_entity;
 pub mod wallet_units;
 
 pub mod holder_wallet_unit;
+mod statistics;
 pub mod wallet_provider;
 
 pub fn http_client() -> &'static reqwest::Client {
@@ -213,6 +215,7 @@ pub struct Client {
     pub wallet_units: WalletUnitsApi,
     pub holder_wallet_units: HolderWalletUnitsApi,
     pub signatures: SignaturesApi,
+    pub statistics: StatisticsApi,
     pub base_url: String,
     pub client: HttpClient,
 }
@@ -249,6 +252,7 @@ impl Client {
             wallet_units: WalletUnitsApi::new(client.clone()),
             holder_wallet_units: HolderWalletUnitsApi::new(client.clone()),
             signatures: SignaturesApi::new(client.clone()),
+            statistics: StatisticsApi::new(client.clone()),
             base_url,
             client,
         }

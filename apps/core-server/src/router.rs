@@ -25,7 +25,8 @@ use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
-    proof_schema, signature, ssi, task, trust_anchor, trust_entity, vc_api, wallet_provider,
+    proof_schema, signature, ssi, statistics, task, trust_anchor, trust_entity, vc_api,
+    wallet_provider,
 };
 use crate::middleware::{UserInfo, get_http_request_context};
 use crate::openapi::gen_openapi_documentation;
@@ -463,6 +464,14 @@ fn get_management_endpoints(
             .route(
                 "/api/holder-wallet-unit/v1",
                 post(holder_wallet_unit::controller::wallet_unit_holder_register),
+            )
+            .route(
+                "/api/statistics/v1/dashboard",
+                get(statistics::controller::organisation_statistics),
+            )
+            .route(
+                "/api/statistics/v1/dashboard/system",
+                get(statistics::controller::system_statistics),
             );
 
         if config.enable_signature_endpoints {

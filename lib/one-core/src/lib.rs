@@ -76,6 +76,7 @@ use crate::service::revocation_list::RevocationListService;
 use crate::service::signature::SignatureService;
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_issuer::SSIIssuerService;
+use crate::service::statistics::StatisticsService;
 use crate::service::task::TaskService;
 use crate::service::trust_anchor::TrustAnchorService;
 use crate::service::trust_entity::TrustEntityService;
@@ -127,6 +128,7 @@ pub struct OneCore {
     pub wallet_unit_service: WalletUnitService,
     pub signature_service: SignatureService,
     pub nfc_service: NfcService,
+    pub statistics_service: StatisticsService,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -740,6 +742,11 @@ impl OneCore {
                 data_provider.get_revocation_list_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_history_repository(),
+                session_provider.clone(),
+            ),
+            statistics_service: StatisticsService::new(
+                data_provider.get_history_repository(),
+                data_provider.get_organisation_repository(),
                 session_provider,
             ),
         })

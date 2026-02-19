@@ -39,11 +39,11 @@ pub struct TimeSeriesRow {
     pub timestamp: OffsetDateTime,
     pub entity_type: HistoryEntityType,
     pub action: HistoryAction,
-    pub count: u32,
+    pub count: i64,
 }
 
 #[derive(FromQueryResult, Debug)]
 pub struct OrganisationOpsCount {
     pub organisation_id: OrganisationId,
-    pub count: u32,
+    pub count: i64,
 }

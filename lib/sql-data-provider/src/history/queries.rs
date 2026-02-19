@@ -548,7 +548,9 @@ impl TimeResolution {
             TimeResolution::Year => "%Y-01-01T00:00:00Z",
         };
         let expr = match db_backend {
-            DbBackend::MySql => Expr::cust(format!("DATE_FORMAT({col}, '{format}')")),
+            DbBackend::MySql => Expr::cust(format!(
+                "STR_TO_DATE(DATE_FORMAT({col}, '{format}'), '%Y-%m-%dT%H:%i:%sZ')"
+            )),
             DbBackend::Sqlite => Expr::cust(format!("strftime('{format}', {col})")),
             DbBackend::Postgres => return Err(DataLayerError::UnsupportedDbBackend),
         };

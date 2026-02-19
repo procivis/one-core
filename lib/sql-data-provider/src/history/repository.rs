@@ -258,14 +258,15 @@ impl HistoryRepository for HistoryProvider {
 
 impl HistoryProvider {
     async fn count(&self, stmt: &CountOperationsQuery) -> Result<usize, DataLayerError> {
+        let statement = self.db.get_database_backend().build(&stmt.0);
         let result = self
             .db
-            .query_one(self.db.get_database_backend().build(&stmt.0))
+            .query_one(statement)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?
             .ok_or(DataLayerError::MappingError)?;
         Ok(result
-            .try_get::<u32>("", "count")
+            .try_get::<i64>("", "count")
             .map_err(|err| DataLayerError::Db(err.into()))? as usize)
     }
 
