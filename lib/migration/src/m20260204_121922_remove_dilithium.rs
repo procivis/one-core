@@ -256,13 +256,15 @@ async fn delete_empty_accepted_proofs(manager: &SchemaManager<'_>) -> Result<(),
                 .from(Proof::Table)
                 .and_where(Expr::col(StateProof::State).eq("ACCEPTED"))
                 .and_where(
-                    Expr::col(Proof::Id).not().in_subquery(
-                        Query::select()
-                            .distinct()
-                            .column(ProofClaim::ProofId)
-                            .from(ProofClaim::Table)
-                            .to_owned(),
-                    ),
+                    Expr::col(Proof::Id)
+                        .in_subquery(
+                            Query::select()
+                                .distinct()
+                                .column(ProofClaim::ProofId)
+                                .from(ProofClaim::Table)
+                                .to_owned(),
+                        )
+                        .not(),
                 ),
         ),
     )
