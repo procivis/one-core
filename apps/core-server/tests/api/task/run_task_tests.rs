@@ -947,6 +947,63 @@ async fn test_run_webhook_notify_delivery_rescheduled() {
 }
 
 #[tokio::test]
+async fn test_run_webhook_notify_last_retry() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let notification = context
+        .db
+        .notifications
+        .create(
+            organisation.id,
+            TestingNotificationParams {
+                // not responding URL will cause rescheduling
+                url: Some("https://invalid.endpoint/notify".to_string()),
+                // maximum retries reached
+                tries_count: Some(4),
+                r#type: Some("WEBHOOK_NOTIFY".into()),
+                next_try_date: Some(OffsetDateTime::now_utc()),
+                history_target: Some("history-target".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("WEBHOOK_NOTIFY").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["delivered"].as_array().unwrap().len(), 0);
+    let failed = resp["failed"].as_array().unwrap();
+    assert_eq!(failed.len(), 1);
+    assert_eq!(failed[0].as_str().unwrap(), notification.id.to_string());
+    assert_eq!(resp["rescheduled"].as_array().unwrap().len(), 0);
+
+    // notification removed
+    assert!(
+        context
+            .db
+            .notifications
+            .get(&notification.id)
+            .await
+            .is_none()
+    );
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&notification.id.into())
+        .await;
+    assert_eq!(history.values.len(), 1);
+    let history = &history.values[0];
+    assert_eq!(history.entity_type, HistoryEntityType::Notification);
+    assert_eq!(history.action, HistoryAction::Errored);
+    assert_eq!(history.target.as_ref().unwrap(), "history-target");
+}
+
+#[tokio::test]
 async fn test_run_webhook_notify_delivered() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

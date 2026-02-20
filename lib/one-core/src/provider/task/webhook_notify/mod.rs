@@ -147,11 +147,13 @@ impl WebhookNotify {
             return Ok(None);
         };
 
-        let (result, metadata) = self
+        let (mut result, metadata) = self
             .send_notification(&notification.url, notification.payload)
             .await?;
 
         let history_action = match result {
+            NotificationResult::Delivered => Some(HistoryAction::Delivered),
+            NotificationResult::Failed => Some(HistoryAction::Errored),
             NotificationResult::Rescheduled => {
                 if let Some(param_retries) = &self.params.retries
                     && notification.tries_count < (param_retries.max_attempts - 1)
@@ -174,25 +176,19 @@ impl WebhookNotify {
                     None
                 } else {
                     tracing::warn!("Max retries reached");
+                    result = NotificationResult::Failed;
                     Some(HistoryAction::Errored)
                 }
-            }
-
-            NotificationResult::Delivered | NotificationResult::Failed => {
-                self.notification_repository
-                    .delete(&notification_id)
-                    .await
-                    .error_while("deleting notification")?;
-
-                Some(if result == NotificationResult::Delivered {
-                    HistoryAction::Delivered
-                } else {
-                    HistoryAction::Errored
-                })
             }
         };
 
         if let Some(action) = history_action {
+            // the final status of delivery known, so no more delivery retries later
+            self.notification_repository
+                .delete(&notification_id)
+                .await
+                .error_while("deleting notification")?;
+
             self.history_repository
                 .create_history(History {
                     id: Uuid::new_v4().into(),
