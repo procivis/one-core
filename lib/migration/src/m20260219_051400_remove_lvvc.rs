@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use sea_orm::{DatabaseBackend, FromQueryResult};
 use sea_orm_migration::prelude::*;
 
@@ -216,12 +218,21 @@ async fn delete(
     entity_ids: &[String],
     manager: &SchemaManager<'_>,
 ) -> Result<(), DbErr> {
-    manager
-        .exec_stmt(
-            Query::delete()
-                .from_table(table)
-                .and_where(Expr::col(column).is_in(entity_ids))
-                .to_owned(),
-        )
-        .await
+    let table = table.into_table_ref();
+    let column = column.into_column_ref();
+
+    let ids: HashSet<&String> = HashSet::from_iter(entity_ids);
+    let ids: Vec<_> = ids.into_iter().map(ToString::to_string).collect();
+    for chunk in ids.chunks(1000) {
+        manager
+            .exec_stmt(
+                Query::delete()
+                    .from_table(table.to_owned())
+                    .and_where(Expr::col(column.to_owned()).is_in(chunk))
+                    .to_owned(),
+            )
+            .await?;
+    }
+
+    Ok(())
 }
