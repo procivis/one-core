@@ -331,9 +331,6 @@ pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub applicable_credentials: Vec<CredentialId>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub inapplicable_credentials: Vec<CredentialId>,
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
-    validity_credential_nbf: Option<OffsetDateTime>,
     pub multiple: Option<bool>,
 }
 
@@ -484,10 +481,6 @@ pub(crate) struct ProofInputRestDTO {
 
     #[try_from(infallible)]
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
-
-    /// Defines the maximum age at which an LVVC will be validated.
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub validity_constraint: Option<i64>,
 }
 
 #[options_not_nullable]

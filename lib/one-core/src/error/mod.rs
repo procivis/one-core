@@ -358,9 +358,6 @@ pub enum ErrorCode {
     #[strum(message = "Schema ID not allowed")]
     BR_0139,
 
-    #[strum(message = "Validity constraint must be specified for LVVC revocation method")]
-    BR_0140,
-
     #[strum(message = "No default transport specified")]
     BR_0142,
 
@@ -396,9 +393,6 @@ pub enum ErrorCode {
 
     #[strum(message = "Proof schema: claim schemas empty")]
     BR_0164,
-
-    #[strum(message = "Validity constraint out of range")]
-    BR_0166,
 
     #[strum(message = "Wallet unit must be in pending")]
     BR_0168,

@@ -33,7 +33,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, JsonLdContext, RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, RevocationMethodCapabilities, RevocationState,
 };
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::MissingProviderError;
@@ -312,12 +312,6 @@ impl RevocationMethod for CRLRevocation {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke],
         }
-    }
-
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "CRL: json_ld not supported".to_string(),
-        ))
     }
 }
 

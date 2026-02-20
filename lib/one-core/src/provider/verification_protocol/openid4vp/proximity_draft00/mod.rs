@@ -773,9 +773,6 @@ pub(super) async fn create_presentation(
 
         let credentials = CredentialToPresent {
             credential_token: credential_presentation.presentation.to_owned(),
-            lvvc_credential_token: credential_presentation
-                .validity_credential_presentation
-                .clone(),
             credential_format,
         };
         let formatted_presentation = presentation_formatter

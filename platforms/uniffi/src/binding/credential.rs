@@ -277,7 +277,6 @@ pub struct CredentialDetailBindingDTO {
     pub claims: Vec<ClaimBindingDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleBindingDTO,
-    pub lvvc_issuance_date: Option<String>,
     pub suspend_end_date: Option<String>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
     pub protocol: String,

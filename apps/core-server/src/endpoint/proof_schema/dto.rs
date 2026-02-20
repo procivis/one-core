@@ -57,8 +57,6 @@ pub(crate) struct ProofInputSchemaRequestRestDTO {
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
     pub credential_schema_id: Uuid,
-    /// Defines the maximum age at which an LVVC will be validated.
-    pub validity_constraint: Option<i64>,
     /// Defines the set of attributes being requested when making proof requests using this schema.
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
@@ -124,8 +122,6 @@ pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaRestDTO,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -316,8 +312,6 @@ pub(crate) struct ProofInputSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
-    /// Defines the maximum age at which an LVVC will be validated.
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -388,7 +382,6 @@ mod test {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: true,
                 },
-                validity_constraint: Some(42),
             }],
         };
 

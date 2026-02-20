@@ -12,7 +12,6 @@ use super::dto::{
     HandleInvitationResultDTO, PresentationSubmitRequestDTO,
     PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
-use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
@@ -35,8 +34,6 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
-use crate::provider::revocation::lvvc::Params as LvvcParams;
-use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
@@ -295,17 +292,12 @@ impl SSIHolderService {
                     disclosed_keys: submitted_paths,
                 };
                 let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(credential)?;
-                let (presentation, validity_credential_presentation) = self
-                    .prepare_credential_presentation(
-                        credential_presentation,
-                        credential,
-                        &*formatter,
-                    )
+                let presentation = self
+                    .prepare_credential_presentation(credential_presentation, &*formatter)
                     .await?;
 
                 let presented_credential = FormattedCredentialPresentation {
                     presentation,
-                    validity_credential_presentation,
                     credential_schema: credential_schema.clone(),
                     reference: PresentationReference::PresentationExchange(
                         requested_credential.to_owned(),
@@ -391,79 +383,17 @@ impl SSIHolderService {
     }
 
     /// Formats the given presentation using the appropriate formatter.
-    /// Depending on the revocation method used, another validity credential
-    /// is returned along with it.
     async fn prepare_credential_presentation(
         &self,
         credential_presentation: CredentialPresentation,
-        credential: &Credential,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<(String, Option<String>), ServiceError> {
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "credential_schema missing".to_string(),
-            ))?;
-
+    ) -> Result<String, ServiceError> {
         let presentation = formatter
             .prepare_selective_disclosure(credential_presentation)
             .await
             .error_while("preparing selective disclosure")?;
 
-        let lvvc_presentation = match &credential_schema.revocation_method {
-            Some(method_id) => {
-                let revocation_method: Fields<RevocationType> =
-                    self.config.revocation.get(method_id)?;
-
-                if revocation_method.r#type == RevocationType::Lvvc {
-                    let extracted = formatter
-                        .extract_credentials_unverified(&presentation, Some(credential_schema))
-                        .await
-                        .error_while("parsing credential")?;
-                    let credential_status = extracted
-                        .status
-                        .first()
-                        .ok_or(ServiceError::MappingError(
-                            "credential_status is None".to_string(),
-                        ))?
-                        .to_owned();
-
-                    let revocation_params: LvvcParams = self.config.revocation.get(method_id)?;
-                    let lvvc = holder_get_lvvc(
-                        credential,
-                        &credential_status,
-                        &*self.validity_credential_repository,
-                        &*self.key_provider,
-                        &self.key_algorithm_provider,
-                        &*self.client,
-                        &revocation_params,
-                        false,
-                    )
-                    .await
-                    .error_while("getting LVVC")?;
-
-                    let token = std::str::from_utf8(&lvvc.credential)
-                        .map_err(|e| ServiceError::MappingError(e.to_string()))?
-                        .to_string();
-
-                    let lvvc_presentation = CredentialPresentation {
-                        token,
-                        disclosed_keys: vec!["id".to_string(), "status".to_string()],
-                    };
-
-                    let formatted_lvvc_presentation = formatter
-                        .prepare_selective_disclosure(lvvc_presentation)
-                        .await
-                        .error_while("preparing disclosures")?;
-                    Some(formatted_lvvc_presentation)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
-        Ok((presentation, lvvc_presentation))
+        Ok(presentation)
     }
 
     pub async fn submit_proof_v2(
@@ -739,14 +669,13 @@ impl SSIHolderService {
             // credential formatters do not use intermediary claims
             disclosed_keys: paths_to_leafs(presented_paths),
         };
-        let (presentation, validity_credential_presentation) = self
-            .prepare_credential_presentation(credential_presentation, &credential, &*formatter)
+        let presentation = self
+            .prepare_credential_presentation(credential_presentation, &*formatter)
             .await?;
 
         let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(&credential)?;
         let presented_credential = FormattedCredentialPresentation {
             presentation,
-            validity_credential_presentation,
             credential_schema: credential_schema.clone(),
             reference: PresentationReference::Dcql {
                 credential_query_id,

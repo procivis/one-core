@@ -62,8 +62,6 @@ pub struct CredentialDetailResponseDTO<T> {
     pub claims: Vec<T>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub lvvc_issuance_date: Option<OffsetDateTime>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,

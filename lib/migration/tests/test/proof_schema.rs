@@ -80,7 +80,6 @@ async fn test_db_schema_proof_input_schema() {
         "created_date",
         "last_modified",
         "order",
-        "validity_constraint",
         "credential_schema",
         "proof_schema",
     ]);
@@ -105,10 +104,6 @@ async fn test_db_schema_proof_input_schema() {
         .r#type(ColumnType::Unsigned)
         .nullable(false)
         .default(None);
-    proof_input_schema
-        .column("validity_constraint")
-        .r#type(ColumnType::BigInt)
-        .nullable(true);
     proof_input_schema
         .column("credential_schema")
         .r#type(ColumnType::Uuid)

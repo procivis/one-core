@@ -53,7 +53,6 @@ pub(crate) fn is_context_list_valid(
     context_list: &IndexSet<ContextType>,
     allowed_contexts: Option<&Vec<Url>>,
     credential_schemas: Option<&Vec<CredentialSchema>>,
-    credential_id: Option<&Url>,
 ) -> Result<(), FormatterError> {
     for context in context_list {
         match context {
@@ -79,25 +78,10 @@ pub(crate) fn is_context_list_valid(
                         let jsonld_context =
                             schema.id.replace("/ssi/schema/v1/", "/ssi/context/v1/");
 
-                        // Workaround for lvvc context
-                        let (base_url, _) =
-                            schema.id.split_once("/ssi/schema/v1/").unwrap_or_default();
-                        let lvvc_context = format!("{base_url}/ssi/context/v1/lvvc.json");
-
-                        jsonld_context == url.as_str() || lvvc_context == url.as_str()
+                        jsonld_context == url.as_str()
                     })
                 {
                     continue;
-                }
-
-                // Phase three - workaround for lvvc. When LVVC context
-                // is hosted somewhere this can be removed.
-                if let Some(id) = credential_id {
-                    let (base_url, _) = id.as_str().split_once("/ssi/lvvc/v1/").unwrap_or_default();
-                    let lvvc_context = format!("{base_url}/ssi/context/v1/lvvc.json");
-                    if lvvc_context == url.as_str() {
-                        continue;
-                    }
                 }
             }
             ContextType::Object(_) => continue, // Nothing to do

@@ -73,7 +73,6 @@ pub(crate) async fn pex_submission_data(
         let credentials_to_present = CredentialToPresent {
             credential_token: credential.presentation,
             credential_format: credential_format_type,
-            lvvc_credential_token: credential.validity_credential_presentation.clone(),
         };
         let presentation_format_type = cred_to_presentation_format_type(credential_format_type);
         if encryption_info.is_none() && presentation_format_type == FormatType::Mdoc {
@@ -138,7 +137,6 @@ pub(crate) async fn pex_submission_data(
             oidc_format,
             &credential_openid4vp_format,
             idx,
-            credential.validity_credential_presentation.is_some(),
         ));
     }
 
@@ -167,7 +165,6 @@ fn submission_descriptors(
     presentation_format: String,
     credential_format: &str,
     vp_token_index: Option<usize>,
-    with_validity_presentation: bool,
 ) -> Vec<PresentationSubmissionDescriptorDTO> {
     let mut result = vec![];
     let path_nested_supported =
@@ -178,7 +175,7 @@ fn submission_descriptors(
     };
     result.push(PresentationSubmissionDescriptorDTO {
         id: reference.id.clone(),
-        format: presentation_format.to_owned(),
+        format: presentation_format,
         path: vp_token_path.to_owned(),
         path_nested: if path_nested_supported {
             Some(NestedPresentationSubmissionDescriptorDTO {
@@ -189,20 +186,5 @@ fn submission_descriptors(
             None
         },
     });
-    if with_validity_presentation {
-        result.push(PresentationSubmissionDescriptorDTO {
-            id: reference.id.clone(),
-            format: presentation_format,
-            path_nested: if path_nested_supported {
-                Some(NestedPresentationSubmissionDescriptorDTO {
-                    format: credential_format.to_owned(),
-                    path: format!("{vp_token_path}.vp.verifiableCredential[1]"),
-                })
-            } else {
-                None
-            },
-            path: vp_token_path,
-        });
-    }
     result
 }

@@ -235,7 +235,6 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
             imported_source_url: None,
             organisation: None,
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),

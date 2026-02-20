@@ -79,9 +79,7 @@ pub(crate) fn gen_openapi_documentation(
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Bearer)
                         .bearer_format("JWT")
-                        .description(Some(
-                            "LVVC holder or remote Trust-entity owner access token",
-                        ))
+                        .description(Some("Remote Trust-entity owner access token"))
                         .build(),
                 ),
             );

@@ -84,11 +84,6 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => {
                     verifiable_credential
                         .push(serde_json::from_str(credential.credential_token.as_str())?);
-
-                    if let Some(lvvc_credential_token) = credential.lvvc_credential_token {
-                        verifiable_credential
-                            .push(serde_json::from_str(lvvc_credential_token.as_str())?);
-                    }
                 }
                 _ => {
                     let openid_format_identifier =
@@ -102,16 +97,6 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
                     .to_map()?;
 
                     verifiable_credential.push(enveloped_credential);
-
-                    if let Some(lvvc_credential_token) = credential.lvvc_credential_token {
-                        let enveloped_lvvc = CredentialEnvelope::new(
-                            openid_format_identifier,
-                            lvvc_credential_token.as_str(),
-                        )
-                        .to_map()?;
-
-                        verifiable_credential.push(enveloped_lvvc);
-                    }
                 }
             }
         }
@@ -231,7 +216,6 @@ impl LdpVpPresentationFormatter {
         is_context_list_valid(
             &presentation.context,
             self.params.allowed_contexts.as_ref(),
-            None,
             None,
         )?;
 

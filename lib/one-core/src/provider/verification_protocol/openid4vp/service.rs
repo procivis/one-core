@@ -4,7 +4,6 @@ use anyhow::Context;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{ClientMetadataJwks, PresentationFormat};
-use time::{Duration, OffsetDateTime};
 
 use super::error::OpenID4VCError;
 use super::model::{
@@ -40,7 +39,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_draft(
 
 pub(crate) fn oidc_verifier_presentation_definition(
     proof: &Proof,
-    mut presentation_definition: OpenID4VPPresentationDefinition,
+    presentation_definition: OpenID4VPPresentationDefinition,
 ) -> Result<OpenID4VPPresentationDefinition, OpenID4VCError> {
     let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
         "missing proof schema".to_string(),
@@ -60,18 +59,6 @@ pub(crate) fn oidc_verifier_presentation_definition(
             "Proof schema inputs length doesn't match interaction data input descriptors length"
                 .to_owned(),
         ));
-    }
-
-    let now = OffsetDateTime::now_utc();
-    for (input_descriptor, proof_schema_input) in presentation_definition
-        .input_descriptors
-        .iter_mut()
-        .zip(proof_schema_inputs)
-    {
-        if let Some(validity_constraint) = proof_schema_input.validity_constraint {
-            input_descriptor.constraints.validity_credential_nbf =
-                Some(now - Duration::seconds(validity_constraint));
-        }
     }
 
     Ok(presentation_definition)

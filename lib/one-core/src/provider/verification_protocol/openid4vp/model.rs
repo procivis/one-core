@@ -202,8 +202,6 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub validity_credential_nbf: Option<OffsetDateTime>,
     #[serde(default)]
     pub limit_disclosure: Option<OpenID4VPPresentationDefinitionLimitDisclosurePreference>,
 }

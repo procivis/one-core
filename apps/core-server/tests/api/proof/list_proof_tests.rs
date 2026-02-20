@@ -77,7 +77,6 @@ async fn test_list_proof_success() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -186,7 +185,6 @@ async fn test_list_proofs_by_ids() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -308,7 +306,6 @@ async fn test_list_proofs_by_name() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -328,7 +325,6 @@ async fn test_list_proofs_by_name() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -466,7 +462,6 @@ async fn test_list_proofs_by_schema_ids() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -486,7 +481,6 @@ async fn test_list_proofs_by_schema_ids() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -637,7 +631,6 @@ async fn test_list_proofs_by_verifiers() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -762,7 +755,6 @@ async fn test_list_proofs_by_state() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -900,7 +892,6 @@ async fn test_list_proof_with_retain_date() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1006,7 +997,6 @@ async fn test_list_proofs_with_org_by_interaction() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1113,7 +1103,6 @@ async fn test_list_proofs_by_role() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1288,7 +1277,6 @@ async fn test_list_proof_with_profile() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1467,7 +1455,6 @@ async fn test_list_proofs_by_date() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;

@@ -668,15 +668,15 @@ mod test {
         formatter
             .expect_get_capabilities()
             .returning(|| FormatterCapabilities {
-                revocation_methods: vec![RevocationType::Lvvc],
+                revocation_methods: vec![RevocationType::BitstringStatusList],
                 ..Default::default()
             });
 
         let mut config = generic_config().core;
         config.revocation.insert(
-            "LVVC".into(),
+            "BITSTRINGSTATUSLIST".into(),
             Fields {
-                r#type: RevocationType::Lvvc,
+                r#type: RevocationType::BitstringStatusList,
                 display: ConfigEntryDisplay::TranslationId("test".to_string()),
                 order: None,
                 priority: None,
@@ -693,11 +693,15 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method(Some("LVVC".to_owned().into()), &formatter);
+        let result = parser
+            .parse_revocation_method(Some("BITSTRINGSTATUSLIST".to_owned().into()), &formatter);
 
         // then
         let_assert!(Ok(revocation_method) = result);
-        assert_eq!(revocation_method, Some("LVVC".to_owned().into()));
+        assert_eq!(
+            revocation_method,
+            Some("BITSTRINGSTATUSLIST".to_owned().into())
+        );
     }
 
     #[test]
@@ -724,7 +728,7 @@ mod test {
         formatter
             .expect_get_capabilities()
             .returning(|| FormatterCapabilities {
-                revocation_methods: vec![RevocationType::Lvvc],
+                revocation_methods: vec![RevocationType::TokenStatusList],
                 ..Default::default()
             });
 

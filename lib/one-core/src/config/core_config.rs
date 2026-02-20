@@ -395,9 +395,6 @@ pub enum RevocationType {
     #[serde(rename = "MDOC_MSO_UPDATE_SUSPENSION")]
     #[strum(serialize = "MDOC_MSO_UPDATE_SUSPENSION")]
     MdocMsoUpdateSuspension,
-    #[serde(rename = "LVVC")]
-    #[strum(serialize = "LVVC")]
-    Lvvc,
     #[serde(rename = "BITSTRINGSTATUSLIST")]
     #[strum(serialize = "BITSTRINGSTATUSLIST")]
     BitstringStatusList,

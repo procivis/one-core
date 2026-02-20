@@ -57,7 +57,6 @@ pub(super) fn convert_to_detail_credential(
         claims,
     };
 
-    // this is not always DID, for example LVVC credentials use URN schema as and id
     let subject = credential_subject
         .id
         .and_then(|id| DidValue::from_did_url(id).ok())

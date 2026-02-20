@@ -414,7 +414,6 @@ async fn test_create_proof_schema_success() {
                 required: true,
             }],
             credential_schema_id,
-            validity_constraint: None,
         }],
     };
 
@@ -572,7 +571,6 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     required: true,
                 }],
                 credential_schema_id: credential_schema_software_id,
-                validity_constraint: None,
             },
             ProofInputSchemaRequestDTO {
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -580,7 +578,6 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     required: true,
                 }],
                 credential_schema_id: credential_schema_hardware_id,
-                validity_constraint: None,
             },
         ],
     };
@@ -678,7 +675,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 required: true,
             }],
             credential_schema_id,
-            validity_constraint: None,
         }],
     };
 
@@ -709,33 +705,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
             KeyStorageSecurity::EnhancedBasic
         ))
     )));
-}
-
-#[tokio::test]
-async fn test_create_proof_schema_fail_validity_constraint_out_of_range() {
-    let create_request = CreateProofSchemaRequestDTO {
-        name: "name".to_string(),
-        expire_duration: Some(0),
-        organisation_id: Uuid::new_v4().into(),
-        proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-            claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
-                id: Uuid::new_v4().into(),
-                required: true,
-            }],
-            credential_schema_id: Uuid::new_v4().into(),
-            validity_constraint: Some(9007199254740991),
-        }],
-    };
-
-    let service = setup_service(Default::default());
-
-    let result = service.create_proof_schema(create_request).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(
-            ValidationError::ValidityConstraintOutOfRange
-        ))
-    ));
 }
 
 #[tokio::test]
@@ -848,7 +817,6 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                     required: true,
                 }],
                 credential_schema_id,
-                validity_constraint: None,
             },
             ProofInputSchemaRequestDTO {
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -856,7 +824,6 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                     required: true,
                 }],
                 credential_schema_id: credential_schema_id_2,
-                validity_constraint: None,
             },
         ],
     };
@@ -1009,7 +976,6 @@ async fn test_create_proof_schema_array_object_fail() {
                 required: true,
             }],
             credential_schema_id,
-            validity_constraint: None,
         }],
     };
 
@@ -1163,7 +1129,6 @@ async fn test_create_proof_schema_array_success() {
                 required: true,
             }],
             credential_schema_id,
-            validity_constraint: None,
         }],
     };
 
@@ -1222,7 +1187,7 @@ async fn test_create_proof_schema_unique_name_error() {
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             credential_schema_id: Uuid::new_v4().into(),
-            validity_constraint: None,
+
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
                 required: true,
@@ -1346,7 +1311,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
             organisation_id,
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id,
-                validity_constraint: None,
+
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: claim_schema_id,
                     required: true,
@@ -1374,7 +1339,7 @@ async fn test_create_proof_schema_no_claims() {
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id: Uuid::new_v4().into(),
-                validity_constraint: None,
+
                 claim_schemas: vec![],
             }],
         })
@@ -1398,7 +1363,7 @@ async fn test_create_proof_schema_no_required_claims() {
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id: Uuid::new_v4().into(),
-                validity_constraint: None,
+
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: Uuid::new_v4().into(),
                     required: false,
@@ -1429,7 +1394,7 @@ async fn test_create_proof_schema_duplicit_claims() {
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id: Uuid::new_v4().into(),
-                validity_constraint: None,
+
                 claim_schemas: vec![claim_schema.clone(), claim_schema],
             }],
         })
@@ -1527,7 +1492,6 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
             },
-            validity_constraint: None,
         }],
     };
 
@@ -1736,7 +1700,6 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
             },
-            validity_constraint: None,
         }],
     };
 
@@ -1966,7 +1929,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
             },
-            validity_constraint: None,
         }],
     };
 
@@ -2077,7 +2039,6 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
             },
-            validity_constraint: None,
         }],
     };
 
@@ -2152,7 +2113,6 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
             },
-            validity_constraint: None,
         }],
     };
 
@@ -2221,7 +2181,6 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
             },
-            validity_constraint: None,
         }],
     };
 
@@ -2286,7 +2245,6 @@ async fn test_get_proof_schema_success_nested_claims() {
 
     let mut proof_schema = generic_proof_schema();
     proof_schema.input_schemas = Some(vec![ProofInputSchema {
-        validity_constraint: None,
         claim_schemas: Some(vec![ProofInputClaimSchema {
             schema: location_x_claim_schema.to_owned(),
             required: true,
@@ -2353,7 +2311,6 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
 
     let mut proof_schema = generic_proof_schema();
     proof_schema.input_schemas = Some(vec![ProofInputSchema {
-        validity_constraint: None,
         claim_schemas: Some(vec![ProofInputClaimSchema {
             schema: location_cs.to_owned(),
             required: true,
@@ -2421,7 +2378,6 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
 
     let mut proof_schema = generic_proof_schema();
     proof_schema.input_schemas = Some(vec![ProofInputSchema {
-        validity_constraint: None,
         claim_schemas: Some(vec![
             ProofInputClaimSchema {
                 schema: bar_cs.to_owned(),
@@ -2776,7 +2732,6 @@ async fn test_create_proof_schema_verify_nested_generic(
                 })
                 .collect(),
             credential_schema_id,
-            validity_constraint: None,
         }],
     };
 

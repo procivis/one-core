@@ -56,7 +56,6 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                     order: Set(order as _),
                     created_date: Set(now),
                     last_modified: Set(now),
-                    validity_constraint: Set(schema.validity_constraint),
                     credential_schema: Set(credential_schema.id),
                     proof_schema: Set(proof_schema_id),
                     ..Default::default()
@@ -116,7 +115,6 @@ impl ProofSchemaRepository for ProofSchemaProvider {
 
                 if model.credential_schema != credential_schema.id
                     || order != model.order
-                    || model.validity_constraint != request.validity_constraint
                 {
                     return Err(DataLayerError::Db(anyhow!(
                         "Inserted proof input schema model doesn't match request proof input schema for proof schema: {proof_schema_id}"
@@ -250,7 +248,6 @@ impl ProofSchemaProvider {
 
         for input_schema in input_schemas {
             let mut new_input = ProofInputSchema {
-                validity_constraint: input_schema.validity_constraint,
                 claim_schemas: None,
                 credential_schema: None,
             };

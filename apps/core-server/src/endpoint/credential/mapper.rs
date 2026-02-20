@@ -202,7 +202,6 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
-            lvvc_issuance_date: value.lvvc_issuance_date,
             suspend_end_date: value.suspend_end_date,
             mdoc_mso_validity: convert_inner(value.mdoc_mso_validity),
             holder: convert_inner(value.holder),

@@ -70,7 +70,6 @@ async fn create_proof_with_claims(
         &[CreateProofInputSchema {
             claims: proof_claims,
             credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;

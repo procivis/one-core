@@ -63,7 +63,7 @@ struct Repositories {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockIssuanceProtocolProvider,
     pub config: CoreConfig,
-    pub lvvc_repository: MockValidityCredentialRepository,
+    pub validity_credential_repository: MockValidityCredentialRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub credential_validity_manager: MockCredentialValidityManager,
     pub notification_scheduler: MockNotificationScheduler,
@@ -79,7 +79,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.config),
-        Arc::new(repositories.lvvc_repository),
+        Arc::new(repositories.validity_credential_repository),
         Arc::new(repositories.blob_storage_provider),
         repositories
             .session_provider
@@ -4119,7 +4119,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        lvvc_repository: validity_credential_repository,
+        validity_credential_repository,
         ..Default::default()
     });
 

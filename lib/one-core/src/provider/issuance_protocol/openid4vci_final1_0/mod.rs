@@ -80,7 +80,6 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, CertificateDetails, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::mapper::{
     autogenerate_holder_binding, generate_transaction_code,
@@ -93,7 +92,6 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::model::JsonLdContext;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -1531,22 +1529,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         )
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        let json_ld_context = match revocation_method.as_deref() {
-            Some(method) => method
-                .get_json_ld_context()
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-            None => JsonLdContext::default(),
-        };
-        let additional_contexts = json_ld_context
-            .url
-            .map(|ctx| ctx.parse().map(|ctx| vec![ContextType::Url(ctx)]))
-            .transpose()
-            .map_err(|_err| {
-                IssuanceProtocolError::Failed(
-                    "Provided JSON-LD context URL is not a valid URL".to_owned(),
-                )
-            })?;
-        let contexts = vcdm_v2_base_context(additional_contexts);
+        let contexts = vcdm_v2_base_context(None);
 
         let issuer_certificate = if let Some(cert) = credential.issuer_certificate.clone() {
             Some(cert)

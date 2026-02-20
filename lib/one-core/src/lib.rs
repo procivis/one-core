@@ -253,7 +253,6 @@ impl OneCore {
             certificate_validator.clone(),
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
-            data_provider.get_validity_credential_repository(),
             data_provider.get_tx_manager(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_remote_entity_cache_repository(),
@@ -434,7 +433,6 @@ impl OneCore {
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(
-            config.clone(),
             did_method_provider.clone(),
             credential_formatter_provider.clone(),
             presentation_formatter_provider.clone(),
@@ -492,17 +490,9 @@ impl OneCore {
                 session_provider.clone(),
             ),
             revocation_list_service: RevocationListService::new(
-                core_base_url.clone(),
-                data_provider.get_credential_repository(),
-                data_provider.get_validity_credential_repository(),
                 data_provider.get_revocation_list_repository(),
-                did_method_provider.clone(),
-                credential_formatter_provider.clone(),
-                key_provider.clone(),
-                key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
-                certificate_validator.clone(),
             ),
             oid4vci_draft13_service: OID4VCIDraft13Service::new(
                 core_base_url.clone(),
@@ -679,9 +669,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_interaction_repository(),
                 data_provider.get_credential_schema_repository(),
-                data_provider.get_validity_credential_repository(),
                 data_provider.get_identifier_repository(),
-                key_provider.clone(),
                 key_algorithm_provider.clone(),
                 key_security_level_provider,
                 credential_formatter_provider,

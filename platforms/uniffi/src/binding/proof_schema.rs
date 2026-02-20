@@ -177,7 +177,6 @@ pub struct ProofInputSchemaBindingDTO {
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaBindingDTO>,
     pub credential_schema: CredentialSchemaBindingDTO,
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Debug, TryInto, uniffi::Record)]
@@ -186,8 +185,6 @@ pub struct ImportProofSchemaInputSchemaBindingDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaBindingDTO,
-    #[try_into(infallible)]
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -290,8 +287,6 @@ pub struct CreateProofSchemaRequestDTO {
 pub struct ProofInputSchemaRequestDTO {
     #[try_into(with_fn_ref = into_id)]
     pub credential_schema_id: String,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub validity_constraint: Option<i64>,
     #[try_into(with_fn = try_convert_inner)]
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
 }

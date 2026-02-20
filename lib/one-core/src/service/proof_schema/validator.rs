@@ -2,14 +2,13 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 use shared_types::OrganisationId;
-use time::{Duration, OffsetDateTime};
 
 use super::ProofSchemaImportError;
 use super::dto::{
     CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
     ProofInputSchemaRequestDTO,
 };
-use crate::config::core_config::{ConfigExt, CoreConfig, RevocationType};
+use crate::config::core_config::{ConfigExt, CoreConfig};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
@@ -34,36 +33,6 @@ pub async fn proof_schema_name_already_exists(
         .error_while("getting proof schemas")?;
     if proof_schemas.total_items > 0 {
         return Err(BusinessLogicError::ProofSchemaAlreadyExists.into());
-    }
-    Ok(())
-}
-
-pub fn throw_if_validity_constraint_missing_for_lvvc(
-    credential_schemas: &Vec<CredentialSchema>,
-    request: &CreateProofSchemaRequestDTO,
-    config: &CoreConfig,
-) -> Result<(), ValidationError> {
-    for credential_schema in credential_schemas {
-        let input_schema = request
-            .proof_input_schemas
-            .iter()
-            .find(|input| input.credential_schema_id == credential_schema.id)
-            .ok_or(ValidationError::ProofSchemaMissingProofInputSchemas)?;
-
-        let uses_lvvc_revocation = match &credential_schema.revocation_method {
-            Some(method_id) => {
-                let revocation_type = config.revocation.get_type(method_id).map_err(|e| {
-                    ValidationError::InvalidFormatter(format!("Invalid revocation id: {e}"))
-                })?;
-
-                revocation_type == RevocationType::Lvvc
-            }
-            None => false,
-        };
-
-        if uses_lvvc_revocation && input_schema.validity_constraint.is_none() {
-            return Err(ValidationError::ValidityConstraintMissingForLvvc);
-        }
     }
     Ok(())
 }
@@ -120,8 +89,6 @@ pub fn validate_create_request(
         {
             return Err(ValidationError::ProofSchemaDuplicitClaim);
         }
-
-        check_if_validity_constraint_is_correct(proof_input)?;
     }
 
     Ok(())
@@ -259,25 +226,6 @@ fn validate_imported_proof_schema_data_types(
             .map_err(|_| ProofSchemaImportError::UnsupportedDatatype(datatype.to_owned()))?;
 
         validate_imported_proof_schema_data_types(&claim_schema.claims, config)?;
-    }
-
-    Ok(())
-}
-
-fn check_if_validity_constraint_is_correct(
-    input_schema: &ProofInputSchemaRequestDTO,
-) -> Result<(), ValidationError> {
-    let now = OffsetDateTime::now_utc();
-
-    if let Some(validity_constraint) = input_schema.validity_constraint.as_ref()
-        && (now
-            .checked_sub(Duration::seconds(*validity_constraint))
-            .is_none()
-            || now
-                .checked_add(Duration::seconds(*validity_constraint))
-                .is_none())
-    {
-        return Err(ValidationError::ValidityConstraintOutOfRange);
     }
 
     Ok(())

@@ -141,7 +141,6 @@ async fn test_presentation_reject_ok() {
             name: "".to_string(),
             expire_duration: 0,
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),

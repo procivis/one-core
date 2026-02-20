@@ -119,11 +119,6 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// `HOLDER`.
     pub role: CredentialRoleRestEnum,
 
-    /// For credentials issued with LVVC revocation.
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
-    pub lvvc_issuance_date: Option<OffsetDateTime>,
-
     /// Scheduled date for credential reactivation.
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]

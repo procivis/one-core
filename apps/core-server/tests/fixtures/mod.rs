@@ -640,7 +640,6 @@ pub async fn create_proof_schema(
                 .collect();
 
             ProofInputSchema {
-                validity_constraint: proof_input_schema.validity_constraint,
                 claim_schemas: Some(claim_schemas),
                 credential_schema: Some(proof_input_schema.credential_schema.to_owned()),
             }

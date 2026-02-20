@@ -8,9 +8,7 @@ use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
 
-use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, RevocationType, VerificationProtocolType,
-};
+use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
@@ -34,7 +32,6 @@ use crate::provider::presentation_formatter::model::{
     ExtractPresentationCtx, ExtractedPresentation,
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
     CredentialDataByRole, RevocationState, VerifierCredentialData,
 };
@@ -45,7 +42,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     DcqlSubmission, OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent,
-    PexSubmission, PresentationSubmissionMappingDTO, SubmissionRequestData, VpSubmissionData,
+    PexSubmission, SubmissionRequestData, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_expiration_time, validate_issuance_time,
@@ -53,7 +50,6 @@ use crate::provider::verification_protocol::openid4vp::validator::{
 use crate::validator::throw_if_proof_state_not_in;
 
 pub(crate) struct OpenId4VpProofValidatorProto {
-    config: Arc<CoreConfig>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -117,7 +113,6 @@ impl OpenId4VpProofValidator for OpenId4VpProofValidatorProto {
 
 impl OpenId4VpProofValidatorProto {
     pub(crate) fn new(
-        config: Arc<CoreConfig>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -126,7 +121,6 @@ impl OpenId4VpProofValidatorProto {
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
-            config,
             did_method_provider,
             credential_formatter_provider,
             presentation_formatter_provider,
@@ -252,7 +246,7 @@ impl OpenId4VpProofValidatorProto {
         let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
         // cryptographic holder binding is required, we expect verifialbe presentations (one or many, depending on `multiple` flag)
-        let (holder_details, lvvc_credentials, non_lvvc_credentials) = if require_holder_binding {
+        let (holder_details, credentials) = if require_holder_binding {
             if !multiple_presentations_allowed && presentation_strings.len() != 1 {
                 return Err(OpenID4VCError::ValidationError(format!(
                     "Expected one presentation for credential query {query_id}"
@@ -298,28 +292,19 @@ impl OpenId4VpProofValidatorProto {
                 "Presentation missing holder id".to_string(),
             ))?;
 
-            let (lvvc, non_lvvc) = self
-                .filter_lvvc_credentials(credential_query, proof_input_schema, credentials)
-                .await?;
-
-            (Some(holder_details), lvvc, non_lvvc)
+            (Some(holder_details), credentials)
         } else {
             // No holder binding — presentation_strings contains bare credential tokens
             let credential_tokens = presentation_strings.to_vec();
 
-            let (lvvc, non_lvvc) = self
-                .filter_lvvc_credentials(credential_query, proof_input_schema, credential_tokens)
-                .await?;
-
-            (None, lvvc, non_lvvc)
+            (None, credential_tokens)
         };
 
-        for credential_token in non_lvvc_credentials {
+        for credential_token in credentials {
             let (credential, mso) = self
                 .validate_credential(
                     holder_details.as_ref(),
                     &credential_token,
-                    &lvvc_credentials,
                     proof_input_schema,
                     trusted_authorities,
                 )
@@ -347,91 +332,10 @@ impl OpenId4VpProofValidatorProto {
         Ok(total_proved_claims)
     }
 
-    async fn filter_lvvc_credentials(
-        &self,
-        credential_query: &CredentialQuery,
-        proof_input_schema: &ProofInputSchema,
-        credentials: Vec<String>,
-    ) -> Result<(Vec<DetailCredential>, Vec<String>), OpenID4VCError> {
-        // If multiple is true, then the verifier will accept multiple presentation tokens
-        // for the same credential query.
-        let multiple_presentations_allowed = credential_query.multiple;
-
-        let requested_credential_schema =
-            proof_input_schema
-                .credential_schema
-                .as_ref()
-                .ok_or(OpenID4VCError::Other(
-                    "Missing credential schema".to_owned(),
-                ))?;
-
-        let lvvc_credential_expected = match &requested_credential_schema.revocation_method {
-            Some(method_id) => {
-                let revocation_type = self
-                    .config
-                    .revocation
-                    .get_type(method_id)
-                    .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
-
-                revocation_type == RevocationType::Lvvc
-            }
-            None => false,
-        };
-
-        if !multiple_presentations_allowed {
-            if lvvc_credential_expected {
-                if credentials.len() != 2 {
-                    return Err(OpenID4VCError::ValidationError(
-                        "Invalid number of credentials in presentation, expected 2".to_string(),
-                    ));
-                }
-            } else if credentials.len() != 1 {
-                return Err(OpenID4VCError::ValidationError(
-                    "Invalid number of credentials in presentation, expected 1".to_string(),
-                ));
-            }
-        };
-
-        let mut lvvc_credentials = Vec::new();
-        let mut non_lvvc_credentials = Vec::new();
-
-        if lvvc_credential_expected {
-            // We do not assume the LVVC is at any specific index in the presentation.
-            // Instead we extract all credentials and then check if any of them are LVVCs,
-            // This accounts for the case where the `multiple` flag is set to true
-            // And more than one Credential + LVVC pairs are present.
-            let credential_formatter = self
-                .credential_formatter_provider
-                .get_credential_formatter(&requested_credential_schema.format)
-                .ok_or(OpenID4VCError::ValidationError(format!(
-                    "Could not find format: {}",
-                    requested_credential_schema.format
-                )))?;
-
-            for credential_token in credentials {
-                let potential_lvvc_credential = credential_formatter
-                    .extract_credentials_unverified(&credential_token, None)
-                    .await
-                    .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
-
-                if is_lvvc_credential(&potential_lvvc_credential) {
-                    lvvc_credentials.push(potential_lvvc_credential);
-                } else {
-                    non_lvvc_credentials.push(credential_token);
-                }
-            }
-        } else {
-            non_lvvc_credentials = credentials;
-        };
-
-        Ok((lvvc_credentials, non_lvvc_credentials))
-    }
-
     async fn validate_credential(
         &self,
         holder_details: Option<&IdentifierDetails>,
         credential_token: &str,
-        extracted_lvvcs: &[DetailCredential],
         proof_schema_input: &ProofInputSchema,
         trusted_authorities: Option<&[TrustedAuthority]>,
     ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
@@ -463,6 +367,7 @@ impl OpenId4VpProofValidatorProto {
         validate_issuance_time(&credential.valid_from, formatter.get_leeway())?;
         validate_expiration_time(&credential.valid_until, formatter.get_leeway())?;
 
+        // TODO (ONE-8761): is this correct? it can make the revocation check etc. skipped
         if is_revocation_credential(&credential) {
             return Ok((credential, None));
         };
@@ -482,7 +387,6 @@ impl OpenId4VpProofValidatorProto {
                     Some(CredentialDataByRole::Verifier(Box::new(
                         VerifierCredentialData {
                             credential: credential.to_owned(),
-                            extracted_lvvcs: extracted_lvvcs.to_owned(),
                             proof_input: proof_schema_input.to_owned(),
                         },
                     ))),
@@ -581,14 +485,6 @@ impl OpenId4VpProofValidatorProto {
             }
         };
 
-        let extracted_lvvcs = self
-            .extract_lvvcs(
-                &presentation_strings,
-                &presentation_submission,
-                protocol_type,
-            )
-            .await?;
-
         let Some(presentation_definition) = interaction_data.presentation_definition.clone() else {
             return Err(OpenID4VCError::ValidationError(
                 "Missing presentation definition".to_string(),
@@ -596,7 +492,7 @@ impl OpenId4VpProofValidatorProto {
         };
 
         if presentation_submission.descriptor_map.len()
-            != (presentation_definition.input_descriptors.len() + extracted_lvvcs.len())
+            != (presentation_definition.input_descriptors.len())
         {
             return Err(OpenID4VCError::ValidationError(
                 "different count of requested and submitted credentials".to_string(),
@@ -754,15 +650,10 @@ impl OpenId4VpProofValidatorProto {
                 .validate_credential(
                     Some(holder_details),
                     credential_token,
-                    &extracted_lvvcs,
                     proof_schema_input,
                     None,
                 )
                 .await?;
-
-            if is_lvvc_credential(&credential) {
-                continue;
-            }
 
             let proved_claims = validate_claims(credential, proof_schema_input, mso)?;
 
@@ -770,107 +661,6 @@ impl OpenId4VpProofValidatorProto {
         }
 
         Ok(total_proved_claims)
-    }
-
-    async fn extract_lvvcs(
-        &self,
-        presentation_strings: &[String],
-        presentation_submission: &PresentationSubmissionMappingDTO,
-        protocol_type: VerificationProtocolType,
-    ) -> Result<Vec<DetailCredential>, OpenID4VCError> {
-        let mut result = vec![];
-
-        for presentation_submitted in &presentation_submission.descriptor_map {
-            let presentation_string_index =
-                vec_last_position_from_token_path(&presentation_submitted.path)?;
-            let presentation_string = presentation_strings.get(presentation_string_index).ok_or(
-                OpenID4VCError::ValidationError(format!(
-                    "Could not find presentation at index: {presentation_string_index}",
-                )),
-            )?;
-
-            let presentation = self
-                .peek_presentation(
-                    presentation_string,
-                    &presentation_submitted.format,
-                    protocol_type,
-                )
-                .await?;
-
-            let Some(ref path_nested) = presentation_submitted.path_nested else {
-                // no path_nested means mso_mdoc so there is no LVVC
-                continue;
-            };
-
-            let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
-            let credential = presentation.credentials.get(credential_index).ok_or(
-                OpenID4VCError::ValidationError(format!(
-                    "Could not find presentation credential at index: {credential_index}",
-                )),
-            )?;
-
-            let oidc_format = &path_nested.format;
-            let format_type = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential))
-                .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-            let (_, formatter) = self
-                .credential_formatter_provider
-                .get_formatter_by_type(format_type)
-                .ok_or(OpenID4VCError::ValidationError(format!(
-                    "Could not find formatter for format type: {format_type}",
-                )))?;
-
-            let credential = formatter
-                .extract_credentials_unverified(credential, None)
-                .await
-                .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
-
-            if is_lvvc_credential(&credential) {
-                result.push(credential);
-            }
-        }
-
-        Ok(result)
-    }
-
-    async fn peek_presentation(
-        &self,
-        presentation_string: &str,
-        oidc_format: &str,
-        protocol_type: VerificationProtocolType,
-    ) -> Result<ExtractedPresentation, OpenID4VCError> {
-        let format_type =
-            map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
-                .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-        let (_, presentation_formatter) = self
-            .presentation_formatter_provider
-            .get_presentation_formatter_by_type(format_type)
-            .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
-
-        let presentation = presentation_formatter
-            .extract_presentation_unverified(
-                presentation_string,
-                ExtractPresentationCtx {
-                    verification_protocol_type: protocol_type,
-                    nonce: None,
-                    format_nonce: None,
-                    issuance_date: None,
-                    expiration_date: None,
-                    client_id: None,
-                    response_uri: None,
-                    mdoc_session_transcript: None,
-                    verifier_key: None,
-                },
-            )
-            .await
-            .map_err(|e| {
-                if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
-                    OpenID4VCError::VPFormatsNotSupported
-                } else {
-                    OpenID4VCError::Other(e.to_string())
-                }
-            })?;
-
-        Ok(presentation)
     }
 
     fn key_verification(&self, key_role: KeyRole) -> Box<KeyVerification> {
@@ -929,9 +719,8 @@ impl OpenId4VpProofValidatorProto {
 }
 
 fn is_revocation_credential(credential: &DetailCredential) -> bool {
-    is_lvvc_credential(credential)
-        || (credential.claims.claims.contains_key("encodedList")
-            && credential.claims.claims.contains_key("statusPurpose"))
+    credential.claims.claims.contains_key("encodedList")
+        && credential.claims.claims.contains_key("statusPurpose")
 }
 
 /// it can happen that credential holder binding is a key, while proof issuer is a did

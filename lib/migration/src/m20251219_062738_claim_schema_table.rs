@@ -44,7 +44,7 @@ enum ClaimSchemaNew {
 }
 
 #[derive(Clone, Iden)]
-enum ClaimSchema {
+pub(crate) enum ClaimSchema {
     Table,
     Id,
     CreatedDate,

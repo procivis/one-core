@@ -323,7 +323,6 @@ pub struct ProofInputBindingDTO {
     #[from(with_fn = convert_inner)]
     pub credential: Option<CredentialDetailBindingDTO>,
     pub credential_schema: CredentialSchemaBindingDTO,
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -457,7 +456,6 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
     pub applicable_credentials: Vec<String>,
     pub inapplicable_credentials: Vec<String>,
-    pub validity_credential_nbf: Option<String>,
     pub multiple: Option<bool>,
 }
 
@@ -528,7 +526,6 @@ pub struct PresentationDefinitionV2CredentialDetailBindingDTO {
     pub claims: Vec<PresentationDefinitionV2ClaimBindingDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleBindingDTO,
-    pub lvvc_issuance_date: Option<String>,
     pub suspend_end_date: Option<String>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
     pub protocol: String,

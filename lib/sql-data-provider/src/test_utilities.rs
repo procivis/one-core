@@ -288,7 +288,6 @@ pub async fn insert_proof_schema_with_claims_to_database(
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             order: Set(i as _),
-            validity_constraint: NotSet,
             credential_schema: Set(input.credential_schema_id),
             proof_schema: Set(schema.id),
         }

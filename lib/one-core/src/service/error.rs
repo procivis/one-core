@@ -143,9 +143,6 @@ pub enum EntityNotFoundError {
     #[error("SD-JWT VC type metadata `{0}` not found")]
     SdJwtVcTypeMetadata(String),
 
-    #[error("Lvvc with credentialId `{0}` not found")]
-    Lvvc(CredentialId),
-
     #[error("History entry `{0}` not found")]
     History(HistoryId),
 
@@ -512,9 +509,6 @@ pub enum ValidationError {
     #[error("Nested claims in arrays cannot be requested")]
     NestedClaimInArrayRequested,
 
-    #[error("Validity constraint must be specified for LVVC revocation method")]
-    ValidityConstraintMissingForLvvc,
-
     #[error("Invalid SCAN_TO_VERIFY parameters")]
     InvalidScanToVerifyParameters,
 
@@ -529,9 +523,6 @@ pub enum ValidationError {
 
     #[error("Sharing not supported for requested proof-schema")]
     ProofSchemaSharingNotSupported,
-
-    #[error("ValidityConstraintOutOfRange")]
-    ValidityConstraintOutOfRange,
 
     #[error("Forbidden")]
     Forbidden,
@@ -705,7 +696,6 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Organisation(_) => ErrorCode::BR_0022,
             Self::Key(_) => ErrorCode::BR_0037,
             Self::CredentialSchema(_) => ErrorCode::BR_0006,
-            Self::Lvvc(_) => ErrorCode::BR_0000,
             Self::History(_) => ErrorCode::BR_0100,
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
             Self::TrustEntity(_) | Self::TrustEntityByEntityKey(_) => ErrorCode::BR_0121,
@@ -832,7 +822,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
             Self::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
             Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
-            Self::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
             Self::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
             Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
             Self::ForbiddenClaimName => ErrorCode::BR_0145,
@@ -841,7 +830,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
-            Self::ValidityConstraintOutOfRange => ErrorCode::BR_0166,
             Self::Forbidden => ErrorCode::BR_0178,
             Self::InvalidUpdateRequest => ErrorCode::BR_0181,
             Self::DeserializationError(_) => ErrorCode::BR_0189,

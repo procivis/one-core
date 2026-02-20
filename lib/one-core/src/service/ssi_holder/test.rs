@@ -32,7 +32,7 @@ use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
+    CredentialSubject, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
@@ -49,9 +49,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_security_level::basic::Basic;
 use crate::provider::key_security_level::dto::{HolderParams, Params};
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
-use crate::provider::key_storage::MockKeyStorage;
-use crate::provider::key_storage::model::KeyStorageCapabilities;
-use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -67,7 +64,6 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
@@ -395,7 +391,6 @@ async fn test_submit_proof_succeeds() {
                             fields: vec![],
                             applicable_credentials: vec![],
                             inapplicable_credentials: vec![],
-                            validity_credential_nbf: None,
                         },
                     ],
                 }],
@@ -442,26 +437,6 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_signature_provider()
-        .returning(move |_, _, _| {
-            let mut mock_signature_provider = MockSignatureProvider::new();
-            mock_signature_provider
-                .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
-
-            mock_signature_provider
-                .expect_get_key_id()
-                .returning(|| Some("key-id".to_string()));
-
-            mock_signature_provider
-                .expect_sign()
-                .returning(|_| Ok(vec![0; 32]));
-
-            Ok(Box::new(mock_signature_provider))
-        });
-
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -469,7 +444,6 @@ async fn test_submit_proof_succeeds() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         blob_storage_provider: Arc::new(blob_storage_provider),
-        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -618,7 +592,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                             fields: vec![],
                             applicable_credentials: vec![],
                             inapplicable_credentials: vec![],
-                            validity_credential_nbf: None,
                         },
                         PresentationDefinitionRequestedCredentialResponseDTO {
                             id: "cred2".to_string(),
@@ -628,7 +601,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                             fields: vec![],
                             applicable_credentials: vec![],
                             inapplicable_credentials: vec![],
-                            validity_credential_nbf: None,
                         },
                     ],
                 }],
@@ -675,26 +647,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .times(2)
         .returning(move |_| Some(blob_storage.clone()));
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_signature_provider()
-        .returning(move |_, _, _| {
-            let mut mock_signature_provider = MockSignatureProvider::new();
-            mock_signature_provider
-                .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
-
-            mock_signature_provider
-                .expect_get_key_id()
-                .returning(|| Some("key-id".to_string()));
-
-            mock_signature_provider
-                .expect_sign()
-                .returning(|_| Ok(vec![0; 32]));
-
-            Ok(Box::new(mock_signature_provider))
-        });
-
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -702,7 +654,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         blob_storage_provider: Arc::new(blob_storage_provider),
-        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -859,7 +810,6 @@ async fn test_submit_proof_repeating_claims() {
                             }],
                             applicable_credentials: vec![],
                             inapplicable_credentials: vec![],
-                            validity_credential_nbf: None,
                         },
                         PresentationDefinitionRequestedCredentialResponseDTO {
                             id: "cred2".to_string(),
@@ -875,7 +825,6 @@ async fn test_submit_proof_repeating_claims() {
                             }],
                             applicable_credentials: vec![credential_id],
                             inapplicable_credentials: vec![],
-                            validity_credential_nbf: None,
                         },
                     ],
                 }],
@@ -937,26 +886,6 @@ async fn test_submit_proof_repeating_claims() {
         .times(2)
         .returning(move |_| Some(blob_storage.clone()));
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_signature_provider()
-        .returning(move |_, _, _| {
-            let mut mock_signature_provider = MockSignatureProvider::new();
-            mock_signature_provider
-                .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
-
-            mock_signature_provider
-                .expect_get_key_id()
-                .returning(|| Some("key-id".to_string()));
-
-            mock_signature_provider
-                .expect_sign()
-                .returning(|_| Ok(vec![0; 32]));
-
-            Ok(Box::new(mock_signature_provider))
-        });
-
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -964,7 +893,6 @@ async fn test_submit_proof_repeating_claims() {
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         blob_storage_provider: Arc::new(blob_storage_provider),
-        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1585,9 +1513,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         organisation_repository: Arc::new(MockOrganisationRepository::new()),
         interaction_repository: Arc::new(MockInteractionRepository::new()),
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
-        validity_credential_repository: Arc::new(MockValidityCredentialRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
-        key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         key_security_level_provider: Arc::new(MockKeySecurityLevelProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
@@ -1798,21 +1724,9 @@ async fn test_accept_credential_credential_org_mismatch() {
         .once()
         .return_once(move |_, _| Ok(vec![dummy_credential(Some(organisation_id))]));
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider.expect_get_key_storage().returning(|_| {
-        let mut key_storage = MockKeyStorage::new();
-        key_storage
-            .expect_get_capabilities()
-            .return_once(|| KeyStorageCapabilities {
-                features: vec![],
-                algorithms: vec![],
-            });
-        Some(Arc::new(key_storage))
-    });
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
-        key_provider: Arc::new(key_provider),
         session_provider: Arc::new(StaticSessionProvider(Session {
             organisation_id: Some(session_organisation_id),
             permissions: vec![],

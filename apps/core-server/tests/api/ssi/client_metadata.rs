@@ -33,7 +33,6 @@ async fn test_get_client_metadata() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -142,7 +141,6 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -198,7 +196,6 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;

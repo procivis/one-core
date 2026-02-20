@@ -8,13 +8,13 @@ use headers::Authorization;
 use headers::authorization::Bearer;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
-    CertificateId, CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId,
-    ProofSchemaId, RevocationListId, TrustAnchorId,
+    CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
+    RevocationListId, TrustAnchorId,
 };
 
 use super::dto::{
     DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, JsonLDContextResponseRestDTO,
-    LVVCIssuerResponseRestDTO, PatchTrustEntityRequestRestDTO, SSIPostTrustEntityRequestRestDTO,
+    PatchTrustEntityRequestRestDTO, SSIPostTrustEntityRequestRestDTO,
     SdJwtVcTypeMetadataResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
@@ -151,60 +151,6 @@ pub(crate) async fn get_revocation_list_by_id(
         Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
             tracing::error!("Missing revocation list");
             (StatusCode::NOT_FOUND, "Missing revocation list").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
-
-#[utoipa::path(
-    get,
-    path = "/ssi/revocation/v1/lvvc/{id}",
-    params(
-        ("id" = CredentialId, Path, description = "Credential id")
-    ),
-    responses(
-        (status = 200, description = "OK", body = LVVCIssuerResponseRestDTO),
-        (status = 400, description = "Credential in PENDING, REQUESTED or CREATED state/Invalid holder token"),
-        (status = 404, description = "Credential not found"),
-        (status = 500, description = "Server error"),
-    ),
-    security(
-        ("remote-agent" = [])
-    ),
-    tag = "ssi",
-    summary = "Get LVVC by credential",
-    description = indoc::formatdoc! {"
-        Retrieve the LVVC of a credential by the credential's UUID. This is needed to
-        check the validity of credential's issued with the LVVC revocation method.
-    "},
-)]
-pub(crate) async fn get_lvvc_by_credential_id(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
-    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
-) -> Response {
-    let result = state
-        .core
-        .revocation_list_service
-        .get_lvvc_by_credential_id(&id, bearer.token())
-        .await;
-
-    match result {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(LVVCIssuerResponseRestDTO::from(result)),
-        )
-            .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {}", error);
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))) => {
-            tracing::error!("Missing credential");
-            (StatusCode::NOT_FOUND, "Missing credential").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

@@ -89,7 +89,6 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
                 processed_credentials.push(CredentialToPresent {
                     credential_token: vp_token,
                     credential_format: FormatType::SdJwt,
-                    lvvc_credential_token: credential.lvvc_credential_token.clone(),
                 });
 
                 continue;
@@ -128,7 +127,6 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
             processed_credentials.push(CredentialToPresent {
                 credential_token: vp_token,
                 credential_format: FormatType::SdJwt,
-                lvvc_credential_token: credential.lvvc_credential_token.clone(),
             });
         }
 

@@ -134,7 +134,6 @@ async fn test_format_presentation() {
             vec![CredentialToPresent {
                 credential_token: jwt_token.to_owned(),
                 credential_format: FormatType::Jwt,
-                lvvc_credential_token: None,
             }],
             Box::new(auth_fn),
             &Some("did:example:123".parse().unwrap()),

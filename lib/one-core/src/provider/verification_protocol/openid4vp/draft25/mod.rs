@@ -166,9 +166,6 @@ impl OpenID4VP25HTTP {
             let credentials = vec![CredentialToPresent {
                 credential_token: credential_presentation.presentation,
                 credential_format,
-                lvvc_credential_token: credential_presentation
-                    .validity_credential_presentation
-                    .clone(),
             }];
             let formatted_presentation = presentation_formatter
                 .format_presentation(

@@ -26,8 +26,6 @@ pub struct Model {
 #[from("model::validity_credential::ValidityCredentialType")]
 #[into("model::validity_credential::ValidityCredentialType")]
 pub enum ValidityCredentialType {
-    #[sea_orm(string_value = "LVVC")]
-    Lvvc,
     #[sea_orm(string_value = "MDOC")]
     Mdoc,
 }

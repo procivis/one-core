@@ -649,10 +649,6 @@ fn get_external_endpoints(
                 get(ssi::controller::get_revocation_list_by_id),
             )
             .route(
-                "/ssi/revocation/v1/lvvc/{id}",
-                get(ssi::controller::get_lvvc_by_credential_id),
-            )
-            .route(
                  "/ssi/revocation/v1/crl/{id}",
                 get(ssi::controller::get_crl_by_id),
             )

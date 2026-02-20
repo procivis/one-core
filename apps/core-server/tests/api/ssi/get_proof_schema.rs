@@ -38,7 +38,6 @@ async fn test_get_proof_schema_success() {
                     array: true,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: Some(10),
             }],
         )
         .await;
@@ -59,5 +58,4 @@ async fn test_get_proof_schema_success() {
     assert_eq!(claim_schema_item["key"], claim_schema.key);
     assert_eq!(claim_schema_item["dataType"], claim_schema.data_type);
     assert!(claim_schema_item["required"].as_bool().unwrap());
-    assert_eq!(resp["proofInputSchemas"][0]["validityConstraint"], 10);
 }

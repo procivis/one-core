@@ -51,8 +51,8 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, Operation,
-    RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
+    RevocationState,
 };
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
@@ -600,10 +600,6 @@ impl RevocationMethod for TokenStatusList {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
         }
-    }
-
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
-        Ok(JsonLdContext::default())
     }
 }
 

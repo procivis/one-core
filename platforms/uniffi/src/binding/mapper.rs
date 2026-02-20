@@ -86,7 +86,7 @@ use crate::binding::trust_entity::{
     ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
 };
 use crate::error::ErrorResponseBindingDTO;
-use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_id_opt, into_timestamp};
+use crate::utils::{TimestampFormat, into_id, into_id_opt, into_timestamp};
 
 impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
     for CredentialDetailBindingDTO
@@ -105,9 +105,6 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
-            lvvc_issuance_date: value
-                .lvvc_issuance_date
-                .map(|lvvc_issuance_date| lvvc_issuance_date.format_timestamp()),
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
@@ -993,7 +990,6 @@ impl From<PresentationDefinitionRequestedCredentialResponseDTO>
                 .iter()
                 .map(|item| item.to_string())
                 .collect(),
-            validity_credential_nbf: format_timestamp_opt(value.validity_credential_nbf),
         }
     }
 }
@@ -1048,7 +1044,6 @@ impl<IN: Into<PresentationDefinitionV2ClaimBindingDTO>> From<CredentialDetailRes
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
-            lvvc_issuance_date: optional_time(value.lvvc_issuance_date),
             suspend_end_date: optional_time(value.suspend_end_date),
             mdoc_mso_validity: convert_inner(value.mdoc_mso_validity),
             holder: convert_inner(value.holder),

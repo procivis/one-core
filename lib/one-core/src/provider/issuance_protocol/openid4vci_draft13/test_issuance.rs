@@ -40,7 +40,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
+use crate::provider::revocation::model::CredentialRevocationInfo;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -115,10 +115,6 @@ async fn test_issuer_submit_succeeds() {
         .return_once(|_, _| Ok(()));
 
     let mut revocation_method = MockRevocationMethod::new();
-    revocation_method
-        .expect_get_json_ld_context()
-        .once()
-        .return_once(|| Ok(JsonLdContext::default()));
     revocation_method
         .expect_add_issued_credential()
         .once()

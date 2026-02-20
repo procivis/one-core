@@ -42,8 +42,8 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, Operation,
-    RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
+    RevocationState,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::repository::error::DataLayerError;
@@ -396,10 +396,6 @@ impl RevocationMethod for BitstringStatusList {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
         }
-    }
-
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
-        Ok(JsonLdContext::default())
     }
 }
 

@@ -41,9 +41,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
-use crate::service::proof_schema::validator::{
-    throw_if_invalid_credential_combination, throw_if_validity_constraint_missing_for_lvvc,
-};
+use crate::service::proof_schema::validator::throw_if_invalid_credential_combination;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -191,8 +189,6 @@ impl ProofSchemaService {
         }
 
         throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)?;
-
-        throw_if_validity_constraint_missing_for_lvvc(&credential_schemas, &request, &self.config)?;
 
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,

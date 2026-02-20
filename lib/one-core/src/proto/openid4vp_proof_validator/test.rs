@@ -47,7 +47,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::service::test_utilities::{
     dummy_claim_schema, dummy_credential_schema, dummy_did, dummy_identifier, dummy_organisation,
-    dummy_proof_schema, dummy_proof_with_protocol, generic_config, generic_formatter_capabilities,
+    dummy_proof_schema, dummy_proof_with_protocol, generic_formatter_capabilities,
 };
 
 #[derive(Default)]
@@ -67,23 +67,6 @@ struct TestData {
     mock_data: MockData,
 }
 
-impl TestData {
-    fn with_revocation_method(mut self, method: &str) -> Self {
-        self.proof
-            .schema
-            .as_mut()
-            .unwrap()
-            .input_schemas
-            .as_mut()
-            .unwrap()[0]
-            .credential_schema
-            .as_mut()
-            .unwrap()
-            .revocation_method = Some(method.into());
-        self
-    }
-}
-
 #[derive(Default)]
 struct MockData {
     presentation_extraction_unverified: Option<Result<ExtractedPresentation, FormatterError>>,
@@ -95,7 +78,6 @@ struct MockData {
 
 fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
     OpenId4VpProofValidatorProto::new(
-        Arc::new(generic_config().core),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.credential_formatter_provider),
         Arc::new(mocks.presentation_formatter_provider),
@@ -432,7 +414,6 @@ fn dummy_presentation_definition() -> OpenID4VPPresentationDefinition {
                         intent_to_retain: None,
                     },
                 ],
-                validity_credential_nbf: None,
                 limit_disclosure: None,
             },
         }],
@@ -516,7 +497,6 @@ fn test_data(
         state: ProofStateEnum::Pending,
         schema: Some(ProofSchema {
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![
                     ProofInputClaimSchema {
                         schema: claim_schema_required,
@@ -619,90 +599,5 @@ async fn test_validate_submission_dcql_no_holder_binding() {
     assert_eq!(
         result.0.proved_credentials.first().unwrap().issuer_details,
         IdentifierDetails::Did(test_data.issuer_did.to_owned())
-    );
-}
-
-#[tokio::test]
-async fn test_validate_submission_dcql_no_holder_binding_with_lvvc() {
-    let mut test_data =
-        test_data(None, Some(dummy_dcql_query(false))).with_revocation_method("LVVC");
-
-    let extracted_credential = test_data
-        .mock_data
-        .credential_extraction
-        .take()
-        .unwrap()
-        .unwrap();
-
-    let lvvc_credential = DetailCredential {
-        id: Some("lvvc-id".to_string()),
-        claims: CredentialSubject {
-            claims: try_convert_inner(HashMap::from([("status".to_string(), json!("active"))]))
-                .unwrap(),
-            id: None,
-        },
-        status: vec![],
-        ..extracted_credential.clone()
-    };
-
-    let mut credential_formatter = base_credential_formatter();
-    let lvvc_cred_clone = lvvc_credential.clone();
-    credential_formatter
-        .expect_extract_credentials_unverified()
-        .times(2)
-        .returning(move |token, _| {
-            if token == "lvvc_token" {
-                Ok(lvvc_cred_clone.clone())
-            } else {
-                Ok(DetailCredential {
-                    id: None,
-                    claims: CredentialSubject {
-                        claims: Default::default(),
-                        id: None,
-                    },
-                    ..lvvc_cred_clone.clone()
-                })
-            }
-        });
-    credential_formatter
-        .expect_extract_credentials()
-        .return_once(move |_, _, _| Ok(extracted_credential));
-
-    let mut revocation_method = MockRevocationMethod::new();
-    revocation_method
-        .expect_check_credential_revocation_status()
-        .once()
-        .return_once(|_, _, _, _| Ok(RevocationState::Valid));
-
-    let mocks = setup_mocks(
-        MockPresentationFormatter::new(),
-        credential_formatter,
-        Some(revocation_method),
-    );
-    let proto = setup_proto(mocks);
-
-    let submission_data = SubmissionRequestData {
-        submission_data: VpSubmissionData::Dcql(DcqlSubmission {
-            // 2 entries: bare credential + LVVC
-            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["main_credential_token".to_string(), "lvvc_token".to_string()]},
-        }),
-        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
-        mdoc_generated_nonce: None,
-        encryption_key: None,
-    };
-    let result = proto
-        .validate_submission(
-            submission_data,
-            test_data.proof,
-            test_data.interaction_data,
-            VerificationProtocolType::OpenId4VpFinal1_0,
-        )
-        .await
-        .unwrap();
-    assert_eq!(result.0.proved_claims.len(), 1);
-    assert_eq!(result.0.proved_credentials.len(), 1);
-    assert_eq!(
-        result.0.proved_credentials.first().unwrap().issuer_details,
-        IdentifierDetails::Did(test_data.issuer_did)
     );
 }

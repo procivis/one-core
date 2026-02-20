@@ -60,7 +60,6 @@ pub struct GetProofSchemaResponseDTO {
 pub struct ProofInputSchemaResponseDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug, From)]
@@ -91,7 +90,6 @@ pub struct CreateProofSchemaRequestDTO {
 #[derive(Clone, Debug)]
 pub struct ProofInputSchemaRequestDTO {
     pub credential_schema_id: CredentialSchemaId,
-    pub validity_constraint: Option<i64>,
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
 }
 
@@ -122,7 +120,6 @@ pub struct ImportProofSchemaDTO {
 pub struct ImportProofSchemaInputSchemaDTO {
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaDTO,
-    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug)]

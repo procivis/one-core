@@ -161,7 +161,6 @@ async fn test_run_retain_proof_check_with_update() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -506,256 +505,6 @@ async fn test_run_task_certificate_check_with_update() {
 }
 
 #[tokio::test]
-async fn test_run_task_holder_check_credential_status_with_no_params() {
-    // GIVEN
-    let key_pair = EDDSASigner::generate_key_pair();
-    let issuer_did = format!(
-        "did:key:{}",
-        Eddsa
-            .reconstruct_key(&key_pair.public, None, None)
-            .unwrap()
-            .signature()
-            .unwrap()
-            .public()
-            .as_multibase()
-            .unwrap()
-    );
-
-    let mock_server = MockServer::builder().start().await;
-    let base_url = mock_server.uri();
-    let jwt_header = json!({
-      "alg": "EDDSA",
-      "typ": "JWT"
-    });
-    let credential_payload = json!({
-      "iat": 1707409689,
-      "exp": 1770481689,
-      "nbf": 1707409629,
-      "iss": issuer_did,
-      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
-      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
-      "vc": {
-        "@context": [
-          "https://www.w3.org/2018/credentials/v1"
-        ],
-        "type": [
-          "VerifiableCredential"
-        ],
-        "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
-        "credentialSubject": {
-          "age": "55"
-        },
-        "credentialStatus": {
-          "id":  format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
-          "type": "LVVC"
-        }
-      }
-    });
-
-    let lvvc_payload = json!({
-      "iat": 1707409689,
-      "exp": 1770481689,
-      "nbf": 1707409629,
-      "iss": issuer_did,
-      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
-      "jti": "88fb9ad2-efe0-4ade-8251-2b39786490af",
-      "vc": {
-        "@context": [
-          "https://www.w3.org/2018/credentials/v1"
-        ],
-        "type": [
-          "VerifiableCredential"
-        ],
-        "id": format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
-        "credentialSubject": {
-          "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
-          "status": "ACCEPTED"
-        }
-      }
-    });
-
-    let credential_jwt = sign_jwt_helper(
-        &jwt_header.to_string(),
-        &credential_payload.to_string(),
-        &key_pair,
-    );
-    let lvvc_credential_jwt = sign_jwt_helper(
-        &jwt_header.to_string(),
-        &lvvc_payload.to_string(),
-        &key_pair,
-    );
-
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-    let holder_key = context
-        .db
-        .keys
-        .create(&organisation, eddsa_testing_params())
-        .await;
-
-    let holder_did = context
-        .db
-        .dids
-        .create(
-            Some(organisation.clone()),
-            TestingDidParams {
-                did_method: Some("KEY".to_string()),
-                did: Some(
-                    "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
-                        .parse()
-                        .unwrap(),
-                ),
-                did_type: Some(DidType::Local),
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: holder_key,
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let holder_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(holder_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(holder_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-    let issuer_did = context
-        .db
-        .dids
-        .create(
-            Some(organisation.clone()),
-            TestingDidParams {
-                did_method: Some("KEY".to_string()),
-                did: Some(
-                    "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe"
-                        .parse()
-                        .unwrap(),
-                ),
-                did_type: Some(DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-    let issuer_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("LVVC".into()),
-            Default::default(),
-        )
-        .await;
-
-    let blob = context
-        .db
-        .blobs
-        .create(TestingBlobParams {
-            value: Some(credential_jwt.as_bytes().to_vec()),
-            ..Default::default()
-        })
-        .await;
-
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Suspended,
-            &issuer_identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams {
-                holder_identifier: Some(holder_identifier),
-                role: Some(CredentialRole::Holder),
-                credential_blob_id: Some(blob.id),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    context
-        .db
-        .revocation_lists
-        .create(issuer_identifier, None)
-        .await;
-
-    Mock::given(method(Method::GET))
-        .and(path(
-            "/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf",
-        ))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "credential": lvvc_credential_jwt,
-            "format": "JWT"
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    let history_previous = context
-        .db
-        .histories
-        .get_by_entity_id(&credential.id.into())
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .tasks
-        .run("HOLDER_CHECK_CREDENTIAL_STATUS")
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-    assert_eq!(json!(1), resp["totalChecks"]);
-
-    let history = context
-        .db
-        .histories
-        .get_by_entity_id(&credential.id.into())
-        .await;
-    // unsuspend added two new history entries
-    assert_eq!(history.values.len(), history_previous.values.len() + 2);
-    // Within the first two entries there needs to be one Reactivated and one Accepted
-    assert!(
-        history
-            .values
-            .iter()
-            .take(2)
-            .any(|x| x.action == HistoryAction::Accepted)
-    );
-    assert!(
-        history
-            .values
-            .iter()
-            .take(2)
-            .any(|x| x.action == HistoryAction::Reactivated)
-    );
-}
-
-#[tokio::test]
 async fn test_run_task_holder_check_credential_status_with_params_none_existing_organisation() {
     // GIVEN
     let key_pair = EDDSASigner::generate_key_pair();
@@ -794,10 +543,6 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         "id": format!("{base_url}/api/credential/v1/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
         "credentialSubject": {
           "age": "55"
-        },
-        "credentialStatus": {
-          "id":  format!("{base_url}/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf"),
-          "type": "LVVC"
         }
       }
     });
@@ -896,7 +641,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .create(
             "test",
             &organisation,
-            Some("LVVC".into()),
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;
@@ -1020,7 +765,6 @@ async fn test_run_interaction_expiration_check_with_update() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;

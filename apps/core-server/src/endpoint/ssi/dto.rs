@@ -4,7 +4,6 @@ use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
-use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use one_core::provider::verification_protocol::openid4vp::model::AuthorizationEncryptedResponseAlgorithm;
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_issuer::dto::{
@@ -111,13 +110,6 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
 pub(crate) enum OID4VPAuthorizationEncryptedResponseAlgorithm {
     #[serde(rename = "ECDH-ES")]
     EcdhEs,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(IssuerResponseDTO)]
-pub(crate) struct LVVCIssuerResponseRestDTO {
-    pub credential: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

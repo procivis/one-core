@@ -10,7 +10,6 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub order: u32,
-    pub validity_constraint: Option<i64>,
     pub credential_schema: CredentialSchemaId,
     pub proof_schema: ProofSchemaId,
 }

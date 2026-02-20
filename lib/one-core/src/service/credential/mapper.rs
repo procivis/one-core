@@ -77,7 +77,6 @@ pub(crate) fn credential_detail_response_from_model(
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
-        lvvc_issuance_date: None,
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
         holder: convert_inner(value.holder_identifier),

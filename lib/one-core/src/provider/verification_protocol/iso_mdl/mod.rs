@@ -230,7 +230,6 @@ impl VerificationProtocol for IsoMdl {
                     .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
                 Ok(CredentialToPresent {
                     credential_token: credential.presentation,
-                    lvvc_credential_token: None,
                     credential_format: format,
                 })
             })
@@ -410,7 +409,6 @@ impl VerificationProtocol for IsoMdl {
                 fields,
                 applicable_credentials,
                 inapplicable_credentials: vec![],
-                validity_credential_nbf: None,
             };
 
             requested_credentials.push(credential_response);

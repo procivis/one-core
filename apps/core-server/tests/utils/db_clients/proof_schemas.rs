@@ -18,7 +18,6 @@ pub struct ProofSchemasDB {
 }
 
 pub struct CreateProofInputSchema<'a> {
-    pub validity_constraint: Option<i64>,
     pub claims: Vec<CreateProofClaim<'a>>,
     pub credential_schema: &'a CredentialSchema,
 }
@@ -65,7 +64,6 @@ impl ProofSchemasDB {
                 .collect();
 
             input_schemas.push(ProofInputSchema {
-                validity_constraint: proof_input_schema.validity_constraint,
                 claim_schemas: Some(claim_schemas),
                 credential_schema: Some(proof_input_schema.credential_schema.to_owned()),
             });
@@ -136,7 +134,6 @@ impl<'a>
         Self {
             claims: claims.iter().map(Into::into).collect(),
             credential_schema,
-            validity_constraint: None,
         }
     }
 }

@@ -389,7 +389,6 @@ fn map_to_filtered_dto(
             .collect(),
         redirect_uri: full_dto.redirect_uri,
         role: full_dto.role,
-        lvvc_issuance_date: full_dto.lvvc_issuance_date,
         suspend_end_date: full_dto.suspend_end_date,
         mdoc_mso_validity: full_dto.mdoc_mso_validity,
         holder: full_dto.holder,
@@ -519,7 +518,6 @@ fn to_requested_credential(
         fields,
         applicable_credentials: match_result.applicable_credentials,
         inapplicable_credentials: match_result.inapplicable_credentials,
-        validity_credential_nbf: None,
     })
 }
 

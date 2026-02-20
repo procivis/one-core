@@ -115,7 +115,6 @@ pub struct ProofInputDTO {
     pub claims: Vec<ProofClaimDTO>,
     pub credential: Option<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
-    pub validity_constraint: Option<i64>,
 }
 
 pub type GetProofListResponseDTO = GetListResponse<ProofListItemResponseDTO>;

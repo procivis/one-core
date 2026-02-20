@@ -17,12 +17,10 @@ use serde_with::{OneOrMany, serde_as};
 use shared_types::InteractionId;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::openid4vp::{ClientMetadataJwks, PresentationFormat};
-use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::endpoint::ssi::dto::OID4VPAuthorizationEncryptedResponseAlgorithm;
-use crate::serialize::front_time_option;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -152,9 +150,6 @@ pub(crate) struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
 pub(crate) struct OpenID4VPPresentationDefinitionConstraintRestDTO {
     #[from(with_fn = convert_inner)]
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintFieldRestDTO>,
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
-    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[options_not_nullable]

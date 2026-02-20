@@ -62,7 +62,6 @@ pub(super) fn proof_input_from_import_request(
         extract_proof_input_claim_schemas(input_schema.claim_schemas, credential_schema_claims)?;
 
     Ok(ProofInputSchema {
-        validity_constraint: input_schema.validity_constraint,
         claim_schemas: Some(proof_input_claim_schemas),
         credential_schema: Some(credential_schema),
     })
@@ -161,7 +160,6 @@ fn convert_input_schema_to_response(
             datatype_config,
         )?,
         credential_schema: credential_schema.into(),
-        validity_constraint: value.validity_constraint,
     })
 }
 
@@ -354,7 +352,6 @@ pub fn proof_schema_from_create_request(
                 .ok_or(BusinessLogicError::MissingCredentialSchema)?;
 
             let proof_input_schema = ProofInputSchema {
-                validity_constraint: proof_input_schema.validity_constraint,
                 claim_schemas: proof_schema_claims.get(&credential_schema_id).cloned(),
                 credential_schema: Some(credential_schema),
             };

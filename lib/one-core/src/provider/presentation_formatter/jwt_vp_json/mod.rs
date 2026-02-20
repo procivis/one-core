@@ -76,16 +76,12 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
             }
         }
 
-        // LVVC credentials are included in the same presentation, alongside the regular credentials
-        let credentials_with_lvvcs = credentials_to_present
+        let credentials = credentials_to_present
             .into_iter()
-            .flat_map(|credential| match credential.lvvc_credential_token {
-                Some(lvvc) => vec![credential.credential_token, lvvc],
-                None => vec![credential.credential_token],
-            })
-            .collect::<Vec<String>>();
+            .map(|credential| credential.credential_token)
+            .collect::<Vec<_>>();
 
-        let vp: VP = format_payload(&credentials_with_lvvcs, context.nonce)?;
+        let vp: VP = format_payload(&credentials, context.nonce)?;
 
         let now = OffsetDateTime::now_utc();
         let valid_for = Duration::minutes(5);

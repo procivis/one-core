@@ -13,7 +13,6 @@ use super::mapper::{
     claims_from_create_request, credential_detail_response_from_model, from_create_request,
 };
 use super::validator::{validate_format_and_did_method_compatibility, validate_redirect_uri};
-use crate::config::core_config::RevocationType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_try_into;
@@ -348,33 +347,12 @@ impl CredentialService {
 
         let attestation_blobs = self.get_wallet_attestation_blobs(&credential).await?;
 
-        let mut response = credential_detail_response_from_model(
+        let response = credential_detail_response_from_model(
             credential,
             &self.config,
             mdoc_validity_credentials,
             attestation_blobs,
         )?;
-
-        let uses_lvvc_revocation = match &response.schema.revocation_method {
-            Some(method_id) => {
-                let revocation_type = self.config.revocation.get_type(method_id)?;
-
-                revocation_type == RevocationType::Lvvc
-            }
-            None => false,
-        };
-
-        if uses_lvvc_revocation {
-            let latest_lvvc = self
-                .validity_credential_repository
-                .get_latest_by_credential_id(credential_id.to_owned(), ValidityCredentialType::Lvvc)
-                .await
-                .error_while("getting validity credential")?;
-
-            if let Some(latest_lvvc) = latest_lvvc {
-                response.lvvc_issuance_date = Some(latest_lvvc.created_date);
-            }
-        }
 
         Ok(response)
     }

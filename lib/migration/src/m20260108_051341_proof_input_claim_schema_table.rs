@@ -42,7 +42,7 @@ enum ProofInputClaimSchemaNew {
 }
 
 #[derive(Clone, Iden)]
-enum ProofInputClaimSchema {
+pub(crate) enum ProofInputClaimSchema {
     Table,
     ClaimSchemaId,
     ProofInputSchemaId,

@@ -25,8 +25,6 @@ pub struct ProofSchema {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofInputSchema {
-    pub validity_constraint: Option<i64>,
-
     // Relations
     pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
     pub credential_schema: Option<CredentialSchema>,

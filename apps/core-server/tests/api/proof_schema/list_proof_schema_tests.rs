@@ -42,7 +42,6 @@ async fn test_list_proof_schema_success() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -103,7 +102,6 @@ async fn test_list_proof_schema_filter_by_date() {
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;

@@ -11,7 +11,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierD
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, JsonLdContext, RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, RevocationMethodCapabilities, RevocationState,
 };
 
 pub struct NoneRevocation {}
@@ -110,9 +110,5 @@ impl RevocationMethod for NoneRevocation {
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities { operations: vec![] }
-    }
-
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
-        Ok(JsonLdContext::default())
     }
 }

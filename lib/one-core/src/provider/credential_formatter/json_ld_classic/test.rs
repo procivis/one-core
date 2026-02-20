@@ -179,7 +179,44 @@ async fn create_token(include_layout: bool) -> Value {
 
 #[tokio::test]
 async fn test_parse_credential() {
-    const CREDENTIAL: &str = "{\"@context\":[\"https://www.w3.org/ns/credentials/v2\",\"https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json\",\"https://core.dev.procivis-one.com/ssi/context/v1/3f77b7e5-5a82-4996-8a9f-f17938b074c5\"],\"id\":\"urn:uuid:248a4521-5a8d-4963-bc38-c4ff0f253aec\",\"type\":[\"VerifiableCredential\",\"7543JsonLdNested\"],\"issuer\":\"did:web:core.dev.procivis-one.com:ssi:did-web:v1:f6283305-667a-474b-a7e3-02c4ba998796\",\"validFrom\":\"2025-10-17T07:17:38.247509039Z\",\"validUntil\":\"2027-10-17T07:17:38.247509039Z\",\"credentialSubject\":{\"id\":\"did:key:zDnaeokW7xJYWFLNk5yA8W9LVVq7Ee2tYTQwMK2dJyC4e3rCr\",\"arr\":[\"a1\",\"a2\"],\"obj\":{\"nested\":\"n\"},\"str\":\"s\"},\"credentialStatus\":{\"id\":\"https://core.dev.procivis-one.com/ssi/revocation/v1/lvvc/248a4521-5a8d-4963-bc38-c4ff0f253aec\",\"type\":\"LVVC\"},\"proof\":{\"type\":\"DataIntegrityProof\",\"created\":\"2025-10-17T07:17:38.247556832Z\",\"cryptosuite\":\"ecdsa-rdfc-2019\",\"verificationMethod\":\"did:web:core.dev.procivis-one.com:ssi:did-web:v1:f6283305-667a-474b-a7e3-02c4ba998796#key-f0b46ab9-71db-42f6-8ab6-f09ee01b0be7\",\"proofPurpose\":\"assertionMethod\",\"proofValue\":\"z3hMMeXnqipsaz8sFdjSj172jDaQ886iueYeGDrHKrk9L1ZmF8XAm4KN3PghuhNFXkpcbsV4cgDSY39FfwyNimN77\"},\"credentialSchema\":{\"id\":\"https://core.dev.procivis-one.com/ssi/schema/v1/3f77b7e5-5a82-4996-8a9f-f17938b074c5\",\"type\":\"ProcivisOneSchema2024\"}}";
+    const CREDENTIAL: &str = r##"
+    {
+      "@context": [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://core.dev.procivis-one.com/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647"
+      ],
+      "type": [
+        "VerifiableCredential",
+        "8761JsonLd"
+      ],
+      "issuer": "did:tdw:QmPxAB6sCcNqVyvg7io53dumteRfUSWDqJNs742UPm3FZ5:core.dev.procivis-one.com:ssi:did-webvh:v1:7301784b-4fb1-44c7-9f73-71d1a4d7c4f7",
+      "validFrom": "2026-02-19T09:18:33.007487222Z",
+      "validUntil": "2028-02-19T09:18:33.007487222Z",
+      "credentialSubject": {
+        "id": "did:key:zDnaeQtSJWkb9qaCu3imWNh6HZqVdcDESDNGnZjMqFZykv3m5",
+        "value": "val"
+      },
+      "credentialStatus": {
+        "id": "urn:uuid:97242ddd-dab3-4c5a-bcb5-adb646b8ee54",
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "0",
+        "statusListCredential": "https://core.dev.procivis-one.com/ssi/revocation/v1/list/65dbba51-f2ad-4249-888f-5d0f5280f4f7"
+      },
+      "proof": {
+        "type": "DataIntegrityProof",
+        "created": "2026-02-19T09:18:33.007490458Z",
+        "cryptosuite": "ecdsa-rdfc-2019",
+        "verificationMethod": "did:tdw:QmPxAB6sCcNqVyvg7io53dumteRfUSWDqJNs742UPm3FZ5:core.dev.procivis-one.com:ssi:did-webvh:v1:7301784b-4fb1-44c7-9f73-71d1a4d7c4f7#key-7ec02a62-d61d-4838-b8e0-0c99ad1d6079",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "z2sToy5rhNkV8WPGA8FfxDkYWyK5vR4etvSdWj3WPCbXpTYcQBUcgY6Xur6935Ks5VHHSASQyJhdketMmbpbeyJDu"
+      },
+      "credentialSchema": {
+        "id": "https://core.dev.procivis-one.com/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647",
+        "type": "ProcivisOneSchema2024"
+      }
+    }
+    "##;
 
     let mut datatype_provider = MockDataTypeProvider::new();
     datatype_provider
@@ -239,25 +276,25 @@ async fn test_parse_credential() {
     let issuer = credential.issuer_identifier.as_ref().unwrap();
     assert_eq!(
         issuer.did.as_ref().unwrap().did.to_string(),
-        "did:web:core.dev.procivis-one.com:ssi:did-web:v1:f6283305-667a-474b-a7e3-02c4ba998796"
+        "did:tdw:QmPxAB6sCcNqVyvg7io53dumteRfUSWDqJNs742UPm3FZ5:core.dev.procivis-one.com:ssi:did-webvh:v1:7301784b-4fb1-44c7-9f73-71d1a4d7c4f7"
     );
 
     let holder = credential.holder_identifier.as_ref().unwrap();
     assert_eq!(
         holder.did.as_ref().unwrap().did.to_string(),
-        "did:key:zDnaeokW7xJYWFLNk5yA8W9LVVq7Ee2tYTQwMK2dJyC4e3rCr"
+        "did:key:zDnaeQtSJWkb9qaCu3imWNh6HZqVdcDESDNGnZjMqFZykv3m5"
     );
 
     let schema = credential.schema.as_ref().unwrap();
-    assert_eq!(schema.revocation_method, Some("LVVC".into()));
-    assert_eq!(schema.name, "7543JsonLdNested");
+    assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
+    assert_eq!(schema.name, "8761JsonLd");
     assert_eq!(
         schema.schema_id,
-        "https://core.dev.procivis-one.com/ssi/schema/v1/3f77b7e5-5a82-4996-8a9f-f17938b074c5"
+        "https://core.dev.procivis-one.com/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647"
     );
 
     let claims = credential.claims.as_ref().unwrap();
-    assert_eq!(claims.len(), 10);
+    assert_eq!(claims.len(), 4);
 
     let get_claim_paths = |filter: &dyn Fn(&Claim) -> bool| {
         HashSet::from_iter(
@@ -271,22 +308,22 @@ async fn test_parse_credential() {
     // intermediary
     assert_eq!(
         get_claim_paths(&|claim| claim.value.is_none() && !claim.schema.as_ref().unwrap().metadata),
-        hashset! { "arr", "obj" }
+        hashset! {}
     );
     // leaf
     assert_eq!(
         get_claim_paths(&|claim| claim.value == Some("value".to_string())
             && !claim.schema.as_ref().unwrap().metadata),
-        hashset! { "str", "obj/nested", "arr/0", "arr/1" }
+        hashset! { "value" }
     );
     // metadata
     assert_eq!(
         get_claim_paths(&|claim| claim.schema.as_ref().unwrap().metadata),
-        hashset! { "id", "type", "type/0", "type/1" }
+        hashset! { "type", "type/0", "type/1" }
     );
 
     let claim_schemas = schema.claim_schemas.as_ref().unwrap();
-    assert_eq!(claim_schemas.len(), 6);
+    assert_eq!(claim_schemas.len(), 2);
 
     let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {
         HashSet::from_iter(
@@ -299,11 +336,11 @@ async fn test_parse_credential() {
 
     assert_eq!(
         get_claim_schema_keys(&|schema| !schema.metadata),
-        hashset! { "str", "arr", "obj", "obj/nested" }
+        hashset! { "value" }
     );
 
     assert_eq!(
         get_claim_schema_keys(&|schema| schema.metadata),
-        hashset! { "id", "type" }
+        hashset! { "type" }
     );
 }

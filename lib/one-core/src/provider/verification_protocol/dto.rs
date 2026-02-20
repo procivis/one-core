@@ -43,7 +43,6 @@ pub struct PresentationDefinitionRequestedCredentialResponseDTO {
     pub multiple: Option<bool>,
     pub applicable_credentials: Vec<CredentialId>,
     pub inapplicable_credentials: Vec<CredentialId>,
-    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]
@@ -77,7 +76,6 @@ pub(crate) struct CredentialGroup {
     pub claims: Vec<CredentialGroupItem>,
     pub applicable_credentials: Vec<Credential>,
     pub inapplicable_credentials: Vec<Credential>,
-    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]
@@ -122,7 +120,6 @@ pub(crate) struct InvitationResponseDTO {
 #[derive(Clone, Debug)]
 pub(crate) struct FormattedCredentialPresentation {
     pub presentation: String,
-    pub validity_credential_presentation: Option<String>,
     pub credential_schema: CredentialSchema,
     pub reference: PresentationReference,
     pub holder_did: Option<Did>,

@@ -125,54 +125,6 @@ async fn test_get_credential_certificate_identifier_success() {
 }
 
 #[tokio::test]
-async fn test_get_credential_with_lvvc_success() {
-    // GIVEN
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("LVVC".into()),
-            Default::default(),
-        )
-        .await;
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Created,
-            &identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams::default(),
-        )
-        .await;
-
-    context
-        .db
-        .validity_credentials
-        .create_lvvc(None, vec![], credential.id)
-        .await;
-
-    // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-
-    resp["id"].assert_eq(&credential.id);
-    resp["schema"]["organisationId"].assert_eq(&organisation.id);
-    assert_eq!(resp["schema"]["name"], "test");
-    assert!(resp["revocationDate"].is_null());
-    assert!(!resp["lvvcIssuanceDate"].is_null());
-    assert_eq!(resp["state"], "CREATED");
-    assert_eq!(resp["role"], "ISSUER");
-}
-
-#[tokio::test]
 async fn test_get_credential_success_metadata() {
     // GIVEN
     let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;

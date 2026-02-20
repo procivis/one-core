@@ -920,7 +920,6 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
 
     let credential_query = CredentialQuery::jwt_vc(vec![vec![
         "https://www.w3.org/ns/credentials/v2".to_owned(),
-        "https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json".to_owned(),
         format!("{schema_id}#SimpleTestSchema"),
     ]])
     .id("test_id")
@@ -1011,7 +1010,6 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
 
     let credential_query = CredentialQuery::jwt_vc(vec![vec![
         "https://www.w3.org/ns/credentials/v2".to_owned(),
-        "https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json".to_owned(),
         format!("{schema_id}#SimpleTestSchema"),
     ]])
     .id("test_id")
@@ -2037,7 +2035,6 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
     let credential_query = CredentialQuery::ldp_vc(vec![
         vec![
             "https://www.w3.org/ns/credentials/v2".to_owned(),
-            "https://core.dev.procivis-one.com/ssi/context/v1/lvvc.json".to_owned(),
             format!("{schema_id1}#SchemaNoSd"),
         ],
         vec![

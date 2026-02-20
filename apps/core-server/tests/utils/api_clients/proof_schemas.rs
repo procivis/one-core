@@ -19,26 +19,14 @@ impl ProofSchemasApi {
         organisation_id: impl Into<Uuid>,
         claims: impl Iterator<Item = (ClaimSchemaId, bool)>,
         credential_schema_id: impl Into<Uuid>,
-        validity_constraint: Option<u32>,
     ) -> Response {
-        let proof_input_schema = if let Some(validity_constraint_value) = validity_constraint {
-            json!({
-                "validityConstraint": validity_constraint_value,
-                "claimSchemas": claims.map(|(id, required)| json!({
-                    "id": id,
-                    "required": required
-                })).collect::<Vec<_>>(),
-                "credentialSchemaId": credential_schema_id.into(),
-            })
-        } else {
-            json!({
-                "claimSchemas": claims.map(|(id, required)| json!({
-                    "id": id,
-                    "required": required
-                })).collect::<Vec<_>>(),
-                "credentialSchemaId": credential_schema_id.into(),
-            })
-        };
+        let proof_input_schema = json!({
+            "claimSchemas": claims.map(|(id, required)| json!({
+                "id": id,
+                "required": required
+            })).collect::<Vec<_>>(),
+            "credentialSchemaId": credential_schema_id.into(),
+        });
 
         let body = json!({
             "expireDuration": 0,

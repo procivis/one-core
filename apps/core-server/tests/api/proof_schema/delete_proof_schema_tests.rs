@@ -31,7 +31,6 @@ async fn test_delete_proof_schema_success() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;

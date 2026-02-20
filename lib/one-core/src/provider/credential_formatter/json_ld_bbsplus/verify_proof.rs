@@ -22,7 +22,6 @@ impl JsonLdBbsplus {
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
             vcdm.credential_schema.as_ref(),
-            vcdm.id.as_ref(),
         )?;
 
         let Some(mut proof) = vcdm.proof.take() else {

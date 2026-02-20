@@ -160,12 +160,10 @@ async fn test_format_presentation_multi_tokens() {
                 CredentialToPresent {
                     credential_token: JWT_TOKEN.to_owned(),
                     credential_format: FormatType::Jwt,
-                    lvvc_credential_token: None,
                 },
                 CredentialToPresent {
                     credential_token: JSONLD_TOKEN.to_owned(),
                     credential_format: FormatType::JsonLdClassic,
-                    lvvc_credential_token: None,
                 },
             ],
             Box::new(auth_fn),

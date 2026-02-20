@@ -9,7 +9,6 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -17,7 +16,6 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
 pub mod issuance;
@@ -37,9 +35,7 @@ pub struct SSIHolderService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
-    key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -60,9 +56,7 @@ impl SSIHolderService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
-        key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -80,9 +74,7 @@ impl SSIHolderService {
             organisation_repository,
             interaction_repository,
             credential_schema_repository,
-            validity_credential_repository,
             identifier_repository,
-            key_provider,
             key_algorithm_provider,
             formatter_provider,
             issuance_protocol_provider,

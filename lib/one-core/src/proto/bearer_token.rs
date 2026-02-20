@@ -44,7 +44,7 @@ impl ErrorCodeMixin for Error {
     }
 }
 
-/// JWT authorization token for use of authenticated holder/verifier access (LVVC fetching, remote trust-entity)
+/// JWT authorization token for use of authenticated holder/verifier access (remote trust-entity)
 pub(crate) async fn prepare_bearer_token(
     identifier: &Identifier,
     key_provider: &dyn KeyProvider,

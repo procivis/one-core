@@ -110,7 +110,7 @@ pub struct DataLayer {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    lvvc_repository: Arc<dyn ValidityCredentialRepository>,
+    validitiy_credential_repository: Arc<dyn ValidityCredentialRepository>,
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
@@ -225,7 +225,7 @@ impl DataLayer {
             key_repository: key_repository.clone(),
         });
 
-        let lvvc_repository = Arc::new(ValidityCredentialProvider {
+        let validitiy_credential_repository = Arc::new(ValidityCredentialProvider {
             db: transaction_manager.clone(),
         });
         let backup_repository = Arc::new(BackupProvider::new(
@@ -280,7 +280,7 @@ impl DataLayer {
             db,
             interaction_repository,
             revocation_list_repository,
-            lvvc_repository,
+            validitiy_credential_repository,
             backup_repository,
             trust_anchor_repository,
             trust_entity_repository,
@@ -344,7 +344,7 @@ impl DataRepository for DataLayer {
         self.revocation_list_repository.clone()
     }
     fn get_validity_credential_repository(&self) -> Arc<dyn ValidityCredentialRepository> {
-        self.lvvc_repository.clone()
+        self.validitiy_credential_repository.clone()
     }
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
         self.backup_repository.clone()

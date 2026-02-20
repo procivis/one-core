@@ -14,7 +14,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierD
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, JsonLdContext, RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, RevocationMethodCapabilities, RevocationState,
 };
 
 pub struct MdocMsoUpdateSuspensionRevocation {}
@@ -119,9 +119,5 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
         RevocationMethodCapabilities {
             operations: vec![Operation::Suspend],
         }
-    }
-
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
-        Ok(JsonLdContext::default())
     }
 }

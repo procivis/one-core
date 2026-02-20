@@ -7,7 +7,6 @@ use time::Duration;
 
 use super::bitstring_status_list::BitstringStatusList;
 use super::bitstring_status_list::resolver::StatusListCachingLoader;
-use super::lvvc::LvvcProvider;
 use super::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use super::none::NoneRevocation;
 use super::status_list_2021::StatusList2021;
@@ -31,7 +30,6 @@ use crate::provider::revocation::crl::CRLRevocation;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -81,7 +79,6 @@ pub(crate) fn revocation_method_provider_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     transaction_manager: Arc<dyn TransactionManager>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
@@ -121,18 +118,6 @@ pub(crate) fn revocation_method_provider_from_config(
                     transaction_manager.clone(),
                     client.clone(),
                     Some(params),
-                ))
-            }
-            RevocationType::Lvvc => {
-                let params = config.revocation.get(key)?;
-                Arc::new(LvvcProvider::new(
-                    core_base_url.clone(),
-                    credential_formatter_provider.clone(),
-                    validity_credential_repository.clone(),
-                    key_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    client.clone(),
-                    params,
                 ))
             }
             RevocationType::TokenStatusList => {

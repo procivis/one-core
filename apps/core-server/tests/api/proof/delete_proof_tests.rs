@@ -312,7 +312,6 @@ async fn setup_proof_schema(context: &TestContext, organisation: &Organisation) 
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await

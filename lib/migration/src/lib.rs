@@ -209,6 +209,7 @@ mod m20260204_121922_remove_dilithium;
 mod m20260206_032338_waa_to_wia;
 mod m20260216_100121_notification;
 mod m20260218_021412_webhook_url;
+mod m20260219_051400_remove_lvvc;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -420,6 +421,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260206_032338_waa_to_wia::Migration),
             Box::new(m20260216_100121_notification::Migration),
             Box::new(m20260218_021412_webhook_url::Migration),
+            Box::new(m20260219_051400_remove_lvvc::Migration),
         ]
     }
 }

@@ -399,7 +399,6 @@ pub(super) async fn get_verifier_proof_detail(
                 .get(&credential_schema.id)
                 .cloned(),
             credential_schema: credential_schema.clone().into(),
-            validity_constraint: input_schema.validity_constraint,
         })
     }
 
@@ -651,7 +650,6 @@ pub(super) async fn get_holder_proof_detail(
                 claims: nest_proof_claims(&claims, credential_claim_schemas, None)?,
                 credential: Some(credential),
                 credential_schema: credential_schema.into(),
-                validity_constraint: None,
             })
         })
         .collect::<Result<Vec<_>, ServiceError>>()?;

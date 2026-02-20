@@ -9,14 +9,12 @@ use crate::model::wallet_unit_attested_key::{
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, RevocationMethodCapabilities,
-    RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities, RevocationState,
 };
 
 pub mod bitstring_status_list;
 pub mod crl;
 pub mod error;
-pub mod lvvc;
 mod mapper;
 pub mod mdoc_mso_update_suspension;
 pub mod model;
@@ -35,8 +33,6 @@ pub trait RevocationMethod: Send + Sync {
     /// Creates the `credentialStatus` field of the VC.
     ///
     /// For BitstringStatusList, this method creates the entry in revocation and suspension lists.
-    ///
-    /// For LVVC, the URL used by the holder to obtain a new LVVC is returned.
     async fn add_issued_credential(
         &self,
         credential: &Credential,
@@ -104,8 +100,4 @@ pub trait RevocationMethod: Send + Sync {
     /// Revocation method capabilities include the operations possible for each revocation
     /// method.
     fn get_capabilities(&self) -> RevocationMethodCapabilities;
-
-    /// For credentials with LVVC revocation method, this method creates the URL
-    /// where the JSON-LD @context is hosted.
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError>;
 }

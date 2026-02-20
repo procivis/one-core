@@ -20,7 +20,6 @@ pub enum CredentialDataByRole {
 #[derive(Debug, Clone)]
 pub struct VerifierCredentialData {
     pub credential: DetailCredential,
-    pub extracted_lvvcs: Vec<DetailCredential>,
     pub proof_input: ProofInputSchema,
 }
 
@@ -46,13 +45,6 @@ impl From<RevocationState> for RevocationListEntryStatus {
             RevocationState::Suspended { .. } => RevocationListEntryStatus::Suspended,
         }
     }
-}
-
-#[derive(Debug, Default)]
-pub struct JsonLdContext {
-    pub revokable_credential_type: String,
-    pub revokable_credential_subject: String,
-    pub url: Option<String>,
 }
 
 #[derive(Clone, Default, Serialize)]

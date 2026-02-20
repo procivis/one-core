@@ -547,25 +547,6 @@ async fn test_post_issuer_credential_with_disabled_issuer_key_storage() {
     test_post_issuer_credential_with(PostCredentialTestParams::default(), Some(issuer_setup)).await;
 }
 
-#[tokio::test]
-async fn test_post_issuer_credential_with_lvvc_revocation_method() {
-    let params = PostCredentialTestParams {
-        revocation_method: Some("LVVC"),
-        use_kid_in_proof: true,
-        ..Default::default()
-    };
-    let (context, credential_id) = test_post_issuer_credential_with(params, None).await;
-
-    let lvvcs = context
-        .db
-        .validity_credentials
-        .get_all_by_credential_id(credential_id, ValidityCredentialType::Lvvc)
-        .await;
-
-    assert_eq!(1, lvvcs.len());
-    assert_eq!(credential_id, lvvcs[0].linked_credential_id);
-}
-
 struct TestIssuerSetup {
     interaction_id: InteractionId,
     access_token: String,

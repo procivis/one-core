@@ -125,7 +125,6 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
         input_descriptor.format.keys().for_each(|key| {
             allowed_oidc_input_descriptor_formats.insert(key.to_owned());
         });
-        let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
 
         let mut fields = input_descriptor.constraints.fields;
 
@@ -170,7 +169,6 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
                 .collect::<anyhow::Result<Vec<_>, VerificationProtocolError>>()?,
             applicable_credentials: vec![],
             inapplicable_credentials: vec![],
-            validity_credential_nbf,
         });
     }
 

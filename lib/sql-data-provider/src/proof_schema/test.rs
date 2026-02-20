@@ -174,7 +174,6 @@ async fn test_create_proof_schema_already_exists() {
             expire_duration: 0,
             organisation: Some(dummy_organisation(Some(organisation_id))),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
@@ -274,7 +273,6 @@ async fn test_create_proof_schema_success() {
             expire_duration: 0,
             organisation: Some(dummy_organisation(Some(organisation_id))),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
                         id: new_claim_schemas[0].id,
@@ -1165,7 +1163,6 @@ async fn test_get_proof_schema_list_filter_formats() {
         created_date: Set(date_now),
         last_modified: Set(date_now),
         order: Set(1),
-        validity_constraint: Set(None),
         credential_schema: Set(cred_schema_jwt_id),
         proof_schema: Set(schema_jwt_only_id),
     }
@@ -1193,7 +1190,6 @@ async fn test_get_proof_schema_list_filter_formats() {
         created_date: Set(date_now),
         last_modified: Set(date_now),
         order: Set(1),
-        validity_constraint: Set(None),
         credential_schema: Set(cred_schema_mdoc_id),
         proof_schema: Set(schema_mdoc_only_id),
     }
@@ -1221,7 +1217,6 @@ async fn test_get_proof_schema_list_filter_formats() {
         created_date: Set(date_now),
         last_modified: Set(date_now),
         order: Set(1),
-        validity_constraint: Set(None),
         credential_schema: Set(cred_schema_mdoc_id),
         proof_schema: Set(schema_mdoc_and_jwt_id),
     }
@@ -1234,7 +1229,6 @@ async fn test_get_proof_schema_list_filter_formats() {
         created_date: Set(date_now),
         last_modified: Set(date_now),
         order: Set(2),
-        validity_constraint: Set(None),
         credential_schema: Set(cred_schema_jwt_id),
         proof_schema: Set(schema_mdoc_and_jwt_id),
     }

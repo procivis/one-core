@@ -49,68 +49,10 @@ impl SSIIssuerService {
             )));
         }
 
-        match id {
-            "lvvc.json" => self.get_json_ld_context_for_lvvc().await,
-            id => {
-                let credential_schema_id = CredentialSchemaId::from_str(id).map_err(|_| {
-                    ServiceError::from(BusinessLogicError::GeneralInputValidationError)
-                })?;
-                self.get_json_ld_context_for_credential_schema(credential_schema_id)
-                    .await
-            }
-        }
-    }
-
-    async fn get_json_ld_context_for_lvvc(&self) -> Result<JsonLDContextResponseDTO, ServiceError> {
-        let base_url = format!(
-            "{}/ssi/context/v1/lvvc.json",
-            self.core_base_url
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Host URL not specified".to_string()
-                ))?,
-        );
-
-        let context = JsonLDContextDTO {
-            entities: HashMap::from([
-                (
-                    "LvvcCredential".to_string(),
-                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                        id: get_url_with_fragment(&base_url, "LvvcCredential")?,
-                        r#type: None,
-                        context: None,
-                    }),
-                ),
-                (
-                    "status".to_string(),
-                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                        id: get_url_with_fragment(&base_url, "status")?,
-                        r#type: None,
-                        context: None,
-                    }),
-                ),
-                (
-                    "suspendEndDate".to_string(),
-                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                        id: get_url_with_fragment(&base_url, "suspendEndDate")?,
-                        r#type: None,
-                        context: None,
-                    }),
-                ),
-                // needed since we set credentialStatus.type to LVVC
-                (
-                    "LVVC".to_string(),
-                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                        id: get_url_with_fragment(&base_url, "LVVC")?,
-                        r#type: None,
-                        context: None,
-                    }),
-                ),
-            ]),
-            ..Default::default()
-        };
-
-        Ok(JsonLDContextResponseDTO { context })
+        let credential_schema_id = CredentialSchemaId::from_str(id)
+            .map_err(|_| ServiceError::from(BusinessLogicError::GeneralInputValidationError))?;
+        self.get_json_ld_context_for_credential_schema(credential_schema_id)
+            .await
     }
 
     async fn get_json_ld_context_for_credential_schema(

@@ -99,7 +99,6 @@ async fn test_presentation_definition_success() {
                 purpose: None,
                 format: jwt_format_map(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
-                    validity_credential_nbf: None,
                     fields: vec![OpenID4VPPresentationDefinitionConstraintField {
                         id: Some(Uuid::new_v4().into()),
                         name: None,
@@ -147,7 +146,6 @@ async fn test_presentation_definition_success() {
                         expire_duration: 0,
                         organisation: None,
                         input_schemas: Some(vec![ProofInputSchema {
-                            validity_constraint: Some(100),
                             claim_schemas: Some(vec![ProofInputClaimSchema {
                                 schema: ClaimSchema {
                                     id: Uuid::from_str("2fa85f64-5717-4562-b3fc-2c963f66afa6")
@@ -267,7 +265,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                             intent_to_retain: None,
                         },
                     ],
-                    validity_credential_nbf: None,
                     limit_disclosure: None,
                 },
             }],
@@ -309,7 +306,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                 state: ProofStateEnum::Pending,
                 schema: Some(ProofSchema {
                     input_schemas: Some(vec![ProofInputSchema {
-                        validity_constraint: None,
                         claim_schemas: Some(vec![
                             ProofInputClaimSchema {
                                 schema: ClaimSchema {

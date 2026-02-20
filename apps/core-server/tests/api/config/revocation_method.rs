@@ -16,10 +16,6 @@ async fn test_capabilities_are_present_in_config() {
     let resp = resp.json_value().await;
 
     assert_eq!(
-        resp["revocation"]["LVVC"]["capabilities"],
-        json!({ "operations": ["REVOKE", "SUSPEND"] })
-    );
-    assert_eq!(
         resp["revocation"]["BITSTRINGSTATUSLIST"]["capabilities"],
         json!({ "operations": ["REVOKE", "SUSPEND"] })
     );

@@ -69,7 +69,6 @@ async fn test_format_presentation_with_cnf_success() {
             vec![CredentialToPresent {
                 credential_token: token.clone(),
                 credential_format: FormatType::SdJwt,
-                lvvc_credential_token: None,
             }],
             Box::new(signer),
             &Some(holder_did.clone()),
@@ -156,7 +155,6 @@ async fn test_format_presentation_with_cnf_missing_nonce_fails() {
             vec![CredentialToPresent {
                 credential_token: token.clone(),
                 credential_format: FormatType::SdJwt,
-                lvvc_credential_token: None,
             }],
             Box::new(MockSignatureProvider::default()),
             &Some(holder_did),
@@ -190,7 +188,6 @@ async fn test_format_presentation_with_cnf_missing_audience_fails() {
             vec![CredentialToPresent {
                 credential_token: token.clone(),
                 credential_format: FormatType::SdJwt,
-                lvvc_credential_token: None,
             }],
             Box::new(MockSignatureProvider::default()),
             &Some(holder_did),
@@ -247,7 +244,6 @@ async fn test_format_presentation_without_cnf_success() {
             vec![CredentialToPresent {
                 credential_token: token.clone(),
                 credential_format: FormatType::SdJwt,
-                lvvc_credential_token: None,
             }],
             Box::new(signer),
             &Some(holder_did.clone()),
@@ -339,7 +335,6 @@ async fn test_format_presentation_without_cnf_missing_audience_nonce_succeeds() 
             vec![CredentialToPresent {
                 credential_token: token.clone(),
                 credential_format: FormatType::SdJwt,
-                lvvc_credential_token: None,
             }],
             Box::new(signer),
             &Some(holder_did),

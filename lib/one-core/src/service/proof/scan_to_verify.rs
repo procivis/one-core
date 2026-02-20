@@ -137,7 +137,6 @@ impl ProofService {
 
         let additional_data = CredentialDataByRole::Verifier(Box::new(VerifierCredentialData {
             credential: credential.to_owned(),
-            extracted_lvvcs: vec![],
             proof_input: input_schema.clone(),
         }));
 

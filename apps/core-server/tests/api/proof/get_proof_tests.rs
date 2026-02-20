@@ -52,7 +52,6 @@ async fn test_get_proof_success() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -160,7 +159,6 @@ async fn test_get_proof_detached_success() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -276,7 +274,6 @@ async fn test_get_proof_with_nested_claims() {
                     })
                     .collect(),
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -387,7 +384,6 @@ async fn test_get_proof_with_empty_array() {
                     })
                     .collect(),
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -582,7 +578,6 @@ async fn test_get_proof_with_array() {
                     })
                     .collect(),
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -709,7 +704,6 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
                     })
                     .collect(),
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -869,7 +863,6 @@ async fn test_get_proof_with_nested_optional_inputs() {
                     },
                 ],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -981,7 +974,6 @@ async fn test_get_proof_with_credentials() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1212,7 +1204,6 @@ async fn test_get_proof_with_retain_date() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1285,7 +1276,6 @@ async fn test_get_proof_with_deleted_claims() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1416,7 +1406,6 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;
@@ -1521,7 +1510,6 @@ async fn test_get_proof_with_credentials_returns_profiles() {
                     array: false,
                 }],
                 credential_schema: &credential_schema,
-                validity_constraint: None,
             }],
         )
         .await;

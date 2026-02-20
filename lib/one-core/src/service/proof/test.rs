@@ -251,7 +251,6 @@ fn generic_proof_input_schema() -> ProofInputSchema {
     let now = OffsetDateTime::now_utc();
 
     ProofInputSchema {
-        validity_constraint: None,
         claim_schemas: None,
         credential_schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -299,7 +298,6 @@ async fn test_get_presentation_definition_proof_role_verifier() {
             expire_duration: 0,
             organisation: Some(dummy_organisation(None)),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
@@ -418,7 +416,6 @@ async fn test_get_proof_exists() {
             expire_duration: 0,
             organisation: Some(dummy_organisation(None)),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
@@ -1482,7 +1479,6 @@ async fn test_get_proof_with_array() {
             expire_duration: 0,
             organisation: Some(organisation.clone()),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: claim_schema.clone(),
                     required: true,
@@ -1755,7 +1751,6 @@ async fn test_get_proof_with_array_in_object() {
             expire_duration: 0,
             organisation: Some(organisation.clone()),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: claim_schemas[0].clone(),
                     required: true,
@@ -2044,7 +2039,6 @@ async fn test_get_proof_with_object_array() {
             expire_duration: 0,
             organisation: Some(organisation.clone()),
             input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: claim_schemas[0].clone(),
                     required: true,

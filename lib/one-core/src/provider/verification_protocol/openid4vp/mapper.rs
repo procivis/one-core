@@ -118,7 +118,6 @@ pub(super) fn presentation_definition_from_interaction_data(
                             .into_iter()
                             .map(|credential| credential.id)
                             .collect(),
-                        validity_credential_nbf: group.validity_credential_nbf,
                     })
                 })
                 .collect::<Result<Vec<_>, VerificationProtocolError>>()?,
@@ -358,7 +357,6 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
         format: format_to_type_mapper(presentation_format_type)?,
         constraints: OpenID4VPPresentationDefinitionConstraint {
             fields: [schema_fields, claim_fields].concat(),
-            validity_credential_nbf: None,
             limit_disclosure,
         },
     })

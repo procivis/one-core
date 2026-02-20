@@ -374,15 +374,6 @@ revocation:
     enabled: true
     type: "MDOC_MSO_UPDATE_SUSPENSION"
     params: null
-  LVVC:
-    display: "revocation.lvvc"
-    order: 2
-    type: "LVVC"
-    params:
-      private:
-        credentialExpiry: 2592000 # 30 days
-        minimumRefreshTime: 300
-        leeway: 60
   TOKENSTATUSLIST:
     display: "revocation.tokenList"
     order: 5

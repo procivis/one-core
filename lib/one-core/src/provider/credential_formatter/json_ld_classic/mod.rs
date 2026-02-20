@@ -204,11 +204,7 @@ impl CredentialFormatter for JsonLdClassic {
                 VerificationProtocolType::OpenId4VpFinal1_0,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
-            revocation_methods: vec![
-                RevocationType::None,
-                RevocationType::BitstringStatusList,
-                RevocationType::Lvvc,
-            ],
+            revocation_methods: vec![RevocationType::None, RevocationType::BitstringStatusList],
             allowed_schema_ids: vec![],
             ecosystem_schema_ids: vec![],
             datatypes: vec![
@@ -267,7 +263,6 @@ impl CredentialFormatter for JsonLdClassic {
 
         let revocation_method = if let Some(status) = vcdm.credential_status.first() {
             match status.r#type.as_str() {
-                "LVVC" => Some(RevocationType::Lvvc),
                 "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                 _ => {
                     return Err(FormatterError::CouldNotExtractCredentials(format!(
@@ -431,7 +426,6 @@ impl JsonLdClassic {
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
             vcdm.credential_schema.as_ref(),
-            vcdm.id.as_ref(),
         )?;
 
         let metadata_claims = vcdm.get_metadata_claims(

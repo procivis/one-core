@@ -288,9 +288,7 @@ pub(crate) async fn share_credential(
         `forceRefresh` parameter to force the system to retrieve these entities
         from the external resource.
 
-        For mdocs and credentials issued with LVVC revocation, use the `forceRefresh`
-        parameter to force the system to request a new MSO (for mdocs) or a new
-        LVVC with the latest status.
+        For mdocs, use the `forceRefresh` parameter to force the system to request a new MSO.
 
         Related guide: [Caching](/configure/caching)
     "},

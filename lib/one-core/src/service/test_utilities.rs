@@ -194,11 +194,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 order: 1
                 type: 'BITSTRINGSTATUSLIST'
                 params: null
-            LVVC:
-                display: 'revocation.lvvc'
-                order: 2
-                type: 'LVVC'
-                params: null
         did:
             KEY:
                 display: 'did.key'
@@ -579,11 +574,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             VerificationProtocolType::OpenId4VpDraft25,
             VerificationProtocolType::OpenId4VpFinal1_0,
         ],
-        revocation_methods: vec![
-            RevocationType::None,
-            RevocationType::BitstringStatusList,
-            RevocationType::Lvvc,
-        ],
+        revocation_methods: vec![RevocationType::None, RevocationType::BitstringStatusList],
         verification_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         verification_key_storages: vec![KeyStorageType::Internal],
         datatypes: vec!["STRING".into(), "OBJECT".into()],

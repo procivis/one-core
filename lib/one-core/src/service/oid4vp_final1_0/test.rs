@@ -129,7 +129,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                             intent_to_retain: None,
                         },
                     ],
-                    validity_credential_nbf: None,
                     limit_disclosure: None,
                 },
             }],
@@ -172,7 +171,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                 state: ProofStateEnum::Pending,
                 schema: Some(ProofSchema {
                     input_schemas: Some(vec![ProofInputSchema {
-                        validity_constraint: None,
                         claim_schemas: Some(vec![
                             ProofInputClaimSchema {
                                 schema: ClaimSchema {
@@ -310,7 +308,6 @@ async fn test_submit_proof_failed_on_validator_failure() {
                             intent_to_retain: None,
                         },
                     ],
-                    validity_credential_nbf: None,
                     limit_disclosure: None,
                 },
             }],
@@ -353,7 +350,6 @@ async fn test_submit_proof_failed_on_validator_failure() {
                 state: ProofStateEnum::Pending,
                 schema: Some(ProofSchema {
                     input_schemas: Some(vec![ProofInputSchema {
-                        validity_constraint: None,
                         claim_schemas: Some(vec![
                             ProofInputClaimSchema {
                                 schema: ClaimSchema {

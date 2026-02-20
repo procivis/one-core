@@ -11,7 +11,6 @@ use super::common::map_claims;
 use super::model::{CredentialData, CredentialSchema};
 use super::nest_claims;
 use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
-use crate::config::core_config::RevocationType;
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -47,12 +46,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
 
     let schema = credential_detail.schema;
     // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
-    // We also include it if LLVC credentials are used for revocation
-    let credential_id = if schema.format.to_string() == "JSON_LD_BBSPLUS"
-        || credential_status
-            .iter()
-            .any(|status| status.r#type == RevocationType::Lvvc.to_string())
-    {
+    let credential_id = if schema.format.to_string() == "JSON_LD_BBSPLUS" {
         Urn::from_uuid(credential.id.into())
             .to_string()
             .parse()
@@ -69,7 +63,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     let issuer = issuer_for_credential(credential, core_base_url)?;
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
     // For JSON-LD formats the "id" is added to the credentialSubject inside the formatter.
-    // This is currently the only way to remain backwards compatible with the old formatters and allow LVVC credential to set the credentialSubject.id.
+    // This is currently the only way to remain backwards compatible with the old formatters.
     let credential_subject = VcdmCredentialSubject::new(claims).error_while("creating subject")?;
 
     let layout_metadata =

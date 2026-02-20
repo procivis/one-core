@@ -45,7 +45,6 @@ async fn test_share_proof_success() {
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;
@@ -112,7 +111,6 @@ async fn test_share_proof_key_storage_disabled_success() {
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;
@@ -171,7 +169,6 @@ async fn test_share_proof_twice() {
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;
@@ -601,7 +598,6 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;
@@ -773,7 +769,6 @@ async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;
@@ -835,7 +830,6 @@ async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
                 array: false,
             }],
             credential_schema: &credential_schema,
-            validity_constraint: None,
         }],
     )
     .await;

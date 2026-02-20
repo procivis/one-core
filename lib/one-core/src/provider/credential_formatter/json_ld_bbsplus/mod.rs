@@ -330,11 +330,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                 VerificationProtocolType::OpenId4VpFinal1_0,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
-            revocation_methods: vec![
-                RevocationType::None,
-                RevocationType::BitstringStatusList,
-                RevocationType::Lvvc,
-            ],
+            revocation_methods: vec![RevocationType::None, RevocationType::BitstringStatusList],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::Ecdsa,
@@ -406,7 +402,6 @@ impl CredentialFormatter for JsonLdBbsplus {
 
         let revocation_method = if let Some(status) = vcdm.credential_status.first() {
             match status.r#type.as_str() {
-                "LVVC" => Some(RevocationType::Lvvc),
                 "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                 _ => {
                     return Err(FormatterError::CouldNotVerify(format!(

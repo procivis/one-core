@@ -263,9 +263,6 @@ impl OpenID4VPFinal1_0 {
 
                 let credentials = CredentialToPresent {
                     credential_token: credential_presentation.presentation,
-                    lvvc_credential_token: credential_presentation
-                        .validity_credential_presentation
-                        .clone(),
                     credential_format,
                 };
                 let formatted_presentation = presentation_formatter
@@ -288,9 +285,6 @@ impl OpenID4VPFinal1_0 {
                 // No holder binding — send bare credential tokens without VP wrapper
                 let tokens = vp_token.entry(credential_query_id).or_default();
                 tokens.push(credential_presentation.presentation);
-                if let Some(lvvc) = credential_presentation.validity_credential_presentation {
-                    tokens.push(lvvc);
-                }
             }
         }
         Ok((
