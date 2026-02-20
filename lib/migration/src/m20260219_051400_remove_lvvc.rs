@@ -26,15 +26,6 @@ impl MigrationTrait for Migration {
             return Ok(());
         }
 
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(ProofInputSchema::Table)
-                    .drop_column(ProofInputSchema::ValidityConstraint)
-                    .to_owned(),
-            )
-            .await?;
-
         let credential_schemas = get_ids(
             manager,
             Query::select()
@@ -220,6 +211,15 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
+        manager
+            .alter_table(
+                Table::alter()
+                    .table(ProofInputSchema::Table)
+                    .drop_column(ProofInputSchema::ValidityConstraint)
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 }
@@ -236,13 +236,22 @@ async fn get_ids_batched(
     linked_entities: &[String],
     manager: &SchemaManager<'_>,
 ) -> Result<Vec<String>, DbErr> {
+    if linked_entities.is_empty() {
+        return Ok(vec![]);
+    }
+
     let table = table.into_table_ref();
     let id_column = id_column.into_column_ref();
     let linked_entity_id_column = linked_entity_id_column.into_column_ref();
 
     let ids = unique_ids(linked_entities);
     let mut result = vec![];
-    for chunk in ids.chunks(1000) {
+    for (index, chunk) in ids.chunks(1000).enumerate() {
+        tracing::debug!(
+            "Fetching {table:?}.{id_column:?}, chunk {index}/{}",
+            ids.len() / 1000
+        );
+
         result.extend(
             get_ids(
                 manager,
@@ -279,11 +288,17 @@ async fn delete(
     entity_ids: &[String],
     manager: &SchemaManager<'_>,
 ) -> Result<(), DbErr> {
+    if entity_ids.is_empty() {
+        return Ok(());
+    }
+
     let table = table.into_table_ref();
     let column = column.into_column_ref();
 
     let ids = unique_ids(entity_ids);
-    for chunk in ids.chunks(1000) {
+    for (index, chunk) in ids.chunks(1000).enumerate() {
+        tracing::debug!("Deleting {table:?}, chunk {index}/{}", ids.len() / 1000);
+
         manager
             .exec_stmt(
                 Query::delete()
