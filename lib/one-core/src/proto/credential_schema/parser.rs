@@ -718,7 +718,7 @@ mod test {
         let result = parser.parse_revocation_method(Some("INVALID".to_owned().into()), &formatter);
 
         // then
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0051);
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0089);
     }
 
     #[test]
@@ -1387,7 +1387,7 @@ mod test {
         );
 
         // then
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0051);
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0089);
     }
 
     #[test]
@@ -1447,7 +1447,7 @@ mod test {
         let result = parser.parse_claim_schema_array("claim1", Some(true), &formatter);
 
         // then
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0051);
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0089);
     }
 
     #[test]

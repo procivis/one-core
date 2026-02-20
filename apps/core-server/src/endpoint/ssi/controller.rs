@@ -6,6 +6,7 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::Authorization;
 use headers::authorization::Bearer;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
@@ -144,7 +145,7 @@ pub(crate) async fn get_revocation_list_by_id(
                 (StatusCode::OK, result.revocation_list).into_response()
             }
         },
-        Err(ServiceError::ConfigValidationError(error)) => {
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Config validation error: {}", error);
             StatusCode::BAD_REQUEST.into_response()
         }

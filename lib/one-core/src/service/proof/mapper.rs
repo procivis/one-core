@@ -282,7 +282,8 @@ pub(super) async fn get_verifier_proof_detail(
                     .get_fields(&claim.schema.data_type)
                     .map(|field| (claim, field.r#type))
             })
-            .collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, _>>()
+            .error_while("getting datatypes")?
             .into_iter()
             // only object claim schemas can have nested claim schemas
             .filter(|(_, r#type)| r#type == &DatatypeType::Object)

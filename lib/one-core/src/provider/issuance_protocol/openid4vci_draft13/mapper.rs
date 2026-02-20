@@ -6,6 +6,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use secrecy::ExposeSecret;
+use serde::de::Error;
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -18,8 +19,9 @@ use super::model::{
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
     WalletStorageTypeEnum,
 };
+use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, Params};
-use crate::config::{ConfigError, ConfigParsingError};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::model::certificate::Certificate;
@@ -740,7 +742,7 @@ fn visit_nested_array_field(
                 visit_nested_object_field(credential_id, now, object, claim, &path_element_to_root)
             }
         }?;
-        Ok([claims, nested_claims].concat())
+        Ok::<_, IssuanceProtocolError>([claims, nested_claims].concat())
     })?;
 
     if !child_claims.is_empty() {
@@ -1038,7 +1040,7 @@ pub(super) fn credentials_supported_mdoc(
     let format_type = config
         .format
         .get_fields(&schema.format)
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+        .error_while("getting format config")?
         .r#type;
 
     let credential_configuration = OpenID4VCICredentialConfigurationData {
@@ -1103,16 +1105,21 @@ pub(crate) fn map_cryptographic_binding_methods_supported(
 }
 
 pub(crate) fn parse_credential_issuer_params(
+    issuer: &str,
     config_params: &Option<Params>,
-) -> Result<CredentialIssuerParams, ConfigError> {
+) -> Result<CredentialIssuerParams, ConfigValidationError> {
     config_params
         .as_ref()
         .and_then(|p| p.merge())
         .map(serde_json::from_value)
-        .ok_or(ConfigError::Parsing(
-            ConfigParsingError::GeneralParsingError("Credential issuer params missing".to_string()),
-        ))?
-        .map_err(|e| ConfigError::Parsing(ConfigParsingError::GeneralParsingError(e.to_string())))
+        .ok_or(ConfigValidationError::FieldsDeserialization {
+            key: issuer.to_string(),
+            source: serde_json::Error::custom("Params missing"),
+        })?
+        .map_err(|source| ConfigValidationError::FieldsDeserialization {
+            key: issuer.to_string(),
+            source,
+        })
 }
 
 pub(crate) fn map_to_import_credential_schema_request(

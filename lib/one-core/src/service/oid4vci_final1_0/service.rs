@@ -23,8 +23,8 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
-    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
-    get_exchange_param_token_expires_in,
+    get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
+    get_issuance_param_token_expires_in,
 };
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
@@ -86,7 +86,8 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             protocol_id,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -115,7 +116,7 @@ impl OID4VCIFinal1_0Service {
             .config
             .format
             .get_fields(&schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
         let oidc_format = match &format_type {
             FormatType::Jwt => "jwt_vc_json",
@@ -173,7 +174,8 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             protocol_id,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let protocol_base_url = self
             .protocol_base_url
@@ -287,7 +289,8 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             &credential.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
@@ -295,7 +298,8 @@ impl OID4VCIFinal1_0Service {
         let issuance_protocol_type = self
             .config
             .issuance_protocol
-            .get_fields(&credential.protocol)?
+            .get_fields(&credential.protocol)
+            .error_while("getting protocol config")?
             .r#type;
 
         if issuance_protocol_type != IssuanceProtocolType::OpenId4VciFinal1_0 {
@@ -404,7 +408,8 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             &credential.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let Some(OpenID4VCICredentialRequestProofs::Jwt(jwts)) = request.proofs.as_ref() else {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
@@ -432,11 +437,18 @@ impl OID4VCIFinal1_0Service {
             })?;
 
         let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
-        let params: OpenID4VCIFinal1Params =
-            self.config.issuance_protocol.get(&credential.protocol)?;
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(&credential.protocol)
+            .error_while("getting protocol params")?;
 
         let Some(nonce_params) = &params.nonce else {
-            return Err(ConfigValidationError::TypeNotFound(credential.protocol.to_owned()).into());
+            return Err(
+                ConfigValidationError::TypeNotFound(credential.protocol.to_owned())
+                    .error_while("getting nonce params")
+                    .into(),
+            );
         };
 
         let nonce_id =
@@ -796,7 +808,8 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             &credential.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         match (credential.state, &request.event) {
             (
@@ -888,7 +901,7 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
-        let params = validator::get_config_entity(&self.config)?;
+        let params = validator::get_config_entity(&self.config).error_while("checking config")?;
 
         let credential_schema = self
             .credential_schema_repository
@@ -930,7 +943,8 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             &credential.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let wallet_instance_attestation_token = self
             .validate_oauth_client_attestation(
@@ -952,11 +966,14 @@ impl OID4VCIFinal1_0Service {
         };
 
         let pre_authorization_expires_in =
-            get_exchange_param_pre_authorization_expires_in(&self.config, &credential.protocol)?;
+            get_issuance_param_pre_authorization_expires_in(&self.config, &credential.protocol)
+                .error_while("getting issuance params")?;
         let access_token_expires_in =
-            get_exchange_param_token_expires_in(&self.config, &credential.protocol)?;
+            get_issuance_param_token_expires_in(&self.config, &credential.protocol)
+                .error_while("getting issuance params")?;
         let refresh_token_expires_in =
-            get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
+            get_issuance_param_refresh_token_expires_in(&self.config, &credential.protocol)
+                .error_while("getting issuance params")?;
 
         let tx: BoxFuture<Result<_, ServiceError>> = async {
             // Lock the interaction to ensure exclusive access
@@ -1039,7 +1056,8 @@ impl OID4VCIFinal1_0Service {
             let credential_format_type = self
                 .config
                 .format
-                .get_fields(&credential_schema.format)?
+                .get_fields(&credential_schema.format)
+                .error_while("getting format config")?
                 .r#type;
 
             // we add refresh token for mdoc
@@ -1154,11 +1172,18 @@ impl OID4VCIFinal1_0Service {
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
             protocol_id,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
-        let params: OpenID4VCIFinal1Params = self.config.issuance_protocol.get(protocol_id)?;
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(protocol_id)
+            .error_while("getting protocol params")?;
         let Some(params) = params.nonce else {
-            return Err(ConfigValidationError::TypeNotFound(protocol_id.to_string()).into());
+            return Err(ConfigValidationError::TypeNotFound(protocol_id.to_string())
+                .error_while("getting nonce params")
+                .into());
         };
 
         let c_nonce = generate_nonce(params, self.base_url.to_owned()).await?;

@@ -6,7 +6,7 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 
 use super::core_config::*;
-use crate::config::ConfigParsingError::GeneralParsingError;
+use crate::config::ConfigParsingError;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -234,7 +234,7 @@ rusty_fork_test! {
         assert!(
             matches!(
                 config,
-                Err(GeneralParsingError(m)) if m == "missing field `display` for key \"default.identifier.DID\" in YAML source string")
+                Err(ConfigParsingError::ParsingError(m)) if m == "figment: missing field `display` for key \"default.identifier.DID\" in YAML source string")
         )
     }
 }

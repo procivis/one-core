@@ -271,16 +271,11 @@ impl CredentialService {
 
         let is_issuer = credential.role == CredentialRole::Issuer;
         if is_issuer && let Some(method_id) = &schema.revocation_method {
-            let _revocation_fields =
-                self.config
-                    .revocation
-                    .get_fields(method_id)
-                    .map_err(|err| {
-                        ServiceError::MappingError(format!(
-                            "Unknown revocation method: {}: {err}",
-                            method_id
-                        ))
-                    })?;
+            let _revocation_fields = self
+                .config
+                .revocation
+                .get_fields(method_id)
+                .error_while("getting revocation config")?;
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 
@@ -540,21 +535,13 @@ impl CredentialService {
             return Err(BusinessLogicError::IdentifierIsDeactivated(issuer_identifier.id).into());
         }
 
-        let credential_exchange = &credential.protocol;
-
         let Some(organisation) = &credential_schema.organisation else {
             return Err(ServiceError::MappingError(
                 "Missing organisation".to_string(),
             ));
         };
 
-        self.config
-            .issuance_protocol
-            .get_fields(credential_exchange)
-            .map_err(|err| {
-                ServiceError::MissingExchangeProtocol(format!("{credential_exchange}: {err}"))
-            })?;
-
+        let credential_exchange = &credential.protocol;
         let exchange = self
             .protocol_provider
             .get_protocol(credential_exchange)

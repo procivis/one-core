@@ -45,7 +45,7 @@ use super::{
     deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::config::core_config::{CoreConfig, DidType as ConfigDidType, FormatType};
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::CertificateRelations;
@@ -240,11 +240,12 @@ impl OpenID4VCIFinal1_0 {
         &self,
         format: &CredentialFormat,
     ) -> Result<Duration, IssuanceProtocolError> {
-        self.config
+        Ok(self
+            .config
             .format
             .get::<mdoc_formatter::Params, _>(format)
             .map(|p| p.mso_minimum_refresh_time)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
+            .error_while("getting format params")?)
     }
 
     fn jwk_key_id_from_identifier(
@@ -349,10 +350,14 @@ impl OpenID4VCIFinal1_0 {
 
             match serde_json::from_slice::<ErrorResponse>(&response.body).map(|r| r.error) {
                 Ok(OpenId4VciError::InvalidGrant) => {
-                    return Err(IssuanceProtocolError::TxCode(TxCodeError::IncorrectCode));
+                    return Err(TxCodeError::IncorrectCode
+                        .error_while("checking TX response")
+                        .into());
                 }
                 Ok(OpenId4VciError::InvalidRequest) => {
-                    return Err(IssuanceProtocolError::TxCode(TxCodeError::InvalidCodeUse));
+                    return Err(TxCodeError::InvalidCodeUse
+                        .error_while("checking TX response")
+                        .into());
                 }
                 Err(_) => {}
             }
@@ -1456,7 +1461,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .config
             .format
             .get_fields(&credential_schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
 
         self.validate_credential_issuable(
@@ -1695,7 +1700,7 @@ async fn handle_credential_invitation(
             .entities
             .iter()
             .filter(|(_, entity)| entity.enabled.unwrap_or(true))
-            .filter_map(|(_, entity)| parse_credential_issuer_params(&entity.params).ok())
+            .filter_map(|(key, entity)| parse_credential_issuer_params(key, &entity.params).ok())
             .find(|params| params.issuer == credential_offer.credential_issuer)
             .ok_or(IssuanceProtocolError::InvalidRequest(format!(
                 "No config entry for Authorization Code found, issuer: {}",

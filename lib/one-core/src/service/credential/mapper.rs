@@ -10,6 +10,7 @@ use super::dto::{
     WalletUnitAttestationDTO,
 };
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
@@ -49,7 +50,8 @@ pub(crate) fn credential_detail_response_from_model(
     let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
         let params = config
             .format
-            .get::<mdoc_formatter::Params, _>(&"MDOC".into())?;
+            .get::<mdoc_formatter::Params, _>(&schema.format)
+            .error_while("getting MDOC params")?;
         Some(MdocMsoValidityResponseDTO {
             expiration: validity_credential.created_date + params.mso_expires_in,
             next_update: validity_credential.created_date + params.mso_expected_update_in,
@@ -270,7 +272,12 @@ fn claim_to_dto(
             "Missing value on leaf claim: {}",
             claim.id
         )))?;
-    let value = match config.datatype.get_fields(&claim_schema.data_type)?.r#type {
+    let value = match config
+        .datatype
+        .get_fields(&claim_schema.data_type)
+        .error_while("getting datatype config")?
+        .r#type
+    {
         DatatypeType::Number => {
             if let Ok(number) = claim_value.parse::<i64>() {
                 DetailCredentialClaimValueResponseDTO::Integer(number)

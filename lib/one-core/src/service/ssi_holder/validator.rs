@@ -59,7 +59,11 @@ pub(super) fn validate_holder_capabilities(
             .ok_or(ServiceError::MappingError(
                 "Missing identifier did".to_string(),
             ))?;
-        let did_type = config.did.get_fields(&did.did_method)?.r#type;
+        let did_type = config
+            .did
+            .get_fields(&did.did_method)
+            .error_while("getting did config")?
+            .r#type;
         if !capabilities.holder_did_methods.contains(&did_type) {
             return Err(BusinessLogicError::IncompatibleHolderDidMethod.into());
         }

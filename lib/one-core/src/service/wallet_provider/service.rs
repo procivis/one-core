@@ -849,9 +849,11 @@ impl WalletProviderService {
             .map_err(|source| ConfigValidationError::FieldsDeserialization {
                 key: wallet_provider.to_string(),
                 source,
-            })?;
+            })
+            .error_while("parsing config")?;
 
-        validate_revocation_method(self.config.as_ref(), &wallet_provider_config_params)?;
+        validate_revocation_method(self.config.as_ref(), &wallet_provider_config_params)
+            .error_while("validating revocation")?;
 
         Ok((wallet_provider_config, wallet_provider_config_params))
     }

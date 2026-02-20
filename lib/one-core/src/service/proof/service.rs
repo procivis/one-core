@@ -383,7 +383,8 @@ impl ProofService {
         let exchange_type = self
             .config
             .verification_protocol
-            .get_fields(&request.protocol)?
+            .get_fields(&request.protocol)
+            .error_while("getting protocol")?
             .r#type;
 
         if exchange_type == VerificationProtocolType::ScanToVerify {
@@ -620,7 +621,7 @@ impl ProofService {
             Ok(config
                 .format
                 .get_fields(input)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                .error_while("getting protocol")?
                 .r#type
                 .to_owned())
         });
@@ -786,7 +787,8 @@ impl ProofService {
         let exchange_type = self
             .config
             .verification_protocol
-            .get_fields(&request.protocol)?
+            .get_fields(&request.protocol)
+            .error_while("getting protocol")?
             .r#type;
         if exchange_type != VerificationProtocolType::IsoMdl {
             return Err(ValidationError::InvalidExchangeType {

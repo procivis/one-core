@@ -19,8 +19,8 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{self, FormatType, IssuanceProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::exchange::{
-    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
-    get_exchange_param_token_expires_in,
+    get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
+    get_issuance_param_token_expires_in,
 };
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
@@ -75,7 +75,8 @@ impl OID4VCIDraft13Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
         let issuer = self
             .protocol_base_url
             .as_ref()
@@ -158,7 +159,8 @@ impl OID4VCIDraft13Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -188,7 +190,7 @@ impl OID4VCIDraft13Service {
             .config
             .format
             .get_fields(&schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
 
         let formatter = self
@@ -230,7 +232,8 @@ impl OID4VCIDraft13Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -264,7 +267,8 @@ impl OID4VCIDraft13Service {
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
     ) -> Result<OpenID4VCICredentialOfferDTO, ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
 
         let credential = self
             .credential_repository
@@ -300,7 +304,8 @@ impl OID4VCIDraft13Service {
         let issuance_protocol_type = self
             .config
             .issuance_protocol
-            .get_fields(&credential.protocol)?
+            .get_fields(&credential.protocol)
+            .error_while("getting protocol config")?
             .r#type;
 
         if issuance_protocol_type != IssuanceProtocolType::OpenId4VciDraft13 {
@@ -367,7 +372,8 @@ impl OID4VCIDraft13Service {
         access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
 
         let Some(schema) = self
             .credential_schema_repository
@@ -431,7 +437,8 @@ impl OID4VCIDraft13Service {
             );
         };
 
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
 
         let (holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
             let verified_proof = OpenID4VCIProofJWTFormatter::verify_proof(
@@ -595,7 +602,8 @@ impl OID4VCIDraft13Service {
         access_token: &str,
         request: OpenID4VCINotificationRequestDTO,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
 
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
@@ -738,7 +746,8 @@ impl OID4VCIDraft13Service {
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
-        validate_config_entity_presence(self.protocol_type, &self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)
+            .error_while("checking config")?;
 
         let Some(credential_schema) = self
             .credential_schema_repository
@@ -778,7 +787,8 @@ impl OID4VCIDraft13Service {
             .first()
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
 
         // both refresh and access token have the same structure
         let generate_new_token = || {
@@ -790,11 +800,14 @@ impl OID4VCIDraft13Service {
         };
 
         let pre_authorization_expires_in =
-            get_exchange_param_pre_authorization_expires_in(&self.config, &credential.protocol)?;
+            get_issuance_param_pre_authorization_expires_in(&self.config, &credential.protocol)
+                .error_while("getting protocol params")?;
         let access_token_expires_in =
-            get_exchange_param_token_expires_in(&self.config, &credential.protocol)?;
+            get_issuance_param_token_expires_in(&self.config, &credential.protocol)
+                .error_while("getting protocol params")?;
         let refresh_token_expires_in =
-            get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
+            get_issuance_param_refresh_token_expires_in(&self.config, &credential.protocol)
+                .error_while("getting protocol params")?;
 
         let tx: BoxFuture<Result<_, ServiceError>> = async {
             // Lock the interaction to ensure exclusive access
@@ -841,7 +854,8 @@ impl OID4VCIDraft13Service {
                 let credential_format_type = self
                     .config
                     .format
-                    .get_fields(&credential_schema.format)?
+                    .get_fields(&credential_schema.format)
+                    .error_while("getting protocol config")?
                     .r#type;
 
                 // we add refresh token for mdoc
@@ -915,7 +929,7 @@ fn enable_credential_preview_from_config(
     let fields = config
         .issuance_protocol
         .get_fields(issuance_protocol)
-        .map_err(ServiceError::ConfigValidationError)?;
+        .error_while("getting protocol config")?;
 
     Ok(match fields.r#type {
         core_config::IssuanceProtocolType::OpenId4VciDraft13 => {
@@ -924,7 +938,8 @@ fn enable_credential_preview_from_config(
                 .map_err(|source| ConfigValidationError::FieldsDeserialization {
                     key: issuance_protocol.to_string(),
                     source,
-                })?;
+                })
+                .error_while("getting protocol params")?;
             params.enable_credential_preview
         }
         core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu => false,

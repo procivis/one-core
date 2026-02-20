@@ -54,7 +54,8 @@ impl OID4VPDraft20Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -91,7 +92,8 @@ impl OID4VPDraft20Service {
             &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
             &self.config,
             &proof.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let interaction = proof
             .interaction
@@ -189,7 +191,8 @@ impl OID4VPDraft20Service {
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPDraftClientMetadata, ServiceError> {
-        validate_verification_protocol_config_exists(&self.config, &[OpenId4VpDraft20])?;
+        validate_verification_protocol_config_exists(&self.config, &[OpenId4VpDraft20])
+            .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -213,7 +216,8 @@ impl OID4VPDraft20Service {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-        validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)?;
+        validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)
+            .error_while("validating protocol type")?;
 
         let formats = create_open_id_for_vp_formats();
         let jwk =
@@ -229,7 +233,8 @@ impl OID4VPDraft20Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
         let interaction_id = unpacked_request.state;
@@ -375,7 +380,8 @@ impl OID4VPDraft20Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -397,7 +403,8 @@ impl OID4VPDraft20Service {
             .error_while("getting proof")?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
-        validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)?;
+        validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)
+            .error_while("validating protocol type")?;
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let interaction = proof

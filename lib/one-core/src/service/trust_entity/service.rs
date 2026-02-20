@@ -251,8 +251,11 @@ impl TrustEntityService {
 
         let trust_anchor = self.get_trust_anchor(request.trust_anchor_id, true).await?;
 
-        let trust_params: crate::provider::trust_management::simple_list::Params =
-            self.config.trust_management.get(&trust_anchor.r#type)?;
+        let trust_params: crate::provider::trust_management::simple_list::Params = self
+            .config
+            .trust_management
+            .get(&trust_anchor.r#type)
+            .error_while("getting trust anchor params")?;
         self.validate_bearer_token(
             &did_value,
             bearer_token,
@@ -961,8 +964,11 @@ impl TrustEntityService {
             .trust_anchor
             .as_ref()
             .ok_or(MappingError("TrustEntity with no TrustAnchor".to_owned()))?;
-        let trust_params: crate::provider::trust_management::simple_list::Params =
-            self.config.trust_management.get(&anchor.r#type)?;
+        let trust_params: crate::provider::trust_management::simple_list::Params = self
+            .config
+            .trust_management
+            .get(&anchor.r#type)
+            .error_while("getting trust anchor params")?;
         Ok(trust_params.proof_of_possession_leeway)
     }
 }

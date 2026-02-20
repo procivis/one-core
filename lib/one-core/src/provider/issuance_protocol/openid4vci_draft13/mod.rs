@@ -27,6 +27,7 @@ use super::{
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, IssuanceProtocolType,
 };
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::{detect_format_with_crypto_suite, map_to_openid4vp_format};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
@@ -289,11 +290,12 @@ impl OpenID4VCI13 {
         &self,
         format: &CredentialFormat,
     ) -> Result<Duration, IssuanceProtocolError> {
-        self.config
+        Ok(self
+            .config
             .format
             .get::<mdoc_formatter::Params, _>(format)
             .map(|p| p.mso_minimum_refresh_time)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
+            .error_while("getting format params")?)
     }
 
     fn jwk_key_id_from_identifier(
@@ -385,10 +387,14 @@ impl OpenID4VCI13 {
 
             match serde_json::from_slice::<ErrorResponse>(&response.body).map(|r| r.error) {
                 Ok(OpenId4VciError::InvalidGrant) => {
-                    return Err(IssuanceProtocolError::TxCode(TxCodeError::IncorrectCode));
+                    return Err(TxCodeError::IncorrectCode
+                        .error_while("checking TX response")
+                        .into());
                 }
                 Ok(OpenId4VciError::InvalidRequest) => {
-                    return Err(IssuanceProtocolError::TxCode(TxCodeError::InvalidCodeUse));
+                    return Err(TxCodeError::InvalidCodeUse
+                        .error_while("checking TX response")
+                        .into());
                 }
                 Err(_) => {}
             }
@@ -683,7 +689,7 @@ impl OpenID4VCI13 {
             .config
             .format
             .get_fields(&schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
 
         let oid4vc_format = map_to_openid4vp_format(&format_type)
@@ -910,7 +916,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .config
             .format
             .get_fields(&schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
 
         let mut interaction_data: HolderInteractionData =
@@ -1252,7 +1258,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .config
             .format
             .get_fields(&credential_schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
 
         self.validate_credential_issuable(
@@ -1370,7 +1376,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .config
             .format
             .get_fields(&format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting format config")?
             .r#type;
 
         match (format_type, credential_state) {
@@ -1535,7 +1541,7 @@ async fn handle_credential_invitation(
             .entities
             .iter()
             .filter(|(_, entity)| entity.enabled.unwrap_or(true))
-            .filter_map(|(_, entity)| parse_credential_issuer_params(&entity.params).ok())
+            .filter_map(|(key, entity)| parse_credential_issuer_params(key, &entity.params).ok())
             .find(|params| params.issuer == credential_offer.credential_issuer)
             .ok_or(IssuanceProtocolError::InvalidRequest(format!(
                 "No config entry for Authorization Code found, issuer: {}",
@@ -1910,7 +1916,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
             let format_type = config
                 .format
                 .get_fields(&credential_schema.format)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                .error_while("getting format config")?
                 .r#type;
             if !has_matching_format(credential_config, format_type) {
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);

@@ -12,7 +12,7 @@ use super::dto::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, Params};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
@@ -44,9 +44,9 @@ impl SSIIssuerService {
                 .get_by_type::<Params>(FormatType::JsonLdBbsPlus)
                 .is_err()
         {
-            return Err(ServiceError::from(ConfigValidationError::TypeNotFound(
-                "JSON_LD".to_string(),
-            )));
+            return Err(ConfigValidationError::TypeNotFound("JSON_LD".to_string())
+                .error_while("checking config")
+                .into());
         }
 
         let credential_schema_id = CredentialSchemaId::from_str(id)
@@ -75,7 +75,11 @@ impl SSIIssuerService {
             return Err(EntityNotFoundError::CredentialSchema(credential_schema_id).into());
         };
 
-        let config = self.config.format.get_fields(&credential_schema.format)?;
+        let config = self
+            .config
+            .format
+            .get_fields(&credential_schema.format)
+            .error_while("getting format config")?;
         if ![FormatType::JsonLdBbsPlus, FormatType::JsonLdClassic].contains(&config.r#type) {
             return Err(ServiceError::ValidationError(
                 "Invalid credential format".to_string(),

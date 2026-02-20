@@ -21,6 +21,7 @@ use super::dto::{
 use crate::config::core_config::{
     CoreConfig, Fields, IdentifierType, KeyStorageType, TransportType, VerificationProtocolType,
 };
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -2536,12 +2537,8 @@ async fn test_create_proof_using_invalid_did_method() {
     });
 
     let result = service.create_proof(request).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::InvalidDidMethod { .. }
-        ))
-    ));
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0089);
 }
 
 #[tokio::test]

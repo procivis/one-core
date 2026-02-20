@@ -3,6 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use one_core::provider::verification_protocol::openid4vp::model::OpenID4VPDirectPostRequestDTO;
 use one_core::service::error::{BusinessLogicError, ServiceError};
@@ -72,7 +73,7 @@ pub(crate) async fn oid4vp_draft20_swiyu_direct_post(
             )
                 .into_response()
         }
-        Err(ServiceError::ConfigValidationError(error)) => {
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }

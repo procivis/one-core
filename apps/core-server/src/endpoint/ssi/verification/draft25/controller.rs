@@ -3,6 +3,7 @@ use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use one_core::service::error::{BusinessLogicError, ServiceError};
 use shared_types::ProofId;
@@ -72,7 +73,7 @@ pub(crate) async fn oid4vp_draft25_direct_post(
             )
                 .into_response()
         }
-        Err(ServiceError::ConfigValidationError(error)) => {
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
@@ -130,7 +131,7 @@ pub(crate) async fn oid4vp_draft25_presentation_definition(
             Json(OpenID4VPPresentationDefinitionResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Config validation error: {error}");
             (
                 StatusCode::BAD_REQUEST,
@@ -190,7 +191,7 @@ pub(crate) async fn oid4vp_draft25_client_metadata(
             Json(OpenID4VPDraftClientMetadataResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Config validation error: {error}");
             (
                 StatusCode::BAD_REQUEST,
@@ -254,7 +255,7 @@ pub(crate) async fn oid4vp_draft25_client_request(
             jwt,
         )
             .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Config validation error: {error}");
             (
                 StatusCode::BAD_REQUEST,

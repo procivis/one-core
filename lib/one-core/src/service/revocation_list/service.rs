@@ -22,7 +22,11 @@ impl RevocationListService {
             return Err(EntityNotFoundError::RevocationList(*id).into());
         };
 
-        let r#type = self.config.revocation.get_type(&list.r#type)?;
+        let r#type = self
+            .config
+            .revocation
+            .get_type(&list.r#type)
+            .error_while("getting revocation type")?;
 
         Ok(RevocationListResponseDTO {
             revocation_list: list
@@ -44,7 +48,11 @@ impl RevocationListService {
             return Err(EntityNotFoundError::RevocationList(*id).into());
         };
 
-        let r#type = self.config.revocation.get_type(&list.r#type)?;
+        let r#type = self
+            .config
+            .revocation
+            .get_type(&list.r#type)
+            .error_while("getting revocation type")?;
         if r#type != RevocationType::CRL {
             tracing::warn!("Invalid CRL request, list_id: {id}");
             return Err(EntityNotFoundError::RevocationList(*id).into());

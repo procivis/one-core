@@ -44,9 +44,6 @@ pub enum ServiceError {
     #[error("OpenID4VCI issuance error `{0}`")]
     OpenIDIssuanceError(#[from] OpenIDIssuanceError),
 
-    #[error("Config validation error `{0}`")]
-    ConfigValidationError(#[from] ConfigValidationError),
-
     #[error("Issuance protocol error `{0}`")]
     IssuanceProtocolError(#[from] IssuanceProtocolError),
 
@@ -669,7 +666,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
                 ErrorCode::BR_0048
             }
-            Self::ConfigValidationError(error) => error.error_code(),
             Self::MissingSigner(_) => ErrorCode::BR_0060,
             Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
             Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,

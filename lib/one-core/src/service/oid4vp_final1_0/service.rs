@@ -55,7 +55,8 @@ impl OID4VPFinal1_0Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpFinal1_0],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -96,7 +97,8 @@ impl OID4VPFinal1_0Service {
             &[VerificationProtocolType::OpenId4VpFinal1_0],
             &self.config,
             &proof.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let interaction = proof
             .interaction
@@ -178,7 +180,8 @@ impl OID4VPFinal1_0Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpFinal1_0],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -206,7 +209,8 @@ impl OID4VPFinal1_0Service {
             &[VerificationProtocolType::OpenId4VpFinal1_0],
             &self.config,
             &proof.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
@@ -224,7 +228,8 @@ impl OID4VPFinal1_0Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpFinal1_0],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
         let interaction_id = unpacked_request.state;

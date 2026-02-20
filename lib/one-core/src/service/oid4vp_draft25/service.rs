@@ -53,7 +53,8 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -94,7 +95,8 @@ impl OID4VPDraft25Service {
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
             &proof.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let interaction = proof
             .interaction
@@ -179,7 +181,8 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -207,7 +210,8 @@ impl OID4VPDraft25Service {
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
             &proof.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
 
         let formats = create_open_id_for_vp_formats();
         let jwk =
@@ -223,7 +227,8 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
         let interaction_id = unpacked_request.state;
@@ -369,7 +374,8 @@ impl OID4VPDraft25Service {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
-        )?;
+        )
+        .error_while("checking config")?;
 
         let proof = self
             .proof_repository
@@ -395,7 +401,8 @@ impl OID4VPDraft25Service {
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
             &proof.protocol,
-        )?;
+        )
+        .error_while("validating protocol type")?;
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let interaction = proof

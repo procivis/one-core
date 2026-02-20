@@ -5,19 +5,17 @@ use regex::Regex;
 use url::Url;
 
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
+use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::exchange::get_issuance_param_redirect_uri;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::model::CommonParams;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
-use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
@@ -82,7 +80,10 @@ pub(crate) fn validate_create_request(
         .iter()
         .map(|claim_schema| {
             let datatype = &claim_schema.data_type;
-            let config = config.datatype.get_fields(datatype)?;
+            let config = config
+                .datatype
+                .get_fields(datatype)
+                .error_while("getting datatype config")?;
 
             if claim_schema.required
                 && !claim_schema.metadata // Clients are not expected to submit _metadata_ claims.
@@ -107,36 +108,8 @@ pub(super) fn validate_redirect_uri(
     redirect_uri: Option<&str>,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let fields = config.issuance_protocol.get_fields(exchange)?;
-    let params = match fields.r#type {
-        IssuanceProtocolType::OpenId4VciDraft13 => {
-            let params = fields
-                .deserialize::<OpenID4VCIDraft13Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.redirect_uri
-        }
-        IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
-            let params = fields
-                .deserialize::<OpenID4VCISwiyuParams>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.redirect_uri
-        }
-        IssuanceProtocolType::OpenId4VciFinal1_0 => {
-            let params = fields
-                .deserialize::<OpenID4VCIFinal1Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.redirect_uri
-        }
-    };
+    let params = get_issuance_param_redirect_uri(config, exchange)
+        .error_while("getting redirect_uri config")?;
 
     if let Some(redirect_uri) = redirect_uri {
         if !params.enabled {
@@ -163,7 +136,10 @@ pub(super) fn validate_webhook_url(
         return Ok(());
     };
 
-    let params: CommonParams = config.issuance_protocol.get(issuance_protocol)?;
+    let params: CommonParams = config
+        .issuance_protocol
+        .get(issuance_protocol)
+        .error_while("getting protocol config")?;
 
     let Some(task_id) = params.webhook_task else {
         return Err(ValidationError::NotificationsNotAllowed {
@@ -254,14 +230,13 @@ impl PathNode {
                     .iter()
                     .map(|index| {
                         index.parse::<u64>().map_err(|e| {
-                            ServiceError::ConfigValidationError(
-                                ConfigValidationError::DatatypeValidation(
-                                    DatatypeValidationError::IndexParseFailure(e),
-                                ),
+                            ConfigValidationError::DatatypeValidation(
+                                DatatypeValidationError::IndexParseFailure(e),
                             )
                         })
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()
+                    .error_while("validating array path")?;
 
                 let continuous = indexes
                     .iter()
@@ -426,11 +401,14 @@ fn validate_path(
             let segment = segments.get(segment_index).ok_or_else(|| {
                 ServiceError::MappingError(format!("Could not find segment index: {segment_index}"))
             })?;
-            segment.parse::<u64>().map_err(|e| {
-                ServiceError::ConfigValidationError(ConfigValidationError::DatatypeValidation(
-                    DatatypeValidationError::IndexParseFailure(e),
-                ))
-            })?;
+            segment
+                .parse::<u64>()
+                .map_err(|e| {
+                    ConfigValidationError::DatatypeValidation(
+                        DatatypeValidationError::IndexParseFailure(e),
+                    )
+                })
+                .error_while("validating array path")?;
         }
 
         segment_index += 1;
@@ -468,8 +446,12 @@ fn adapt_required_state_based_on_claim_presence(
             .iter()
             .any(|(_, claim_name)| claim_name.starts_with(&prefix));
 
-        let is_object =
-            config.datatype.get_fields(&claim_schema.data_type)?.r#type == DatatypeType::Object;
+        let is_object = config
+            .datatype
+            .get_fields(&claim_schema.data_type)
+            .error_while("getting datatype config")?
+            .r#type
+            == DatatypeType::Object;
 
         let should_make_all_child_claims_non_required =
             !is_parent_schema_of_provided_claim && is_object && !claim_schema.required;
@@ -493,7 +475,10 @@ fn validate_format_and_exchange_protocol_compatibility(
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let exchange_protocol = config.issuance_protocol.get_fields(exchange)?;
+    let exchange_protocol = config
+        .issuance_protocol
+        .get_fields(exchange)
+        .error_while("getting protocol config")?;
 
     if !formatter_capabilities
         .issuance_exchange_protocols
@@ -510,7 +495,11 @@ pub(crate) fn validate_format_and_did_method_compatibility(
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let did_method_type = config.did.get_fields(did_method)?.r#type;
+    let did_method_type = config
+        .did
+        .get_fields(did_method)
+        .error_while("getting did method config")?
+        .r#type;
 
     if !formatter_capabilities
         .issuance_did_methods

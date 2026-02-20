@@ -70,11 +70,12 @@ pub(crate) fn validate_create_request(
     }
 
     validate_key_lengths(&request.claims, 0)?;
-    validate_format(&request.format, &config.format)?;
+    validate_format(&request.format, &config.format).error_while("validating format")?;
 
     let revocation_method = match &request.revocation_method {
         Some(method_id) => {
-            validate_revocation(method_id, &config.revocation)?;
+            validate_revocation(method_id, &config.revocation)
+                .error_while("validating revocation")?;
 
             let revocation_method = revocation_method_provider
                 .get_revocation_method(method_id)
@@ -259,11 +260,11 @@ fn validate_nested_claim_schemas(
         validate_claim_schema(claim_schema, config, formatter)?;
     }
 
-    validate_datatypes(
+    Ok(validate_datatypes(
         gather_claim_schemas(claims).map(|value| value.datatype.as_str()),
         &config.datatype,
     )
-    .map_err(ServiceError::ConfigValidationError)
+    .error_while("validating datatypes")?)
 }
 
 fn validate_claim_schema(
@@ -271,11 +272,18 @@ fn validate_claim_schema(
     config: &CoreConfig,
     formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
-    let claim_type = config.datatype.get_fields(&claim_schema.datatype)?.r#type();
+    let claim_type = config
+        .datatype
+        .get_fields(&claim_schema.datatype)
+        .error_while("getting datatype config")?
+        .r#type();
     validate_claim_schema_name(claim_schema)?;
     validate_claim_schema_type(claim_schema, claim_type)?;
     if let Some(true) = claim_schema.array {
-        config.datatype.get_if_enabled("ARRAY")?;
+        config
+            .datatype
+            .get_if_enabled("ARRAY")
+            .error_while("validating datatype")?;
     }
     validate_claims_schema_type_supported_by_formatter(claim_schema, formatter)?;
     Ok(())
@@ -413,7 +421,10 @@ fn validate_revocation_method_is_compatible_with_format(
         return Ok(());
     };
 
-    let revocation_method = config.revocation.get_fields(method_id)?;
+    let revocation_method = config
+        .revocation
+        .get_fields(method_id)
+        .error_while("getting revocation config")?;
 
     if formatter
         .get_capabilities()
@@ -445,13 +456,21 @@ fn validate_mdoc_claim_types(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let format_type = config.format.get_fields(&request.format)?.r#type;
+    let format_type = config
+        .format
+        .get_fields(&request.format)
+        .error_while("getting format config")?
+        .r#type;
     if format_type != FormatType::Mdoc {
         return Ok(());
     }
 
     for claim in &request.claims {
-        let data_type = config.datatype.get_fields(&claim.datatype)?.r#type;
+        let data_type = config
+            .datatype
+            .get_fields(&claim.datatype)
+            .error_while("getting datatype config")?
+            .r#type;
         if data_type != DatatypeType::Object {
             return Err(BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed.into());
         }

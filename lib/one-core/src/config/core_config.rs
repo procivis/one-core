@@ -194,23 +194,11 @@ where
                 continue;
             }
 
-            return Err(ConfigParsingError::GeneralParsingError(format!(
+            return Err(ConfigParsingError::ParsingError(format!(
                 "Unsupported file or missing file extension: {:?}",
                 path.as_ref().to_str()
             )));
         }
-
-        AppConfig::parse(inputs)
-    }
-
-    #[cfg(feature = "config_yaml")]
-    pub fn from_yaml(
-        configs: impl IntoIterator<Item = impl AsRef<str>>,
-    ) -> Result<Self, ConfigParsingError> {
-        let inputs = configs
-            .into_iter()
-            .map(|s| Yaml::string(s.as_ref()))
-            .map(InputFormat::Yaml);
 
         AppConfig::parse(inputs)
     }
@@ -234,12 +222,8 @@ where
             figment = figment.merge(Env::prefixed("ONE_").split("__").lowercase(false));
         }
 
-        let core = figment
-            .extract::<CoreConfig>()
-            .map_err(|e| ConfigParsingError::GeneralParsingError(e.to_string()))?;
-        let custom = figment
-            .extract::<AppCustomConfigSerdeDTO<Custom>>()
-            .map_err(|e| ConfigParsingError::GeneralParsingError(e.to_string()))?;
+        let core = figment.extract::<CoreConfig>()?;
+        let custom = figment.extract::<AppCustomConfigSerdeDTO<Custom>>()?;
         Ok(Self {
             core,
             app: custom.app,

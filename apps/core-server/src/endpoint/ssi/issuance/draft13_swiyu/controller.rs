@@ -5,6 +5,7 @@ use axum::response::{IntoResponse, Response};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, CredentialSchemaId};
 
@@ -53,13 +54,9 @@ pub(crate) async fn oid4vci_draft13_swiyu_get_issuer_metadata(
             Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
+            tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
-            tracing::error!("Missing credential schema");
-            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
@@ -105,13 +102,9 @@ pub(crate) async fn oid4vci_draft13_swiyu_oauth_authorization_server(
             Json(OAuthAuthorizationServerMetadataRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
+            tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
-            tracing::error!("Missing credential schema");
-            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
@@ -154,13 +147,9 @@ pub(crate) async fn oid4vci_draft13_swiyu_service_discovery(
             Json(OpenID4VCIDiscoveryResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
+            tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
-            tracing::error!("Missing credential schema");
-            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
@@ -281,13 +270,9 @@ pub(crate) async fn oid4vci_draft13_swiyu_create_token(
             )
                 .into_response()
         }
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
+            tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
-            tracing::error!("Missing credential schema");
-            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
@@ -359,13 +344,9 @@ pub(crate) async fn oid4vci_draft13_swiyu_create_credential(
             )
                 .into_response()
         }
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
+            tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
-            tracing::error!("Missing credential schema");
-            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

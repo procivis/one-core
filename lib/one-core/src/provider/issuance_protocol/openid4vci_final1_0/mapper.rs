@@ -5,6 +5,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::convert_inner_of_inner;
 use secrecy::ExposeSecret;
+use serde::de::Error;
 use time::OffsetDateTime;
 
 use super::model::{
@@ -16,8 +17,8 @@ use super::model::{
     OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
 };
+use crate::config::ConfigValidationError;
 use crate::config::core_config::{IdentifierType, Params};
-use crate::config::{ConfigError, ConfigParsingError};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, KeyStorageSecurity,
@@ -207,16 +208,21 @@ pub(crate) fn map_cryptographic_binding_methods_supported(
 }
 
 pub(crate) fn parse_credential_issuer_params(
+    issuer: &str,
     config_params: &Option<Params>,
-) -> Result<CredentialIssuerParams, ConfigError> {
+) -> Result<CredentialIssuerParams, ConfigValidationError> {
     config_params
         .as_ref()
         .and_then(|p| p.merge())
         .map(serde_json::from_value)
-        .ok_or(ConfigError::Parsing(
-            ConfigParsingError::GeneralParsingError("Credential issuer params missing".to_string()),
-        ))?
-        .map_err(|e| ConfigError::Parsing(ConfigParsingError::GeneralParsingError(e.to_string())))
+        .ok_or(ConfigValidationError::FieldsDeserialization {
+            key: issuer.to_string(),
+            source: serde_json::Error::custom("Params missing"),
+        })?
+        .map_err(|source| ConfigValidationError::FieldsDeserialization {
+            key: issuer.to_string(),
+            source,
+        })
 }
 
 impl From<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO> for Option<LayoutProperties> {

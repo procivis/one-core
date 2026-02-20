@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
 
 #[derive(Debug, Error)]
@@ -27,8 +27,6 @@ pub enum IssuanceProtocolError {
     Other(anyhow::Error),
     #[error(transparent)]
     StorageAccessError(anyhow::Error),
-    #[error(transparent)]
-    TxCode(TxCodeError),
     #[error("Credential offer issuer did does not match credential issuer did")]
     DidMismatch,
     #[error("Credential offer issuer certificate does not match credential issuer certificate")]
@@ -41,6 +39,9 @@ pub enum IssuanceProtocolError {
     Suspended,
     #[error("Credential refresh is not yet possible")]
     RefreshTooSoon,
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for IssuanceProtocolError {
@@ -56,16 +57,13 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::Disabled(_) => ErrorCode::BR_0085,
             Self::Other(_) => ErrorCode::BR_0062,
             Self::StorageAccessError(_) => ErrorCode::BR_0062,
-            Self::TxCode(tx_code_error) => match tx_code_error {
-                TxCodeError::IncorrectCode => ErrorCode::BR_0169,
-                TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
-            },
             Self::DidMismatch
             | Self::KeyMismatch
             | Self::CertificateMismatch
             | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
             Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
             Self::Suspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
+            Self::Nested(nested) => nested.error_code(),
         }
     }
 }
@@ -76,6 +74,15 @@ pub enum TxCodeError {
     IncorrectCode,
     #[error("Invalid use of tx_code")]
     InvalidCodeUse,
+}
+
+impl ErrorCodeMixin for TxCodeError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::IncorrectCode => ErrorCode::BR_0169,
+            Self::InvalidCodeUse => ErrorCode::BR_0170,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Error)]

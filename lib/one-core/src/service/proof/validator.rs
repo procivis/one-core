@@ -63,7 +63,11 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
             "input_schemas is None".to_string(),
         ))?;
 
-    let exchange_type = config.verification_protocol.get_fields(exchange)?.r#type;
+    let exchange_type = config
+        .verification_protocol
+        .get_fields(exchange)
+        .error_while("getting protocol config")?
+        .r#type;
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
@@ -155,7 +159,8 @@ pub(super) fn validate_scan_to_verify_compatibility(
 ) -> Result<(), ServiceError> {
     let exchange_type = config
         .verification_protocol
-        .get_fields(&request.protocol)?
+        .get_fields(&request.protocol)
+        .error_while("getting protocol config")?
         .r#type;
     match exchange_type {
         VerificationProtocolType::ScanToVerify => {
@@ -183,7 +188,10 @@ pub(super) fn validate_mdl_exchange(
     redirect_uri: Option<&str>,
     config: &VerificationProtocolConfig,
 ) -> Result<(), ServiceError> {
-    let exchange_type = config.get_fields(exchange)?.r#type;
+    let exchange_type = config
+        .get_fields(exchange)
+        .error_while("getting protocol config")?
+        .r#type;
     match exchange_type {
         VerificationProtocolType::IsoMdl if redirect_uri.is_some() => Err(
             ServiceError::Validation(ValidationError::InvalidMdlParameters),
@@ -201,19 +209,27 @@ pub(super) fn validate_redirect_uri(
     redirect_uri: Option<&str>,
     config: &VerificationProtocolConfig,
 ) -> Result<(), ServiceError> {
-    let fields = config.get_fields(exchange)?;
+    let fields = config
+        .get_fields(exchange)
+        .error_while("getting protocol config")?;
 
     let redirect_uri_config = match fields.r#type {
         VerificationProtocolType::OpenId4VpDraft20 => {
-            let exchange_params: OpenID4Vp20Params = config.get(exchange)?;
+            let exchange_params: OpenID4Vp20Params = config
+                .get(exchange)
+                .error_while("getting protocol params")?;
             Some(exchange_params.redirect_uri)
         }
         VerificationProtocolType::OpenId4VpDraft25 => {
-            let exchange_params: OpenID4Vp25Params = config.get(exchange)?;
+            let exchange_params: OpenID4Vp25Params = config
+                .get(exchange)
+                .error_while("getting protocol params")?;
             Some(exchange_params.redirect_uri)
         }
         VerificationProtocolType::OpenId4VpFinal1_0 => {
-            let exchange_params: crate::provider::verification_protocol::openid4vp::final1_0::model::Params = config.get(exchange)?;
+            let exchange_params: crate::provider::verification_protocol::openid4vp::final1_0::model::Params = config
+                .get(exchange)
+                .error_while("getting protocol params")?;
             Some(exchange_params.redirect_uri)
         }
         _ => None,
@@ -246,7 +262,10 @@ pub(super) fn validate_webhook_url(
         return Ok(());
     };
 
-    let params: CommonParams = config.verification_protocol.get(verification_protocol)?;
+    let params: CommonParams = config
+        .verification_protocol
+        .get(verification_protocol)
+        .error_while("getting protocol params")?;
 
     let Some(task_id) = params.webhook_task else {
         return Err(ValidationError::NotificationsNotAllowed {
@@ -275,7 +294,8 @@ pub(super) fn validate_verification_key_storage_compatibility(
 
     let storage_type = config
         .key_storage
-        .get_fields(&verifier_key.storage_type)?
+        .get_fields(&verifier_key.storage_type)
+        .error_while("getting protocol config")?
         .r#type;
 
     input_schemas.iter().try_for_each(|input_schema| {

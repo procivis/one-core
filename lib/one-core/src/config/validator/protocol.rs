@@ -3,6 +3,7 @@ use serde::Serialize;
 use crate::config::core_config::{
     ConfigBlock, ConfigExt, DidConfig, DidType, IdentifierConfig, IdentifierType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::identifier::Identifier;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
@@ -43,17 +44,16 @@ pub(crate) fn validate_protocol_did_compatibility(
     capabilities: &[DidType],
     did_method: &str,
     config: &DidConfig,
-) -> Result<(), BusinessLogicError> {
+) -> Result<(), ServiceError> {
     let did_method_type = config
         .get_fields(did_method)
-        .map_err(|_| BusinessLogicError::InvalidDidMethod {
-            method: did_method.to_string(),
-        })?
+        .error_while("getting did config")?
         .r#type;
     if !capabilities.contains(&did_method_type) {
         return Err(BusinessLogicError::InvalidDidMethod {
             method: did_method.to_string(),
-        });
+        }
+        .into());
     }
     Ok(())
 }

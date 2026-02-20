@@ -7,7 +7,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 #[derive(Debug, Error)]
 pub enum WalletProviderError {
     #[error("Wallet provider not enabled in config: `{0}`")]
-    WalletProviderDisabled(#[from] ConfigValidationError),
+    WalletProviderDisabled(ConfigValidationError),
     #[error("Missing proof")]
     MissingProof,
     #[error("Missing publicKey")]

@@ -11,6 +11,7 @@ use super::dto::{
     ProofSchemaFilterValue,
 };
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -276,7 +277,11 @@ fn nest_claim_schemas(
 }
 
 fn is_object(data_type: &str, datatype_config: &DatatypeConfig) -> Result<bool, ServiceError> {
-    Ok(datatype_config.get_fields(data_type)?.r#type == DatatypeType::Object)
+    Ok(datatype_config
+        .get_fields(data_type)
+        .error_while("getting datatype config")?
+        .r#type
+        == DatatypeType::Object)
 }
 
 impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {

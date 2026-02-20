@@ -12,8 +12,8 @@ use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use super::validator::{
     check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
 };
-use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, KeyStorageSecurity,
@@ -851,10 +851,8 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
         })
         .await
         .unwrap_err();
-    assert!(matches!(
-        result,
-        ServiceError::ConfigValidationError(ConfigValidationError::EntryNotFound(_))
-    ));
+
+    assert_eq!(result.error_code(), ErrorCode::BR_0089);
 }
 
 #[tokio::test]
@@ -1080,8 +1078,9 @@ async fn test_create_credential_schema_fail_validation() {
             transaction_code: None,
         })
         .await;
-    assert!(
-        non_existing_format.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_)))
+    assert_eq!(
+        non_existing_format.unwrap_err().error_code(),
+        ErrorCode::BR_0089
     );
 
     let non_existing_revocation_method = service
@@ -1106,9 +1105,9 @@ async fn test_create_credential_schema_fail_validation() {
             transaction_code: None,
         })
         .await;
-    assert!(
-        non_existing_revocation_method
-            .is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_)))
+    assert_eq!(
+        non_existing_revocation_method.unwrap_err().error_code(),
+        ErrorCode::BR_0089
     );
 
     let wrong_datatype = service
@@ -1133,7 +1132,7 @@ async fn test_create_credential_schema_fail_validation() {
             transaction_code: None,
         })
         .await;
-    assert!(wrong_datatype.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
+    assert_eq!(wrong_datatype.unwrap_err().error_code(), ErrorCode::BR_0089);
 
     let no_claims = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
