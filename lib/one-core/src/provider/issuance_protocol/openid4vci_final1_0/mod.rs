@@ -537,7 +537,6 @@ impl OpenID4VCIFinal1_0 {
                 .contains(&TokenEndpointAuthMethod::Other("public".to_string()));
 
         let wallet_attestation_required = wallet_attestation_supported && !has_public_auth;
-
         let wallet_unit_provided = holder_wallet_unit_id.is_some();
 
         if wallet_attestation_required && !wallet_unit_provided {
@@ -546,23 +545,28 @@ impl OpenID4VCIFinal1_0 {
             ));
         }
 
-        let use_wallet_attestation =
-            wallet_attestation_required || (wallet_attestation_supported && wallet_unit_provided);
-
         let issuer_accepted_levels =
             interaction_data_to_accepted_key_storage_security(interaction_data);
-        let key_storage_security_level = if let Some(accepted_levels) = &issuer_accepted_levels {
-            Some(
+
+        let key_storage_security_level = issuer_accepted_levels
+            .map(|accepted_levels| {
                 match_key_security_level(
                     &key.storage_type,
-                    accepted_levels,
+                    &accepted_levels,
                     &*self.key_security_level_provider,
                 )
-                .error_while("matching key security")?,
-            )
-        } else {
-            None
-        };
+                .error_while("matching key security")
+            })
+            .transpose()?;
+
+        if key_storage_security_level.is_some() && !wallet_unit_provided {
+            return Err(IssuanceProtocolError::Failed(
+                "key storage attestation requires holder wallet unit id".to_string(),
+            ));
+        }
+
+        let use_wallet_attestation =
+            wallet_attestation_required || (wallet_attestation_supported && wallet_unit_provided);
 
         let wallet_attestations_issuance_request =
             match (use_wallet_attestation, &key_storage_security_level) {
@@ -1696,7 +1700,7 @@ async fn handle_credential_invitation(
     }
 
     let tx_code = credential_offer.grants.tx_code().cloned();
-    let requires_wallet_instance_attestation = requires_wia(&oauth_metadata);
+    let requires_wia = requires_wia(&oauth_metadata);
 
     let PrepareIssuanceSuccess {
         interaction_id,
@@ -1715,6 +1719,11 @@ async fn handle_credential_invitation(
         key_algorithm_provider,
     )
     .await?;
+
+    // Wallet unit ID is required for both
+    // WIA (wallet instance attestation via token_endpoint_auth_methods_supported)
+    // WUA (key storage attestation via proof_types_supported key_attestations_required)
+    let requires_wallet_instance_attestation = requires_wia || key_storage_security.is_some();
 
     Ok(InvitationResponseEnum::Credential {
         interaction_id,

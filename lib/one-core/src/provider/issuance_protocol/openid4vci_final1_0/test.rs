@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use assert2::let_assert;
+use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
@@ -43,7 +44,8 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    CommonParams, InvitationResponseEnum, OpenID4VCRedirectUriParams,
+    CommonParams, InvitationResponseEnum, KeyStorageSecurityLevel,
+    OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -60,6 +62,7 @@ use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_security_level::MockKeySecurityLevel;
+use crate::provider::key_security_level::dto::KeySecurityLevelCapabilities;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
@@ -72,6 +75,7 @@ use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
 };
+use crate::service::wallet_provider::dto::IssueWalletUnitAttestationResponseDTO;
 
 #[derive(Default)]
 struct TestInputs {
@@ -88,6 +92,7 @@ struct TestInputs {
     pub blob_storage_provider: MockBlobStorageProvider,
     pub key_security_level_provider: MockKeySecurityLevelProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIFinal1Params>,
 }
@@ -127,7 +132,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
             common: CommonParams { webhook_task: None },
         }),
         "OPENID4VCI_FINAL1".to_string(),
-        Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(inputs.holder_wallet_unit_proto),
         Arc::new(inputs.certificate_validator),
     )
 }
@@ -1678,6 +1683,377 @@ async fn test_generate_share_credentials_custom_scheme() {
 
     let result = protocol.issuer_share_credential(&credential).await.unwrap();
     assert!(result.url.starts_with(url_scheme));
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_attestation_required()
+{
+    let credential = generic_credential_did();
+
+    let mut proof_types = IndexMap::new();
+    proof_types.insert(
+        "jwt".to_string(),
+        OpenID4VCIProofTypeSupported {
+            proof_signing_alg_values_supported: vec!["ES256".to_string()],
+            key_attestations_required: Some(OpenID4VCIKeyAttestationsRequired {
+                key_storage: vec![KeyStorageSecurityLevel::Basic],
+                user_authentication: vec![],
+            }),
+        },
+    );
+
+    let interaction_data = HolderInteractionData {
+        issuer_url: "http://issuer".to_string(),
+        credential_endpoint: "http://issuer/credential".to_string(),
+        token_endpoint: Some("http://issuer/token".to_string()),
+        nonce_endpoint: Some("http://issuer/nonce".to_string()),
+        notification_endpoint: None,
+        challenge_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        refresh_token_expires_at: None,
+        token_endpoint_auth_methods_supported: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: Some(proof_types),
+        continue_issuance: None,
+        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_metadata: None,
+        notification_id: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        format: "jwt_vc_json".to_string(),
+    };
+
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+        expires_at: None,
+    };
+
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .returning(|_| {
+            let mut security = MockKeySecurityLevel::new();
+            security
+                .expect_get_key_storages()
+                .return_const(vec!["INTERNAL".to_string()]);
+            security.expect_get_priority().return_const(0u64);
+            security
+                .expect_get_capabilities()
+                .returning(|| KeySecurityLevelCapabilities {
+                    openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+                });
+            Some(Arc::new(security))
+        });
+
+    let openid_provider = setup_protocol(TestInputs {
+        key_security_level_provider,
+        config: dummy_config(),
+        ..Default::default()
+    });
+
+    let key = Key {
+        storage_type: "INTERNAL".to_string(),
+        ..dummy_key()
+    };
+    let result = openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            &MockStorageProxy::default(),
+            None,
+            None,
+        )
+        .await;
+
+    let err = result.unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("key storage attestation requires holder wallet unit id"),
+    );
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_attestation_required()
+{
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut storage_access = MockStorageProxy::default();
+    let mut key_provider = MockKeyProvider::default();
+
+    let credential = generic_credential_did();
+
+    let mut proof_types = IndexMap::new();
+    proof_types.insert(
+        "jwt".to_string(),
+        OpenID4VCIProofTypeSupported {
+            proof_signing_alg_values_supported: vec!["ES256".to_string()],
+            key_attestations_required: Some(OpenID4VCIKeyAttestationsRequired {
+                key_storage: vec![KeyStorageSecurityLevel::Basic],
+                user_authentication: vec![],
+            }),
+        },
+    );
+
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        challenge_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        refresh_token_expires_at: None,
+        token_endpoint_auth_methods_supported: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: Some(proof_types),
+        continue_issuance: None,
+        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_metadata: None,
+        notification_id: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        format: "jwt_vc_json".to_string(),
+    };
+
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+        expires_at: None,
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "access_token": "321",
+                "token_type": "bearer",
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": "321",
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "c_nonce": "123"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credentials": [{"credential": "credential"}],
+                "notification_id": "notification_id"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notification"))
+        .and(body_json(json!({
+            "notification_id": "notification_id",
+            "event": "credential_accepted"
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter.expect_get_leeway().returning(|| 1000);
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_, _| Ok(clone.clone())
+    });
+
+    let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq(CredentialFormat::from("JWT")))
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
+
+    let schema = credential.schema.as_ref().unwrap().to_owned();
+    storage_access
+        .expect_get_schema()
+        .once()
+        .returning(move |_, _| Ok(Some(schema.clone())));
+
+    storage_access
+        .expect_update_interaction()
+        .once()
+        .returning(move |_, _| Ok(()));
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicJwk::Ec(PublicJwkEc {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .returning(|_| {
+            let mut security = MockKeySecurityLevel::new();
+            security
+                .expect_get_key_storages()
+                .return_const(vec!["INTERNAL".to_string()]);
+            security.expect_get_priority().return_const(0u64);
+            security
+                .expect_get_capabilities()
+                .returning(|| KeySecurityLevelCapabilities {
+                    openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+                });
+            Some(Arc::new(security))
+        });
+
+    let mut holder_wallet_unit_proto = MockHolderWalletUnitProto::new();
+    holder_wallet_unit_proto
+        .expect_issue_wallet_attestations()
+        .once()
+        .returning(|_, _| {
+            Ok(IssueWalletUnitAttestationResponseDTO {
+                wia: vec![],
+                wua: vec!["wua_attestation_jwt".to_string()],
+            })
+        });
+
+    let identifier = dummy_identifier();
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once({
+            let identifier = identifier.clone();
+            move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
+        });
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        identifier_creator,
+        key_security_level_provider,
+        holder_wallet_unit_proto,
+        config: dummy_config(),
+        ..Default::default()
+    });
+
+    let key = Key {
+        storage_type: "INTERNAL".to_string(),
+        ..dummy_key()
+    };
+    let wallet_unit_id = Uuid::new_v4().into();
+    let result = openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            &storage_access,
+            None,
+            Some(wallet_unit_id),
+        )
+        .await
+        .unwrap();
+
+    let issuer_response = result.result;
+    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 }
 
 fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
