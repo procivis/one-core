@@ -35,26 +35,8 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        let db = manager.get_connection();
-        let get_ids = async |query: &SelectStatement| -> Result<Vec<String>, DbErr> {
-            Ok(IdResult::find_by_statement(backend.build(query))
-                .all(db)
-                .await?
-                .into_iter()
-                .map(|res| res.id)
-                .collect())
-        };
-
-        let get_ids_from_multiple =
-            async |queries: &[&SelectStatement]| -> Result<Vec<String>, DbErr> {
-                let mut result = vec![];
-                for query in queries {
-                    result.extend(get_ids(query).await?);
-                }
-                Ok(result)
-            };
-
         let credential_schemas = get_ids(
+            manager,
             Query::select()
                 .column(CredentialSchema::Id)
                 .from(CredentialSchema::Table)
@@ -62,93 +44,128 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        let claim_schemas = get_ids(
-            Query::select()
-                .column(ClaimSchema::Id)
-                .from(ClaimSchema::Table)
-                .and_where(Expr::col(ClaimSchema::CredentialSchemaId).is_in(&credential_schemas)),
+        let claim_schemas = get_ids_batched(
+            ClaimSchema::Table,
+            ClaimSchema::Id,
+            ClaimSchema::CredentialSchemaId,
+            &credential_schemas,
+            manager,
         )
         .await?;
 
-        let credentials = get_ids(
-            Query::select()
-                .column(Credential::Id)
-                .from(Credential::Table)
-                .and_where(Expr::col(Credential::CredentialSchemaId).is_in(&credential_schemas)),
+        let credentials = get_ids_batched(
+            Credential::Table,
+            Credential::Id,
+            Credential::CredentialSchemaId,
+            &credential_schemas,
+            manager,
         )
         .await?;
 
-        let claims = get_ids(
-            Query::select()
-                .column(Claim::Id)
-                .from(Claim::Table)
-                .cond_where(
-                    Expr::col(Claim::CredentialId)
-                        .is_in(&credentials)
-                        .or(Expr::col(Claim::ClaimSchemaId).is_in(&claim_schemas)),
-                ),
+        let claims = [
+            get_ids_batched(
+                Claim::Table,
+                Claim::Id,
+                Claim::CredentialId,
+                &credentials,
+                manager,
+            )
+            .await?,
+            get_ids_batched(
+                Claim::Table,
+                Claim::Id,
+                Claim::ClaimSchemaId,
+                &claim_schemas,
+                manager,
+            )
+            .await?,
+        ]
+        .concat();
+
+        let proof_schemas = get_ids_batched(
+            ProofInputSchema::Table,
+            ProofInputSchema::ProofSchema,
+            ProofInputSchema::CredentialSchema,
+            &credential_schemas,
+            manager,
         )
         .await?;
 
-        let proof_schemas = get_ids(
-            Query::select()
-                .expr_as(Expr::col(ProofInputSchema::ProofSchema), "id")
-                .from(ProofInputSchema::Table)
-                .and_where(
-                    Expr::col(ProofInputSchema::CredentialSchema).is_in(&credential_schemas),
-                ),
-        )
-        .await?;
+        let proofs = [
+            get_ids_batched(
+                Proof::Table,
+                Proof::Id,
+                Proof::ProofSchemaId,
+                &proof_schemas,
+                manager,
+            )
+            .await?,
+            get_ids_batched(
+                ProofClaim::Table,
+                ProofClaim::ProofId,
+                ProofClaim::ClaimId,
+                &claims,
+                manager,
+            )
+            .await?,
+        ]
+        .concat();
 
-        let proofs = get_ids_from_multiple(&[
-            Query::select()
-                .column(Proof::Id)
-                .from(Proof::Table)
-                .and_where(Expr::col(Proof::ProofSchemaId).is_in(&proof_schemas)),
-            Query::select()
-                .expr_as(Expr::col(ProofClaim::ProofId), "id")
-                .from(ProofClaim::Table)
-                .and_where(Expr::col(ProofClaim::ClaimId).is_in(&claims)),
-        ])
-        .await?;
+        let interactions = [
+            get_ids_batched(
+                Credential::Table,
+                Credential::InteractionId,
+                Credential::Id,
+                &credentials,
+                manager,
+            )
+            .await?,
+            get_ids_batched(
+                Proof::Table,
+                Proof::InteractionId,
+                Proof::Id,
+                &proofs,
+                manager,
+            )
+            .await?,
+        ]
+        .concat();
 
-        let interactions = get_ids_from_multiple(&[
-            Query::select()
-                .expr_as(Expr::col(Credential::InteractionId), "id")
-                .from(Credential::Table)
-                .and_where(Expr::col(Credential::Id).is_in(&credentials))
-                .and_where(Expr::col(Credential::InteractionId).is_not_null()),
-            Query::select()
-                .expr_as(Expr::col(Proof::InteractionId), "id")
-                .from(Proof::Table)
-                .and_where(Expr::col(Proof::Id).is_in(&proofs))
-                .and_where(Expr::col(Proof::InteractionId).is_not_null()),
-        ])
-        .await?;
-
-        let blobs = get_ids_from_multiple(&[
-            Query::select()
-                .expr_as(Expr::col(Credential::CredentialBlobId), "id")
-                .from(Credential::Table)
-                .and_where(Expr::col(Credential::Id).is_in(&credentials))
-                .and_where(Expr::col(Credential::CredentialBlobId).is_not_null()),
-            Query::select()
-                .expr_as(Expr::col(Credential::WalletInstanceAttestationBlobId), "id")
-                .from(Credential::Table)
-                .and_where(Expr::col(Credential::Id).is_in(&credentials))
-                .and_where(Expr::col(Credential::WalletInstanceAttestationBlobId).is_not_null()),
-            Query::select()
-                .expr_as(Expr::col(Credential::WalletUnitAttestationBlobId), "id")
-                .from(Credential::Table)
-                .and_where(Expr::col(Credential::Id).is_in(&credentials))
-                .and_where(Expr::col(Credential::WalletUnitAttestationBlobId).is_not_null()),
-            Query::select()
-                .expr_as(Expr::col(ProofWithBlob::ProofBlobId), "id")
-                .from(Proof::Table)
-                .and_where(Expr::col(Proof::Id).is_in(&proofs))
-                .and_where(Expr::col(ProofWithBlob::ProofBlobId).is_not_null()),
-        ])
-        .await?;
+        let blobs = [
+            get_ids_batched(
+                Credential::Table,
+                Credential::CredentialBlobId,
+                Credential::Id,
+                &credentials,
+                manager,
+            )
+            .await?,
+            get_ids_batched(
+                Credential::Table,
+                Credential::WalletInstanceAttestationBlobId,
+                Credential::Id,
+                &credentials,
+                manager,
+            )
+            .await?,
+            get_ids_batched(
+                Credential::Table,
+                Credential::WalletUnitAttestationBlobId,
+                Credential::Id,
+                &credentials,
+                manager,
+            )
+            .await?,
+            get_ids_batched(
+                Proof::Table,
+                ProofWithBlob::ProofBlobId,
+                Proof::Id,
+                &proofs,
+                manager,
+            )
+            .await?,
+        ]
+        .concat();
 
         delete(
             ProofInputClaimSchema::Table,
@@ -212,6 +229,50 @@ struct IdResult {
     pub id: String,
 }
 
+async fn get_ids_batched(
+    table: impl IntoTableRef,
+    id_column: impl IntoColumnRef,
+    linked_entity_id_column: impl IntoColumnRef,
+    linked_entities: &[String],
+    manager: &SchemaManager<'_>,
+) -> Result<Vec<String>, DbErr> {
+    let table = table.into_table_ref();
+    let id_column = id_column.into_column_ref();
+    let linked_entity_id_column = linked_entity_id_column.into_column_ref();
+
+    let ids = unique_ids(linked_entities);
+    let mut result = vec![];
+    for chunk in ids.chunks(1000) {
+        result.extend(
+            get_ids(
+                manager,
+                Query::select()
+                    .expr_as(Expr::col(id_column.to_owned()), "id")
+                    .from(table.to_owned())
+                    .and_where(Expr::col(linked_entity_id_column.to_owned()).is_in(chunk))
+                    .and_where(Expr::col(id_column.to_owned()).is_not_null()),
+            )
+            .await?,
+        );
+    }
+    Ok(result)
+}
+
+async fn get_ids(
+    manager: &SchemaManager<'_>,
+    query: &SelectStatement,
+) -> Result<Vec<String>, DbErr> {
+    let backend = manager.get_database_backend();
+    let db = manager.get_connection();
+
+    Ok(IdResult::find_by_statement(backend.build(query))
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|res| res.id)
+        .collect())
+}
+
 async fn delete(
     table: impl IntoTableRef,
     column: impl IntoColumnRef,
@@ -221,8 +282,7 @@ async fn delete(
     let table = table.into_table_ref();
     let column = column.into_column_ref();
 
-    let ids: HashSet<&String> = HashSet::from_iter(entity_ids);
-    let ids: Vec<_> = ids.into_iter().map(ToString::to_string).collect();
+    let ids = unique_ids(entity_ids);
     for chunk in ids.chunks(1000) {
         manager
             .exec_stmt(
@@ -235,4 +295,9 @@ async fn delete(
     }
 
     Ok(())
+}
+
+fn unique_ids(input: &[String]) -> Vec<String> {
+    let ids: HashSet<&String> = HashSet::from_iter(input);
+    ids.into_iter().map(ToString::to_string).collect()
 }
