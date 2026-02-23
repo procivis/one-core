@@ -105,6 +105,7 @@ pub enum HistoryEntityType {
     StsToken,
     Signature,
     Notification,
+    SupervisoryAuthority,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

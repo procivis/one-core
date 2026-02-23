@@ -309,7 +309,7 @@ impl EntitlementRole {
                 "https://uri.etsi.org/19475/Entitlement/rQSigCDs_Provider"
             }
             EntitlementRole::ESigESealCreationProvider => {
-                "https://uri.etsi.org/19475/Entitlement/ESIG_ESeal_Creation_Provider"
+                "https://uri.etsi.org/19475/Entitlement/ESig_ESeal_Creation_Provider"
             }
         }
     }
@@ -366,7 +366,7 @@ impl<'de> Deserialize<'de> for Entitlement {
                     "QCert_for_ESig_Provider" => Some(EntitlementRole::QCertForESigProvider),
                     "rQSealCDs_Provider" => Some(EntitlementRole::RQSealCDsProvider),
                     "rQSigCDs_Provider" => Some(EntitlementRole::RQSigCDsProvider),
-                    "ESIG_ESeal_Creation_Provider" => {
+                    "ESig_ESeal_Creation_Provider" => {
                         Some(EntitlementRole::ESigESealCreationProvider)
                     }
                     _ => None,

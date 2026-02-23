@@ -184,6 +184,7 @@ pub enum HistoryEntityTypeBindingEnum {
     StsToken,
     Signature,
     Notification,
+    SupervisoryAuthority,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]

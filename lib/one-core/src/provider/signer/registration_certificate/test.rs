@@ -144,7 +144,7 @@ fn deserialize_serialize_entitlement() {
         "\"id-etsi-wrpa-entitlement 9\"",
         "\"https://uri.etsi.org/19475/Entitlement/rQSigCDs_Provider\"",
         "\"id-etsi-wrpa-entitlement 10\"",
-        "\"https://uri.etsi.org/19475/Entitlement/ESIG_ESeal_Creation_Provider\"",
+        "\"https://uri.etsi.org/19475/Entitlement/ESig_ESeal_Creation_Provider\"",
     ];
 
     for input in ENTITLEMENTS {

@@ -182,6 +182,8 @@ pub enum HistoryEntityType {
     Signature,
     #[sea_orm(string_value = "NOTIFICATION")]
     Notification,
+    #[sea_orm(string_value = "SUPERVISORY_AUTHORITY")]
+    SupervisoryAuthority,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
