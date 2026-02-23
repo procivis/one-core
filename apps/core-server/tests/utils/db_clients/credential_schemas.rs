@@ -103,7 +103,7 @@ impl CredentialSchemasDB {
             }),
             schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
-            requires_wallet_instance_attestation: false,
+            requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: params.transaction_code,
         };
 

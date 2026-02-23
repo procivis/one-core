@@ -1,7 +1,9 @@
+use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
 async fn test_get_list_credential_schema_success() {
@@ -25,7 +27,7 @@ async fn test_get_list_credential_schema_success() {
     let resp = context
         .api
         .credential_schemas
-        .list(1, 8, &organisation.id, None)
+        .list(1, 8, &organisation.id, None, None)
         .await;
 
     // THEN
@@ -58,6 +60,7 @@ async fn test_get_list_credential_schema_include_layout_properties_success() {
             Some(vec![
                 CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
             ]),
+            None,
         )
         .await;
 
@@ -84,4 +87,115 @@ async fn test_get_list_credential_schema_include_layout_properties_success() {
         resp["values"][0]["layoutProperties"]["logo"]["fontColor"],
         "#DA2727"
     );
+}
+
+#[tokio::test]
+async fn test_list_filter_wia_credential_schema_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-wia",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                requires_wallet_instance_attestation: true,
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credential_schemas
+        .create(
+            "test-no-wia",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                requires_wallet_instance_attestation: false,
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some("requiresWalletInstanceAttestation=true"),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"][0]["id"], schema.id.to_string());
+}
+
+#[tokio::test]
+async fn test_list_filter_key_security_credential_schema_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-wua-basic",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                key_storage_security: Some(KeyStorageSecurity::Basic),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credential_schemas
+        .create(
+            "test-wua-high",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                key_storage_security: Some(KeyStorageSecurity::High),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credential_schemas
+        .create("test-no-wua", &organisation, None, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some("keySecurityLevels[]=BASIC"),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"][0]["id"], schema.id.to_string());
 }

@@ -16,7 +16,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
-use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::{front_time, front_time_option};
 
@@ -156,6 +156,14 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     /// Return only credential schemas which use one of the specified credential formats.
     #[param(rename = "formats[]", inline, nullable = false)]
     pub formats: Option<Vec<String>>,
+
+    /// Return only credential schemas with matching wallet instance attestation requirement.
+    #[param(inline, nullable = false)]
+    pub requires_wallet_instance_attestation: Option<Boolean>,
+
+    /// Return only credential schemas with a matching key storage security requirement.
+    #[param(rename = "keySecurityLevels[]", inline, nullable = false)]
+    pub key_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
 
     /// Return only credential schemas created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').

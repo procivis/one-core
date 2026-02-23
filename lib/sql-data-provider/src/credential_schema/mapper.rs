@@ -13,6 +13,7 @@ use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use shared_types::CredentialSchemaId;
 
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
@@ -53,6 +54,16 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             }
             Self::LastModified(value) => {
                 get_comparison_condition(credential_schema::Column::LastModified, value)
+            }
+            Self::RequiresWalletInstanceAttestation(requires_wia) => get_equals_condition(
+                credential_schema::Column::RequiresWalletInstanceAttestation,
+                requires_wia,
+            ),
+            Self::KeyStorageSecurity(security_levels) => {
+                let security_levels: Vec<KeyStorageSecurity> = convert_inner(security_levels);
+                credential_schema::Column::KeyStorageSecurity
+                    .is_in(security_levels)
+                    .into_condition()
             }
         }
     }

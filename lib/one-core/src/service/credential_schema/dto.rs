@@ -108,6 +108,8 @@ pub enum CredentialSchemaFilterValue {
     OrganisationId(OrganisationId),
     SchemaId(StringMatch),
     Formats(Vec<String>),
+    RequiresWalletInstanceAttestation(bool),
+    KeyStorageSecurity(Vec<KeyStorageSecurity>),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),

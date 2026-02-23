@@ -4,6 +4,7 @@ use one_core::model::list_filter::{
 };
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_core::service::error::ServiceError;
+use one_dto_mapper::convert_inner;
 
 use super::dto::{CredentialSchemasExactColumn, CredentialSchemasFilterQueryParamsRest};
 use crate::dto::mapper::fallback_organisation_id_from_session;
@@ -36,6 +37,14 @@ impl TryFrom<CredentialSchemasFilterQueryParamsRest>
         });
 
         let formats = value.formats.map(CredentialSchemaFilterValue::Formats);
+
+        let key_security_levels = value
+            .key_security_levels
+            .map(|levels| CredentialSchemaFilterValue::KeyStorageSecurity(convert_inner(levels)));
+
+        let requires_wia = value
+            .requires_wallet_instance_attestation
+            .map(|b| CredentialSchemaFilterValue::RequiresWalletInstanceAttestation(b.into()));
 
         let schema_id = value.schema_id.map(|schema_id| {
             CredentialSchemaFilterValue::SchemaId(StringMatch {
@@ -77,6 +86,8 @@ impl TryFrom<CredentialSchemasFilterQueryParamsRest>
         Ok(organisation_id
             & name
             & formats
+            & key_security_levels
+            & requires_wia
             & schema_id
             & credential_schema_ids
             & created_date_after
