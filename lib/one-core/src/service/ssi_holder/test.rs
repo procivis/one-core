@@ -1771,6 +1771,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
             organisation_id: Some(session_organisation_id),
             permissions: vec![],
             user_id: "test-user".to_string(),
+            actor: None,
         })),
         ..mock_ssi_holder_service()
     };
@@ -1827,6 +1828,7 @@ async fn test_accept_credential_credential_org_mismatch() {
             organisation_id: Some(session_organisation_id),
             permissions: vec![],
             user_id: "test-user".to_string(),
+            actor: None,
         })),
         ..mock_ssi_holder_service()
     };
@@ -1882,6 +1884,7 @@ async fn test_reject_credential_credential_org_mismatch() {
             organisation_id: Some(session_organisation_id),
             permissions: vec![],
             user_id: "test-user".to_string(),
+            actor: None,
         })),
         ..mock_ssi_holder_service()
     };

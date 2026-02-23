@@ -124,7 +124,7 @@ impl Signer for AccessCertificateSigner {
         SignerCapabilities {
             features: vec![],
             supported_identifiers: vec![IdentifierType::CertificateAuthority],
-            sign_required_permissions: vec![Permission::AccessCertificateCreate],
+            sign_required_permissions: vec![Permission::AccessCertificateSign],
             revoke_required_permissions: vec![Permission::AccessCertificateRevoke],
             signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             revocation_methods: vec![RevocationType::CRL],

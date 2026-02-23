@@ -86,7 +86,7 @@ impl Signer for X509CertificateSigner {
         SignerCapabilities {
             features,
             supported_identifiers: vec![IdentifierType::CertificateAuthority],
-            sign_required_permissions: vec![Permission::X509CertificateCreate],
+            sign_required_permissions: vec![Permission::X509CertificateSign],
             revoke_required_permissions: vec![Permission::X509CertificateRevoke],
             signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             revocation_methods: vec![RevocationType::CRL],

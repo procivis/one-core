@@ -10,6 +10,7 @@ use one_core::provider::key_algorithm::model::GeneratedKey;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -43,7 +44,7 @@ async fn test_insecure_none_authentication_success() {
         .unwrap();
 
     // then
-    similar_asserts::assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 200);
 }
 
 #[tokio::test]
@@ -70,7 +71,7 @@ async fn test_static_token_authentication_success() {
         .unwrap();
 
     // then
-    similar_asserts::assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 200);
 }
 
 #[tokio::test]
@@ -97,7 +98,7 @@ async fn test_static_token_authentication_fails_invalid_token() {
         .unwrap();
 
     // then
-    similar_asserts::assert_eq!(resp.status(), 401);
+    assert_eq!(resp.status(), 401);
 }
 
 #[tokio::test]
@@ -138,7 +139,49 @@ async fn test_sts_authentication_success() {
         .unwrap();
 
     // then
-    similar_asserts::assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 200);
+}
+
+#[tokio::test]
+async fn test_sts_authentication_act_success() {
+    // given
+    let now = OffsetDateTime::now_utc();
+    let payload = JWTPayload {
+        issued_at: Some(now),
+        expires_at: Some(now + Duration::from_secs(3600)),
+        invalid_before: None,
+        issuer: Some("bff".to_string()),
+        subject: Some(Uuid::new_v4().to_string()),
+        audience: Some(vec!["core".to_string()]),
+        jwt_id: None,
+        proof_of_possession_key: None,
+        custom: json!({
+            "act": {
+                "sub": "test-actor"
+            }
+        }),
+    };
+
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts_with_payload(payload).await;
+    let context = TestContext::new(Some(config)).await;
+
+    // when
+    let resp = http_client()
+        .get(format!(
+            "{}/api/config/v1",
+            context.config.app.core_base_url
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap();
+
+    // then
+    assert_eq!(resp.status(), 200);
 }
 
 #[tokio::test]
@@ -353,7 +396,7 @@ async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicJwk
         .unwrap();
 
     // then
-    similar_asserts::assert_eq!(resp.status(), 401);
+    assert_eq!(resp.status(), 401);
 }
 
 pub(super) fn to_jwk_with_kid(key: &GeneratedKey, kid: Uuid) -> PublicJwk {

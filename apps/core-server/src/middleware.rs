@@ -29,6 +29,13 @@ pub struct StsToken {
     pub organisation_id: Option<OrganisationId>,
     #[serde(default)]
     pub permissions: Vec<Permission>,
+    pub act: Option<Act>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Act {
+    pub sub: String,
 }
 
 #[derive(Debug, Clone)]
@@ -142,6 +149,7 @@ pub async fn authorization_check(
                     .payload
                     .subject
                     .ok_or(StatusCode::UNAUTHORIZED)?,
+                actor: decomposed_token.payload.custom.act.map(|act| act.sub),
             };
             request.extensions_mut().insert(session.clone());
             tracing::trace!("Session initialized: {session}");
@@ -161,6 +169,11 @@ pub async fn user_init(mut request: Request<Body>, next: Next) -> axum::response
 
     request.extensions_mut().insert(UserInfo {
         user_id: jwt.payload.subject,
+        act: jwt
+            .payload
+            .custom
+            .remove("act")
+            .and_then(|val| val.get("sub").and_then(|s| s.as_str()).map(String::from)),
         organisation_id: jwt.payload.custom.remove("organisationId").and_then(|o| {
             if let Value::String(s) = o {
                 Some(s)
@@ -175,6 +188,7 @@ pub async fn user_init(mut request: Request<Body>, next: Next) -> axum::response
 #[derive(Debug, Clone)]
 pub struct UserInfo {
     pub user_id: Option<String>,
+    pub act: Option<String>,
     pub organisation_id: Option<String>,
 }
 

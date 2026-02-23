@@ -32,8 +32,9 @@ use crate::router::AppState;
 "},
 )]
 #[require_permissions(
-    Permission::RegistrationCertificateCreate,
-    Permission::X509CertificateCreate
+    Permission::AccessCertificateSign,
+    Permission::RegistrationCertificateSign,
+    Permission::X509CertificateSign
 )]
 pub(crate) async fn create_signature(
     state: State<AppState>,

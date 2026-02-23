@@ -8,6 +8,7 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
+use serde::Serialize;
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -22,7 +23,7 @@ pub struct StsSetup {
     pub mock_server: MockServer,
 }
 
-pub async fn setup_sts_with_payload(payload: JWTPayload<StsToken>) -> StsSetup {
+pub async fn setup_sts_with_payload<T: Serialize>(payload: JWTPayload<T>) -> StsSetup {
     let mock_server = MockServer::builder().start().await;
     let config = indoc::formatdoc! {"
       app:

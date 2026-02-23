@@ -177,7 +177,8 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                         requestId = context.request_id.as_ref(),
                         sessionId = context.session_id, // Derived from x-session-id header,
                         organisation = user_info.and_then(|s| s.organisation_id.clone()),
-                        user = user_info.and_then(|s| s.user_id.clone())
+                        user = user_info.and_then(|s| s.user_id.clone()),
+                        actor = user_info.and_then(|s| s.act.clone())
                     )
                 })
                 .on_request(|request: &Request<_>, _span: &Span| {

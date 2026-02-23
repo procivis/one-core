@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum Permission {
     AccessCertificateCreate,
     AccessCertificateRevoke,
+    AccessCertificateSign,
     CacheDelete,
     CredentialDelete,
     CredentialDetail,
@@ -55,6 +56,7 @@ pub enum Permission {
     ProofShare,
     RegistrationCertificateCreate,
     RegistrationCertificateRevoke,
+    RegistrationCertificateSign,
     StsOrganisationCreate,
     StsOrganisationDelete,
     StsOrganisationDetail,
@@ -81,6 +83,7 @@ pub enum Permission {
     WalletUnitDelete,
     X509CertificateCreate,
     X509CertificateRevoke,
+    X509CertificateSign,
     #[serde(untagged)]
     Unknown(String),
 }

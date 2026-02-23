@@ -115,7 +115,7 @@ impl Signer for RegistrationCertificate {
         SignerCapabilities {
             features: vec![],
             supported_identifiers: vec![IdentifierType::Certificate],
-            sign_required_permissions: vec![Permission::RegistrationCertificateCreate],
+            sign_required_permissions: vec![Permission::RegistrationCertificateSign],
             revoke_required_permissions: vec![Permission::RegistrationCertificateRevoke],
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Ecdsa,

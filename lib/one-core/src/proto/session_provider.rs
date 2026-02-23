@@ -20,6 +20,8 @@ pub struct Session {
     pub organisation_id: Option<OrganisationId>,
     pub permissions: Vec<Permission>,
     pub user_id: String,
+    /// Actor acting on behalf of the user
+    pub actor: Option<String>,
 }
 
 impl Display for Session {
@@ -60,6 +62,7 @@ pub mod test {
                 organisation_id: Some(Uuid::new_v4().into()),
                 permissions: vec![],
                 user_id: format!("test-user-{}", Uuid::new_v4()),
+                actor: None,
             })
         }
     }
