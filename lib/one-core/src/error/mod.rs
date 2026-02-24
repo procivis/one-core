@@ -175,15 +175,6 @@ pub enum ErrorCode {
     #[strum(message = "Formatter provider error")]
     BR_0057,
 
-    #[strum(message = "Crypto provider error")]
-    BR_0058,
-
-    #[strum(message = "Missing signer")]
-    BR_0059,
-
-    #[strum(message = "Missing signer algorithm")]
-    BR_0060,
-
     #[strum(message = "Provided datatype is invalid or value does not match the expected type")]
     BR_0061,
 
@@ -228,9 +219,6 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid handle invitation received")]
     BR_0085,
-
-    #[strum(message = "Cannot fetch credential offer or presentation definition")]
-    BR_0086,
 
     #[strum(message = "Incorrect credential schema type")]
     BR_0087,

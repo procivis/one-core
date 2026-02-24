@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use dto::OpenID4VPMqttQueryParams;
 use model::{MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys};
@@ -13,6 +12,7 @@ use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
 use crate::config::core_config::TransportType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
@@ -87,12 +87,10 @@ impl ProximityHolderTransport for MqttHolderTransport {
         let (host, port) = extract_host_and_port(&broker_url)?;
 
         let verifier_public_key = hex::decode(&key)
-            .context("Failed to decode verifier public key")
-            .map_err(VerificationProtocolError::Transport)?
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
             .as_slice()
             .try_into()
-            .context("Invalid verifier public key length")
-            .map_err(VerificationProtocolError::Transport)?;
+            .map_err(|_| VerificationProtocolError::Failed("Invalid key length".to_string()))?;
 
         let session_keys = generate_session_keys(verifier_public_key)?;
         let encryption = PeerEncryption::new(
@@ -115,13 +113,13 @@ impl ProximityHolderTransport for MqttHolderTransport {
                 format!("/proof/{topic_id}/presentation-submission/identify"),
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("subscribing Identify topic")?;
 
         // ONE-8380: always send non-enveloped messages from holder side
         identify_topic
             .send(identity_request.encode(), false)
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("sending Identify request")?;
 
         let presentation_definition_topic = self
             .mqtt_client
@@ -131,7 +129,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
                 format!("/proof/{topic_id}/presentation-definition"),
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("subscribing PresentationDefinition topic")?;
         Ok(MqttHolderContext {
             presentation_definition_topic,
             identity_request_nonce,
@@ -150,11 +148,11 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .presentation_definition_topic
             .recv()
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("receiving PresentationDefinition")?;
         let token = context
             .encryption
             .decrypt(&presentation_request_bytes)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .map_err(VerificationProtocolError::Other)?;
         tracing::debug!("Received enveloped={enveloped} MQTT message");
         Ok(token)
     }
@@ -179,8 +177,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             identity_request_nonce: context.identity_request_nonce,
             topic_id: context.topic_id,
         };
-        serde_json::to_vec(&mqtt_interaction_data)
-            .map_err(|err| VerificationProtocolError::Failed(format!("Interaction data: {err}")))
+        Ok(serde_json::to_vec(&mqtt_interaction_data)?)
     }
 
     fn parse_interaction_data(
@@ -188,8 +185,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         interaction_data: Value,
     ) -> Result<HolderCommonVPInteractionData, VerificationProtocolError> {
         let interaction_data: MQTTOpenID4VPInteractionDataHolder =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
 
         Ok(HolderCommonVPInteractionData {
             client_id: interaction_data.client_id,
@@ -205,8 +201,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         interaction_data: Value,
     ) -> Result<(), VerificationProtocolError> {
         let interaction_data: MQTTOpenID4VPInteractionDataHolder =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
 
         let encryption = PeerEncryption::new(
             interaction_data.session_keys.sender_key,
@@ -216,7 +211,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
 
         let encrypted = encryption
             .encrypt(&presentation)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .map_err(VerificationProtocolError::Other)?;
 
         let presentation_submission_topic = self
             .mqtt_client
@@ -229,18 +224,17 @@ impl ProximityHolderTransport for MqttHolderTransport {
                 ),
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("subscribing Accept topic")?;
 
-        presentation_submission_topic
+        Ok(presentation_submission_topic
             .send(encrypted, false)
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+            .error_while("sending submission")?)
     }
 
     async fn reject_proof(&self, interaction_data: Value) -> Result<(), VerificationProtocolError> {
         let interaction_data: MQTTOpenID4VPInteractionDataHolder =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
 
         let encryption = PeerEncryption::new(
             interaction_data.session_keys.sender_key,
@@ -251,7 +245,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         let now = OffsetDateTime::now_utc().unix_timestamp();
         let encrypted = encryption
             .encrypt(&now)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .map_err(VerificationProtocolError::Other)?;
 
         let reject_topic_name = format!(
             "/proof/{}/presentation-submission/reject",
@@ -266,12 +260,12 @@ impl ProximityHolderTransport for MqttHolderTransport {
                 reject_topic_name,
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("subscribing Reject topic")?;
 
         reject_topic
             .send(encrypted, false)
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("sending rejection")?;
 
         Ok(())
     }
@@ -296,7 +290,7 @@ fn generate_session_keys(
 
     let (receiver_key, sender_key) = key_agreement_key
         .derive_session_secrets(verifier_public_key, nonce)
-        .map_err(VerificationProtocolError::Transport)?;
+        .map_err(VerificationProtocolError::Other)?;
 
     Ok(MQTTSessionKeys {
         public_key,

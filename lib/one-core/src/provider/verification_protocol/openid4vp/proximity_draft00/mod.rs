@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Context;
 use dcql::DcqlQuery;
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -33,6 +32,7 @@ use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -631,27 +631,25 @@ fn interaction_data_from_proof(proof: &Proof) -> Result<Value, VerificationProto
         .ok_or(VerificationProtocolError::Failed(
             "missing interaction data".to_string(),
         ))?;
-    let interaction_data = serde_json::from_slice(interaction_data_bytes).map_err(|err| {
-        VerificationProtocolError::Failed(format!("failed to parse interaction data: {err}"))
-    })?;
+    let interaction_data = serde_json::from_slice(interaction_data_bytes)?;
     Ok(interaction_data)
 }
 
 fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {
     let transport = if proof.transport.is_empty() {
-        let data: CreateProofInteractionData = proof
+        let interaction_data = proof
             .interaction
             .as_ref()
-            .context("Missing interaction data for proof transport selection")
-            .and_then(|interaction| {
-                let interaction_data = interaction
-                    .data
-                    .as_ref()
-                    .context("Missing interaction data")?;
+            .ok_or(VerificationProtocolError::Failed(
+                "missing interaction".to_string(),
+            ))?
+            .data
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "Missing interaction data".to_string(),
+            ))?;
 
-                serde_json::from_slice(interaction_data).context("Interaction deserialization")
-            })
-            .map_err(VerificationProtocolError::Other)?;
+        let data: CreateProofInteractionData = serde_json::from_slice(interaction_data)?;
 
         data.transport
     } else {
@@ -700,7 +698,7 @@ pub(super) async fn create_interaction_and_proof(
     let interaction_id = storage_access
         .create_interaction(interaction.clone())
         .await
-        .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?;
+        .map_err(VerificationProtocolError::StorageAccessError)?;
 
     let proof_id: ProofId = Uuid::new_v4().into();
     Ok((
@@ -761,7 +759,7 @@ pub(super) async fn create_presentation(
                 credential_presentation.jwk_key_id.to_owned(),
                 params.key_algorithm_provider.clone(),
             )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("getting signature provider")?;
 
         let credentials = CredentialToPresent {
             credential_token: credential_presentation.presentation.to_owned(),
@@ -778,7 +776,7 @@ pub(super) async fn create_presentation(
                 format_presentation_context(&params, presentation_format)?,
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("formatting presentation")?;
         let PresentationReference::Dcql {
             credential_query_id,
         } = credential_presentation.reference.to_owned()
@@ -877,7 +875,7 @@ pub(super) async fn prepare_proof_share(
             Some(verifier_jwk_key_id.clone()),
             params.key_algorithm_provider.clone(),
         )
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting signature provider")?;
     let auth_fn_mqtt = params
         .key_provider
         .get_signature_provider(
@@ -885,7 +883,7 @@ pub(super) async fn prepare_proof_share(
             Some(verifier_jwk_key_id),
             params.key_algorithm_provider,
         )
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting signature provider")?;
 
     Ok((
         presentation_definition,
@@ -903,7 +901,7 @@ fn format_presentation_context(
     let ctx = if presentation_format == FormatType::Mdoc {
         mdoc_presentation_context(Handover::OID4VPFinal1_0(
             OID4VPFinal1_0Handover::compute(params.client_id, params.client_id, params.nonce, None)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+                .error_while("computing handover")?,
         ))?
     } else {
         FormatPresentationCtx {

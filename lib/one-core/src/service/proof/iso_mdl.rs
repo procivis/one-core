@@ -33,7 +33,7 @@ impl ProofService {
                     .inner()
                     .device_retrieval_methods
                     .first()
-                    .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
+                    .ok_or_else(|| ServiceError::Other("no device retrieval method".into()))?
                     .clone();
                 (device_engagement, None, device_retrieval_method)
             }
@@ -53,14 +53,15 @@ impl ProofService {
             .config
             .transport
             .get_enabled_transport_type(TransportType::Ble)
-            .map_err(|_| ServiceError::Other("BLE transport not available".into()))?;
+            .error_while("checking transport config")?;
 
         let ble = self
             .ble
             .as_ref()
             .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
 
-        let verifier_session = setup_verifier_session(device_engagement, &schema, handover)?;
+        let verifier_session = setup_verifier_session(device_engagement, &schema, handover)
+            .error_while("setting up verifier session")?;
 
         let now = OffsetDateTime::now_utc();
         let proof = Proof {

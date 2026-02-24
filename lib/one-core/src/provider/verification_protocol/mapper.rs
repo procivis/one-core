@@ -11,6 +11,7 @@ use super::dto::{
 };
 use super::{StorageAccess, VerificationProtocolError};
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -83,7 +84,7 @@ pub(crate) fn credential_model_to_credential_dto(
     VerificationProtocolError,
 > {
     // Missing organisation here.
-    credentials
+    Ok(credentials
         .into_iter()
         .map(|credential| {
             credential_detail_response_from_model(
@@ -94,7 +95,7 @@ pub(crate) fn credential_model_to_credential_dto(
             )
         })
         .collect::<Result<Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>, _>>()
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("creating credential detail")?)
 }
 
 pub(crate) async fn get_relevant_credentials_to_credential_schemas(
@@ -119,7 +120,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 organisation_id,
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .map_err(VerificationProtocolError::StorageAccessError)?;
 
         for credential in &relevant_credentials_inner {
             let schema = credential

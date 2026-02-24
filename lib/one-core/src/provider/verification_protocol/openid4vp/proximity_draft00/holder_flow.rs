@@ -4,6 +4,7 @@ use shared_types::DidValue;
 use url::Url;
 
 use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
@@ -83,7 +84,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
         None,
     )
     .await
-    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    .error_while("parsing request JWT")?;
 
     let (did_value, ClientIdScheme::Did) =
         decode_client_id_with_scheme(&presentation_request.payload.custom.client_id)?
@@ -104,12 +105,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
             IdentifierRole::Verifier,
         )
         .await
-        .map_err(|_| {
-            VerificationProtocolError::Failed(format!(
-                "failed to resolve or create did and identifier: {}",
-                presentation_request.payload.custom.client_id
-            ))
-        })?;
+        .error_while("creating verifier identifier")?;
     proof.verifier_identifier = Some(verifier_identifier);
 
     let interaction_data = transport
@@ -123,9 +119,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
             },
         )
         .await
-        .map_err(|e| {
-            VerificationProtocolError::Failed(format!("failed to update interaction data: {e}"))
-        })?;
+        .map_err(VerificationProtocolError::StorageAccessError)?;
 
     Ok(InvitationResponseDTO {
         interaction_id,

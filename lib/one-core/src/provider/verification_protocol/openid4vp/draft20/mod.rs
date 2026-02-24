@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use anyhow::Context;
 use futures::future::BoxFuture;
 use mappers::create_openidvp20_authorization_request;
 use model::OpenID4Vp20Params;
@@ -16,6 +15,7 @@ use super::mapper::{encrypted_params, unencrypted_params};
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -133,8 +133,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         context: serde_json::Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+        let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
         let presentation_definition =
             interaction_data
@@ -270,19 +269,16 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             unencrypted_params(&submission_data, interaction_data.state.clone())?
         };
 
-        let response = self
-            .client
-            .post(response_uri.as_str())
-            .form(&params)
-            .context("form error")
-            .map_err(VerificationProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?;
+        let response = async {
+            self.client
+                .post(response_uri.as_str())
+                .form(&params)?
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("posting submission")?;
 
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json();
 
@@ -432,8 +428,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         )
         .await?;
 
-        let encoded_offer = serde_urlencoded::to_string(request)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let encoded_offer = serde_urlencoded::to_string(request)?;
 
         let expires_at = self
             .params

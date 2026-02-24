@@ -170,9 +170,7 @@ impl BackupService {
                     ))
             })
             .await
-            .map_err(|err| {
-                ServiceError::Other(format!("failed to finalize backup import: {err}"))
-            })?;
+            .error_while("finalizing import")?;
         tracing::info!("Restored backup");
         Ok(())
     }

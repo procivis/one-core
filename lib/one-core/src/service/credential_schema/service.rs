@@ -38,7 +38,7 @@ impl CredentialSchemaService {
         let core_base_url = self
             .core_base_url
             .as_ref()
-            .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
+            .ok_or_else(|| ServiceError::MappingError("Missing core base_url".to_string()))?;
 
         let formatter = self
             .formatter_provider

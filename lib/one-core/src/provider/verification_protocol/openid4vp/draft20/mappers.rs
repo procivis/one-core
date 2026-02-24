@@ -127,8 +127,7 @@ fn format_params_for_redirect_uri(
             VerificationProtocolError::Failed("missing presentation definition".to_string()),
         )?;
 
-        let pd = serde_json::to_string(&pd)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let pd = serde_json::to_string(&pd)?;
 
         presentation_definition = Some(pd);
     } else {
@@ -146,8 +145,7 @@ fn format_params_for_redirect_uri(
             ));
         };
 
-        let metadata = serde_json::to_string(&metadata)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let metadata = serde_json::to_string(&metadata)?;
 
         client_metadata = Some(metadata);
     } else {

@@ -10,6 +10,7 @@ use time::Duration;
 use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
+use crate::error::ContextWithErrorCode;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
@@ -170,16 +171,20 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             ));
         }
 
-        let response = self.client.get(url.as_str()).send().await.map_err(|e| {
-            VerificationProtocolError::Failed(format!("Failed to get request object: {e}"))
-        })?;
+        let response = async {
+            self.client
+                .get(url.as_str())
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("fetching swiyu request")?;
         let token = String::from_utf8(response.body).map_err(|e| {
             VerificationProtocolError::Failed(format!("Invalid request object: {e}"))
         })?;
-        let params: DecomposedJwt<OpenID4VP20AuthorizationRequest> = Jwt::decompose_token(&token)
-            .map_err(|e| {
-            VerificationProtocolError::Failed(format!("Failed to decompose token: {e}"))
-        })?;
+        let params: DecomposedJwt<OpenID4VP20AuthorizationRequest> =
+            Jwt::decompose_token(&token).error_while("parsing request JWT")?;
         let request_params = OpenID4VP20AuthorizationRequestQueryParams {
             client_id: params.payload.custom.client_id,
             request_uri: Some(url.to_string()),
@@ -194,7 +199,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         )
         .parse()
         .map_err(|e| {
-            VerificationProtocolError::Failed(format!("Failed to parse query params: {e}"))
+            VerificationProtocolError::Failed(format!("Failed to parse invitation URL: {e}"))
         })?;
 
         self.inner

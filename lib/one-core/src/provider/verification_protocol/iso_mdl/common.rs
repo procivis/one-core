@@ -385,15 +385,12 @@ pub(crate) fn create_session_transcript_bytes(
         handover,
     };
 
-    EmbeddedCbor::new(session_transcript)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+    Ok(EmbeddedCbor::new(session_transcript)?)
 }
 
 pub(crate) fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, VerificationProtocolError> {
     let mut buff = vec![];
-    ciborium::into_writer(value, &mut buff)
-        .context("serialization error")
-        .map_err(VerificationProtocolError::Other)?;
+    ciborium::into_writer(value, &mut buff)?;
     Ok(buff)
 }
 

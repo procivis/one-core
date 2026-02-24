@@ -126,18 +126,13 @@ fn format_params_for_redirect_uri(
     let presentation_definition = authorization_request
         .presentation_definition
         .as_ref()
-        .map(|pd| {
-            serde_json::to_string(&pd).map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-        })
+        .map(serde_json::to_string)
         .transpose()?;
 
     let dcql_query = authorization_request
         .dcql_query
         .as_ref()
-        .map(|dcql| {
-            serde_json::to_string(&dcql)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-        })
+        .map(serde_json::to_string)
         .transpose()?;
 
     let Some(client_metadata) = authorization_request.client_metadata else {
@@ -146,8 +141,7 @@ fn format_params_for_redirect_uri(
         ));
     };
 
-    let client_metadata = serde_json::to_string(&client_metadata)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let client_metadata = serde_json::to_string(&client_metadata)?;
 
     Ok(OpenID4VP25AuthorizationRequestQueryParams {
         client_id: encode_client_id_with_scheme_draft25(

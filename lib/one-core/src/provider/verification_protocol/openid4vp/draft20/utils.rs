@@ -2,7 +2,6 @@ use core::str;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Context;
 use shared_types::DidValue;
 use standardized_types::openid4vp::PresentationFormat;
 use url::Url;
@@ -24,6 +23,7 @@ use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
 };
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
@@ -58,7 +58,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             CertificateValidationOptions::signature_and_revocation(None),
         )
         .await
-        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+        .error_while("parsing PEM chain")?;
 
     public_key
         .signature()
@@ -70,7 +70,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             request_token.unverified_jwt.as_bytes(),
             &request_token.signature,
         )
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("verifying signature")?;
 
     // x509 SAN must match client_id
     validate_san_dns_matching_client_id(&attributes, &request_token.payload.custom.client_id)?;
@@ -121,14 +121,16 @@ async fn parse_referenced_data_from_did_signed_token(
         ));
     };
 
-    let verifier_did = client_id.clone().parse().map_err(|_| {
-        VerificationProtocolError::Failed("client_id is not a valid DID".to_string())
-    })?;
+    let verifier_did = client_id
+        .clone()
+        .parse()
+        .map_err(DidMethodError::DidValueError)
+        .error_while("parsing verifier DID")?;
 
     let did_document = did_method_provider
         .resolve(&verifier_did)
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("resolving verifier DID")?;
 
     let (_alg_id, alg) = key_algorithm_provider
         .key_algorithm_from_jose_alg(&request_token.header.algorithm)
@@ -146,7 +148,7 @@ async fn parse_referenced_data_from_did_signed_token(
         .clone();
 
     alg.parse_jwk(&key)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .error_while("parsing JWK")?
         .signature()
         .ok_or(VerificationProtocolError::Failed(
             "signature missing".to_string(),
@@ -156,7 +158,7 @@ async fn parse_referenced_data_from_did_signed_token(
             request_token.unverified_jwt.as_bytes(),
             &request_token.signature,
         )
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("verifying signature")?;
 
     Ok((request_token.payload.custom, verifier_did))
 }
@@ -191,7 +193,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         None,
     )
     .await
-    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    .error_while("parsing attestation JWT")?;
 
     let (_alg_id, alg) = key_algorithm_provider
         .key_algorithm_from_jose_alg(&request_token.header.algorithm)
@@ -211,7 +213,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .to_owned();
 
     alg.parse_jwk(&public_key_cnf)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .error_while("parsing JWK")?
         .signature()
         .ok_or(VerificationProtocolError::Failed(
             "Signature key missing".to_string(),
@@ -221,7 +223,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
             request_token.unverified_jwt.as_bytes(),
             &request_token.signature,
         )
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("verifying signature")?;
 
     validate_against_redirect_uris(
         &attestation_jwt.payload.custom.redirect_uris,
@@ -285,15 +287,19 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
             ));
         }
 
-        let token = client
-            .get(request_uri.as_str())
-            .header("Accept", "application/oauth-authz-req+jwt")
-            .send()
-            .await
-            .context("Error calling request_uri")
-            .and_then(|r| r.error_for_status().context("Response status error"))
-            .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
-            .map_err(VerificationProtocolError::Transport)?;
+        let response = async {
+            client
+                .get(request_uri.as_str())
+                .header("Accept", "application/oauth-authz-req+jwt")
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("fetching request")?;
+
+        let token = String::from_utf8(response.body)
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         request = Some(token);
     }
@@ -313,8 +319,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
 
     if let Some(token) = request {
         let request_token: DecomposedJwt<OpenID4VP20AuthorizationRequest> =
-            Jwt::decompose_token(&token)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            Jwt::decompose_token(&token).error_while("parsing request JWT")?;
 
         // If the `client_id_scheme` was not present in the params but is contained in the request token,
         // override the fallback `client_id_scheme`.
@@ -366,7 +371,8 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
                     did.as_deref()
                         .map(DidValue::from_str)
                         .transpose()
-                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                        .map_err(DidMethodError::DidValueError)
+                        .error_while("parsing verifier DID")?
                         .map(IdentifierDetails::Did),
                 )
             }
@@ -435,7 +441,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
         let client_metadata = metadata_cache
             .fetch(client_metadata_uri.as_str())
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("fetching client metadata")?;
 
         interaction_data.client_metadata = Some(client_metadata);
     }
@@ -447,18 +453,16 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
             ));
         }
 
-        let presentation_definition = client
-            .get(presentation_definition_uri.as_str())
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(VerificationProtocolError::Transport)?;
+        let presentation_definition = async {
+            client
+                .get(presentation_definition_uri.as_str())
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching presentation definition")?;
 
         interaction_data.presentation_definition = Some(presentation_definition);
     }

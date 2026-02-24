@@ -20,7 +20,7 @@ pub(super) fn trust_anchor_from_request(
             "{}/ssi/trust/v1/{id}",
             core_base_url
                 .as_ref()
-                .ok_or_else(|| ServiceError::Other("Missing core_base_url".to_string()))?,
+                .ok_or_else(|| ServiceError::MappingError("Missing core_base_url".to_string()))?,
         )
     };
 

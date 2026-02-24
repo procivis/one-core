@@ -416,9 +416,7 @@ pub(crate) async fn encrypted_params(
         key_algorithm_provider,
     )
     .await
-    .map_err(|err| {
-        VerificationProtocolError::Failed(format!("Failed to build response jwe: {err}"))
-    })?;
+    .map_err(VerificationProtocolError::Other)?;
     Ok(HashMap::from_iter([("response".to_owned(), response)]))
 }
 
@@ -544,21 +542,17 @@ pub(crate) fn format_to_type(
     presented_credential: &FormattedCredentialPresentation,
     config: &CoreConfig,
 ) -> Result<FormatType, VerificationProtocolError> {
-    config
+    Ok(config
         .format
         .get_type(&presented_credential.credential_schema.format)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("getting format type")?)
 }
 
 pub(crate) fn unencrypted_params(
     submission_data: &VpSubmissionData,
     state: Option<String>,
 ) -> Result<HashMap<String, String>, VerificationProtocolError> {
-    let mut result = serde_json::to_value(submission_data).map_err(|err| {
-        VerificationProtocolError::Failed(format!(
-            "Failed to serialize presentation submission params: {err}"
-        ))
-    })?;
+    let mut result = serde_json::to_value(submission_data)?;
 
     if let Some(state) = state {
         result
@@ -579,11 +573,7 @@ pub(crate) fn unencrypted_params(
             let value = if let Some(string) = v.as_str() {
                 string.to_string()
             } else {
-                serde_json::to_string(v).map_err(|err| {
-                    VerificationProtocolError::Failed(format!(
-                        "failed to serialize submission data: {err}"
-                    ))
-                })?
+                serde_json::to_string(v)?
             };
             Ok((k.clone(), value))
         })
@@ -692,10 +682,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
         },
     };
 
-    request_jwt
+    Ok(request_jwt
         .tokenize(Some(&*auth_fn))
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("creating request JWT")?)
 }
 
 /*
@@ -721,9 +711,9 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
 
     let jwk = key_algorithm
         .reconstruct_key(&verifier_key.public_key, None, None)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .error_while("reconstructing key")?
         .public_key_as_jwk()
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting JWK")?;
     let proof_of_possession_key = Some(ProofOfPossessionKey {
         key_id: None,
         jwk: ProofOfPossessionJwk::Jwk { jwk },
@@ -743,7 +733,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("finding related key")?;
 
     let key_id = verifier_did.verification_method_id(key);
 
@@ -777,11 +767,11 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
     }
     .tokenize(Some(&*auth_fn))
     .await
-    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    .error_while("creating attestation JWT")?;
 
     let auth_fn = key_provider
         .get_signature_provider(verifier_key, None, key_algorithm_provider.clone())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting signature provider")?;
 
     let request_jwt = Jwt {
         header: JWTHeader {
@@ -806,10 +796,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
         },
     };
 
-    request_jwt
+    Ok(request_jwt
         .tokenize(Some(&*auth_fn))
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("creating request JWT")?)
 }
 
 pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Serialize>(
@@ -839,7 +829,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("finding related key")?;
 
     let key_id = verifier_did.verification_method_id(key);
 
@@ -868,10 +858,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
         },
     };
 
-    request_jwt
+    Ok(request_jwt
         .tokenize(Some(&*auth_fn))
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("creating request JWT")?)
 }
 
 pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T: Serialize>(
@@ -900,10 +890,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
         },
     };
 
-    unsigned_jwt
+    Ok(unsigned_jwt
         .tokenize(None)
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("creating request JWT")?)
 }
 
 pub(crate) fn generate_client_metadata_draft(
@@ -913,7 +903,7 @@ pub(crate) fn generate_client_metadata_draft(
 ) -> Result<OpenID4VPDraftClientMetadata, VerificationProtocolError> {
     let vp_formats = create_open_id_for_vp_formats();
     let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, config)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting encryption key")?;
 
     Ok(create_open_id_for_vp_client_metadata_draft(jwk, vp_formats))
 }

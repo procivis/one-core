@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{Context, Error, anyhow};
+use anyhow::{Context, Error};
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
@@ -14,6 +14,7 @@ use super::common::{
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
+use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::history::HistoryErrorMetadata;
@@ -55,8 +56,7 @@ pub(crate) fn setup_verifier_session(
 ) -> Result<VerifierSession, VerificationProtocolError> {
     let key_pair = KeyAgreement::<EReaderKey>::new();
 
-    let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())?;
 
     let session_transcript_bytes = create_session_transcript_bytes(
         device_engagement.to_owned(),
@@ -81,12 +81,12 @@ pub(crate) fn setup_verifier_session(
         doc_requests: schema
             .input_schemas
             .as_ref()
-            .context("missing input_schemas")
-            .map_err(VerificationProtocolError::Other)?
+            .ok_or(VerificationProtocolError::Failed(
+                "missing input_schemas".to_string(),
+            ))?
             .iter()
             .map(proof_input_schema_to_doc_request)
-            .collect::<anyhow::Result<_>>()
-            .map_err(VerificationProtocolError::Other)?,
+            .collect::<Result<_, VerificationProtocolError>>()?,
     };
 
     let device_request_bytes = to_cbor(&device_request)?;
@@ -555,37 +555,40 @@ async fn read_response(
                 SERVER_2_CLIENT.into(),
             )
             .await
-            .context("failed to read request")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("waiting for Server2Client notification")?;
 
         for msg in data {
-            let chunk: Chunk = msg
-                .try_into()
-                .map_err(VerificationProtocolError::Transport)?;
+            let chunk: Chunk = msg.try_into().map_err(VerificationProtocolError::Other)?;
             match chunk {
                 Chunk::Next(payload) => result.extend(payload),
                 Chunk::Last(payload) => {
                     result.extend(payload);
 
-                    return ciborium::from_reader(result.as_slice())
-                        .context("deserialization error")
-                        .map_err(VerificationProtocolError::Other);
+                    return Ok(ciborium::from_reader(result.as_slice())?);
                 }
             }
         }
     }
 }
 
-fn proof_input_schema_to_doc_request(input: &ProofInputSchema) -> anyhow::Result<DocRequest> {
-    let proof_claim_schemas = input
-        .claim_schemas
-        .as_ref()
-        .context("claim_schemas is missing")?;
+fn proof_input_schema_to_doc_request(
+    input: &ProofInputSchema,
+) -> Result<DocRequest, VerificationProtocolError> {
+    let proof_claim_schemas =
+        input
+            .claim_schemas
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "missing claim_schemas".to_string(),
+            ))?;
 
-    let credential_schema = input
-        .credential_schema
-        .as_ref()
-        .context("credential_schema is missing")?;
+    let credential_schema =
+        input
+            .credential_schema
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "missing credential_schema".to_string(),
+            ))?;
 
     let mut name_spaces = HashMap::new();
     for proof_claim_schema in proof_claim_schemas {
@@ -598,7 +601,9 @@ fn proof_input_schema_to_doc_request(input: &ProofInputSchema) -> anyhow::Result
             credential_schema
                 .claim_schemas
                 .as_ref()
-                .context("claim_schemas missing in credential_schema")?
+                .ok_or(VerificationProtocolError::Failed(
+                    "missing claim_schemas".to_string(),
+                ))?
                 .iter()
                 .map(|claim_schema| &claim_schema.key)
                 .filter(|k| k.starts_with(&format!("{key}{NESTED_CLAIM_MARKER}")))
@@ -610,11 +615,15 @@ fn proof_input_schema_to_doc_request(input: &ProofInputSchema) -> anyhow::Result
 
             let namespace = path
                 .first()
-                .ok_or_else(|| anyhow!("Invalid claim path"))?
+                .ok_or(VerificationProtocolError::Failed(
+                    "Invalid claim path".to_string(),
+                ))?
                 .to_string();
             let element_identifier = path
                 .get(1)
-                .ok_or_else(|| anyhow!("Invalid claim path"))?
+                .ok_or(VerificationProtocolError::Failed(
+                    "Invalid claim path".to_string(),
+                ))?
                 .to_string();
             name_spaces
                 .entry(namespace)

@@ -3,7 +3,7 @@ use std::vec;
 
 use anyhow::Context;
 use async_trait::async_trait;
-use futures::{Stream, StreamExt, TryFutureExt, stream};
+use futures::{Stream, StreamExt, stream};
 use one_crypto::utilities::generate_random_bytes;
 use serde_json::Value;
 use tokio::select;
@@ -16,6 +16,7 @@ use super::{
     TransferSummaryReport,
 };
 use crate::config::core_config::TransportType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
@@ -48,11 +49,12 @@ impl BleHolderTransport {
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn enabled(&self) -> Result<bool, VerificationProtocolError> {
-        self.ble
+        Ok(self
+            .ble
             .is_enabled()
             .await
-            .map(|s| s.central)
-            .map_err(|err| VerificationProtocolError::Transport(err.into()))
+            .error_while("checking BLE status")?
+            .central)
     }
 }
 
@@ -101,18 +103,14 @@ impl ProximityHolderTransport for BleHolderTransport {
             .schedule(*OIDC_BLE_FLOW, |task_id, central, _| async move {
                 // setup
                 let verifier_public_key: [u8; 32] = hex::decode(&key)
-                    .context("Failed to decode verifier public key")
-                    .map_err(VerificationProtocolError::Transport)?
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
                     .as_slice()
                     .try_into()
-                    .context("Invalid verifier public key length")
-                    .map_err(VerificationProtocolError::Transport)?;
+                    .map_err(|_| VerificationProtocolError::Failed("Invalid key length".to_string()))?;
 
                 tracing::debug!("Connecting to verifier: {name}");
                 let device_info = connect_to_verifier(&name, &central)
-                    .await
-                    .context("failed to connect to verifier")
-                    .map_err(VerificationProtocolError::Transport)?;
+                    .await?;
 
                 subscribe_to_notifications(&central, &device_info.address).await?;
                 let (ble_peer,identity_request_nonce)  = select! {
@@ -193,7 +191,7 @@ impl ProximityHolderTransport for BleHolderTransport {
         context: Self::Context,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let identity_request_nonce = Some(hex::encode(context.identity_request_nonce));
-        serde_json::to_vec(&BLEOpenID4VPInteractionDataHolder {
+        Ok(serde_json::to_vec(&BLEOpenID4VPInteractionDataHolder {
             client_id: authz_request.client_id.to_owned(),
             nonce: authz_request
                 .nonce
@@ -209,8 +207,7 @@ impl ProximityHolderTransport for BleHolderTransport {
             openid_request: authz_request,
             identity_request_nonce,
             presentation_submission: None,
-        })
-        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))
+        })?)
     }
 
     fn parse_interaction_data(
@@ -218,8 +215,7 @@ impl ProximityHolderTransport for BleHolderTransport {
         interaction_data: Value,
     ) -> Result<HolderCommonVPInteractionData, VerificationProtocolError> {
         let interaction_data: BLEOpenID4VPInteractionDataHolder =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
 
         Ok(HolderCommonVPInteractionData {
             client_id: interaction_data.client_id,
@@ -235,8 +231,7 @@ impl ProximityHolderTransport for BleHolderTransport {
         interaction_data: Value,
     ) -> Result<(), VerificationProtocolError> {
         let interaction: BLEOpenID4VPInteractionDataHolder =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
         self.ble
             .schedule_continuation(
                 interaction.task_id,
@@ -251,7 +246,7 @@ impl ProximityHolderTransport for BleHolderTransport {
                             result = async {
                                 let enc_payload = interaction.peer
                                     .encrypt(&presentation)
-                                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+                                    .map_err(VerificationProtocolError::Other)?;
 
                                 let chunks =
                                     Chunks::from_bytes(&enc_payload[..], interaction.peer.device_info.mtu());
@@ -320,8 +315,7 @@ impl ProximityHolderTransport for BleHolderTransport {
 
     async fn reject_proof(&self, interaction_data: Value) -> Result<(), VerificationProtocolError> {
         let interaction: BLEOpenID4VPInteractionDataHolder =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
 
         self.ble
             .schedule_continuation(
@@ -373,30 +367,26 @@ async fn connect_to_verifier(
     if ble_central
         .is_scanning()
         .await
-        .context("is_discovering failed")
-        .map_err(VerificationProtocolError::Transport)?
+        .error_while("checking BLE scanning status")?
     {
         ble_central
             .stop_scan()
             .await
-            .context("stop_discovery failed")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("stopping BLE scan")?;
     }
+
     tracing::debug!("start_scan");
     ble_central
         .start_scan(Some(vec![SERVICE_UUID.to_string()]))
         .await
-        .context("start_discovery failed")
-        .map_err(VerificationProtocolError::Transport)?;
-
+        .error_while("starting BLE scan")?;
     tracing::debug!("Started scanning");
 
     loop {
         let discovered = ble_central
             .get_discovered_devices()
             .await
-            .context("get_discovered_devices failed")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("waiting for BLE device discovery")?;
         tracing::debug!("Discovered: {}", discovered.len());
 
         for device in discovered {
@@ -414,14 +404,12 @@ async fn connect_to_verifier(
                 ble_central
                     .stop_scan()
                     .await
-                    .context("stop_discovery failed")
-                    .map_err(VerificationProtocolError::Transport)?;
+                    .error_while("stopping BLE scan")?;
 
                 let mtu = ble_central
                     .connect(device.device_address.clone())
                     .await
-                    .context("connect failed")
-                    .map_err(VerificationProtocolError::Transport)?;
+                    .error_while("connecting to BLE device")?;
 
                 tracing::debug!("Connected to `{name}`, MTU: {mtu}");
 
@@ -442,8 +430,7 @@ async fn subscribe_to_notifications(
             DISCONNECT_UUID.to_string(),
         )
         .await
-        .context("failed to subscribe to disconnect notifications")
-        .map_err(VerificationProtocolError::Transport)?;
+        .error_while("subscribing Disconnect notifications")?;
 
     ble_central
         .subscribe_to_characteristic_notifications(
@@ -452,8 +439,7 @@ async fn subscribe_to_notifications(
             TRANSFER_SUMMARY_REPORT_UUID.to_string(),
         )
         .await
-        .context("failed to subscribe to summary report notifications")
-        .map_err(VerificationProtocolError::Transport)?;
+        .error_while("subscribing Summary notifications")?;
 
     Ok(())
 }
@@ -470,8 +456,7 @@ async fn verifier_disconnect_event(
                 DISCONNECT_UUID.to_string(),
             )
             .await
-            .context("failed to get disconnect notifications")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("waiting for Disconnect notification")?;
 
         if !notification.is_empty() {
             return Ok(());
@@ -489,7 +474,7 @@ fn session_key_and_identity_request(
 
     let (receiver_key, sender_key) = key_agreement_key
         .derive_session_secrets(verifier_public_key, nonce)
-        .map_err(VerificationProtocolError::Transport)?;
+        .map_err(VerificationProtocolError::Other)?;
 
     Ok((
         IdentityRequest {
@@ -509,7 +494,7 @@ async fn send(
     ble_central: &TrackingBleCentral,
     write_type: CharacteristicWriteType,
 ) -> Result<(), VerificationProtocolError> {
-    ble_central
+    Ok(ble_central
         .write_data(
             verifier.device_info.address.clone(),
             SERVICE_UUID.to_string(),
@@ -518,8 +503,7 @@ async fn send(
             write_type,
         )
         .await
-        .context("write_data failed")
-        .map_err(VerificationProtocolError::Transport)
+        .error_while("writing BLE data")?)
 }
 
 #[tracing::instrument(level = "debug", skip(ble_central), err(Debug))]
@@ -529,8 +513,8 @@ async fn read_presentation_request(
 ) -> Result<String, VerificationProtocolError> {
     let request_size: MessageSize = read(REQUEST_SIZE_UUID, connected_verifier, ble_central)
         .parse()
-        .map_err(VerificationProtocolError::Transport)
-        .await?;
+        .await
+        .map_err(VerificationProtocolError::Other)?;
 
     tracing::debug!("Request size {request_size}");
 
@@ -550,8 +534,8 @@ async fn read_presentation_request(
            biased;
 
            Some(chunk) = message_stream.next(), if received_chunks.len() < request_size.into() => {
-                let chunk = chunk.context("Reading presentation request chunk failed").map_err(VerificationProtocolError::Transport)?;
-                let chunk = Chunk::from_bytes(chunk.as_slice()).map_err(VerificationProtocolError::Transport)?;
+                let chunk = chunk.context("Reading presentation request chunk failed").map_err(VerificationProtocolError::Other)?;
+                let chunk = Chunk::from_bytes(chunk.as_slice()).map_err(VerificationProtocolError::Other)?;
                 if received_chunks.iter().any(|c| c.index == chunk.index) {
                     continue;
                 } else {
@@ -597,14 +581,9 @@ async fn read_presentation_request(
         .flat_map(|c| c.payload)
         .collect();
 
-    let decrypted_request_jwt: String =
-        connected_verifier
-            .decrypt(&presentation_request)
-            .map_err(|e| {
-                VerificationProtocolError::Failed(format!(
-                    "Failed to decrypt presentation request: {e}"
-                ))
-            })?;
+    let decrypted_request_jwt: String = connected_verifier
+        .decrypt(&presentation_request)
+        .map_err(VerificationProtocolError::Other)?;
 
     Ok(decrypted_request_jwt)
 }
@@ -664,15 +643,14 @@ async fn get_transfer_summary(
             TRANSFER_SUMMARY_REPORT_UUID.to_string(),
         )
         .await
-        .context("get_notifications failed")
-        .map_err(VerificationProtocolError::Transport)?;
+        .error_while("waiting for Summary notification")?;
 
     let report: TransferSummaryReport = stream::iter(report)
         .map(Ok)
         .boxed()
         .parse()
-        .map_err(VerificationProtocolError::Transport)
-        .await?;
+        .await
+        .map_err(VerificationProtocolError::Other)?;
 
     Ok(report)
 }

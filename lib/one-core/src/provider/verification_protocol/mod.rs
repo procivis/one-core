@@ -36,13 +36,13 @@ pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     let data = data.ok_or(VerificationProtocolError::Failed(
         "interaction data is missing".to_string(),
     ))?;
-    serde_json::from_slice(data).map_err(VerificationProtocolError::JsonError)
+    Ok(serde_json::from_slice(data)?)
 }
 
 pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
     dto: &DataDTO,
 ) -> Result<Vec<u8>, VerificationProtocolError> {
-    serde_json::to_vec(&dto).map_err(VerificationProtocolError::JsonError)
+    Ok(serde_json::to_vec(&dto)?)
 }
 
 pub(crate) type FormatMapper =

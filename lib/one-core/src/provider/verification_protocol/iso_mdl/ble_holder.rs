@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofId};
 use tokio::sync::oneshot;
@@ -17,7 +17,7 @@ use super::device_engagement::DeviceEngagement;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::config::core_config::VerificationEngagement;
 use crate::error::ErrorCode::BR_0000;
-use crate::error::ErrorCodeMixin;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
@@ -101,7 +101,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
 
     let mac_address = result
         .ok_or(ServiceError::Other("flow was aborted".into()))?
-        .map_err(|err| ServiceError::Other(format!("ble error: {err}")))?;
+        .error_while("starting BLE server")?;
 
     Ok(ServerInfo {
         task_id,
@@ -133,7 +133,8 @@ pub(crate) async fn receive_mdl_request(
     let proof_repository_clone = proof_repository.clone();
 
     let interaction_data: MdocBleHolderInteractionData =
-        deserialize_interaction_data(interaction.data.as_ref())?;
+        deserialize_interaction_data(interaction.data.as_ref())
+            .error_while("parsing interaction data")?;
 
     let ScheduleResult::Scheduled { .. } = ble
         .schedule_continuation(
@@ -178,7 +179,7 @@ pub(crate) async fn receive_mdl_request(
                         }) => {
                             if handler
                                 .message_read()
-                                .map_err(|e| VerificationProtocolError::Transport(e.into()))?
+                                .error_while("checking message read")?
                             {
                                 // the NFC select message was read by a remote device, continue as NFC engaged
                                 (
@@ -193,7 +194,7 @@ pub(crate) async fn receive_mdl_request(
                                 // no NFC contact, the engagement must have been via QR-code
                                 hce.stop_hosting(true)
                                     .await
-                                    .map_err(|e| VerificationProtocolError::Transport(e.into()))?;
+                                    .error_while("stopping NFC hosting")?;
 
                                 (VerificationEngagement::QrCode, None, qr_engagement)
                             }
@@ -226,38 +227,31 @@ pub(crate) async fn receive_mdl_request(
                         .map_err(VerificationProtocolError::Other)?;
 
                     let device_request: DeviceRequest =
-                        ciborium::from_reader(device_request_bytes.as_slice())
-                            .context("device request deserialization error")
-                            .map_err(VerificationProtocolError::Other)?;
+                        ciborium::from_reader(device_request_bytes.as_slice())?;
 
                     if device_request.version != "1.0" {
-                        return Err(VerificationProtocolError::Other(anyhow!(
-                            "unsupported request version"
-                        )));
+                        return Err(VerificationProtocolError::Failed(
+                            "unsupported request version".to_string(),
+                        ));
                     }
 
-                    interaction.data = Some(
-                        serde_json::to_vec(&MdocBleHolderInteractionData {
-                            continuation_task_id: task_id,
-                            session: Some(MdocBleHolderInteractionSessionData {
-                                sk_device,
-                                sk_reader,
-                                device_address: info.address.clone(),
-                                device_request_bytes,
-                                mtu: info.mtu(),
-                                session_transcript_bytes: session_transcript_bytes.into_bytes(),
-                            }),
-                            ..interaction_data
-                        })
-                        .context("interaction serialization error")
-                        .map_err(VerificationProtocolError::Other)?,
-                    );
+                    interaction.data = Some(serde_json::to_vec(&MdocBleHolderInteractionData {
+                        continuation_task_id: task_id,
+                        session: Some(MdocBleHolderInteractionSessionData {
+                            sk_device,
+                            sk_reader,
+                            device_address: info.address.clone(),
+                            device_request_bytes,
+                            mtu: info.mtu(),
+                            session_transcript_bytes: session_transcript_bytes.into_bytes(),
+                        }),
+                        ..interaction_data
+                    })?);
 
                     interaction_repository
                         .update_interaction(interaction.id, interaction.into())
                         .await
-                        .context("failed to save interaction")
-                        .map_err(VerificationProtocolError::Other)?;
+                        .error_while("updating interaction")?;
 
                     proof_repository
                         .update_proof(
@@ -270,8 +264,7 @@ pub(crate) async fn receive_mdl_request(
                             None,
                         )
                         .await
-                        .context("failed to update proof state")
-                        .map_err(VerificationProtocolError::Other)?;
+                        .error_while("updating proof")?;
 
                     Ok::<_, VerificationProtocolError>(())
                 }
@@ -328,7 +321,7 @@ pub(crate) async fn send_mdl_response(
     let encrypted_device_response = interaction_session_data
         .sk_device
         .encrypt(&device_response_bytes)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .map_err(VerificationProtocolError::Other)?;
 
     let session_data = SessionData {
         data: Some(Bstr(encrypted_device_response)),
@@ -337,7 +330,7 @@ pub(crate) async fn send_mdl_response(
     let session_data_bytes = to_cbor(&session_data)?;
 
     let chunks = split_into_chunks(session_data_bytes, interaction_session_data.mtu as _)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .map_err(VerificationProtocolError::Other)?;
 
     let (_, result) = ble
         .schedule_continuation(
@@ -352,11 +345,7 @@ pub(crate) async fn send_mdl_response(
                             &chunk,
                         )
                         .await
-                        .map_err(|e| {
-                            VerificationProtocolError::Failed(format!(
-                                "Unable to send response: {e}"
-                            ))
-                        })?;
+                        .error_while("notifying Server2Client data")?;
                 }
 
                 // End command signal not necessary, since we signal SessionTermination via SessionData status
@@ -407,7 +396,7 @@ async fn wait_to_finish_engagement(
                 connected_device = connected_device_future => connected_device,
                 failure_reason = session_failure_future => {
                     Err(match failure_reason {
-                        Ok(nfc_error) => VerificationProtocolError::Failed(format!("NFC session failure: {nfc_error}")),
+                        Ok(nfc_error) => nfc_error.error_while("NFC engagement").into(),
                         Err(rcv_error) => VerificationProtocolError::Failed(format!("NFC session failure: {rcv_error}")),
                     })
                 }
@@ -420,8 +409,7 @@ async fn wait_to_finish_engagement(
     peripheral
         .stop_advertisement()
         .await
-        .context("failed to stop advertisement")
-        .map_err(VerificationProtocolError::Transport)?;
+        .error_while("stopping BLE advertisement")?;
 
     Ok(info)
 }
@@ -434,8 +422,7 @@ async fn wait_for_active_device(
         let connected_devices = peripheral
             .get_connection_change_events()
             .await
-            .context("failed to get connection change events")
-            .map_err(VerificationProtocolError::Transport)?
+            .error_while("waiting for BLE connection event")?
             .into_iter()
             .filter_map(|info| match info {
                 ConnectionEvent::Connected { device_info } => Some(device_info),
@@ -480,14 +467,14 @@ async fn wait_for_start(
 
     let command: Command = command_written
         .try_into()
-        .map_err(VerificationProtocolError::Transport)?;
+        .map_err(VerificationProtocolError::Other)?;
 
     if command == Command::Start {
         Ok(true)
     } else {
-        Err(VerificationProtocolError::Transport(anyhow!(
-            "invalid command"
-        )))
+        Err(VerificationProtocolError::Failed(
+            "invalid command".to_string(),
+        ))
     }
 }
 
@@ -506,21 +493,16 @@ async fn read_request(
                 CLIENT_2_SERVER.into(),
             )
             .await
-            .context("failed to read request")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("waiting for Client2Server characteristic write")?;
 
         for msg in data {
-            let chunk: Chunk = msg
-                .try_into()
-                .map_err(VerificationProtocolError::Transport)?;
+            let chunk: Chunk = msg.try_into().map_err(VerificationProtocolError::Other)?;
             match chunk {
                 Chunk::Next(payload) => result.extend(payload),
                 Chunk::Last(payload) => {
                     result.extend(payload);
 
-                    return ciborium::from_reader(result.as_slice())
-                        .context("deserialization error")
-                        .map_err(VerificationProtocolError::Other);
+                    return Ok(ciborium::from_reader(result.as_slice())?);
                 }
             }
         }

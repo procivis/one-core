@@ -9,10 +9,6 @@ pub enum VerificationProtocolError {
     Failed(String),
     #[error("Verification protocol disabled: `{0}`")]
     Disabled(String),
-    #[error("Transport error: `{0}`")]
-    Transport(anyhow::Error),
-    #[error("JSON error: `{0}`")]
-    JsonError(serde_json::Error),
     #[error("Operation not supported")]
     OperationNotSupported,
     #[error("Invalid request: `{0}`")]
@@ -23,8 +19,20 @@ pub enum VerificationProtocolError {
     Other(anyhow::Error),
     #[error(transparent)]
     StorageAccessError(anyhow::Error),
+
     #[error("DCQL error: `{0}`")]
-    DcqlError(DcqlError),
+    DcqlError(#[from] DcqlError),
+    #[error("JSON error: `{0}`")]
+    Json(#[from] serde_json::Error),
+    #[error("URL encoded error: `{0}`")]
+    URLEncoded(#[from] serde_urlencoded::ser::Error),
+    #[error("CBOR serialization: `{0}`")]
+    CBORSerialization(#[from] ciborium::ser::Error<std::io::Error>),
+    #[error("CBOR parsing: `{0}`")]
+    CBORParsing(#[from] ciborium::de::Error<std::io::Error>),
+    #[error("Encoding error: `{0}`")]
+    Encoding(#[from] ct_codecs::Error),
+
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -32,16 +40,17 @@ pub enum VerificationProtocolError {
 impl ErrorCodeMixin for VerificationProtocolError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::Failed(_) => ErrorCode::BR_0062,
-            Self::Transport(_) => ErrorCode::BR_0086,
-            Self::JsonError(_) => ErrorCode::BR_0062,
-            Self::OperationNotSupported => ErrorCode::BR_0062,
-            Self::InvalidRequest(_) => ErrorCode::BR_0085,
-            Self::Disabled(_) => ErrorCode::BR_0085,
-            Self::Other(_) => ErrorCode::BR_0062,
-            Self::StorageAccessError(_) => ErrorCode::BR_0062,
+            Self::Failed(_)
+            | Self::Json(_)
+            | Self::URLEncoded(_)
+            | Self::OperationNotSupported
+            | Self::Other(_)
+            | Self::CBORSerialization(_)
+            | Self::CBORParsing(_)
+            | Self::Encoding(_)
+            | Self::StorageAccessError(_) => ErrorCode::BR_0062,
             Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
-            Self::DcqlError(_) => ErrorCode::BR_0085,
+            Self::InvalidRequest(_) | Self::Disabled(_) | Self::DcqlError(_) => ErrorCode::BR_0085,
             Self::Nested(nested) => nested.error_code(),
         }
     }

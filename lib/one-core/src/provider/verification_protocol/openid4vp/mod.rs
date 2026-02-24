@@ -10,6 +10,7 @@ use one_dto_mapper::convert_inner;
 use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO};
 use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_from_openid4vp_format;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
@@ -230,7 +231,7 @@ fn get_jwt_signer<'a>(
 
     let auth_fn = key_provider
         .get_signature_provider(verifier_key, None, key_algorithm_provider.to_owned())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting signature provider")?;
 
     let key_algorithm = verifier_key
         .key_algorithm_type()

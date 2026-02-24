@@ -45,19 +45,18 @@ impl TrustEntityService {
         };
 
         let url = format!("{remote_anchor_base_url}/ssi/trust-entity/v1");
-        let response: CreateTrustEntityFromDidPublisherResponseDTO = self
-            .client
-            .post(&url)
-            .bearer_auth(&bearer_token)
-            .json(request)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .json()
-            .map_err(|e| ServiceError::Other(e.to_string()))?;
+        let response: CreateTrustEntityFromDidPublisherResponseDTO = async {
+            self.client
+                .post(&url)
+                .bearer_auth(&bearer_token)
+                .json(request)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("posting trust entity")?;
 
         Ok(response.id)
     }
@@ -83,16 +82,17 @@ impl TrustEntityService {
             .await?;
 
         let url = format!("{remote_anchor_base_url}/ssi/trust-entity/v1/{}", did.did);
-        self.client
-            .patch(&url)
-            .bearer_auth(&bearer_token)
-            .json(request)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| ServiceError::Other(e.to_string()))?;
+        async {
+            self.client
+                .patch(&url)
+                .bearer_auth(&bearer_token)
+                .json(request)?
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("patching trust entity")?;
 
         Ok(())
     }
@@ -109,17 +109,17 @@ impl TrustEntityService {
         } = self.prepare_remote_operation_for_did(&did_id, None).await?;
 
         let url = format!("{remote_anchor_base_url}/ssi/trust-entity/v1/{}", did.did);
-        let response: GetRemoteTrustEntityResponseDTO = self
-            .client
-            .get(&url)
-            .bearer_auth(&bearer_token)
-            .send()
-            .await
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .json()
-            .map_err(|e| ServiceError::Other(e.to_string()))?;
+        let response: GetRemoteTrustEntityResponseDTO = async {
+            self.client
+                .get(&url)
+                .bearer_auth(&bearer_token)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching trust entity")?;
 
         Ok(response)
     }

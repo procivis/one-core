@@ -25,7 +25,6 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
@@ -103,7 +102,7 @@ impl OID4VPFinal1_0Service {
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
+            .ok_or(ServiceError::MappingError(
                 "missing proof interaction".to_string(),
             ))?;
 
@@ -115,20 +114,22 @@ impl OID4VPFinal1_0Service {
             client_id_scheme: Some(client_id_scheme),
             ..
         } = parse_interaction_content(interaction.data.as_ref())
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+            .error_while("parsing interaction data")?
         else {
-            return Err(
-                VerificationProtocolError::Failed("missing interaction data".to_string()).into(),
-            );
+            return Err(ServiceError::MappingError(
+                "missing interaction data".to_string(),
+            ));
         };
 
-        let (client_id_without_prefix, _) = decode_client_id_with_scheme(&client_id)?;
+        let (client_id_without_prefix, _) =
+            decode_client_id_with_scheme(&client_id).error_while("decoding clientId")?;
 
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
             &*self.key_algorithm_provider,
             &self.config,
-        )?;
+        )
+        .error_while("selecting agreement key")?;
 
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
@@ -136,13 +137,16 @@ impl OID4VPFinal1_0Service {
             client_id.clone(),
             response_uri.clone(),
             &interaction.id,
-            create_open_id_for_vp_client_metadata_final1_0(key_handle)?,
-        )?;
+            create_open_id_for_vp_client_metadata_final1_0(key_handle)
+                .error_while("creating metadata")?,
+        )
+        .error_while("generating authorization request")?;
 
         Ok(match client_id_scheme {
             ClientIdScheme::RedirectUri => {
                 format_authorization_request_client_id_scheme_redirect_uri(authorization_request)
-                    .await?
+                    .await
+                    .error_while("formatting authorization request")?
             }
             ClientIdScheme::VerifierAttestation => {
                 format_authorization_request_client_id_scheme_verifier_attestation(
@@ -153,17 +157,17 @@ impl OID4VPFinal1_0Service {
                     response_uri.clone(),
                     authorization_request,
                 )
-                .await?
+                .await
+                .error_while("formatting authorization request")?
             }
-            ClientIdScheme::Did => {
-                format_authorization_request_client_id_scheme_did(
-                    &proof,
-                    &self.key_algorithm_provider,
-                    &*self.key_provider,
-                    authorization_request,
-                )
-                .await?
-            }
+            ClientIdScheme::Did => format_authorization_request_client_id_scheme_did(
+                &proof,
+                &self.key_algorithm_provider,
+                &*self.key_provider,
+                authorization_request,
+            )
+            .await
+            .error_while("formatting authorization request")?,
             ClientIdScheme::X509SanDns | ClientIdScheme::X509Hash => {
                 format_authorization_request_client_id_scheme_x509(
                     &proof,
@@ -171,7 +175,8 @@ impl OID4VPFinal1_0Service {
                     &*self.key_provider,
                     authorization_request,
                 )
-                .await?
+                .await
+                .error_while("formatting authorization request")?
             }
         })
     }
@@ -216,9 +221,11 @@ impl OID4VPFinal1_0Service {
             &proof,
             &*self.key_algorithm_provider,
             &self.config,
-        )?;
+        )
+        .error_while("selecting agreement key")?;
 
-        create_open_id_for_vp_client_metadata_final1_0(key_handle).map_err(|e| e.into())
+        Ok(create_open_id_for_vp_client_metadata_final1_0(key_handle)
+            .error_while("creating metadata")?)
     }
 
     pub async fn direct_post(
@@ -292,7 +299,7 @@ impl OID4VPFinal1_0Service {
 
         let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                .error_while("parsing interaction data")?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
             let encryption_key_id = interaction_data

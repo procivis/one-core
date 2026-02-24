@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use anyhow::Context;
 use futures::future;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -31,7 +30,6 @@ use crate::model::proof_schema::{
     ProofSchemaRelations,
 };
 use crate::proto::credential_schema::dto::ImportCredentialSchemaRequestDTO;
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
@@ -392,19 +390,16 @@ impl ProofSchemaService {
         request_input_schema: &ImportProofSchemaInputSchemaDTO,
         organisation: &Organisation,
     ) -> Result<CredentialSchema, ServiceError> {
-        let credential_schema_import_request: ImportCredentialSchemaRequestSchemaDTO = self
-            .client
-            .get(&request_input_schema.credential_schema.imported_source_url)
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(VerificationProtocolError::Transport)?;
+        let credential_schema_import_request: ImportCredentialSchemaRequestSchemaDTO = async {
+            self.client
+                .get(&request_input_schema.credential_schema.imported_source_url)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching credential schema")?;
 
         let credential_schema = self
             .credential_schema_import_parser

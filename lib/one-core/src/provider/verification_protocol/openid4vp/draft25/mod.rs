@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::BoxFuture;
 use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_scheme_draft25};
@@ -18,6 +17,7 @@ use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -160,7 +160,7 @@ impl OpenID4VP25HTTP {
                     credential_presentation.jwk_key_id,
                     self.key_algorithm_provider.clone(),
                 )
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                .error_while("getting signature provider")?;
 
             let credentials = vec![CredentialToPresent {
                 credential_token: credential_presentation.presentation,
@@ -178,7 +178,7 @@ impl OpenID4VP25HTTP {
                     )?,
                 )
                 .await
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                .error_while("formatting presentation")?;
             let PresentationReference::PresentationExchange(pex_dto) =
                 credential_presentation.reference
             else {
@@ -234,8 +234,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         context: Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+        let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
         if let Some(dcql_query) = interaction_data.dcql_query {
             return get_presentation_definition_for_dcql_query(
@@ -394,19 +393,16 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             unencrypted_params(&submission_data, interaction_data.state.clone())?
         };
 
-        let response = self
-            .client
-            .post(response_uri.as_str())
-            .form(&params)
-            .context("form error")
-            .map_err(VerificationProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?;
+        let response = async {
+            self.client
+                .post(response_uri.as_str())
+                .form(&params)?
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("posting submission")?;
 
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json();
 
@@ -486,8 +482,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 let fingerprint = hex::decode(&verifier_certificate.fingerprint)
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-                Base64UrlSafeNoPadding::encode_to_string(fingerprint)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                Base64UrlSafeNoPadding::encode_to_string(fingerprint)?
             }
             ClientIdScheme::Did => proof
                 .verifier_identifier
@@ -576,8 +571,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         )
         .await?;
 
-        let encoded_authorization_request = serde_urlencoded::to_string(request)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let encoded_authorization_request = serde_urlencoded::to_string(request)?;
 
         let expires_at = self
             .params

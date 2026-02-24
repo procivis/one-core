@@ -9,8 +9,8 @@ use super::proof_request::generate_authorization_request_params_draft20;
 use crate::config::core_config::VerificationProtocolType::{
     OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
 };
-use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::get_encryption_key_jwk_from_proof;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -98,18 +98,18 @@ impl OID4VPDraft20Service {
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
+            .ok_or(ServiceError::MappingError(
                 "missing proof interaction".to_string(),
             ))?;
 
         let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                .error_while("parsing interaction data")?;
 
         let client_id_scheme =
             interaction_data
                 .client_id_scheme
-                .ok_or(VerificationProtocolError::Failed(
+                .ok_or(ServiceError::MappingError(
                     "missing client_id_scheme".to_string(),
                 ))?;
 
@@ -119,8 +119,8 @@ impl OID4VPDraft20Service {
             ..
         } = interaction_data.clone()
         else {
-            return Err(ServiceError::VerificationProtocolError(
-                VerificationProtocolError::Failed("invalid interaction data".to_string()),
+            return Err(ServiceError::MappingError(
+                "invalid interaction data".to_string(),
             ));
         };
 
@@ -138,12 +138,14 @@ impl OID4VPDraft20Service {
             response_uri,
             client_id_scheme,
             client_metadata,
-        )?;
+        )
+        .error_while("generating authorization request")?;
 
         Ok(match client_id_scheme {
             ClientIdScheme::RedirectUri => {
                 format_authorization_request_client_id_scheme_redirect_uri(authorization_request)
-                    .await?
+                    .await
+                    .error_while("formatting request")?
             }
             ClientIdScheme::VerifierAttestation => {
                 format_authorization_request_client_id_scheme_verifier_attestation(
@@ -158,30 +160,30 @@ impl OID4VPDraft20Service {
                         ))?,
                     authorization_request,
                 )
-                .await?
+                .await
+                .error_while("formatting request")?
             }
-            ClientIdScheme::Did => {
-                format_authorization_request_client_id_scheme_did(
-                    &proof,
-                    &self.key_algorithm_provider,
-                    &*self.key_provider,
-                    authorization_request,
-                )
-                .await?
-            }
-            ClientIdScheme::X509SanDns => {
-                format_authorization_request_client_id_scheme_x509(
-                    &proof,
-                    &self.key_algorithm_provider,
-                    &*self.key_provider,
-                    authorization_request,
-                )
-                .await?
-            }
+            ClientIdScheme::Did => format_authorization_request_client_id_scheme_did(
+                &proof,
+                &self.key_algorithm_provider,
+                &*self.key_provider,
+                authorization_request,
+            )
+            .await
+            .error_while("formatting request")?,
+            ClientIdScheme::X509SanDns => format_authorization_request_client_id_scheme_x509(
+                &proof,
+                &self.key_algorithm_provider,
+                &*self.key_provider,
+                authorization_request,
+            )
+            .await
+            .error_while("formatting request")?,
             ClientIdScheme::X509Hash => {
                 return Err(VerificationProtocolError::Failed(
                     "Unsupported client_id_scheme".to_string(),
                 )
+                .error_while("formatting request")
                 .into());
             }
         })

@@ -25,7 +25,6 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_formats, format_authorization_request_client_id_scheme_did,
@@ -101,7 +100,7 @@ impl OID4VPDraft25Service {
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
+            .ok_or(ServiceError::MappingError(
                 "missing proof interaction".to_string(),
             ))?;
 
@@ -112,7 +111,7 @@ impl OID4VPDraft25Service {
 
         let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                .error_while("parsing interaction data")?;
 
         let Some(response_uri) = interaction_data.response_uri else {
             return Err(ServiceError::MappingError(
@@ -129,18 +128,20 @@ impl OID4VPDraft25Service {
             interaction_data.client_id.clone(),
             response_uri.clone(),
             client_metadata,
-        )?;
+        )
+        .error_while("generating authorization request")?;
 
         let client_id_scheme =
             interaction_data
                 .client_id_scheme
-                .ok_or(VerificationProtocolError::Failed(
+                .ok_or(ServiceError::MappingError(
                     "missing client_id_scheme".to_string(),
                 ))?;
         Ok(match client_id_scheme {
             ClientIdScheme::RedirectUri => {
                 format_authorization_request_client_id_scheme_redirect_uri(authorization_request)
-                    .await?
+                    .await
+                    .error_while("formatting request")?
             }
             ClientIdScheme::VerifierAttestation => {
                 format_authorization_request_client_id_scheme_verifier_attestation(
@@ -151,17 +152,17 @@ impl OID4VPDraft25Service {
                     response_uri.clone(),
                     authorization_request,
                 )
-                .await?
+                .await
+                .error_while("formatting request")?
             }
-            ClientIdScheme::Did => {
-                format_authorization_request_client_id_scheme_did(
-                    &proof,
-                    &self.key_algorithm_provider,
-                    &*self.key_provider,
-                    authorization_request,
-                )
-                .await?
-            }
+            ClientIdScheme::Did => format_authorization_request_client_id_scheme_did(
+                &proof,
+                &self.key_algorithm_provider,
+                &*self.key_provider,
+                authorization_request,
+            )
+            .await
+            .error_while("formatting request")?,
             ClientIdScheme::X509SanDns | ClientIdScheme::X509Hash => {
                 format_authorization_request_client_id_scheme_x509(
                     &proof,
@@ -169,7 +170,8 @@ impl OID4VPDraft25Service {
                     &*self.key_provider,
                     authorization_request,
                 )
-                .await?
+                .await
+                .error_while("formatting request")?
             }
         })
     }
@@ -291,7 +293,7 @@ impl OID4VPDraft25Service {
 
         let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                .error_while("parsing interaction data")?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
             let encryption_key_id = interaction_data

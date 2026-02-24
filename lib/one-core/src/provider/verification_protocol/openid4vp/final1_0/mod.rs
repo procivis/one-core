@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use dcql::create_dcql_query;
 use futures::future::BoxFuture;
@@ -23,6 +22,7 @@ use super::mdoc::mdoc_presentation_context;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -153,20 +153,11 @@ impl OpenID4VPFinal1_0 {
             .unwrap_or(true)
             && let Some(ref uri) = client_metadata.jwks_uri
         {
-            let jwks = self
-                .client
-                .get(uri)
-                .send()
+            let jwks = async { self.client.get(uri).send().await?.error_for_status() }
                 .await
-                .context("send error")
-                .map_err(VerificationProtocolError::Transport)?
-                .error_for_status()
-                .context("status error")
-                .map_err(VerificationProtocolError::Transport)?;
+                .error_while("fetching JWKs")?;
 
-            client_metadata.jwks = jwks
-                .json()
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            client_metadata.jwks = jwks.json().error_while("parsing JWKs")?;
         }
         let Some(verifier_key) = encryption_key_from_metadata(
             client_metadata.into(),
@@ -258,7 +249,7 @@ impl OpenID4VPFinal1_0 {
                         credential_presentation.jwk_key_id,
                         self.key_algorithm_provider.clone(),
                     )
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                    .error_while("getting signature provider")?;
 
                 let credentials = CredentialToPresent {
                     credential_token: credential_presentation.presentation,
@@ -272,7 +263,7 @@ impl OpenID4VPFinal1_0 {
                         format_presentation_context(interaction_data, presentation_format)?,
                     )
                     .await
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                    .error_while("formatting presentation")?;
 
                 vp_token
                     .entry(credential_query_id)
@@ -316,8 +307,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         context: Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+        let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
         let dcql_query = interaction_data
             .dcql_query
@@ -450,19 +440,16 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             unencrypted_params(&submission_data, interaction_data.state.clone())?
         };
 
-        let response = self
-            .client
-            .post(response_uri.as_str())
-            .form(&params)
-            .context("form error")
-            .map_err(VerificationProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?;
+        let response = async {
+            self.client
+                .post(response_uri.as_str())
+                .form(&params)?
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("posting submission")?;
 
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json();
 
@@ -542,8 +529,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 let fingerprint = hex::decode(&verifier_certificate.fingerprint)
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-                Base64UrlSafeNoPadding::encode_to_string(fingerprint)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                Base64UrlSafeNoPadding::encode_to_string(fingerprint)?
             }
             ClientIdScheme::Did => proof
                 .verifier_identifier
@@ -616,8 +602,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         )
         .await?;
 
-        let encoded_authorization_request = serde_urlencoded::to_string(authorization_request)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let encoded_authorization_request = serde_urlencoded::to_string(authorization_request)?;
 
         let expires_at = self
             .params
@@ -642,8 +627,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         context: Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+        let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
         let dcql_query = interaction_data
             .dcql_query
@@ -709,7 +693,7 @@ fn format_presentation_context(
                 &verifier_nonce,
                 encryption_key.as_ref(),
             )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+            .error_while("computing handover")?,
         ))?
     } else {
         FormatPresentationCtx {
@@ -768,9 +752,7 @@ async fn encrypted_params(
         key_algorithm_provider,
     )
     .await
-    .map_err(|err| {
-        VerificationProtocolError::Failed(format!("Failed to build response jwe: {err}"))
-    })?;
+    .map_err(VerificationProtocolError::Other)?;
     Ok(HashMap::from_iter([("response".to_owned(), response)]))
 }
 

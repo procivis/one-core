@@ -12,6 +12,7 @@ use shared_types::{CredentialId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::config::core_config::{CoreConfig, FormatType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 use crate::model::claim::Claim;
@@ -68,9 +69,7 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
             "proof organisation missing".to_string(),
         ))?;
 
-    let query_to_filters = dcql_query
-        .credential_filters()
-        .map_err(VerificationProtocolError::DcqlError)?;
+    let query_to_filters = dcql_query.credential_filters()?;
 
     let mut relevant_credentials = vec![];
     let mut requested_credentials = vec![];
@@ -154,9 +153,7 @@ pub(crate) async fn get_presentation_definition_v2(
             "proof organisation missing".to_string(),
         ))?;
 
-    let query_to_filters = dcql_query
-        .credential_filters()
-        .map_err(VerificationProtocolError::DcqlError)?;
+    let query_to_filters = dcql_query.credential_filters()?;
 
     let mut credential_queries = HashMap::new();
     let credential_sets = if let Some(credential_sets) = dcql_query.credential_sets {
@@ -209,9 +206,8 @@ pub(crate) async fn get_presentation_definition_v2(
                 .find_schema_by_schema_ids(&schema_ids, organisation.id)
                 .await
                 .map_err(VerificationProtocolError::StorageAccessError)?;
-            let credential_schema = try_convert_inner(credential_schema).map_err(|err| {
-                VerificationProtocolError::Failed(format!("Failed to map credential schema: {err}"))
-            })?;
+            let credential_schema =
+                try_convert_inner(credential_schema).error_while("converting credential schema")?;
             credential_queries.insert(
                 query.id.to_string(),
                 failure_hint(
@@ -234,9 +230,7 @@ pub(crate) async fn get_presentation_definition_v2(
                     .next()
                     .and_then(|cred| cred.schema),
             )
-            .map_err(|err| {
-                VerificationProtocolError::Failed(format!("Failed to map credential schema: {err}"))
-            })?;
+            .error_while("converting credential schema")?;
             credential_queries.insert(
                 query.id.to_string(),
                 failure_hint(
@@ -277,9 +271,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 None,
                 CredentialAttestationBlobs::default(),
             )
-            .map_err(|err| {
-                VerificationProtocolError::Failed(format!("Failed to map credential to DTO: {err}"))
-            })?;
+            .error_while("creating credential detail")?;
             applicable_credentials.push(map_to_filtered_dto(credential_detail_dto, &claims));
         }
         if applicable_credentials.is_empty() {
@@ -288,11 +280,8 @@ pub(crate) async fn get_presentation_definition_v2(
                 failure_hint(
                     &query,
                     CredentialQueryFailureReasonEnum::Constraint,
-                    try_convert_inner(failure_hint_schema).map_err(|err| {
-                        VerificationProtocolError::Failed(format!(
-                            "Failed to map credential schema: {err}"
-                        ))
-                    })?,
+                    try_convert_inner(failure_hint_schema)
+                        .error_while("converting failure hint schema")?,
                 )?,
             );
         } else {

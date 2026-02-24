@@ -131,15 +131,16 @@ fn insert_claim(
 
             match &mut parent_claim.value {
                 DetailCredentialClaimValueResponseDTO::Nested(claims) => {
-                    let claim_schema = claim
-                        .schema
-                        .as_ref()
-                        .ok_or_else(|| ServiceError::Other("claim.schema is missing".into()))?;
+                    let claim_schema = claim.schema.as_ref().ok_or_else(|| {
+                        ServiceError::MappingError("claim.schema is missing".into())
+                    })?;
 
                     let mut credential_claim_schema = claim_schemas
                         .iter()
                         .find(|value| value.key == claim_schema.key)
-                        .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?
+                        .ok_or_else(|| {
+                            ServiceError::MappingError("claim.schema is unknown".into())
+                        })?
                         .clone();
 
                     if parent_claim.schema.array {
@@ -159,12 +160,12 @@ fn insert_claim(
             let claim_schema = claim
                 .schema
                 .as_ref()
-                .ok_or_else(|| ServiceError::Other("claim.schema is missing".into()))?;
+                .ok_or_else(|| ServiceError::MappingError("claim.schema is missing".into()))?;
 
             let claim_schema = claim_schemas
                 .iter()
                 .find(|value| value.key == claim_schema.key)
-                .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?;
+                .ok_or_else(|| ServiceError::MappingError("claim.schema is unknown".into()))?;
 
             root.push(claim_to_dto(&claim, claim_schema, config)?);
         }
@@ -192,12 +193,14 @@ fn get_or_insert<'a>(
                     if let Some(i) = claims.iter().position(|claim| claim.path == path) {
                         Ok(claims
                             .get_mut(i)
-                            .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                            .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
                     } else {
                         let mut item_schema = claim_schemas
                             .iter()
                             .find(|schema| schema.key == key)
-                            .ok_or_else(|| ServiceError::Other("missing claim schema".into()))?
+                            .ok_or_else(|| {
+                                ServiceError::MappingError("missing claim schema".into())
+                            })?
                             .to_owned();
 
                         if parent_claim.schema.array {
@@ -212,7 +215,7 @@ fn get_or_insert<'a>(
                         let last = claims.len() - 1;
                         Ok(claims
                             .get_mut(last)
-                            .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                            .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
                     }
                 }
                 _ => Err(ServiceError::MappingError(
@@ -224,14 +227,14 @@ fn get_or_insert<'a>(
             if let Some(i) = root.iter().position(|claim| claim.schema.key == path) {
                 Ok(root
                     .get_mut(i)
-                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                    .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
             } else {
                 root.push(DetailCredentialClaimResponseDTO {
                     path: path.to_owned(),
                     schema: claim_schemas
                         .iter()
                         .find(|schema| schema.key == path)
-                        .ok_or_else(|| ServiceError::Other("missing claim schema".into()))?
+                        .ok_or_else(|| ServiceError::MappingError("missing claim schema".into()))?
                         .to_owned()
                         .into(),
                     value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
@@ -239,7 +242,7 @@ fn get_or_insert<'a>(
                 let last = root.len() - 1;
                 Ok(root
                     .get_mut(last)
-                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                    .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
             }
         }
     }
@@ -255,7 +258,7 @@ fn from_path_to_key(
 
     let suffix = path
         .strip_prefix(&parent.path)
-        .ok_or_else(|| ServiceError::Other("invalid path".into()))?;
+        .ok_or_else(|| ServiceError::MappingError("invalid path".into()))?;
 
     Ok(format!("{}{suffix}", parent.schema.key))
 }

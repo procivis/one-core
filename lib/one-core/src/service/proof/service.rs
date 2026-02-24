@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Context;
 use shared_types::{CredentialFormat, CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -57,7 +56,6 @@ use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
     PresentationDefinitionVersion, ShareResponse,
 };
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
 };
@@ -210,14 +208,14 @@ impl ProofService {
             &*exchange,
             &PresentationDefinitionVersion::V1,
         )?;
-        exchange
+        Ok(exchange
             .holder_get_presentation_definition(
                 &proof,
                 interaction_data_from_proof(&proof)?,
                 &self.storage_access(),
             )
             .await
-            .map_err(Into::into)
+            .error_while("getting presentation definition V1")?)
     }
 
     pub async fn get_proof_presentation_definition_v2(
@@ -234,14 +232,14 @@ impl ProofService {
             &*exchange,
             &PresentationDefinitionVersion::V2,
         )?;
-        exchange
+        Ok(exchange
             .holder_get_presentation_definition_v2(
                 &proof,
                 interaction_data_from_proof(&proof)?,
                 &self.storage_access(),
             )
             .await
-            .map_err(Into::into)
+            .error_while("getting presentation definition V2")?)
     }
 
     async fn load_proof_for_presentation_definition(
@@ -596,7 +594,7 @@ impl ProofService {
             .schema
             .as_ref()
             .and_then(|schema| schema.organisation.as_ref())
-            .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?;
+            .ok_or_else(|| ServiceError::MappingError("Missing organisation".to_string()))?;
 
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
             MissingProviderError::ExchangeProtocol(proof.protocol.to_owned()),
@@ -629,7 +627,8 @@ impl ProofService {
                 on_submission_callback,
                 request.params,
             )
-            .await?;
+            .await
+            .error_while("sharing proof")?;
 
         add_new_interaction(
             interaction_id,
@@ -794,7 +793,7 @@ impl ProofService {
             .config
             .transport
             .get_enabled_transport_type(TransportType::Ble)
-            .map_err(|_| ServiceError::Other("BLE transport not available".into()))?;
+            .error_while("checking transport config")?;
 
         let ble = self
             .ble
@@ -807,7 +806,7 @@ impl ProofService {
         let device_engagement = DeviceEngagement {
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+                    .map_err(|e| ServiceError::MappingError(e.to_string()))?,
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
@@ -885,8 +884,7 @@ impl ProofService {
             session: None,
             engagement,
         })
-        .context("interaction serialization error")
-        .map_err(VerificationProtocolError::Other)?;
+        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         let interaction = add_new_interaction(
             interaction_id,
@@ -1029,7 +1027,10 @@ impl ProofService {
         // If the configuration is changed such that the exchange protocol of the proof no longer
         // exists we can simply skip the retracting.
         if let Some(exchange_protocol) = self.protocol_provider.get_protocol(&proof.protocol) {
-            exchange_protocol.retract_proof(proof).await?;
+            exchange_protocol
+                .retract_proof(proof)
+                .await
+                .error_while("retracting proof")?;
         };
         Ok(())
     }

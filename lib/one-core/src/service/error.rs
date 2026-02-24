@@ -21,7 +21,6 @@ use crate::proto::nfc::NfcError;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::util::key_selection::KeySelectionError;
 
@@ -41,15 +40,6 @@ pub enum ServiceError {
 
     #[error("OpenID4VCI issuance error `{0}`")]
     OpenIDIssuanceError(#[from] OpenIDIssuanceError),
-
-    #[error("Verification protocol error `{0}`")]
-    VerificationProtocolError(#[from] VerificationProtocolError),
-
-    #[error("Missing signer for algorithm `{0}`")]
-    MissingSigner(String),
-
-    #[error("Missing algorithm `{0}`")]
-    MissingAlgorithm(String),
 
     #[error("Missing exchange protocol `{0}`")]
     MissingExchangeProtocol(String),
@@ -651,14 +641,11 @@ impl ErrorCodeMixin for ServiceError {
             Self::BusinessLogic(error) => error.error_code(),
             Self::Validation(error) => error.error_code(),
             Self::MissingProvider(error) => error.error_code(),
-            Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
                 ErrorCode::BR_0048
             }
-            Self::MissingSigner(_) => ErrorCode::BR_0060,
-            Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
             Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,

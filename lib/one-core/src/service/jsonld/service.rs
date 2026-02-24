@@ -1,4 +1,5 @@
 use super::JsonLdService;
+use crate::error::ContextWithErrorCode;
 use crate::service::error::ServiceError;
 
 impl JsonLdService {
@@ -7,7 +8,7 @@ impl JsonLdService {
             .caching_loader
             .get(&url, self.resolver.clone(), false)
             .await
-            .map_err(|err| ServiceError::Other(err.to_string()))?;
+            .error_while("resolving JSON-LD context")?;
         serde_json::from_slice(context).map_err(|err| ServiceError::Other(err.to_string()))
     }
 }

@@ -144,11 +144,9 @@ fn format_params_for_redirect_uri(
         ));
     };
 
-    let dcql_query = serde_json::to_string(&dcql_query)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let dcql_query = serde_json::to_string(&dcql_query)?;
 
-    let metadata = serde_json::to_string(&authorization_request.client_metadata)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    let metadata = serde_json::to_string(&authorization_request.client_metadata)?;
 
     Ok(AuthorizationRequestQueryParams {
         client_id: authorization_request.client_id,

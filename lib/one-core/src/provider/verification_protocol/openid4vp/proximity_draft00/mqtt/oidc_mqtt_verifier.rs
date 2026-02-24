@@ -47,18 +47,11 @@ impl MqttVerifier {
     ) -> Result<Box<dyn MqttTopic>, VerificationProtocolError> {
         let (host, port) = extract_host_and_port(&self.params.broker_url)?;
 
-        self
+        Ok(self
             .mqtt_client
-            .subscribe(
-                host,
-                port,
-                topic.clone(),
-            )
+            .subscribe(host, port, topic.clone())
             .await
-            .map_err(move |error| {
-                tracing::error!(%error, "Failed to subscribe to `{topic}` topic during proof sharing");
-                VerificationProtocolError::Failed(format!("Failed to subscribe to `{topic}` topic"))
-            })
+            .error_while(format!("subscribing topic `{topic}`"))?)
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
@@ -178,10 +171,10 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             .await
             .error_while("connecting to wallet")?;
         let identity_request =
-            IdentityRequest::parse(identify_bytes).map_err(VerificationProtocolError::Transport)?;
+            IdentityRequest::parse(identify_bytes).map_err(VerificationProtocolError::Other)?;
         let (encryption_key, decryption_key) = key_agreement
             .derive_session_secrets(identity_request.key, identity_request.nonce)
-            .map_err(VerificationProtocolError::Transport)?;
+            .map_err(VerificationProtocolError::Other)?;
         let shared_key =
             PeerEncryption::new(encryption_key, decryption_key, identity_request.nonce);
         Ok(MqttVerifierContext {
@@ -199,7 +192,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
         let bytes = context
             .shared_key
             .encrypt(&signed_presentation_request)
-            .map_err(VerificationProtocolError::Transport)?;
+            .map_err(VerificationProtocolError::Other)?;
         self.presentation_definition
             .send(bytes, context.enveloping)
             .await
@@ -233,13 +226,13 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
                     context
                         .shared_key
                         .decrypt(&response)
-                        .map_err(VerificationProtocolError::Transport)?,
+                        .map_err(VerificationProtocolError::Other)?,
                 ),
                 ProtocolVersion::V2 => HolderSubmission::V2(
                     context
                         .shared_key
                         .decrypt(&response)
-                        .map_err(VerificationProtocolError::Transport)?,
+                        .map_err(VerificationProtocolError::Other)?,
                 ),
             },
         ))
@@ -280,11 +273,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             },
         };
 
-        serde_json::to_vec(&interaction_data).map_err(|err| {
-            VerificationProtocolError::Failed(format!(
-                "failed to serialize presentation_submission: {err}"
-            ))
-        })
+        Ok(serde_json::to_vec(&interaction_data)?)
     }
 
     async fn clean_up(&self) {

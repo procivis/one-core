@@ -28,6 +28,7 @@ use super::{
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, TransportType, VerificationEngagement,
 };
+use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -182,7 +183,7 @@ impl VerificationProtocol for IsoMdl {
                 credential_presentation.jwk_key_id.to_owned(),
                 self.key_algorithm_provider.clone(),
             )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("getting signature provider")?;
 
         let holder_did = credential_presentation
             .holder_did
@@ -193,12 +194,7 @@ impl VerificationProtocol for IsoMdl {
             .config
             .format
             .get_type(&credential_presentation.credential_schema.format)
-            .map_err(|err| {
-                VerificationProtocolError::Failed(format!(
-                    "unknown credential formatter `{}`: {err}",
-                    credential_presentation.credential_schema.format
-                ))
-            })?;
+            .error_while("getting format type")?;
         let (_, presentation_formatter) = self
             .presentation_formatter_provider
             .get_presentation_formatter_by_type(format_type)
@@ -208,14 +204,10 @@ impl VerificationProtocol for IsoMdl {
             )))?;
 
         let session_transcript_bytes: EmbeddedCbor<SessionTranscript> =
-            ciborium::from_reader(session.session_transcript_bytes.as_slice())
-                .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+            ciborium::from_reader(session.session_transcript_bytes.as_slice())?;
 
         let ctx = FormatPresentationCtx {
-            mdoc_session_transcript: Some(
-                to_cbor(session_transcript_bytes.inner())
-                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
-            ),
+            mdoc_session_transcript: Some(to_cbor(session_transcript_bytes.inner())?),
             ..Default::default()
         };
 
@@ -226,7 +218,7 @@ impl VerificationProtocol for IsoMdl {
                     .config
                     .format
                     .get_type(&credential.credential_schema.format)
-                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+                    .error_while("getting format type")?;
                 Ok(CredentialToPresent {
                     credential_token: credential.presentation,
                     credential_format: format,
@@ -237,10 +229,9 @@ impl VerificationProtocol for IsoMdl {
         let FormattedPresentation { vp_token, .. } = presentation_formatter
             .format_presentation(presentations, auth_fn, &holder_did, ctx)
             .await
-            .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+            .error_while("formatting presentation")?;
 
-        let device_response = decode_cbor_base64(&vp_token)
-            .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+        let device_response = decode_cbor_base64(&vp_token).error_while("decoding vp_token")?;
 
         send_mdl_response(&ble, device_response, interaction_data).await?;
 
@@ -305,8 +296,7 @@ impl VerificationProtocol for IsoMdl {
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: MdocBleHolderInteractionData =
-            serde_json::from_value(interaction_data)
-                .map_err(VerificationProtocolError::JsonError)?;
+            serde_json::from_value(interaction_data)?;
 
         let device_request_bytes = interaction_data
             .session
@@ -330,11 +320,7 @@ impl VerificationProtocol for IsoMdl {
             let credentials: Vec<_> = storage_access
                 .get_presentation_credentials_by_schema_id(schema_id.to_owned(), organisation_id)
                 .await
-                .map_err(|err| {
-                    VerificationProtocolError::Failed(format!(
-                        "Failed loading credentials for schema: {err}"
-                    ))
-                })?;
+                .map_err(VerificationProtocolError::StorageAccessError)?;
 
             let mut fields: Vec<PresentationDefinitionFieldDTO> = namespaces
                 .into_iter()
@@ -391,11 +377,7 @@ impl VerificationProtocol for IsoMdl {
                         None,
                         CredentialAttestationBlobs::default(),
                     )
-                    .map_err(|err| {
-                        VerificationProtocolError::Failed(format!(
-                            "Credential model mapping error: {err}"
-                        ))
-                    })?;
+                    .error_while("creating credential detail")?;
                     relevant_credentials.push(credential);
                 }
             }

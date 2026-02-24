@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use anyhow::Context;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{ClientMetadataJwks, PresentationFormat};
@@ -10,6 +9,7 @@ use super::model::{
     AuthorizationEncryptedResponseAlgorithm, EncryptionInfo, OpenID4VPClientMetadata,
     OpenID4VPHolderInteractionData,
 };
+use crate::error::ContextWithErrorCode;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -97,19 +97,11 @@ pub(crate) async fn encryption_info_from_metadata(
         .unwrap_or(true)
         && let Some(ref uri) = client_metadata.jwks_uri
     {
-        let jwks = client
-            .get(uri)
-            .send()
+        let jwks = async { client.get(uri).send().await?.error_for_status() }
             .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("fetching JWKs")?;
 
-        client_metadata.jwks = jwks
-            .json()
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        client_metadata.jwks = jwks.json().error_while("parsing JWKs")?;
     }
     let Some(verifier_key) =
         encryption_key_from_metadata(client_metadata.into(), key_algorithm_provider)

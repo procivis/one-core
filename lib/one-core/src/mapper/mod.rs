@@ -27,7 +27,6 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::key_selection::KeyFilter;
 
@@ -280,12 +279,7 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     let r#use = if config
         .key_storage
         .get_type(&encryption_key.storage_type)
-        .map_err(|e| {
-            VerificationProtocolError::Failed(format!(
-                "Key storage `{}` not supported: {e}",
-                &encryption_key.storage_type
-            ))
-        })?
+        .error_while("getting key storage type")?
         != KeyStorageType::AzureVault
     {
         Some(JwkUse::Encryption)

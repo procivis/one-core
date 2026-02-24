@@ -3,6 +3,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -90,7 +91,7 @@ pub(crate) async fn pex_submission_data(
                 credential.jwk_key_id,
                 key_algorithm_provider.clone(),
             )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("getting signature provider")?;
 
         let client_id = if protocol == VerificationProtocolType::OpenId4VpDraft25 {
             &encode_client_id_with_scheme_draft25(
@@ -126,7 +127,7 @@ pub(crate) async fn pex_submission_data(
                 ctx,
             )
             .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            .error_while("formatting presentation")?;
         vp_tokens.push(vp_token);
         let credential_openid4vp_format =
             map_to_openid4vp_format(&credential_format_type).to_string();

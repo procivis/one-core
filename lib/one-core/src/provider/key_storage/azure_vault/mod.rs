@@ -248,10 +248,9 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
 
         let sign_request = create_sign_request(message, self.crypto.clone())?;
 
-        let response = self.azure_client.sign(key_reference, sign_request).await?;
+        let response = self.azure_client.sign(&key_reference, sign_request).await?;
 
-        let decoded = Base64UrlSafeNoPadding::decode_to_vec(response.value, None)
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+        let decoded = Base64UrlSafeNoPadding::decode_to_vec(response.value, None)?;
 
         Ok(decoded)
     }
@@ -385,30 +384,29 @@ impl AzureClient {
     // key_reference is on format of URL e.g. https://one-dev.vault.azure.net/keys/df7d293c-3480-4e85-b176-851fb79b4564/808094a3790b4032ad4d01968a510cbd
     async fn sign(
         &self,
-        key_reference: String,
+        key_reference: &str,
         request: AzureHsmSignRequest,
-    ) -> Result<AzureHsmSignResponse, SignerError> {
+    ) -> Result<AzureHsmSignResponse, KeyHandleError> {
         let access_token = self
             .get_access_token()
             .await
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+            .error_while("getting access token")?;
 
         let mut url = Url::parse(format!("{key_reference}/sign").as_str())
             .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
         url.set_query(Some("api-version=7.4"));
-        let response: AzureHsmSignResponse = self
-            .client
-            .post(url.as_str())
-            .bearer_auth(access_token.expose_secret())
-            .json(request)
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
-            .json()
-            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+        let response: AzureHsmSignResponse = async {
+            self.client
+                .post(url.as_str())
+                .bearer_auth(access_token.expose_secret())
+                .json(request)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("posting Azure signature request")?;
         Ok(response)
     }
 }

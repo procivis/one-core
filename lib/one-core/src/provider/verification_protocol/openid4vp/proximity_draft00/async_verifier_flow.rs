@@ -11,6 +11,7 @@ use tokio::select;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::core_config::TransportType;
+use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::UpdateInteractionRequest;
@@ -190,9 +191,7 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
             None,
         )
         .await
-        .map_err(|err| {
-            VerificationProtocolError::Failed(format!("Failed to update proof transport: {err}"))
-        })?;
+        .error_while("updating proof")?;
 
     let nonce = utilities::generate_alphanumeric(32);
 
@@ -257,9 +256,7 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
             },
         )
         .await
-        .map_err(|err| {
-            VerificationProtocolError::Failed(format!("failed to update interaction: {err}"))
-        })?;
+        .error_while("updating interaction")?;
     tracing::info!("{transport_type} verifier flow: finished, received proof submission");
     Ok(FlowState::Finished)
 }
@@ -280,7 +277,7 @@ async fn get_request_v1(
         .clone()
         .as_signed_jwt(&params.did, auth_fn)
         .await
-        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+        .error_while("creating signed request")?;
     Ok((signed_request, request))
 }
 
@@ -317,7 +314,7 @@ async fn set_proof_state(
     error_metadata: Option<HistoryErrorMetadata>,
     proof_repository: &dyn ProofRepository,
 ) -> Result<(), VerificationProtocolError> {
-    if let Err(error) = proof_repository
+    proof_repository
         .update_proof(
             id,
             UpdateProofRequest {
@@ -327,10 +324,7 @@ async fn set_proof_state(
             error_metadata,
         )
         .await
-    {
-        tracing::error!(%error, proof_id=%id, ?state, "Failed setting proof state");
-        return Err(VerificationProtocolError::Failed(error.to_string()));
-    }
+        .error_while("updating proof")?;
     Ok(())
 }
 
@@ -363,8 +357,8 @@ pub(super) async fn request_as_signed_jwt(
             custom: params,
         },
     };
-    unsigned_jwt
+    Ok(unsigned_jwt
         .tokenize(Some(&*auth_fn))
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("creating request JWT")?)
 }

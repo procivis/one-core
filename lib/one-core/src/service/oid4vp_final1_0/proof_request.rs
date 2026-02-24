@@ -9,6 +9,7 @@ use standardized_types::openid4vp::{
 use url::Url;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
+use crate::error::ContextWithErrorCode;
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
 use crate::model::proof::Proof;
@@ -124,7 +125,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
                 // If the key is not a key agreement key or not found, we try to find a matching key
                 Err(_) => verifier_did
                     .find_first_matching_key(&key_agreement_key_filter)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                    .error_while("finding agreement key")?
                     .map(|key| &key.key),
             }
         }
@@ -157,12 +158,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
     if config
         .key_storage
         .get_type(&candidate_encryption_key.storage_type)
-        .map_err(|e| {
-            VerificationProtocolError::Failed(format!(
-                "Key storage `{}` not supported: {e}",
-                &candidate_encryption_key.storage_type
-            ))
-        })?
+        .error_while("getting key storage type")?
         == KeyStorageType::AzureVault
     {
         return Ok(None);
@@ -174,11 +170,11 @@ pub(crate) fn select_key_agreement_key_from_proof(
             None,
             Some(JwkUse::Encryption),
         )
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .error_while("reconstructing key")?
         .key_agreement()
         .map(|k| k.public().as_jwk())
         .transpose()
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("getting key agreement")?;
 
     if let Some(mut key_agreement_jwk) = key_agreement_jwk {
         key_agreement_jwk.set_kid(candidate_encryption_key.id.to_string());

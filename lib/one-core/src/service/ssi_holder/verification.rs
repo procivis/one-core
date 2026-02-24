@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
-use futures::TryFutureExt;
 use itertools::Itertools;
 use shared_types::{ClaimId, CredentialId, InteractionId, ProofId};
 use url::Url;
@@ -198,7 +197,8 @@ impl SSIHolderService {
                 interaction_data.clone(),
                 &self.storage_proxy(),
             )
-            .await?;
+            .await
+            .error_while("getting presentation definition")?;
 
         let requested_credentials: Vec<_> = presentation_definition
             .request_groups
@@ -330,14 +330,19 @@ impl SSIHolderService {
     ) -> Result<(), ServiceError> {
         let submit_result = verification_protocol
             .holder_submit_proof(proof, credential_presentations)
-            .map_err(ServiceError::from)
-            .and_then(|submit_result| async {
-                self.resolve_update_proof_response(proof.id, submit_result)
-                    .await
-            })
-            .await;
+            .await
+            .error_while("submitting proof");
 
-        let (state, error_metadata) = if let Err(ref err) = submit_result {
+        let submit_error = match submit_result {
+            Ok(update_response) => self
+                .resolve_update_proof_response(proof.id, update_response)
+                .await
+                .error_while("updating proof")
+                .err(),
+            Err(err) => Some(err),
+        };
+
+        let (state, error_metadata) = if let Some(ref err) = submit_error {
             let error_metadata = Some(HistoryErrorMetadata {
                 error_code: err.error_code(),
                 message: err.to_string(),
@@ -362,7 +367,11 @@ impl SSIHolderService {
             .set_proof_claims(&proof.id, submitted_claims)
             .await
             .error_while("setting proof claims")?;
-        submit_result
+
+        match submit_error {
+            Some(err) => Err(err.into()),
+            None => Ok(()),
+        }
     }
 
     fn formatter_for_blob_and_schema(
@@ -445,7 +454,8 @@ impl SSIHolderService {
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
         let presentation_definition = verification_protocol
             .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_proxy())
-            .await?;
+            .await
+            .error_while("getting presentation definition V2")?;
 
         // All the things the user chose to present
         let mut creds_paths_to_present = HashMap::<String, Vec<CredentialPathsToPresent>>::new();
@@ -542,7 +552,8 @@ impl SSIHolderService {
             interaction_id,
         } = verification_protocol
             .holder_handle_invitation(url, organisation, &self.storage_proxy(), transport)
-            .await?;
+            .await
+            .error_while("handling invitation")?;
 
         proof.protocol = verification_exchange.clone();
 

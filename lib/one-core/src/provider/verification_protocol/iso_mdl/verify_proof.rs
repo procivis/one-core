@@ -74,7 +74,9 @@ pub(crate) async fn validate_proof(
             presentation,
             key_verification_presentation,
             ExtractPresentationCtx {
-                mdoc_session_transcript: Some(to_cbor(&session_transcript)?),
+                mdoc_session_transcript: Some(
+                    to_cbor(&session_transcript).error_while("serializing SessionTranscript")?,
+                ),
                 verification_protocol_type: VerificationProtocolType::IsoMdl,
                 nonce: None,
                 format_nonce: None,

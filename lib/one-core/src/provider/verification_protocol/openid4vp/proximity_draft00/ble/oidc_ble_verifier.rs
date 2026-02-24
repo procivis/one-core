@@ -3,11 +3,11 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use futures::stream::FuturesUnordered;
-use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use one_crypto::utilities;
 use serde::de::DeserializeOwned;
 use shared_types::InteractionId;
@@ -24,6 +24,7 @@ use super::{
     TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID, TransferSummaryReport,
 };
 use crate::config::core_config::TransportType;
+use crate::error::ContextWithErrorCode;
 use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
@@ -82,7 +83,7 @@ impl ProximityVerifierTransport for BleVerifierTransport {
                 .await?;
         let (sender_key, receiver_key) = key_agreement_key
             .derive_session_secrets(identity_request.key, identity_request.nonce)
-            .map_err(VerificationProtocolError::Transport)?;
+            .map_err(VerificationProtocolError::Other)?;
         let peer = BLEPeer::new(wallet, sender_key, receiver_key, identity_request.nonce);
         Ok(BleVerifierContext {
             peer,
@@ -249,7 +250,6 @@ pub(crate) async fn schedule_ble_verifier_flow(
                 let Ok(interaction) = interaction_repository
                     .get_interaction(&interaction_id, &Default::default(), None)
                     .await
-                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))
                 else {
                     return;
                 };
@@ -368,20 +368,18 @@ async fn start_advertisement(
     if ble_peripheral
         .is_advertising()
         .await
-        .context("Failed to check BLE advertising status")
-        .map_err(VerificationProtocolError::Transport)?
+        .error_while("checking BLE advertising status")?
     {
         ble_peripheral
             .stop_advertisement()
             .await
-            .context("Failed to stop BLE advertising")
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("stopping BLE advertisement")?;
     };
 
     ble_peripheral
         .start_advertisement(Some(verifier_name), vec![get_advertise_data()])
         .await
-        .map_err(|e| VerificationProtocolError::Transport(e.into()))?;
+        .error_while("starting BLE advertisement")?;
 
     Ok(())
 }
@@ -418,12 +416,12 @@ async fn wait_for_wallet_identify_request(
             Some(wallet_info) = identify_futures.next() => {
                 let wallet_info: Result<(String, Vec<u8>), VerificationProtocolError> = wallet_info;
                 if let Ok((address, data)) = wallet_info {
-                    let identity_request = IdentityRequest::parse(data).map_err(VerificationProtocolError::Transport)?;
+                    let identity_request = IdentityRequest::parse(data).map_err(VerificationProtocolError::Other)?;
                     break (address, identity_request);
                 }
             },
             connection_events = connection_event_stream.next() => {
-                for event in connection_events.context("Failed to get BLE connection events").map_err(VerificationProtocolError::Transport)? {
+                for event in connection_events.context("Failed to get BLE connection events").map_err(VerificationProtocolError::Other)? {
                     match event {
                         ConnectionEvent::Connected { device_info } => {
                             if connected_devices.insert(device_info.address.to_owned(), device_info.to_owned()).is_none() {
@@ -431,8 +429,8 @@ async fn wait_for_wallet_identify_request(
                                     let stream = read(IDENTITY_UUID, &device_info, ble_peripheral.clone());
                                     tokio::pin!(stream);
                                     let data = stream.try_next().await
-                                        .map_err(|e| VerificationProtocolError::Transport(anyhow::anyhow!(e)))?
-                                        .ok_or(VerificationProtocolError::Transport(anyhow::anyhow!("BLE identity request: No data read")))?;
+                                        .error_while("reading Identity")?
+                                        .ok_or(VerificationProtocolError::Failed("BLE identity request: No data read".to_string()))?;
                                     Ok((device_info.address, data))
                                 });
                             }
@@ -449,8 +447,7 @@ async fn wait_for_wallet_identify_request(
     ble_peripheral
         .stop_advertisement()
         .await
-        .context("Failed to stop advertisement")
-        .map_err(VerificationProtocolError::Transport)?;
+        .error_while("stopping BLE advertisement")?;
 
     let device_info =
         connected_devices
@@ -500,7 +497,7 @@ async fn write_presentation_request(
     let encrypted = peer
         .encrypt(request)
         .context("Failed to encrypt presentation request")
-        .map_err(VerificationProtocolError::Transport)?;
+        .map_err(VerificationProtocolError::Other)?;
 
     let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.mtu());
     let len = (chunks.len() as u16).to_be_bytes();
@@ -517,17 +514,17 @@ async fn send(
 ) -> Result<(), VerificationProtocolError> {
     ble_peripheral
         .set_characteristic_data(SERVICE_UUID.to_string(), id.to_string(), data)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-        .await?;
+        .await
+        .error_while("sending data")?;
 
-    ble_peripheral
+    Ok(ble_peripheral
         .wait_for_characteristic_read(
             wallet.device_info.address.to_string(),
             SERVICE_UUID.to_string(),
             id.to_string(),
         )
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+        .error_while("waiting for data read")?)
 }
 
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
@@ -575,7 +572,7 @@ async fn request_write_report(
             &[],
         )
         .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        .error_while("notifying Summary")?;
 
     let report_bytes: TransferSummaryReport = read(
         TRANSFER_SUMMARY_REQUEST_UUID,
@@ -583,8 +580,8 @@ async fn request_write_report(
         ble_peripheral.clone(),
     )
     .parse()
-    .map_err(VerificationProtocolError::Transport)
-    .await?;
+    .await
+    .map_err(VerificationProtocolError::Other)?;
 
     Ok(report_bytes)
 }
@@ -600,8 +597,8 @@ async fn read_presentation_submission<S: DeserializeOwned>(
         ble_peripheral.clone(),
     )
     .parse()
-    .map_err(VerificationProtocolError::Transport)
-    .await?;
+    .await
+    .map_err(VerificationProtocolError::Other)?;
 
     if request_size == 0 {
         // proof rejection by holder
@@ -630,7 +627,7 @@ async fn read_presentation_submission<S: DeserializeOwned>(
             biased;
 
             Some(chunk) = message_stream.next() => {
-                let chunk = Chunk::from_bytes(&chunk.map_err(|e| VerificationProtocolError::Transport(e.into()))?).map_err(VerificationProtocolError::Transport)?;
+                let chunk = Chunk::from_bytes(&chunk.error_while("waiting for submission chunk")?).map_err(VerificationProtocolError::Other)?;
 
                 if received_chunks.iter().any(|c| c.index == chunk.index) {
                     continue;
@@ -656,7 +653,7 @@ async fn read_presentation_submission<S: DeserializeOwned>(
                         &missing_chunks,
                     )
                     .await
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                    .error_while("notifying Summary")?;
 
                 transfer_summary_dispatched = true;
 
@@ -685,10 +682,6 @@ async fn read_presentation_submission<S: DeserializeOwned>(
     Ok(Some(
         connected_wallet
             .decrypt(&presentation_request)
-            .map_err(|e| {
-                VerificationProtocolError::Transport(anyhow!(
-                    "Failed to decrypt presentation request: {e}"
-                ))
-            })?,
+            .map_err(VerificationProtocolError::Other)?,
     ))
 }
