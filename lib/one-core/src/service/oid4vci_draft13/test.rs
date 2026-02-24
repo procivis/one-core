@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use super::OID4VCIDraft13Service;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations, LayoutType};
@@ -1925,10 +1926,7 @@ async fn test_create_credential_issuer_failed() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::IssuanceProtocolError(_))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0062);
 }
 
 #[tokio::test]

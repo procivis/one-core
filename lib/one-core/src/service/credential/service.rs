@@ -555,7 +555,10 @@ impl CredentialService {
             interaction_data,
             expires_at,
             transaction_code,
-        } = exchange.issuer_share_credential(&credential).await?;
+        } = exchange
+            .issuer_share_credential(&credential)
+            .await
+            .error_while("sharing credential")?;
 
         add_new_interaction(
             interaction_id,

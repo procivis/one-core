@@ -6,7 +6,6 @@ use crate::model::identifier::IdentifierType;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::HolderBindingInput;
-use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError::MappingError;
@@ -99,10 +98,9 @@ pub(super) fn validate_initiate_issuance_request(
             .as_ref()
             .is_none_or(|details| details.is_empty())
     {
-        return Err(IssuanceProtocolError::InvalidRequest(
+        return Err(ServiceError::ValidationError(
             "Scope or authenticationDetails must be specified".to_string(),
-        )
-        .into());
+        ));
     }
 
     Ok(())

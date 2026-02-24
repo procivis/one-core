@@ -6,7 +6,7 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
-use one_core::provider::issuance_protocol::error::{IssuanceProtocolError, OpenIDIssuanceError};
+use one_core::provider::issuance_protocol::error::OpenIDIssuanceError;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, CredentialSchemaId};
 
@@ -298,26 +298,13 @@ pub(crate) async fn oid4vci_draft13_create_credential(
             )
                 .into_response()
         }
-        Err(ServiceError::IssuanceProtocolError(IssuanceProtocolError::RefreshTooSoon)) => {
-            tracing::info!("Holder tried refreshing credential too soon");
-            (
-                StatusCode::BAD_REQUEST,
-                Json(OpenID4VCIErrorResponseRestDTO {
-                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
-                }),
-            )
-                .into_response()
-        }
-        Err(ServiceError::IssuanceProtocolError(IssuanceProtocolError::Suspended)) => {
-            tracing::info!("Holder tried refreshing a suspended credential");
-            (
-                StatusCode::BAD_REQUEST,
-                Json(OpenID4VCIErrorResponseRestDTO {
-                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
-                }),
-            )
-                .into_response()
-        }
+        Err(error) if error.error_code() == ErrorCode::BR_0238 => (
+            StatusCode::BAD_REQUEST,
+            Json(OpenID4VCIErrorResponseRestDTO {
+                error: OpenID4VCIErrorRestEnum::InvalidRequest,
+            }),
+        )
+            .into_response(),
         Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()

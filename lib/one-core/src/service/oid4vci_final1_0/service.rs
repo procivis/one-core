@@ -728,7 +728,7 @@ impl OID4VCIFinal1_0Service {
             Err(err @ IssuanceProtocolError::Suspended)
             | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
                 // propagate error to client but do _not_ put credential to Errored state¬
-                Err(err.into())
+                Err(err.error_while("issuing credential").into())
             }
             Err(error) => {
                 self.credential_repository
@@ -741,7 +741,7 @@ impl OID4VCIFinal1_0Service {
                     )
                     .await
                     .error_while("updating credential")?;
-                Err(error.into())
+                Err(error.error_while("issuing credential").into())
             }
         }
     }

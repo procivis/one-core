@@ -44,7 +44,7 @@ use crate::proto::credential_schema::dto::{
 };
 use crate::proto::http_client;
 use crate::proto::http_client::HttpClient;
-use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::{
     KeyStorageSecurityLevel, OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported,
 };
@@ -55,7 +55,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::error::{ServiceError, ValidationError};
+use crate::service::error::ValidationError;
 
 pub(crate) fn prepare_nested_representation(
     credential_schema: &CredentialSchema,
@@ -544,7 +544,7 @@ pub(crate) fn extract_offered_claims(
     let nested_schema_claim_view: CredentialSchemaClaimsNestedView = claim_schemas
         .clone()
         .try_into()
-        .map_err(|err: ServiceError| IssuanceProtocolError::Other(err.into()))?;
+        .error_while("extracting nested claims")?;
 
     let nested_claim_view: ClaimsNestedView = claim_keys.clone().try_into()?;
 
@@ -1034,8 +1034,8 @@ pub(super) fn credentials_supported_mdoc(
         .map(|element| element.key.replace(NESTED_CLAIM_MARKER, "~"))
         .collect();
 
-    let claim_schema = prepare_nested_representation(&schema, config)
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+    let claim_schema =
+        prepare_nested_representation(&schema, config).map_err(OpenIDIssuanceError::OpenID4VCI)?;
 
     let format_type = config
         .format
@@ -1046,7 +1046,7 @@ pub(super) fn credentials_supported_mdoc(
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         wallet_storage_type: convert_inner(schema.key_storage_security),
         format: map_to_openid4vp_format(&format_type)
-            .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?
+            .map_err(OpenIDIssuanceError::OpenID4VCI)?
             .to_string(),
         claims: Some(claim_schema),
         order: if element_order.len() > 1 {

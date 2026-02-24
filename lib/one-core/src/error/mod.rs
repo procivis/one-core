@@ -406,9 +406,7 @@ pub enum ErrorCode {
     #[strum(message = "SD-JWT VC type metadata not found")]
     BR_0172,
 
-    #[strum(
-        message = "Proof of possession of issuer did for issued credential could not be verified"
-    )]
+    #[strum(message = "Proof of possession for issued credential could not be verified")]
     BR_0173,
 
     #[strum(message = "Invalid create trust anchor request")]

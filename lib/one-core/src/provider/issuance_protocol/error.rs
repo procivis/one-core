@@ -7,24 +7,12 @@ use crate::model::credential::CredentialStateEnum;
 pub enum IssuanceProtocolError {
     #[error("Issuance protocol failure: `{0}`")]
     Failed(String),
-    #[error("Issuance protocol disabled: `{0}`")]
-    Disabled(String),
-    #[error("Transport error: `{0}`")]
-    Transport(anyhow::Error),
-    #[error("JSON error: `{0}`")]
-    JsonError(serde_json::Error),
-    #[error("Operation not supported")]
-    OperationNotSupported,
-    #[error("Base url is unknown")]
-    MissingBaseUrl,
     #[error("Invalid request: `{0}`")]
     InvalidRequest(String),
     #[error("Failed to autogenerate binding: `{0}`")]
     BindingAutogenerationFailure(String),
     #[error("Incorrect credential schema type")]
     IncorrectCredentialSchemaType,
-    #[error(transparent)]
-    Other(anyhow::Error),
     #[error(transparent)]
     StorageAccessError(anyhow::Error),
     #[error("Credential offer issuer did does not match credential issuer did")]
@@ -40,6 +28,12 @@ pub enum IssuanceProtocolError {
     #[error("Credential refresh is not yet possible")]
     RefreshTooSoon,
 
+    #[error("JSON error: `{0}`")]
+    Json(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    OpenIDIssuanceError(#[from] OpenIDIssuanceError),
+
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -47,16 +41,12 @@ pub enum IssuanceProtocolError {
 impl ErrorCodeMixin for IssuanceProtocolError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::Failed(_) => ErrorCode::BR_0062,
             Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
-            Self::Transport(_) => ErrorCode::BR_0086,
-            Self::JsonError(_) => ErrorCode::BR_0062,
-            Self::OperationNotSupported => ErrorCode::BR_0062,
-            Self::MissingBaseUrl => ErrorCode::BR_0062,
             Self::InvalidRequest(_) => ErrorCode::BR_0085,
-            Self::Disabled(_) => ErrorCode::BR_0085,
-            Self::Other(_) => ErrorCode::BR_0062,
-            Self::StorageAccessError(_) => ErrorCode::BR_0062,
+            Self::Failed(_)
+            | Self::Json(_)
+            | Self::StorageAccessError(_)
+            | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0062,
             Self::DidMismatch
             | Self::KeyMismatch
             | Self::CertificateMismatch

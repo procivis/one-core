@@ -17,7 +17,7 @@ use super::OID4VCIDraft13Service;
 use super::dto::{OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{self, FormatType, IssuanceProtocolType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
@@ -124,13 +124,13 @@ impl OID4VCIDraft13Service {
                 .parse()
                 .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
             authorization_endpoint: Some(
-                Url::parse(&format!("{issuer}/{credential_schema_id}/authorize")).map_err(
-                    |_| {
+                Url::parse(&format!("{issuer}/{credential_schema_id}/authorize"))
+                    .map_err(|_| {
                         IssuanceProtocolError::InvalidRequest(
                             "Invalid authorization url".to_string(),
                         )
-                    },
-                )?,
+                    })
+                    .error_while("creating authorization endpoint")?,
             ),
             token_endpoint: Some(
                 format!("{issuer}/{credential_schema_id}/token")
@@ -578,7 +578,7 @@ impl OID4VCIDraft13Service {
             Err(err @ IssuanceProtocolError::Suspended)
             | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
                 // propagate error to client but do _not_ put credential to Errored state¬
-                Err(err.into())
+                Err(err.error_while("issuing credential").into())
             }
             Err(error) => {
                 self.credential_repository
@@ -591,7 +591,7 @@ impl OID4VCIDraft13Service {
                     )
                     .await
                     .error_while("updating credential")?;
-                Err(error.into())
+                Err(error.error_while("issuing credential").into())
             }
         }
     }

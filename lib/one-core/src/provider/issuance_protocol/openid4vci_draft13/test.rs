@@ -15,7 +15,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
-use wiremock::matchers::{body_json, method, path};
+use wiremock::matchers::{body_json, body_partial_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
@@ -1109,10 +1109,9 @@ async fn test_holder_accept_expired_credential_fails() {
 
     Mock::given(method(Method::POST))
         .and(path("/notification"))
-        .and(body_json(json!({
+        .and(body_partial_json(json!({
             "notification_id": "notification_id",
-            "event": "credential_failure",
-            "event_description": "Issuance protocol failure: `Validation error: `Expired``"
+            "event": "credential_failure"
         })))
         .respond_with(ResponseTemplate::new(204))
         .expect(1)

@@ -194,7 +194,8 @@ impl SSIHolderService {
         }
 
         let data: issuance_protocol::openid4vci_final1_0::model::HolderInteractionData =
-            deserialize_interaction_data(interaction.data.as_ref())?;
+            deserialize_interaction_data(interaction.data.as_ref())
+                .error_while("parsing holder interaction data")?;
 
         if let Some(holder_binding) = &holder_binding
             && let Some(accepted_security_levels) =
@@ -263,14 +264,13 @@ impl SSIHolderService {
                 tx_code,
                 holder_wallet_unit_id,
             )
-            .await?;
+            .await
+            .error_while("accepting credential")?;
 
         let credential = issuer_response
             .create_credential
             .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Credential missing".to_string(),
-            ))?
+            .ok_or(ServiceError::MappingError("Credential missing".to_string()))?
             .to_owned();
 
         let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
@@ -326,7 +326,7 @@ impl SSIHolderService {
                 )
                 .await
             {
-                tracing::error!("Failed to accept credential: {error}");
+                tracing::warn!("Failed to accept credential: {error}");
 
                 // do not change credential state if wrong TX-code entry
                 if !matches!(error.error_code(), ErrorCode::BR_0169 | ErrorCode::BR_0170) {
@@ -350,9 +350,9 @@ impl SSIHolderService {
             return Err(error);
         }
 
-        Ok(credential_id.ok_or(IssuanceProtocolError::Failed(
+        credential_id.ok_or(ServiceError::MappingError(
             "No credential issued".to_string(),
-        ))?)
+        ))
     }
 
     async fn accept_and_save_credential_draft13(
@@ -366,7 +366,7 @@ impl SSIHolderService {
         let schema = credential
             .schema
             .as_ref()
-            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
         if let Some(holder_binding) = &holder_binding {
             validate_key_storage_supports_security_requirement(
@@ -396,7 +396,7 @@ impl SSIHolderService {
         let interaction = credential
             .interaction
             .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
+            .ok_or(ServiceError::MappingError(
                 "interaction is None".to_string(),
             ))?
             .to_owned();
@@ -414,7 +414,8 @@ impl SSIHolderService {
                 tx_code,
                 None,
             )
-            .await?;
+            .await
+            .error_while("accepting credential")?;
 
         let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
         let claims = self
@@ -598,7 +599,8 @@ impl SSIHolderService {
         let credential_id = credential.id;
         protocol
             .holder_reject_credential(credential, storage_access)
-            .await?;
+            .await
+            .error_while("rejecting credential")?;
 
         self.credential_repository
             .update_credential(
@@ -624,7 +626,8 @@ impl SSIHolderService {
     ) -> Result<HandleInvitationResultDTO, ServiceError> {
         let result = issuance_protocol
             .holder_handle_invitation(url, organisation, &self.storage_proxy(), redirect_uri)
-            .await?;
+            .await
+            .error_while("handling invitation")?;
 
         match result {
             InvitationResponseEnum::Credential {
@@ -720,7 +723,7 @@ impl SSIHolderService {
             .unwrap_or(&request.issuer);
 
         let authorization_server = Url::parse(authorization_server)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
 
         let interaction_id: InteractionId = Uuid::new_v4().into();
         let mut authorization_request = OAuthAuthorizationRequest::new(
@@ -743,14 +746,15 @@ impl SSIHolderService {
             .oauth_client()
             .initiate_authorization_code_flow(authorization_server, authorization_request)
             .await
-            .map_err(|e| IssuanceProtocolError::Failed(format!("OAuth request failed: {e:?}")))?;
+            .error_while("initiating authorization code flow")?;
 
         let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
             request,
             code_verifier: authorization_response.code_verifier,
         };
         // store request parameters inside interaction
-        let data = serialize_interaction_data(&interaction_data)?;
+        let data = serialize_interaction_data(&interaction_data)
+            .error_while("storing interaction data")?;
 
         let now = OffsetDateTime::now_utc();
         self.interaction_repository
@@ -781,13 +785,11 @@ impl SSIHolderService {
         url: impl AsRef<str>,
     ) -> Result<ContinueIssuanceResponseDTO, ServiceError> {
         let url = Url::parse(url.as_ref()).map_err(|error| {
-            IssuanceProtocolError::InvalidRequest(format!(
-                "Continuation URL has invalid format: {error}"
-            ))
+            ServiceError::ValidationError(format!("Continuation URL has invalid format: {error}"))
         })?;
 
         let (_, state) = url.query_pairs().find(|(key, _)| key == STATE).ok_or(
-            IssuanceProtocolError::InvalidRequest(
+            ServiceError::ValidationError(
                 "Continuation URL state parameter not specified".to_string(),
             ),
         )?;
@@ -795,13 +797,13 @@ impl SSIHolderService {
         let (_, authorization_code) = url
             .query_pairs()
             .find(|(key, _)| key == AUTHORIZATION_CODE)
-            .ok_or(IssuanceProtocolError::InvalidRequest(
+            .ok_or(ServiceError::ValidationError(
                 "Continuation URL authorization_code parameter not specified".to_string(),
             ))?;
 
         let interaction_id = Uuid::parse_str(state.as_ref())
             .map_err(|_| {
-                IssuanceProtocolError::InvalidRequest(
+                ServiceError::ValidationError(
                     "Continuation URL state parameter has invalid format".to_string(),
                 )
             })?
@@ -825,19 +827,21 @@ impl SSIHolderService {
             &*self.session_provider,
         )?;
         let issuance: OpenIDAuthorizationCodeFlowInteractionData =
-            deserialize_interaction_data(interaction.data.as_ref())?;
+            deserialize_interaction_data(interaction.data.as_ref())
+                .error_while("parsing holder interaction data")?;
 
         let organisation = interaction
             .organisation
             .ok_or(IssuanceProtocolError::Failed(
                 "Organisation must be specified for credential issuance".to_string(),
-            ))?;
+            ))
+            .error_while("parsing interaction")?;
 
         if let (None, None) = (
             issuance.request.scope.as_ref(),
             issuance.request.authorization_details.as_ref(),
         ) {
-            return Err(IssuanceProtocolError::Failed("Either `scope` or `authorization_details` has to be specified for credential issuance".to_string()).into());
+            return Err(ServiceError::ValidationError("Either `scope` or `authorization_details` has to be specified for credential issuance".to_string()));
         }
 
         let issuance_protocol::model::ContinueIssuanceResponseDTO {
@@ -870,7 +874,8 @@ impl SSIHolderService {
                 organisation,
                 &self.storage_proxy(),
             )
-            .await?;
+            .await
+            .error_while("continuing issuance")?;
 
         tracing::info!(
             "Processed authorization code flow result for credential issuance using interaction {interaction_id}"

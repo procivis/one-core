@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::utilities::generate_alphanumeric;
@@ -208,7 +207,7 @@ impl OpenID4VCIFinal1_0 {
                     .validity_credential_repository
                     .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                    .error_while("getting validity credential")?
                     .ok_or_else(|| {
                         IssuanceProtocolError::Failed(format!(
                             "Missing verifiable credential for MDOC: {credential_id}"
@@ -259,7 +258,7 @@ impl OpenID4VCIFinal1_0 {
 
         let related_did_key = did
             .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("finding related key")?;
         let issuer_jwk_key_id = did.verification_method_id(related_did_key);
 
         Ok(Some(issuer_jwk_key_id))
@@ -314,8 +313,7 @@ impl OpenID4VCIFinal1_0 {
             .client
             .post(token_endpoint.as_str())
             .form(&form)
-            .context("Invalid token_endpoint request")
-            .map_err(IssuanceProtocolError::Transport)?;
+            .error_while("preparing token request")?;
 
         if let Some(wallet_attestation_request) = wallet_attestation_request {
             request = request
@@ -329,11 +327,7 @@ impl OpenID4VCIFinal1_0 {
                 );
         }
 
-        let response = request
-            .send()
-            .await
-            .context("Error during token_endpoint response")
-            .map_err(IssuanceProtocolError::Transport)?;
+        let response = request.send().await.error_while("requesting token")?;
 
         if response.status.is_client_error() && has_sent_tx_code {
             #[derive(Deserialize)]
@@ -363,13 +357,11 @@ impl OpenID4VCIFinal1_0 {
             }
         }
 
-        response
+        Ok(response
             .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?
+            .error_while("requesting token")?
             .json()
-            .context("parsing error")
-            .map_err(IssuanceProtocolError::Transport)
+            .error_while("requesting token")?)
     }
 
     async fn holder_reuse_or_refresh_token(
@@ -424,25 +416,20 @@ impl OpenID4VCIFinal1_0 {
                     "token endpoint is missing".to_string(),
                 ))?;
 
-        let token_response: OpenID4VCITokenResponseDTO = self
-            .client
-            .post(token_endpoint)
-            .form(&[
-                ("refresh_token", refresh_token.expose_secret().to_string()),
-                ("grant_type", "refresh_token".to_string()),
-            ])
-            .context("form error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(IssuanceProtocolError::Transport)?;
+        let token_response: OpenID4VCITokenResponseDTO = async {
+            self.client
+                .post(token_endpoint)
+                .form(&[
+                    ("refresh_token", refresh_token.expose_secret().to_string()),
+                    ("grant_type", "refresh_token".to_string()),
+                ])?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("requesting token")?;
 
         let encrypted_access_token =
             encrypt_string(&token_response.access_token, &self.params.encryption).map_err(
@@ -473,7 +460,7 @@ impl OpenID4VCIFinal1_0 {
                 },
             )
             .await
-            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+            .map_err(IssuanceProtocolError::StorageAccessError)?;
 
         Ok(token_response.access_token)
     }
@@ -490,22 +477,16 @@ impl OpenID4VCIFinal1_0 {
                     "nonce endpoint is missing".to_string(),
                 ))?;
 
-        let response: OpenID4VCINonceResponseDTO = self
-            .client
-            .post(nonce_endpoint.as_str())
-            .send()
-            .await
-            .context("Error during nonce_endpoint response")
-            .map_err(IssuanceProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .json()
-            .map_err(|error| {
-                IssuanceProtocolError::Failed(format!(
-                    "Failed decoding credential offer json {error}"
-                ))
-            })?;
+        let response: OpenID4VCINonceResponseDTO = async {
+            self.client
+                .post(nonce_endpoint.as_str())
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("requesting nonce")?;
 
         Ok(response.c_nonce)
     }
@@ -516,22 +497,16 @@ impl OpenID4VCIFinal1_0 {
         &self,
         challenge_endpoint: &str,
     ) -> Result<String, IssuanceProtocolError> {
-        let response: ChallengeResponseDTO = self
-            .client
-            .get(challenge_endpoint)
-            .send()
-            .await
-            .context("Error during challenge_endpoint response")
-            .map_err(IssuanceProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .json()
-            .map_err(|error| {
-                IssuanceProtocolError::Failed(format!(
-                    "Failed decoding challenge response json {error}"
-                ))
-            })?;
+        let response: ChallengeResponseDTO = async {
+            self.client
+                .get(challenge_endpoint)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching challenge")?;
 
         Ok(response.attestation_challenge)
     }
@@ -583,7 +558,7 @@ impl OpenID4VCIFinal1_0 {
                     accepted_levels,
                     &*self.key_security_level_provider,
                 )
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+                .error_while("matching key security")?,
             )
         } else {
             None
@@ -611,7 +586,7 @@ impl OpenID4VCIFinal1_0 {
                     .holder_wallet_unit_proto
                     .issue_wallet_attestations(wallet_unit_id, request)
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("issuing attestations")?;
 
                 Some(response)
             }
@@ -632,10 +607,9 @@ impl OpenID4VCIFinal1_0 {
 
                 // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
                 // The WIA sub (subject) claim MUST specify client_id value of the OAuth Client.
-                let wia_jwt: Jwt<()> =
-                    Jwt::build_from_token(wia, None, None).await.map_err(|e| {
-                        IssuanceProtocolError::Failed(format!("Failed to parse WIA: {e}"))
-                    })?;
+                let wia_jwt: Jwt<()> = Jwt::build_from_token(wia, None, None)
+                    .await
+                    .error_while("parsing WIA JWT")?;
 
                 let client_id = wia_jwt
                     .payload
@@ -660,11 +634,7 @@ impl OpenID4VCIFinal1_0 {
                         ),
                     )?)
                     .await
-                    .map_err(|e| {
-                        IssuanceProtocolError::Failed(format!(
-                            "Failed to get authentication key: {e}"
-                        ))
-                    })?;
+                    .error_while("getting authentication key")?;
 
                 let signed_proof = create_wallet_unit_attestation_pop(
                     &*self.key_provider,
@@ -727,8 +697,7 @@ impl OpenID4VCIFinal1_0 {
         let format_type = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
             Some(&issuer_response.credential),
-        )
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        )?;
 
         let (format, formatter) = self
             .formatter_provider
@@ -750,7 +719,7 @@ impl OpenID4VCIFinal1_0 {
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 
         validate_issuance_time(&credential.issuance_date, formatter.get_leeway())
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("validating issuance time")?;
 
         let schema = credential
             .schema
@@ -823,12 +792,8 @@ impl OpenID4VCIFinal1_0 {
                         None,
                         None,
                     )
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-                IdentifierDetails::Key(
-                    key_handle
-                        .public_key_as_jwk()
-                        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-                )
+                    .error_while("reconstructing key")?;
+                IdentifierDetails::Key(key_handle.public_key_as_jwk().error_while("getting JWK")?)
             }
             _ => {
                 return Err(IssuanceProtocolError::Failed(
@@ -845,7 +810,7 @@ impl OpenID4VCIFinal1_0 {
                 IdentifierRole::Issuer,
             )
             .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("creating issuer identifier")?;
         let issuer_certificate = if let RemoteIdentifierRelation::Certificate(certificate) =
             issuer_identifier_relation
         {
@@ -886,22 +851,17 @@ impl OpenID4VCIFinal1_0 {
         notification_endpoint: &str,
         access_token: &str,
     ) -> Result<(), IssuanceProtocolError> {
-        let response = self
-            .client
-            .post(notification_endpoint)
-            .bearer_auth(access_token)
-            .json(&message)
-            .context("json error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?;
-
-        response
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?;
+        async {
+            self.client
+                .post(notification_endpoint)
+                .bearer_auth(access_token)
+                .json(&message)?
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("sending notification")?;
 
         Ok(())
     }
@@ -953,7 +913,7 @@ impl OpenID4VCIFinal1_0 {
             client_id,
         )
         .await
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("formatting proof")?;
 
         let body = OpenID4VCICredentialRequestDTO {
             credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
@@ -962,27 +922,18 @@ impl OpenID4VCIFinal1_0 {
             proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![proof_jwt])),
         };
 
-        let response = self
-            .client
-            .post(interaction_data.credential_endpoint.as_str())
-            .bearer_auth(access_token)
-            .json(&body)
-            .context("json error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?;
-
-        let response = response
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?;
-
-        let response: OpenID4VCICredentialResponseDTO = response
-            .json()
-            .context("parsing error")
-            .map_err(IssuanceProtocolError::Transport)?;
+        let response: OpenID4VCICredentialResponseDTO = async {
+            self.client
+                .post(interaction_data.credential_endpoint.as_str())
+                .bearer_auth(access_token)
+                .json(&body)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("requesting credential")?;
 
         Ok(SubmitIssuerResponse {
             credential: response
@@ -1011,7 +962,7 @@ impl OpenID4VCIFinal1_0 {
             .get_blob_storage(BlobStorageType::Db)
             .await
             .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("getting blob storage")?;
 
         let credential_blob_id = match credential.credential_blob_id {
             None => {
@@ -1019,7 +970,7 @@ impl OpenID4VCIFinal1_0 {
                 db_blob_storage
                     .create(blob.clone())
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("creating blob")?;
                 blob.id
             }
             Some(blob_id) => {
@@ -1031,7 +982,7 @@ impl OpenID4VCIFinal1_0 {
                         },
                     )
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("updating blob")?;
                 blob_id
             }
         };
@@ -1080,13 +1031,15 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             let credential_issuer: Url = credential_offer
                 .credential_issuer
                 .parse()
-                .map_err(|_| IssuanceProtocolError::Failed("".to_string()))?;
+                .map_err(|e: url::ParseError| IssuanceProtocolError::Failed(e.to_string()))?;
             let metadata_url =
                 prepend_well_known_path(&credential_issuer, "openid-credential-issuer");
-            self.metadata_cache
-                .fetch::<OpenID4VCIIssuerMetadataResponseDTO>(&metadata_url)
-                .await
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
+            Ok::<_, IssuanceProtocolError>(
+                self.metadata_cache
+                    .fetch::<OpenID4VCIIssuerMetadataResponseDTO>(&metadata_url)
+                    .await
+                    .error_while("fetching metadata")?,
+            )
         }
         .await
         .is_ok()
@@ -1189,9 +1142,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     &holder_binding.key.id,
                     &KeyFilter::role_filter(KeyRole::Authentication),
                 )
-                .map_err(|err| {
-                    IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
-                })?;
+                .error_while("finding related key")?;
 
             Some(did.verification_method_id(related_key))
         } else {
@@ -1201,7 +1152,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let auth_fn = self
             .key_provider
             .get_signature_provider(key, holder_jwk_key_id, self.key_algorithm_provider.clone())
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("getting signature provider")?;
 
         let key = self
             .key_algorithm_provider
@@ -1214,9 +1165,9 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 None,
                 None,
             )
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("reconstructing key")?
             .public_key_as_jwk()
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("getting JWK")?;
 
         let credential_response = self
             .holder_request_credential(
@@ -1253,7 +1204,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 },
             )
             .await
-            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+            .map_err(IssuanceProtocolError::StorageAccessError)?;
 
         if let (Some(notification_id), Some(notification_endpoint)) =
             (notification_id, interaction_data.notification_endpoint)
@@ -1362,11 +1313,9 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &credential.protocol,
                 &interaction_id.to_string(),
                 credential_schema,
-            )
-            .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
+            )?;
 
-            let offer_string = serde_json::to_string(&offer)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            let offer_string = serde_json::to_string(&offer)?;
 
             query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
         } else {
@@ -1439,7 +1388,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 },
             )
             .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .error_while("getting credential")?
         else {
             return Err(IssuanceProtocolError::Failed(
                 "Credential not found".to_string(),
@@ -1490,7 +1439,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             Some(method) => method
                 .add_issued_credential(&credential)
                 .await
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                .error_while("adding issued credential")?
                 .into_iter()
                 .map(|revocation_info| revocation_info.credential_status)
                 .collect(),
@@ -1517,7 +1466,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 self.jwk_key_id_from_identifier(issuer_identifier, key)?,
                 self.key_algorithm_provider.clone(),
             )
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("getting signature provider")?;
 
         let redirect_uri = credential.redirect_uri.to_owned();
 
@@ -1532,7 +1481,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             None,
             CredentialAttestationBlobs::default(),
         )
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("creating credential detail")?;
 
         let contexts = vcdm_v2_base_context(None);
 
@@ -1561,7 +1510,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             credential_status,
             contexts,
         )
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("getting credential data")?;
 
         let token = self
             .formatter_provider
@@ -1572,7 +1521,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             )))?
             .format_credential(credential_data, auth_fn)
             .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("formatting credential")?;
 
         match (credential_format_type, credential_state) {
             (FormatType::Mdoc, CredentialStateEnum::Accepted) => {
@@ -1587,7 +1536,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         .into(),
                     )
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("inserting validity credential")?;
             }
             (FormatType::Mdoc, CredentialStateEnum::Offered) => {
                 let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
@@ -1598,7 +1547,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         get_issued_credential_update(credential_blob_id, holder_identifier_id),
                     )
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("updating credential")?;
 
                 self.validity_credential_repository
                     .insert(
@@ -1611,7 +1560,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         .into(),
                     )
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("inserting validity credential")?;
             }
             _ => {
                 let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
@@ -1622,7 +1571,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         get_issued_credential_update(credential_blob_id, holder_identifier_id),
                     )
                     .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+                    .error_while("updating credential")?;
             }
         }
 
@@ -1967,27 +1916,22 @@ async fn resolve_credential_offer(
     }
 
     if let Some(credential_offer) = credential_offer_param {
-        serde_json::from_str(credential_offer).map_err(|error| {
-            IssuanceProtocolError::Failed(format!("Failed decoding credential offer {error}"))
-        })
+        Ok(serde_json::from_str(credential_offer)?)
     } else if let Some(credential_offer_reference) = credential_offer_reference_param {
         let credential_offer_url = Url::parse(credential_offer_reference).map_err(|error| {
             IssuanceProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
         })?;
 
-        Ok(client
-            .get(credential_offer_url.as_str())
-            .send()
-            .await
-            .context("Error during offer request")
-            .map_err(IssuanceProtocolError::Transport)?
-            .error_for_status()
-            .context("status error during offer request")
-            .map_err(IssuanceProtocolError::Transport)?
-            .json()
-            .map_err(|error| {
-                IssuanceProtocolError::Failed(format!("Failed decoding credential offer: {error}"))
-            })?)
+        Ok(async {
+            client
+                .get(credential_offer_url.as_str())
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching offer")?)
     } else {
         Err(IssuanceProtocolError::Failed(
             "Missing credential offer param".to_string(),
@@ -2031,7 +1975,7 @@ async fn get_issuer_and_authorization_metadata(
     let issuer_metadata: OpenID4VCIIssuerMetadataResponseDTO = fetcher
         .fetch(&issuer_metadata_endpoint)
         .await
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("fetching issuer metadata")?;
 
     let authorization_server = if let Some(authorization_server) = authorization_server {
         if issuer_metadata
@@ -2073,7 +2017,7 @@ async fn get_issuer_and_authorization_metadata(
     let oauth_metadata_response: OAuthAuthorizationServerMetadata = fetcher
         .fetch(&authorization_server_metadata_endpoint)
         .await
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("fetching authorization server metadata")?;
 
     let token_endpoint = oauth_metadata_response
         .token_endpoint
@@ -2117,7 +2061,7 @@ async fn prepare_credential_schema(
     let stored_schema = storage_access
         .get_schema(&credential_schema.schema_id, organisation.id)
         .await
-        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+        .map_err(IssuanceProtocolError::StorageAccessError)?;
 
     if let Some(stored_schema) = stored_schema {
         prepare_credential_schema_updates(credential_schema, stored_schema, credential)
@@ -2142,7 +2086,7 @@ async fn prepare_credential_schema(
         let stored_schema = storage_access
             .get_schema(&credential_schema.schema_id, organisation.id)
             .await
-            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
+            .map_err(IssuanceProtocolError::StorageAccessError)?
             .ok_or(IssuanceProtocolError::Failed(
                 "Credential schema not found".to_string(),
             ))?;
@@ -2234,11 +2178,11 @@ async fn create_wallet_unit_attestation_pop(
 
     let attestation_auth_fn = key_provider
         .get_attestation_signature_provider(key, None, key_algorithm_provider.clone())
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("getting attestation signature provider")?;
 
     let auth_fn = key_provider
         .get_signature_provider(key, None, key_algorithm_provider)
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        .error_while("getting signature provider")?;
 
     let proof = Jwt::new(
         "oauth-client-attestation-pop+jwt".to_string(),
@@ -2267,9 +2211,9 @@ async fn create_wallet_unit_attestation_pop(
 
     match signed_proof {
         Ok(signed_proof) => Ok(signed_proof),
-        Err(_) => proof
+        Err(_) => Ok(proof
             .tokenize(Some(&*auth_fn))
             .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string())),
+            .error_while("creating proof token")?),
     }
 }

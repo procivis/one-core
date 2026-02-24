@@ -2,6 +2,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::Interaction;
@@ -195,12 +196,9 @@ pub(crate) async fn validate_issuer(
                     offer_identifier.id
                 )));
             };
-            let pk = key_algorithm_provider.parse_jwk(public_key).map_err(|e| {
-                IssuanceProtocolError::Failed(format!(
-                    "Failed to parse received issuer JWK {}, cause: {e}",
-                    offer_identifier.id
-                ))
-            })?;
+            let pk = key_algorithm_provider
+                .parse_jwk(public_key)
+                .error_while("parsing issuer JWK")?;
             if pk.key.public_key_as_raw() != offer_key.public_key {
                 return Err(IssuanceProtocolError::KeyMismatch);
             }

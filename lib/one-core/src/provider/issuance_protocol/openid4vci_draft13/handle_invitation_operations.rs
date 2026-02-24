@@ -12,6 +12,7 @@ use super::mapper::{
 };
 use super::model::OpenID4VCICredentialConfigurationData;
 use crate::config::core_config::{CoreConfig, FormatType};
+use crate::error::ContextWithErrorCode;
 use crate::model::claim::Claim;
 use crate::model::credential_schema::{
     BackgroundProperties, CredentialSchema, LayoutProperties, LayoutType, LogoProperties,
@@ -139,18 +140,16 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     .or(credential_config.doctype.as_ref())
                     .cloned()
                     .ok_or_else(|| {
-                        IssuanceProtocolError::Failed("MDOC metadata missing doctype".to_string())
+                        IssuanceProtocolError::InvalidRequest(
+                            "MDOC metadata missing doctype".to_string(),
+                        )
                     })?;
 
                 let format = self
                     .config
                     .format
                     .get_key_by_type(FormatType::Mdoc)
-                    .map_err(|err| {
-                        IssuanceProtocolError::Failed(format!(
-                            "Failed to create new credential schema: {err}"
-                        ))
-                    })?;
+                    .error_while("finding MDOC formatter")?;
                 let credential_schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
                         name,
@@ -170,20 +169,14 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         imported_source_url: schema_url,
                     },
                     organisation.clone(),
-                )
-                .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                )?;
 
                 if claims_specified {
                     let schema = self
                         .credential_schema_importer
                         .import_credential_schema(credential_schema)
                         .await
-                        .map_err(|error| {
-                            tracing::error!("Failed to import credential schema: {}", error);
-                            IssuanceProtocolError::Failed(
-                                "Could not store credential schema".to_string(),
-                            )
-                        })?;
+                        .error_while("importing credential schema")?;
                     let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
                     Ok(BuildCredentialSchemaResponse { claims, schema })
@@ -192,12 +185,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         .credential_schema_importer
                         .import_credential_schema(credential_schema)
                         .await
-                        .map_err(|error| {
-                            tracing::error!("Failed to import credential schema: {}", error);
-                            IssuanceProtocolError::Failed(
-                                "Could not store credential schema".to_string(),
-                            )
-                        })?;
+                        .error_while("importing credential schema")?;
                     let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                         create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
@@ -217,7 +205,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 if is_procivis_schema {
                     let procivis_schema = fetch_procivis_schema(&schema_url, &*self.http_client)
                         .await
-                        .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                        .error_while("fetching procivis schema")?;
 
                     if procivis_schema.claims.is_empty() {
                         return Err(IssuanceProtocolError::Failed(
@@ -234,18 +222,18 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             organisation.clone(),
                             procivis_schema,
                         )
-                        .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                        .error_while("constructing import schema")?;
 
                     let schema = self
                         .credential_schema_import_parser
                         .parse_import_credential_schema(import_credential_schema_request_dto)
-                        .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                        .error_while("parsing import schema")?;
 
                     let schema = self
                         .credential_schema_importer
                         .import_credential_schema(schema)
                         .await
-                        .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                        .error_while("importing schema")?;
 
                     let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
@@ -257,7 +245,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         "jwt_vc_json" | "jwt_vp_json" => FormatType::Jwt,
                         "ldp_vc" | "ldp_vp" => FormatType::JsonLdClassic,
                         _ => {
-                            return Err(IssuanceProtocolError::Failed(format!(
+                            return Err(IssuanceProtocolError::InvalidRequest(format!(
                                 "Unknown format: {}",
                                 credential_config.format
                             )));
@@ -267,7 +255,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         .config
                         .format
                         .get_key_by_type(format_type)
-                        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+                        .error_while("getting formatter")?;
                     let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                         create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
@@ -276,10 +264,11 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         let mut layout_properties = None;
 
                         if let Some(vct) = &credential_config.vct {
-                            let metadata_cache_item =
-                                self.vct_type_metadata_cache.get(vct).await.map_err(|err| {
-                                    IssuanceProtocolError::Failed(err.to_string())
-                                })?;
+                            let metadata_cache_item = self
+                                .vct_type_metadata_cache
+                                .get(vct)
+                                .await
+                                .error_while("getting VCT")?;
 
                             if let Some(metadata_cache_item) = metadata_cache_item {
                                 schema_name = metadata_cache_item.metadata.name.clone();
@@ -298,7 +287,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             .as_ref()
                             .and_then(|c| c.r#type.first())
                             .ok_or_else(|| {
-                                IssuanceProtocolError::Failed(
+                                IssuanceProtocolError::InvalidRequest(
                                     "Credential definition has no type specified".to_string(),
                                 )
                             })?
@@ -333,12 +322,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         .credential_schema_importer
                         .import_credential_schema(credential_schema)
                         .await
-                        .map_err(|error| {
-                            tracing::error!("Failed to import credential schema: {}", error);
-                            IssuanceProtocolError::Failed(
-                                "Could not store credential schema".to_string(),
-                            )
-                        })?;
+                        .error_while("importing schema")?;
 
                     Ok(BuildCredentialSchemaResponse { claims, schema })
                 }

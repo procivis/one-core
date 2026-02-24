@@ -18,9 +18,7 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::proto::csr_creator::CsrCreationError;
 use crate::proto::nfc::NfcError;
-use crate::provider::issuance_protocol::error::{
-    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
-};
+use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -43,9 +41,6 @@ pub enum ServiceError {
 
     #[error("OpenID4VCI issuance error `{0}`")]
     OpenIDIssuanceError(#[from] OpenIDIssuanceError),
-
-    #[error("Issuance protocol error `{0}`")]
-    IssuanceProtocolError(#[from] IssuanceProtocolError),
 
     #[error("Verification protocol error `{0}`")]
     VerificationProtocolError(#[from] VerificationProtocolError),
@@ -659,7 +654,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::BusinessLogic(error) => error.error_code(),
             Self::Validation(error) => error.error_code(),
             Self::MissingProvider(error) => error.error_code(),
-            Self::IssuanceProtocolError(error) => error.error_code(),
             Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::MappingError(_) => ErrorCode::BR_0047,
