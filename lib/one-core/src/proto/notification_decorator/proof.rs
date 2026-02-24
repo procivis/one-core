@@ -10,8 +10,7 @@ use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionRelations;
 use crate::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofRelations, ProofRole, ProofStateEnum,
-    UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofRelations, ProofStateEnum, UpdateProofRequest,
 };
 use crate::model::proof_schema::ProofSchemaRelations;
 use crate::proto::notification_scheduler::{NotificationPayload, NotificationScheduler};
@@ -44,7 +43,6 @@ impl ProofNotificationDecorator {
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
-                    verifier_identifier: Some(Default::default()),
                     ..Default::default()
                 },
                 None,
@@ -82,7 +80,7 @@ impl ProofNotificationDecorator {
                 NotificationPayload::Proof(*proof_id, status),
                 task_id,
                 organisation_id,
-                target_from_proof(&proof),
+                Some(proof_id.to_string()),
             )
             .await
             .error_while("scheduling notification")?;
@@ -161,16 +159,6 @@ impl ProofRepository for ProofNotificationDecorator {
         claims: Vec<Claim>,
     ) -> Result<(), DataLayerError> {
         self.inner.set_proof_claims(proof_id, claims).await
-    }
-}
-
-fn target_from_proof(proof: &Proof) -> Option<String> {
-    match proof.role {
-        ProofRole::Holder => proof
-            .verifier_identifier
-            .as_ref()
-            .map(|identifier| identifier.id.to_string()),
-        _ => None,
     }
 }
 

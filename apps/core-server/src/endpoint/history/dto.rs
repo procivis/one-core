@@ -6,7 +6,7 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared_types::{
-    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
+    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
     ProofSchemaId,
 };
 use time::OffsetDateTime;
@@ -261,6 +261,9 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// Return only events associated with the provided credential UUID.
     #[param(nullable = false)]
     pub credential_id: Option<CredentialId>,
+    /// Return only events associated with the provided proof UUID.
+    #[param(nullable = false)]
+    pub proof_id: Option<ProofId>,
     /// Return only events associated with the provided credential schema UUID.
     #[param(nullable = false)]
     pub credential_schema_id: Option<CredentialSchemaId>,

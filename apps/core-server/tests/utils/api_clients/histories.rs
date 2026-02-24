@@ -1,6 +1,6 @@
 use core_server::endpoint::history::dto::{HistoryAction, HistoryEntityType, HistorySource};
 use serde_json::json;
-use shared_types::{CredentialSchemaId, EntityId, HistoryId, OrganisationId};
+use shared_types::{CredentialSchemaId, EntityId, HistoryId, OrganisationId, ProofId};
 
 use super::{HttpClient, Response};
 
@@ -14,6 +14,7 @@ pub struct QueryParams {
     pub organisation_ids: Option<Vec<OrganisationId>>,
     pub entity_types: Option<Vec<String>>,
     pub entity_ids: Option<Vec<EntityId>>,
+    pub proof_id: Option<ProofId>,
     pub actions: Option<Vec<String>>,
     pub sources: Option<Vec<HistorySource>>,
     pub users: Option<Vec<String>>,
@@ -82,6 +83,9 @@ impl HistoriesApi {
             && show_system_history
         {
             url.push_str("&showSystemHistory=true");
+        }
+        if let Some(proof_id) = filter.proof_id {
+            url.push_str(&format!("&proofId={proof_id}"));
         }
 
         self.client.get(&url).await

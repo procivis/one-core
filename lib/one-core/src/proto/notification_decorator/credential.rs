@@ -6,8 +6,8 @@ use shared_types::{ClaimId, CredentialId, InteractionId};
 use crate::config::core_config::CoreConfig;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, GetCredentialList,
-    GetCredentialQuery, UpdateCredentialRequest,
+    Credential, CredentialRelations, CredentialStateEnum, GetCredentialList, GetCredentialQuery,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::proto::notification_scheduler::{NotificationPayload, NotificationScheduler};
@@ -32,8 +32,6 @@ impl CredentialNotificationDecorator {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    issuer_identifier: Some(Default::default()),
-                    holder_identifier: Some(Default::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(Default::default()),
                         ..Default::default()
@@ -82,7 +80,7 @@ impl CredentialNotificationDecorator {
                 NotificationPayload::Credential(credential_id, status),
                 task_id,
                 organisation_id,
-                target_from_credential(&stored),
+                Some(credential_id.to_string()),
             )
             .await
             .error_while("scheduling notification")?;
@@ -176,19 +174,5 @@ impl CredentialRepository for CredentialNotificationDecorator {
         self.inner
             .get_credential_by_claim_id(claim_id, relations)
             .await
-    }
-}
-
-fn target_from_credential(credential: &Credential) -> Option<String> {
-    match credential.role {
-        CredentialRole::Holder => credential
-            .issuer_identifier
-            .as_ref()
-            .map(|identifier| identifier.id.to_string()),
-        CredentialRole::Issuer => credential
-            .holder_identifier
-            .as_ref()
-            .map(|identifier| identifier.id.to_string()),
-        CredentialRole::Verifier => None,
     }
 }

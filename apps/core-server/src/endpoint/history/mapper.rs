@@ -32,6 +32,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         });
         let identifier_id = value.identifier_id.map(HistoryFilterValue::IdentifierId);
         let credential_id = value.credential_id.map(HistoryFilterValue::CredentialId);
+        let proof_id = value.proof_id.map(HistoryFilterValue::ProofId);
         let credential_schema_id = value
             .credential_schema_id
             .map(HistoryFilterValue::CredentialSchemaId);
@@ -56,6 +57,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             & created_date_before
             & identifier_id
             & credential_id
+            & proof_id
             & credential_schema_id
             & proof_schema_id
             & users

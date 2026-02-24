@@ -81,6 +81,9 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .cond_where(claim::Column::CredentialId.eq(credential_id))
                         .to_owned(),
                 ))
+                .or(history::Column::Target
+                    .eq(credential_id)
+                    .and(history::Column::EntityType.eq(history::HistoryEntityType::Notification)))
                 .into_condition(),
             Self::CredentialSchemaId(credential_schema_id) => credential_schema_filter_condition(
                 history::Column::EntityId.eq(credential_schema_id.to_string()),
@@ -107,6 +110,13 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .cond_where(proof_schema::Column::Id.eq(proof_schema_id.to_string()))
                         .to_owned(),
                 ))
+                .into_condition(),
+            Self::ProofId(proof_id) => history::Column::EntityId
+                .eq(proof_id)
+                .and(history::Column::EntityType.eq(history::HistoryEntityType::Proof))
+                .or(history::Column::Target
+                    .eq(proof_id)
+                    .and(history::Column::EntityType.eq(history::HistoryEntityType::Notification)))
                 .into_condition(),
             Self::Users(users) => history::Column::User.is_in(users).into_condition(),
             Self::Sources(sources) => history::Column::Source

@@ -436,3 +436,59 @@ async fn test_get_history_show_system_history() {
     let values = resp["values"].as_array().unwrap();
     assert_eq!(2, values.len());
 }
+
+#[tokio::test]
+async fn test_get_history_list_by_proof_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let proof_id = Uuid::new_v4();
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Accepted),
+                entity_id: Some(proof_id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Delivered),
+                entity_id: Some(Uuid::new_v4().into()),
+                entity_type: Some(HistoryEntityType::Notification),
+                target: Some(proof_id.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .histories
+        .list(
+            0,
+            10,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                proof_id: Some(proof_id.into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(2, values.len());
+}
