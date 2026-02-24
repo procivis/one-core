@@ -815,6 +815,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Notifications not allowed")]
     BR_0372,
+
+    #[strum(message = "Notification not found")]
+    BR_0377,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

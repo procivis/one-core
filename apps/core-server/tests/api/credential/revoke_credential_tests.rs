@@ -4,7 +4,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use serde_json::Value;
+use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -145,7 +145,7 @@ async fn test_revoke_credential_with_webhook() {
         )
         .await;
 
-    let webhook_url = "https://webhook.url";
+    let webhook_url = format!("{}/webhook", context.server_mock.uri());
     let credential = context
         .db
         .credentials
@@ -162,21 +162,20 @@ async fn test_revoke_credential_with_webhook() {
         .await;
     context.db.revocation_lists.create(identifier, None).await;
 
+    context
+        .server_mock
+        .webhook(json!({
+            "credentialId": credential.id,
+            "status": "REVOKED"
+        }))
+        .await;
+
     // WHEN
     let resp = context.api.credentials.revoke(&credential.id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);
-
-    let notifications = context.db.notifications.list("WEBHOOK_NOTIFY").await;
-    assert_eq!(notifications.len(), 1);
-    let notification = &notifications[0];
-    assert_eq!(notification.url, webhook_url);
-    assert_eq!(notification.organisation_id, organisation.id);
-
-    let payload: Value = serde_json::from_slice(&notification.payload).unwrap();
-    assert_eq!(payload["credentialId"], credential.id.to_string());
-    assert_eq!(payload["status"], "REVOKED");
+    context.server_mock.wait_for_background_request().await;
 }
 
 #[tokio::test]

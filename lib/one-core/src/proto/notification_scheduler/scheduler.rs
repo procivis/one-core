@@ -46,6 +46,10 @@ impl NotificationScheduler for NotificationSchedulerImpl {
             .await
             .error_while("creating notification")?;
 
+        // Immediately send the notification to avoid delays due to task scheduling.
+        let sender = self.notification_sender.clone();
+        tokio::spawn(async move { sender.send_notification(id, params).await });
+
         Ok(id)
     }
 

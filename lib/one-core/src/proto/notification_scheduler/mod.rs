@@ -6,6 +6,7 @@ use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::proof::ProofStateEnum;
+use crate::proto::notification_sender::NotificationSender;
 use crate::repository::notification_repository::NotificationRepository;
 
 pub mod scheduler;
@@ -64,16 +65,19 @@ pub(crate) trait NotificationScheduler: Send + Sync {
 #[derive(Clone)]
 pub(crate) struct NotificationSchedulerImpl {
     notification_repository: Arc<dyn NotificationRepository>,
+    notification_sender: Arc<dyn NotificationSender>,
     config: Arc<CoreConfig>,
 }
 
 impl NotificationSchedulerImpl {
     pub(crate) fn new(
         notification_repository: Arc<dyn NotificationRepository>,
+        notification_sender: Arc<dyn NotificationSender>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             notification_repository,
+            notification_sender,
             config,
         }
     }

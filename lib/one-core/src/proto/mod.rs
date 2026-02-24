@@ -15,6 +15,7 @@ pub mod mqtt_client;
 pub mod nfc;
 pub(crate) mod notification_decorator;
 pub(crate) mod notification_scheduler;
+pub(crate) mod notification_sender;
 pub(crate) mod oauth_client;
 pub(crate) mod openid4vp_proof_validator;
 pub(crate) mod os_provider;

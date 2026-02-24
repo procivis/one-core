@@ -23,6 +23,7 @@ use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::scanner::NfcScanner;
 use crate::proto::notification_decorator::decorator::decorate_data_provider as decorate_notification;
 use crate::proto::notification_scheduler::NotificationSchedulerImpl;
+use crate::proto::notification_sender::NotificationSenderImpl;
 use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorProto;
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::SessionProvider;
@@ -181,8 +182,16 @@ impl OneCore {
             core_base_url.clone(),
         );
 
+        let notification_sender = Arc::new(NotificationSenderImpl::new(
+            data_provider.get_history_repository(),
+            data_provider.get_notification_repository(),
+            data_provider.get_tx_manager(),
+            client.clone(),
+            session_provider.clone(),
+        ));
         let notification_scheduler = Arc::new(NotificationSchedulerImpl::new(
             data_provider.get_notification_repository(),
+            notification_sender.clone(),
             Arc::new(config.clone()),
         ));
 
@@ -428,8 +437,7 @@ impl OneCore {
             certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
-            client.clone(),
-            data_provider.get_tx_manager(),
+            notification_sender.clone(),
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

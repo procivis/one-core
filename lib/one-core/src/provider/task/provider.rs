@@ -15,9 +15,8 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, TaskType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_validity_manager::CredentialValidityManager;
-use crate::proto::http_client::HttpClient;
+use crate::proto::notification_sender::NotificationSender;
 use crate::proto::session_provider::SessionProvider;
-use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
@@ -58,8 +57,7 @@ pub(crate) fn task_provider_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
-    client: Arc<dyn HttpClient>,
-    tx_manager: Arc<dyn TransactionManager>,
+    notification_sender: Arc<dyn NotificationSender>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
     let mut tasks: HashMap<TaskId, Arc<dyn Task>> = HashMap::new();
 
@@ -109,12 +107,9 @@ pub(crate) fn task_provider_from_config(
 
                 Arc::new(WebhookNotify::new(
                     name.to_owned(),
-                    history_repository.clone(),
-                    notification_repository.clone(),
-                    tx_manager.clone(),
-                    client.clone(),
-                    session_provider.clone(),
                     params,
+                    notification_repository.clone(),
+                    notification_sender.clone(),
                 ))
             }
         };

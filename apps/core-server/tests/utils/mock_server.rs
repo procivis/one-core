@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::time::Duration;
 
 use reqwest::header::AUTHORIZATION;
 use serde::Serialize;
@@ -20,6 +21,15 @@ impl MockServer {
 
     pub fn uri(&self) -> String {
         self.mock.uri()
+    }
+
+    pub async fn wait_for_background_request(&self) {
+        for _ in 0..10 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            if !self.received_requests().await.unwrap().is_empty() {
+                break;
+            }
+        }
     }
 
     pub async fn received_requests(&self) -> Option<Vec<wiremock::Request>> {
@@ -239,6 +249,16 @@ impl MockServer {
         Mock::given(method(Method::GET))
             .and(path(format!("/crl/{crl_id}")))
             .respond_with(ResponseTemplate::new(200).set_body_raw(content, "application/pkix-crl"))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn webhook(&self, expected_content: serde_json::Value) {
+        Mock::given(method(Method::POST))
+            .and(path("/webhook"))
+            .and(body_partial_json(expected_content))
+            .respond_with(ResponseTemplate::new(204))
             .expect(1)
             .mount(&self.mock)
             .await;
