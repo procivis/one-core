@@ -77,10 +77,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
-            PHYSICAL_CARD:
-                type: 'PHYSICAL_CARD'
-                display: 'format.physicalCard'
-                order: 5
             MDOC:
               type: 'MDOC'
               display: 'format.mdoc'
@@ -556,7 +552,6 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
     FormatterCapabilities {
         signing_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         features: vec![Features::SupportsTxCode],
-        allowed_schema_ids: vec![],
         ecosystem_schema_ids: vec![],
         selective_disclosure: vec![],
         issuance_did_methods: vec![

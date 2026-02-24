@@ -205,7 +205,6 @@ impl CredentialFormatter for JsonLdClassic {
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
             revocation_methods: vec![RevocationType::None, RevocationType::BitstringStatusList],
-            allowed_schema_ids: vec![],
             ecosystem_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),

@@ -355,7 +355,6 @@ impl CredentialFormatter for MdocFormatter {
                 Features::SupportsCombinedPresentation,
                 Features::SupportsTxCode,
             ],
-            allowed_schema_ids: vec![],
             ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             issuance_did_methods: vec![],

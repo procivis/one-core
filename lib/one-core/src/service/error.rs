@@ -501,9 +501,6 @@ pub enum ValidationError {
     #[error("Nested claims in arrays cannot be requested")]
     NestedClaimInArrayRequested,
 
-    #[error("Invalid SCAN_TO_VERIFY parameters")]
-    InvalidScanToVerifyParameters,
-
     #[error("Schema id not allowed for format")]
     SchemaIdNotAllowedForFormat,
 
@@ -812,7 +809,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
             Self::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
             Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
-            Self::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
             Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
             Self::ForbiddenClaimName => ErrorCode::BR_0145,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,

@@ -64,17 +64,14 @@ pub(crate) fn determine_response_mode_openid4vp_draft(
     Ok(response_mode)
 }
 
-pub(crate) fn map_to_openid4vp_format(
-    format_type: &FormatType,
-) -> Result<&'static str, OpenID4VCIError> {
+pub(crate) fn map_to_openid4vp_format(format_type: &FormatType) -> &'static str {
     match format_type {
-        FormatType::Jwt => Ok("jwt_vc_json"),
-        FormatType::SdJwt => Ok("vc+sd-jwt"),
-        FormatType::SdJwtVc => Ok("vc+sd-jwt"),
-        FormatType::JsonLdClassic => Ok("ldp_vc"),
-        FormatType::JsonLdBbsPlus => Ok("ldp_vc"),
-        FormatType::Mdoc => Ok("mso_mdoc"),
-        FormatType::PhysicalCard => Err(OpenID4VCIError::UnsupportedCredentialFormat),
+        FormatType::Jwt => "jwt_vc_json",
+        FormatType::SdJwt => "vc+sd-jwt",
+        FormatType::SdJwtVc => "vc+sd-jwt",
+        FormatType::JsonLdClassic => "ldp_vc",
+        FormatType::JsonLdBbsPlus => "ldp_vc",
+        FormatType::Mdoc => "mso_mdoc",
     }
 }
 

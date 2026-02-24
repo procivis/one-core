@@ -74,8 +74,7 @@ use crate::service::error::{
 };
 use crate::service::proof::dto::ProposeProofRequestDTO;
 use crate::service::proof::validator::{
-    validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
-    validate_webhook_url,
+    validate_format_and_exchange_protocol_compatibility, validate_webhook_url,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -363,8 +362,6 @@ impl ProofService {
             &*self.credential_formatter_provider,
         )?;
 
-        validate_scan_to_verify_compatibility(&request, &self.config)?;
-
         for credential_schema in proof_schema
             .input_schemas
             .as_ref()
@@ -387,18 +384,7 @@ impl ProofService {
             .error_while("getting protocol")?
             .r#type;
 
-        if exchange_type == VerificationProtocolType::ScanToVerify {
-            return self
-                .handle_scan_to_verify(
-                    proof_schema,
-                    request.protocol,
-                    request.profile,
-                    request
-                        .scan_to_verify
-                        .ok_or(ValidationError::InvalidScanToVerifyParameters)?,
-                )
-                .await;
-        } else if exchange_type == VerificationProtocolType::IsoMdl {
+        if exchange_type == VerificationProtocolType::IsoMdl {
             let iso_mdl_engagement = request
                 .iso_mdl_engagement
                 .ok_or(ValidationError::InvalidMdlParameters)?;

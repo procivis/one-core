@@ -63,7 +63,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::dto::Features;
-use crate::provider::issuance_protocol::error::{OpenIDIssuanceError, TxCodeError};
+use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::mapper::{
     autogenerate_holder_binding, generate_transaction_code, get_issued_credential_update,
     interaction_from_handle_invitation,
@@ -676,9 +676,7 @@ impl OpenID4VCI13 {
             .error_while("getting format config")?
             .r#type;
 
-        let oid4vc_format =
-            map_to_openid4vp_format(&format_type).map_err(OpenIDIssuanceError::OpenID4VCI)?;
-
+        let oid4vc_format = map_to_openid4vp_format(&format_type);
         let jwk = interaction_data
             .cryptographic_binding_methods_supported
             .as_ref()

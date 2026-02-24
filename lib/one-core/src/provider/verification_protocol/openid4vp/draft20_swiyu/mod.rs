@@ -15,7 +15,6 @@ use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
@@ -156,14 +155,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             verifier_identifier_types: vec![IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
-    }
-
-    async fn verifier_handle_proof(
-        &self,
-        _proof: &Proof,
-        _submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
-        todo!()
     }
 
     async fn holder_handle_invitation(

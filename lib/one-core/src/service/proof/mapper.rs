@@ -21,7 +21,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::History;
 use crate::model::identifier::Identifier;
-use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -719,47 +719,6 @@ pub(super) fn proof_from_create_request(
         proof_blob_id: None,
         engagement: request.engagement,
         webhook_url: request.webhook_destination_url,
-    }
-}
-
-pub fn proof_for_scan_to_verify(
-    exchange: &str,
-    schema: ProofSchema,
-    transport: &str,
-    interaction_data: Vec<u8>,
-    profile: Option<String>,
-) -> Proof {
-    let now = OffsetDateTime::now_utc();
-    Proof {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-        protocol: exchange.to_owned(),
-        redirect_uri: None,
-        state: ProofStateEnum::Created,
-        role: ProofRole::Verifier,
-        requested_date: None,
-        completed_date: None,
-        profile,
-        schema: Some(schema.clone()),
-        transport: transport.to_owned(),
-        claims: None,
-        verifier_identifier: None,
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: Some(Interaction {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            data: Some(interaction_data),
-            organisation: schema.organisation,
-            nonce_id: None,
-            interaction_type: InteractionType::Verification,
-            expires_at: None,
-        }),
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
     }
 }
 

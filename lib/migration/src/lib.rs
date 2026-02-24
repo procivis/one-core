@@ -6,6 +6,8 @@ pub(crate) mod models_20240209;
 pub(crate) mod models_20241210;
 pub mod runner;
 
+mod batch_utils;
+mod deletion;
 mod m20240110_000001_initial;
 mod m20240115_093859_unique_did_name_and_key_name_in_org;
 mod m20240116_110014_unique_did_in_organisation;
@@ -210,6 +212,7 @@ mod m20260206_032338_waa_to_wia;
 mod m20260216_100121_notification;
 mod m20260218_021412_webhook_url;
 mod m20260219_051400_remove_lvvc;
+mod m20260224_080135_scan_to_verify;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -422,6 +425,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260216_100121_notification::Migration),
             Box::new(m20260218_021412_webhook_url::Migration),
             Box::new(m20260219_051400_remove_lvvc::Migration),
+            Box::new(m20260224_080135_scan_to_verify::Migration),
         ]
     }
 }

@@ -384,7 +384,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
         FormatterCapabilities {
             signing_key_algorithms: signing_algorithms.clone(),
-            allowed_schema_ids: vec![],
             ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
             datatypes,
             features,

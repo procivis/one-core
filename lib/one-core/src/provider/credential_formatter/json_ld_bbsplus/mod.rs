@@ -305,7 +305,6 @@ impl CredentialFormatter for JsonLdBbsplus {
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],
-            allowed_schema_ids: vec![],
             ecosystem_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),

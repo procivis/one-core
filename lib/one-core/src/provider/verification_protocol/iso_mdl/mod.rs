@@ -35,7 +35,6 @@ use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{
@@ -440,14 +439,6 @@ impl VerificationProtocol for IsoMdl {
         _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
-    }
-
-    async fn verifier_handle_proof(
-        &self,
-        _proof: &Proof,
-        _submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
-        todo!()
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {

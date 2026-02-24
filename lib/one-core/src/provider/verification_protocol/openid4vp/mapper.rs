@@ -195,9 +195,7 @@ pub fn create_format_map(
 ) -> Result<HashMap<String, PresentationFormat>, VerificationProtocolError> {
     match format_type {
         FormatType::Jwt | FormatType::Mdoc => {
-            let key = map_to_openid4vp_format(format_type)
-                .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?
-                .to_string();
+            let key = map_to_openid4vp_format(format_type).to_string();
             Ok(HashMap::from([(
                 key,
                 PresentationFormat::GenericAlgList(GenericAlgs {
@@ -206,9 +204,7 @@ pub fn create_format_map(
             )]))
         }
         FormatType::SdJwt | FormatType::SdJwtVc => {
-            let key = map_to_openid4vp_format(format_type)
-                .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?
-                .to_string();
+            let key = map_to_openid4vp_format(format_type).to_string();
             Ok(HashMap::from([(
                 key,
                 PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
@@ -216,9 +212,6 @@ pub fn create_format_map(
                     kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                 }),
             )]))
-        }
-        FormatType::PhysicalCard => {
-            unimplemented!()
         }
         FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok(HashMap::from([(
             "ldp_vc".to_string(),
@@ -378,7 +371,7 @@ fn format_path(
 
 pub(crate) fn cred_to_presentation_format_type(credential_format_type: FormatType) -> FormatType {
     match credential_format_type {
-        FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+        FormatType::Jwt => FormatType::Jwt,
         FormatType::SdJwt => FormatType::SdJwt,
         FormatType::SdJwtVc => FormatType::SdJwtVc,
         FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,

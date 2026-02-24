@@ -636,7 +636,6 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
-                revocation_method_provider.clone(),
                 verification_provider.clone(),
                 did_method_provider.clone(),
                 ble_waiter,

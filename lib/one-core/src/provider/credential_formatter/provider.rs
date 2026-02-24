@@ -12,7 +12,6 @@ use super::json_ld_bbsplus::JsonLdBbsplus;
 use super::json_ld_classic::JsonLdClassic;
 use super::jwt_formatter::JWTFormatter;
 use super::mdoc_formatter::MdocFormatter;
-use super::physical_card::PhysicalCardFormatter;
 use super::sdjwt_formatter::SDJWTFormatter;
 use super::sdjwtvc_formatter::SDJWTVCFormatter;
 use crate::config::ConfigValidationError;
@@ -96,11 +95,6 @@ pub(crate) fn credential_formatter_provider_from_config(
                     data_type_provider.clone(),
                 ))
             }
-            FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new(
-                crypto.clone(),
-                json_ld_cache.clone(),
-                client.clone(),
-            )),
             FormatType::SdJwt => {
                 let params = config.format.get(name)?;
                 Arc::new(SDJWTFormatter::new(

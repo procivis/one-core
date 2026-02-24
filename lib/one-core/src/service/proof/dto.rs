@@ -27,26 +27,11 @@ pub struct CreateProofRequestDTO {
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
     pub verifier_certificate: Option<CertificateId>,
-    pub scan_to_verify: Option<ScanToVerifyRequestDTO>,
     pub iso_mdl_engagement: Option<String>,
     pub transport: Option<Vec<String>>,
     pub profile: Option<String>,
     pub engagement: Option<String>,
     pub webhook_destination_url: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScanToVerifyRequestDTO {
-    pub credential: String,
-    pub barcode: String,
-    pub barcode_type: ScanToVerifyBarcodeTypeEnum,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ScanToVerifyBarcodeTypeEnum {
-    MRZ,
-    PDF417,
 }
 
 #[derive(Clone, Debug)]

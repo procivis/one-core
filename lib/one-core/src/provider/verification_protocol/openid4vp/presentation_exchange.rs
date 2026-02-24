@@ -128,9 +128,8 @@ pub(crate) async fn pex_submission_data(
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
         vp_tokens.push(vp_token);
-        let credential_openid4vp_format = map_to_openid4vp_format(&credential_format_type)
-            .map_err(|error| VerificationProtocolError::Failed(error.to_string()))?
-            .to_string();
+        let credential_openid4vp_format =
+            map_to_openid4vp_format(&credential_format_type).to_string();
         let idx = if vp_token_is_array { Some(idx) } else { None };
         descriptor_map.append(&mut submission_descriptors(
             reference,

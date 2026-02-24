@@ -12,8 +12,8 @@ use one_core::provider::verification_protocol::dto::{
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
-    ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
-    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
+    ProofInputDTO, ProofListItemResponseDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
+    ShareProofResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -108,9 +108,6 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// for this proof request. If a certificate isn't specified here,
     /// an active certificate will be used.
     pub verifier_certificate: Option<CertificateId>,
-    /// Only for use when verifying VC Barcodes.
-    #[into(with_fn = convert_inner)]
-    pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
     /// Not for use via the API; for ISO mDL verification over BLE using the
     /// SDK.
     #[into(with_fn = convert_inner)]
@@ -130,24 +127,6 @@ pub(crate) struct CreateProofRequestRestDTO {
     pub engagement: Option<String>,
     /// If set, notifications about state changes of the proof will be posted on this webhook URL
     pub webhook_destination_url: Option<String>,
-}
-
-/// Only for use when verifying VC Barcodes.
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(ScanToVerifyRequestDTO)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct ScanToVerifyRequestRestDTO {
-    pub credential: String,
-    pub barcode: String,
-    pub barcode_type: ScanToVerifyBarcodeTypeRestEnum,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
-#[into(ScanToVerifyBarcodeTypeEnum)]
-pub(crate) enum ScanToVerifyBarcodeTypeRestEnum {
-    #[expect(clippy::upper_case_acronyms)]
-    MRZ,
-    PDF417,
 }
 
 // list endpoint

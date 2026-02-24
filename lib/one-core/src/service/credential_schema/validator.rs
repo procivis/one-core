@@ -483,26 +483,14 @@ fn validate_schema_id(
     request: &CreateCredentialSchemaRequestDTO,
     formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
-    let FormatterCapabilities {
-        features,
-        allowed_schema_ids,
-        ..
-    } = formatter.get_capabilities();
+    let FormatterCapabilities { features, .. } = formatter.get_capabilities();
 
-    let schema_id_required = !allowed_schema_ids.is_empty();
-
-    if features.contains(&Features::SupportsSchemaId) || schema_id_required {
-        if let Some(schema_id) = request.schema_id.as_ref() {
-            if schema_id.is_empty() {
-                return Err(BusinessLogicError::SchemaIdNotAllowed.into());
-            }
-
-            if !allowed_schema_ids.is_empty() && !allowed_schema_ids.contains(schema_id) {
-                return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
-            }
-        } else if schema_id_required {
-            return Err(BusinessLogicError::MissingSchemaId.into());
-        };
+    if features.contains(&Features::SupportsSchemaId) {
+        if let Some(schema_id) = request.schema_id.as_ref()
+            && schema_id.is_empty()
+        {
+            return Err(BusinessLogicError::SchemaIdNotAllowed.into());
+        }
     } else if request.schema_id.is_some() {
         return Err(BusinessLogicError::SchemaIdNotAllowed.into());
     }

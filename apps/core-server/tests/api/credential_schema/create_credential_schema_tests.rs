@@ -280,34 +280,6 @@ async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
 }
 
 #[tokio::test]
-async fn test_fail_to_create_credential_schema_with_layout_properties_when_its_unsupported() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    // WHEN
-    let resp = context
-        .api
-        .credential_schemas
-        .create(CreateSchemaParams {
-            name: "some credential schema".into(),
-            organisation_id: organisation.id.into(),
-            format: "PHYSICAL_CARD".into(),
-            claims: vec![TestClaim {
-                datatype: "STRING".into(),
-                key: "firstName".into(),
-                required: true,
-                ..Default::default()
-            }],
-            ..Default::default()
-        })
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0131", resp.error_code().await);
-}
-
-#[tokio::test]
 async fn test_create_credential_schema_revocation_no_suspension_succeeds() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

@@ -386,7 +386,6 @@ pub struct FormatterCapabilities {
     pub verification_key_algorithms: Vec<KeyAlgorithmType>,
     pub verification_key_storages: Vec<KeyStorageType>,
     pub datatypes: Vec<String>,
-    pub allowed_schema_ids: Vec<String>,
     pub forbidden_claim_names: Vec<String>,
     pub issuance_identifier_types: Vec<IdentifierType>,
     pub verification_identifier_types: Vec<IdentifierType>,

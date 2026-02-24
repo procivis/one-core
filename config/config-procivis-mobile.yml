@@ -36,11 +36,6 @@ verificationProtocol:
     order: 5
     type: "OPENID4VP_PROXIMITY_DRAFT00"
     params: {}
-  SCAN_TO_VERIFY:
-    type: "SCAN_TO_VERIFY"
-    enabled: false
-    display: "exchange.scanToVerify"
-    order: 6
   ISO_MDL:
     type: "ISO_MDL"
     display: "exchange.isoMdl"

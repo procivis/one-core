@@ -86,12 +86,8 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
                         .push(serde_json::from_str(credential.credential_token.as_str())?);
                 }
                 _ => {
-                    let openid_format_identifier =
-                        map_to_openid4vp_format(&credential.credential_format)
-                            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
                     let enveloped_credential = CredentialEnvelope::new(
-                        openid_format_identifier,
+                        map_to_openid4vp_format(&credential.credential_format),
                         credential.credential_token.as_str(),
                     )
                     .to_map()?;

@@ -15,7 +15,6 @@ use url::Url;
 use crate::config::core_config::FormatType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
@@ -28,8 +27,6 @@ pub(crate) mod model;
 pub mod openid4vp;
 
 pub(crate) mod provider;
-pub mod scan_to_verify;
-
 #[cfg(test)]
 mod test;
 
@@ -117,13 +114,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError>;
-
-    /// Checks if the submitted presentation complies with the given proof request.
-    async fn verifier_handle_proof(
-        &self,
-        proof: &Proof,
-        submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError>;
 
     // General methods:
     /// Called when proof needs to be retracted. Use this function for closing opened transmissions, buffers, etc.

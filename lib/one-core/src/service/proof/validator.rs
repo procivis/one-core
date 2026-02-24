@@ -3,7 +3,6 @@ use std::str::FromStr;
 
 use url::Url;
 
-use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
@@ -151,35 +150,6 @@ pub(super) fn validate_did_and_format_compatibility(
         }
         Ok(())
     })
-}
-
-pub(super) fn validate_scan_to_verify_compatibility(
-    request: &CreateProofRequestDTO,
-    config: &CoreConfig,
-) -> Result<(), ServiceError> {
-    let exchange_type = config
-        .verification_protocol
-        .get_fields(&request.protocol)
-        .error_while("getting protocol config")?
-        .r#type;
-    match exchange_type {
-        VerificationProtocolType::ScanToVerify => {
-            if request.redirect_uri.is_some() || request.scan_to_verify.is_none() {
-                return Err(ServiceError::Validation(
-                    ValidationError::InvalidScanToVerifyParameters,
-                ));
-            }
-        }
-        _ => {
-            if request.scan_to_verify.is_some() {
-                return Err(ServiceError::Validation(
-                    ValidationError::InvalidScanToVerifyParameters,
-                ));
-            }
-        }
-    };
-
-    Ok(())
 }
 
 pub(super) fn validate_mdl_exchange(

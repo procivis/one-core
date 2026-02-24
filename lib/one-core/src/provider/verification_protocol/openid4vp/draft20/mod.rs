@@ -22,7 +22,6 @@ use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -186,14 +185,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             verifier_identifier_types: verifier_identifier_types.into_iter().collect(),
             supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
-    }
-
-    async fn verifier_handle_proof(
-        &self,
-        _proof: &Proof,
-        _submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
-        todo!()
     }
 
     async fn holder_handle_invitation(

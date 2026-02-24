@@ -16,7 +16,6 @@ use super::openid4vp::final1_0::OpenID4VPFinal1_0;
 use super::openid4vp::proximity_draft00::{
     OpenID4VPProximityDraft00, OpenID4VPProximityDraft00Params,
 };
-use super::scan_to_verify::ScanToVerify;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     CoreConfig, VerificationProtocolConfig, VerificationProtocolType,
@@ -101,12 +100,6 @@ pub(crate) fn verification_protocol_provider_from_config(
 
     for (name, fields) in config.verification_protocol.iter_mut() {
         let protocol: Arc<dyn VerificationProtocol> = match fields.r#type {
-            VerificationProtocolType::ScanToVerify => Arc::new(ScanToVerify::new(
-                credential_formatter_provider.clone(),
-                key_algorithm_provider.clone(),
-                did_method_provider.clone(),
-                certificate_validator.clone(),
-            )),
             VerificationProtocolType::OpenId4VpFinal1_0 => {
                 use super::openid4vp::final1_0::model::Params;
                 let params = fields.deserialize::<Params>().map_err(|source| {

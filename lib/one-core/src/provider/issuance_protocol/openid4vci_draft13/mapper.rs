@@ -1045,9 +1045,7 @@ pub(super) fn credentials_supported_mdoc(
 
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         wallet_storage_type: convert_inner(schema.key_storage_security),
-        format: map_to_openid4vp_format(&format_type)
-            .map_err(OpenIDIssuanceError::OpenID4VCI)?
-            .to_string(),
+        format: map_to_openid4vp_format(&format_type).to_string(),
         claims: Some(claim_schema),
         order: if element_order.len() > 1 {
             Some(element_order)

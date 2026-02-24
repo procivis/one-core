@@ -3,7 +3,6 @@ use sea_orm_migration::prelude::*;
 
 use crate::deletion::hard_delete_credential_schemas_and_related;
 use crate::m20240110_000001_initial::CredentialSchema;
-use crate::m20240305_081435_proof_input_schema::ProofInputSchema;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -15,22 +14,10 @@ impl MigrationTrait for Migration {
         if backend == DatabaseBackend::Postgres {
             return Ok(());
         }
-
         hard_delete_credential_schemas_and_related(
             manager,
-            Expr::col(CredentialSchema::RevocationMethod).eq("LVVC"),
+            Expr::col(CredentialSchema::Format).eq("PHYSICAL_CARD"),
         )
-        .await?;
-
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(ProofInputSchema::Table)
-                    .drop_column(ProofInputSchema::ValidityConstraint)
-                    .to_owned(),
-            )
-            .await?;
-
-        Ok(())
+        .await
     }
 }

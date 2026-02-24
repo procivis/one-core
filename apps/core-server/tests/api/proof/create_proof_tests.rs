@@ -1,18 +1,13 @@
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::proof::ProofStateEnum;
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 
-use crate::fixtures::{
-    self, TestingConfigParams, TestingCredentialSchemaParams, TestingDidParams,
-    TestingIdentifierParams, assert_history_count,
-};
+use crate::fixtures::{self, TestingDidParams, TestingIdentifierParams, assert_history_count};
 use crate::utils;
 use crate::utils::api_clients::proofs::CreateProofTestParams;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::DbClient;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
@@ -263,97 +258,6 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-}
-
-#[tokio::test]
-async fn test_create_proof_scan_to_verify_invalid_credential() {
-    // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(
-        &base_url,
-        Some(TestingConfigParams {
-            additional_config: Some(indoc::formatdoc! {"
-            verificationProtocol:
-                SCAN_TO_VERIFY:
-                    type: \"SCAN_TO_VERIFY\"
-                    display: \"exchange.scanToVerify\"
-                    order: 2
-            "}),
-            ..Default::default()
-        }),
-    );
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did(&db_conn, &organisation, None).await;
-
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        &organisation,
-        Some(TestingCredentialSchemaParams {
-            format: Some("PHYSICAL_CARD".into()),
-            schema_id: Some("IdentityCard".to_string()),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let claim_schema = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .first()
-        .unwrap()
-        .to_owned();
-
-    let proof_schema = fixtures::create_proof_schema(
-        &db_conn,
-        "test",
-        &organisation,
-        &[CreateProofInputSchema {
-            claims: vec![CreateProofClaim {
-                id: claim_schema.id,
-                key: &claim_schema.key,
-                required: true,
-                data_type: &claim_schema.data_type,
-                array: false,
-            }],
-            credential_schema: &credential_schema,
-        }],
-    )
-    .await;
-
-    // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-    let url = format!("{base_url}/api/proof-request/v1");
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "proofSchemaId": proof_schema.id,
-          "protocol": "SCAN_TO_VERIFY",
-          "scanToVerify": {
-            "barcode": "invalid",
-            "barcodeType": "MRZ",
-            "credential": "invalid"
-          },
-          "verifierDid": did.id,
-        }))
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    assert_eq!(resp.status(), 201);
-    let resp: Value = resp.json().await.unwrap();
-
-    assert!(resp.get("id").is_some());
-
-    let db = DbClient::new(db_conn);
-
-    let proof = db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "SCAN_TO_VERIFY");
-    assert_eq!(proof.state, ProofStateEnum::Error);
 }
 
 #[tokio::test]

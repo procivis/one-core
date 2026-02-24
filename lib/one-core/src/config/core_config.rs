@@ -251,9 +251,6 @@ pub enum FormatType {
     #[serde(rename = "JWT")]
     #[strum(serialize = "JWT")]
     Jwt,
-    #[serde(rename = "PHYSICAL_CARD")]
-    #[strum(serialize = "PHYSICAL_CARD")]
-    PhysicalCard,
     #[serde(rename = "SD_JWT")]
     #[strum(serialize = "SD_JWT")]
     SdJwt,
@@ -356,9 +353,6 @@ pub enum VerificationProtocolType {
     #[serde(rename = "OPENID4VP_FINAL1")]
     #[strum(serialize = "OPENID4VP_FINAL1")]
     OpenId4VpFinal1_0,
-    #[serde(rename = "SCAN_TO_VERIFY")]
-    #[strum(serialize = "SCAN_TO_VERIFY")]
-    ScanToVerify,
     #[serde(rename = "ISO_MDL")]
     #[strum(serialize = "ISO_MDL")]
     IsoMdl,

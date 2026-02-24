@@ -124,9 +124,6 @@ impl OID4VCIFinal1_0Service {
             FormatType::SdJwtVc => "dc+sd-jwt",
             FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => "ldp_vc",
             FormatType::Mdoc => "mso_mdoc",
-            FormatType::PhysicalCard => {
-                return Err(OpenID4VCIError::UnsupportedCredentialFormat.into());
-            }
         }
         .to_string();
 

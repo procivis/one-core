@@ -111,10 +111,6 @@ async fn test_expected_format_features() {
         ])
     );
     assert_eq!(
-        resp["format"]["PHYSICAL_CARD"]["capabilities"]["features"],
-        json!(["SUPPORTS_SCHEMA_ID"])
-    );
-    assert_eq!(
         resp["format"]["JWT"]["capabilities"]["features"],
         json!([
             "SUPPORTS_CREDENTIAL_DESIGN",
@@ -155,10 +151,6 @@ async fn test_expected_format_selective_disclosure() {
     assert_eq!(
         resp["format"]["JSON_LD_BBSPLUS"]["capabilities"]["selectiveDisclosure"],
         json!(["ANY_LEVEL"])
-    );
-    assert_eq!(
-        resp["format"]["PHYSICAL_CARD"]["capabilities"]["selectiveDisclosure"],
-        json!([])
     );
     assert_eq!(
         resp["format"]["JWT"]["capabilities"]["selectiveDisclosure"],
@@ -248,7 +240,6 @@ async fn test_format_capabilities_for_issuance_identifier_types() {
         ("JSON_LD_CLASSIC", json!(["DID"])),
         ("JSON_LD_BBSPLUS", json!(["DID"])),
         ("MDOC", json!(["CERTIFICATE"])),
-        ("PHYSICAL_CARD", json!(["DID"])),
     ] {
         check(&resp, format, capability, expected);
     }
@@ -275,7 +266,6 @@ async fn test_format_capabilities_for_verification_identifier_types() {
         ("JSON_LD_CLASSIC", json!(["DID", "CERTIFICATE"])),
         ("JSON_LD_BBSPLUS", json!(["DID", "CERTIFICATE"])),
         ("MDOC", json!(["DID", "CERTIFICATE"])),
-        ("PHYSICAL_CARD", json!(["DID", "CERTIFICATE"])),
     ] {
         check(&resp, format, capability, expected);
     }

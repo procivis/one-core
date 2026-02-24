@@ -21,7 +21,6 @@ pub mod jwt_formatter;
 pub mod mapper;
 pub mod mdoc_formatter;
 pub mod model;
-pub mod physical_card;
 pub mod provider;
 pub mod sdjwt;
 pub mod sdjwt_formatter;

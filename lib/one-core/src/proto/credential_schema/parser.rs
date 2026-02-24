@@ -235,21 +235,13 @@ impl CredentialSchemaImportParserImpl {
         schema_id: String,
         formatter: &dyn CredentialFormatter,
     ) -> Result<String, Error> {
-        let FormatterCapabilities {
-            features,
-            allowed_schema_ids,
-            ..
-        } = formatter.get_capabilities();
+        let FormatterCapabilities { features, .. } = formatter.get_capabilities();
 
+        // Supports -> required here because the system that the schema is parsed from is supposed
+        // to have generated the schema_id if it was not set manually.
         let is_schema_id_required = features.contains(&Features::SupportsSchemaId);
         if is_schema_id_required && schema_id.is_empty() {
             return Err(BusinessLogicError::MissingSchemaId
-                .error_while("checking schemaId")
-                .into());
-        }
-
-        if !allowed_schema_ids.is_empty() && !allowed_schema_ids.iter().any(|v| v == &schema_id) {
-            return Err(ValidationError::SchemaIdNotAllowedForFormat
                 .error_while("checking schemaId")
                 .into());
         }
@@ -848,55 +840,6 @@ mod test {
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0191);
-    }
-
-    #[test]
-    fn test_parse_schema_id_success() {
-        // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                allowed_schema_ids: vec!["TEST_SCHEMA_ID".to_string()],
-                ..Default::default()
-            });
-
-        let parser = setup_parser(
-            generic_config().core,
-            MockCredentialFormatterProvider::default(),
-            MockRevocationMethodProvider::new(),
-        );
-
-        // when
-        let result = parser.parse_schema_id("TEST_SCHEMA_ID".to_string(), &formatter);
-
-        // then
-        let_assert!(Ok(schema_id) = result);
-        assert!("TEST_SCHEMA_ID" == schema_id);
-    }
-
-    #[test]
-    fn test_parse_schema_id_failure_not_allowed() {
-        // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                allowed_schema_ids: vec!["TEST_SCHEMA_ID".to_string()],
-                ..Default::default()
-            });
-
-        let parser = setup_parser(
-            generic_config().core,
-            MockCredentialFormatterProvider::default(),
-            MockRevocationMethodProvider::new(),
-        );
-
-        // when
-        let result = parser.parse_schema_id("OTHER_TEST_SCHEMA_ID".to_string(), &formatter);
-
-        // then
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0146);
     }
 
     #[test]

@@ -1262,7 +1262,6 @@ impl From<FormatType> for CredentialFormat {
     fn from(value: FormatType) -> Self {
         match value {
             FormatType::Jwt => CredentialFormat::JwtVc,
-            FormatType::PhysicalCard => CredentialFormat::LdpVc,
             FormatType::SdJwt => CredentialFormat::W3cSdJwt,
             FormatType::SdJwtVc => CredentialFormat::SdJwt,
             FormatType::JsonLdClassic => CredentialFormat::LdpVc,

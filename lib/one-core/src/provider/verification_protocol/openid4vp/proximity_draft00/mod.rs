@@ -43,7 +43,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
-use crate::provider::credential_formatter::model::{AuthenticationFn, DetailCredential};
+use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -545,14 +545,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         }
     }
 
-    async fn verifier_handle_proof(
-        &self,
-        _proof: &Proof,
-        _submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
-        unimplemented!()
-    }
-
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
         for transport in get_transport(proof)? {
             match transport {
@@ -754,7 +746,7 @@ pub(super) async fn create_presentation(
             FormatType::SdJwtVc => FormatType::SdJwtVc,
             FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
             FormatType::Mdoc => FormatType::Mdoc,
-            FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+            FormatType::Jwt => FormatType::Jwt,
         };
 
         let presentation_formatter = params

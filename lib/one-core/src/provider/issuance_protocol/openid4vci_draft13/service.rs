@@ -123,7 +123,6 @@ fn credential_configurations_supported(
                 proof_types_supported,
             )
             .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
-            FormatType::PhysicalCard => Err(OpenID4VCIError::UnsupportedCredentialFormat)?,
         },
     )]))
 }

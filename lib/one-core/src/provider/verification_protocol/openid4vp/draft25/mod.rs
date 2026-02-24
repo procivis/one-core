@@ -23,7 +23,6 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -137,7 +136,7 @@ impl OpenID4VP25HTTP {
                 FormatType::SdJwtVc => FormatType::SdJwtVc,
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
                 FormatType::Mdoc => FormatType::Mdoc,
-                FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+                FormatType::Jwt => FormatType::Jwt,
             };
 
             if encryption_info.is_none() && presentation_format == FormatType::Mdoc {
@@ -302,13 +301,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         }
     }
 
-    async fn verifier_handle_proof(
-        &self,
-        _proof: &Proof,
-        _submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
-        todo!()
-    }
     async fn holder_handle_invitation(
         &self,
         url: Url,

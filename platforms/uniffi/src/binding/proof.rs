@@ -13,8 +13,8 @@ use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO, ProposeProofRequestDTO,
-    ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
-    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
+    ProposeProofResponseDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
+    ShareProofResponseDTO,
 };
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
@@ -204,27 +204,10 @@ pub struct CreateProofRequestBindingDTO {
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<String>,
     pub verifier_certificate: Option<String>,
-    pub scan_to_verify: Option<ScanToVerifyRequestBindingDTO>,
     pub iso_mdl_engagement: Option<String>,
     pub transport: Option<Vec<String>>,
     pub profile: Option<String>,
     pub engagement: Option<String>,
-}
-
-#[derive(Clone, Debug, Into, uniffi::Record)]
-#[into(ScanToVerifyRequestDTO)]
-pub struct ScanToVerifyRequestBindingDTO {
-    pub credential: String,
-    pub barcode: String,
-    pub barcode_type: ScanToVerifyBarcodeTypeBindingEnum,
-}
-
-#[derive(Clone, Debug, Into, uniffi::Enum)]
-#[into(ScanToVerifyBarcodeTypeEnum)]
-pub enum ScanToVerifyBarcodeTypeBindingEnum {
-    #[allow(clippy::upper_case_acronyms)]
-    MRZ,
-    PDF417,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]

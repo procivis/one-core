@@ -14,7 +14,6 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -31,7 +30,6 @@ pub mod dto;
 mod iso_mdl;
 mod mapper;
 mod proximity_callback;
-mod scan_to_verify;
 pub mod service;
 
 #[derive(Clone)]
@@ -47,7 +45,6 @@ pub struct ProofService {
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     protocol_provider: Arc<dyn VerificationProtocolProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
@@ -78,7 +75,6 @@ impl ProofService {
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
-        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         protocol_provider: Arc<dyn VerificationProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         ble: Option<BleWaiter>,
@@ -106,7 +102,6 @@ impl ProofService {
             interaction_repository,
             credential_formatter_provider,
             presentation_formatter_provider,
-            revocation_method_provider,
             protocol_provider,
             did_method_provider,
             ble,

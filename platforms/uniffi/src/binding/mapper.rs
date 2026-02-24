@@ -577,7 +577,6 @@ impl TryFrom<CreateProofRequestBindingDTO> for CreateProofRequestDTO {
             redirect_uri: value.redirect_uri,
             verifier_key: into_id_opt(value.verifier_key)?,
             verifier_certificate: into_id_opt(value.verifier_certificate)?,
-            scan_to_verify: convert_inner(value.scan_to_verify),
             iso_mdl_engagement: value.iso_mdl_engagement,
             transport: value.transport,
             profile: value.profile,

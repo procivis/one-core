@@ -361,9 +361,6 @@ pub enum ErrorCode {
     #[strum(message = "No default transport specified")]
     BR_0142,
 
-    #[strum(message = "Invalid SCAN_TO_VERIFY parameters")]
-    BR_0144,
-
     #[strum(message = "Forbidden claim name")]
     BR_0145,
 

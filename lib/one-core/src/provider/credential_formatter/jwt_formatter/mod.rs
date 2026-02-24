@@ -261,7 +261,6 @@ impl CredentialFormatter for JWTFormatter {
                 KeyStorageType::AzureVault,
                 KeyStorageType::SecureElement,
             ],
-            allowed_schema_ids: vec![],
             ecosystem_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),

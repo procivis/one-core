@@ -15,8 +15,7 @@ use uuid::Uuid;
 use super::ProofService;
 use super::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
-    ProposeProofRequestDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
-    ShareProofRequestDTO,
+    ProposeProofRequestDTO, ShareProofRequestDTO,
 };
 use crate::config::core_config::{
     CoreConfig, Fields, IdentifierType, KeyStorageType, TransportType, VerificationProtocolType,
@@ -72,7 +71,6 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ShareResponse, VerificationProtocolCapabilities,
@@ -114,7 +112,6 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub presentation_formatter_provider: MockPresentationFormatterProvider,
-    pub revocation_method_provider: MockRevocationMethodProvider,
     pub protocol_provider: MockVerificationProtocolProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub ble_peripheral: Option<MockBlePeripheral>,
@@ -143,7 +140,6 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.presentation_formatter_provider),
-        Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.did_method_provider),
         repositories
@@ -2330,7 +2326,6 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -2426,7 +2421,6 @@ async fn test_create_proof_using_invalid_did_method() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -2552,7 +2546,6 @@ async fn test_create_proof_using_identifier() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -2685,7 +2678,6 @@ async fn test_create_proof_without_related_key() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -2823,7 +2815,6 @@ async fn test_create_proof_with_related_key() {
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -2957,7 +2948,6 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -3091,7 +3081,6 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -3201,7 +3190,6 @@ async fn test_create_proof_failed_incompatible_exchange() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -3264,7 +3252,6 @@ async fn test_create_proof_did_deactivated_error() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -3401,7 +3388,6 @@ async fn test_create_proof_schema_deleted() {
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
-            scan_to_verify: None,
             iso_mdl_engagement: None,
             transport: None,
             profile: None,
@@ -3411,74 +3397,6 @@ async fn test_create_proof_schema_deleted() {
         .await;
     assert2::assert!(
         let Err(ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaDeleted {..})) = result
-    );
-}
-
-#[tokio::test]
-async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
-    let mut proof_schema_repository = MockProofSchemaRepository::default();
-    proof_schema_repository
-        .expect_get_proof_schema()
-        .once()
-        .returning(|id, _| {
-            Ok(Some(ProofSchema {
-                id: id.to_owned(),
-                imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                deleted_at: None,
-                name: "proof schema".to_string(),
-                expire_duration: 0,
-                organisation: Some(dummy_organisation(None)),
-                input_schemas: Some(vec![generic_proof_input_schema()]),
-            }))
-        });
-
-    let mut formatter = MockCredentialFormatter::default();
-    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpDraft20],
-            verification_identifier_types: vec![IdentifierType::Did],
-            ..Default::default()
-        });
-    credential_formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
-
-    let service = setup_service(Repositories {
-        proof_schema_repository,
-        credential_formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_proof(CreateProofRequestDTO {
-            proof_schema_id: Uuid::new_v4().into(),
-            verifier_did_id: Some(Uuid::new_v4().into()),
-            verifier_identifier_id: None,
-            protocol: "OPENID4VP_DRAFT20".to_string(),
-            redirect_uri: None,
-            verifier_key: None,
-            verifier_certificate: None,
-            scan_to_verify: Some(ScanToVerifyRequestDTO {
-                credential: "credential".to_string(),
-                barcode: "barcode".to_string(),
-                barcode_type: ScanToVerifyBarcodeTypeEnum::MRZ,
-            }),
-            iso_mdl_engagement: None,
-            transport: None,
-            profile: None,
-            engagement: None,
-            webhook_destination_url: None,
-        })
-        .await;
-    assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::InvalidScanToVerifyParameters)) = result
     );
 }
 
@@ -3493,7 +3411,6 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -3628,7 +3545,6 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             redirect_uri: Some("invalid://domain.com".to_string()),
             verifier_key: None,
             verifier_certificate: None,
-            scan_to_verify: None,
             iso_mdl_engagement: None,
             transport: None,
             profile: None,
@@ -3653,7 +3569,6 @@ async fn test_create_proof_fail_webhook_not_allowed() {
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
-        scan_to_verify: None,
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
@@ -4552,11 +4467,6 @@ async fn test_create_proof_session_org_mismatch() {
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
-            scan_to_verify: Some(ScanToVerifyRequestDTO {
-                credential: "credential".to_string(),
-                barcode: "barcode".to_string(),
-                barcode_type: ScanToVerifyBarcodeTypeEnum::MRZ,
-            }),
             iso_mdl_engagement: None,
             transport: None,
             profile: None,
