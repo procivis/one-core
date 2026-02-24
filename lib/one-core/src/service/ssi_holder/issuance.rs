@@ -16,7 +16,7 @@ use super::validator::{
     validate_initiate_issuance_request,
 };
 use crate::config::core_config::FormatType;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
@@ -328,16 +328,19 @@ impl SSIHolderService {
             {
                 tracing::error!("Failed to accept credential: {error}");
 
-                let _result = self
-                    .credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Error),
-                            ..Default::default()
-                        },
-                    )
-                    .await;
+                // do not change credential state if wrong TX-code entry
+                if !matches!(error.error_code(), ErrorCode::BR_0169 | ErrorCode::BR_0170) {
+                    let _result = self
+                        .credential_repository
+                        .update_credential(
+                            credential.id,
+                            UpdateCredentialRequest {
+                                state: Some(CredentialStateEnum::Error),
+                                ..Default::default()
+                            },
+                        )
+                        .await;
+                }
 
                 errors.push(error);
             }

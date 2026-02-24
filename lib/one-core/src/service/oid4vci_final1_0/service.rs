@@ -1083,7 +1083,42 @@ impl OID4VCIFinal1_0Service {
             .transaction_manager
             .tx(tx)
             .await
-            .error_while("creating token")??;
+            .error_while("creating token")?;
+
+        let result = match result {
+            Ok(result) => result,
+            // Invalid tx-code entry means the issuance failed, we do not allow to retry
+            Err(
+                err @ ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(
+                    OpenID4VCIError::InvalidGrant,
+                )),
+            ) if matches!(
+                request,
+                OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                    pre_authorized_code: _,
+                    tx_code: Some(_)
+                }
+            ) =>
+            {
+                for credential in &credentials {
+                    self.credential_repository
+                        .update_credential(
+                            credential.id,
+                            UpdateCredentialRequest {
+                                state: Some(CredentialStateEnum::Error),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating credential")?;
+                }
+                return Err(err);
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
+
         tracing::info!(
             "Issued access token for issuance of credential {}",
             credential.id

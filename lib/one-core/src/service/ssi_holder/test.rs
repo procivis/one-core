@@ -17,6 +17,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config;
 use crate::config::core_config::TransportType;
+use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -37,6 +38,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
+use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
@@ -1218,6 +1220,100 @@ async fn test_accept_credential_with_did() {
         .accept_credential(interaction_id, Some(did_id), None, None, None, None)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_accept_credential_wrong_tx_code() {
+    let identifier_id = Uuid::new_v4().into();
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get()
+        .once()
+        .return_once(move |_, _| {
+            Ok(Some(Identifier {
+                id: identifier_id,
+                did: Some(Did {
+                    keys: Some(vec![RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: dummy_key(),
+                        reference: "1".to_string(),
+                    }]),
+                    did_method: "KEY".to_string(),
+                    ..dummy_did()
+                }),
+                organisation: Some(dummy_organisation(None)),
+                ..dummy_identifier()
+            }))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .once()
+        .returning(|_| Some(Arc::new(Ecdsa)));
+
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
+
+    let mut exchange_protocol_mock = MockIssuanceProtocol::default();
+    exchange_protocol_mock
+        .expect_holder_accept_credential()
+        .once()
+        .return_once(|_, _, _, _, _| Err(TxCodeError::IncorrectCode.error_while("").into()));
+
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .once()
+        .returning(|_| {
+            Some(Arc::new(Basic::new(Params {
+                holder: HolderParams {
+                    priority: 0,
+                    key_storages: vec!["foo".to_string()],
+                },
+            })))
+        });
+
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
+        identifier_repository: Arc::new(identifier_repository),
+        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        formatter_provider: Arc::new(formatter_provider),
+        key_security_level_provider: Arc::new(key_security_level_provider),
+        ..mock_ssi_holder_service()
+    };
+
+    let interaction_id = Uuid::new_v4().into();
+    let result = service
+        .accept_credential(interaction_id, None, Some(identifier_id), None, None, None)
+        .await
+        .unwrap_err();
+
+    assert_eq!(result.error_code(), ErrorCode::BR_0169);
 }
 
 #[tokio::test]

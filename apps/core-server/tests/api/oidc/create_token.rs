@@ -439,7 +439,7 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
         )
         .await;
 
-    context
+    let credential = context
         .db
         .credentials
         .create(
@@ -472,6 +472,10 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
 
     let resp = resp.json_value().await;
     resp["error"].assert_eq(&"invalid_grant".to_string());
+
+    // invalid tx_code means the issuance failed
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(credential.state, CredentialStateEnum::Error);
 }
 
 #[tokio::test]

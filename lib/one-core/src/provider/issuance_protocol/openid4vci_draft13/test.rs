@@ -19,7 +19,7 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
-use crate::error::ErrorCodeMixinExt;
+use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -46,7 +46,8 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    CommonParams, InvitationResponseEnum, OpenID4VCRedirectUriParams,
+    CommonParams, InvitationResponseEnum, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
+    OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
     BuildCredentialSchemaResponse, MockHandleInvitationOperations,
@@ -1234,6 +1235,97 @@ async fn test_holder_accept_expired_credential_fails() {
             .to_string()
             .contains("Validation error: `Expired`")
     );
+}
+
+#[tokio::test]
+async fn test_holder_accept_tx_code_invalid() {
+    let mock_server = MockServer::start().await;
+    let mut storage_access = MockStorageProxy::default();
+
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: Some(OpenID4VCITxCode {
+                    input_mode: OpenID4VCITxCodeInputMode::Text,
+                    length: Some(4),
+                    description: None,
+                }),
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        nonce: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
+        continue_issuance: None,
+        notification_id: None,
+    };
+
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: None,
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+        expires_at: None,
+    };
+
+    let credential = Credential {
+        interaction: Some(interaction.clone()),
+        ..generic_credential_did()
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(400).set_body_json(json!(
+            { "error": "invalid_grant" }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    storage_access
+        .expect_get_credential_by_interaction_id()
+        .once()
+        .return_once(move |_| Ok(credential));
+
+    let openid_provider = setup_protocol(TestInputs {
+        config: dummy_config(),
+        ..Default::default()
+    });
+
+    let key = dummy_key();
+    let result = openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            &storage_access,
+            Some("code".to_string()),
+            None,
+        )
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0169);
 }
 
 #[tokio::test]
