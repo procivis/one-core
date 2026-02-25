@@ -66,6 +66,8 @@ pub struct ContinueIssuanceResponseDTO {
     pub interaction_type: InteractionType,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
+    pub requires_wallet_instance_attestation: bool,
+    pub protocol: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

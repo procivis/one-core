@@ -166,6 +166,8 @@ pub struct ContinueIssuanceResponseBindingDTO {
     pub interaction_id: String,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
     pub key_algorithms: Option<Vec<String>>,
+    pub requires_wallet_instance_attestation: bool,
+    pub protocol: Option<String>,
 }
 
 impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
@@ -174,6 +176,8 @@ impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
             interaction_id: value.interaction_id.to_string(),
             key_storage_security_levels: convert_inner_of_inner(value.key_storage_security_levels),
             key_algorithms: value.key_algorithms,
+            requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
+            protocol: value.protocol,
         }
     }
 }

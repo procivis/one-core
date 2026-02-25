@@ -1700,7 +1700,7 @@ async fn handle_credential_invitation(
     }
 
     let tx_code = credential_offer.grants.tx_code().cloned();
-    let requires_wia = requires_wia(&oauth_metadata);
+    let requires_wallet_instance_attestation = requires_wia(&oauth_metadata);
 
     let PrepareIssuanceSuccess {
         interaction_id,
@@ -1719,11 +1719,6 @@ async fn handle_credential_invitation(
         key_algorithm_provider,
     )
     .await?;
-
-    // Wallet unit ID is required for both
-    // WIA (wallet instance attestation via token_endpoint_auth_methods_supported)
-    // WUA (key storage attestation via proof_types_supported key_attestations_required)
-    let requires_wallet_instance_attestation = requires_wia || key_storage_security.is_some();
 
     Ok(InvitationResponseEnum::Credential {
         interaction_id,
@@ -1785,6 +1780,8 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
+    let requires_wallet_instance_attestation = requires_wia(&oauth_metadata);
+
     let PrepareIssuanceSuccess {
         interaction_id,
         key_storage_security,
@@ -1801,7 +1798,7 @@ async fn handle_continue_issuance(
         &all_credential_configuration_ids,
         storage_access,
         Some(continue_issuance_dto),
-        protocol,
+        protocol.clone(),
         key_algorithm_provider,
     )
     .await?;
@@ -1810,6 +1807,8 @@ async fn handle_continue_issuance(
         interaction_id,
         key_storage_security_levels: key_storage_security,
         key_algorithms,
+        requires_wallet_instance_attestation,
+        protocol: Some(protocol),
     })
 }
 

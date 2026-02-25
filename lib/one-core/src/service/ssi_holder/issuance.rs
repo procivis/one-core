@@ -849,6 +849,8 @@ impl SSIHolderService {
             interaction_id,
             key_storage_security_levels: key_storage_security,
             key_algorithms,
+            requires_wallet_instance_attestation,
+            protocol,
         } = self
             .issuance_protocol_provider
             .get_protocol(&issuance.request.protocol)
@@ -887,6 +889,8 @@ impl SSIHolderService {
             interaction_type: InteractionType::Issuance,
             key_storage_security_levels: key_storage_security,
             key_algorithms,
+            requires_wallet_instance_attestation,
+            protocol,
         })
     }
 }

@@ -90,6 +90,8 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     #[from(with_fn = convert_inner_of_inner)]
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
+    pub requires_wallet_instance_attestation: bool,
+    pub protocol: Option<String>,
 }
 
 #[options_not_nullable]
