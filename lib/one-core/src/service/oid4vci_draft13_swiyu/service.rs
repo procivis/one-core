@@ -25,30 +25,11 @@ impl OID4VCIDraft13SwiyuService {
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
         let mut metadata = self.inner.get_issuer_metadata(credential_schema_id).await?;
 
-        // SWIYU Android wallet cannot handle any other values than ES256 and ES512
+        // make claim datatypes compatible to the swiyu wallet
         metadata
             .credential_configurations_supported
             .iter_mut()
             .for_each(|(_, config)| {
-                config.credential_signing_alg_values_supported = Some(
-                    config
-                        .credential_signing_alg_values_supported
-                        .clone()
-                        .into_iter()
-                        .flat_map(|algs| algs.into_iter().filter(only_p256_or_p512))
-                        .collect(),
-                );
-                if let Some(proof_config) = &mut config.proof_types_supported {
-                    proof_config.iter_mut().for_each(|(_, cfg)| {
-                        cfg.proof_signing_alg_values_supported = cfg
-                            .proof_signing_alg_values_supported
-                            .clone()
-                            .into_iter()
-                            .filter(only_p256_or_p512)
-                            .collect();
-                        cfg.key_attestations_required = None;
-                    })
-                }
                 if let Some(ref mut claims) = config.claims {
                     set_value_type_string(claims);
                 }
@@ -121,8 +102,4 @@ fn set_value_type_string(claims: &mut OpenID4VCICredentialSubjectItem) {
             .iter_mut()
             .for_each(|(_, claims)| set_value_type_string(claims))
     }
-}
-
-fn only_p256_or_p512(alg: &String) -> bool {
-    alg == "ES256" || alg == "ES512"
 }
