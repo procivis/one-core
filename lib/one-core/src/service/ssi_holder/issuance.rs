@@ -660,7 +660,7 @@ impl SSIHolderService {
                 } = self
                     .initiate_issuance(InitiateIssuanceRequestDTO {
                         organisation_id,
-                        protocol: exchange,
+                        protocol: exchange.to_owned(),
                         issuer,
                         client_id,
                         redirect_uri,
@@ -674,6 +674,7 @@ impl SSIHolderService {
                 Ok(HandleInvitationResultDTO::AuthorizationCodeFlow {
                     interaction_id,
                     authorization_code_flow_url: url,
+                    protocol: exchange,
                 })
             }
         }

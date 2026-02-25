@@ -30,6 +30,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
                 authorization_code_flow_url,
+                protocol,
             } => Self {
                 interaction_id,
                 interaction_type: InteractionTypeRestEnum::Issuance,
@@ -39,7 +40,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 key_storage_security_levels: None,
                 key_algorithms: None,
                 requires_wallet_instance_attestation: None,
-                protocol: None,
+                protocol: Some(protocol),
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,

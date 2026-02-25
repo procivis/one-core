@@ -149,6 +149,7 @@ pub enum HandleInvitationResponseBindingEnum {
         /// For issuer-initiated Authorization Code Flows, use this URL to start
         /// the authorization process with the authorization server.
         authorization_code_flow_url: String,
+        protocol: String,
     },
     ProofRequest {
         /// For reference.

@@ -51,6 +51,7 @@ pub enum HandleInvitationResultDTO {
     AuthorizationCodeFlow {
         interaction_id: InteractionId,
         authorization_code_flow_url: String,
+        protocol: String,
     },
     ProofRequest {
         interaction_id: InteractionId,
