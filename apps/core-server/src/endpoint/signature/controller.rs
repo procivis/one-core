@@ -25,10 +25,8 @@ use crate::router::AppState;
     ),
     summary = "Create a signature",
     description = indoc::formatdoc! {"
-    Creates signature.
-
-    The `signer` value must reference a specific signature provider
-    configured in your system.
+    Creates a signature. Choose a configured `signer` object and
+    structure `data` accordingly.
 "},
 )]
 #[require_permissions(

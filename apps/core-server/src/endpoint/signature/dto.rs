@@ -33,7 +33,7 @@ pub(crate) struct CreateSignatureRequestRestDTO {
     #[modify_schema(field = signer)]
     pub signer: String,
     /// Signer-specific request data. Structure varies based on signer
-    /// value. See the Signatures guide for complete specifications.
+    /// value.
     pub data: serde_json::Value,
     /// Pass nothing to start validity now or choose a datetime
     /// in the future.
