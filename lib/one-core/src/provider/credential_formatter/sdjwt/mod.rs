@@ -271,7 +271,6 @@ pub(crate) async fn append_key_binding_token(
 pub(crate) struct SdJwtHolderBindingParams {
     pub holder_binding_context: Option<HolderBindingCtx>,
     pub leeway: Duration,
-    pub skip_holder_binding_aud_check: bool,
 }
 
 impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
@@ -522,19 +521,17 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             ));
         }
 
-        if !params.skip_holder_binding_aud_check {
-            let Some(ref audience) = kb_payload.audience else {
-                return Err(FormatterError::CouldNotExtractCredentials(
-                    "Missing aud claim in key binding token".to_string(),
-                ));
-            };
+        let Some(ref audience) = kb_payload.audience else {
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "Missing aud claim in key binding token".to_string(),
+            ));
+        };
 
-            if !audience.contains(&holder_binding_context.audience) {
-                return Err(FormatterError::CouldNotExtractCredentials(format!(
-                    "Invalid key binding token aud: expected '{}' to be listed, got '{:?}'",
-                    holder_binding_context.audience, kb_payload.audience
-                )));
-            }
+        if !audience.contains(&holder_binding_context.audience) {
+            return Err(FormatterError::CouldNotExtractCredentials(format!(
+                "Invalid key binding token aud: expected '{}' to be listed, got '{:?}'",
+                holder_binding_context.audience, kb_payload.audience
+            )));
         }
 
         if kb_payload.custom.nonce != holder_binding_context.nonce {

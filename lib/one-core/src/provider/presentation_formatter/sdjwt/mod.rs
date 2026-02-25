@@ -218,7 +218,6 @@ impl SdjwtPresentationFormatter {
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
             leeway: Duration::seconds(self.get_leeway() as i64),
-            skip_holder_binding_aud_check: false,
         };
         let proof_of_key_possesion = Jwt::<VcClaim>::verify_holder_binding(
             cnf,
