@@ -1778,7 +1778,7 @@ async fn handle_continue_issuance(
         key_storage_security_levels: key_storage_security,
         key_algorithms,
         requires_wallet_instance_attestation: false,
-        protocol: Some(protocol.to_string()),
+        protocol: protocol.to_string(),
     })
 }
 

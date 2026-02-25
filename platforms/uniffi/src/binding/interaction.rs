@@ -167,7 +167,7 @@ pub struct ContinueIssuanceResponseBindingDTO {
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
     pub key_algorithms: Option<Vec<String>>,
     pub requires_wallet_instance_attestation: bool,
-    pub protocol: Option<String>,
+    pub protocol: String,
 }
 
 impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {

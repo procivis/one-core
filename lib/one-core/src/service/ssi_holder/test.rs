@@ -1487,7 +1487,7 @@ async fn test_continue_issuance() {
                 key_storage_security_levels: None,
                 key_algorithms: None,
                 requires_wallet_instance_attestation: false,
-                protocol: Some("protocol".to_string()),
+                protocol: "protocol".to_string(),
             })
         });
 
