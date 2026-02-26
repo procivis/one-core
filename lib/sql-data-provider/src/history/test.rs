@@ -839,14 +839,14 @@ async fn test_history_org_stats_empty_yearly() {
     } = setup_empty().await;
 
     let from = OffsetDateTime::now_utc();
-    let to = from + Duration::days(2 * 365);
+    let to = from + Duration::days(4 * 365);
     let result = provider
         .organisation_stats(Some(from), to, organisation.id, true)
         .await
         .unwrap();
 
-    // Start and end spans 3 years
-    assert_zeroes(&result, 3);
+    // Start and end spans 5 years
+    assert_zeroes(&result, 5);
 }
 
 #[tokio::test]

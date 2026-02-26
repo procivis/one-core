@@ -19,7 +19,7 @@ impl TimeResolution {
         match time_diff {
             duration if duration <= Duration::days(1) => Self::Hour,
             duration if duration <= Duration::days(30) => Self::Day,
-            duration if duration <= Duration::days(365) => Self::Month,
+            duration if duration <= Duration::days(365 * 3) => Self::Month,
             _ => Self::Year,
         }
     }
