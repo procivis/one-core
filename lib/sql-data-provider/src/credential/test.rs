@@ -39,7 +39,7 @@ use uuid::Uuid;
 
 use super::CredentialProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
-use crate::entity::{claim, interaction};
+use crate::entity::{claim, credential, interaction};
 use crate::test_utilities;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
@@ -207,6 +207,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -489,6 +490,7 @@ async fn test_delete_credential_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -558,6 +560,7 @@ async fn test_get_credential_list_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -570,6 +573,7 @@ async fn test_get_credential_list_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -583,6 +587,7 @@ async fn test_get_credential_list_success() {
         Some(OffsetDateTime::now_utc()),
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap()
@@ -637,6 +642,7 @@ async fn test_get_credential_list_success_filter_state() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -650,6 +656,7 @@ async fn test_get_credential_list_success_filter_state() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -869,6 +876,7 @@ async fn test_get_credential_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap()
@@ -1022,6 +1030,7 @@ async fn test_update_credential_success() {
         None,
         None,
         blob_id,
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap()
@@ -1138,6 +1147,7 @@ async fn test_update_credential_success_no_claims() {
         None,
         None,
         blob_id,
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap()
@@ -1249,6 +1259,7 @@ async fn test_get_credential_by_claim_id_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -1262,6 +1273,7 @@ async fn test_get_credential_by_claim_id_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -1321,6 +1333,7 @@ async fn test_delete_credential_blobs_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
@@ -1334,6 +1347,7 @@ async fn test_delete_credential_blobs_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();

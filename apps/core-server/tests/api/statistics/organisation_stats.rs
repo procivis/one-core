@@ -1,10 +1,14 @@
+use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::proof::ProofStateEnum;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
+use crate::fixtures;
+use crate::fixtures::{TestingCredentialParams, create_proof_schema};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
 async fn test_organisation_stats_empty() {
@@ -31,7 +35,64 @@ async fn test_organisation_stats_empty() {
 #[tokio::test]
 async fn test_organisation_stats() {
     // GIVEN
-    let (context, org) = TestContext::new_with_organisation(None).await;
+    let (context, org, identifier, .., key) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &org, None, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &org, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
+        &org,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+        }],
+    )
+    .await;
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VP_DRAFT20",
+            None,
+            key,
+            None,
+            None,
+        )
+        .await;
     let now = OffsetDateTime::now_utc();
     context
         .db
@@ -40,7 +101,7 @@ async fn test_organisation_stats() {
             &org,
             TestingHistoryParams {
                 action: Some(HistoryAction::Issued),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(credential.id.into()),
                 entity_type: Some(HistoryEntityType::Credential),
                 created_date: Some(now - Duration::hours(25)),
                 ..Default::default()
@@ -54,7 +115,7 @@ async fn test_organisation_stats() {
             &org,
             TestingHistoryParams {
                 action: Some(HistoryAction::Accepted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(proof.id.into()),
                 entity_type: Some(HistoryEntityType::Proof),
                 created_date: Some(now - Duration::hours(1)),
                 ..Default::default()
@@ -76,6 +137,6 @@ async fn test_organisation_stats() {
     assert_eq!(resp["current"]["credentialLifecycleOperationCount"], 0);
     assert_eq!(resp["current"]["verificationCount"], 1);
     assert_eq!(resp["previous"]["issuanceCount"], 1);
-    assert_eq!(resp["previous"]["credentialLifecycleOperationCount"], 1);
+    assert_eq!(resp["previous"]["credentialLifecycleOperationCount"], 0);
     assert_eq!(resp["previous"]["verificationCount"], 0);
 }

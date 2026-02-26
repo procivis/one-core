@@ -24,14 +24,10 @@ use crate::history::queries::{
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
 
-const CREDENTIAL_LIFECYCLE_OPS: [history::HistoryAction; 7] = [
-    history::HistoryAction::Offered,
-    history::HistoryAction::Issued,
-    history::HistoryAction::Rejected,
+const CREDENTIAL_LIFECYCLE_OPS: [history::HistoryAction; 3] = [
     history::HistoryAction::Suspended,
     history::HistoryAction::Reactivated,
     history::HistoryAction::Revoked,
-    history::HistoryAction::Errored,
 ];
 
 #[autometrics]

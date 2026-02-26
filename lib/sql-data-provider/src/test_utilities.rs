@@ -24,6 +24,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::blob::BlobType;
+use crate::entity::credential::CredentialRole;
 use crate::entity::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
@@ -53,6 +54,7 @@ pub async fn insert_credential(
     deleted_at: Option<OffsetDateTime>,
     suspend_end_date: Option<OffsetDateTime>,
     credential_blob_id: BlobId,
+    role: CredentialRole,
 ) -> Result<Credential, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -75,7 +77,7 @@ pub async fn insert_credential(
         redirect_uri: Set(None),
         deleted_at: Set(deleted_at),
         protocol: Set(protocol.to_owned()),
-        role: Set(credential::CredentialRole::Issuer),
+        role: Set(role),
         issuer_identifier_id: Set(Some(issuer_identifier_id)),
         issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
@@ -212,6 +214,7 @@ pub async fn get_proof_by_id(
     proof::Entity::find_by_id(id).one(database).await
 }
 
+#[expect(clippy::too_many_arguments)]
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_identifier_id: IdentifierId,
@@ -220,6 +223,7 @@ pub async fn insert_proof_request_to_database(
     interaction_id: Option<InteractionId>,
     proof_blob_id: Option<BlobId>,
     engagement: Option<String>,
+    role: ProofRole,
 ) -> Result<ProofId, DbErr> {
     let proof = proof::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -229,7 +233,7 @@ pub async fn insert_proof_request_to_database(
         transport: Set("HTTP".to_string()),
         redirect_uri: Set(None),
         state: Set(ProofRequestState::Created),
-        role: Set(ProofRole::Verifier),
+        role: Set(role),
         requested_date: Set(None),
         completed_date: Set(None),
         verifier_identifier_id: Set(Some(verifier_identifier_id)),
@@ -385,7 +389,7 @@ pub async fn insert_key_to_database(
         id: Set(id.into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        name: Set("test_key".to_string()),
+        name: Set(format!("{}-key", id).to_owned()),
         public_key: Set(public_key),
         key_reference: Set(Some(key_reference)),
         storage_type: Set("INTERNAL".to_string()),

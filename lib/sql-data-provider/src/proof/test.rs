@@ -43,7 +43,7 @@ use uuid::Uuid;
 use super::ProofProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::key_did::KeyRole;
-use crate::entity::{blob, claim, credential, interaction, proof_claim};
+use crate::entity::{blob, claim, credential, interaction, proof, proof_claim};
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -238,6 +238,7 @@ async fn setup_with_proof(
         Some(interaction_id),
         None,
         None,
+        proof::ProofRole::Verifier,
     )
     .await
     .unwrap();
@@ -883,6 +884,7 @@ async fn test_set_proof_claims_success() {
         None,
         None,
         Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();

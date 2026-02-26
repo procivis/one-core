@@ -448,12 +448,15 @@ pub(super) fn count_ops_query(
         .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
         .from(history::Entity)
         // the operations time cutoff is exclusive because the timelines query is inclusive
-        .and_where(Expr::col(history::Column::CreatedDate).lt(to_exclusive))
+        .and_where(Expr::col((history::Entity, history::Column::CreatedDate)).lt(to_exclusive))
         .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
         .and_where(Expr::col(history::Column::Action).is_in(actions))
         .to_owned();
+    credential_proof_role_conditions(&mut query, entity_type);
     if let Some(from_inclusive) = from_inclusive {
-        query.and_where(Expr::col(history::Column::CreatedDate).gte(from_inclusive));
+        query.and_where(
+            Expr::col((history::Entity, history::Column::CreatedDate)).gte(from_inclusive),
+        );
     }
     if let Some(organisation_id) = organisation_id {
         query.and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id));
@@ -472,22 +475,37 @@ pub(super) fn org_timelines_query(
     let mut query = Query::select()
         .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
         .expr_as(
-            resolution.floored_time_format_expr("created_date", db_backend)?,
+            resolution.floored_time_format_expr("history.created_date", db_backend)?,
             rounded_date.clone(),
         )
         .columns([history::Column::EntityType, history::Column::Action])
         .from(history::Entity)
+        // Left join proofs and credentials to filter by ROLE
+        .left_join(
+            credential::Entity,
+            Expr::col(history::Column::EntityId)
+                .eq(Expr::col((credential::Entity, credential::Column::Id))),
+        )
+        .left_join(
+            proof::Entity,
+            Expr::col(history::Column::EntityId).eq(Expr::col((proof::Entity, proof::Column::Id))),
+        )
         .to_owned();
 
     if let Some(from) = from {
         query
             // Align to bucket windows to selected resolution (lower inclusive, upper exclusive)
             // otherwise first and last bucket will have missing values.
-            .and_where(Expr::col(history::Column::CreatedDate).gte(floor(from, resolution)?));
+            .and_where(
+                Expr::col((history::Entity, history::Column::CreatedDate))
+                    .gte(floor(from, resolution)?),
+            );
     }
 
     query
-        .and_where(Expr::col(history::Column::CreatedDate).lt(ceil(to, resolution)?))
+        .and_where(
+            Expr::col((history::Entity, history::Column::CreatedDate)).lt(ceil(to, resolution)?),
+        )
         .and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id))
         .and_where(
             Expr::col(history::Column::EntityType)
@@ -501,6 +519,10 @@ pub(super) fn org_timelines_query(
                     history::HistoryAction::Revoked,
                     history::HistoryAction::Errored,
                 ]))
+                .and(
+                    Expr::col((credential::Entity, credential::Column::Role))
+                        .eq(credential::CredentialRole::Issuer),
+                )
                 .or(Expr::col(history::Column::EntityType)
                     .eq(history::HistoryEntityType::Proof)
                     .and(Expr::col(history::Column::Action).is_in([
@@ -508,7 +530,11 @@ pub(super) fn org_timelines_query(
                         history::HistoryAction::Accepted,
                         history::HistoryAction::Rejected,
                         history::HistoryAction::Errored,
-                    ]))),
+                    ]))
+                    .and(
+                        Expr::col((proof::Entity, proof::Column::Role))
+                            .eq(proof::ProofRole::Verifier),
+                    )),
         )
         .group_by_columns([
             rounded_date.clone().into_column_ref(),
@@ -534,15 +560,47 @@ pub(super) fn top_orgs_query(
         .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
         .and_where(Expr::col(history::Column::Action).eq(action))
         .to_owned();
+    credential_proof_role_conditions(&mut query, entity_type);
     if let Some(from) = from {
-        query.and_where(Expr::col(history::Column::CreatedDate).gte(from));
+        query.and_where(Expr::col((history::Entity, history::Column::CreatedDate)).gte(from));
     }
     query
-        .and_where(Expr::col(history::Column::CreatedDate).lt(to))
+        .and_where(Expr::col((history::Entity, history::Column::CreatedDate)).lt(to))
         .group_by_col(history::Column::OrganisationId)
         .order_by(count, Order::Desc)
         .limit(num_orgs as u64);
     query
+}
+
+fn credential_proof_role_conditions(
+    query: &mut SelectStatement,
+    entity_type: history::HistoryEntityType,
+) {
+    match entity_type {
+        history::HistoryEntityType::Credential => {
+            query
+                .inner_join(
+                    credential::Entity,
+                    Expr::col(history::Column::EntityId)
+                        .eq(Expr::col((credential::Entity, credential::Column::Id))),
+                )
+                .and_where(
+                    Expr::col(credential::Column::Role).eq(credential::CredentialRole::Issuer),
+                );
+        }
+        history::HistoryEntityType::Proof => {
+            query
+                .inner_join(
+                    proof::Entity,
+                    Expr::col(history::Column::EntityId)
+                        .eq(Expr::col((proof::Entity, proof::Column::Id))),
+                )
+                .and_where(Expr::col(proof::Column::Role).eq(proof::ProofRole::Verifier));
+        }
+        _ => {
+            // nothing to do
+        }
+    }
 }
 
 impl TimeResolution {

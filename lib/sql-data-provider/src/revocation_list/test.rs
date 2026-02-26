@@ -16,6 +16,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::RevocationListProvider;
+use crate::entity::credential::CredentialRole;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::revocation_list::RevocationListFormat;
 use crate::test_utilities::{
@@ -377,6 +378,7 @@ async fn create_dummy_credential(
         None,
         None,
         Uuid::new_v4().into(),
+        CredentialRole::Issuer,
     )
     .await
     .unwrap();
