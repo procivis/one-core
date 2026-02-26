@@ -5,6 +5,7 @@ use crate::model::common::SortDirection;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::OrganisationListQuery;
 use crate::model::organisation::SortableOrganisationColumn::CreatedDate;
+use crate::service::error::EntityNotFoundError;
 use crate::service::statistics::StatisticsService;
 use crate::service::statistics::dto::{
     NewOrganisationEntryDTO, OrganisationStatsRequestDTO, OrganisationStatsResponseDTO,
@@ -20,9 +21,28 @@ impl StatisticsService {
     ) -> Result<OrganisationStatsResponseDTO, StatisticsError> {
         throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
+        let (from, include_previous) = match request.from {
+            Some(from) => (from, true),
+            None => {
+                let organisation = self
+                    .organisation_repository
+                    .get_organisation(&request.organisation_id, &Default::default())
+                    .await
+                    .error_while("getting organisation")?
+                    .ok_or(EntityNotFoundError::Organisation(request.organisation_id))
+                    .error_while("getting organisation")?;
+                (organisation.created_date, false)
+            }
+        };
+
         let result = self
             .history_repository
-            .organisation_stats(request.from, request.to, request.organisation_id)
+            .organisation_stats(
+                Some(from),
+                request.to,
+                request.organisation_id,
+                include_previous,
+            )
             .await
             .error_while("getting organisation statistics")?;
         Ok(result.into())

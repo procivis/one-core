@@ -784,7 +784,7 @@ async fn test_history_org_stats_empty_hourly() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(1);
     let result = provider
-        .organisation_stats(Some(from), to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id, true)
         .await
         .unwrap();
 
@@ -803,7 +803,7 @@ async fn test_history_org_stats_empty_daily() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(30);
     let result = provider
-        .organisation_stats(Some(from), to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id, true)
         .await
         .unwrap();
 
@@ -822,7 +822,7 @@ async fn test_history_org_stats_empty_monthly() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(365);
     let result = provider
-        .organisation_stats(Some(from), to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id, true)
         .await
         .unwrap();
 
@@ -841,7 +841,7 @@ async fn test_history_org_stats_empty_yearly() {
     let from = OffsetDateTime::now_utc();
     let to = from + Duration::days(2 * 365);
     let result = provider
-        .organisation_stats(Some(from), to, organisation.id)
+        .organisation_stats(Some(from), to, organisation.id, true)
         .await
         .unwrap();
 
@@ -903,7 +903,7 @@ async fn test_history_org_stats_ignore_irrelevant() {
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
     let result = provider
-        .organisation_stats(Some(from), to, org_id)
+        .organisation_stats(Some(from), to, org_id, true)
         .await
         .unwrap();
     assert_zeroes(&result, 3);
@@ -1012,7 +1012,7 @@ async fn test_history_org_stats_dummy_data() {
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
     let result = provider
-        .organisation_stats(Some(from), to, org_id)
+        .organisation_stats(Some(from), to, org_id, true)
         .await
         .unwrap();
     assert_eq!(result.current.issuance_count, 1);

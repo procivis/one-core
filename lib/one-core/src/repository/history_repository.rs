@@ -28,6 +28,7 @@ pub trait HistoryRepository: Send + Sync {
         from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_id: OrganisationId,
+        include_previous: bool,
     ) -> Result<OrganisationStats, DataLayerError>;
 
     async fn system_stats(
