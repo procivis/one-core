@@ -12,7 +12,6 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use one_core::service::error::ServiceError;
 use one_core::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO;
-use one_core::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
 };
@@ -167,10 +166,27 @@ pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
 }
 
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[serde(untagged)]
+pub(crate) enum OpenID4VCICredentialRequestRestDTO {
+    New(OpenID4VCICredentialRequestNewRestDTO),
+    Old(Box<OpenID4VCICredentialRequestOldRestDTO>),
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+pub(crate) struct OpenID4VCICredentialRequestNewRestDTO {
+    pub credential_configuration_id: Option<String>,
+    pub proofs: OpenID4VCIProofRequestNewRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+pub(crate) struct OpenID4VCIProofRequestNewRestDTO {
+    pub jwt: Vec<String>,
+}
+
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
-#[serde(deny_unknown_fields)]
 #[try_into(T = OpenID4VCICredentialRequestDTO, Error = ServiceError)]
-pub(crate) struct OpenID4VCICredentialRequestRestDTO {
+pub(crate) struct OpenID4VCICredentialRequestOldRestDTO {
     #[try_into(infallible)]
     pub format: String,
     #[try_into(with_fn = try_convert_inner)]
@@ -180,13 +196,12 @@ pub(crate) struct OpenID4VCICredentialRequestRestDTO {
     #[try_into(infallible)]
     pub vct: Option<String>,
     #[try_into(infallible)]
-    pub proof: OpenID4VCIProofRequestRestDTO,
+    pub proof: OpenID4VCIProofRequestOldRestDTO,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[serde(deny_unknown_fields)]
 #[into(OpenID4VCIProofRequestDTO)]
-pub(crate) struct OpenID4VCIProofRequestRestDTO {
+pub(crate) struct OpenID4VCIProofRequestOldRestDTO {
     pub proof_type: String,
     pub jwt: String,
 }
@@ -237,10 +252,10 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(OpenID4VCISwiyuCredentialResponseDTO)]
 pub(crate) struct OpenID4VCISwiyuCredentialResponseRestDTO {
+    pub credentials: Vec<serde_json::Value>,
     pub credential: String,
     pub format: String,
     pub redirect_uri: Option<String>,

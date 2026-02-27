@@ -1,14 +1,19 @@
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, Timestamp,
+    OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProofRequestDTO,
+    OpenID4VCITokenRequestDTO, Timestamp,
 };
 use one_core::service::error::ServiceError;
+use one_core::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 use one_dto_mapper::convert_inner_of_inner;
+use serde_json::json;
 
 use super::dto::{
     ExtendedSubjectClaimsRestDTO, OpenID4VCICredentialDefinitionRequestRestDTO,
+    OpenID4VCICredentialRequestNewRestDTO, OpenID4VCICredentialRequestRestDTO,
     OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCIProofRequestNewRestDTO, OpenID4VCISwiyuCredentialResponseRestDTO,
     OpenID4VCITokenRequestRestDTO, TimestampRest,
 };
 
@@ -114,6 +119,56 @@ impl From<OpenID4VCICredentialDefinitionRequestDTO>
             r#type: Some(value.r#type.clone()),
             types: Some(value.r#type.clone()),
             credential_subject: value.credential_subject,
+        }
+    }
+}
+
+impl TryFrom<OpenID4VCIProofRequestNewRestDTO> for OpenID4VCIProofRequestDTO {
+    type Error = ServiceError;
+    fn try_from(value: OpenID4VCIProofRequestNewRestDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            proof_type: "jwt".to_string(),
+            jwt: value
+                .jwt
+                .first()
+                .cloned()
+                .ok_or(ServiceError::MappingError("missing jwt".to_string()))?,
+        })
+    }
+}
+
+impl TryFrom<OpenID4VCICredentialRequestNewRestDTO> for OpenID4VCICredentialRequestDTO {
+    type Error = ServiceError;
+    fn try_from(value: OpenID4VCICredentialRequestNewRestDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            format: "vc+sd-jwt".to_string(),
+            credential_definition: None,
+            doctype: None,
+            vct: value.credential_configuration_id,
+            proof: value.proofs.try_into()?,
+        })
+    }
+}
+
+impl TryFrom<OpenID4VCICredentialRequestRestDTO> for OpenID4VCICredentialRequestDTO {
+    type Error = ServiceError;
+    fn try_from(value: OpenID4VCICredentialRequestRestDTO) -> Result<Self, Self::Error> {
+        Ok(match value {
+            OpenID4VCICredentialRequestRestDTO::New(dto) => dto.try_into()?,
+            OpenID4VCICredentialRequestRestDTO::Old(dto) => dto.as_ref().to_owned().try_into()?,
+        })
+    }
+}
+
+impl From<OpenID4VCISwiyuCredentialResponseDTO> for OpenID4VCISwiyuCredentialResponseRestDTO {
+    fn from(value: OpenID4VCISwiyuCredentialResponseDTO) -> Self {
+        Self {
+            credentials: vec![json!({
+                "credential": value.credential,
+            })],
+            credential: value.credential,
+            format: value.format,
+            redirect_uri: value.redirect_uri,
         }
     }
 }

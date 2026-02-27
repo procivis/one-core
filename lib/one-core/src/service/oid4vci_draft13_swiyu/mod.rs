@@ -21,6 +21,7 @@ use crate::service::oid4vci_draft13::OID4VCIDraft13Service;
 
 #[derive(Clone)]
 pub struct OID4VCIDraft13SwiyuService {
+    interaction_repository: Arc<dyn InteractionRepository>,
     inner: OID4VCIDraft13Service,
 }
 
@@ -50,7 +51,7 @@ impl OID4VCIDraft13SwiyuService {
                 IssuanceProtocolType::OpenId4VciDraft13Swiyu,
                 credential_schema_repository,
                 credential_repository,
-                interaction_repository,
+                interaction_repository.clone(),
                 config,
                 protocol_provider,
                 did_method_provider,
@@ -61,6 +62,7 @@ impl OID4VCIDraft13SwiyuService {
                 identifier_creator,
                 transaction_manager,
             ),
+            interaction_repository,
         }
     }
 }

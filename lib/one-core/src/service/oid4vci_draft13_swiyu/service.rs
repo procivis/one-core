@@ -1,9 +1,16 @@
-use shared_types::{CredentialId, CredentialSchemaId};
+use std::str::FromStr;
 
+use shared_types::{CredentialId, CredentialSchemaId};
+use uuid::Uuid;
+
+use crate::error::ContextWithErrorCode;
+use crate::model::common::LockType;
+use crate::model::interaction::{Interaction, InteractionRelations};
+use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::service::error::ServiceError;
 use crate::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO;
@@ -60,7 +67,50 @@ impl OID4VCIDraft13SwiyuService {
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
-        self.inner.create_token(credential_schema_id, request).await
+        let interaction_id = match &request {
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code,
+                tx_code: _,
+            } => Uuid::from_str(pre_authorized_code)
+                .map_err(|_| {
+                    ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(
+                        OpenID4VCIError::InvalidRequest,
+                    ))
+                })?
+                .into(),
+            _ => {
+                return Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidGrant));
+            }
+        };
+        let mut response = self
+            .inner
+            .create_token(credential_schema_id, request)
+            .await?;
+        response.c_nonce = None;
+        let mut interaction = self
+            .interaction_repository
+            .get_interaction(
+                &interaction_id,
+                &InteractionRelations::default(),
+                Some(LockType::Update),
+            )
+            .await
+            .error_while("getting interaction")?
+            .ok_or(ServiceError::MappingError(format!(
+                "Interaction `{}` not found",
+                interaction_id
+            )))?;
+        let mut parsed_data = interaction_data_to_dto(&interaction)?;
+        parsed_data.nonce = None;
+        let data = serde_json::to_vec(&parsed_data)
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        interaction.data = Some(data);
+
+        self.interaction_repository
+            .update_interaction(interaction.id, interaction.into())
+            .await
+            .error_while("updating interaction")?;
+        Ok(response)
     }
 
     pub async fn create_credential(
@@ -87,6 +137,19 @@ impl OID4VCIDraft13SwiyuService {
             redirect_uri: regular_dto.redirect_uri,
         })
     }
+}
+
+pub(crate) fn interaction_data_to_dto(
+    interaction: &Interaction,
+) -> Result<OpenID4VCIIssuerInteractionDataDTO, ServiceError> {
+    let interaction_data = interaction
+        .data
+        .to_owned()
+        .ok_or(ServiceError::MappingError(
+            "interaction data is missing".to_string(),
+        ))?;
+
+    serde_json::from_slice(&interaction_data).map_err(|e| ServiceError::MappingError(e.to_string()))
 }
 
 fn set_value_type_string(claims: &mut OpenID4VCICredentialSubjectItem) {
