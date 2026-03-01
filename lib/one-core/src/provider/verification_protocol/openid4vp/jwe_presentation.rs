@@ -60,16 +60,23 @@ pub(crate) fn encryption_key_from_metadata(
         OpenID4VPClientMetadata::Final1_0(metadata) => metadata.jwks,
     };
 
+    let is_usable_for_encryption = |key: &PublicJwk| -> bool {
+        // Per RFC 7517 §4.2, `use` is OPTIONAL. When absent, the key's algorithm
+        // or capabilities determine its purpose. Only reject keys explicitly
+        // marked for a non-encryption use (e.g. "sig").
+        match key.r#use() {
+            Some(r#use) => *r#use == JwkUse::Encryption,
+            None => true,
+        }
+    };
+
+    let supports_key_agreement = |key: &PublicJwk| -> bool {
+        key_algorithm_provider
+            .parse_jwk(key)
+            .is_ok_and(|parsed_key| parsed_key.key.key_agreement().is_some())
+    };
+
     jwks.into_iter()
         .flat_map(|jwk| jwk.keys)
-        .filter(|key| {
-            matches!(&key,
-                PublicJwk::Ec(key) | PublicJwk::Okp(key) if key.r#use == Some(JwkUse::Encryption)
-            )
-        })
-        .find(|key| {
-            key_algorithm_provider
-                .parse_jwk(key)
-                .is_ok_and(|parsed_key| parsed_key.key.key_agreement().is_some())
-        })
+        .find(|key| is_usable_for_encryption(key) && supports_key_agreement(key))
 }
