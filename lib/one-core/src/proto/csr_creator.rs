@@ -28,6 +28,7 @@ pub trait CsrCreator: Send + Sync {
 pub struct GenerateCsrRequest {
     pub profile: CsrRequestProfile,
     pub subject: CsrRequestSubject,
+    pub issuer_alternative_name: Option<CsrRequestIssuerAlternativeName>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +73,18 @@ pub struct CsrRequestSubject {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CsrRequestIssuerAlternativeName {
+    pub r#type: IssuerAlternativeNameType,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum IssuerAlternativeNameType {
+    Email,
+    Uri,
 }
 
 pub(crate) struct CsrCreatorImpl {
@@ -168,40 +181,37 @@ fn request_to_certificate_params(request: GenerateCsrRequest) -> CertificatePara
     match request.profile {
         CsrRequestProfile::Generic => {} // nothing to add
         CsrRequestProfile::Mdl => {
-            params.custom_extensions.push(prepare_key_usage_extension());
+            params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
             params
                 .custom_extensions
-                .push(prepare_extended_key_usage_extension());
+                .push(prepare_extended_key_usage_extension_iso_mdl_ds());
         }
         CsrRequestProfile::Ca => {
             // Basic constraints cannot be set in CSR, so only key usages are specified here.
             params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+
+            if let Some(issuer_alternative_name) = request.issuer_alternative_name {
+                params
+                    .custom_extensions
+                    .push(prepare_issuer_alternative_name_extension(
+                        issuer_alternative_name,
+                    ));
+            }
         }
     }
 
     params
 }
 
-fn prepare_key_usage_extension() -> CustomExtension {
-    const OID_KEY_USAGE: [u64; 4] = [2, 5, 29, 15];
-    const KEY_USAGE_PURPOSE_DIGITAL_SIGNATURE: [u8; 2] = [0x80, 0];
-    const BITS_TO_WRITE: usize = 15;
-
-    let content = yasna::construct_der(|writer| {
-        writer.write_bitvec_bytes(&KEY_USAGE_PURPOSE_DIGITAL_SIGNATURE, BITS_TO_WRITE);
-    });
-
-    CustomExtension::from_oid_content(&OID_KEY_USAGE, content)
-}
-
-fn prepare_extended_key_usage_extension() -> CustomExtension {
+/// ISO 18013-5, B.1.4 Document signer certificate
+pub(crate) const OID_EXTENDED_KEY_USAGE_ISO_MDL_DS: [u64; 6] = [1, 0, 18013, 5, 1, 2];
+pub(crate) fn prepare_extended_key_usage_extension_iso_mdl_ds() -> CustomExtension {
     const OID_EXTENDED_KEY_USAGE: [u64; 4] = [2, 5, 29, 37];
-    const OID_EXTENDED_KEY_USAGE_MDL_DS: [u64; 6] = [1, 0, 18013, 5, 1, 2];
 
     let mdlds_extended_key_usage = yasna::construct_der(|writer| {
         writer.write_sequence(|writer| {
             writer.next().write_oid(&ObjectIdentifier::from_slice(
-                &OID_EXTENDED_KEY_USAGE_MDL_DS,
+                &OID_EXTENDED_KEY_USAGE_ISO_MDL_DS,
             ));
         });
     });
@@ -209,4 +219,29 @@ fn prepare_extended_key_usage_extension() -> CustomExtension {
         CustomExtension::from_oid_content(&OID_EXTENDED_KEY_USAGE, mdlds_extended_key_usage);
     extended_key_usage_extension.set_criticality(true);
     extended_key_usage_extension
+}
+
+// https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.7
+pub(crate) fn prepare_issuer_alternative_name_extension(
+    data: CsrRequestIssuerAlternativeName,
+) -> CustomExtension {
+    const OID_ISSUER_ALTERNATIVE_NAME: [u64; 4] = [2, 5, 29, 18];
+
+    let names = yasna::construct_der(|writer| {
+        writer.write_sequence(|writer| {
+            // https://datatracker.ietf.org/doc/html/rfc5280#appendix-A.2
+            // GeneralName
+            let tag = match &data.r#type {
+                IssuerAlternativeNameType::Email => 1, // rfc822Name [1] IA5String
+                IssuerAlternativeNameType::Uri => 6,   // uniformResourceIdentifier [6] IA5String
+            };
+
+            writer
+                .next()
+                .write_tagged_implicit(yasna::Tag::context(tag), |writer| {
+                    writer.write_ia5_string(&data.name);
+                });
+        })
+    });
+    CustomExtension::from_oid_content(&OID_ISSUER_ALTERNATIVE_NAME, names)
 }

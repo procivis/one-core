@@ -2,8 +2,7 @@ mod mapper;
 
 use std::sync::Arc;
 
-use rcgen::BasicConstraints::Unconstrained;
-use rcgen::{IsCa, KeyUsagePurpose};
+use rcgen::{BasicConstraints, IsCa, KeyUsagePurpose};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{Permission, RevocationMethodId};
@@ -43,7 +42,9 @@ pub struct PayloadParams {
     pub max_validity_duration: Duration,
     #[serde(default)]
     pub allow_ca_signing: bool,
+    pub path_len_constraint: Option<u8>,
 }
+
 #[derive(Debug, Deserialize)]
 struct RequestData {
     csr: String,
@@ -106,24 +107,27 @@ impl Signer for X509CertificateSigner {
         let SignatureValidity { start, end } =
             calculate_signature_validity(self.params.payload.max_validity_duration, &request)?;
 
-        let mut csr_params = params_from_request(request)?;
-        let cert_params = &mut csr_params.params;
-        // Serial will either be the first 20 bytes of the public key hash (as implemented by rcgen)
-        // _or_ provided by the revocation method. Cannot be chosen externally.
-        cert_params.serial_number = None;
+        let self_signing = matches!(issuer, Issuer::Key(_));
+        let (mut cert_params, public_key) = params_from_request(request, self_signing)
+            .map_err(|e| SignerError::InvalidPayload(Box::new(e)))?;
+
         cert_params.use_authority_key_identifier_extension = true;
         if cert_params
             .key_usages
             .contains(&KeyUsagePurpose::KeyCertSign)
         {
-            if self.params.payload.allow_ca_signing {
-                // This is a CA CSR, add the basic constraints extension
-                cert_params.is_ca = IsCa::Ca(Unconstrained);
-            } else {
+            // This is a CA request, add the basic constraints extension
+            if !self.params.payload.allow_ca_signing {
                 return Err(SignerError::InvalidPayload(
                     "Key usage `keyCertSign` is not allowed".to_string().into(),
                 ));
             }
+
+            let constraints = match &self.params.payload.path_len_constraint {
+                Some(path_len) => BasicConstraints::Constrained(*path_len),
+                None => BasicConstraints::Unconstrained,
+            };
+            cert_params.is_ca = IsCa::Ca(constraints);
         }
         cert_params.not_before = start;
         cert_params.not_after = end;
@@ -139,7 +143,7 @@ impl Signer for X509CertificateSigner {
                     signature_id,
                     ca_certificate,
                 } = prepare_params_and_ca_issuer(
-                    cert_params,
+                    &mut cert_params,
                     IdentifierInfo {
                         identifier: &identifier,
                         certificate,
@@ -152,8 +156,8 @@ impl Signer for X509CertificateSigner {
                     self.key_provider.clone(),
                 )
                 .await?;
-                let content = csr_params
-                    .signed_by(&cert_issuer)
+                let content = cert_params
+                    .signed_by(&public_key, &cert_issuer)
                     .map_err(SignerError::signing_error)?;
                 let chain = format!("{}{}", content.pem(), ca_certificate.chain); // include CA chain
                 (signature_id, chain)

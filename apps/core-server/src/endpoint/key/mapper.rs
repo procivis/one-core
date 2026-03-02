@@ -4,10 +4,12 @@ use one_core::model::list_filter::{
     ValueComparison,
 };
 use one_core::service::error::ServiceError;
+use one_core::service::key::dto::KeyGenerateCSRRequestDTO;
 
 use super::dto::KeyFilterQueryParamsRest;
 use crate::dto::common::ExactColumn;
 use crate::dto::mapper::fallback_organisation_id_from_session;
+use crate::endpoint::key::dto::KeyGenerateCSRRequestRestDTO;
 
 impl TryFrom<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
     type Error = ServiceError;
@@ -75,5 +77,15 @@ impl TryFrom<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
             & created_date_before
             & last_modified_after
             & last_modified_before)
+    }
+}
+
+impl From<KeyGenerateCSRRequestRestDTO> for KeyGenerateCSRRequestDTO {
+    fn from(value: KeyGenerateCSRRequestRestDTO) -> Self {
+        Self {
+            profile: value.profile.into(),
+            subject: value.subject.into(),
+            issuer_alternative_name: None,
+        }
     }
 }

@@ -427,7 +427,7 @@ impl IdentifierCreatorProto {
                         },
                     )
                     .await
-                    .error_while("parsing PEM chain")?
+                    .error_while("signing CSR")?
                     .result
             }
             _ => {

@@ -276,14 +276,14 @@ async fn test_create_signature_x509_intermediary_ca_success() {
     let_assert!(ParsedExtension::CRLDistributionPoints(_) = crl_ext);
     assert_eq!(leaf_cert.subject.to_string(), "CN=test cert");
     assert!(leaf_cert.is_ca());
-    assert!(
+    assert_eq!(
         leaf_cert
             .basic_constraints()
             .unwrap()
             .unwrap()
             .value
-            .path_len_constraint
-            .is_none()
+            .path_len_constraint,
+        Some(0)
     );
     assert_eq!(leaf_cert.validity.not_before.to_datetime(), start);
     assert_eq!(leaf_cert.validity.not_after.to_datetime(), end);

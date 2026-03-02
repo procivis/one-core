@@ -141,7 +141,14 @@ impl IdentifiersApi {
         organisation_id: OrganisationId,
         common_name: &str,
         signer: &str,
+        issuer_alternative_name: Option<&str>,
     ) -> Response {
+        let issuer_alternative_name = issuer_alternative_name.map(|name| {
+            json!({
+                "type": "URI",
+                "name": name
+            })
+        });
         self.client
             .post(
                 "/api/identifier/v1",
@@ -154,7 +161,8 @@ impl IdentifiersApi {
                             "content": {
                                 "subject": {
                                     "commonName": common_name,
-                                }
+                                },
+                                "issuerAlternativeName": issuer_alternative_name
                             },
                             "signer": signer
                         },

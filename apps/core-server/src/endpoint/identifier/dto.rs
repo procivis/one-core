@@ -9,6 +9,9 @@ use one_core::service::identifier::dto::{
     CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
+use one_core::service::key::dto::{
+    KeyGenerateCSRRequestIssuerAlternativeNameDTO, KeyGenerateCSRRequestIssuerAlternativeNameType,
+};
 use one_core::service::trust_entity::dto::{
     ResolveTrustEntitiesRequestDTO, ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
     ResolvedIdentifierTrustEntityResponseDTO,
@@ -128,10 +131,12 @@ pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
     pub validity_end: Option<OffsetDateTime>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCaCSRRequestRestDTO {
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    pub issuer_alternative_name: Option<CreateCaCSRRequestIssuerAlternativeNameRestDTO>,
 }
 
 #[options_not_nullable]
@@ -344,4 +349,21 @@ pub(crate) struct ResolvedIdentifierTrustEntityResponseRestDTO {
     pub trust_entity: GetTrustEntityResponseRestDTO,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub certificate_ids: Vec<CertificateId>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(KeyGenerateCSRRequestIssuerAlternativeNameDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateCaCSRRequestIssuerAlternativeNameRestDTO {
+    pub r#type: CreateCaCSRRequestIssuerAlternativeNameTypeRest,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[into(KeyGenerateCSRRequestIssuerAlternativeNameType)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CreateCaCSRRequestIssuerAlternativeNameTypeRest {
+    Email,
+    Uri,
 }

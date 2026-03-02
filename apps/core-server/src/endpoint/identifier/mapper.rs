@@ -105,6 +105,7 @@ impl From<CreateCaCSRRequestRestDTO> for KeyGenerateCSRRequestDTO {
         Self {
             profile: KeyGenerateCSRRequestProfile::Ca,
             subject: value.subject.into(),
+            issuer_alternative_name: convert_inner(value.issuer_alternative_name),
         }
     }
 }

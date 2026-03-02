@@ -1,55 +1,56 @@
 [package]
-authors           = ["Procivis"]
-edition.workspace = true
-license           = "Apache-2.0"
-name              = "one-crypto"
-publish           = false
-version           = "0.1.0"
+authors                = ["Procivis"]
+edition.workspace      = true
+license                = "Apache-2.0"
+name                   = "one-crypto"
+publish                = false
 rust-version.workspace = true
+version                = "0.1.0"
 
 [lib]
 doctest = false
 
 [dependencies]
-standardized-types.workspace = true
 aes                          = { version = "0.8.4" }
-cbc                          = { version = "0.1.2" }
 aes-gcm                      = { version = "0.10.3", features = ["rand_core", "zeroize"] }
-ml-dsa                       = { version = "0.1.0-rc.3", features = ["rand_core", "zeroize"] }
 async-trait.workspace        = true
 blstrs                       = { version = "0.7" }
+cbc                          = { version = "0.1.2" }
 chacha20poly1305             = { version = "0.10" }
 cocoon                       = { version = "0.4" }
 concat-kdf                   = { version = "0.1" }
 ct-codecs.workspace          = true
 ed25519-compact              = { version = "2.1" }
 hmac                         = { version = "0.12" }
+ml-dsa                       = { version = "0.1.0-rc.3", features = ["rand_core", "zeroize"] }
 mockall                      = { workspace = true, optional = true }
 p256                         = { version = "0.13", features = ["jwk", "ecdh"] }
-# pairing_crypto is fixed to this specific commit, so the implementation of BBS+ is still the draft-06 version
-pairing_crypto               = { version = "0.4.3", git = "https://github.com/procivis/pairing_crypto", rev = "0ec3629" }
 pbkdf2                       = { version = "0.12", features = ["simple"] }
-
-# should be unified
-rand.workspace               = true
-rand_chacha                  = { version = "0.3" }
-rand_core                    = { version = "=0.10.0-rc-3" }
-rand_new                     = { package = "rand", version = "0.10.0-rc.6"}
-rand_chacha_new              = { package = "rand_chacha", version = "0.10.0-rc.6"}
-
 secrecy                      = { workspace = true }
 serde.workspace              = true
 serde_json.workspace         = true
 serde_with.workspace         = true
-strum.workspace              = true
+sha1                         = { version = "0.10" }
 sha2                         = { version = "0.10" }
+standardized-types.workspace = true
+strum.workspace              = true
 thiserror.workspace          = true
 
+# pairing_crypto is fixed to this specific commit, so the implementation of BBS+ is still the draft-06 version
+pairing_crypto = { version = "0.4.3", git = "https://github.com/procivis/pairing_crypto", rev = "0ec3629" }
+
+# should be unified
+rand.workspace  = true
+rand_chacha     = { version = "0.3" }
+rand_chacha_new = { package = "rand_chacha", version = "0.10.0-rc.6" }
+rand_core       = { version = "=0.10.0-rc-3" }
+rand_new        = { package = "rand", version = "0.10.0-rc.6" }
+
 [dev-dependencies]
+hex             = { workspace = true }
 mockall         = { workspace = true }
 similar-asserts = { workspace = true }
 tokio           = { workspace = true, features = ["rt-multi-thread", "macros"] }
-hex             = { workspace = true }
 
 [features]
 mock = ["mockall"]

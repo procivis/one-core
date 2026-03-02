@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use one_core::service::key::dto::{
-    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
-};
+use one_core::service::key::dto::KeyGenerateCSRRequestSubjectDTO;
 use one_dto_mapper::Into;
 
 use super::OneCoreBinding;
@@ -32,21 +30,6 @@ pub struct KeyRequestBindingDTO {
     pub name: String,
     pub storage_type: String,
     pub storage_params: HashMap<String, String>,
-}
-
-#[derive(Clone, Debug, Into, uniffi::Record)]
-#[into(KeyGenerateCSRRequestDTO)]
-pub struct KeyGenerateCSRRequestBindingDTO {
-    pub profile: KeyGenerateCSRRequestProfileBinding,
-    pub subject: KeyGenerateCSRRequestSubjectBindingDTO,
-}
-
-#[derive(Clone, Debug, Into, uniffi::Enum)]
-#[into(KeyGenerateCSRRequestProfile)]
-pub enum KeyGenerateCSRRequestProfileBinding {
-    Generic,
-    Mdl,
-    Ca,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]

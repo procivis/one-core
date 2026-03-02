@@ -1093,6 +1093,7 @@ impl From<CreateCaCSRRequestBindingDTO> for KeyGenerateCSRRequestDTO {
         Self {
             profile: KeyGenerateCSRRequestProfile::Ca,
             subject: value.subject.into(),
+            issuer_alternative_name: None,
         }
     }
 }

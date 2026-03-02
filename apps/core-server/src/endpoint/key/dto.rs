@@ -1,8 +1,8 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::{
-    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
-    KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
+    KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO, KeyGenerateCSRResponseDTO,
+    KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, TryInto};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -169,8 +169,7 @@ pub(crate) struct KeyFilterQueryParamsRest {
 pub(crate) type GetKeyQuery =
     ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKeyColumnRestDTO>;
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(KeyGenerateCSRRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyGenerateCSRRequestRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
