@@ -65,7 +65,8 @@ pub(crate) fn credential_detail_response_from_model(
         .issuer_certificate
         .clone()
         .map(TryInto::try_into)
-        .transpose()?;
+        .transpose()
+        .error_while("converting certificate")?;
 
     Ok(CredentialDetailResponseDTO {
         id: value.id,

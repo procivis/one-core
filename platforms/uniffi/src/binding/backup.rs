@@ -237,11 +237,7 @@ mod tests {
         };
 
         assert!(
-            cause
-                .clone()
-                .unwrap()
-                .message
-                .contains("Failed to decrypt db file"),
+            cause.as_ref().unwrap().message.contains("Encryption error"),
             "cause = {cause:?}",
         );
     }

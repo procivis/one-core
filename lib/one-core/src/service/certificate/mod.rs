@@ -5,6 +5,7 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 
 pub mod dto;
+pub mod error;
 pub(crate) mod mapper;
 pub mod service;
 

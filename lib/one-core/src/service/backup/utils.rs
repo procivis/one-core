@@ -2,7 +2,6 @@ use std::ffi::OsStr;
 use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
-use anyhow::Context;
 use one_crypto::hasher::sha256::SHA256;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -10,24 +9,19 @@ use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
+use super::error::BackupServiceError;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
 };
-use crate::service::error::ServiceError;
 
 const DB_FILE: &str = "database.sqlite3";
 const METADATA_FILE: &str = "metadata.json";
 
-pub(super) fn hash_reader<T: Read + Seek>(reader: &mut T) -> Result<String, ServiceError> {
-    let hash = SHA256::hash_reader(reader)
-        .map(hex::encode)
-        .context("Failed to generate sha-256")
-        .map_err(map_error)?;
+pub(super) fn hash_reader<T: Read + Seek>(reader: &mut T) -> Result<String, BackupServiceError> {
+    let hash = SHA256::hash_reader(reader)?;
+    let hash = hex::encode(hash);
 
-    reader
-        .seek(SeekFrom::Start(0))
-        .context("Failed to seek back to beginning after hashing")
-        .map_err(map_error)?;
+    reader.seek(SeekFrom::Start(0))?;
 
     Ok(hash)
 }
@@ -35,7 +29,7 @@ pub(super) fn hash_reader<T: Read + Seek>(reader: &mut T) -> Result<String, Serv
 pub(super) fn build_metadata_file_content<T: Read + Seek>(
     db_file: &mut T,
     db_version: String,
-) -> Result<MetadataDTO, ServiceError> {
+) -> Result<MetadataDTO, BackupServiceError> {
     Ok(MetadataDTO {
         db_version,
         db_hash: hash_reader(db_file)?,
@@ -47,16 +41,9 @@ fn add_to_zip<T: Write + Seek>(
     name: &str,
     content: &mut impl Read,
     archive: &mut zip::ZipWriter<T>,
-) -> Result<(), ServiceError> {
-    archive
-        .start_file(name, SimpleFileOptions::default())
-        .with_context(|| format!("Failed to create {name} in zip"))
-        .map_err(map_error)?;
-
-    io::copy(content, archive)
-        .with_context(|| format!("Failed to write {name} to zip"))
-        .map_err(map_error)?;
-
+) -> Result<(), BackupServiceError> {
+    archive.start_file(name, SimpleFileOptions::default())?;
+    io::copy(content, archive)?;
     Ok(())
 }
 
@@ -64,54 +51,32 @@ pub(super) fn create_zip<T: Write + Seek>(
     mut db_file: impl Read,
     metadata: MetadataDTO,
     zip_file: T,
-) -> Result<T, ServiceError> {
+) -> Result<T, BackupServiceError> {
     let mut archive = zip::ZipWriter::new(zip_file);
 
     add_to_zip(DB_FILE, &mut db_file, &mut archive)?;
     add_to_zip(
         METADATA_FILE,
-        &mut Cursor::new(
-            serde_json::to_vec(&metadata)
-                .context("failed to serialize metadata")
-                .map_err(map_error)?,
-        ),
+        &mut Cursor::new(serde_json::to_vec(&metadata)?),
         &mut archive,
     )?;
 
-    let mut writer = archive
-        .finish()
-        .context("Failed to finish zipping")
-        .map_err(map_error)?;
-
-    writer
-        .seek(SeekFrom::Start(0))
-        .context("Failed to seek back after zipping")
-        .map_err(map_error)?;
+    let mut writer = archive.finish()?;
+    writer.seek(SeekFrom::Start(0))?;
 
     Ok(writer)
 }
 
 pub(super) fn get_metadata_from_zip<T: Read + Seek>(
     zip_file: &mut T,
-) -> Result<MetadataDTO, ServiceError> {
-    let mut archive = zip::ZipArchive::new(zip_file)
-        .context("Failed to open zip")
-        .map_err(map_error)?;
+) -> Result<MetadataDTO, BackupServiceError> {
+    let mut archive = zip::ZipArchive::new(zip_file)?;
 
-    let reader = archive
-        .by_name(METADATA_FILE)
-        .with_context(|| format!("Failed to open {METADATA_FILE} in zip"))
-        .map_err(map_error)?;
+    let reader = archive.by_name(METADATA_FILE)?;
 
-    let metadata = serde_json::from_reader(reader)
-        .with_context(|| format!("Failed to deserialize {METADATA_FILE} from zip"))
-        .map_err(map_error)?;
+    let metadata = serde_json::from_reader(reader)?;
 
-    archive
-        .into_inner()
-        .seek(SeekFrom::Start(0))
-        .context("Failed to seek back after reading from zip")
-        .map_err(map_error)?;
+    archive.into_inner().seek(SeekFrom::Start(0))?;
 
     Ok(metadata)
 }
@@ -119,24 +84,12 @@ pub(super) fn get_metadata_from_zip<T: Read + Seek>(
 pub(super) fn load_db_from_zip<T: Read + Seek, K: Write + Seek>(
     zip_file: T,
     output_file: &mut K,
-) -> Result<(), ServiceError> {
-    let mut archive = zip::ZipArchive::new(zip_file)
-        .context("Failed to open zip")
-        .map_err(map_error)?;
+) -> Result<(), BackupServiceError> {
+    let mut archive = zip::ZipArchive::new(zip_file)?;
 
-    let mut reader = archive
-        .by_name(DB_FILE)
-        .with_context(|| format!("Failed to open {DB_FILE} in zip"))
-        .map_err(map_error)?;
-
-    std::io::copy(&mut reader, output_file)
-        .with_context(|| format!("Failed to read {DB_FILE} from zip"))
-        .map_err(map_error)?;
-
-    output_file
-        .seek(SeekFrom::Start(0))
-        .context("Failed to seek back after reading from zip")
-        .map_err(map_error)?;
+    let mut reader = archive.by_name(DB_FILE)?;
+    std::io::copy(&mut reader, output_file)?;
+    output_file.seek(SeekFrom::Start(0))?;
 
     Ok(())
 }
@@ -162,17 +115,13 @@ pub(super) fn create_backup_history_event(
     }
 }
 
-pub(super) fn map_error(err: anyhow::Error) -> ServiceError {
-    ServiceError::Other(format!("{err:?}"))
-}
-
 pub(super) fn dir_path_from_file_path<T: ?Sized + AsRef<OsStr>>(
     file_path: &T,
-) -> Result<PathBuf, ServiceError> {
+) -> Result<PathBuf, BackupServiceError> {
     let file_path = PathBuf::from(file_path);
     Ok(file_path
         .parent()
-        .ok_or(ServiceError::Other(
+        .ok_or(BackupServiceError::InvalidPath(
             "Failed to find parent directory".to_string(),
         ))?
         .to_path_buf())

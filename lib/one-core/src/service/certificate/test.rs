@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::service::certificate::CertificateService;
-use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
+use crate::service::certificate::error::CertificateServiceError;
 use crate::service::test_utilities::{dummy_identifier, get_dummy_date};
 
 #[tokio::test]
@@ -36,10 +38,7 @@ async fn test_get_cert_fail_session_org_mismatch() {
     };
 
     let result = service.get_certificate(Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -78,10 +77,5 @@ async fn test_get_certificate_authority_invalid_identifier() {
     };
 
     let result = service.get_certificate_authority(id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::EntityNotFound(
-            EntityNotFoundError::Certificate(_)
-        ))
-    ));
+    assert!(matches!(result, Err(CertificateServiceError::NotFound(_))));
 }

@@ -1,12 +1,11 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use super::DidDeactivationError;
+use super::dto::CreateDidRequestKeysDTO;
+use super::error::DidServiceError;
 use crate::model::did::Did;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::model::{AmountOfKeys, Operation};
-use crate::service::did::dto::CreateDidRequestKeysDTO;
-use crate::service::error::{BusinessLogicError, ValidationError};
 
 fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
     vec.into_iter().collect::<HashSet<_>>().len()
@@ -15,7 +14,7 @@ fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
 pub(crate) fn validate_request_amount_of_keys(
     did_method: &dyn DidMethod,
     keys: CreateDidRequestKeysDTO,
-) -> Result<(), ValidationError> {
+) -> Result<(), DidServiceError> {
     let keys = AmountOfKeys {
         global: count_uniq(
             keys.authentication
@@ -33,7 +32,7 @@ pub(crate) fn validate_request_amount_of_keys(
     };
 
     if !did_method.validate_keys(keys) {
-        Err(ValidationError::DidInvalidKeyNumber)
+        Err(DidServiceError::InvalidNumberOfKeys)
     } else {
         Ok(())
     }
@@ -43,9 +42,9 @@ pub(super) fn validate_deactivation_request(
     did: &Did,
     did_method: &dyn DidMethod,
     deactivate: bool,
-) -> Result<(), BusinessLogicError> {
+) -> Result<(), DidServiceError> {
     if did.did_type.is_remote() {
-        return Err(DidDeactivationError::RemoteDid.into());
+        return Err(DidServiceError::RemoteDid);
     }
 
     if deactivate
@@ -54,25 +53,22 @@ pub(super) fn validate_deactivation_request(
             .operations
             .contains(&Operation::DEACTIVATE)
     {
-        return Err(DidDeactivationError::CannotBeDeactivated {
+        return Err(DidServiceError::CannotBeDeactivated {
             method: did.did_method.to_owned(),
-        }
-        .into());
+        });
     }
 
     if !deactivate {
-        return Err(DidDeactivationError::CannotBeReactivated {
+        return Err(DidServiceError::CannotBeReactivated {
             method: did.did_method.to_owned(),
-        }
-        .into());
+        });
     }
 
     if deactivate == did.deactivated {
-        return Err(DidDeactivationError::DeactivatedSameValue {
+        return Err(DidServiceError::DeactivatedSameValue {
             value: did.deactivated,
             method: did.did_method.to_owned(),
-        }
-        .into());
+        });
     }
 
     Ok(())

@@ -1,13 +1,13 @@
 use one_dto_mapper::convert_inner;
 
 use super::dto::CertificateResponseDTO;
+use super::error::CertificateServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::proto::certificate_validator::parse::parse_chain_to_x509_attributes;
-use crate::service::error::ServiceError;
 
 impl TryFrom<Certificate> for CertificateResponseDTO {
-    type Error = ServiceError;
+    type Error = CertificateServiceError;
 
     fn try_from(certificate: Certificate) -> Result<Self, Self::Error> {
         let x509_attributes = parse_chain_to_x509_attributes(certificate.chain.as_bytes())

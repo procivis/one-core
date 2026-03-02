@@ -7,7 +7,9 @@ use axum_extra::typed_header::TypedHeader;
 use headers::Authorization;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
-use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use one_core::service::certificate::error::CertificateServiceError;
+use one_core::service::did::error::DidServiceError;
+use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
     RevocationListId, TrustAnchorId,
@@ -73,11 +75,11 @@ pub(crate) async fn get_did_webvh_log(
 
     match result {
         Ok(log) => (StatusCode::OK, [(header::CONTENT_TYPE, "text/jsonl")], log).into_response(),
-        Err(ServiceError::EntityNotFound(_)) => {
+        Err(DidServiceError::NotFound(_)) => {
             tracing::error!("did:webvh not found");
             (StatusCode::NOT_FOUND, "Did not found").into_response()
         }
-        Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidDidMethod { method })) => {
+        Err(DidServiceError::InvalidMethod { method }) => {
             tracing::error!("Expected did:webvh found {method}");
             (StatusCode::BAD_REQUEST, "Invalid did method").into_response()
         }
@@ -514,7 +516,7 @@ pub(crate) async fn ssi_get_certificate_authority(
             result,
         )
             .into_response(),
-        Err(ServiceError::EntityNotFound(_)) => {
+        Err(CertificateServiceError::NotFound(_)) => {
             tracing::warn!("Missing CA");
             StatusCode::NOT_FOUND.into_response()
         }

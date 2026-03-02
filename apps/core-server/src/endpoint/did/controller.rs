@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::{DidId, Permission};
@@ -76,11 +77,14 @@ pub(crate) async fn get_did_list(
 ) -> OkOrErrorResponse<GetDidsResponseRestDTO> {
     let result = async {
         let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
-        state
-            .core
-            .did_service
-            .get_did_list(&organisation_id, query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .did_service
+                .get_did_list(&organisation_id, query.try_into()?)
+                .await
+                .error_while("getting did list")?,
+        )
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting dids")
@@ -114,7 +118,17 @@ pub(crate) async fn post_did(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = async { state.core.did_service.create_did(request.try_into()?).await }.await;
+    let result = async {
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .did_service
+                .create_did(request.try_into()?)
+                .await
+                .error_while("creating DID")?,
+        )
+    }
+    .await;
 
     match result {
         Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id: id.into() }),

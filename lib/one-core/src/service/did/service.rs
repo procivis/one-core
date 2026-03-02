@@ -9,7 +9,10 @@ use super::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO, DidResponseDTO,
     GetDidListResponseDTO,
 };
-use super::mapper::{did_update_to_update_request, map_did_to_did_keys};
+use super::error::DidServiceError;
+use super::mapper::{
+    did_update_to_update_request, map_did_model_to_did_web_response, map_did_to_did_keys,
+};
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -23,10 +26,6 @@ use crate::provider::did_method::common::jwk_verification_method;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::service::did::mapper::map_did_model_to_did_web_response;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-};
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -37,7 +36,10 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did_web_document(&self, id: &DidId) -> Result<DidDocumentDTO, ServiceError> {
+    pub async fn get_did_web_document(
+        &self,
+        id: &DidId,
+    ) -> Result<DidDocumentDTO, DidServiceError> {
         let did = self
             .did_repository
             .get_did(
@@ -51,25 +53,24 @@ impl DidService {
             .error_while("getting did")?;
 
         let Some(did) = did else {
-            return Err(EntityNotFoundError::Did(*id).into());
+            return Err(DidServiceError::NotFound(*id));
         };
 
         if did.did.method() != "web" {
-            return Err(BusinessLogicError::InvalidDidMethod {
+            return Err(DidServiceError::InvalidMethod {
                 method: did.did_method,
-            }
-            .into());
+            });
         }
 
         if did.deactivated {
-            return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
+            return Err(DidServiceError::Deactivated(did.id));
         }
 
         let mut grouped_key: HashMap<KeyId, RelatedKey> = HashMap::new();
         let keys = did
             .keys
             .as_ref()
-            .ok_or(ServiceError::MappingError("No keys found".to_string()))?;
+            .ok_or(DidServiceError::MappingError("No keys found".to_string()))?;
         for key in keys {
             grouped_key.insert(key.key.id, key.to_owned());
         }
@@ -99,7 +100,7 @@ impl DidService {
                             .into(),
                     ))
                 })
-                .collect::<Result<HashMap<_, _>, ServiceError>>()?,
+                .collect::<Result<HashMap<_, _>, DidServiceError>>()?,
         )
     }
 
@@ -108,7 +109,7 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did_webvh_log(&self, id: &DidId) -> Result<String, ServiceError> {
+    pub async fn get_did_webvh_log(&self, id: &DidId) -> Result<String, DidServiceError> {
         let did = self
             .did_repository
             .get_did(id, &DidRelations::default())
@@ -116,14 +117,13 @@ impl DidService {
             .error_while("getting did")?;
 
         let Some(did) = did else {
-            return Err(EntityNotFoundError::Did(*id).into());
+            return Err(DidServiceError::NotFound(*id));
         };
 
         let Some(log) = did.log else {
-            return Err(BusinessLogicError::InvalidDidMethod {
+            return Err(DidServiceError::InvalidMethod {
                 method: did.did_method,
-            }
-            .into());
+            });
         };
         Ok(log)
     }
@@ -133,7 +133,7 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did(&self, id: &DidId) -> Result<DidResponseDTO, ServiceError> {
+    pub async fn get_did(&self, id: &DidId) -> Result<DidResponseDTO, DidServiceError> {
         let did = self
             .did_repository
             .get_did(
@@ -146,12 +146,13 @@ impl DidService {
             .await
             .error_while("getting did")?;
         let Some(did) = did else {
-            return Err(EntityNotFoundError::Did(*id).into());
+            return Err(DidServiceError::NotFound(*id));
         };
         throw_if_org_relation_not_matching_session(
             did.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         did.try_into()
     }
@@ -165,8 +166,9 @@ impl DidService {
         &self,
         organisation_id: &OrganisationId,
         query: DidListQuery,
-    ) -> Result<GetDidListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+    ) -> Result<GetDidListResponseDTO, DidServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let result = self
             .did_repository
             .get_did_list(query)
@@ -180,19 +182,22 @@ impl DidService {
     /// # Arguments
     ///
     /// * `request` - did data
-    pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
+    pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, DidServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
             .await
             .error_while("getting organisation")?
-            .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
+            .ok_or(DidServiceError::MissingOrganisation(
+                request.organisation_id,
+            ))?;
 
         if organisation.deactivated_at.is_some() {
-            return Err(
-                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
-            );
+            return Err(DidServiceError::OrganisationDeactivated(
+                request.organisation_id,
+            ));
         }
 
         let identifier = self
@@ -207,7 +212,7 @@ impl DidService {
 
         let did = identifier
             .did
-            .ok_or(ServiceError::MappingError("Did not found".to_string()))?;
+            .ok_or(DidServiceError::MappingError("Did not found".to_string()))?;
 
         tracing::info!(
             "Created did `{}` ({}): did method `{}`",
@@ -222,7 +227,7 @@ impl DidService {
         &self,
         id: &DidId,
         request: DidPatchRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), DidServiceError> {
         let did = self
             .did_repository
             .get_did(
@@ -236,18 +241,21 @@ impl DidService {
             .error_while("getting did")?;
 
         let Some(did) = did else {
-            return Err(EntityNotFoundError::Did(*id).into());
+            return Err(DidServiceError::NotFound(*id));
         };
         throw_if_org_relation_not_matching_session(
             did.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         let did_method_key = &did.did_method;
         let did_method = self
             .did_method_provider
             .get_did_method(did_method_key)
-            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
+            .ok_or(DidServiceError::InvalidMethod {
+                method: did_method_key.to_owned(),
+            })?;
 
         if let Some(deactivated) = request.deactivated {
             validate_deactivation_request(&did, did_method.as_ref(), deactivated)?;
@@ -266,7 +274,7 @@ impl DidService {
                 .get_from_did_id(did.id, &Default::default())
                 .await
                 .error_while("getting identifier")?
-                .ok_or(ServiceError::MappingError(
+                .ok_or(DidServiceError::MappingError(
                     "No identifier for this did exists".to_string(),
                 ))?;
 
@@ -297,7 +305,7 @@ impl DidService {
         Ok(())
     }
 
-    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError> {
+    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocumentDTO, DidServiceError> {
         Ok(self
             .did_method_provider
             .resolve(did)
@@ -310,7 +318,7 @@ impl DidService {
 pub(crate) fn build_keys_request(
     request: &CreateDidRequestKeysDTO,
     keys: Vec<Key>,
-) -> Result<DidKeys, ServiceError> {
+) -> Result<DidKeys, DidServiceError> {
     let mut create_keys = DidKeys {
         authentication: vec![],
         assertion_method: vec![],
@@ -349,9 +357,7 @@ pub(crate) fn build_keys_request(
         }
 
         if !in_any {
-            return Err(ServiceError::EntityNotFound(EntityNotFoundError::Key(
-                key_id,
-            )));
+            return Err(DidServiceError::MissingKey(key_id));
         }
     }
 
@@ -364,11 +370,11 @@ pub(crate) async fn generate_update_key(
     organisation: Organisation,
     update_key_type: KeyAlgorithmType,
     key_provider: &dyn KeyProvider,
-) -> Result<Key, ServiceError> {
+) -> Result<Key, DidServiceError> {
     let key_storage_type = KeyStorageType::Internal;
     let key_storage = key_provider
         .get_key_storage(key_storage_type.as_ref())
-        .ok_or(MissingProviderError::KeyStorage(
+        .ok_or(DidServiceError::InvalidKeyStorage(
             key_storage_type.to_string(),
         ))?;
 

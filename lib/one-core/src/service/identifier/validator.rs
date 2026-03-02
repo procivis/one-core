@@ -1,15 +1,15 @@
+use super::error::IdentifierServiceError;
 use crate::config::core_config::{IdentifierConfig, IdentifierType};
-use crate::service::error::ValidationError;
 
 pub(crate) fn validate_identifier_type(
-    identifier_type: &IdentifierType,
+    identifier_type: IdentifierType,
     config: &IdentifierConfig,
-) -> Result<(), ValidationError> {
+) -> Result<(), IdentifierServiceError> {
     config
-        .get(identifier_type)
+        .get(&identifier_type)
         .filter(|cfg| cfg.enabled)
         .map(|_| ())
-        .ok_or(ValidationError::IdentifierTypeDisabled(
-            identifier_type.to_string(),
+        .ok_or(IdentifierServiceError::IdentifierTypeDisabled(
+            identifier_type,
         ))
 }

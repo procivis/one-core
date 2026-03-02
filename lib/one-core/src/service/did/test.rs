@@ -6,7 +6,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidService;
+use super::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO};
+use super::error::DidServiceError;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::did::{
     Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey,
 };
@@ -24,11 +27,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::did::DidDeactivationError;
-use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO};
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
 use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
 fn setup_service(
@@ -141,9 +139,7 @@ async fn test_get_did_missing() {
 
     let result = service.get_did(&Uuid::new_v4().into()).await;
     assert2::assert!(
-        let Err(ServiceError::EntityNotFound(
-            EntityNotFoundError::Did(_)
-        )) = result,
+        let Err(DidServiceError::NotFound(_)) = result,
     );
 }
 
@@ -373,9 +369,7 @@ async fn test_update_did_fail_reactivation() {
     let result = service.update_did(&did.id, update_request).await;
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::DidDeactivation(DidDeactivationError::CannotBeReactivated { .. })
-        ))
+        Err(DidServiceError::CannotBeReactivated { .. })
     ));
 }
 
@@ -402,10 +396,7 @@ async fn test_list_did_fail_session_org_mismatch() {
             },
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -438,18 +429,13 @@ async fn test_did_ops_session_org_mismatch() {
     };
 
     let result = service.get_did(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+
     let result = service
         .update_did(
             &Uuid::new_v4().into(),
             DidPatchRequestDTO { deactivated: None },
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }

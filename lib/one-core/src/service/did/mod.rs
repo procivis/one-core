@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::error::ErrorCode;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -9,11 +8,10 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
-pub mod service;
-
 pub mod dto;
-
+pub mod error;
 pub(crate) mod mapper;
+pub mod service;
 pub(crate) mod validator;
 
 #[derive(Clone)]
@@ -45,28 +43,6 @@ impl DidService {
             key_algorithm_provider,
             identifier_creator,
             session_provider,
-        }
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum DidDeactivationError {
-    #[error("DID {method} already has the same value `{value}` for deactivated field")]
-    DeactivatedSameValue { value: bool, method: String },
-    #[error("DID method {method} cannot be deactivated")]
-    CannotBeDeactivated { method: String },
-    #[error("DID method {method} cannot be reactivated")]
-    CannotBeReactivated { method: String },
-    #[error("Remote DID cannot be deactivated")]
-    RemoteDid,
-}
-
-impl DidDeactivationError {
-    pub fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::DeactivatedSameValue { .. } => ErrorCode::BR_0027,
-            Self::CannotBeDeactivated { .. } | Self::RemoteDid => ErrorCode::BR_0029,
-            Self::CannotBeReactivated { .. } => ErrorCode::BR_0256,
         }
     }
 }

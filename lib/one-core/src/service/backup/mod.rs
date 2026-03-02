@@ -6,6 +6,7 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod dto;
+pub mod error;
 mod mapper;
 pub mod service;
 mod utils;

@@ -8,22 +8,22 @@ use super::dto::{
     CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
     GetDidListResponseDTO,
 };
+use super::error::DidServiceError;
 use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey, UpdateDidRequest};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::{DidCreated, DidKeys, DidUpdate};
-use crate::service::error::ServiceError;
 use crate::service::key::dto::KeyListItemResponseDTO;
 
 impl TryFrom<Did> for DidResponseDTO {
-    type Error = ServiceError;
+    type Error = DidServiceError;
     fn try_from(value: Did) -> Result<Self, Self::Error> {
         let organisation_id = value.organisation.map(|value| value.id);
 
         let keys = value
             .keys
-            .ok_or(ServiceError::MappingError("keys is None".to_string()))?;
+            .ok_or(DidServiceError::MappingError("keys is None".to_string()))?;
         let filter_keys = |role: KeyRole| -> Vec<KeyListItemResponseDTO> {
             keys.iter()
                 .filter(|key| key.role == role)
@@ -70,7 +70,7 @@ pub(crate) fn did_from_did_request(
     found_keys: DidKeys,
     now: OffsetDateTime,
     key_reference_mapping: HashMap<KeyId, String>,
-) -> Result<Did, ServiceError> {
+) -> Result<Did, DidServiceError> {
     struct KeyEntry {
         role: KeyRole,
         key: Key,
@@ -109,11 +109,11 @@ pub(crate) fn did_from_did_request(
     let keys = keys
         .into_iter()
         .map(|KeyEntry { role, key }| {
-            Ok::<_, ServiceError>(RelatedKey {
+            Ok::<_, DidServiceError>(RelatedKey {
                 role,
                 reference: key_reference_mapping
                     .get(&key.id)
-                    .ok_or(ServiceError::MappingError(
+                    .ok_or(DidServiceError::MappingError(
                         "key reference not found".to_string(),
                     ))?
                     .to_owned(),
@@ -141,7 +141,7 @@ pub(super) fn map_did_model_to_did_web_response(
     did: &Did,
     keys: &[RelatedKey],
     grouped_key: &HashMap<KeyId, DidVerificationMethodDTO>,
-) -> Result<DidDocumentDTO, ServiceError> {
+) -> Result<DidDocumentDTO, DidServiceError> {
     Ok(DidDocumentDTO {
         context: serde_json::json!([
             "https://www.w3.org/ns/did/v1",
@@ -173,13 +173,13 @@ pub(super) fn get_key_id_by_role(
     role: KeyRole,
     keys: &[RelatedKey],
     group: &HashMap<KeyId, DidVerificationMethodDTO>,
-) -> Result<Vec<String>, ServiceError> {
+) -> Result<Vec<String>, DidServiceError> {
     keys.iter()
         .filter(|key| key.role == role)
         .map(|key| {
             Ok(group
                 .get(&key.key.id)
-                .ok_or(ServiceError::MappingError("Missing key".to_string()))?
+                .ok_or(DidServiceError::MappingError("Missing key".to_string()))?
                 .id
                 .to_string())
         })
@@ -192,9 +192,9 @@ impl From<DidListItemResponseDTO> for DidValue {
     }
 }
 
-pub(super) fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, ServiceError> {
+pub(super) fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, DidServiceError> {
     let Some(ref related_keys) = did.keys else {
-        return Err(ServiceError::MappingError("Missing keys".to_string()));
+        return Err(DidServiceError::MappingError("Missing keys".to_string()));
     };
     let mut did_keys = DidKeys::default();
     for related_key in related_keys {

@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
 use shared_types::DidValue;
 
 use super::dto::{
@@ -59,6 +60,11 @@ pub(crate) async fn resolve_identifier(
     state: State<AppState>,
     WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, VcApiError>,
 ) -> VcApiResponse<DidDocumentResolutionResponseDTO> {
-    let result = state.core.did_service.resolve_did(&did_value).await;
-    VcApiResponse::ok(result)
+    let result = state
+        .core
+        .did_service
+        .resolve_did(&did_value)
+        .await
+        .error_while("resolving DID");
+    VcApiResponse::ok(result.map_err(Into::into))
 }

@@ -8,7 +8,7 @@ use core_server::router::start_server;
 use core_server::{ServerConfig, metrics};
 use one_core::OneCore;
 use one_core::config::core_config::AppConfig;
-use one_core::service::error::ServiceError;
+use one_core::service::backup::error::BackupServiceError;
 use secrecy::SecretString;
 
 #[derive(Parser, Debug)]
@@ -134,7 +134,7 @@ fn load_backup(
     in_path: Option<PathBuf>,
     secret: Option<SecretString>,
     out_path: Option<PathBuf>,
-) -> Result<Option<PathBuf>, ServiceError> {
+) -> Result<Option<PathBuf>, BackupServiceError> {
     let in_path = match in_path {
         Some(value) => value,
         None => return Ok(None),

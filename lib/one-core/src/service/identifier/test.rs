@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
+use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::{Identifier, IdentifierListQuery};
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::error::{ServiceError, ValidationError};
 use crate::service::identifier::IdentifierService;
 use crate::service::identifier::dto::CreateIdentifierRequestDTO;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
@@ -29,10 +30,7 @@ async fn test_get_identifier_list_session_org_mismatch() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -51,10 +49,7 @@ async fn test_create_identifier_session_org_mismatch() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -64,16 +59,10 @@ async fn test_identifier_ops_session_org_mismatch() {
     let service = setup_service(Some(identifier));
 
     let result = service.get_identifier(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.delete_identifier(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 fn setup_service(identifier: Option<Identifier>) -> IdentifierService {

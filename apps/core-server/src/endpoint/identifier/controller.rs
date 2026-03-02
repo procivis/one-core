@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::{IdentifierId, Permission};
@@ -71,11 +72,14 @@ pub(crate) async fn post_identifier(
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = async {
-        state
-            .core
-            .identifier_service
-            .create_identifier(request.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .identifier_service
+                .create_identifier(request.try_into()?)
+                .await
+                .error_while("creating identifier")?,
+        )
     }
     .await;
     CreatedOrErrorResponse::from_result(result, state, "creating identifier")
@@ -163,11 +167,14 @@ pub(crate) async fn get_identifier_list(
 ) -> OkOrErrorResponse<GetIdentifierListResponseRestDTO> {
     let result = async {
         let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
-        state
-            .core
-            .identifier_service
-            .get_identifier_list(&organisation_id, query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .identifier_service
+                .get_identifier_list(&organisation_id, query.try_into()?)
+                .await
+                .error_while("getting identifier list")?,
+        )
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting identifiers")

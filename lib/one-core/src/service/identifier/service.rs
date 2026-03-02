@@ -6,6 +6,9 @@ use super::dto::{
     CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListResponseDTO,
     GetIdentifierResponseDTO,
 };
+use super::error::IdentifierServiceError;
+use super::mapper::to_create_did_request;
+use super::validator::validate_identifier_type;
 use crate::config::core_config;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::CertificateRelations;
@@ -15,11 +18,6 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::repository::error::DataLayerError;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
-use crate::service::identifier::mapper::to_create_did_request;
-use crate::service::identifier::validator::validate_identifier_type;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -33,7 +31,7 @@ impl IdentifierService {
     pub async fn get_identifier(
         &self,
         id: &IdentifierId,
-    ) -> Result<GetIdentifierResponseDTO, ServiceError> {
+    ) -> Result<GetIdentifierResponseDTO, IdentifierServiceError> {
         let identifier = self
             .identifier_repository
             .get(
@@ -55,12 +53,13 @@ impl IdentifierService {
             )
             .await
             .error_while("getting identifier")?
-            .ok_or(EntityNotFoundError::Identifier(*id))?;
+            .ok_or(IdentifierServiceError::NotFound(*id))?;
 
         throw_if_org_relation_not_matching_session(
             identifier.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         identifier.try_into()
     }
@@ -74,8 +73,9 @@ impl IdentifierService {
         &self,
         organisation_id: &OrganisationId,
         query: IdentifierListQuery,
-    ) -> Result<GetIdentifierListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+    ) -> Result<GetIdentifierListResponseDTO, IdentifierServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         Ok(self
             .identifier_repository
             .get_identifier_list(query)
@@ -92,19 +92,22 @@ impl IdentifierService {
     pub async fn create_identifier(
         &self,
         request: CreateIdentifierRequestDTO,
-    ) -> Result<IdentifierId, ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
+    ) -> Result<IdentifierId, IdentifierServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
             .await
             .error_while("getting organisation")?
-            .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
+            .ok_or(IdentifierServiceError::MissingOrganisation(
+                request.organisation_id,
+            ))?;
 
         if organisation.deactivated_at.is_some() {
-            return Err(
-                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
-            );
+            return Err(IdentifierServiceError::OrganisationDeactivated(
+                request.organisation_id,
+            ));
         }
 
         let identifier = match (
@@ -117,7 +120,7 @@ impl IdentifierService {
             // IdentifierType::Did
             (Some(did), None, None, None, None) => {
                 validate_identifier_type(
-                    &core_config::IdentifierType::Did,
+                    core_config::IdentifierType::Did,
                     &self.config.identifier,
                 )?;
 
@@ -137,7 +140,7 @@ impl IdentifierService {
             (None, Some(key_id), None, None, None) => {
                 warn!("Creating identifier with key_id is deprecated. Use key instead.");
                 validate_identifier_type(
-                    &core_config::IdentifierType::Key,
+                    core_config::IdentifierType::Key,
                     &self.config.identifier,
                 )?;
                 let key = self
@@ -150,7 +153,7 @@ impl IdentifierService {
                     )
                     .await
                     .error_while("getting key")?
-                    .ok_or(EntityNotFoundError::Key(key_id))?;
+                    .ok_or(IdentifierServiceError::MissingKey(key_id))?;
 
                 self.identifier_creator
                     .create_local_identifier(
@@ -163,7 +166,7 @@ impl IdentifierService {
             }
             (None, None, Some(CreateIdentifierKeyRequestDTO { key_id }), None, None) => {
                 validate_identifier_type(
-                    &core_config::IdentifierType::Key,
+                    core_config::IdentifierType::Key,
                     &self.config.identifier,
                 )?;
                 let key = self
@@ -176,7 +179,7 @@ impl IdentifierService {
                     )
                     .await
                     .error_while("getting key")?
-                    .ok_or(EntityNotFoundError::Key(key_id))?;
+                    .ok_or(IdentifierServiceError::MissingKey(key_id))?;
 
                 self.identifier_creator
                     .create_local_identifier(
@@ -190,7 +193,7 @@ impl IdentifierService {
             // IdentifierType::Certificate
             (None, None, None, Some(certificate_requests), None) => {
                 validate_identifier_type(
-                    &core_config::IdentifierType::Certificate,
+                    core_config::IdentifierType::Certificate,
                     &self.config.identifier,
                 )?;
 
@@ -206,7 +209,7 @@ impl IdentifierService {
             // IdentifierType::Certificate authority
             (None, None, None, None, Some(ca_requests)) => {
                 validate_identifier_type(
-                    &core_config::IdentifierType::CertificateAuthority,
+                    core_config::IdentifierType::CertificateAuthority,
                     &self.config.identifier,
                 )?;
 
@@ -220,7 +223,7 @@ impl IdentifierService {
                     .error_while("creating local CA identifier")?
             }
             // invalid input combinations
-            _ => return Err(ValidationError::InvalidIdentifierInput.into()),
+            _ => return Err(IdentifierServiceError::InvalidCreationInput),
         };
 
         tracing::info!(
@@ -237,7 +240,7 @@ impl IdentifierService {
     /// # Arguments
     ///
     /// * `id` - Identifier uuid
-    pub async fn delete_identifier(&self, id: &IdentifierId) -> Result<(), ServiceError> {
+    pub async fn delete_identifier(&self, id: &IdentifierId) -> Result<(), IdentifierServiceError> {
         let identifier = self
             .identifier_repository
             .get(
@@ -250,19 +253,18 @@ impl IdentifierService {
             .await
             .error_while("getting identifier")?;
         let Some(identifier) = identifier else {
-            return Err(EntityNotFoundError::Identifier(*id).into());
+            return Err(IdentifierServiceError::NotFound(*id));
         };
         throw_if_org_relation_not_matching_session(
             identifier.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
         self.identifier_repository
             .delete(id)
             .await
             .map_err(|e| match e {
-                DataLayerError::RecordNotUpdated => {
-                    ServiceError::EntityNotFound(EntityNotFoundError::Identifier(*id))
-                }
+                DataLayerError::RecordNotUpdated => IdentifierServiceError::NotFound(*id),
                 e => e.error_while("deleting identifier").into(),
             })?;
         tracing::info!(

@@ -109,12 +109,6 @@ pub enum ErrorCode {
     #[strum(message = "Revocation list not found")]
     BR_0034,
 
-    #[strum(message = "Missing revocation list for provided DID")]
-    BR_0035,
-
-    #[strum(message = "Missing credential index on revocation list")]
-    BR_0036,
-
     #[strum(message = "Key not found")]
     BR_0037,
 
@@ -162,9 +156,6 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid exchange type")]
     BR_0052,
-
-    #[strum(message = "Unsupported key type")]
-    BR_0053,
 
     #[strum(message = "Database error")]
     BR_0054,

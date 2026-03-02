@@ -409,7 +409,8 @@ pub(super) async fn get_verifier_proof_detail(
         .verifier_certificate
         .clone()
         .map(TryInto::try_into)
-        .transpose()?;
+        .transpose()
+        .error_while("converting certificate")?;
 
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 
@@ -659,7 +660,8 @@ pub(super) async fn get_holder_proof_detail(
         .verifier_certificate
         .clone()
         .map(TryInto::try_into)
-        .transpose()?;
+        .transpose()
+        .error_while("converting certificate")?;
 
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 
