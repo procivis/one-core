@@ -302,76 +302,82 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             )
         })?;
 
-        let issuer = decomposed_token.payload.issuer.as_ref().ok_or(
-            FormatterError::CouldNotExtractCredentials("Missing issuer in sd-jwt".to_string()),
-        )?;
+        let issuer = decomposed_token.payload.issuer.as_deref();
+        let x5c = decomposed_token.header.x5c.as_deref();
 
-        let (params, isuer_details) = if issuer.starts_with("did:") {
-            let did: DidValue = issuer
-                .parse()
-                .map_err(DidMethodError::DidValueError)
-                .error_while("parsing issuer DID")?;
-            let params = PublicKeySource::Did {
-                did: Cow::Owned(did.clone()),
-                key_id: decomposed_token.header.key_id.as_deref(),
-            };
-            (params, IdentifierDetails::Did(did))
-        } else {
-            match decomposed_token.header.x5c.as_ref() {
-                None => {
-                    let jwks = resolve_jwks_url(
-                        issuer.parse().map_err(|e| {
-                            FormatterError::CouldNotExtractCredentials(format!(
-                                "failed parsing did url: {e}"
-                            ))
-                        })?,
-                        http_client,
-                    )
-                    .await?;
-                    let header_key_id = decomposed_token.header.key_id.as_deref();
+        let (params, isuer_details) = match (issuer, x5c) {
+            // DID issuer
+            (Some(iss), _) if iss.starts_with("did:") => {
+                let did: DidValue = iss
+                    .parse()
+                    .map_err(DidMethodError::DidValueError)
+                    .error_while("parsing issuer DID")?;
+                let params = PublicKeySource::Did {
+                    did: Cow::Owned(did.clone()),
+                    key_id: decomposed_token.header.key_id.as_deref(),
+                };
+                (params, IdentifierDetails::Did(did))
+            }
+            // URL issuer, resolve JWKS
+            (Some(iss), None) => {
+                let jwks = resolve_jwks_url(
+                    iss.parse().map_err(|e| {
+                        FormatterError::CouldNotExtractCredentials(format!(
+                            "failed parsing jwks url: {e}"
+                        ))
+                    })?,
+                    http_client,
+                )
+                .await?;
+                let header_key_id = decomposed_token.header.key_id.as_deref();
 
-                    let jwk = jwks
-                        .iter()
-                        .find(|dto| dto.kid() == header_key_id)
-                        .or(jwks.first())
-                        .ok_or(FormatterError::CouldNotExtractCredentials(
-                            "empty JWK list".to_string(),
-                        ))?;
+                let jwk = jwks
+                    .iter()
+                    .find(|dto| dto.kid() == header_key_id)
+                    .or(jwks.first())
+                    .ok_or(FormatterError::CouldNotExtractCredentials(
+                        "empty JWK list".to_string(),
+                    ))?;
 
-                    let did = encode_to_did(jwk).error_while("encoding DID")?;
-                    let params = PublicKeySource::Did {
-                        did: Cow::Owned(did.clone()),
-                        key_id: decomposed_token.header.key_id.as_deref(),
-                    };
-                    (params, IdentifierDetails::Did(did))
-                }
-                Some(x5c) => {
-                    let certificate_validator =
-                        certificate_validator.ok_or(FormatterError::CouldNotExtractCredentials(
-                            "x5c header param not supported".to_string(),
-                        ))?;
-                    let params = PublicKeySource::X5c { x5c };
-                    let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
-                    let validation_options =
-                        CertificateValidationOptions::signature_and_revocation(None);
-                    let ParsedCertificate {
-                        attributes,
+                let did = encode_to_did(jwk).error_while("encoding DID")?;
+                let params = PublicKeySource::Did {
+                    did: Cow::Owned(did.clone()),
+                    key_id: decomposed_token.header.key_id.as_deref(),
+                };
+                (params, IdentifierDetails::Did(did))
+            }
+            (_, Some(x5c)) => {
+                let certificate_validator =
+                    certificate_validator.ok_or(FormatterError::CouldNotExtractCredentials(
+                        "x5c header param not supported".to_string(),
+                    ))?;
+                let params = PublicKeySource::X5c { x5c };
+                let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
+                let validation_options =
+                    CertificateValidationOptions::signature_and_revocation(None);
+                let ParsedCertificate {
+                    attributes,
+                    subject_common_name,
+                    ..
+                } = certificate_validator
+                    .parse_pem_chain(&chain, validation_options)
+                    .await
+                    .error_while("parsing PEM chain")?;
+                (
+                    params,
+                    IdentifierDetails::Certificate(CertificateDetails {
+                        chain,
+                        fingerprint: attributes.fingerprint,
+                        expiry: attributes.not_after,
                         subject_common_name,
-                        ..
-                    } = certificate_validator
-                        .parse_pem_chain(&chain, validation_options)
-                        .await
-                        .error_while("parsing PEM chain")?;
-                    (
-                        params,
-                        IdentifierDetails::Certificate(CertificateDetails {
-                            chain,
-                            fingerprint: attributes.fingerprint,
-                            expiry: attributes.not_after,
-                            subject_common_name,
-                        }),
-                    )
-                }
+                    }),
+                )
+            }
+            // Neither iss nor x5c
+            (None, None) => {
+                return Err(FormatterError::CouldNotExtractCredentials(
+                    "Missing issuer: no iss claim and no x5c in header".to_string(),
+                ));
             }
         };
 
@@ -427,7 +433,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             invalid_before: decomposed_token.payload.invalid_before,
             issued_at: decomposed_token.payload.issued_at,
             expires_at: decomposed_token.payload.expires_at,
-            issuer: Some(issuer.clone()),
+            issuer: issuer.map(String::from),
             subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,
