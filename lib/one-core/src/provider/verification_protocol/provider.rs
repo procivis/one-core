@@ -171,18 +171,19 @@ pub(crate) fn verification_protocol_provider_from_config(
                 )?)
             }
             VerificationProtocolType::OpenId4VpDraft20Swiyu => {
-                let params = fields
+                let params: OpenID4Vp20Params = fields
                     .deserialize::<OpenID4Vp20SwiyuParams>()
                     .map_err(|source| ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
-                    })?;
-                let allow_insecure_http = params.allow_insecure_http_transport;
+                    })?
+                    .into();
                 // URL schemes are used to select provider, hence must not be duplicated
-                validate_url_scheme_unique(&mut openid_url_schemes, name, "https".to_string())?;
-                if allow_insecure_http {
-                    validate_url_scheme_unique(&mut openid_url_schemes, name, "http".to_string())?;
-                };
+                validate_url_scheme_unique(
+                    &mut openid_url_schemes,
+                    name,
+                    params.url_scheme.to_string(),
+                )?;
                 let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
                     credential_formatter_provider.clone(),
@@ -193,14 +194,10 @@ pub(crate) fn verification_protocol_provider_from_config(
                     certificate_validator.clone(),
                     client.clone(),
                     openid_metadata_cache.clone(),
-                    params.into(),
+                    params,
                     core_config.clone(),
                 )?;
-                Arc::new(OpenID4VP20Swiyu::new(
-                    http20,
-                    client.clone(),
-                    allow_insecure_http,
-                ))
+                Arc::new(OpenID4VP20Swiyu::new(http20))
             }
             VerificationProtocolType::OpenId4VpProximityDraft00 => {
                 let params = fields

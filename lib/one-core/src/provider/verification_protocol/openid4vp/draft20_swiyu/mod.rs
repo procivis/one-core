@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use futures::future::BoxFuture;
 use maplit::hashmap;
 use serde::Deserialize;
@@ -10,12 +8,8 @@ use time::Duration;
 use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
-use crate::error::ContextWithErrorCode;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::proto::http_client::HttpClient;
-use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
@@ -24,8 +18,7 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
-    OpenID4VC20PresentationVerifierParams, OpenID4VP20AuthorizationRequest,
-    OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
+    OpenID4VC20PresentationVerifierParams, OpenID4Vp20Params,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
@@ -40,9 +33,7 @@ use crate::provider::verification_protocol::{
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub(crate) struct OpenID4VP20Swiyu {
-    allow_insecure_http_transport: bool,
     inner: OpenID4VP20HTTP,
-    client: Arc<dyn HttpClient>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -74,7 +65,7 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
             presentation_definition_by_value: false,
             allow_insecure_http_transport: value.allow_insecure_http_transport,
             use_request_uri: true,
-            url_scheme: "openid4vp".to_string(),
+            url_scheme: "swiyu-verify".to_string(),
             holder: OpenID4VCPresentationHolderParams {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],
                 dcql_vp_token_single_presentation: false,
@@ -103,16 +94,8 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
 }
 
 impl OpenID4VP20Swiyu {
-    pub(crate) fn new(
-        inner: OpenID4VP20HTTP,
-        client: Arc<dyn HttpClient>,
-        allow_insecure_http_transport: bool,
-    ) -> Self {
-        Self {
-            inner,
-            client,
-            allow_insecure_http_transport,
-        }
+    pub(crate) fn new(inner: OpenID4VP20HTTP) -> Self {
+        Self { inner }
     }
 }
 
@@ -122,8 +105,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         Ok(())
     }
     fn holder_can_handle(&self, url: &Url) -> bool {
-        (url.scheme() == "https" || self.allow_insecure_http_transport && url.scheme() == "http")
-            && url.query().is_none() // SWIYU invite links have no query param
+        self.inner.holder_can_handle(url)
     }
 
     async fn holder_get_presentation_definition(
@@ -165,45 +147,8 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         storage_access: &StorageAccess,
         transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
-        if !self.holder_can_handle(&url) {
-            return Err(VerificationProtocolError::Failed(
-                "No OpenID4VC query params detected".to_string(),
-            ));
-        }
-
-        let response = async {
-            self.client
-                .get(url.as_str())
-                .send()
-                .await?
-                .error_for_status()
-        }
-        .await
-        .error_while("fetching swiyu request")?;
-        let token = String::from_utf8(response.body).map_err(|e| {
-            VerificationProtocolError::Failed(format!("Invalid request object: {e}"))
-        })?;
-        let params: DecomposedJwt<OpenID4VP20AuthorizationRequest> =
-            Jwt::decompose_token(&token).error_while("parsing request JWT")?;
-        let request_params = OpenID4VP20AuthorizationRequestQueryParams {
-            client_id: params.payload.custom.client_id,
-            request_uri: Some(url.to_string()),
-            client_id_scheme: params.payload.custom.client_id_scheme,
-            ..Default::default()
-        };
-        let expected_url: Url = format!(
-            "openid4vp://?{}",
-            serde_qs::to_string(&request_params).map_err(|e| VerificationProtocolError::Failed(
-                format!("Failed to serialize query params: {e}")
-            ))?
-        )
-        .parse()
-        .map_err(|e| {
-            VerificationProtocolError::Failed(format!("Failed to parse invitation URL: {e}"))
-        })?;
-
         self.inner
-            .holder_handle_invitation(expected_url, organisation, storage_access, transport)
+            .holder_handle_invitation(url, organisation, storage_access, transport)
             .await
     }
 
@@ -259,18 +204,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         ));
         interaction_data.response_uri = Some(response_url.to_string());
 
-        let url = response.url.parse::<Url>().map_err(|e| {
-            VerificationProtocolError::Failed(format!("failed to transform response URL: {e}"))
-        })?;
-
         response.interaction_data = Some(serialize_interaction_data(&interaction_data)?);
-        response.url = url
-            .query_pairs()
-            .find(|(k, _)| k == "request_uri")
-            .map(|(_, v)| v.to_string())
-            .ok_or(VerificationProtocolError::Failed(
-                "failed to find request_uri in response URL".to_string(),
-            ))?;
         Ok(response)
     }
 
