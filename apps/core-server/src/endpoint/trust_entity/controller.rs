@@ -30,6 +30,7 @@ use crate::router::AppState;
     description = "Adds a trust entity to a trust anchor.",
 )]
 #[require_permissions(Permission::TrustEntityCreate)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn create_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -70,6 +71,7 @@ pub(crate) async fn create_trust_entity(
     description = "Updates a trust entity in a trust anchor.",
 )]
 #[require_permissions(Permission::TrustEntityEdit)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn update_trust_entity(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustEntityId>, ErrorResponseRestDTO>,
@@ -108,6 +110,7 @@ pub(crate) async fn update_trust_entity(
     description = "Returns details on a given trust entity.",
 )]
 #[require_permissions(Permission::TrustEntityDetail)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_trust_entity_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustEntityId>, ErrorResponseRestDTO>,
@@ -130,6 +133,7 @@ pub(crate) async fn get_trust_entity_details(
     description = "Returns a list of trust entities in an organization.",
 )]
 #[require_permissions(Permission::TrustEntityList)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_trust_entities(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListTrustEntitiesQuery>, ErrorResponseRestDTO>,
@@ -161,6 +165,7 @@ pub(crate) async fn get_trust_entities(
     description = "Create a trust entity inside a remote trust anchor",
 )]
 #[require_permissions(Permission::TrustEntityCreate)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn create_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -202,6 +207,7 @@ pub(crate) async fn create_remote_trust_entity(
     description = "Updates a trust entity inside a remote trust anchor.",
 )]
 #[require_permissions(Permission::TrustEntityEdit)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn update_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
@@ -240,6 +246,7 @@ pub(crate) async fn update_remote_trust_entity(
     description = "Returns details of a remote trust entity.",
 )]
 #[require_permissions(Permission::TrustEntityDetail)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,

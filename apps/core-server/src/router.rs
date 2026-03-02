@@ -201,6 +201,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         .with_state(state)
 }
 
+#[expect(deprecated)]
 fn get_management_endpoints(
     config: &ServerConfig,
     authentication: Authentication,
@@ -512,6 +513,7 @@ fn get_management_endpoints(
     }
 }
 
+#[expect(deprecated)]
 fn get_external_endpoints(
     config: &ServerConfig,
     openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,

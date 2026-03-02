@@ -202,6 +202,7 @@ pub(crate) async fn get_identifier_list(
 "},
 )]
 #[require_permissions(Permission::TrustEntityDetail)]
+#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn resolve_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
