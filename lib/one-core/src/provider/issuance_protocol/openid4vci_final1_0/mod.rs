@@ -521,22 +521,16 @@ impl OpenID4VCIFinal1_0 {
         // DEVIATION: RFC8414 specifies `client_secret_basic` as the default when
         // token_endpoint_auth_methods_supported is absent, but some issuers (e.g. swiyu) don't publish this field.
         // Treating empty/missing as `none` to avoid interop issues
+        let default_auth_methods = [TokenEndpointAuthMethod::None];
         let token_endpoint_auth_methods = interaction_data
             .token_endpoint_auth_methods_supported
             .as_deref()
-            .unwrap_or(&[TokenEndpointAuthMethod::None]);
+            .unwrap_or(&default_auth_methods);
 
         let wallet_attestation_supported =
             token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
 
-        // See https://gitlab.procivis.ch/procivis/one/one-core/-/merge_requests/2585#note_86705
-        // Some issuers advertise "public", which is not documented / defined by any specification
-        // We treat it as the rfc7591 defined "none"
-        let has_public_auth = token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::None)
-            || token_endpoint_auth_methods
-                .contains(&TokenEndpointAuthMethod::Other("public".to_string()));
-
-        let wallet_attestation_required = wallet_attestation_supported && !has_public_auth;
+        let wallet_attestation_required = requires_wia(token_endpoint_auth_methods);
         let wallet_unit_provided = holder_wallet_unit_id.is_some();
 
         if wallet_attestation_required && !wallet_unit_provided {
@@ -1700,7 +1694,8 @@ async fn handle_credential_invitation(
     }
 
     let tx_code = credential_offer.grants.tx_code().cloned();
-    let requires_wallet_instance_attestation = requires_wia(&oauth_metadata);
+    let requires_wallet_instance_attestation =
+        requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported);
 
     let PrepareIssuanceSuccess {
         interaction_id,
@@ -1729,10 +1724,17 @@ async fn handle_credential_invitation(
     })
 }
 
-fn requires_wia(oauth_metadata: &OAuthAuthorizationServerMetadataResponseDTO) -> bool {
-    let auth_methods = &oauth_metadata.token_endpoint_auth_methods_supported;
-    !auth_methods.contains(&TokenEndpointAuthMethod::None)
-        && auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth)
+fn requires_wia(token_endpoint_auth_methods: &[TokenEndpointAuthMethod]) -> bool {
+    // See https://gitlab.procivis.ch/procivis/one/one-core/-/merge_requests/2585#note_86705
+    // Some issuers advertise "public", which is not documented / defined by any specification
+    // We treat it as the rfc7591 defined "none"
+    let public_auth_supported = token_endpoint_auth_methods
+        .contains(&TokenEndpointAuthMethod::None)
+        || token_endpoint_auth_methods
+            .contains(&TokenEndpointAuthMethod::Other("public".to_string()));
+
+    token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth)
+        && !public_auth_supported
 }
 
 async fn handle_continue_issuance(
@@ -1780,7 +1782,8 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
-    let requires_wallet_instance_attestation = requires_wia(&oauth_metadata);
+    let requires_wallet_instance_attestation =
+        requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported);
 
     let PrepareIssuanceSuccess {
         interaction_id,
