@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use one_core::mapper::{opt_secret_string, secret_string};
+use one_core::mapper::opt_secret_string;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -19,6 +19,7 @@ use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
+use standardized_types::mapper::secret_string;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use utoipa::{IntoParams, ToSchema};
 

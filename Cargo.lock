@@ -1570,6 +1570,7 @@ dependencies = [
  "serde",
  "serde_json",
  "similar-asserts",
+ "standardized-types",
  "thiserror 2.0.17",
 ]
 
@@ -6475,6 +6476,7 @@ name = "standardized-types"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ct-codecs",
  "proc-macros",
  "secrecy",
  "serde",

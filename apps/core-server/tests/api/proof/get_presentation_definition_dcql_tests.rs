@@ -2327,11 +2327,11 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
 }
 
 mod trusted_authorities {
-    use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
     use one_core::mapper::x509::get_akis_for_pem_chain;
     use one_core::model::certificate::Certificate;
     use one_core::model::organisation::Organisation;
     use similar_asserts::assert_eq;
+    use standardized_types::x509::AuthorityKeyIdentifier;
 
     use super::*;
     use crate::fixtures::certificate::{
@@ -2340,7 +2340,7 @@ mod trusted_authorities {
 
     struct CertificateInfo {
         pub cert: Certificate,
-        pub aki_b64: String,
+        pub aki: AuthorityKeyIdentifier,
     }
 
     async fn create_cert_chain(
@@ -2359,20 +2359,19 @@ mod trusted_authorities {
         let intermediary_cert = create_db_cert(context, organisation, &intermediary_raw).await;
         (
             CertificateInfo {
-                aki_b64: aki_for_cert(&ca_cert),
+                aki: aki_for_cert(&ca_cert),
                 cert: ca_cert,
             },
             CertificateInfo {
-                aki_b64: aki_for_cert(&intermediary_cert),
+                aki: aki_for_cert(&intermediary_cert),
                 cert: intermediary_cert,
             },
         )
     }
 
-    fn aki_for_cert(cert: &Certificate) -> String {
+    fn aki_for_cert(cert: &Certificate) -> AuthorityKeyIdentifier {
         let vec = get_akis_for_pem_chain(cert.chain.as_bytes()).unwrap();
-        let first = vec.into_iter().next().unwrap();
-        Base64UrlSafeNoPadding::encode_to_string(first.0.as_slice()).unwrap()
+        vec.into_iter().next().unwrap()
     }
 
     async fn create_db_cert(
@@ -2427,7 +2426,7 @@ mod trusted_authorities {
 
         let (root_ca_aki, intermediate_ca_cert) = {
             let certs = create_cert_chain(&context, &org).await;
-            (certs.0.aki_b64, certs.1.cert)
+            (certs.0.aki, certs.1.cert)
         };
 
         let vct = "https://example.org/foo";
@@ -2481,7 +2480,7 @@ mod trusted_authorities {
             .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
                 values: vec![
                     // Add a bogus value to test whether a single match is sufficient
-                    Base64UrlSafeNoPadding::encode_to_string("does-not-match").unwrap(),
+                    b"does-not-match".to_vec().into(),
                     root_ca_aki,
                 ],
             }])
@@ -2531,7 +2530,7 @@ mod trusted_authorities {
 
         let (intermediate_ca_cert, intermediate_ca_aki) = {
             let certs = create_cert_chain(&context, &org).await;
-            (certs.1.cert, certs.1.aki_b64)
+            (certs.1.cert, certs.1.aki)
         };
 
         let vct = "https://example.org/foo";
@@ -2585,7 +2584,7 @@ mod trusted_authorities {
             .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
                 values: vec![
                     // Add a bogus value to test whether a single match is sufficient
-                    Base64UrlSafeNoPadding::encode_to_string("does-not-match").unwrap(),
+                    b"does-not-match".to_vec().into(),
                     intermediate_ca_aki,
                 ],
             }])
@@ -2684,7 +2683,7 @@ mod trusted_authorities {
         let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
             .id("test_id")
             .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
-                values: vec![Base64UrlSafeNoPadding::encode_to_string("whatever").unwrap()],
+                values: vec![b"whatever".to_vec().into()],
             }])
             .claims(vec![
                 ClaimQuery::builder()

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64, Decoder, Encoder};
 use one_crypto::signer::ecdsa::ECDSASigner;
+use standardized_types::x509::AuthorityKeyIdentifier;
 use x509_parser::certificate::X509Certificate;
 use x509_parser::extensions::ParsedExtension;
 use x509_parser::oid_registry::{
@@ -118,9 +119,6 @@ pub(crate) fn authority_key_identifier(
         .map(|key_id| format!("{key_id:x}")))
 }
 
-#[derive(Eq, PartialEq)]
-pub struct AuthorityKeyIdentifier(pub Vec<u8>);
-
 pub fn get_akis_for_pem_chain(
     pem_chain: &[u8],
 ) -> Result<Vec<AuthorityKeyIdentifier>, CertificateParsingError> {
@@ -135,7 +133,7 @@ pub fn get_akis_for_pem_chain(
                         _ => None,
                     })
                     .filter_map(|aki| aki.key_identifier.as_ref())
-                    .map(|key_id| AuthorityKeyIdentifier(key_id.0.to_owned()))
+                    .map(|key_id| AuthorityKeyIdentifier::from(key_id.0.to_owned()))
                     .next() // RFC 5280 disallows more than 1 instance of an extension
                     .map(Ok),
                 Err(e) => Some(Err(e.into())),

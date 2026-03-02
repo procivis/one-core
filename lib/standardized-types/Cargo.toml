@@ -1,13 +1,14 @@
 [package]
-authors.workspace = true
-edition.workspace = true
-license.workspace = true
-name              = "standardized-types"
-version.workspace = true
+authors.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+name                   = "standardized-types"
 rust-version.workspace = true
+version.workspace      = true
 
 [dependencies]
 anyhow.workspace     = true
+ct-codecs.workspace  = true
 proc-macros          = { version = "0.1.0", path = "../../lib/proc-macros" }
 secrecy.workspace    = true
 serde                = { workspace = true, features = ["derive"] }

@@ -1,17 +1,18 @@
 [package]
-description = "Digital Credentials Query Language (DCQL) implementation"
-edition     = "2024"
-license     = "Apache-2.0"
-name        = "dcql"
-publish     = false
-version     = "0.1.0"
+description            = "Digital Credentials Query Language (DCQL) implementation"
+edition                = "2024"
+license                = "Apache-2.0"
+name                   = "dcql"
+publish                = false
 rust-version.workspace = true
+version                = "0.1.0"
 
 [dependencies]
-bon.workspace             = true
-serde                     = { version = "1.0", features = ["derive"] }
-similar-asserts.workspace = true
-thiserror.workspace       = true
+bon.workspace                = true
+serde                        = { version = "1.0", features = ["derive"] }
+similar-asserts.workspace    = true
+standardized-types.workspace = true
+thiserror.workspace          = true
 
 [dev-dependencies]
 serde_json      = "1.0"

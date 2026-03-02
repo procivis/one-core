@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use standardized_types::jwk::PrivateJwk;
+use standardized_types::mapper::secret_string;
 
-use crate::mapper::secret_string;
 use crate::model::key::PrivateJwkExt;
 use crate::provider::key_storage::error::KeyStorageError;
 

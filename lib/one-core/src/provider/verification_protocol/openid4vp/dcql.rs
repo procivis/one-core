@@ -9,12 +9,13 @@ use dcql::{
 use itertools::Itertools;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use shared_types::{CredentialId, OrganisationId};
+use standardized_types::x509::AuthorityKeyIdentifier;
 use time::OffsetDateTime;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
-use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
+use crate::mapper::x509::get_akis_for_pem_chain;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};

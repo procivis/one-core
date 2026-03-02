@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use strum::Display;
 
-use crate::secret_string;
+use crate::mapper::secret_string;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]

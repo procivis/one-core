@@ -63,6 +63,7 @@ where
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
+    use standardized_types::x509::AuthorityKeyIdentifier;
 
     use crate::{
         ClaimQuery, ClaimQueryId, CredentialFormat, CredentialMeta, CredentialQuery,
@@ -280,7 +281,10 @@ mod tests {
                     values: vec!["https://trustanchor.example.com".to_string()],
                 },
                 TrustedAuthority::AuthorityKeyId {
-                    values: vec!["s9tIpPmhxdiuNkHMEWNpYim8S8Y".to_string()],
+                    values: vec![
+                        AuthorityKeyIdentifier::from_base64url("s9tIpPmhxdiuNkHMEWNpYim8S8Y")
+                            .unwrap(),
+                    ],
                 },
                 TrustedAuthority::Custom {
                     r#type: "custom".to_string(),

@@ -3,15 +3,15 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
+use standardized_types::x509::AuthorityKeyIdentifier;
 
 use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
-use crate::mapper::x509::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
+use crate::mapper::x509::get_akis_for_pem_chain;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
@@ -863,20 +863,13 @@ fn check_issuer_is_trusted_authority(
 }
 
 pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<AuthorityKeyIdentifier> {
-    // DCQL spec says that AKI values should be provided as base64url-encoded strings.
-    // We need to decode those before we can match them against stored AKIs.
-    let mut akis: Vec<AuthorityKeyIdentifier> = Vec::new();
+    let mut result = vec![];
     for authority in authorities {
-        if let TrustedAuthority::AuthorityKeyId { values } = &authority {
-            for value in values {
-                match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
-                    Ok(bytes) => akis.push(AuthorityKeyIdentifier(bytes)),
-                    Err(_) => { /* Discard invalid values */ }
-                }
-            }
+        if let TrustedAuthority::AuthorityKeyId { values } = authority {
+            result.extend_from_slice(values);
         }
     }
-    akis
+    result
 }
 
 fn validate_claims(

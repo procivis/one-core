@@ -9,6 +9,7 @@ use std::fmt::Debug;
 
 use bon::Builder;
 use serde::{Deserialize, Serialize};
+use standardized_types::x509::AuthorityKeyIdentifier;
 use thiserror::Error;
 
 pub mod builder;
@@ -144,8 +145,9 @@ pub enum TrustedAuthority {
     OpenidFederation { values: Vec<String> },
 
     /// AuthorityKeyIdentifier base64url values
+    /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1.1.1>
     #[serde(rename = "aki")]
-    AuthorityKeyId { values: Vec<String> },
+    AuthorityKeyId { values: Vec<AuthorityKeyIdentifier> },
 
     /// Unknown / custom authority type, preserving original type string and values.
     #[serde(untagged)]
@@ -693,7 +695,10 @@ mod tests {
         let TrustedAuthority::AuthorityKeyId { values } = ta2 else {
             panic!("expected AuthorityKeyId");
         };
-        assert_eq!(values, &vec!["s9tIpPmhxdiuNkHMEWNpYim8S8Y".to_string()]);
+        assert_eq!(
+            values,
+            &vec![AuthorityKeyIdentifier::from_base64url("s9tIpPmhxdiuNkHMEWNpYim8S8Y").unwrap()]
+        );
 
         let ta3 = &ta[3];
         let TrustedAuthority::Custom { r#type, values } = ta3 else {
