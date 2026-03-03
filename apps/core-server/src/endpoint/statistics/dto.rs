@@ -20,13 +20,18 @@ use crate::serialize::front_time;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub struct OrganisationStatsRequestQuery {
+    /// Start of the reporting period (inclusive).
     #[try_into(infallible)]
     #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
+    /// End of the reporting period (exclusive).
     #[try_into(infallible)]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub to: OffsetDateTime,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.    
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
@@ -37,9 +42,14 @@ pub struct OrganisationStatsRequestQuery {
 #[from(OrganisationStatsResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganisationStatsResponseRestDTO {
+    /// Comparison statistics for the equivalent preceding period.
     #[from(with_fn = convert_inner)]
     pub previous: Option<OrganisationSummaryStatsRestDTO>,
+    /// Statistics for the selected reporting period.
     pub current: OrganisationSummaryStatsRestDTO,
+    /// Detailed statistics over time for the reporting period. Each
+    /// entry contains a timestamp and count; the interval between
+    /// timestamps scales with the length of the reporting period.
     pub timelines: OrganisationTimelinesRestDTO,
 }
 
@@ -47,8 +57,12 @@ pub struct OrganisationStatsResponseRestDTO {
 #[from(OrganisationSummaryStatsDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganisationSummaryStatsRestDTO {
+    /// Number of credentials issued in the reporting period.
     pub issuance_count: usize,
+    /// Number of credentials verified in the reporting period.
     pub verification_count: usize,
+    /// Number of credential suspensions, reactivations, and revocations
+    /// in the reporting period.
     pub credential_lifecycle_operation_count: usize,
 }
 
@@ -56,7 +70,9 @@ pub struct OrganisationSummaryStatsRestDTO {
 #[from(OrganisationTimelinesDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganisationTimelinesRestDTO {
+    /// Detailed issuance statistics for the reporting period.
     pub issuer: IssuerTimelinesRestDTO,
+    /// Detailed verification statistics for the reporting period.
     pub verifier: VerifierTimelinesRestDTO,
 }
 
@@ -107,11 +123,16 @@ pub struct TimeSeriesPointRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub struct SystemStatsRequestQuery {
+    /// Start of the reporting period (inclusive).
     #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
+    /// End of the reporting period (exclusive).
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub to: OffsetDateTime,
+    /// Maximum number of organizations to include in `topIssuers`,
+    /// `topVerifiers`, and `newestOrganisations`. Does not affect
+    /// system-wide totals in `current` and `previous`.
     #[param(nullable = false)]
     pub organisation_count: Option<usize>,
 }
@@ -121,13 +142,20 @@ pub struct SystemStatsRequestQuery {
 #[from(SystemStatsResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemStatsResponseRestDTO {
+    /// Comparison statistics for the equivalent preceding period.
     #[from(with_fn = convert_inner)]
     pub previous: Option<SystemOperationsCountRestDTO>,
+    /// System-wide statistics for the reporting period.
     pub current: SystemOperationsCountRestDTO,
+    /// Organizations with the highest issuance counts for the reporting
+    /// period, randed in descending order.
     #[from(with_fn = convert_inner)]
     pub top_issuers: Vec<OrganisationOperationsCountRestDTO>,
+    /// Organizations with the highest verification counts for the
+    /// reporting period, randed in descending order.    
     #[from(with_fn = convert_inner)]
     pub top_verifiers: Vec<OrganisationOperationsCountRestDTO>,
+    /// Most recently created organizations, ranked by creation date.
     #[from(with_fn = convert_inner)]
     pub newest_organisations: Vec<NewOrganisationEntryRestDTO>,
 }
@@ -136,10 +164,20 @@ pub struct SystemStatsResponseRestDTO {
 #[from(SystemOperationsCountDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemOperationsCountRestDTO {
+    /// Number of credentials issued across all organizations for the
+    /// reporting period.
     pub issuance_count: usize,
+    /// Number of credential verifications across all organizations
+    /// for the reporting period.
     pub verification_count: usize,
+    /// Number of credential suspensions, reactivations, and revocations
+    /// across all organizations for the reporting period.
     pub credential_lifecycle_operation_count: usize,
+    /// Number of session tokens created, reflecting user activity
+    /// levels.
     pub session_token_count: usize,
+    /// Number of wallet units with status `active` for the
+    /// reporting period.
     pub active_wallet_unit_count: usize,
 }
 
@@ -149,7 +187,10 @@ pub struct SystemOperationsCountRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct OrganisationOperationsCountRestDTO {
     pub organisation: OrganisationId,
+    /// Issuance (or verification) count for the reporting period.
     pub current: usize,
+    /// Issuance (or verification) count for the equivalent preceding
+    /// period.
     pub previous: Option<usize>,
 }
 

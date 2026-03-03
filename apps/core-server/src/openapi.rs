@@ -423,7 +423,19 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                                .add("x-displayName", "Cache")
                                .build(),
                        ))
-                       .build()]);
+                       .build(),
+                  Tag::builder()
+                      .name("statistics")
+                      .description(Some(indoc::formatdoc! {"
+                Retrieve organizational and system statistics including issuance and
+                verification counts, and active wallet unit counts. 
+            "}))
+                      .extensions(Some(
+                          Extensions::builder()
+                              .add("x-displayName", "Statistics")
+                              .build(),
+                      ))
+                      .build()]);
     }
     if config.enable_external_endpoints {
         tags.append(&mut vec![

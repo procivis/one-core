@@ -22,9 +22,10 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
-    summary = "Organisation statistics",
+    summary = "Organization statistics",
     description = indoc::formatdoc! {"
-        Retrieve statistics for a specific organisation.
+        Retrieve issuance and verification statistics for an organization,
+        including detailed timelines.
     "},
 )]
 #[require_permissions(Permission::DashboardDetail)]
@@ -57,7 +58,9 @@ pub(crate) async fn organisation_statistics(
     ),
     summary = "System statistics",
     description = indoc::formatdoc! {"
-        Retrieve system statistics.
+        Retrieve system-wide statistics across all organizations, including
+        top issuers and verifiers, active wallet units, and recently added
+        organizations.
     "},
 )]
 #[require_permissions(Permission::SystemDashboardDetail)]
