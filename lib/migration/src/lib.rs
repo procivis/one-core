@@ -216,6 +216,7 @@ mod m20260224_080135_scan_to_verify;
 mod m20260302_170000_trust_list_publication;
 mod m20260302_170100_trust_entry;
 mod m20260303_120000_trust_list_publication_role_not_null;
+mod m20260303_142434_no_more_optional_proof_schemas;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -432,6 +433,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260302_170000_trust_list_publication::Migration),
             Box::new(m20260302_170100_trust_entry::Migration),
             Box::new(m20260303_120000_trust_list_publication_role_not_null::Migration),
+            Box::new(m20260303_142434_no_more_optional_proof_schemas::Migration),
         ]
     }
 }
