@@ -114,6 +114,7 @@ issuanceProtocol:
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
+        urlScheme: openid-credential-offer
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -129,6 +130,7 @@ issuanceProtocol:
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
+        urlScheme: swiyu
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -142,6 +144,7 @@ issuanceProtocol:
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
+        urlScheme: openid-credential-offer
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
@@ -159,7 +162,7 @@ issuanceProtocol:
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
-        urlScheme: "haip-vci"
+        urlScheme: haip-vci
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
@@ -216,6 +219,7 @@ verificationProtocol:
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
+        urlScheme: swiyu-verify
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -283,6 +287,7 @@ verificationProtocol:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
         useRequestUri: true
+        urlScheme: openid4vp
         verifier:
           interactionExpiresIn: 3600
           supportedClientIdSchemes:
