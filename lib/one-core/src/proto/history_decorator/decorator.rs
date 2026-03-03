@@ -34,6 +34,8 @@ use crate::repository::remote_entity_cache_repository::RemoteEntityCacheReposito
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::trust_anchor_repository::TrustAnchorRepository;
 use crate::repository::trust_entity_repository::TrustEntityRepository;
+use crate::repository::trust_entry_repository::TrustEntryRepository;
+use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
@@ -116,6 +118,12 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository> {
         self.data_provider.get_trust_anchor_repository()
+    }
+    fn get_trust_entry_repository(&self) -> Arc<dyn TrustEntryRepository> {
+        self.data_provider.get_trust_entry_repository()
+    }
+    fn get_trust_list_publication_repository(&self) -> Arc<dyn TrustListPublicationRepository> {
+        self.data_provider.get_trust_list_publication_repository()
     }
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {
         self.data_provider.get_blob_repository()

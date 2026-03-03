@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, TrustEntryId, TrustListPublicationId};
 use time::OffsetDateTime;
 
+use crate::model::common::GetListResponse;
 use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+use crate::model::list_query::ListQuery;
 use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationRelations};
 
 #[derive(Clone, Debug)]
@@ -33,3 +36,28 @@ pub struct TrustEntryRelations {
     pub trust_list_publication: Option<TrustListPublicationRelations>,
     pub identifier: Option<IdentifierRelations>,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateTrustEntryRequest {
+    pub status: Option<TrustEntryState>,
+    pub metadata: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableTrustEntryColumn {
+    CreatedDate,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TrustEntryFilterValue {
+    TrustListPublicationId(TrustListPublicationId),
+    Status(StringMatch),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
+}
+
+impl ListFilterValue for TrustEntryFilterValue {}
+
+pub type TrustEntryListQuery = ListQuery<SortableTrustEntryColumn, TrustEntryFilterValue>;
+
+pub type GetTrustEntryList = GetListResponse<TrustEntry>;

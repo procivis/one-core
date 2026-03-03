@@ -31,6 +31,8 @@ use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepos
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
+use one_core::repository::trust_entry_repository::TrustEntryRepository;
+use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
@@ -41,6 +43,8 @@ use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use trust_anchor::TrustAnchorProvider;
 use trust_entity::TrustEntityProvider;
+use trust_entry::TrustEntryProvider;
+use trust_list_publication::TrustListPublicationProvider;
 use validity_credential::ValidityCredentialProvider;
 use wallet_unit::WalletUnitProvider;
 
@@ -83,6 +87,8 @@ pub mod remote_entity_cache;
 pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
+pub mod trust_entry;
+pub mod trust_list_publication;
 pub mod validity_credential;
 pub mod wallet_unit;
 
@@ -114,6 +120,8 @@ pub struct DataLayer {
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
+    trust_entry_repository: Arc<dyn TrustEntryRepository>,
+    trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
     blob_repository: Arc<dyn BlobRepository>,
     notification_repository: Arc<dyn NotificationRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
@@ -204,6 +212,20 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
+        let trust_list_publication_repository = Arc::new(TrustListPublicationProvider {
+            db: transaction_manager.clone(),
+            organisation_repository: organisation_repository.clone(),
+            identifier_repository: identifier_repository.clone(),
+            key_repository: key_repository.clone(),
+            certificate_repository: certificate_repository.clone(),
+        });
+
+        let trust_entry_repository = Arc::new(TrustEntryProvider {
+            db: transaction_manager.clone(),
+            trust_list_publication_repository: trust_list_publication_repository.clone(),
+            identifier_repository: identifier_repository.clone(),
+        });
+
         let credential_repository = Arc::new(CredentialProvider {
             db: transaction_manager.clone(),
             credential_schema_repository: credential_schema_repository.clone(),
@@ -284,6 +306,8 @@ impl DataLayer {
             backup_repository,
             trust_anchor_repository,
             trust_entity_repository,
+            trust_entry_repository,
+            trust_list_publication_repository,
             identifier_repository,
             certificate_repository,
             blob_repository,
@@ -354,6 +378,12 @@ impl DataRepository for DataLayer {
     }
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
         self.trust_entity_repository.clone()
+    }
+    fn get_trust_entry_repository(&self) -> Arc<dyn TrustEntryRepository> {
+        self.trust_entry_repository.clone()
+    }
+    fn get_trust_list_publication_repository(&self) -> Arc<dyn TrustListPublicationRepository> {
+        self.trust_list_publication_repository.clone()
     }
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {
         self.blob_repository.clone()

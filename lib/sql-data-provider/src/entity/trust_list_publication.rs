@@ -1,0 +1,132 @@
+use one_dto_mapper::{From, Into};
+use sea_orm::entity::prelude::*;
+use serde::Deserialize;
+use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId};
+use time::OffsetDateTime;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "trust_list_publication")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: TrustListPublicationId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    #[sea_orm(column_type = "Text")]
+    pub name: String,
+    #[sea_orm(nullable)]
+    pub role: Option<TrustRoleEnum>,
+    #[sea_orm(column_name = "type")]
+    pub r#type: TrustListType,
+    #[sea_orm(column_type = "Blob")]
+    pub metadata: Vec<u8>,
+    pub deactivated_at: Option<OffsetDateTime>,
+    #[sea_orm(column_type = "Blob", nullable)]
+    pub content: Option<Vec<u8>>,
+    pub sequence_number: i64,
+    #[sea_orm(nullable)]
+    pub organisation_id: Option<OrganisationId>,
+    #[sea_orm(nullable)]
+    pub identifier_id: Option<IdentifierId>,
+    #[sea_orm(nullable)]
+    pub key_id: Option<KeyId>,
+    #[sea_orm(nullable)]
+    pub certificate_id: Option<CertificateId>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::organisation::Entity",
+        from = "Column::OrganisationId",
+        to = "super::organisation::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Organisation,
+    #[sea_orm(
+        belongs_to = "super::identifier::Entity",
+        from = "Column::IdentifierId",
+        to = "super::identifier::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Identifier,
+    #[sea_orm(
+        belongs_to = "super::key::Entity",
+        from = "Column::KeyId",
+        to = "super::key::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Key,
+    #[sea_orm(
+        belongs_to = "super::certificate::Entity",
+        from = "Column::CertificateId",
+        to = "super::certificate::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Certificate,
+}
+
+impl Related<super::organisation::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Organisation.def()
+    }
+}
+
+impl Related<super::identifier::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Identifier.def()
+    }
+}
+
+impl Related<super::key::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Key.def()
+    }
+}
+
+impl Related<super::certificate::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Certificate.def()
+    }
+}
+
+impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
+#[into(one_core::model::trust_list_publication::TrustRoleEnum)]
+#[from(one_core::model::trust_list_publication::TrustRoleEnum)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum TrustRoleEnum {
+    #[sea_orm(string_value = "PID_PROVIDER")]
+    PidProvider,
+    #[sea_orm(string_value = "WALLET_PROVIDER")]
+    WalletProvider,
+    #[sea_orm(string_value = "WRP_AC_PROVIDER")]
+    WrpAcProvider,
+    #[sea_orm(string_value = "PUB_EEA_PROVIDER")]
+    PubEeaProvider,
+    #[sea_orm(string_value = "QEAA_PROVIDER")]
+    QeaaProvider,
+    #[sea_orm(string_value = "QESRC_PROVIDER")]
+    QesrcProvider,
+    #[sea_orm(string_value = "WRP_RC_PROVIDER")]
+    WrpRcProvider,
+    #[sea_orm(string_value = "NATIONAL_REGISTRY_REGISTRAR")]
+    NationalRegistryRegistrar,
+    #[sea_orm(string_value = "ISSUER")]
+    Issuer,
+    #[sea_orm(string_value = "VERIFIER")]
+    Verifier,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
+#[into(one_core::model::trust_list_publication::TrustListType)]
+#[from(one_core::model::trust_list_publication::TrustListType)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum TrustListType {
+    #[sea_orm(string_value = "LOTE")]
+    Lote,
+}

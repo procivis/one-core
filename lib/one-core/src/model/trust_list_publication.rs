@@ -3,8 +3,11 @@ use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId, TrustList
 use time::OffsetDateTime;
 
 use crate::model::certificate::{Certificate, CertificateRelations};
+use crate::model::common::GetListResponse;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::{Key, KeyRelations};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 
 #[derive(Clone, Debug)]
@@ -18,7 +21,7 @@ pub struct TrustListPublication {
     pub metadata: Vec<u8>,
     pub deactivated_at: Option<OffsetDateTime>,
     pub content: Option<Vec<u8>>,
-    pub sequence_number: u64,
+    pub sequence_number: i64,
 
     pub organisation_id: Option<OrganisationId>,
     pub identifier_id: Option<IdentifierId>,
@@ -60,3 +63,37 @@ pub struct TrustListPublicationRelations {
     pub key: Option<KeyRelations>,
     pub certificate: Option<CertificateRelations>,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateTrustListPublicationRequest {
+    pub name: Option<String>,
+    pub metadata: Option<Vec<u8>>,
+    pub content: Option<Option<Vec<u8>>>,
+    pub sequence_number: Option<i64>,
+    pub deactivated_at: Option<Option<OffsetDateTime>>,
+    pub identifier_id: Option<Option<IdentifierId>>,
+    pub key_id: Option<Option<KeyId>>,
+    pub certificate_id: Option<Option<CertificateId>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableTrustListPublicationColumn {
+    CreatedDate,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TrustListPublicationFilterValue {
+    OrganisationId(OrganisationId),
+    Name(StringMatch),
+    Type(StringMatch),
+    Role(StringMatch),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
+}
+
+impl ListFilterValue for TrustListPublicationFilterValue {}
+
+pub type TrustListPublicationListQuery =
+    ListQuery<SortableTrustListPublicationColumn, TrustListPublicationFilterValue>;
+
+pub type GetTrustListPublicationList = GetListResponse<TrustListPublication>;
