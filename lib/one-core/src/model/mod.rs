@@ -22,6 +22,8 @@ pub mod remote_entity_cache;
 pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
+pub mod trust_entry;
+pub mod trust_list_publication;
 pub mod validity_credential;
 pub mod wallet_unit;
 pub mod wallet_unit_attestation;
