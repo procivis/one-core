@@ -16,14 +16,14 @@ pub struct TrustListPublication {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub role: Option<TrustRoleEnum>,
-    pub r#type: TrustListType,
+    pub role: TrustRoleEnum,
+    pub r#type: String,
     pub metadata: Vec<u8>,
     pub deactivated_at: Option<OffsetDateTime>,
     pub content: Option<Vec<u8>>,
     pub sequence_number: i64,
 
-    pub organisation_id: Option<OrganisationId>,
+    pub organisation_id: OrganisationId,
     pub identifier_id: Option<IdentifierId>,
     pub key_id: Option<KeyId>,
     pub certificate_id: Option<CertificateId>,
@@ -48,12 +48,6 @@ pub enum TrustRoleEnum {
     NationalRegistryRegistrar,
     Issuer,
     Verifier,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustListType {
-    Lote,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

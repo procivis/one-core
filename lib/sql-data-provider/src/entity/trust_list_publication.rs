@@ -13,18 +13,16 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     #[sea_orm(column_type = "Text")]
     pub name: String,
-    #[sea_orm(nullable)]
-    pub role: Option<TrustRoleEnum>,
+    pub role: TrustRoleEnum,
     #[sea_orm(column_name = "type")]
-    pub r#type: TrustListType,
+    pub r#type: String,
     #[sea_orm(column_type = "Blob")]
     pub metadata: Vec<u8>,
     pub deactivated_at: Option<OffsetDateTime>,
     #[sea_orm(column_type = "Blob", nullable)]
     pub content: Option<Vec<u8>>,
     pub sequence_number: i64,
-    #[sea_orm(nullable)]
-    pub organisation_id: Option<OrganisationId>,
+    pub organisation_id: OrganisationId,
     #[sea_orm(nullable)]
     pub identifier_id: Option<IdentifierId>,
     #[sea_orm(nullable)]
@@ -120,13 +118,4 @@ pub enum TrustRoleEnum {
     Issuer,
     #[sea_orm(string_value = "VERIFIER")]
     Verifier,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
-#[into(one_core::model::trust_list_publication::TrustListType)]
-#[from(one_core::model::trust_list_publication::TrustListType)]
-#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
-pub enum TrustListType {
-    #[sea_orm(string_value = "LOTE")]
-    Lote,
 }

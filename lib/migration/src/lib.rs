@@ -215,6 +215,7 @@ mod m20260219_051400_remove_lvvc;
 mod m20260224_080135_scan_to_verify;
 mod m20260302_170000_trust_list_publication;
 mod m20260302_170100_trust_entry;
+mod m20260303_120000_trust_list_publication_role_not_null;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -430,6 +431,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260224_080135_scan_to_verify::Migration),
             Box::new(m20260302_170000_trust_list_publication::Migration),
             Box::new(m20260302_170100_trust_entry::Migration),
+            Box::new(m20260303_120000_trust_list_publication_role_not_null::Migration),
         ]
     }
 }

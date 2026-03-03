@@ -7,7 +7,7 @@ use one_core::model::trust_entry::{
     UpdateTrustEntryRequest,
 };
 use one_core::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations, TrustListType, TrustRoleEnum,
+    TrustListPublication, TrustListPublicationRelations, TrustRoleEnum,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
@@ -26,11 +26,16 @@ struct TestSetup {
     pub db: DatabaseConnection,
     pub provider: TrustEntryProvider,
     pub trust_list_publication_id: shared_types::TrustListPublicationId,
+    pub org_id: shared_types::OrganisationId,
 }
 
 async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
+
+    let org_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
 
     let trust_list_publication_id: shared_types::TrustListPublicationId = Uuid::new_v4().into();
     trust_list_publication::ActiveModel {
@@ -38,13 +43,13 @@ async fn setup() -> TestSetup {
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set("test-publication".to_string()),
-        role: Set(Some(trust_list_publication::TrustRoleEnum::Issuer)),
-        r#type: Set(trust_list_publication::TrustListType::Lote),
+        role: Set(trust_list_publication::TrustRoleEnum::Issuer),
+        r#type: Set("LOTE".to_string()),
         metadata: Set(vec![]),
         deactivated_at: Set(None),
         content: Set(None),
         sequence_number: Set(0),
-        organisation_id: Set(None),
+        organisation_id: Set(org_id),
         identifier_id: Set(None),
         key_id: Set(None),
         certificate_id: Set(None),
@@ -63,6 +68,7 @@ async fn setup() -> TestSetup {
         },
         db,
         trust_list_publication_id,
+        org_id,
     }
 }
 
@@ -184,13 +190,13 @@ async fn test_list_trust_entries_filter_by_publication_id() {
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set("other-publication".to_string()),
-        role: Set(Some(trust_list_publication::TrustRoleEnum::Verifier)),
-        r#type: Set(trust_list_publication::TrustListType::Lote),
+        role: Set(trust_list_publication::TrustRoleEnum::Verifier),
+        r#type: Set("LOTE".to_string()),
         metadata: Set(vec![]),
         deactivated_at: Set(None),
         content: Set(None),
         sequence_number: Set(0),
-        organisation_id: Set(None),
+        organisation_id: Set(setup.org_id),
         identifier_id: Set(None),
         key_id: Set(None),
         certificate_id: Set(None),
@@ -431,19 +437,23 @@ async fn test_get_trust_entry_with_publication_relation() {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
+    let org_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+
     let trust_list_publication_id: shared_types::TrustListPublicationId = Uuid::new_v4().into();
     trust_list_publication::ActiveModel {
         id: Set(trust_list_publication_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set("test-publication".to_string()),
-        role: Set(Some(trust_list_publication::TrustRoleEnum::Issuer)),
-        r#type: Set(trust_list_publication::TrustListType::Lote),
+        role: Set(trust_list_publication::TrustRoleEnum::Issuer),
+        r#type: Set("LOTE".to_string()),
         metadata: Set(vec![]),
         deactivated_at: Set(None),
         content: Set(None),
         sequence_number: Set(0),
-        organisation_id: Set(None),
+        organisation_id: Set(org_id),
         identifier_id: Set(None),
         key_id: Set(None),
         certificate_id: Set(None),
@@ -459,13 +469,13 @@ async fn test_get_trust_entry_with_publication_relation() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "test-publication".to_string(),
-            role: Some(TrustRoleEnum::Issuer),
-            r#type: TrustListType::Lote,
+            role: TrustRoleEnum::Issuer,
+            r#type: "LOTE".to_string(),
             metadata: vec![],
             deactivated_at: None,
             content: None,
             sequence_number: 0,
-            organisation_id: None,
+            organisation_id: org_id,
             identifier_id: None,
             key_id: None,
             certificate_id: None,

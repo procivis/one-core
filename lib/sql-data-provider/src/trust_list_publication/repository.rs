@@ -51,9 +51,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
 
         let mut result = TrustListPublication::from(entity_model);
 
-        if let Some(organisation_id) = organisation_id
-            && let Some(organisation_relations) = &relations.organisation
-        {
+        if let Some(organisation_relations) = &relations.organisation {
             result.organisation = Some(
                 self.organisation_repository
                     .get_organisation(&organisation_id, organisation_relations)
