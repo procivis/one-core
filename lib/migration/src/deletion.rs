@@ -74,6 +74,15 @@ pub(crate) async fn hard_delete_credential_schemas_and_related(
     )
     .await?;
 
+    let proof_input_schemas = get_ids_batched::<i64>(
+        ProofInputSchema::Table,
+        ProofInputSchema::Id,
+        ProofInputSchema::ProofSchema,
+        &proof_schemas,
+        manager,
+    )
+    .await?;
+
     let proofs = [
         get_ids_batched(
             Proof::Table,
@@ -94,7 +103,7 @@ pub(crate) async fn hard_delete_credential_schemas_and_related(
     ]
     .concat();
 
-    let interactions = [
+    let interactions: Vec<String> = [
         get_ids_batched(
             Credential::Table,
             Credential::InteractionId,
@@ -114,7 +123,7 @@ pub(crate) async fn hard_delete_credential_schemas_and_related(
     ]
     .concat();
 
-    let blobs = [
+    let blobs: Vec<String> = [
         get_ids_batched(
             Credential::Table,
             Credential::CredentialBlobId,
@@ -152,16 +161,16 @@ pub(crate) async fn hard_delete_credential_schemas_and_related(
 
     delete(
         ProofInputClaimSchema::Table,
-        ProofInputClaimSchema::ClaimSchemaId,
-        &claim_schemas,
+        ProofInputClaimSchema::ProofInputSchemaId,
+        &proof_input_schemas,
         manager,
     )
     .await?;
 
     delete(
         ProofInputSchema::Table,
-        ProofInputSchema::CredentialSchema,
-        &credential_schemas,
+        ProofInputSchema::Id,
+        &proof_input_schemas,
         manager,
     )
     .await?;

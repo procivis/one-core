@@ -1,22 +1,23 @@
 use std::collections::HashSet;
+use std::hash::Hash;
 
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{IntoColumnRef, IntoTableRef, Query, SelectStatement};
-use sea_orm::{DbErr, FromQueryResult};
+use sea_orm::sea_query::{IntoColumnRef, IntoTableRef, Query, SelectStatement, SimpleExpr};
+use sea_orm::{DbErr, FromQueryResult, TryGetable};
 use sea_orm_migration::SchemaManager;
 
 #[derive(FromQueryResult)]
-pub(crate) struct IdResult {
-    pub id: String,
+pub(crate) struct IdResult<T: TryGetable> {
+    pub id: T,
 }
 
-pub(crate) async fn get_ids_batched(
+pub(crate) async fn get_ids_batched<T: TryGetable>(
     table: impl IntoTableRef,
     id_column: impl IntoColumnRef,
     linked_entity_id_column: impl IntoColumnRef,
     linked_entities: &[String],
     manager: &SchemaManager<'_>,
-) -> Result<Vec<String>, DbErr> {
+) -> Result<Vec<T>, DbErr> {
     if linked_entities.is_empty() {
         return Ok(vec![]);
     }
@@ -34,7 +35,7 @@ pub(crate) async fn get_ids_batched(
         );
 
         result.extend(
-            get_ids(
+            get_ids::<T>(
                 manager,
                 Query::select()
                     .expr_as(Expr::col(id_column.to_owned()), "id")
@@ -48,14 +49,14 @@ pub(crate) async fn get_ids_batched(
     Ok(result)
 }
 
-pub(crate) async fn get_ids(
+pub(crate) async fn get_ids<T: TryGetable>(
     manager: &SchemaManager<'_>,
     query: &SelectStatement,
-) -> Result<Vec<String>, DbErr> {
+) -> Result<Vec<T>, DbErr> {
     let backend = manager.get_database_backend();
     let db = manager.get_connection();
 
-    Ok(IdResult::find_by_statement(backend.build(query))
+    Ok(IdResult::<T>::find_by_statement(backend.build(query))
         .all(db)
         .await?
         .into_iter()
@@ -63,12 +64,15 @@ pub(crate) async fn get_ids(
         .collect())
 }
 
-pub(crate) async fn delete(
+pub(crate) async fn delete<T>(
     table: impl IntoTableRef,
     column: impl IntoColumnRef,
-    entity_ids: &[String],
+    entity_ids: &[T],
     manager: &SchemaManager<'_>,
-) -> Result<(), DbErr> {
+) -> Result<(), DbErr>
+where
+    T: Eq + Hash + Clone + Into<SimpleExpr>,
+{
     if entity_ids.is_empty() {
         return Ok(());
     }
@@ -84,7 +88,7 @@ pub(crate) async fn delete(
             .exec_stmt(
                 Query::delete()
                     .from_table(table.to_owned())
-                    .and_where(Expr::col(column.to_owned()).is_in(chunk))
+                    .and_where(Expr::col(column.to_owned()).is_in(chunk.to_vec()))
                     .to_owned(),
             )
             .await?;
@@ -93,7 +97,7 @@ pub(crate) async fn delete(
     Ok(())
 }
 
-fn unique_ids(input: &[String]) -> Vec<String> {
-    let ids: HashSet<&String> = HashSet::from_iter(input);
-    ids.into_iter().map(ToString::to_string).collect()
+fn unique_ids<T: Eq + Hash + Clone>(input: &[T]) -> Vec<T> {
+    let ids: HashSet<&T> = HashSet::from_iter(input);
+    ids.into_iter().map(ToOwned::to_owned).collect()
 }
