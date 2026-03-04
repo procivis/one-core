@@ -2,8 +2,8 @@ use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::history::{
-    GetHistoryList, GetIssuerStats, History, HistoryListQuery, IssuerStatsQuery, OrganisationStats,
-    SystemStats,
+    GetHistoryList, GetIssuerStats, GetVerifierStats, History, HistoryListQuery, IssuerStatsQuery,
+    OrganisationStats, SystemStats, VerifierStatsQuery,
 };
 use crate::repository::error::DataLayerError;
 
@@ -44,4 +44,10 @@ pub trait HistoryRepository: Send + Sync {
         query: IssuerStatsQuery,
         previous_query: Option<IssuerStatsQuery>,
     ) -> Result<GetIssuerStats, DataLayerError>;
+
+    async fn verifier_stats(
+        &self,
+        query: VerifierStatsQuery,
+        previous_query: Option<VerifierStatsQuery>,
+    ) -> Result<GetVerifierStats, DataLayerError>;
 }

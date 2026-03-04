@@ -476,6 +476,10 @@ fn get_management_endpoints(
                 get(statistics::controller::issuer_statistics),
             )
             .route(
+                "/api/statistics/v1/dashboard/verifier",
+                get(statistics::controller::verifier_statistics),
+            )
+            .route(
                 "/api/statistics/v1/dashboard/system",
                 get(statistics::controller::system_statistics),
             );

@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::{Duration, OffsetDateTime};
 
 use crate::entity::history::{HistoryAction, HistoryEntityType};
@@ -60,6 +60,18 @@ pub struct IssuerStatsRow {
     pub reactivated: i64,
     #[sea_orm(from_alias = "REVOKED")]
     pub revoked: i64,
+    #[sea_orm(from_alias = "ERRORED")]
+    pub error: i64,
+}
+
+#[derive(FromQueryResult, Debug)]
+pub struct VerifierStatsRow {
+    pub proof_schema_id: ProofSchemaId,
+    pub name: String,
+    #[sea_orm(from_alias = "ACCEPTED")]
+    pub accepted: i64,
+    #[sea_orm(from_alias = "REJECTED")]
+    pub rejected: i64,
     #[sea_orm(from_alias = "ERRORED")]
     pub error: i64,
 }

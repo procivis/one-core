@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use one_core::model::history::{
-    GetHistoryList, GetIssuerStats, History, IssuerSchemaStats, IssuerStats, IssuerTimelines,
-    OrganisationOperationsCount, OrganisationTimelines, TimeSeriesPoint, VerifierTimelines,
+    GetHistoryList, GetIssuerStats, GetVerifierStats, History, IssuerSchemaStats, IssuerStats,
+    IssuerTimelines, OrganisationOperationsCount, OrganisationTimelines, TimeSeriesPoint,
+    VerifierSchemaStats, VerifierStats, VerifierTimelines,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
@@ -12,7 +13,9 @@ use time::{Duration, Month, OffsetDateTime};
 use crate::common::calculate_pages_count;
 use crate::entity::history;
 use crate::entity::history::{HistoryAction, HistoryEntityType};
-use crate::history::model::{IssuerStatsRow, OrganisationOpsCount, TimeResolution, TimeSeriesRow};
+use crate::history::model::{
+    IssuerStatsRow, OrganisationOpsCount, TimeResolution, TimeSeriesRow, VerifierStatsRow,
+};
 
 impl TryFrom<history::Model> for History {
     type Error = DataLayerError;
@@ -341,7 +344,7 @@ pub(super) fn map_to_issuer_stats(
     count: u64,
     limit: Option<u64>,
 ) -> GetIssuerStats {
-    let zero_missing_values = prev.is_some();
+    let add_missing_zeros = prev.is_some();
     let prev_map = prev
         .unwrap_or_default()
         .into_iter()
@@ -351,7 +354,7 @@ pub(super) fn map_to_issuer_stats(
         .into_iter()
         .map(|r| {
             let mut previous = prev_map.get(&r.credential_schema_id).cloned();
-            if zero_missing_values && previous.is_none() {
+            if add_missing_zeros && previous.is_none() {
                 // Previous values are missing for the particular schema, fill in with zeros
                 previous = Some(IssuerStats::default());
             }
@@ -367,6 +370,51 @@ pub(super) fn map_to_issuer_stats(
         values,
         total_pages: calculate_pages_count(count, limit.unwrap_or(0)),
         total_items: count,
+    }
+}
+
+pub(super) fn map_to_verifier_stats(
+    current: Vec<VerifierStatsRow>,
+    prev: Option<Vec<VerifierStatsRow>>,
+    count: u64,
+    limit: Option<u64>,
+) -> GetVerifierStats {
+    let add_missing_zeros = prev.is_some();
+    let prev_map = prev
+        .unwrap_or_default()
+        .into_iter()
+        .map(|r| (r.proof_schema_id, VerifierStats::from(r)))
+        .collect::<HashMap<_, _>>();
+    let values = current
+        .into_iter()
+        .map(|r| {
+            let mut previous = prev_map.get(&r.proof_schema_id).cloned();
+            if add_missing_zeros && previous.is_none() {
+                // Previous values are missing for the particular schema, fill in with zeros
+                previous = Some(VerifierStats::default());
+            }
+            VerifierSchemaStats {
+                proof_schema_id: r.proof_schema_id,
+                proof_schema_name: r.name.clone(),
+                previous,
+                current: r.into(),
+            }
+        })
+        .collect();
+    GetVerifierStats {
+        values,
+        total_pages: calculate_pages_count(count, limit.unwrap_or(0)),
+        total_items: count,
+    }
+}
+
+impl From<VerifierStatsRow> for VerifierStats {
+    fn from(value: VerifierStatsRow) -> Self {
+        Self {
+            accepted_count: value.accepted as usize,
+            rejected_count: value.rejected as usize,
+            error_count: value.error as usize,
+        }
     }
 }
 

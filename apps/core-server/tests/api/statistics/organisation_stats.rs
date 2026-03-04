@@ -89,6 +89,31 @@ async fn test_organisation_issuer_stats() {
     assert_eq!(resp["values"][0]["previous"]["issuedCount"], 1);
 }
 
+#[tokio::test]
+async fn test_organisation_verifier_stats() {
+    // GIVEN
+    let (context, org, identifier, .., key) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let now = OffsetDateTime::now_utc();
+    dummy_history_data(&context, &org, &identifier, key, OffsetDateTime::now_utc()).await;
+    // WHEN
+    let one_day = Duration::days(1);
+    let resp = context
+        .api
+        .statistics
+        .organisation_verifier_stats(Some(now - one_day), now + one_day, org.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"][0]["current"]["acceptedCount"], 1);
+    assert_eq!(resp["values"][0]["previous"]["acceptedCount"], 0);
+}
+
 async fn dummy_history_data(
     context: &TestContext,
     org: &Organisation,

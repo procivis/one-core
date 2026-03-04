@@ -218,6 +218,13 @@ pub enum SortableIssuerStatisticsColumn {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableVerifierStatisticsColumn {
+    Accepted,
+    Rejected,
+    Error,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StatsBySchemaFilterValue {
     OrganisationId(OrganisationId),
     From(ValueComparison<OffsetDateTime>),
@@ -243,6 +250,24 @@ pub struct IssuerStats {
     pub suspended_count: usize,
     pub reactivated_count: usize,
     pub revoked_count: usize,
+    pub error_count: usize,
+}
+
+pub type VerifierStatsQuery = ListQuery<SortableVerifierStatisticsColumn, StatsBySchemaFilterValue>;
+pub type GetVerifierStats = GetListResponse<VerifierSchemaStats>;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifierSchemaStats {
+    pub proof_schema_id: ProofSchemaId,
+    pub proof_schema_name: String,
+    pub current: VerifierStats,
+    pub previous: Option<VerifierStats>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct VerifierStats {
+    pub accepted_count: usize,
+    pub rejected_count: usize,
     pub error_count: usize,
 }
 

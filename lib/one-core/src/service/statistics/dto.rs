@@ -1,12 +1,12 @@
 use one_dto_mapper::{From, convert_inner};
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::history::{
     IssuerSchemaStats, IssuerStats, IssuerTimelines, OrganisationOperationsCount,
     OrganisationStats, OrganisationSummaryStats, OrganisationTimelines, SystemOperationsCount,
-    TimeSeriesPoint, VerifierTimelines,
+    TimeSeriesPoint, VerifierSchemaStats, VerifierStats, VerifierTimelines,
 };
 
 pub struct OrganisationStatsRequestDTO {
@@ -97,6 +97,26 @@ pub struct IssuerStatsDTO {
     pub suspended_count: usize,
     pub reactivated_count: usize,
     pub revoked_count: usize,
+    pub error_count: usize,
+}
+
+pub type GetVerifierStatsResponseDTO = GetListResponse<VerifierSchemaStatsResponseDTO>;
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(VerifierSchemaStats)]
+pub struct VerifierSchemaStatsResponseDTO {
+    pub proof_schema_id: ProofSchemaId,
+    pub proof_schema_name: String,
+    pub current: VerifierStatsDTO,
+    #[from(with_fn = convert_inner)]
+    pub previous: Option<VerifierStatsDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(VerifierStats)]
+pub struct VerifierStatsDTO {
+    pub accepted_count: usize,
+    pub rejected_count: usize,
     pub error_count: usize,
 }
 

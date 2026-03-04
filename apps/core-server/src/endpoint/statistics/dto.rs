@@ -1,15 +1,16 @@
-use one_core::model::history::SortableIssuerStatisticsColumn;
+use one_core::model::history::{SortableIssuerStatisticsColumn, SortableVerifierStatisticsColumn};
 use one_core::service::error::ServiceError;
 use one_core::service::statistics::dto::{
     IssuerSchemaStatsResponseDTO, IssuerStatsDTO, IssuerTimelinesDTO, NewOrganisationEntryDTO,
     OrganisationOperationsCountDTO, OrganisationStatsRequestDTO, OrganisationStatsResponseDTO,
     OrganisationSummaryStatsDTO, OrganisationTimelinesDTO, SystemOperationsCountDTO,
-    SystemStatsResponseDTO, TimeSeriesPointDTO, VerifierTimelinesDTO,
+    SystemStatsResponseDTO, TimeSeriesPointDTO, VerifierSchemaStatsResponseDTO, VerifierStatsDTO,
+    VerifierTimelinesDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
@@ -132,6 +133,15 @@ pub(crate) enum SortableIssuerStatisticsColumnRestDTO {
     Error,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(SortableVerifierStatisticsColumn)]
+pub(crate) enum SortableVerifierStatisticsColumnRestDTO {
+    Accepted,
+    Rejected,
+    Error,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
@@ -146,7 +156,7 @@ pub struct StatsBySchemaFilterParamsRest {
     pub organisation_id: Option<OrganisationId>,
 }
 
-pub(crate) type GetSchemaStatsQueryRest =
+pub(crate) type GetIssuerSchemaStatsQueryRest =
     ListQueryParamsRest<StatsBySchemaFilterParamsRest, SortableIssuerStatisticsColumnRestDTO>;
 
 #[options_not_nullable]
@@ -169,6 +179,30 @@ pub struct IssuerStatsRestDTO {
     pub suspended_count: usize,
     pub reactivated_count: usize,
     pub revoked_count: usize,
+    pub error_count: usize,
+}
+
+pub(crate) type GetVerifierSchemaStatsQueryRest =
+    ListQueryParamsRest<StatsBySchemaFilterParamsRest, SortableVerifierStatisticsColumnRestDTO>;
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[from(VerifierSchemaStatsResponseDTO)]
+pub struct VerifierSchemaStatsResponseRestDTO {
+    pub proof_schema_id: ProofSchemaId,
+    pub proof_schema_name: String,
+    pub current: VerifierStatsRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub previous: Option<VerifierStatsRestDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[from(VerifierStatsDTO)]
+pub struct VerifierStatsRestDTO {
+    pub accepted_count: usize,
+    pub rejected_count: usize,
     pub error_count: usize,
 }
 
