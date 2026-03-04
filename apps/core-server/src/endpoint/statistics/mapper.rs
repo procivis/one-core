@@ -1,22 +1,27 @@
 use one_core::model::history::{
     IssuerStatsQuery, StatsBySchemaFilterValue, SystemInteractionStatsQuery,
-    SystemStatsFilterValue, VerifierStatsQuery,
+    SystemManagementStatsQuery, SystemStatsFilterValue, VerifierStatsQuery,
 };
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
 };
 use one_core::service::error::ServiceError;
-use one_core::service::statistics::dto::SystemStatsRequestDTO;
-use one_dto_mapper::try_convert_inner;
+use one_core::service::statistics::dto::{
+    SystemInteractionCountsDTO, SystemManagementCountsDTO, SystemOrgStatsResponseDTO,
+    SystemStatsRequestDTO,
+};
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use time::OffsetDateTime;
 
 use crate::dto::common::SortDirection;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::statistics::dto::{
     GetIssuerSchemaStatsQueryRest, GetSystemInteractionStatsQueryRest,
-    GetVerifierSchemaStatsQueryRest, SortableIssuerStatisticsColumnRestDTO,
-    SortableSystemInteractionStatisticsColumnRestDTO, SortableVerifierStatisticsColumnRestDTO,
-    StatsBySchemaFilterParamsRest, SystemStatsFilterParamsRest, SystemStatsRequestQuery,
+    GetSystemManagementStatsQueryRest, GetVerifierSchemaStatsQueryRest,
+    SortableIssuerStatisticsColumnRestDTO, SortableSystemInteractionStatisticsColumnRestDTO,
+    SortableSystemManagementStatisticsColumnRestDTO, SortableVerifierStatisticsColumnRestDTO,
+    StatsBySchemaFilterParamsRest, SystemInteractionStatsResponseRestDTO,
+    SystemManagementStatsResponseRestDTO, SystemStatsFilterParamsRest, SystemStatsRequestQuery,
 };
 
 impl From<SystemStatsRequestQuery> for SystemStatsRequestDTO {
@@ -98,6 +103,33 @@ pub(super) fn map_to_system_interaction_stats_queries(
     Ok((current, prev))
 }
 
+pub(super) fn map_to_system_management_stats_queries(
+    mut query: GetSystemManagementStatsQueryRest,
+) -> Result<
+    (
+        SystemManagementStatsQuery,
+        Option<SystemManagementStatsQuery>,
+    ),
+    ServiceError,
+> {
+    // Default sort
+    if query.sort.is_none() {
+        query.sort = Some(SortableSystemManagementStatisticsColumnRestDTO::CredentialSchema)
+    }
+    if query.sort_direction.is_none() {
+        query.sort_direction = Some(SortDirection::Descending);
+    }
+    let current = query.clone().try_into()?;
+    let prev_boundaries =
+        shift_time_boundaries(query.filter.from, query.filter.to)?.map(|(from, to)| {
+            query.filter.to = to;
+            query.filter.from = Some(from);
+            query
+        });
+    let prev = try_convert_inner(prev_boundaries)?;
+    Ok((current, prev))
+}
+
 fn shift_time_boundaries(
     from: Option<OffsetDateTime>,
     to: OffsetDateTime,
@@ -158,5 +190,29 @@ impl TryFrom<SystemStatsFilterParamsRest> for ListFilterCondition<SystemStatsFil
         });
 
         Ok(to & from)
+    }
+}
+
+impl From<SystemOrgStatsResponseDTO<SystemInteractionCountsDTO>>
+    for SystemInteractionStatsResponseRestDTO
+{
+    fn from(value: SystemOrgStatsResponseDTO<SystemInteractionCountsDTO>) -> Self {
+        Self {
+            organisation_id: value.organisation_id,
+            current: value.current.into(),
+            previous: convert_inner(value.previous),
+        }
+    }
+}
+
+impl From<SystemOrgStatsResponseDTO<SystemManagementCountsDTO>>
+    for SystemManagementStatsResponseRestDTO
+{
+    fn from(value: SystemOrgStatsResponseDTO<SystemManagementCountsDTO>) -> Self {
+        Self {
+            organisation_id: value.organisation_id,
+            current: value.current.into(),
+            previous: convert_inner(value.previous),
+        }
     }
 }

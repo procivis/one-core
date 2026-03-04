@@ -1,13 +1,13 @@
 use one_core::model::history::{
     SortableIssuerStatisticsColumn, SortableSystemInteractionStatisticsColumn,
-    SortableVerifierStatisticsColumn,
+    SortableSystemManagementStatisticsColumn, SortableVerifierStatisticsColumn,
 };
 use one_core::service::error::ServiceError;
 use one_core::service::statistics::dto::{
     IssuerSchemaStatsResponseDTO, IssuerStatsDTO, IssuerTimelinesDTO, NewOrganisationEntryDTO,
     OrganisationOperationsCountDTO, OrganisationStatsRequestDTO, OrganisationStatsResponseDTO,
     OrganisationSummaryStatsDTO, OrganisationTimelinesDTO, SystemInteractionCountsDTO,
-    SystemInteractionStatsResponseDTO, SystemOperationsCountDTO, SystemStatsResponseDTO,
+    SystemManagementCountsDTO, SystemOperationsCountDTO, SystemStatsResponseDTO,
     TimeSeriesPointDTO, VerifierSchemaStatsResponseDTO, VerifierStatsDTO, VerifierTimelinesDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
@@ -320,13 +320,11 @@ pub(crate) type GetSystemInteractionStatsQueryRest = ListQueryParamsRest<
 >;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(SystemInteractionStatsResponseDTO)]
 pub struct SystemInteractionStatsResponseRestDTO {
     pub organisation_id: OrganisationId,
     pub current: SystemInteractionCountsRestDTO,
-    #[from(with_fn = convert_inner)]
     pub previous: Option<SystemInteractionCountsRestDTO>,
 }
 
@@ -338,4 +336,36 @@ pub struct SystemInteractionCountsRestDTO {
     pub verified_count: usize,
     pub credential_lifecycle_operation_count: usize,
     pub error_count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(SortableSystemManagementStatisticsColumn)]
+pub(crate) enum SortableSystemManagementStatisticsColumnRestDTO {
+    CredentialSchema,
+    ProofSchema,
+    Identifier,
+}
+
+pub(crate) type GetSystemManagementStatsQueryRest = ListQueryParamsRest<
+    SystemStatsFilterParamsRest,
+    SortableSystemManagementStatisticsColumnRestDTO,
+>;
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemManagementStatsResponseRestDTO {
+    pub organisation_id: OrganisationId,
+    pub current: SystemManagementCountsRestDTO,
+    pub previous: Option<SystemManagementCountsRestDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[from(SystemManagementCountsDTO)]
+pub struct SystemManagementCountsRestDTO {
+    pub credential_schema_created_count: usize,
+    pub proof_schema_created_count: usize,
+    pub identifier_created_count: usize,
 }

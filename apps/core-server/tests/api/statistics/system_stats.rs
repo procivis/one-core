@@ -118,6 +118,91 @@ async fn test_system_interaction_stats() {
     assert_eq!(resp["values"][0]["previous"]["issuedCount"], 1);
 }
 
+#[tokio::test]
+async fn test_system_management_stats() {
+    // GIVEN
+    let (context, org, ..) = TestContext::new_with_certificate_identifier(None).await;
+    let now = OffsetDateTime::now_utc();
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &org, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
+        &org,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+        }],
+    )
+    .await;
+    context
+        .db
+        .histories
+        .create(
+            &org,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Created),
+                entity_id: Some(credential_schema.id.into()),
+                entity_type: Some(HistoryEntityType::CredentialSchema),
+                created_date: Some(now - Duration::hours(30)),
+                ..Default::default()
+            },
+        )
+        .await;
+    for _ in 0..3 {
+        context
+            .db
+            .histories
+            .create(
+                &org,
+                TestingHistoryParams {
+                    action: Some(HistoryAction::Created),
+                    entity_id: Some(proof_schema.id.into()),
+                    entity_type: Some(HistoryEntityType::ProofSchema),
+                    created_date: Some(now - Duration::hours(1)),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
+    // WHEN
+    let resp = context
+        .api
+        .statistics
+        .system_management_stats(Some(now - Duration::days(1)), now)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"][0]["organisationId"], org.id.to_string());
+    assert_eq!(
+        resp["values"][0]["current"]["credentialSchemaCreatedCount"],
+        0
+    );
+    assert_eq!(
+        resp["values"][0]["previous"]["credentialSchemaCreatedCount"],
+        1
+    );
+    assert_eq!(resp["values"][0]["current"]["proofSchemaCreatedCount"], 3);
+    assert_eq!(resp["values"][0]["previous"]["proofSchemaCreatedCount"], 0);
+}
+
 async fn add_test_entities(
     context: &TestContext,
     org: &Organisation,

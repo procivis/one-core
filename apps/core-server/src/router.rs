@@ -486,6 +486,10 @@ fn get_management_endpoints(
             .route(
                 "/api/statistics/v1/dashboard/system/interaction",
                 get(statistics::controller::system_interaction_statistics),
+            )
+            .route(
+                "/api/statistics/v1/dashboard/system/management",
+                get(statistics::controller::system_management_statistics),
             );
 
         if config.enable_signature_endpoints {

@@ -16,7 +16,7 @@ use crate::endpoint::proof::dto::ProofListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO;
 use crate::endpoint::statistics::dto::{
     IssuerSchemaStatsResponseRestDTO, SystemInteractionStatsResponseRestDTO,
-    VerifierSchemaStatsResponseRestDTO,
+    SystemManagementStatsResponseRestDTO, VerifierSchemaStatsResponseRestDTO,
 };
 use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
 use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
@@ -52,9 +52,10 @@ pub(crate) type GetIssuerStatsResponseRestDTO =
     GetListResponseRestDTO<IssuerSchemaStatsResponseRestDTO>;
 pub(crate) type GetVerifierStatsResponseRestDTO =
     GetListResponseRestDTO<VerifierSchemaStatsResponseRestDTO>;
-
 pub(crate) type GetSystemInteractionStatsResponseRestDTO =
     GetListResponseRestDTO<SystemInteractionStatsResponseRestDTO>;
+pub(crate) type GetSystemManagementStatsResponseRestDTO =
+    GetListResponseRestDTO<SystemManagementStatsResponseRestDTO>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 pub(crate) struct NoIncludesSupported {}

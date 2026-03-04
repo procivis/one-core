@@ -1,15 +1,17 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use one_core::model::common::GetListResponse;
 use one_core::model::history::{
     GetHistoryList, History, IssuerSchemaStats, IssuerStats, IssuerTimelines,
     OrganisationOperationsCount, OrganisationTimelines, SystemInteractionCounts,
-    SystemInteractionStats, TimeSeriesPoint, VerifierSchemaStats, VerifierStats, VerifierTimelines,
+    SystemManagementCounts, SystemOrgStats, TimeSeriesPoint, VerifierSchemaStats, VerifierStats,
+    VerifierTimelines,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
 use sea_orm::ActiveValue::Set;
-use shared_types::EntityId;
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::{Duration, Month, OffsetDateTime};
 
 use crate::common::calculate_pages_count;
@@ -17,7 +19,7 @@ use crate::entity::history;
 use crate::entity::history::{HistoryAction, HistoryEntityType};
 use crate::history::model::{
     IssuerStatsRow, OrganisationOpsCount, PaginatedStats, SystemInteractionStatsRow,
-    TimeResolution, TimeSeriesRow, VerifierStatsRow,
+    SystemManagementsStatsRow, TimeResolution, TimeSeriesRow, VerifierStatsRow,
 };
 
 impl TryFrom<history::Model> for History {
@@ -341,8 +343,8 @@ pub(super) fn to_ops_org_count(
     Ok(result)
 }
 
-pub(super) trait PaginatedStatsRow: Clone {
-    fn entity_id(&self) -> EntityId;
+pub(super) trait PaginatedStatsRow<ID: Eq + Hash>: Clone {
+    fn id(&self) -> ID;
 
     fn clone_zeroed(&self) -> Self;
 }
@@ -350,9 +352,9 @@ pub(super) trait PaginatedStatsRow: Clone {
 pub(super) trait FromPrevAndCurrentStats<T> {
     fn from_prev_and_current(prev: Option<T>, current: T) -> Self;
 }
-impl PaginatedStatsRow for IssuerStatsRow {
-    fn entity_id(&self) -> EntityId {
-        self.credential_schema_id.into()
+impl PaginatedStatsRow<CredentialSchemaId> for IssuerStatsRow {
+    fn id(&self) -> CredentialSchemaId {
+        self.credential_schema_id
     }
 
     fn clone_zeroed(&self) -> Self {
@@ -379,9 +381,9 @@ impl FromPrevAndCurrentStats<IssuerStatsRow> for IssuerSchemaStats {
     }
 }
 
-impl PaginatedStatsRow for VerifierStatsRow {
-    fn entity_id(&self) -> EntityId {
-        self.proof_schema_id.into()
+impl PaginatedStatsRow<ProofSchemaId> for VerifierStatsRow {
+    fn id(&self) -> ProofSchemaId {
+        self.proof_schema_id
     }
 
     fn clone_zeroed(&self) -> Self {
@@ -405,9 +407,9 @@ impl FromPrevAndCurrentStats<VerifierStatsRow> for VerifierSchemaStats {
     }
 }
 
-impl PaginatedStatsRow for SystemInteractionStatsRow {
-    fn entity_id(&self) -> EntityId {
-        self.organisation_id.into()
+impl PaginatedStatsRow<OrganisationId> for SystemInteractionStatsRow {
+    fn id(&self) -> OrganisationId {
+        self.organisation_id
     }
 
     fn clone_zeroed(&self) -> Self {
@@ -421,25 +423,42 @@ impl PaginatedStatsRow for SystemInteractionStatsRow {
     }
 }
 
-impl FromPrevAndCurrentStats<SystemInteractionStatsRow> for SystemInteractionStats {
-    fn from_prev_and_current(
-        prev: Option<SystemInteractionStatsRow>,
-        current: SystemInteractionStatsRow,
-    ) -> Self {
+impl PaginatedStatsRow<OrganisationId> for SystemManagementsStatsRow {
+    fn id(&self) -> OrganisationId {
+        self.organisation_id
+    }
+
+    fn clone_zeroed(&self) -> Self {
         Self {
-            organisation_id: current.organisation_id,
-            previous: prev.map(SystemInteractionCounts::from),
+            organisation_id: self.organisation_id,
+            credential_schema: 0,
+            proof_schema: 0,
+            identifier: 0,
+        }
+    }
+}
+
+impl<IN, OUT> FromPrevAndCurrentStats<IN> for SystemOrgStats<OUT>
+where
+    IN: PaginatedStatsRow<OrganisationId>,
+    OUT: From<IN>,
+{
+    fn from_prev_and_current(prev: Option<IN>, current: IN) -> Self {
+        Self {
+            organisation_id: current.id(),
+            previous: prev.map(OUT::from),
             current: current.into(),
         }
     }
 }
 
-pub(super) fn paginated_stats_to_list_response<IN, OUT>(
+pub(super) fn paginated_stats_to_list_response<IN, OUT, ID>(
     paginated_stats: PaginatedStats<IN>,
     limit: Option<u64>,
 ) -> GetListResponse<OUT>
 where
-    IN: PaginatedStatsRow,
+    ID: Eq + Hash,
+    IN: PaginatedStatsRow<ID>,
     OUT: FromPrevAndCurrentStats<IN>,
 {
     let add_missing_zeros = paginated_stats.previous.is_some();
@@ -447,13 +466,13 @@ where
         .previous
         .unwrap_or_default()
         .into_iter()
-        .map(|r| (r.entity_id(), r))
+        .map(|r| (r.id(), r))
         .collect::<HashMap<_, _>>();
     let values = paginated_stats
         .current
         .into_iter()
         .map(|r| {
-            let mut previous = prev_map.get(&r.entity_id()).cloned();
+            let mut previous = prev_map.get(&r.id()).cloned();
             if add_missing_zeros && previous.is_none() {
                 // Previous values are missing for the particular schema, fill in with zeros
                 previous = Some(r.clone_zeroed());
@@ -497,6 +516,16 @@ impl From<SystemInteractionStatsRow> for SystemInteractionCounts {
             verified_count: value.accepted as usize,
             error_count: value.error as usize,
             credential_lifecycle_operation_count: value.credential_lifecycle_operation as usize,
+        }
+    }
+}
+
+impl From<SystemManagementsStatsRow> for SystemManagementCounts {
+    fn from(value: SystemManagementsStatsRow) -> Self {
+        Self {
+            credential_schema_created_count: value.credential_schema as usize,
+            proof_schema_created_count: value.proof_schema as usize,
+            identifier_created_count: value.identifier as usize,
         }
     }
 }

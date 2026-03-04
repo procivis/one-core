@@ -1,7 +1,8 @@
 use one_core::model::history::{
     HistoryFilterValue, HistorySearchEnum, IssuerStatsQuery, SortableHistoryColumn,
     SortableIssuerStatisticsColumn, SortableSystemInteractionStatisticsColumn,
-    SortableVerifierStatisticsColumn, StatsBySchemaFilterValue, SystemInteractionStatsQuery,
+    SortableSystemManagementStatisticsColumn, SortableVerifierStatisticsColumn,
+    StatsBySchemaFilterValue, SystemInteractionStatsQuery, SystemManagementStatsQuery,
     SystemStatsFilterValue, VerifierStatsQuery,
 };
 use one_core::model::list_filter::ListFilterCondition;
@@ -702,6 +703,24 @@ impl IntoSortingColumn for SortableSystemInteractionStatisticsColumn {
     }
 }
 
+impl IntoSortingColumn for SortableSystemManagementStatisticsColumn {
+    fn get_column(&self) -> SimpleExpr {
+        let col = match self {
+            Self::CredentialSchema => {
+                Alias::new(history::HistoryEntityType::CredentialSchema.to_value())
+                    .into_column_ref()
+            }
+            Self::ProofSchema => {
+                Alias::new(history::HistoryEntityType::ProofSchema.to_value()).into_column_ref()
+            }
+            Self::Identifier => {
+                Alias::new(history::HistoryEntityType::Identifier.to_value()).into_column_ref()
+            }
+        };
+        SimpleExpr::Column(col)
+    }
+}
+
 pub(super) fn issuer_stats_query(query: &IssuerStatsQuery) -> SelectStatement {
     let mut stmt = history::Entity::find().with_list_query(query).into_query();
     let group_columns = [
@@ -827,5 +846,41 @@ pub(super) fn system_interaction_stats_query(
         )),
         Alias::new(CLO_COLUMN),
     );
+    stmt
+}
+
+pub(super) fn system_management_stats_query(query: &SystemManagementStatsQuery) -> SelectStatement {
+    let mut stmt = history::Entity::find().with_list_query(query).into_query();
+    stmt.clear_selects()
+        .column((history::Entity, history::Column::OrganisationId))
+        .group_by_col((history::Entity, history::Column::OrganisationId))
+        .left_join(
+            identifier::Entity,
+            Expr::col(history::Column::EntityId)
+                .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
+        )
+        .and_where(
+            Expr::col(history::Column::EntityType)
+                .eq(history::HistoryEntityType::Identifier)
+                .and(Expr::col(history::Column::Action).eq(history::HistoryAction::Created))
+                .and(Expr::col((identifier::Entity, identifier::Column::IsRemote)).eq(false))
+                .or(Expr::col(history::Column::EntityType)
+                    .is_in([
+                        history::HistoryEntityType::CredentialSchema,
+                        history::HistoryEntityType::ProofSchema,
+                    ])
+                    .and(Expr::col(history::Column::Action).eq(history::HistoryAction::Created))),
+        );
+    for entity_type in [
+        history::HistoryEntityType::CredentialSchema,
+        history::HistoryEntityType::ProofSchema,
+        history::HistoryEntityType::Identifier,
+    ] {
+        stmt.expr_as(
+            // Each history event is counted once (the other cases are `null`, which do _not_ count)
+            Func::count(CaseStatement::new().case(history::Column::EntityType.eq(entity_type), 1)),
+            Alias::new(entity_type.to_value()),
+        );
+    }
     stmt
 }

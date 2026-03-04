@@ -6,7 +6,7 @@ use crate::model::common::GetListResponse;
 use crate::model::history::{
     IssuerSchemaStats, IssuerStats, IssuerTimelines, OrganisationOperationsCount,
     OrganisationStats, OrganisationSummaryStats, OrganisationTimelines, SystemInteractionCounts,
-    SystemInteractionStats, SystemOperationsCount, TimeSeriesPoint, VerifierSchemaStats,
+    SystemManagementCounts, SystemOperationsCount, TimeSeriesPoint, VerifierSchemaStats,
     VerifierStats, VerifierTimelines,
 };
 
@@ -161,15 +161,14 @@ pub struct NewOrganisationEntryDTO {
     pub created_date: OffsetDateTime,
 }
 
-pub type GetSystemInteractionStatsResponseDTO = GetListResponse<SystemInteractionStatsResponseDTO>;
+pub type GetSystemInteractionStatsResponseDTO =
+    GetListResponse<SystemOrgStatsResponseDTO<SystemInteractionCountsDTO>>;
 
-#[derive(Clone, Debug, Eq, PartialEq, From)]
-#[from(SystemInteractionStats)]
-pub struct SystemInteractionStatsResponseDTO {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemOrgStatsResponseDTO<T> {
     pub organisation_id: OrganisationId,
-    pub current: SystemInteractionCountsDTO,
-    #[from(with_fn = convert_inner)]
-    pub previous: Option<SystemInteractionCountsDTO>,
+    pub current: T,
+    pub previous: Option<T>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default, From)]
@@ -179,4 +178,15 @@ pub struct SystemInteractionCountsDTO {
     pub verified_count: usize,
     pub credential_lifecycle_operation_count: usize,
     pub error_count: usize,
+}
+
+pub type GetSystemManagementStatsResponseDTO =
+    GetListResponse<SystemOrgStatsResponseDTO<SystemManagementCountsDTO>>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Default, From)]
+#[from(SystemManagementCounts)]
+pub struct SystemManagementCountsDTO {
+    pub credential_schema_created_count: usize,
+    pub proof_schema_created_count: usize,
+    pub identifier_created_count: usize,
 }

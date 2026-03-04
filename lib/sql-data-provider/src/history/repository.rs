@@ -1,10 +1,10 @@
 use autometrics::autometrics;
 use futures::future::try_join_all;
 use one_core::model::history::{
-    GetHistoryList, GetIssuerStats, GetSystemInteractionStats, GetVerifierStats, History,
-    HistoryAction, HistoryListQuery, HistoryMetadata, IssuerStatsQuery, OrganisationStats,
-    OrganisationSummaryStats, SystemInteractionStatsQuery, SystemOperationsCount, SystemStats,
-    VerifierStatsQuery,
+    GetHistoryList, GetIssuerStats, GetSystemInteractionStats, GetSystemManagementStats,
+    GetVerifierStats, History, HistoryAction, HistoryListQuery, HistoryMetadata, IssuerStatsQuery,
+    OrganisationStats, OrganisationSummaryStats, SystemInteractionStatsQuery,
+    SystemManagementStatsQuery, SystemOperationsCount, SystemStats, VerifierStatsQuery,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -21,10 +21,14 @@ use super::mapper::{
 use crate::entity::history;
 use crate::entity::history::HistoryEntityType;
 use crate::history::HistoryProvider;
-use crate::history::model::{OrganisationOpsCount, PaginatedStats, TimeSeriesRow, WindowCount};
+use crate::history::model::{
+    OrganisationOpsCount, PaginatedStats, SystemInteractionStatsRow, SystemManagementsStatsRow,
+    TimeSeriesRow, WindowCount,
+};
 use crate::history::queries::{
     CountOperationsQuery, count_ops_query, issuer_stats_query, org_timelines_query,
-    system_interaction_stats_query, top_orgs_query, verifier_stats_query,
+    system_interaction_stats_query, system_management_stats_query, top_orgs_query,
+    verifier_stats_query,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
@@ -309,7 +313,27 @@ impl HistoryRepository for HistoryProvider {
         let query = system_interaction_stats_query(&current_query);
         let current = backend.build(&query);
         let prev = previous_query.map(|q| backend.build(&system_interaction_stats_query(&q)));
-        let paginated_stats = self.collect_paginated_stats(current, prev).await?;
+        let paginated_stats: PaginatedStats<SystemInteractionStatsRow> =
+            self.collect_paginated_stats(current, prev).await?;
+        let stats = paginated_stats_to_list_response(paginated_stats, limit);
+        Ok(stats)
+    }
+
+    async fn system_management_stats(
+        &self,
+        current_query: SystemManagementStatsQuery,
+        previous_query: Option<SystemManagementStatsQuery>,
+    ) -> Result<GetSystemManagementStats, DataLayerError> {
+        let limit = current_query
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as u64);
+        let backend = self.db.get_database_backend();
+        let query = system_management_stats_query(&current_query);
+        let current = backend.build(&query);
+        let prev = previous_query.map(|q| backend.build(&system_management_stats_query(&q)));
+        let paginated_stats: PaginatedStats<SystemManagementsStatsRow> =
+            self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }

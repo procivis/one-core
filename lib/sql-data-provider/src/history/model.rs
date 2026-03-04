@@ -93,3 +93,14 @@ pub struct SystemInteractionStatsRow {
     #[sea_orm(from_alias = "ERRORED")]
     pub error: i64,
 }
+
+#[derive(FromQueryResult, Debug, Clone)]
+pub struct SystemManagementsStatsRow {
+    pub organisation_id: OrganisationId,
+    #[sea_orm(from_alias = "CREDENTIAL_SCHEMA")]
+    pub credential_schema: i64,
+    #[sea_orm(from_alias = "PROOF_SCHEMA")]
+    pub proof_schema: i64,
+    #[sea_orm(from_alias = "IDENTIFIER")]
+    pub identifier: i64,
+}

@@ -313,13 +313,13 @@ impl ListFilterValue for SystemStatsFilterValue {}
 pub type SystemInteractionStatsQuery =
     ListQuery<SortableSystemInteractionStatisticsColumn, SystemStatsFilterValue>;
 
-pub type GetSystemInteractionStats = GetListResponse<SystemInteractionStats>;
+pub type GetSystemInteractionStats = GetListResponse<SystemOrgStats<SystemInteractionCounts>>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SystemInteractionStats {
+pub struct SystemOrgStats<T> {
     pub organisation_id: OrganisationId,
-    pub current: SystemInteractionCounts,
-    pub previous: Option<SystemInteractionCounts>,
+    pub current: T,
+    pub previous: Option<T>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -328,4 +328,23 @@ pub struct SystemInteractionCounts {
     pub verified_count: usize,
     pub credential_lifecycle_operation_count: usize,
     pub error_count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableSystemManagementStatisticsColumn {
+    CredentialSchema,
+    ProofSchema,
+    Identifier,
+}
+
+pub type SystemManagementStatsQuery =
+    ListQuery<SortableSystemManagementStatisticsColumn, SystemStatsFilterValue>;
+
+pub type GetSystemManagementStats = GetListResponse<SystemOrgStats<SystemManagementCounts>>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct SystemManagementCounts {
+    pub credential_schema_created_count: usize,
+    pub proof_schema_created_count: usize,
+    pub identifier_created_count: usize,
 }
