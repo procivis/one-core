@@ -1,6 +1,7 @@
 use shared_types::DidValue;
 use strum::Display;
 
+use crate::config::core_config::SignerType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::certificate::Certificate;
 use crate::model::did::Did;
@@ -86,6 +87,8 @@ pub(crate) enum Error {
     CertificateKeyNotMatching,
     #[error("Certificate missing common name")]
     MissingCertificateCommonName,
+    #[error("Invalid signer type: `{0}`")]
+    InvalidSignerType(SignerType),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -101,6 +104,7 @@ impl ErrorCodeMixin for Error {
             Self::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
             Self::InvalidCertificateAuthorityIdentifierInput => ErrorCode::BR_0331,
+            Self::InvalidSignerType(_) => ErrorCode::BR_0381,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::MissingCertificateCommonName => ErrorCode::BR_0224,
             Self::Nested(nested) => nested.error_code(),

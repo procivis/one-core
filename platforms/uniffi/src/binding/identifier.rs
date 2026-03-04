@@ -16,8 +16,11 @@ use one_core::service::certificate::dto::{
 use one_core::service::did::dto::{DidResponseDTO, DidResponseKeysDTO};
 use one_core::service::identifier::dto::{
     CreateCertificateAuthorityRequestDTO, CreateIdentifierKeyRequestDTO,
-    CreateIdentifierRequestDTO, CreateSelfSignedCertificateAuthorityRequestDTO,
-    GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
+    CreateIdentifierRequestDTO, CreateSelfSignedCertificateAuthorityContentRequestDTO,
+    CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest,
+    CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType,
+    CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
+    GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
 use one_core::service::key::dto::{KeyListItemResponseDTO, KeyResponseDTO};
 use one_dto_mapper::{
@@ -477,7 +480,7 @@ pub struct CreateCertificateAuthorityRequestBindingDTO {
 #[try_into(T = CreateSelfSignedCertificateAuthorityRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct CreateSelfSignedCertificateAuthorityRequestBindingDTO {
     #[try_into(infallible)]
-    pub content: CreateCaCSRRequestBindingDTO,
+    pub content: CreateSelfSignedCertificateAuthorityRequestContentBindingDTO,
     #[try_into(infallible)]
     pub signer: String,
     #[try_into(with_fn = "into_timestamp_opt")]
@@ -486,7 +489,24 @@ pub struct CreateSelfSignedCertificateAuthorityRequestBindingDTO {
     pub validity_end: Option<String>,
 }
 
-#[derive(Clone, Debug, uniffi::Record)]
-pub struct CreateCaCSRRequestBindingDTO {
+#[derive(Clone, Debug, uniffi::Record, Into)]
+#[into(CreateSelfSignedCertificateAuthorityContentRequestDTO)]
+pub struct CreateSelfSignedCertificateAuthorityRequestContentBindingDTO {
     pub subject: KeyGenerateCSRRequestSubjectBindingDTO,
+    #[into(with_fn = convert_inner)]
+    pub issuer_alternative_name: Option<CreateSelfSignedCaRequestIssuerAlternativeNameBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, Into)]
+#[into(CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest)]
+pub struct CreateSelfSignedCaRequestIssuerAlternativeNameBindingDTO {
+    pub r#type: CreateSelfSignedCaRequestIssuerAlternativeNameTypeBindingEnum,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, uniffi::Enum, Into)]
+#[into(CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType)]
+pub enum CreateSelfSignedCaRequestIssuerAlternativeNameTypeBindingEnum {
+    Email,
+    Uri,
 }

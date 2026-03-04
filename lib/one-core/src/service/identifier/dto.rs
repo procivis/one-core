@@ -7,7 +7,7 @@ use crate::model::common::GetListResponse;
 use crate::model::identifier::{IdentifierState, IdentifierType};
 use crate::service::certificate::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
-use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyResponseDTO};
+use crate::service::key::dto::{KeyGenerateCSRRequestSubjectDTO, KeyResponseDTO};
 
 #[derive(Clone, Debug)]
 pub struct GetIdentifierResponseDTO {
@@ -76,8 +76,27 @@ pub struct CreateCertificateAuthorityRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct CreateSelfSignedCertificateAuthorityRequestDTO {
-    pub content: KeyGenerateCSRRequestDTO,
+    pub content: CreateSelfSignedCertificateAuthorityContentRequestDTO,
     pub signer: String,
     pub validity_start: Option<OffsetDateTime>,
     pub validity_end: Option<OffsetDateTime>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateSelfSignedCertificateAuthorityContentRequestDTO {
+    pub subject: KeyGenerateCSRRequestSubjectDTO,
+    pub issuer_alternative_name:
+        Option<CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest {
+    pub r#type: CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType {
+    Email,
+    Uri,
 }

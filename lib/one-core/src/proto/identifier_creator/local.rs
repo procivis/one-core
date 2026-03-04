@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use super::Error;
 use super::creator::IdentifierCreatorProto;
+use crate::config::core_config::SignerType;
 use crate::config::validator::did::validate_did_method;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateState};
@@ -20,6 +21,7 @@ use crate::proto::certificate_validator::{
 };
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::signer::dto::{CreateSignatureRequest, Issuer};
+use crate::provider::signer::x509_certificate;
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
@@ -404,30 +406,41 @@ impl IdentifierCreatorProto {
             .ok_or(EntityNotFoundError::Key(request.key_id))
             .error_while("getting key")?;
 
+        let self_signing = request.self_signed.is_some();
         let chain = match (request.chain, request.self_signed) {
             (Some(chain), None) => chain,
             (None, Some(self_signed)) => {
-                let csr = self
-                    .csr_creator
-                    .create_csr(key.clone(), self_signed.content.clone().into())
-                    .await
-                    .error_while("creating CSR")?;
+                let signer_type = self
+                    .config
+                    .signer
+                    .get_type(&self_signed.signer)
+                    .error_while("checking signer")?;
+                if signer_type != SignerType::X509Certificate {
+                    return Err(Error::InvalidSignerType(signer_type));
+                }
+
                 let signer = self
                     .signer_provider
                     .get(&self_signed.signer)
                     .ok_or(MissingProviderError::Signer(self_signed.signer.clone()))
                     .error_while("getting signer")?;
+
                 signer
                     .sign(
                         Issuer::Key(Box::new(key.clone())),
                         CreateSignatureRequest {
-                            data: serde_json::json!({"csr": csr}),
+                            data: serde_json::to_value(
+                                x509_certificate::dto::RequestData::SelfSigned(
+                                    self_signed.content.into(),
+                                ),
+                            )
+                            .map_err(|e| Error::MappingError(e.to_string()))?,
                             validity_start: self_signed.validity_start,
                             validity_end: self_signed.validity_end,
                         },
                     )
                     .await
-                    .error_while("signing CSR")?
+                    .error_while("self-signing CA certificate")?
                     .result
             }
             _ => {
@@ -447,7 +460,7 @@ impl IdentifierCreatorProto {
                 CertificateValidationOptions {
                     require_root_termination: true,
                     integrity_check: true,
-                    validity_check: Some(CrlMode::X509),
+                    validity_check: (!self_signing).then_some(CrlMode::X509),
                     required_leaf_cert_key_usage: Default::default(),
                     leaf_only_extensions: Default::default(),
                     leaf_validations: vec![validate_ca],

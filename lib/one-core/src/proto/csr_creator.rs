@@ -28,7 +28,6 @@ pub trait CsrCreator: Send + Sync {
 pub struct GenerateCsrRequest {
     pub profile: CsrRequestProfile,
     pub subject: CsrRequestSubject,
-    pub issuer_alternative_name: Option<CsrRequestIssuerAlternativeName>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,18 +72,6 @@ pub struct CsrRequestSubject {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CsrRequestIssuerAlternativeName {
-    pub r#type: IssuerAlternativeNameType,
-    pub name: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum IssuerAlternativeNameType {
-    Email,
-    Uri,
 }
 
 pub(crate) struct CsrCreatorImpl {
@@ -155,28 +142,7 @@ impl CsrCreator for CsrCreatorImpl {
 fn request_to_certificate_params(request: GenerateCsrRequest) -> CertificateParams {
     let mut params = CertificateParams::default();
 
-    let mut dn = DistinguishedName::new();
-    if let Some(common_name) = request.subject.common_name {
-        dn.push(DnType::CommonName, common_name);
-    }
-    if let Some(country_name) = request.subject.country_name {
-        dn.push(DnType::CountryName, country_name);
-    }
-    if let Some(organisation_name) = request.subject.organisation_name {
-        dn.push(DnType::OrganizationName, organisation_name);
-    }
-    if let Some(state_or_province_name) = request.subject.state_or_province_name {
-        dn.push(DnType::StateOrProvinceName, state_or_province_name);
-    }
-    if let Some(locality_name) = request.subject.locality_name {
-        dn.push(DnType::LocalityName, locality_name);
-    }
-    if let Some(serial_number) = request.subject.serial_number {
-        let dn_type_serial_number = vec![2, 5, 4, 5];
-        dn.push(DnType::CustomDnType(dn_type_serial_number), serial_number);
-    }
-
-    params.distinguished_name = dn;
+    params.distinguished_name = prepare_distinguished_name(request.subject);
 
     match request.profile {
         CsrRequestProfile::Generic => {} // nothing to add
@@ -189,18 +155,34 @@ fn request_to_certificate_params(request: GenerateCsrRequest) -> CertificatePara
         CsrRequestProfile::Ca => {
             // Basic constraints cannot be set in CSR, so only key usages are specified here.
             params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
-
-            if let Some(issuer_alternative_name) = request.issuer_alternative_name {
-                params
-                    .custom_extensions
-                    .push(prepare_issuer_alternative_name_extension(
-                        issuer_alternative_name,
-                    ));
-            }
         }
     }
 
     params
+}
+
+pub(crate) fn prepare_distinguished_name(subject: CsrRequestSubject) -> DistinguishedName {
+    let mut dn = DistinguishedName::new();
+    if let Some(common_name) = subject.common_name {
+        dn.push(DnType::CommonName, common_name);
+    }
+    if let Some(country_name) = subject.country_name {
+        dn.push(DnType::CountryName, country_name);
+    }
+    if let Some(organisation_name) = subject.organisation_name {
+        dn.push(DnType::OrganizationName, organisation_name);
+    }
+    if let Some(state_or_province_name) = subject.state_or_province_name {
+        dn.push(DnType::StateOrProvinceName, state_or_province_name);
+    }
+    if let Some(locality_name) = subject.locality_name {
+        dn.push(DnType::LocalityName, locality_name);
+    }
+    if let Some(serial_number) = subject.serial_number {
+        let dn_type_serial_number = vec![2, 5, 4, 5];
+        dn.push(DnType::CustomDnType(dn_type_serial_number), serial_number);
+    }
+    dn
 }
 
 /// ISO 18013-5, B.1.4 Document signer certificate
@@ -219,29 +201,4 @@ pub(crate) fn prepare_extended_key_usage_extension_iso_mdl_ds() -> CustomExtensi
         CustomExtension::from_oid_content(&OID_EXTENDED_KEY_USAGE, mdlds_extended_key_usage);
     extended_key_usage_extension.set_criticality(true);
     extended_key_usage_extension
-}
-
-// https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.7
-pub(crate) fn prepare_issuer_alternative_name_extension(
-    data: CsrRequestIssuerAlternativeName,
-) -> CustomExtension {
-    const OID_ISSUER_ALTERNATIVE_NAME: [u64; 4] = [2, 5, 29, 18];
-
-    let names = yasna::construct_der(|writer| {
-        writer.write_sequence(|writer| {
-            // https://datatracker.ietf.org/doc/html/rfc5280#appendix-A.2
-            // GeneralName
-            let tag = match &data.r#type {
-                IssuerAlternativeNameType::Email => 1, // rfc822Name [1] IA5String
-                IssuerAlternativeNameType::Uri => 6,   // uniformResourceIdentifier [6] IA5String
-            };
-
-            writer
-                .next()
-                .write_tagged_implicit(yasna::Tag::context(tag), |writer| {
-                    writer.write_ia5_string(&data.name);
-                });
-        })
-    });
-    CustomExtension::from_oid_content(&OID_ISSUER_ALTERNATIVE_NAME, names)
 }

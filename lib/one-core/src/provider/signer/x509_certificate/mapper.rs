@@ -3,18 +3,19 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha1::SHA1;
 use rcgen::string::{BmpString, UniversalString};
 use rcgen::{
-    CertificateParams, DistinguishedName, DnType, DnValue, KeyIdMethod, KeyUsagePurpose,
-    PublicKeyData, SignatureAlgorithm,
+    CertificateParams, CustomExtension, DistinguishedName, DnType, DnValue, KeyIdMethod,
+    KeyUsagePurpose, PublicKeyData, SignatureAlgorithm,
 };
-use x509_parser::prelude::{GeneralName, KeyUsage, ParsedExtension};
+use x509_parser::prelude::{KeyUsage, ParsedExtension};
 use x509_parser::x509::X509Name;
 
-use super::{KeyIdDerivation, RequestData};
-use crate::proto::csr_creator::{
-    CsrRequestIssuerAlternativeName, IssuerAlternativeNameType, OID_EXTENDED_KEY_USAGE_ISO_MDL_DS,
-    prepare_extended_key_usage_extension_iso_mdl_ds, prepare_issuer_alternative_name_extension,
+use super::dto::{
+    IssuerAlternativeNameRequest, IssuerAlternativeNameType, KeyIdDerivation, SelfSignedRequest,
 };
-use crate::provider::signer::dto::CreateSignatureRequest;
+use crate::proto::csr_creator::{
+    OID_EXTENDED_KEY_USAGE_ISO_MDL_DS, prepare_distinguished_name,
+    prepare_extended_key_usage_extension_iso_mdl_ds,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum CSRError {
@@ -40,18 +41,67 @@ pub(super) enum CSRError {
     RCGen(#[from] rcgen::Error),
     #[error("UTF-8 error: {0}")]
     Utf8(#[from] std::str::Utf8Error),
-    #[error("Hasher error: {0}")]
-    Hasher(#[from] one_crypto::HasherError),
 }
 
-pub(super) fn params_from_request(
-    request: CreateSignatureRequest,
-    self_signing: bool,
-    key_id_derivation: Option<&KeyIdDerivation>,
-) -> Result<(CertificateParams, PublicKey), CSRError> {
-    let request_data: RequestData = serde_json::from_value(request.data)?;
+pub(super) fn get_key_id_method<T: PublicKeyData>(
+    public_key: &T,
+    key_id_derivation: &KeyIdDerivation,
+) -> Result<KeyIdMethod, one_crypto::HasherError> {
+    Ok(match key_id_derivation {
+        KeyIdDerivation::Sha1 => {
+            let key_id = SHA1.hash(public_key.der_bytes())?;
+            KeyIdMethod::PreSpecified(key_id)
+        }
+        KeyIdDerivation::Sha256 => KeyIdMethod::Sha256,
+        KeyIdDerivation::Sha384 => KeyIdMethod::Sha384,
+        KeyIdDerivation::Sha512 => KeyIdMethod::Sha512,
+    })
+}
 
-    let csr = pem::parse(&request_data.csr)?;
+pub(super) fn prepare_self_signed_params(request: SelfSignedRequest) -> CertificateParams {
+    let mut params = CertificateParams::default();
+    params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+
+    params.distinguished_name = prepare_distinguished_name(request.subject.into());
+
+    if let Some(issuer_alternative_name) = &request.issuer_alternative_name {
+        params
+            .custom_extensions
+            .push(prepare_issuer_alternative_name_extension(
+                issuer_alternative_name,
+            ));
+    }
+
+    params
+}
+
+// https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.7
+fn prepare_issuer_alternative_name_extension(
+    data: &IssuerAlternativeNameRequest,
+) -> CustomExtension {
+    const OID_ISSUER_ALTERNATIVE_NAME: [u64; 4] = [2, 5, 29, 18];
+
+    let names = yasna::construct_der(|writer| {
+        writer.write_sequence(|writer| {
+            // https://datatracker.ietf.org/doc/html/rfc5280#appendix-A.2
+            // GeneralName
+            let tag = match &data.r#type {
+                IssuerAlternativeNameType::Email => 1, // rfc822Name [1] IA5String
+                IssuerAlternativeNameType::Uri => 6,   // uniformResourceIdentifier [6] IA5String
+            };
+
+            writer
+                .next()
+                .write_tagged_implicit(yasna::Tag::context(tag), |writer| {
+                    writer.write_ia5_string(&data.name);
+                });
+        })
+    });
+    CustomExtension::from_oid_content(&OID_ISSUER_ALTERNATIVE_NAME, names)
+}
+
+pub(super) fn parse_csr(csr_pem: &str) -> Result<(CertificateParams, PublicKey), CSRError> {
+    let csr = pem::parse(csr_pem)?;
     let csr =
         x509_parser::certification_request::X509CertificationRequest::from_der(csr.contents())?.1;
     csr.verify_signature()?;
@@ -68,20 +118,8 @@ pub(super) fn params_from_request(
 
     if let Some(extensions) = csr.requested_extensions() {
         for extension in extensions {
-            parse_extension(&mut params, extension, self_signing)?;
+            parse_extension(&mut params, extension)?;
         }
-    }
-
-    if let Some(key_id_derivation) = key_id_derivation {
-        params.key_identifier_method = match key_id_derivation {
-            KeyIdDerivation::Sha1 => {
-                let key_id = SHA1.hash(public_key.der_bytes())?;
-                KeyIdMethod::PreSpecified(key_id)
-            }
-            KeyIdDerivation::Sha256 => KeyIdMethod::Sha256,
-            KeyIdDerivation::Sha384 => KeyIdMethod::Sha384,
-            KeyIdDerivation::Sha512 => KeyIdMethod::Sha512,
-        };
     }
 
     Ok((params, public_key))
@@ -119,7 +157,6 @@ fn parse_subject<'a>(
 fn parse_extension<'a>(
     output: &mut CertificateParams,
     extension: &ParsedExtension<'a>,
-    self_signing: bool,
 ) -> Result<(), CSRError> {
     match extension {
         // limited Key Usage allowed
@@ -167,29 +204,6 @@ fn parse_extension<'a>(
                     return Err(CSRError::DisallowedExtension(format!("{extension:?}")));
                 }
             }
-        }
-
-        // Issuer Alternative Name support for self-signed root CA
-        ParsedExtension::IssuerAlternativeName(ian)
-            if self_signing && ian.general_names.len() == 1 =>
-        {
-            let name = match ian.general_names.first() {
-                Some(GeneralName::RFC822Name(email)) => CsrRequestIssuerAlternativeName {
-                    r#type: IssuerAlternativeNameType::Email,
-                    name: email.to_string(),
-                },
-                Some(GeneralName::URI(uri)) => CsrRequestIssuerAlternativeName {
-                    r#type: IssuerAlternativeNameType::Uri,
-                    name: uri.to_string(),
-                },
-                _ => {
-                    return Err(CSRError::DisallowedExtension(format!("{extension:?}")));
-                }
-            };
-
-            output
-                .custom_extensions
-                .push(prepare_issuer_alternative_name_extension(name));
         }
 
         _ => {

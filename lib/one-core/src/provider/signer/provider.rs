@@ -143,7 +143,7 @@ pub(crate) fn signer_provider_from_config(
                 Arc::new(signer)
             }
             SignerType::X509Certificate => {
-                let params: x509_certificate::Params = fields.deserialize().map_err(|e| {
+                let params: x509_certificate::dto::Params = fields.deserialize().map_err(|e| {
                     ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source: e,

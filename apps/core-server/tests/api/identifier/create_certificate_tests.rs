@@ -278,7 +278,7 @@ async fn test_create_certificate_authority_self_signed_invalid_signer() {
 
     // then
     assert_eq!(result.status(), 400);
-    assert_eq!(result.error_code().await, "BR_0326");
+    assert_eq!(result.error_code().await, "BR_0089");
 }
 
 #[tokio::test]

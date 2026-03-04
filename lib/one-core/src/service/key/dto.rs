@@ -1,4 +1,4 @@
-use one_dto_mapper::{From, Into, convert_inner};
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -53,8 +53,6 @@ pub type GetKeyQueryDTO = GetListQueryParams<SortableKeyColumn>;
 pub struct KeyGenerateCSRRequestDTO {
     pub profile: KeyGenerateCSRRequestProfile,
     pub subject: KeyGenerateCSRRequestSubjectDTO,
-    #[into(with_fn = convert_inner)]
-    pub issuer_alternative_name: Option<KeyGenerateCSRRequestIssuerAlternativeNameDTO>,
 }
 
 #[derive(Debug, Clone, Into)]
@@ -75,20 +73,6 @@ pub struct KeyGenerateCSRRequestSubjectDTO {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
-}
-
-#[derive(Debug, Clone, Into)]
-#[into(crate::proto::csr_creator::CsrRequestIssuerAlternativeName)]
-pub struct KeyGenerateCSRRequestIssuerAlternativeNameDTO {
-    pub r#type: KeyGenerateCSRRequestIssuerAlternativeNameType,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Into)]
-#[into(crate::proto::csr_creator::IssuerAlternativeNameType)]
-pub enum KeyGenerateCSRRequestIssuerAlternativeNameType {
-    Email,
-    Uri,
 }
 
 #[derive(Debug)]

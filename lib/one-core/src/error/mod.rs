@@ -792,6 +792,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Notification not found")]
     BR_0377,
+
+    #[strum(message = "Invalid signer")]
+    BR_0381,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

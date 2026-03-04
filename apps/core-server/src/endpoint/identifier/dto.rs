@@ -6,11 +6,11 @@ use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
     CreateCertificateAuthorityRequestDTO, CreateIdentifierDidRequestDTO,
     CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
+    CreateSelfSignedCertificateAuthorityContentRequestDTO,
+    CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest,
+    CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType,
     CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
-};
-use one_core::service::key::dto::{
-    KeyGenerateCSRRequestIssuerAlternativeNameDTO, KeyGenerateCSRRequestIssuerAlternativeNameType,
 };
 use one_core::service::trust_entity::dto::{
     ResolveTrustEntitiesRequestDTO, ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
@@ -122,7 +122,7 @@ pub(crate) struct CreateCertificateAuthorityRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateSelfSignedCertificateAuthorityRequestDTO)]
 pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
-    pub content: CreateCaCSRRequestRestDTO,
+    pub content: CreateSelfSignedCaRequestContentRestDTO,
     #[modify_schema(field = signer)]
     pub signer: String,
     #[serde(default, with = "time::serde::rfc3339::option")]
@@ -132,11 +132,13 @@ pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct CreateCaCSRRequestRestDTO {
+#[into(CreateSelfSignedCertificateAuthorityContentRequestDTO)]
+pub(crate) struct CreateSelfSignedCaRequestContentRestDTO {
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
-    pub issuer_alternative_name: Option<CreateCaCSRRequestIssuerAlternativeNameRestDTO>,
+    #[into(with_fn = convert_inner)]
+    pub issuer_alternative_name: Option<CreateSelfSignedCaRequestIssuerAlternativeNameRestDTO>,
 }
 
 #[options_not_nullable]
@@ -353,17 +355,17 @@ pub(crate) struct ResolvedIdentifierTrustEntityResponseRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(KeyGenerateCSRRequestIssuerAlternativeNameDTO)]
+#[into(CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct CreateCaCSRRequestIssuerAlternativeNameRestDTO {
-    pub r#type: CreateCaCSRRequestIssuerAlternativeNameTypeRest,
+pub struct CreateSelfSignedCaRequestIssuerAlternativeNameRestDTO {
+    pub r#type: CreateSelfSignedCaRequestIssuerAlternativeNameTypeRest,
     pub name: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
-#[into(KeyGenerateCSRRequestIssuerAlternativeNameType)]
+#[into(CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum CreateCaCSRRequestIssuerAlternativeNameTypeRest {
+pub enum CreateSelfSignedCaRequestIssuerAlternativeNameTypeRest {
     Email,
     Uri,
 }

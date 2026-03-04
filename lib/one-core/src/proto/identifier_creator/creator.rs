@@ -10,7 +10,6 @@ use crate::config::core_config::CoreConfig;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
-use crate::proto::csr_creator::CsrCreator;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -31,7 +30,6 @@ pub(crate) struct IdentifierCreatorProto {
     pub(super) key_provider: Arc<dyn KeyProvider>,
     pub(super) key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub(super) identifier_repository: Arc<dyn IdentifierRepository>,
-    pub(super) csr_creator: Arc<dyn CsrCreator>,
     pub(super) signer_provider: Arc<dyn SignerProvider>,
     pub(super) config: Arc<CoreConfig>,
     tx_manager: Arc<dyn TransactionManager>,
@@ -48,7 +46,6 @@ impl IdentifierCreatorProto {
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         identifier_repository: Arc<dyn IdentifierRepository>,
-        csr_creator: Arc<dyn CsrCreator>,
         signer_provider: Arc<dyn SignerProvider>,
         config: Arc<CoreConfig>,
         tx_manager: Arc<dyn TransactionManager>,
@@ -62,7 +59,6 @@ impl IdentifierCreatorProto {
             key_provider,
             key_algorithm_provider,
             identifier_repository,
-            csr_creator,
             signer_provider,
             config,
             tx_manager,
