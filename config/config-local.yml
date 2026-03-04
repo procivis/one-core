@@ -280,6 +280,7 @@ signer:
           maxValidityDuration: 157680000 # 5 years
           allowCaSigning: true
           pathLenConstraint: 0
+          keyIdDerivation: "sha-1"
         revocationMethod: CRL
 task:
   WEBHOOK_NOTIFY:

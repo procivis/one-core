@@ -43,6 +43,20 @@ pub struct PayloadParams {
     #[serde(default)]
     pub allow_ca_signing: bool,
     pub path_len_constraint: Option<u8>,
+    pub key_id_derivation: Option<KeyIdDerivation>,
+}
+
+// follows naming: https://www.iana.org/assignments/named-information/named-information.xhtml#hash-alg
+#[derive(Debug, Clone, Deserialize)]
+pub enum KeyIdDerivation {
+    #[serde(rename = "sha-1")]
+    Sha1,
+    #[serde(rename = "sha-256")]
+    Sha256,
+    #[serde(rename = "sha-384")]
+    Sha384,
+    #[serde(rename = "sha-512")]
+    Sha512,
 }
 
 #[derive(Debug, Deserialize)]
@@ -108,8 +122,12 @@ impl Signer for X509CertificateSigner {
             calculate_signature_validity(self.params.payload.max_validity_duration, &request)?;
 
         let self_signing = matches!(issuer, Issuer::Key(_));
-        let (mut cert_params, public_key) = params_from_request(request, self_signing)
-            .map_err(|e| SignerError::InvalidPayload(Box::new(e)))?;
+        let (mut cert_params, public_key) = params_from_request(
+            request,
+            self_signing,
+            self.params.payload.key_id_derivation.as_ref(),
+        )
+        .map_err(|e| SignerError::InvalidPayload(Box::new(e)))?;
 
         cert_params.use_authority_key_identifier_extension = true;
         if cert_params

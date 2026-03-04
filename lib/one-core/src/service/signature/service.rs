@@ -62,6 +62,17 @@ impl SignatureService {
             .id;
         throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
+
+        if !signer
+            .get_capabilities()
+            .supported_identifiers
+            .contains(&issuer.r#type.into())
+        {
+            return Err(SignatureServiceError::UnsupportedIdentifierType(
+                issuer.r#type,
+            ));
+        }
+
         let issuer_id = issuer.id;
         let request_data = request.data.clone();
 

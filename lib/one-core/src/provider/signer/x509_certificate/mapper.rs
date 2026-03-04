@@ -9,12 +9,12 @@ use rcgen::{
 use x509_parser::prelude::{GeneralName, KeyUsage, ParsedExtension};
 use x509_parser::x509::X509Name;
 
+use super::{KeyIdDerivation, RequestData};
 use crate::proto::csr_creator::{
     CsrRequestIssuerAlternativeName, IssuerAlternativeNameType, OID_EXTENDED_KEY_USAGE_ISO_MDL_DS,
     prepare_extended_key_usage_extension_iso_mdl_ds, prepare_issuer_alternative_name_extension,
 };
 use crate::provider::signer::dto::CreateSignatureRequest;
-use crate::provider::signer::x509_certificate::RequestData;
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum CSRError {
@@ -47,6 +47,7 @@ pub(super) enum CSRError {
 pub(super) fn params_from_request(
     request: CreateSignatureRequest,
     self_signing: bool,
+    key_id_derivation: Option<&KeyIdDerivation>,
 ) -> Result<(CertificateParams, PublicKey), CSRError> {
     let request_data: RequestData = serde_json::from_value(request.data)?;
 
@@ -71,9 +72,17 @@ pub(super) fn params_from_request(
         }
     }
 
-    // ISO 18013-5 specifies to use SHA-1 hash
-    let key_id = SHA1.hash(public_key.der_bytes())?;
-    params.key_identifier_method = KeyIdMethod::PreSpecified(key_id);
+    if let Some(key_id_derivation) = key_id_derivation {
+        params.key_identifier_method = match key_id_derivation {
+            KeyIdDerivation::Sha1 => {
+                let key_id = SHA1.hash(public_key.der_bytes())?;
+                KeyIdMethod::PreSpecified(key_id)
+            }
+            KeyIdDerivation::Sha256 => KeyIdMethod::Sha256,
+            KeyIdDerivation::Sha384 => KeyIdMethod::Sha384,
+            KeyIdDerivation::Sha512 => KeyIdMethod::Sha512,
+        };
+    }
 
     Ok((params, public_key))
 }
