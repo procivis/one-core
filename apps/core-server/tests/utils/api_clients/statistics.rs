@@ -30,6 +30,23 @@ impl StatisticsApi {
         self.client.get(&url).await
     }
 
+    pub async fn organisation_issuer_stats(
+        &self,
+        from: Option<OffsetDateTime>,
+        to: OffsetDateTime,
+        organisation_id: OrganisationId,
+    ) -> Response {
+        let mut url = format!(
+            "/api/statistics/v1/dashboard/issuer?{}&organisationId={}&page=0&pageSize=30",
+            query_time_urlencoded("to", to),
+            organisation_id,
+        );
+        if let Some(from) = from {
+            url = format!("{url}&{}", query_time_urlencoded("from", from))
+        }
+        self.client.get(&url).await
+    }
+
     pub async fn system_stats(
         &self,
         from: Option<OffsetDateTime>,

@@ -6,6 +6,7 @@ use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod dto;
 pub mod error;
+mod mapper;
 pub mod service;
 
 pub struct StatisticsService {

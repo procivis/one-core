@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use one_core::model::history::{
-    GetHistoryList, History, IssuerTimelines, OrganisationOperationsCount, OrganisationTimelines,
-    TimeSeriesPoint, VerifierTimelines,
+    GetHistoryList, GetIssuerStats, History, IssuerSchemaStats, IssuerStats, IssuerTimelines,
+    OrganisationOperationsCount, OrganisationTimelines, TimeSeriesPoint, VerifierTimelines,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
@@ -10,7 +12,7 @@ use time::{Duration, Month, OffsetDateTime};
 use crate::common::calculate_pages_count;
 use crate::entity::history;
 use crate::entity::history::{HistoryAction, HistoryEntityType};
-use crate::history::model::{OrganisationOpsCount, TimeResolution, TimeSeriesRow};
+use crate::history::model::{IssuerStatsRow, OrganisationOpsCount, TimeResolution, TimeSeriesRow};
 
 impl TryFrom<history::Model> for History {
     type Error = DataLayerError;
@@ -331,4 +333,51 @@ pub(super) fn to_ops_org_count(
         })
         .collect();
     Ok(result)
+}
+
+pub(super) fn map_to_issuer_stats(
+    current: Vec<IssuerStatsRow>,
+    prev: Option<Vec<IssuerStatsRow>>,
+    count: u64,
+    limit: Option<u64>,
+) -> GetIssuerStats {
+    let zero_missing_values = prev.is_some();
+    let prev_map = prev
+        .unwrap_or_default()
+        .into_iter()
+        .map(|r| (r.credential_schema_id, IssuerStats::from(r)))
+        .collect::<HashMap<_, _>>();
+    let values = current
+        .into_iter()
+        .map(|r| {
+            let mut previous = prev_map.get(&r.credential_schema_id).cloned();
+            if zero_missing_values && previous.is_none() {
+                // Previous values are missing for the particular schema, fill in with zeros
+                previous = Some(IssuerStats::default());
+            }
+            IssuerSchemaStats {
+                credential_schema_id: r.credential_schema_id,
+                credential_schema_name: r.name.clone(),
+                previous,
+                current: r.into(),
+            }
+        })
+        .collect();
+    GetIssuerStats {
+        values,
+        total_pages: calculate_pages_count(count, limit.unwrap_or(0)),
+        total_items: count,
+    }
+}
+
+impl From<IssuerStatsRow> for IssuerStats {
+    fn from(value: IssuerStatsRow) -> Self {
+        Self {
+            issued_count: value.issued as usize,
+            suspended_count: value.suspended as usize,
+            reactivated_count: value.reactivated as usize,
+            revoked_count: value.revoked as usize,
+            error_count: value.error as usize,
+        }
+    }
 }

@@ -1,11 +1,14 @@
 use one_dto_mapper::{From, convert_inner};
-use shared_types::OrganisationId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
+use crate::model::common::GetListResponse;
 use crate::model::history::{
-    IssuerTimelines, OrganisationOperationsCount, OrganisationStats, OrganisationSummaryStats,
-    OrganisationTimelines, SystemOperationsCount, TimeSeriesPoint, VerifierTimelines,
+    IssuerSchemaStats, IssuerStats, IssuerTimelines, OrganisationOperationsCount,
+    OrganisationStats, OrganisationSummaryStats, OrganisationTimelines, SystemOperationsCount,
+    TimeSeriesPoint, VerifierTimelines,
 };
+
 pub struct OrganisationStatsRequestDTO {
     pub from: Option<OffsetDateTime>,
     pub to: OffsetDateTime,
@@ -73,6 +76,28 @@ pub struct VerifierTimelinesDTO {
 pub struct TimeSeriesPointDTO {
     pub timestamp: OffsetDateTime,
     pub count: usize,
+}
+
+pub type GetIssuerStatsResponseDTO = GetListResponse<IssuerSchemaStatsResponseDTO>;
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(IssuerSchemaStats)]
+pub struct IssuerSchemaStatsResponseDTO {
+    pub credential_schema_id: CredentialSchemaId,
+    pub credential_schema_name: String,
+    pub current: IssuerStatsDTO,
+    #[from(with_fn = convert_inner)]
+    pub previous: Option<IssuerStatsDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(IssuerStats)]
+pub struct IssuerStatsDTO {
+    pub issued_count: usize,
+    pub suspended_count: usize,
+    pub reactivated_count: usize,
+    pub revoked_count: usize,
+    pub error_count: usize,
 }
 
 pub struct SystemStatsRequestDTO {

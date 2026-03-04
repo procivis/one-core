@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use shared_types::OrganisationId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::{Duration, OffsetDateTime};
 
 use crate::entity::history::{HistoryAction, HistoryEntityType};
@@ -46,4 +46,20 @@ pub struct TimeSeriesRow {
 pub struct OrganisationOpsCount {
     pub organisation_id: OrganisationId,
     pub count: i64,
+}
+
+#[derive(FromQueryResult, Debug)]
+pub struct IssuerStatsRow {
+    pub credential_schema_id: CredentialSchemaId,
+    pub name: String,
+    #[sea_orm(from_alias = "ISSUED")]
+    pub issued: i64,
+    #[sea_orm(from_alias = "SUSPENDED")]
+    pub suspended: i64,
+    #[sea_orm(from_alias = "REACTIVATED")]
+    pub reactivated: i64,
+    #[sea_orm(from_alias = "REVOKED")]
+    pub revoked: i64,
+    #[sea_orm(from_alias = "ERRORED")]
+    pub error: i64,
 }

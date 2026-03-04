@@ -1,15 +1,17 @@
 use one_dto_mapper::convert_inner;
+use shared_types::OrganisationId;
 
 use crate::error::ContextWithErrorCode;
 use crate::model::common::SortDirection;
+use crate::model::history::IssuerStatsQuery;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::OrganisationListQuery;
 use crate::model::organisation::SortableOrganisationColumn::CreatedDate;
 use crate::service::error::EntityNotFoundError;
 use crate::service::statistics::StatisticsService;
 use crate::service::statistics::dto::{
-    NewOrganisationEntryDTO, OrganisationStatsRequestDTO, OrganisationStatsResponseDTO,
-    SystemStatsRequestDTO, SystemStatsResponseDTO,
+    GetIssuerStatsResponseDTO, NewOrganisationEntryDTO, OrganisationStatsRequestDTO,
+    OrganisationStatsResponseDTO, SystemStatsRequestDTO, SystemStatsResponseDTO,
 };
 use crate::service::statistics::error::StatisticsError;
 use crate::validator::throw_if_org_not_matching_session;
@@ -88,5 +90,21 @@ impl StatisticsService {
                 })
                 .collect(),
         })
+    }
+
+    pub async fn issuer_stats(
+        &self,
+        organisation_id: &OrganisationId,
+        current: IssuerStatsQuery,
+        previous: Option<IssuerStatsQuery>,
+    ) -> Result<GetIssuerStatsResponseDTO, StatisticsError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("validating organisation")?;
+        let stats = self
+            .history_repository
+            .issuer_stats(current, previous)
+            .await
+            .error_while("getting issuer statistics")?;
+        Ok(stats.into())
     }
 }

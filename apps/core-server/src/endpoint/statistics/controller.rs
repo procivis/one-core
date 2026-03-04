@@ -5,11 +5,14 @@ use proc_macros::require_permissions;
 use shared_types::Permission;
 
 use super::dto::{
-    OrganisationStatsRequestQuery, OrganisationStatsResponseRestDTO, SystemStatsRequestQuery,
-    SystemStatsResponseRestDTO,
+    GetSchemaStatsQueryRest, OrganisationStatsRequestQuery, OrganisationStatsResponseRestDTO,
+    SystemStatsRequestQuery, SystemStatsResponseRestDTO,
 };
+use crate::dto::common::GetIssuerStatsResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::OkOrErrorResponse;
+use crate::endpoint::statistics::mapper::map_to_current_and_prev;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -41,6 +44,39 @@ pub(crate) async fn organisation_statistics(
             .core
             .statistics_service
             .organisation_stats(request.try_into().error_while("converting request dto")?)
+            .await
+    }
+    .await;
+    OkOrErrorResponse::from_result(result, state, "getting organisation statistics")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/statistics/v1/dashboard/issuer",
+    params(GetSchemaStatsQueryRest),
+    responses(OkOrErrorResponse<GetIssuerStatsResponseRestDTO>),
+    tag = "statistics",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Organisation issuer statistics",
+    description = indoc::formatdoc! {"
+        Retrieve issuer statistics for a specific organisation.
+    "},
+)]
+#[require_permissions(Permission::DashboardDetail)]
+pub(crate) async fn issuer_statistics(
+    state: State<AppState>,
+    WithRejection(Qs(request), _): WithRejection<Qs<GetSchemaStatsQueryRest>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetIssuerStatsResponseRestDTO> {
+    let result = async {
+        let organisation_id = fallback_organisation_id_from_session(request.filter.organisation_id)
+            .error_while("mapping organisation from session")?;
+        let (current, prev) = map_to_current_and_prev(request).error_while("mapping query")?;
+        state
+            .core
+            .statistics_service
+            .issuer_stats(&organisation_id, current, prev)
             .await
     }
     .await;

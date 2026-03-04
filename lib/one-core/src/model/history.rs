@@ -209,6 +209,44 @@ pub struct TimeSeriesPoint {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableIssuerStatisticsColumn {
+    Issued,
+    Revoked,
+    Suspended,
+    Reactivated,
+    Error,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum StatsBySchemaFilterValue {
+    OrganisationId(OrganisationId),
+    From(ValueComparison<OffsetDateTime>),
+    To(ValueComparison<OffsetDateTime>),
+}
+
+impl ListFilterValue for StatsBySchemaFilterValue {}
+pub type IssuerStatsQuery = ListQuery<SortableIssuerStatisticsColumn, StatsBySchemaFilterValue>;
+
+pub type GetIssuerStats = GetListResponse<IssuerSchemaStats>;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IssuerSchemaStats {
+    pub credential_schema_id: CredentialSchemaId,
+    pub credential_schema_name: String,
+    pub current: IssuerStats,
+    pub previous: Option<IssuerStats>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct IssuerStats {
+    pub issued_count: usize,
+    pub suspended_count: usize,
+    pub reactivated_count: usize,
+    pub revoked_count: usize,
+    pub error_count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemStats {
     pub previous: Option<SystemOperationsCount>,
     pub current: SystemOperationsCount,

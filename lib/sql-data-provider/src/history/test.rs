@@ -1,11 +1,15 @@
+use one_core::model::common::SortDirection;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
-    HistoryListQuery, HistorySearchEnum, HistorySource, OrganisationOperationsCount,
-    OrganisationStats, OrganisationTimelines, TimeSeriesPoint,
+    HistoryListQuery, HistorySearchEnum, HistorySource, IssuerStatsQuery,
+    OrganisationOperationsCount, OrganisationStats, OrganisationTimelines,
+    SortableIssuerStatisticsColumn, StatsBySchemaFilterValue, TimeSeriesPoint,
 };
-use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::list_query::ListPagination;
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
+};
+use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
@@ -1544,6 +1548,176 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
     );
 }
 
+#[tokio::test]
+async fn test_issuer_org_history_stats_dummy_data() {
+    let day = Duration::days(1);
+    let now = OffsetDateTime::now_utc();
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+        credential_id,
+        identifier_id,
+        credential_schema_id,
+        ..
+    } = setup_empty().await;
+    let org_id = organisation.id;
+    let credential_schema_id2 = insert_credential_schema_to_database(
+        &db,
+        None,
+        org_id,
+        "schema2",
+        "JWT",
+        None,
+        Some(KeyStorageSecurity::Basic),
+    )
+    .await
+    .unwrap();
+    let credential2 = insert_credential(
+        &db,
+        &credential_schema_id2,
+        CredentialStateEnum::Created,
+        "OPENID4VCI_DRAFT13",
+        identifier_id,
+        None,
+        None,
+        Uuid::new_v4().into(),
+        CredentialRole::Issuer,
+    )
+    .await
+    .unwrap();
+
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        Some(credential_id),
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Revoked,
+        Some(credential2.id.into()),
+        org_id,
+        now - Duration::hours(30),
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Suspended,
+        Some(credential_id),
+        org_id,
+        now,
+    )
+    .await;
+    for _ in 0..10 {
+        add_history(
+            &db,
+            HistoryEntityType::Credential,
+            HistoryAction::Suspended,
+            Some(credential2.id.into()),
+            org_id,
+            now,
+        )
+        .await;
+    }
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Reactivated,
+        Some(credential2.id.into()),
+        org_id,
+        now,
+    )
+    .await;
+    add_history(
+        &db,
+        HistoryEntityType::Credential,
+        HistoryAction::Revoked,
+        Some(credential_id),
+        org_id,
+        now,
+    )
+    .await;
+    for _ in 0..7 {
+        add_history(
+            &db,
+            HistoryEntityType::Credential,
+            HistoryAction::Errored,
+            Some(credential_id),
+            org_id,
+            now,
+        )
+        .await;
+    }
+
+    let prev_start = now - 2 * day;
+    let from = now - day;
+    let to = now + day;
+    let query = issuer_stats_query_with_filter(
+        SortableIssuerStatisticsColumn::Suspended,
+        org_id,
+        Some(from),
+        to,
+    );
+    let query_prev = issuer_stats_query_with_filter(
+        SortableIssuerStatisticsColumn::Suspended,
+        org_id,
+        Some(prev_start),
+        from,
+    );
+    let result = provider
+        .issuer_stats(query, Some(query_prev))
+        .await
+        .unwrap();
+    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.values[0].credential_schema_id, credential_schema_id2);
+    assert_eq!(result.values[1].credential_schema_id, credential_schema_id);
+    assert_eq!(result.values[0].current.suspended_count, 10);
+    assert_eq!(result.values[1].current.suspended_count, 1);
+    assert_eq!(result.values[0].current.error_count, 0);
+    assert_eq!(result.values[1].current.error_count, 7);
+    assert_eq!(result.values[0].previous.as_ref().unwrap().revoked_count, 1);
+    assert_eq!(result.values[1].previous.as_ref().unwrap().revoked_count, 0);
+}
+
+fn issuer_stats_query_with_filter(
+    sort: SortableIssuerStatisticsColumn,
+    organisation_id: OrganisationId,
+    from: Option<OffsetDateTime>,
+    to: OffsetDateTime,
+) -> IssuerStatsQuery {
+    let to = StatsBySchemaFilterValue::From(ValueComparison {
+        comparison: ComparisonType::LessThan,
+        value: to,
+    })
+    .condition();
+
+    let from = from.map(|t| {
+        StatsBySchemaFilterValue::From(ValueComparison {
+            comparison: ComparisonType::GreaterThanOrEqual,
+            value: t,
+        })
+    });
+    IssuerStatsQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 999,
+        }),
+        sorting: Some(ListSorting {
+            column: sort,
+            direction: Some(SortDirection::Descending),
+        }),
+        filtering: Some(to & from & StatsBySchemaFilterValue::OrganisationId(organisation_id)),
+        include: None,
+    }
+}
+
 async fn add_history(
     database: &DatabaseConnection,
     entity_type: HistoryEntityType,
@@ -1557,7 +1731,7 @@ async fn add_history(
         id: Set(id.into()),
         created_date: Set(created_date),
         action: Set(action.into()),
-        name: Set(id.into()),
+        name: Set("name".to_string()),
         entity_id: Set(entity_id),
         entity_type: Set(entity_type.into()),
         metadata: Set(None),

@@ -2,7 +2,8 @@ use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::history::{
-    GetHistoryList, History, HistoryListQuery, OrganisationStats, SystemStats,
+    GetHistoryList, GetIssuerStats, History, HistoryListQuery, IssuerStatsQuery, OrganisationStats,
+    SystemStats,
 };
 use crate::repository::error::DataLayerError;
 
@@ -37,4 +38,10 @@ pub trait HistoryRepository: Send + Sync {
         to: OffsetDateTime,
         organisation_count: usize,
     ) -> Result<SystemStats, DataLayerError>;
+
+    async fn issuer_stats(
+        &self,
+        query: IssuerStatsQuery,
+        previous_query: Option<IssuerStatsQuery>,
+    ) -> Result<GetIssuerStats, DataLayerError>;
 }

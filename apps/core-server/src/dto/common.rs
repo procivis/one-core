@@ -14,6 +14,7 @@ use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::endpoint::organisation::dto::OrganisationListItemResponseRestDTO;
 use crate::endpoint::proof::dto::ProofListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO;
+use crate::endpoint::statistics::dto::IssuerSchemaStatsResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
 use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 
@@ -44,6 +45,8 @@ pub(crate) type GetTrustAnchorListResponseRestDTO =
     GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>;
 pub(crate) type GetTrustEntityListResponseRestDTO =
     GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>;
+pub(crate) type GetIssuerStatsResponseRestDTO =
+    GetListResponseRestDTO<IssuerSchemaStatsResponseRestDTO>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 pub(crate) struct NoIncludesSupported {}

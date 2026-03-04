@@ -1,14 +1,17 @@
-use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
+use one_core::model::history::{
+    HistoryFilterValue, HistorySearchEnum, IssuerStatsQuery, SortableHistoryColumn,
+    SortableIssuerStatisticsColumn, StatsBySchemaFilterValue,
+};
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{
-    Alias, ColumnRef, Condition, Expr, Func, IntoColumnRef, IntoCondition, IntoIden, IntoTableRef,
-    Query, SelectStatement, SimpleExpr,
+    Alias, CaseStatement, ColumnRef, Condition, Expr, Func, IntoColumnRef, IntoCondition, IntoIden,
+    IntoTableRef, Query, SelectStatement, SimpleExpr,
 };
 use sea_orm::{
-    ColumnTrait, DbBackend, EntityTrait, IntoSimpleExpr, JoinType, Order, QueryFilter, QuerySelect,
-    QueryTrait, RelationTrait,
+    ActiveEnum, ColumnTrait, DbBackend, EntityTrait, IntoSimpleExpr, JoinType, Order, QueryFilter,
+    QuerySelect, QueryTrait, RelationTrait,
 };
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -20,7 +23,7 @@ use crate::entity::{
 use crate::history::mapper::{ceil, floor};
 use crate::history::model::TimeResolution;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, SelectWithListQuery,
     get_comparison_condition,
 };
 
@@ -39,7 +42,7 @@ impl IntoSortingColumn for SortableHistoryColumn {
 }
 
 impl IntoFilterCondition for HistoryFilterValue {
-    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
             Self::EntityTypes(entity_types) => history::Column::EntityType
                 .is_in(
@@ -624,4 +627,71 @@ impl TimeResolution {
         };
         Ok(expr)
     }
+}
+
+impl IntoFilterCondition for StatsBySchemaFilterValue {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
+        match self {
+            Self::From(date) => get_comparison_condition(history::Column::CreatedDate, date),
+            Self::To(date) => get_comparison_condition(history::Column::CreatedDate, date),
+            Self::OrganisationId(organisation_id) => history::Column::OrganisationId
+                .eq(organisation_id)
+                .into_condition(),
+        }
+    }
+}
+
+impl IntoSortingColumn for SortableIssuerStatisticsColumn {
+    fn get_column(&self) -> SimpleExpr {
+        let col = match self {
+            SortableIssuerStatisticsColumn::Issued => {
+                Alias::new(history::HistoryAction::Issued.to_value()).into_column_ref()
+            }
+            SortableIssuerStatisticsColumn::Revoked => {
+                Alias::new(history::HistoryAction::Revoked.to_value()).into_column_ref()
+            }
+            SortableIssuerStatisticsColumn::Suspended => {
+                Alias::new(history::HistoryAction::Suspended.to_value()).into_column_ref()
+            }
+            SortableIssuerStatisticsColumn::Reactivated => {
+                Alias::new(history::HistoryAction::Reactivated.to_value()).into_column_ref()
+            }
+            SortableIssuerStatisticsColumn::Error => {
+                Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref()
+            }
+        };
+        SimpleExpr::Column(col)
+    }
+}
+
+pub(super) fn issuer_stats_query(query: &IssuerStatsQuery) -> SelectStatement {
+    let mut stmt = history::Entity::find().with_list_query(query).into_query();
+    let group_columns = [
+        history::Column::Name.into_column_ref(),
+        credential::Column::CredentialSchemaId.into_column_ref(),
+    ];
+    stmt.clear_selects()
+        .columns(group_columns.clone())
+        .group_by_columns(group_columns)
+        .inner_join(
+            credential::Entity,
+            Expr::col(history::Column::EntityId)
+                .eq(Expr::col((credential::Entity, credential::Column::Id))),
+        )
+        // Only issuer actions are relevant
+        .and_where(credential::Column::Role.eq(credential::CredentialRole::Issuer));
+    for action in [
+        history::HistoryAction::Issued,
+        history::HistoryAction::Suspended,
+        history::HistoryAction::Reactivated,
+        history::HistoryAction::Revoked,
+        history::HistoryAction::Errored,
+    ] {
+        stmt.expr_as(
+            // Each history event is counted once (the other cases are `null`, which do _not_ count)
+            Func::count(CaseStatement::new().case(history::Column::Action.eq(action), 1)),
+            Alias::new(action.to_value()),
+        );
+    }
+    stmt
 }

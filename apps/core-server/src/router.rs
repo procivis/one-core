@@ -472,6 +472,10 @@ fn get_management_endpoints(
                 get(statistics::controller::organisation_statistics),
             )
             .route(
+                "/api/statistics/v1/dashboard/issuer",
+                get(statistics::controller::issuer_statistics),
+            )
+            .route(
                 "/api/statistics/v1/dashboard/system",
                 get(statistics::controller::system_statistics),
             );

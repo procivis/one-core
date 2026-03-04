@@ -1,8 +1,9 @@
 use autometrics::autometrics;
 use futures::future::try_join_all;
 use one_core::model::history::{
-    GetHistoryList, History, HistoryAction, HistoryListQuery, HistoryMetadata, OrganisationStats,
-    OrganisationSummaryStats, SystemOperationsCount, SystemStats,
+    GetHistoryList, GetIssuerStats, History, HistoryAction, HistoryListQuery, HistoryMetadata,
+    IssuerStatsQuery, OrganisationStats, OrganisationSummaryStats, SystemOperationsCount,
+    SystemStats,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -13,13 +14,13 @@ use sea_orm::{
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
-use super::mapper::{create_list_response, map_to_stats, to_ops_org_count};
+use super::mapper::{create_list_response, map_to_issuer_stats, map_to_stats, to_ops_org_count};
 use crate::entity::history;
 use crate::entity::history::HistoryEntityType;
 use crate::history::HistoryProvider;
-use crate::history::model::{OrganisationOpsCount, TimeSeriesRow, WindowCount};
+use crate::history::model::{IssuerStatsRow, OrganisationOpsCount, TimeSeriesRow, WindowCount};
 use crate::history::queries::{
-    CountOperationsQuery, count_ops_query, org_timelines_query, top_orgs_query,
+    CountOperationsQuery, count_ops_query, issuer_stats_query, org_timelines_query, top_orgs_query,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
@@ -253,6 +254,39 @@ impl HistoryRepository for HistoryProvider {
             top_issuers: to_ops_org_count(&top_issuers, Some(&prev_issuers))?,
             top_verifiers: to_ops_org_count(&top_verifiers, Some(&prev_verifiers))?,
         })
+    }
+
+    async fn issuer_stats(
+        &self,
+        current_query: IssuerStatsQuery,
+        previous_query: Option<IssuerStatsQuery>,
+    ) -> Result<GetIssuerStats, DataLayerError> {
+        let limit = current_query
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as u64);
+        let backend = self.db.get_database_backend();
+        let query = issuer_stats_query(&current_query);
+        let current = backend.build(&query);
+        let prev = previous_query.map(|q| backend.build(&issuer_stats_query(&q)));
+        let (current, count, prev) = tokio::join!(
+            IssuerStatsRow::find_by_statement(current.clone()).all(&self.db),
+            IssuerStatsRow::find_by_statement(current).count(&self.db),
+            async {
+                let result = IssuerStatsRow::find_by_statement(prev?)
+                    .all(&self.db)
+                    .await
+                    .map_err(|err| DataLayerError::Db(err.into()));
+                Some(result)
+            }
+        );
+        let current = current.map_err(|err| DataLayerError::Db(err.into()))?;
+        let count = count.map_err(|err| DataLayerError::Db(err.into()))?;
+        let prev = prev
+            .transpose()
+            .map_err(|err| DataLayerError::Db(err.into()))?;
+        let stats = map_to_issuer_stats(current, prev, count, limit);
+        Ok(stats)
     }
 }
 

@@ -1,17 +1,19 @@
+use one_core::model::history::SortableIssuerStatisticsColumn;
 use one_core::service::error::ServiceError;
 use one_core::service::statistics::dto::{
-    IssuerTimelinesDTO, NewOrganisationEntryDTO, OrganisationOperationsCountDTO,
-    OrganisationStatsRequestDTO, OrganisationStatsResponseDTO, OrganisationSummaryStatsDTO,
-    OrganisationTimelinesDTO, SystemOperationsCountDTO, SystemStatsResponseDTO, TimeSeriesPointDTO,
-    VerifierTimelinesDTO,
+    IssuerSchemaStatsResponseDTO, IssuerStatsDTO, IssuerTimelinesDTO, NewOrganisationEntryDTO,
+    OrganisationOperationsCountDTO, OrganisationStatsRequestDTO, OrganisationStatsResponseDTO,
+    OrganisationSummaryStatsDTO, OrganisationTimelinesDTO, SystemOperationsCountDTO,
+    SystemStatsResponseDTO, TimeSeriesPointDTO, VerifierTimelinesDTO,
 };
-use one_dto_mapper::{From, TryInto, convert_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::OrganisationId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::dto::common::ListQueryParamsRest;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::front_time;
 
@@ -117,6 +119,57 @@ pub struct TimeSeriesPointRestDTO {
     #[serde(serialize_with = "front_time")]
     pub timestamp: OffsetDateTime,
     pub count: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(SortableIssuerStatisticsColumn)]
+pub(crate) enum SortableIssuerStatisticsColumnRestDTO {
+    Issued,
+    Revoked,
+    Suspended,
+    Reactivated,
+    Error,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into_params(parameter_in = Query)]
+/// Stats per organisation aggregated by either credential or proof schema.
+pub struct StatsBySchemaFilterParamsRest {
+    #[param(nullable = false)]
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub from: Option<OffsetDateTime>,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    pub to: OffsetDateTime,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
+}
+
+pub(crate) type GetSchemaStatsQueryRest =
+    ListQueryParamsRest<StatsBySchemaFilterParamsRest, SortableIssuerStatisticsColumnRestDTO>;
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[from(IssuerSchemaStatsResponseDTO)]
+pub struct IssuerSchemaStatsResponseRestDTO {
+    pub credential_schema_id: CredentialSchemaId,
+    pub credential_schema_name: String,
+    pub current: IssuerStatsRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub previous: Option<IssuerStatsRestDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[from(IssuerStatsDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct IssuerStatsRestDTO {
+    pub issued_count: usize,
+    pub suspended_count: usize,
+    pub reactivated_count: usize,
+    pub revoked_count: usize,
+    pub error_count: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
