@@ -1,32 +1,30 @@
 use autometrics::autometrics;
 use futures::future::try_join_all;
 use one_core::model::history::{
-    GetHistoryList, GetIssuerStats, GetVerifierStats, History, HistoryAction, HistoryListQuery,
-    HistoryMetadata, IssuerStatsQuery, OrganisationStats, OrganisationSummaryStats,
-    SystemOperationsCount, SystemStats, VerifierStatsQuery,
+    GetHistoryList, GetIssuerStats, GetSystemInteractionStats, GetVerifierStats, History,
+    HistoryAction, HistoryListQuery, HistoryMetadata, IssuerStatsQuery, OrganisationStats,
+    OrganisationSummaryStats, SystemInteractionStatsQuery, SystemOperationsCount, SystemStats,
+    VerifierStatsQuery,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, PaginatorTrait,
-    QueryFilter, QueryOrder,
+    QueryFilter, QueryOrder, Statement,
 };
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use super::mapper::{
-    create_list_response, map_to_issuer_stats, map_to_stats, map_to_verifier_stats,
-    to_ops_org_count,
+    create_list_response, map_to_stats, paginated_stats_to_list_response, to_ops_org_count,
 };
 use crate::entity::history;
 use crate::entity::history::HistoryEntityType;
 use crate::history::HistoryProvider;
-use crate::history::model::{
-    IssuerStatsRow, OrganisationOpsCount, TimeSeriesRow, VerifierStatsRow, WindowCount,
-};
+use crate::history::model::{OrganisationOpsCount, PaginatedStats, TimeSeriesRow, WindowCount};
 use crate::history::queries::{
-    CountOperationsQuery, count_ops_query, issuer_stats_query, org_timelines_query, top_orgs_query,
-    verifier_stats_query,
+    CountOperationsQuery, count_ops_query, issuer_stats_query, org_timelines_query,
+    system_interaction_stats_query, top_orgs_query, verifier_stats_query,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
@@ -275,23 +273,8 @@ impl HistoryRepository for HistoryProvider {
         let query = issuer_stats_query(&current_query);
         let current = backend.build(&query);
         let prev = previous_query.map(|q| backend.build(&issuer_stats_query(&q)));
-        let (current, count, prev) = tokio::join!(
-            IssuerStatsRow::find_by_statement(current.clone()).all(&self.db),
-            IssuerStatsRow::find_by_statement(current).count(&self.db),
-            async {
-                let result = IssuerStatsRow::find_by_statement(prev?)
-                    .all(&self.db)
-                    .await
-                    .map_err(|err| DataLayerError::Db(err.into()));
-                Some(result)
-            }
-        );
-        let current = current.map_err(|err| DataLayerError::Db(err.into()))?;
-        let count = count.map_err(|err| DataLayerError::Db(err.into()))?;
-        let prev = prev
-            .transpose()
-            .map_err(|err| DataLayerError::Db(err.into()))?;
-        let stats = map_to_issuer_stats(current, prev, count, limit);
+        let paginated_stats = self.collect_paginated_stats(current, prev).await?;
+        let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }
 
@@ -308,23 +291,26 @@ impl HistoryRepository for HistoryProvider {
         let query = verifier_stats_query(&current_query);
         let current = backend.build(&query);
         let prev = previous_query.map(|q| backend.build(&verifier_stats_query(&q)));
-        let (current, count, prev) = tokio::join!(
-            VerifierStatsRow::find_by_statement(current.clone()).all(&self.db),
-            VerifierStatsRow::find_by_statement(current).count(&self.db),
-            async {
-                let result = VerifierStatsRow::find_by_statement(prev?)
-                    .all(&self.db)
-                    .await
-                    .map_err(|err| DataLayerError::Db(err.into()));
-                Some(result)
-            }
-        );
-        let current = current.map_err(|err| DataLayerError::Db(err.into()))?;
-        let count = count.map_err(|err| DataLayerError::Db(err.into()))?;
-        let prev = prev
-            .transpose()
-            .map_err(|err| DataLayerError::Db(err.into()))?;
-        let stats = map_to_verifier_stats(current, prev, count, limit);
+        let paginated_stats = self.collect_paginated_stats(current, prev).await?;
+        let stats = paginated_stats_to_list_response(paginated_stats, limit);
+        Ok(stats)
+    }
+
+    async fn system_interaction_stats(
+        &self,
+        current_query: SystemInteractionStatsQuery,
+        previous_query: Option<SystemInteractionStatsQuery>,
+    ) -> Result<GetSystemInteractionStats, DataLayerError> {
+        let limit = current_query
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as u64);
+        let backend = self.db.get_database_backend();
+        let query = system_interaction_stats_query(&current_query);
+        let current = backend.build(&query);
+        let prev = previous_query.map(|q| backend.build(&system_interaction_stats_query(&q)));
+        let paginated_stats = self.collect_paginated_stats(current, prev).await?;
+        let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }
 }
@@ -448,6 +434,31 @@ impl HistoryProvider {
         Ok(WindowCount {
             current,
             previous: Some(prev),
+        })
+    }
+
+    async fn collect_paginated_stats<T: FromQueryResult + Send + Sync>(
+        &self,
+        current: Statement,
+        prev: Option<Statement>,
+    ) -> Result<PaginatedStats<T>, DataLayerError> {
+        let (current, count, prev) = tokio::join!(
+            T::find_by_statement(current.clone()).all(&self.db),
+            T::find_by_statement(current).count(&self.db),
+            async {
+                let result = T::find_by_statement(prev?)
+                    .all(&self.db)
+                    .await
+                    .map_err(|err| DataLayerError::Db(err.into()));
+                Some(result)
+            }
+        );
+        Ok(PaginatedStats {
+            current: current.map_err(|err| DataLayerError::Db(err.into()))?,
+            previous: prev
+                .transpose()
+                .map_err(|err| DataLayerError::Db(err.into()))?,
+            total_items: count.map_err(|err| DataLayerError::Db(err.into()))?,
         })
     }
 }

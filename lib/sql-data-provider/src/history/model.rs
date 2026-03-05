@@ -48,7 +48,13 @@ pub struct OrganisationOpsCount {
     pub count: i64,
 }
 
-#[derive(FromQueryResult, Debug)]
+pub struct PaginatedStats<T> {
+    pub current: Vec<T>,
+    pub previous: Option<Vec<T>>,
+    pub total_items: u64,
+}
+
+#[derive(FromQueryResult, Debug, Clone)]
 pub struct IssuerStatsRow {
     pub credential_schema_id: CredentialSchemaId,
     pub name: String,
@@ -64,7 +70,7 @@ pub struct IssuerStatsRow {
     pub error: i64,
 }
 
-#[derive(FromQueryResult, Debug)]
+#[derive(FromQueryResult, Debug, Clone)]
 pub struct VerifierStatsRow {
     pub proof_schema_id: ProofSchemaId,
     pub name: String,
@@ -72,6 +78,18 @@ pub struct VerifierStatsRow {
     pub accepted: i64,
     #[sea_orm(from_alias = "REJECTED")]
     pub rejected: i64,
+    #[sea_orm(from_alias = "ERRORED")]
+    pub error: i64,
+}
+
+#[derive(FromQueryResult, Debug, Clone)]
+pub struct SystemInteractionStatsRow {
+    pub organisation_id: OrganisationId,
+    #[sea_orm(from_alias = "ISSUED")]
+    pub issued: i64,
+    #[sea_orm(from_alias = "ACCEPTED")]
+    pub accepted: i64,
+    pub credential_lifecycle_operation: i64,
     #[sea_orm(from_alias = "ERRORED")]
     pub error: i64,
 }

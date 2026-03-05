@@ -294,3 +294,38 @@ pub struct SystemOperationsCount {
     pub session_token_count: usize,
     pub active_wallet_unit_count: usize,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableSystemInteractionStatisticsColumn {
+    Issued,
+    Verified,
+    CredentialLifecycleOperation,
+    Error,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SystemStatsFilterValue {
+    From(ValueComparison<OffsetDateTime>),
+    To(ValueComparison<OffsetDateTime>),
+}
+impl ListFilterValue for SystemStatsFilterValue {}
+
+pub type SystemInteractionStatsQuery =
+    ListQuery<SortableSystemInteractionStatisticsColumn, SystemStatsFilterValue>;
+
+pub type GetSystemInteractionStats = GetListResponse<SystemInteractionStats>;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemInteractionStats {
+    pub organisation_id: OrganisationId,
+    pub current: SystemInteractionCounts,
+    pub previous: Option<SystemInteractionCounts>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct SystemInteractionCounts {
+    pub issued_count: usize,
+    pub verified_count: usize,
+    pub credential_lifecycle_operation_count: usize,
+    pub error_count: usize,
+}

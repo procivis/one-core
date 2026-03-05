@@ -1,11 +1,14 @@
-use one_core::model::history::{SortableIssuerStatisticsColumn, SortableVerifierStatisticsColumn};
+use one_core::model::history::{
+    SortableIssuerStatisticsColumn, SortableSystemInteractionStatisticsColumn,
+    SortableVerifierStatisticsColumn,
+};
 use one_core::service::error::ServiceError;
 use one_core::service::statistics::dto::{
     IssuerSchemaStatsResponseDTO, IssuerStatsDTO, IssuerTimelinesDTO, NewOrganisationEntryDTO,
     OrganisationOperationsCountDTO, OrganisationStatsRequestDTO, OrganisationStatsResponseDTO,
-    OrganisationSummaryStatsDTO, OrganisationTimelinesDTO, SystemOperationsCountDTO,
-    SystemStatsResponseDTO, TimeSeriesPointDTO, VerifierSchemaStatsResponseDTO, VerifierStatsDTO,
-    VerifierTimelinesDTO,
+    OrganisationSummaryStatsDTO, OrganisationTimelinesDTO, SystemInteractionCountsDTO,
+    SystemInteractionStatsResponseDTO, SystemOperationsCountDTO, SystemStatsResponseDTO,
+    TimeSeriesPointDTO, VerifierSchemaStatsResponseDTO, VerifierStatsDTO, VerifierTimelinesDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
@@ -288,4 +291,51 @@ pub struct NewOrganisationEntryRestDTO {
     pub organisation: OrganisationId,
     #[serde(serialize_with = "front_time")]
     pub created_date: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(SortableSystemInteractionStatisticsColumn)]
+pub(crate) enum SortableSystemInteractionStatisticsColumnRestDTO {
+    Issued,
+    Verified,
+    CredentialLifecycleOperation,
+    Error,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into_params(parameter_in = Query)]
+pub struct SystemStatsFilterParamsRest {
+    #[param(nullable = false)]
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub from: Option<OffsetDateTime>,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    pub to: OffsetDateTime,
+}
+
+pub(crate) type GetSystemInteractionStatsQueryRest = ListQueryParamsRest<
+    SystemStatsFilterParamsRest,
+    SortableSystemInteractionStatisticsColumnRestDTO,
+>;
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[from(SystemInteractionStatsResponseDTO)]
+pub struct SystemInteractionStatsResponseRestDTO {
+    pub organisation_id: OrganisationId,
+    pub current: SystemInteractionCountsRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub previous: Option<SystemInteractionCountsRestDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, From, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[from(SystemInteractionCountsDTO)]
+pub struct SystemInteractionCountsRestDTO {
+    pub issued_count: usize,
+    pub verified_count: usize,
+    pub credential_lifecycle_operation_count: usize,
+    pub error_count: usize,
 }

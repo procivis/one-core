@@ -5,15 +5,20 @@ use proc_macros::require_permissions;
 use shared_types::Permission;
 
 use super::dto::{
-    GetIssuerSchemaStatsQueryRest, GetVerifierSchemaStatsQueryRest, OrganisationStatsRequestQuery,
+    GetIssuerSchemaStatsQueryRest, GetSystemInteractionStatsQueryRest,
+    GetVerifierSchemaStatsQueryRest, OrganisationStatsRequestQuery,
     OrganisationStatsResponseRestDTO, SystemStatsRequestQuery, SystemStatsResponseRestDTO,
 };
-use crate::dto::common::{GetIssuerStatsResponseRestDTO, GetVerifierStatsResponseRestDTO};
+use crate::dto::common::{
+    GetIssuerStatsResponseRestDTO, GetSystemInteractionStatsResponseRestDTO,
+    GetVerifierStatsResponseRestDTO,
+};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::statistics::mapper::{
-    map_to_issuer_stats_queries, map_to_verifier_stats_queries,
+    map_to_issuer_stats_queries, map_to_system_interaction_stats_queries,
+    map_to_verifier_stats_queries,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -152,4 +157,39 @@ pub(crate) async fn system_statistics(
         .system_stats(request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "getting system statistics")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/statistics/v1/dashboard/system/interaction",
+    params(GetSystemInteractionStatsQueryRest),
+    responses(OkOrErrorResponse<GetSystemInteractionStatsResponseRestDTO>),
+    tag = "statistics",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "System interaction statistics",
+    description = indoc::formatdoc! {"
+        Retrieve system-wide interaction statistics across all organizations.
+    "},
+)]
+#[require_permissions(Permission::SystemDashboardDetail)]
+pub(crate) async fn system_interaction_statistics(
+    state: State<AppState>,
+    WithRejection(Qs(request), _): WithRejection<
+        Qs<GetSystemInteractionStatsQueryRest>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<GetSystemInteractionStatsResponseRestDTO> {
+    let result = async {
+        let (current, prev) =
+            map_to_system_interaction_stats_queries(request).error_while("mapping query")?;
+        state
+            .core
+            .statistics_service
+            .system_interaction_stats(current, prev)
+            .await
+    }
+    .await;
+    OkOrErrorResponse::from_result(result, state, "getting organisation statistics")
 }

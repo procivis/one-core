@@ -5,8 +5,9 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::history::{
     IssuerSchemaStats, IssuerStats, IssuerTimelines, OrganisationOperationsCount,
-    OrganisationStats, OrganisationSummaryStats, OrganisationTimelines, SystemOperationsCount,
-    TimeSeriesPoint, VerifierSchemaStats, VerifierStats, VerifierTimelines,
+    OrganisationStats, OrganisationSummaryStats, OrganisationTimelines, SystemInteractionCounts,
+    SystemInteractionStats, SystemOperationsCount, TimeSeriesPoint, VerifierSchemaStats,
+    VerifierStats, VerifierTimelines,
 };
 
 pub struct OrganisationStatsRequestDTO {
@@ -158,4 +159,24 @@ pub struct SystemOperationsCountDTO {
 pub struct NewOrganisationEntryDTO {
     pub organisation: OrganisationId,
     pub created_date: OffsetDateTime,
+}
+
+pub type GetSystemInteractionStatsResponseDTO = GetListResponse<SystemInteractionStatsResponseDTO>;
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(SystemInteractionStats)]
+pub struct SystemInteractionStatsResponseDTO {
+    pub organisation_id: OrganisationId,
+    pub current: SystemInteractionCountsDTO,
+    #[from(with_fn = convert_inner)]
+    pub previous: Option<SystemInteractionCountsDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default, From)]
+#[from(SystemInteractionCounts)]
+pub struct SystemInteractionCountsDTO {
+    pub issued_count: usize,
+    pub verified_count: usize,
+    pub credential_lifecycle_operation_count: usize,
+    pub error_count: usize,
 }

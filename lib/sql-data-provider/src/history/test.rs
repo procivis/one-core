@@ -4,7 +4,8 @@ use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
     HistoryListQuery, HistorySearchEnum, HistorySource, IssuerStatsQuery,
     OrganisationOperationsCount, OrganisationStats, OrganisationTimelines,
-    SortableIssuerStatisticsColumn, StatsBySchemaFilterValue, TimeSeriesPoint,
+    SortableIssuerStatisticsColumn, SortableSystemInteractionStatisticsColumn,
+    StatsBySchemaFilterValue, SystemInteractionStatsQuery, SystemStatsFilterValue, TimeSeriesPoint,
 };
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
@@ -1398,109 +1399,7 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
         .await
         .unwrap();
     let now = OffsetDateTime::now_utc();
-
-    // ignored because it is too old
-    add_history(
-        &db,
-        HistoryEntityType::Credential,
-        HistoryAction::Issued,
-        Some(credential_id),
-        org_id,
-        now - Duration::days(3),
-    )
-    .await;
-
-    // prev window
-    add_history(
-        &db,
-        HistoryEntityType::Credential,
-        HistoryAction::Issued,
-        Some(credential_id),
-        org_id,
-        now - Duration::days(2),
-    )
-    .await;
-    add_history(
-        &db,
-        HistoryEntityType::Credential,
-        HistoryAction::Suspended,
-        Some(credential_id),
-        org2_id,
-        now - Duration::days(2),
-    )
-    .await;
-
-    // current window
-    add_history(
-        &db,
-        HistoryEntityType::Credential,
-        HistoryAction::Issued,
-        Some(credential_id),
-        org_id,
-        now - Duration::days(1),
-    )
-    .await;
-    add_history(
-        &db,
-        HistoryEntityType::Credential,
-        HistoryAction::Suspended,
-        Some(credential_id),
-        org2_id,
-        now - Duration::days(1),
-    )
-    .await;
-
-    add_history(
-        &db,
-        HistoryEntityType::Credential,
-        HistoryAction::Issued,
-        Some(credential_id),
-        org_id,
-        now,
-    )
-    .await;
-    for _ in 0..10 {
-        add_history(
-            &db,
-            HistoryEntityType::Credential,
-            HistoryAction::Issued,
-            Some(credential_id),
-            org2_id,
-            now,
-        )
-        .await;
-    }
-    for _ in 0..8 {
-        add_history(
-            &db,
-            HistoryEntityType::Proof,
-            HistoryAction::Accepted,
-            Some(proof_id),
-            org_id,
-            now,
-        )
-        .await;
-    }
-    add_history(
-        &db,
-        HistoryEntityType::Proof,
-        HistoryAction::Accepted,
-        Some(proof_id),
-        org2_id,
-        now,
-    )
-    .await;
-
-    // ignored because it is outside of current
-    add_history(
-        &db,
-        HistoryEntityType::Proof,
-        HistoryAction::Accepted,
-        Some(proof_id),
-        org2_id,
-        now + Duration::days(1),
-    )
-    .await;
+    multi_org_test_data(org_id, org2_id, credential_id, proof_id, now, &db).await;
 
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
@@ -1658,13 +1557,13 @@ async fn test_issuer_org_history_stats_dummy_data() {
     let prev_start = now - 2 * day;
     let from = now - day;
     let to = now + day;
-    let query = issuer_stats_query_with_filter(
+    let query = issuer_stats_query(
         SortableIssuerStatisticsColumn::Suspended,
         org_id,
         Some(from),
         to,
     );
-    let query_prev = issuer_stats_query_with_filter(
+    let query_prev = issuer_stats_query(
         SortableIssuerStatisticsColumn::Suspended,
         org_id,
         Some(prev_start),
@@ -1686,7 +1585,173 @@ async fn test_issuer_org_history_stats_dummy_data() {
     assert_eq!(result.values[1].previous.as_ref().unwrap().revoked_count, 0);
 }
 
-fn issuer_stats_query_with_filter(
+#[tokio::test]
+async fn test_system_interaction_history_stats() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+        credential_id,
+        proof_id,
+        ..
+    } = setup_empty().await;
+    let org_id = organisation.id;
+    let org2_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+    let now = OffsetDateTime::now_utc();
+    multi_org_test_data(org_id, org2_id, credential_id, proof_id, now, &db).await;
+
+    let from = now - Duration::days(1);
+    let to = now + Duration::days(1);
+    let diff = to - from;
+    let query = system_interaction_stats_query(
+        SortableSystemInteractionStatisticsColumn::CredentialLifecycleOperation,
+        Some(from),
+        to,
+    );
+    let query_prev = system_interaction_stats_query(
+        SortableSystemInteractionStatisticsColumn::CredentialLifecycleOperation,
+        Some(from - diff),
+        from,
+    );
+    let result = provider
+        .system_interaction_stats(query, Some(query_prev))
+        .await
+        .unwrap();
+    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.values[0].organisation_id, org2_id);
+    assert_eq!(result.values[1].organisation_id, org_id);
+    assert_eq!(
+        result.values[0]
+            .current
+            .credential_lifecycle_operation_count,
+        1
+    );
+    assert_eq!(
+        result.values[1]
+            .current
+            .credential_lifecycle_operation_count,
+        0
+    );
+    assert_eq!(result.values[0].previous.as_ref().unwrap().issued_count, 0);
+    assert_eq!(result.values[1].previous.as_ref().unwrap().issued_count, 2);
+}
+
+async fn multi_org_test_data(
+    org_id: OrganisationId,
+    org2_id: OrganisationId,
+    credential_id: EntityId,
+    proof_id: EntityId,
+    now: OffsetDateTime,
+    db: &DatabaseConnection,
+) {
+    // ignored because it is too old
+    add_history(
+        db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        Some(credential_id),
+        org_id,
+        now - Duration::days(3),
+    )
+    .await;
+
+    // prev window
+    add_history(
+        db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        Some(credential_id),
+        org_id,
+        now - Duration::days(2),
+    )
+    .await;
+    add_history(
+        db,
+        HistoryEntityType::Credential,
+        HistoryAction::Suspended,
+        Some(credential_id),
+        org2_id,
+        now - Duration::days(2),
+    )
+    .await;
+
+    // current window
+    add_history(
+        db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        Some(credential_id),
+        org_id,
+        now - Duration::days(1),
+    )
+    .await;
+    add_history(
+        db,
+        HistoryEntityType::Credential,
+        HistoryAction::Suspended,
+        Some(credential_id),
+        org2_id,
+        now - Duration::days(1),
+    )
+    .await;
+
+    add_history(
+        db,
+        HistoryEntityType::Credential,
+        HistoryAction::Issued,
+        Some(credential_id),
+        org_id,
+        now,
+    )
+    .await;
+    for _ in 0..10 {
+        add_history(
+            db,
+            HistoryEntityType::Credential,
+            HistoryAction::Issued,
+            Some(credential_id),
+            org2_id,
+            now,
+        )
+        .await;
+    }
+    for _ in 0..8 {
+        add_history(
+            db,
+            HistoryEntityType::Proof,
+            HistoryAction::Accepted,
+            Some(proof_id),
+            org_id,
+            now,
+        )
+        .await;
+    }
+    add_history(
+        db,
+        HistoryEntityType::Proof,
+        HistoryAction::Accepted,
+        Some(proof_id),
+        org2_id,
+        now,
+    )
+    .await;
+
+    // ignored because it is outside of current
+    add_history(
+        db,
+        HistoryEntityType::Proof,
+        HistoryAction::Accepted,
+        Some(proof_id),
+        org2_id,
+        now + Duration::days(1),
+    )
+    .await;
+}
+
+fn issuer_stats_query(
     sort: SortableIssuerStatisticsColumn,
     organisation_id: OrganisationId,
     from: Option<OffsetDateTime>,
@@ -1714,6 +1779,37 @@ fn issuer_stats_query_with_filter(
             direction: Some(SortDirection::Descending),
         }),
         filtering: Some(to & from & StatsBySchemaFilterValue::OrganisationId(organisation_id)),
+        include: None,
+    }
+}
+
+fn system_interaction_stats_query(
+    sort: SortableSystemInteractionStatisticsColumn,
+    from: Option<OffsetDateTime>,
+    to: OffsetDateTime,
+) -> SystemInteractionStatsQuery {
+    let to = SystemStatsFilterValue::From(ValueComparison {
+        comparison: ComparisonType::LessThan,
+        value: to,
+    })
+    .condition();
+
+    let from = from.map(|t| {
+        SystemStatsFilterValue::From(ValueComparison {
+            comparison: ComparisonType::GreaterThanOrEqual,
+            value: t,
+        })
+    });
+    SystemInteractionStatsQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 999,
+        }),
+        sorting: Some(ListSorting {
+            column: sort,
+            direction: Some(SortDirection::Descending),
+        }),
+        filtering: Some(to & from),
         include: None,
     }
 }

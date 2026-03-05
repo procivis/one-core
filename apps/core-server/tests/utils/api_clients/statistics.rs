@@ -82,4 +82,19 @@ impl StatisticsApi {
         }
         self.client.get(&url).await
     }
+
+    pub async fn system_interaction_stats(
+        &self,
+        from: Option<OffsetDateTime>,
+        to: OffsetDateTime,
+    ) -> Response {
+        let mut url = format!(
+            "/api/statistics/v1/dashboard/system/interaction?{}&page=0&pageSize=30",
+            query_time_urlencoded("to", to),
+        );
+        if let Some(from) = from {
+            url = format!("{url}&{}", query_time_urlencoded("from", from))
+        }
+        self.client.get(&url).await
+    }
 }

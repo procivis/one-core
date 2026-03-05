@@ -1,20 +1,23 @@
 use std::collections::HashMap;
 
+use one_core::model::common::GetListResponse;
 use one_core::model::history::{
-    GetHistoryList, GetIssuerStats, GetVerifierStats, History, IssuerSchemaStats, IssuerStats,
-    IssuerTimelines, OrganisationOperationsCount, OrganisationTimelines, TimeSeriesPoint,
-    VerifierSchemaStats, VerifierStats, VerifierTimelines,
+    GetHistoryList, History, IssuerSchemaStats, IssuerStats, IssuerTimelines,
+    OrganisationOperationsCount, OrganisationTimelines, SystemInteractionCounts,
+    SystemInteractionStats, TimeSeriesPoint, VerifierSchemaStats, VerifierStats, VerifierTimelines,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
 use sea_orm::ActiveValue::Set;
+use shared_types::EntityId;
 use time::{Duration, Month, OffsetDateTime};
 
 use crate::common::calculate_pages_count;
 use crate::entity::history;
 use crate::entity::history::{HistoryAction, HistoryEntityType};
 use crate::history::model::{
-    IssuerStatsRow, OrganisationOpsCount, TimeResolution, TimeSeriesRow, VerifierStatsRow,
+    IssuerStatsRow, OrganisationOpsCount, PaginatedStats, SystemInteractionStatsRow,
+    TimeResolution, TimeSeriesRow, VerifierStatsRow,
 };
 
 impl TryFrom<history::Model> for History {
@@ -338,73 +341,130 @@ pub(super) fn to_ops_org_count(
     Ok(result)
 }
 
-pub(super) fn map_to_issuer_stats(
-    current: Vec<IssuerStatsRow>,
-    prev: Option<Vec<IssuerStatsRow>>,
-    count: u64,
-    limit: Option<u64>,
-) -> GetIssuerStats {
-    let add_missing_zeros = prev.is_some();
-    let prev_map = prev
-        .unwrap_or_default()
-        .into_iter()
-        .map(|r| (r.credential_schema_id, IssuerStats::from(r)))
-        .collect::<HashMap<_, _>>();
-    let values = current
-        .into_iter()
-        .map(|r| {
-            let mut previous = prev_map.get(&r.credential_schema_id).cloned();
-            if add_missing_zeros && previous.is_none() {
-                // Previous values are missing for the particular schema, fill in with zeros
-                previous = Some(IssuerStats::default());
-            }
-            IssuerSchemaStats {
-                credential_schema_id: r.credential_schema_id,
-                credential_schema_name: r.name.clone(),
-                previous,
-                current: r.into(),
-            }
-        })
-        .collect();
-    GetIssuerStats {
-        values,
-        total_pages: calculate_pages_count(count, limit.unwrap_or(0)),
-        total_items: count,
+pub(super) trait PaginatedStatsRow: Clone {
+    fn entity_id(&self) -> EntityId;
+
+    fn clone_zeroed(&self) -> Self;
+}
+
+pub(super) trait FromPrevAndCurrentStats<T> {
+    fn from_prev_and_current(prev: Option<T>, current: T) -> Self;
+}
+impl PaginatedStatsRow for IssuerStatsRow {
+    fn entity_id(&self) -> EntityId {
+        self.credential_schema_id.into()
+    }
+
+    fn clone_zeroed(&self) -> Self {
+        Self {
+            credential_schema_id: self.credential_schema_id,
+            name: self.name.clone(),
+            issued: 0,
+            suspended: 0,
+            reactivated: 0,
+            revoked: 0,
+            error: 0,
+        }
     }
 }
 
-pub(super) fn map_to_verifier_stats(
-    current: Vec<VerifierStatsRow>,
-    prev: Option<Vec<VerifierStatsRow>>,
-    count: u64,
+impl FromPrevAndCurrentStats<IssuerStatsRow> for IssuerSchemaStats {
+    fn from_prev_and_current(prev: Option<IssuerStatsRow>, current: IssuerStatsRow) -> Self {
+        Self {
+            credential_schema_id: current.credential_schema_id,
+            credential_schema_name: current.name.clone(),
+            previous: prev.map(IssuerStats::from),
+            current: current.into(),
+        }
+    }
+}
+
+impl PaginatedStatsRow for VerifierStatsRow {
+    fn entity_id(&self) -> EntityId {
+        self.proof_schema_id.into()
+    }
+
+    fn clone_zeroed(&self) -> Self {
+        Self {
+            proof_schema_id: self.proof_schema_id,
+            name: self.name.clone(),
+            accepted: 0,
+            rejected: 0,
+            error: 0,
+        }
+    }
+}
+impl FromPrevAndCurrentStats<VerifierStatsRow> for VerifierSchemaStats {
+    fn from_prev_and_current(prev: Option<VerifierStatsRow>, current: VerifierStatsRow) -> Self {
+        Self {
+            proof_schema_id: current.proof_schema_id,
+            proof_schema_name: current.name.clone(),
+            previous: prev.map(VerifierStats::from),
+            current: current.into(),
+        }
+    }
+}
+
+impl PaginatedStatsRow for SystemInteractionStatsRow {
+    fn entity_id(&self) -> EntityId {
+        self.organisation_id.into()
+    }
+
+    fn clone_zeroed(&self) -> Self {
+        Self {
+            organisation_id: self.organisation_id,
+            issued: 0,
+            accepted: 0,
+            credential_lifecycle_operation: 0,
+            error: 0,
+        }
+    }
+}
+
+impl FromPrevAndCurrentStats<SystemInteractionStatsRow> for SystemInteractionStats {
+    fn from_prev_and_current(
+        prev: Option<SystemInteractionStatsRow>,
+        current: SystemInteractionStatsRow,
+    ) -> Self {
+        Self {
+            organisation_id: current.organisation_id,
+            previous: prev.map(SystemInteractionCounts::from),
+            current: current.into(),
+        }
+    }
+}
+
+pub(super) fn paginated_stats_to_list_response<IN, OUT>(
+    paginated_stats: PaginatedStats<IN>,
     limit: Option<u64>,
-) -> GetVerifierStats {
-    let add_missing_zeros = prev.is_some();
-    let prev_map = prev
+) -> GetListResponse<OUT>
+where
+    IN: PaginatedStatsRow,
+    OUT: FromPrevAndCurrentStats<IN>,
+{
+    let add_missing_zeros = paginated_stats.previous.is_some();
+    let prev_map = paginated_stats
+        .previous
         .unwrap_or_default()
         .into_iter()
-        .map(|r| (r.proof_schema_id, VerifierStats::from(r)))
+        .map(|r| (r.entity_id(), r))
         .collect::<HashMap<_, _>>();
-    let values = current
+    let values = paginated_stats
+        .current
         .into_iter()
         .map(|r| {
-            let mut previous = prev_map.get(&r.proof_schema_id).cloned();
+            let mut previous = prev_map.get(&r.entity_id()).cloned();
             if add_missing_zeros && previous.is_none() {
                 // Previous values are missing for the particular schema, fill in with zeros
-                previous = Some(VerifierStats::default());
+                previous = Some(r.clone_zeroed());
             }
-            VerifierSchemaStats {
-                proof_schema_id: r.proof_schema_id,
-                proof_schema_name: r.name.clone(),
-                previous,
-                current: r.into(),
-            }
+            OUT::from_prev_and_current(previous, r)
         })
         .collect();
-    GetVerifierStats {
+    GetListResponse {
         values,
-        total_pages: calculate_pages_count(count, limit.unwrap_or(0)),
-        total_items: count,
+        total_pages: calculate_pages_count(paginated_stats.total_items, limit.unwrap_or(0)),
+        total_items: paginated_stats.total_items,
     }
 }
 
@@ -426,6 +486,17 @@ impl From<IssuerStatsRow> for IssuerStats {
             reactivated_count: value.reactivated as usize,
             revoked_count: value.revoked as usize,
             error_count: value.error as usize,
+        }
+    }
+}
+
+impl From<SystemInteractionStatsRow> for SystemInteractionCounts {
+    fn from(value: SystemInteractionStatsRow) -> Self {
+        Self {
+            issued_count: value.issued as usize,
+            verified_count: value.accepted as usize,
+            error_count: value.error as usize,
+            credential_lifecycle_operation_count: value.credential_lifecycle_operation as usize,
         }
     }
 }
