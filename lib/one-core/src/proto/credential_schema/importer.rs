@@ -19,7 +19,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO,
 };
-use crate::service::error::{BusinessLogicError, MissingProviderError};
+use crate::service::error::MissingProviderError;
 
 const DATE_TIME_NO_MILLIS: EncodedConfig = Config::DEFAULT
     .set_formatted_components(FormattedComponents::DateTime)
@@ -78,9 +78,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             &credential_schema,
             &conflicting_credential_schemas,
         ) {
-            return Err(BusinessLogicError::CredentialSchemaAlreadyExists
-                .error_while("checking name conflict")
-                .into());
+            return Err(Error::AlreadyExists);
         }
 
         if credential_schema_with_same_name_exists(
@@ -98,10 +96,9 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             .await
             .map_err(|e| {
                 if matches!(e, DataLayerError::AlreadyExists) {
-                    BusinessLogicError::CredentialSchemaAlreadyExists
-                        .error_while("creating credential schema")
+                    Error::AlreadyExists
                 } else {
-                    e.error_while("creating credential schema")
+                    e.error_while("creating credential schema").into()
                 }
             })?;
 

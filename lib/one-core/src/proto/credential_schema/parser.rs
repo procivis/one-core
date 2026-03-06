@@ -13,7 +13,7 @@ use super::dto::{
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
 };
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
@@ -26,7 +26,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
+use crate::service::error::MissingProviderError;
 
 pub(crate) struct CredentialSchemaImportParserImpl {
     config: Arc<CoreConfig>,
@@ -140,11 +140,7 @@ impl CredentialSchemaImportParserImpl {
         {
             Ok(Some(revocation_method_type.clone()))
         } else {
-            Err(
-                BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat
-                    .error_while("checking revocation")
-                    .into(),
-            )
+            Err(Error::RevocationMethodNotCompatibleWithSelectedFormat)
         }
     }
 
@@ -161,20 +157,12 @@ impl CredentialSchemaImportParserImpl {
         match allow_suspension {
             Some(true) => {
                 if !operations.contains(&Operation::Suspend) {
-                    return Err(
-                        BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod
-                            .error_while("checking suspension")
-                            .into(),
-                    );
+                    return Err(Error::SuspensionNotAvailableForSelectedRevocationMethod);
                 }
             }
             _ => {
                 if operations == vec![Operation::Suspend] {
-                    return Err(
-                        BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod
-                            .error_while("checking suspension")
-                            .into(),
-                    );
+                    return Err(Error::SuspensionNotEnabledForSuspendOnlyRevocationMethod);
                 }
             }
         };
@@ -193,9 +181,7 @@ impl CredentialSchemaImportParserImpl {
                 .features
                 .contains(&Features::SupportsCredentialDesign)
         {
-            return Err(BusinessLogicError::LayoutPropertiesNotSupported
-                .error_while("checking design")
-                .into());
+            return Err(Error::LayoutPropertiesNotSupported);
         }
 
         let Some(layout_properties) = layout_properties else {
@@ -241,9 +227,7 @@ impl CredentialSchemaImportParserImpl {
         // to have generated the schema_id if it was not set manually.
         let is_schema_id_required = features.contains(&Features::SupportsSchemaId);
         if is_schema_id_required && schema_id.is_empty() {
-            return Err(BusinessLogicError::MissingSchemaId
-                .error_while("checking schemaId")
-                .into());
+            return Err(Error::MissingSchemaId);
         }
         Ok(schema_id)
     }
@@ -264,9 +248,7 @@ impl CredentialSchemaImportParserImpl {
         formatter: &dyn CredentialFormatter,
     ) -> Result<Vec<ClaimSchema>, Error> {
         if claim_schemas.is_empty() {
-            return Err(ValidationError::CredentialSchemaMissingClaims
-                .error_while("checking claims")
-                .into());
+            return Err(Error::MissingClaims);
         }
         self.validate_top_level_claims_mdoc_types(format, &claim_schemas)?;
         self.parse_level_claim_schemas(now, None, claim_schemas, formatter)
@@ -334,20 +316,14 @@ impl CredentialSchemaImportParserImpl {
         formatter: &dyn CredentialFormatter,
     ) -> Result<String, Error> {
         if key.find(NESTED_CLAIM_MARKER).is_some() {
-            return Err(
-                ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(key)
-                    .error_while("checking claims")
-                    .into(),
-            );
+            return Err(Error::ClaimSchemaSlashInKeyName(key));
         }
         if formatter
             .get_capabilities()
             .forbidden_claim_names
             .contains(&key)
         {
-            return Err(ValidationError::ForbiddenClaimName
-                .error_while("checking claims")
-                .into());
+            return Err(Error::ForbiddenClaimName);
         }
 
         const MAX_KEY_LENGTH: usize = 255;
@@ -356,9 +332,7 @@ impl CredentialSchemaImportParserImpl {
             Some(parent_key) => format!("{parent_key}{NESTED_CLAIM_MARKER}{key}"),
         };
         if flattened_key.len() > MAX_KEY_LENGTH {
-            return Err(BusinessLogicError::ClaimSchemaKeyTooLong
-                .error_while("checking claims")
-                .into());
+            return Err(Error::ClaimSchemaKeyTooLong);
         }
         Ok(flattened_key)
     }
@@ -415,20 +389,16 @@ impl CredentialSchemaImportParserImpl {
         claim_shema_key: &str,
         claim_type: &DatatypeType,
         claim_schema_claims: &[ImportCredentialSchemaClaimSchemaDTO],
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Error> {
         match claim_type {
             DatatypeType::Object => {
                 if claim_schema_claims.is_empty() {
-                    return Err(ValidationError::CredentialSchemaMissingNestedClaims(
-                        claim_shema_key.to_owned(),
-                    ));
+                    return Err(Error::MissingNestedClaims(claim_shema_key.to_owned()));
                 }
             }
             _ => {
                 if !claim_schema_claims.is_empty() {
-                    return Err(ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(
-                        claim_shema_key.to_owned(),
-                    ));
+                    return Err(Error::NestedClaimsShouldBeEmpty(claim_shema_key.to_owned()));
                 }
             }
         }
@@ -438,9 +408,9 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn validate_claim_schema_keys_unique(
         &self,
         claim_schemas: &[ImportCredentialSchemaClaimSchemaDTO],
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Error> {
         if !claim_schemas.iter().map(|c| &c.key).all_unique() {
-            return Err(ValidationError::CredentialSchemaDuplicitClaim);
+            return Err(Error::DuplicitClaim);
         }
         Ok(())
     }
@@ -450,19 +420,17 @@ impl CredentialSchemaImportParserImpl {
         claim_name: &str,
         datatype: &str,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Error> {
         if !formatter
             .get_capabilities()
             .datatypes
             .iter()
             .any(|d| d == datatype)
         {
-            return Err(
-                ValidationError::CredentialSchemaClaimSchemaUnsupportedDatatype {
-                    claim_name: claim_name.to_owned(),
-                    data_type: datatype.to_owned(),
-                },
-            );
+            return Err(Error::ClaimSchemaUnsupportedDatatype {
+                claim_name: claim_name.to_owned(),
+                data_type: datatype.to_owned(),
+            });
         };
         Ok(())
     }
@@ -484,11 +452,7 @@ impl CredentialSchemaImportParserImpl {
                 .error_while("checking claims")?
                 .r#type;
             if data_type != DatatypeType::Object {
-                return Err(
-                    BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
-                        .error_while("checking claims")
-                        .into(),
-                );
+                return Err(Error::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed);
             }
         }
         Ok(())
@@ -509,9 +473,7 @@ impl CredentialSchemaImportParserImpl {
                 background_color: None,
                 image: Some(image.into()),
             }),
-            _ => Err(ValidationError::AttributeCombinationNotAllowed
-                .error_while("checking logo")
-                .into()),
+            _ => Err(Error::AttributeCombinationNotAllowed),
         }
     }
 
@@ -528,9 +490,7 @@ impl CredentialSchemaImportParserImpl {
                 color: None,
                 image: Some(image.into()),
             }),
-            _ => Err(ValidationError::AttributeCombinationNotAllowed
-                .error_while("checking background")
-                .into()),
+            _ => Err(Error::AttributeCombinationNotAllowed),
         }
     }
 
@@ -549,11 +509,7 @@ impl CredentialSchemaImportParserImpl {
         if claim_schemas.iter().any(|c| c.key == attribute) {
             Ok(attribute)
         } else {
-            Err(
-                ValidationError::MissingLayoutAttribute(attribute_name.to_owned())
-                    .error_while("checking layout")
-                    .into(),
-            )
+            Err(Error::MissingLayoutAttribute(attribute_name.to_owned()))
         }
     }
 
@@ -571,11 +527,7 @@ impl CredentialSchemaImportParserImpl {
                 r#type: code_properties.r#type,
             })
         } else {
-            Err(
-                ValidationError::MissingLayoutAttribute("Code attribute".to_owned())
-                    .error_while("checking code")
-                    .into(),
-            )
+            Err(Error::MissingLayoutAttribute("Code attribute".to_owned()))
         }
     }
 }
@@ -589,6 +541,7 @@ mod test {
     use time::OffsetDateTime;
     use uuid::Uuid;
 
+    use super::Error;
     use crate::config::core_config::{
         ConfigEntryDisplay, CoreConfig, DatatypeType, Fields, FormatType, RevocationType,
     };
@@ -607,7 +560,6 @@ mod test {
     use crate::provider::revocation::MockRevocationMethod;
     use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
     use crate::provider::revocation::provider::MockRevocationMethodProvider;
-    use crate::service::error::ValidationError;
     use crate::service::test_utilities::{generic_config, get_dummy_date};
 
     fn setup_parser(
@@ -1470,7 +1422,7 @@ mod test {
         let result = parser.validate_claim_schema_keys_unique(&claims);
 
         // then
-        let_assert!(Err(ValidationError::CredentialSchemaDuplicitClaim) = result);
+        let_assert!(Err(Error::DuplicitClaim) = result);
     }
 
     #[test]

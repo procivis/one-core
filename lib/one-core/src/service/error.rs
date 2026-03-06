@@ -163,9 +163,6 @@ pub enum BusinessLogicError {
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
 
-    #[error("Credential schema already exists")]
-    CredentialSchemaAlreadyExists,
-
     #[error("Key already exists")]
     KeyAlreadyExists,
 
@@ -231,15 +228,6 @@ pub enum BusinessLogicError {
     #[error("Credential state is Revoked or Suspended and cannot be shared")]
     CredentialIsRevokedOrSuspended,
 
-    #[error("Revocation method not compatible with selected format")]
-    RevocationMethodNotCompatibleWithSelectedFormat,
-
-    #[error("Suspension not supported for revocation method")]
-    SuspensionNotAvailableForSelectedRevocationMethod,
-
-    #[error("Suspension not enabled for suspend-only revocation method")]
-    SuspensionNotEnabledForSuspendOnlyRevocationMethod,
-
     #[error("Incompatible issuance did method")]
     IncompatibleIssuanceDidMethod,
 
@@ -257,15 +245,6 @@ pub enum BusinessLogicError {
 
     #[error("Incompatible proof verification identifier")]
     IncompatibleProofVerificationIdentifier,
-
-    #[error("Invalid claim type (mdoc top level only objects allowed)")]
-    InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
-
-    #[error("Missing schema ID")]
-    MissingSchemaId,
-
-    #[error("Claim schema key exceeded max length (255)")]
-    ClaimSchemaKeyTooLong,
 
     #[error("Unsupported key type for CSR")]
     UnsupportedKeyTypeForCSR,
@@ -299,9 +278,6 @@ pub enum BusinessLogicError {
 
     #[error("Error while importing proof request schema: {0}")]
     ProofSchemaImport(#[from] ProofSchemaImportError),
-
-    #[error("Layout properties are not supported")]
-    LayoutPropertiesNotSupported,
 
     #[error("Multiple matching trust anchors")]
     MultipleMatchingTrustAnchors,
@@ -390,24 +366,6 @@ pub enum ValidationError {
     #[error("Credential schema: Missing claims")]
     CredentialSchemaMissingClaims,
 
-    #[error("Credential schema: Missing nested claims for type '{0}'")]
-    CredentialSchemaMissingNestedClaims(String),
-
-    #[error("Credential schema: Nested claims should be empty for type '{0}'")]
-    CredentialSchemaNestedClaimsShouldBeEmpty(String),
-
-    #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
-    CredentialSchemaClaimSchemaSlashInKeyName(String),
-
-    #[error("Credential schema: Duplicit claim schema")]
-    CredentialSchemaDuplicitClaim,
-
-    #[error("Credential schema: Claim `{claim_name}` data type {data_type} is unsupported")]
-    CredentialSchemaClaimSchemaUnsupportedDatatype {
-        claim_name: String,
-        data_type: String,
-    },
-
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
 
@@ -436,20 +394,11 @@ pub enum ValidationError {
     #[error("Did not found")]
     DidNotFound,
 
-    #[error("Layout attribute doesn't exists: `{0}`")]
-    MissingLayoutAttribute(String),
-
-    #[error("Attribute combination not allowed")]
-    AttributeCombinationNotAllowed,
-
     #[error("Nested claims in arrays cannot be requested")]
     NestedClaimInArrayRequested,
 
     #[error("Schema id not allowed for format")]
     SchemaIdNotAllowedForFormat,
-
-    #[error("Forbidden claim name")]
-    ForbiddenClaimName,
 
     #[error("Invalid mdl parameters")]
     InvalidMdlParameters,
@@ -637,7 +586,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
             Self::IdentifierIsDeactivated(_) => ErrorCode::BR_0027,
-            Self::CredentialSchemaAlreadyExists => ErrorCode::BR_0007,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
             Self::ProofSchemaAlreadyExists => ErrorCode::BR_0015,
             Self::InvalidProofState { .. } => ErrorCode::BR_0013,
@@ -656,13 +604,10 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             Self::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
             Self::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
-            Self::RevocationMethodNotCompatibleWithSelectedFormat => ErrorCode::BR_0110,
             Self::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
             Self::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
             Self::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
             Self::IncompatibleProofVerificationKeyStorage => ErrorCode::BR_0158,
-            Self::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => ErrorCode::BR_0117,
-            Self::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
             Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
             Self::IncorrectDisclosureLevel => ErrorCode::BR_0130,
             Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
@@ -673,14 +618,10 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
             Self::ProofSchemaImport(_) => ErrorCode::BR_0135,
-            Self::MissingSchemaId => ErrorCode::BR_0138,
-            Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
-            Self::SuspensionNotAvailableForSelectedRevocationMethod => ErrorCode::BR_0162,
             Self::MultipleMatchingTrustAnchors => ErrorCode::BR_0179,
             Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
-            Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
             Self::InvalidProofRole { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
             Self::InvalidHolderIdentifier(_) => ErrorCode::BR_0217,
@@ -711,7 +652,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
             Self::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
             Self::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
-            Self::CredentialSchemaDuplicitClaim => ErrorCode::BR_0133,
             Self::ProofSchemaMissingClaims => ErrorCode::BR_0164,
             Self::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
             Self::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
@@ -723,13 +663,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidDatatype { .. } => ErrorCode::BR_0061,
             Self::DidNotFound => ErrorCode::BR_0024,
             Self::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
-            Self::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
-            Self::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
-            Self::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
-            Self::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
-            Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
             Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
-            Self::ForbiddenClaimName => ErrorCode::BR_0145,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,
             Self::ProofSchemaSharingNotSupported => ErrorCode::BR_0163,
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
@@ -750,7 +684,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
             Self::TrustEntityTypeInvalid => ErrorCode::BR_0230,
             Self::TrustEntitySubjectKeyIdentifierDoesNotMatch => ErrorCode::BR_0231,
-            Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
             Self::MissingVerificationEngagementConfig(_) => ErrorCode::BR_0077,
             Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,
             Self::InvalidProofEngagement => ErrorCode::BR_0078,
