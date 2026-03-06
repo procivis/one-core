@@ -265,7 +265,7 @@ impl WalletProviderService {
                 action,
                 name: wallet_unit_name,
                 source: HistorySource::Core,
-                target: Some(wallet_unit_id.to_string()),
+                target: None,
                 entity_id: Some(EntityId::from(*wallet_unit_id)),
                 entity_type: HistoryEntityType::WalletUnit,
                 metadata,
