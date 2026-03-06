@@ -1639,6 +1639,65 @@ async fn test_system_interaction_history_stats() {
     assert_eq!(result.values[1].previous.as_ref().unwrap().issued_count, 2);
 }
 
+#[tokio::test]
+async fn test_system_interaction_pagination() {
+    let TestSetup {
+        provider,
+        db,
+        credential_id,
+        ..
+    } = setup_empty().await;
+    let now = OffsetDateTime::now_utc();
+    for i in 0..10 {
+        let org = insert_organisation_to_database(&db, None, None)
+            .await
+            .unwrap();
+        for _ in 0..=i {
+            add_history(
+                &db,
+                HistoryEntityType::Credential,
+                HistoryAction::Issued,
+                Some(credential_id),
+                org,
+                now,
+            )
+            .await;
+        }
+    }
+
+    let to = SystemStatsFilterValue::From(ValueComparison {
+        comparison: ComparisonType::LessThan,
+        value: now + Duration::days(1),
+    })
+    .condition();
+    // Query with pagination
+    let query = SystemInteractionStatsQuery {
+        pagination: Some(ListPagination {
+            page: 2,
+            page_size: 3,
+        }),
+        sorting: Some(ListSorting {
+            column: SortableSystemInteractionStatisticsColumn::Issued,
+            direction: Some(SortDirection::Descending),
+        }),
+        filtering: Some(to),
+        include: None,
+    };
+
+    let result = provider
+        .system_interaction_stats(query, None)
+        .await
+        .unwrap();
+
+    assert_eq!(result.total_items, 10);
+    assert_eq!(result.total_pages, 4);
+    assert_eq!(result.values.len(), 3);
+    // because of sorting by issued
+    assert_eq!(result.values[0].current.issued_count, 4);
+    assert_eq!(result.values[1].current.issued_count, 3);
+    assert_eq!(result.values[2].current.issued_count, 2);
+}
+
 async fn multi_org_test_data(
     org_id: OrganisationId,
     org2_id: OrganisationId,

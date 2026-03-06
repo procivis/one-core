@@ -8,9 +8,10 @@ use one_core::model::history::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
+use sea_orm::sea_query::SelectStatement;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, PaginatorTrait,
-    QueryFilter, QueryOrder, Statement,
+    QueryFilter, QueryOrder,
 };
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
@@ -273,10 +274,8 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let backend = self.db.get_database_backend();
-        let query = issuer_stats_query(&current_query);
-        let current = backend.build(&query);
-        let prev = previous_query.map(|q| backend.build(&issuer_stats_query(&q)));
+        let current = issuer_stats_query(&current_query);
+        let prev = previous_query.map(|q| issuer_stats_query(&q));
         let paginated_stats = self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -291,10 +290,8 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let backend = self.db.get_database_backend();
-        let query = verifier_stats_query(&current_query);
-        let current = backend.build(&query);
-        let prev = previous_query.map(|q| backend.build(&verifier_stats_query(&q)));
+        let current = verifier_stats_query(&current_query);
+        let prev = previous_query.map(|q| verifier_stats_query(&q));
         let paginated_stats = self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -309,10 +306,8 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let backend = self.db.get_database_backend();
-        let query = system_interaction_stats_query(&current_query);
-        let current = backend.build(&query);
-        let prev = previous_query.map(|q| backend.build(&system_interaction_stats_query(&q)));
+        let current = system_interaction_stats_query(&current_query);
+        let prev = previous_query.map(|q| system_interaction_stats_query(&q));
         let paginated_stats: PaginatedStats<SystemInteractionStatsRow> =
             self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
@@ -328,10 +323,8 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let backend = self.db.get_database_backend();
-        let query = system_management_stats_query(&current_query);
-        let current = backend.build(&query);
-        let prev = previous_query.map(|q| backend.build(&system_management_stats_query(&q)));
+        let current = system_management_stats_query(&current_query);
+        let prev = previous_query.map(|q| system_management_stats_query(&q));
         let paginated_stats: PaginatedStats<SystemManagementsStatsRow> =
             self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
@@ -463,14 +456,16 @@ impl HistoryProvider {
 
     async fn collect_paginated_stats<T: FromQueryResult + Send + Sync>(
         &self,
-        current: Statement,
-        prev: Option<Statement>,
+        current: SelectStatement,
+        prev: Option<SelectStatement>,
     ) -> Result<PaginatedStats<T>, DataLayerError> {
-        let (current, count, prev) = tokio::join!(
-            T::find_by_statement(current.clone()).all(&self.db),
-            T::find_by_statement(current).count(&self.db),
+        let backend = self.db.get_database_backend();
+        let (count, current, prev) = tokio::join!(
+            T::find_by_statement(backend.build(current.clone().reset_limit().reset_offset()))
+                .count(&self.db),
+            T::find_by_statement(backend.build(&current)).all(&self.db),
             async {
-                let result = T::find_by_statement(prev?)
+                let result = T::find_by_statement(backend.build(&prev?))
                     .all(&self.db)
                     .await
                     .map_err(|err| DataLayerError::Db(err.into()));
