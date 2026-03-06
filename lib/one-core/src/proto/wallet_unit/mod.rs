@@ -87,9 +87,8 @@ pub(crate) enum Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MappingError(_) | Self::JsonSerialization(_) | Self::Encoding(_) => {
-                ErrorCode::BR_0000
-            }
+            Self::JsonSerialization(_) | Self::Encoding(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

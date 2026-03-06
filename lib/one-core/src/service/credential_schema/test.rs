@@ -8,7 +8,18 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
+use super::CredentialSchemaService;
+use super::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaTransactionCodeRequestDTO, GetCredentialSchemaQueryDTO,
+    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
+};
+use super::error::CredentialSchemaServiceError;
+use super::mapper::{renest_claim_schemas, unnest_claim_schemas};
 use super::validator::{
     check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
 };
@@ -38,19 +49,6 @@ use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::credential_schema::CredentialSchemaService;
-use crate::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
-    CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaTransactionCodeRequestDTO,
-    GetCredentialSchemaQueryDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
-};
-use crate::service::credential_schema::mapper::{renest_claim_schemas, unnest_claim_schemas};
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
 use crate::service::test_utilities::{
     dummy_organisation, generic_config, generic_formatter_capabilities, get_dummy_date,
 };
@@ -181,16 +179,12 @@ async fn test_get_credential_schema_deleted() {
 
     let result = service.get_credential_schema(&schema.id).await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))
-    )));
+    assert!(result.is_err_and(|e| matches!(e, CredentialSchemaServiceError::NotFound(_))));
 }
 
 #[tokio::test]
-async fn test_get_credential_schema_fail() {
+async fn test_get_credential_schema_fail_organisation_missing() {
     let mut repository = MockCredentialSchemaRepository::default();
-    let organisation_repository = MockOrganisationRepository::default();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
@@ -209,14 +203,14 @@ async fn test_get_credential_schema_fail() {
 
     let service = setup_service(
         repository,
-        organisation_repository,
+        MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
-    let organisation_is_none = service.get_credential_schema(&schema.id).await;
-    assert!(organisation_is_none.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
+    let result = service.get_credential_schema(&schema.id).await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0047);
 }
 
 #[tokio::test]
@@ -687,9 +681,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::Validation(ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(
-            _
-        ))
+        CredentialSchemaServiceError::ClaimSchemaSlashInKeyName(_)
     ));
 }
 
@@ -748,9 +740,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::Validation(ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(
-            _
-        ))
+        CredentialSchemaServiceError::NestedClaimsShouldBeEmpty(_)
     ));
 }
 
@@ -794,7 +784,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::Validation(ValidationError::CredentialSchemaMissingNestedClaims(_))
+        CredentialSchemaServiceError::MissingNestedClaims(_)
     ));
 }
 
@@ -936,10 +926,7 @@ async fn test_create_credential_schema_unique_name_error() {
             transaction_code: None,
         })
         .await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::BusinessLogic(BusinessLogicError::CredentialSchemaAlreadyExists)
-    )));
+    assert!(result.is_err_and(|e| matches!(e, CredentialSchemaServiceError::AlreadyExists)));
 }
 
 #[tokio::test]
@@ -991,7 +978,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::Validation(ValidationError::CredentialSchemaDuplicitClaim)
+        CredentialSchemaServiceError::DuplicitClaim
     ));
 
     let result = service
@@ -1034,7 +1021,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::Validation(ValidationError::CredentialSchemaDuplicitClaim)
+        CredentialSchemaServiceError::DuplicitClaim
     ));
 }
 
@@ -1150,10 +1137,9 @@ async fn test_create_credential_schema_fail_validation() {
             transaction_code: None,
         })
         .await;
-    assert!(no_claims.is_err_and(|e| matches!(
-        e,
-        ServiceError::Validation(ValidationError::CredentialSchemaMissingClaims)
-    )));
+    assert!(
+        no_claims.is_err_and(|e| matches!(e, CredentialSchemaServiceError::MissingClaimSchemas))
+    );
 }
 
 #[tokio::test]
@@ -1246,7 +1232,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
 
     assert!(result.is_err_and(|e| matches!(
         e,
-        ServiceError::Validation(ValidationError::KeyStorageSecurityDisabled(_))
+        CredentialSchemaServiceError::KeyStorageSecurityDisabled(_)
     )));
 }
 
@@ -1336,10 +1322,9 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         })
         .await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::BusinessLogic(BusinessLogicError::MissingOrganisation(_))
-    )));
+    assert!(
+        result.is_err_and(|e| matches!(e, CredentialSchemaServiceError::MissingOrganisation(_)))
+    );
 }
 
 #[tokio::test]
@@ -1400,9 +1385,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::BusinessLogic(
-            BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat
-        )
+        CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat
     ));
 }
 
@@ -1481,9 +1464,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::BusinessLogic(
-            BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
-        )
+        CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
     ));
 }
 
@@ -1547,7 +1528,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::BusinessLogic(BusinessLogicError::SchemaIdNotAllowed)
+        CredentialSchemaServiceError::SchemaIdNotAllowed
     ));
 }
 
@@ -1594,9 +1575,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
         .await;
     assert!(matches!(
         first_level_fail,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::ClaimSchemaKeyTooLong
-        ))
+        Err(CredentialSchemaServiceError::ClaimSchemaKeyTooLong)
     ));
 
     let nested_fail = service
@@ -1629,9 +1608,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
         .await;
     assert!(matches!(
         nested_fail,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::ClaimSchemaKeyTooLong
-        ))
+        Err(CredentialSchemaServiceError::ClaimSchemaKeyTooLong)
     ));
 
     let unicode_len_fail = service
@@ -1658,9 +1635,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
         .await;
     assert!(matches!(
         unicode_len_fail,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::ClaimSchemaKeyTooLong
-        ))
+        Err(CredentialSchemaServiceError::ClaimSchemaKeyTooLong)
     ));
 }
 
@@ -2103,9 +2078,7 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
     }];
     assert!(matches!(
         renest_claim_schemas(request),
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::MissingParentClaimSchema { .. }
-        ))
+        Err(CredentialSchemaServiceError::MissingParentClaimSchema { .. })
     ));
 }
 
@@ -2213,7 +2186,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))) = check_claims_presence_in_layout_properties(&request)
+        let Err(CredentialSchemaServiceError::MissingLayoutAttribute(_)) = check_claims_presence_in_layout_properties(&request)
     )
 }
 
@@ -2243,7 +2216,7 @@ fn test_background_attributes_combination_failed_both() {
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_background_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_background_properties(&request)
     )
 }
 
@@ -2268,7 +2241,7 @@ fn test_background_attributes_combination_failed_none() {
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_background_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_background_properties(&request)
     )
 }
 
@@ -2411,7 +2384,7 @@ fn test_logo_attributes_combination_mix1_fail() {
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
     )
 }
 
@@ -2442,7 +2415,7 @@ fn test_logo_attributes_combination_mix2_fail() {
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
     )
 }
 
@@ -2468,7 +2441,7 @@ fn test_logo_attributes_combination_mix3_fail() {
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
     )
 }
 
@@ -2494,7 +2467,7 @@ fn test_logo_attributes_combination_empty_fail() {
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
     )
 }
 
@@ -2523,7 +2496,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))) = check_claims_presence_in_layout_properties(&request)
+        let Err(CredentialSchemaServiceError::MissingLayoutAttribute(_)) = check_claims_presence_in_layout_properties(&request)
     )
 }
 
@@ -2766,12 +2739,10 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
 
     // then
     let_assert!(
-        ServiceError::Validation(
-            ValidationError::CredentialSchemaClaimSchemaUnsupportedDatatype {
-                claim_name,
-                data_type
-            }
-        ) = result
+        CredentialSchemaServiceError::ClaimSchemaUnsupportedDatatype {
+            claim_name,
+            data_type
+        } = result
     );
     assert2::assert!(claim_name == "location");
     assert2::assert!(data_type == "OBJECT");
@@ -2807,10 +2778,7 @@ async fn test_create_credential_schema_fail_session_org_mismatch() {
             transaction_code: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -2867,9 +2835,7 @@ async fn test_create_credential_schema_fail_tx_code_not_supported() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::TransactionCodeNotSupported
-        ))
+        Err(CredentialSchemaServiceError::TransactionCodeNotSupported)
     ));
 }
 
@@ -2928,9 +2894,7 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::InvalidTransactionCodeDescriptionLength
-        ))
+        Err(CredentialSchemaServiceError::InvalidTransactionCodeDescriptionLength)
     ));
 }
 
@@ -2959,10 +2923,7 @@ async fn test_list_credential_schema_fail_session_org_mismatch() {
             },
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -2984,24 +2945,18 @@ async fn test_credential_schema_ops_session_org_mismatch() {
     };
 
     let result = service.get_credential_schema(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+
     let result = service
         .delete_credential_schema(&Uuid::new_v4().into())
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+
     let result = service
         .share_credential_schema(&Uuid::new_v4().into())
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+
     let result = service
         .import_credential_schema(ImportCredentialSchemaRequestDTO {
             organisation_id: Uuid::new_v4().into(),
@@ -3025,8 +2980,5 @@ async fn test_credential_schema_ops_session_org_mismatch() {
             },
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }

@@ -175,7 +175,7 @@ pub enum KeySelectionError {
 impl ErrorCodeMixin for KeySelectionError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             _ => ErrorCode::BR_0330,
         }
     }

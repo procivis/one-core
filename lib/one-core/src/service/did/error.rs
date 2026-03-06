@@ -52,7 +52,7 @@ impl ErrorCodeMixin for DidServiceError {
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
             Self::MissingKey(_) => ErrorCode::BR_0037,
             Self::InvalidKeyStorage(_) => ErrorCode::BR_0040,
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

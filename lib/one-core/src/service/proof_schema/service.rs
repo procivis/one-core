@@ -183,7 +183,8 @@ impl ProofSchemaService {
             validate_key_storage_security_supported(
                 credential_schema.key_storage_security,
                 &self.config,
-            )?;
+            )
+            .error_while("validating key storage security")?;
         }
 
         throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)?;

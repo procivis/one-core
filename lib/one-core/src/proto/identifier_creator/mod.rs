@@ -97,7 +97,7 @@ pub(crate) enum Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::CertificateAlreadyExists => ErrorCode::BR_0247,
             Self::IdentifierAlreadyExists => ErrorCode::BR_0240,
             Self::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,

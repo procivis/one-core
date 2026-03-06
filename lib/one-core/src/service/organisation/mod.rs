@@ -5,8 +5,10 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod dto;
+pub mod error;
 mod mapper;
 pub mod service;
+
 #[derive(Clone)]
 pub struct OrganisationService {
     organisation_repository: Arc<dyn OrganisationRepository>,

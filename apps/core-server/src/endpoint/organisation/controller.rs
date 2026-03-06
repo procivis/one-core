@@ -1,6 +1,8 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
+use one_core::service::error::ServiceError;
 use one_dto_mapper::convert_inner;
 use proc_macros::require_permissions;
 use shared_types::{OrganisationId, Permission};
@@ -57,11 +59,14 @@ pub(crate) async fn get_organisations(
     WithRejection(Qs(query), _): WithRejection<Qs<GetOrganisationsQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetOrganisationListResponseRestDTO> {
     let result = async {
-        state
-            .core
-            .organisation_service
-            .get_organisation_list(query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .organisation_service
+                .get_organisation_list(query.try_into()?)
+                .await
+                .error_while("getting organisation list")?,
+        )
     }
     .await;
 

@@ -372,7 +372,8 @@ impl ProofService {
             validate_key_storage_security_supported(
                 credential_schema.key_storage_security,
                 &self.config,
-            )?;
+            )
+            .error_while("validating key storage security")?;
         }
 
         let exchange_type = self

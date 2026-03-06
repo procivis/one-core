@@ -6,6 +6,8 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::OrganisationService;
+use super::dto::CreateOrganisationRequestDTO;
+use super::error::OrganisationServiceError;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::organisation::{
     GetOrganisationList, OrganisationListQuery, OrganisationRelations,
@@ -13,8 +15,6 @@ use crate::model::organisation::{
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::service::organisation::dto::CreateOrganisationRequestDTO;
 use crate::service::test_utilities::dummy_organisation;
 
 fn setup_service(organisation_repository: MockOrganisationRepository) -> OrganisationService {
@@ -81,9 +81,7 @@ async fn test_create_organisation_already_exists() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::OrganisationAlreadyExists
-        ))
+        Err(OrganisationServiceError::AlreadyExists)
     ));
 }
 
@@ -123,12 +121,7 @@ async fn test_get_organisation_failure() {
     let service = setup_service(organisation_repository);
     let result = service.get_organisation(&Uuid::new_v4().into()).await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::EntityNotFound(
-            EntityNotFoundError::Organisation(_)
-        ))
-    ));
+    assert!(matches!(result, Err(OrganisationServiceError::NotFound(_))));
 }
 
 #[tokio::test]

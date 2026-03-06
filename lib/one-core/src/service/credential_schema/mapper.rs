@@ -4,23 +4,21 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaFilterValue, CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
+    CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaQueryDTO,
 };
+use super::error::CredentialSchemaServiceError;
 use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
-use crate::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaDetailResponseDTO, GetCredentialSchemaQueryDTO,
-};
-use crate::service::error::{BusinessLogicError, ServiceError};
 
 impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
-    type Error = ServiceError;
+    type Error = CredentialSchemaServiceError;
 
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
         let claim_schemas = value
@@ -32,7 +30,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
         let claim_schemas = renest_claim_schemas(convert_inner(claim_schemas))?;
 
         let organisation_id = match value.organisation {
-            None => Err(ServiceError::MappingError(
+            None => Err(CredentialSchemaServiceError::MappingError(
                 "Organisation has not been fetched".to_string(),
             )),
             Some(value) => Ok(value.id),
@@ -63,7 +61,7 @@ pub(super) fn create_unique_name_check_request(
     name: &str,
     schema_id: Option<String>,
     organisation_id: OrganisationId,
-) -> Result<GetCredentialSchemaQueryDTO, ServiceError> {
+) -> Result<GetCredentialSchemaQueryDTO, CredentialSchemaServiceError> {
     Ok(GetCredentialSchemaQueryDTO {
         pagination: Some(ListPagination {
             page: 0,
@@ -93,11 +91,9 @@ pub(super) fn from_create_request_with_id(
     organisation: Organisation,
     schema_id: String,
     imported_source_url: String,
-) -> Result<CredentialSchema, ServiceError> {
+) -> Result<CredentialSchema, CredentialSchemaServiceError> {
     if request.claims.is_empty() {
-        return Err(ServiceError::ValidationError(
-            "Claim schemas cannot be empty".to_string(),
-        ));
+        return Err(CredentialSchemaServiceError::MissingClaimSchemas);
     }
 
     let now = OffsetDateTime::now_utc();
@@ -141,7 +137,7 @@ pub(super) fn from_create_request_with_id(
 
 pub(super) fn renest_claim_schemas(
     claim_schemas: Vec<CredentialClaimSchemaDTO>,
-) -> Result<Vec<CredentialClaimSchemaDTO>, ServiceError> {
+) -> Result<Vec<CredentialClaimSchemaDTO>, CredentialSchemaServiceError> {
     let mut result = vec![];
 
     // Iterate over all and copy all unnested claims to new vec
@@ -161,11 +157,9 @@ pub(super) fn renest_claim_schemas(
                         .key
                         .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", result_schema.key))
                 })
-                .ok_or(ServiceError::BusinessLogic(
-                    BusinessLogicError::MissingParentClaimSchema {
-                        claim_schema_id: claim_schema.id,
-                    },
-                ))?;
+                .ok_or(CredentialSchemaServiceError::MissingParentClaimSchema {
+                    claim_schema_id: claim_schema.id,
+                })?;
             claim_schema.key = remove_first_nesting_layer(&claim_schema.key);
 
             matching_entry.claims.push(claim_schema);

@@ -36,7 +36,7 @@ pub(crate) enum Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::TokenExpired => ErrorCode::BR_0358,
             Self::KeyNotFound => ErrorCode::BR_0037,
             Self::Nested(nested) => nested.error_code(),

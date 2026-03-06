@@ -579,9 +579,6 @@ pub enum ErrorCode {
     #[strum(message = "Wallet unit revoked")]
     BR_0261,
 
-    #[strum(message = "No wallet unit registration")]
-    BR_0262,
-
     #[strum(message = "Cannot fetch wallet unit attestation")]
     BR_0264,
 

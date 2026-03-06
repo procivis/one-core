@@ -7,23 +7,21 @@ use super::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListResponseDTO, UpsertOrganisationRequestDTO,
 };
+use super::error::OrganisationServiceError;
+use super::mapper::detail_from_model;
+use super::validator::{validate_wallet_provider, validate_wallet_provider_issuer};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::{OrganisationListQuery, OrganisationRelations};
 use crate::repository::error::DataLayerError;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::service::organisation::mapper::detail_from_model;
-use crate::service::organisation::validator::{
-    validate_wallet_provider, validate_wallet_provider_issuer,
-};
 
 impl OrganisationService {
     /// Returns all existing organisations
     pub async fn get_organisation_list(
         &self,
         query: OrganisationListQuery,
-    ) -> Result<GetOrganisationListResponseDTO, ServiceError> {
+    ) -> Result<GetOrganisationListResponseDTO, OrganisationServiceError> {
         let organisations = self
             .organisation_repository
             .get_organisation_list(query)
@@ -88,7 +86,7 @@ impl OrganisationService {
     pub async fn get_organisation(
         &self,
         id: &OrganisationId,
-    ) -> Result<GetOrganisationDetailsResponseDTO, ServiceError> {
+    ) -> Result<GetOrganisationDetailsResponseDTO, OrganisationServiceError> {
         let organisation = self
             .organisation_repository
             .get_organisation(id, &OrganisationRelations::default())
@@ -96,7 +94,7 @@ impl OrganisationService {
             .error_while("getting organisation")?;
 
         let Some(organisation) = organisation else {
-            return Err(EntityNotFoundError::Organisation(*id).into());
+            return Err(OrganisationServiceError::NotFound(*id));
         };
 
         let wallet_provider_issuer =
@@ -106,9 +104,7 @@ impl OrganisationService {
                         .get(*identifier_id, &Default::default())
                         .await
                         .error_while("getting identifier")?
-                        .ok_or(ServiceError::MappingError(format!(
-                            "Identifier not found: {identifier_id}"
-                        )))?,
+                        .ok_or(OrganisationServiceError::IdentifierNotFound(*identifier_id))?,
                 )
             } else {
                 None
@@ -127,7 +123,7 @@ impl OrganisationService {
     pub async fn create_organisation(
         &self,
         request: CreateOrganisationRequestDTO,
-    ) -> Result<OrganisationId, ServiceError> {
+    ) -> Result<OrganisationId, OrganisationServiceError> {
         let result = self
             .organisation_repository
             .create_organisation(request.into())
@@ -138,9 +134,7 @@ impl OrganisationService {
                 tracing::info!("Created organisation {}", uuid);
                 Ok(uuid)
             }
-            Err(DataLayerError::AlreadyExists) => {
-                Err(BusinessLogicError::OrganisationAlreadyExists.into())
-            }
+            Err(DataLayerError::AlreadyExists) => Err(OrganisationServiceError::AlreadyExists),
             Err(err) => Err(err.error_while("creating organisation").into()),
         }
     }
@@ -148,7 +142,7 @@ impl OrganisationService {
     pub async fn upsert_organisation(
         &self,
         request: UpsertOrganisationRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), OrganisationServiceError> {
         if let Some(Some(issuer)) = request.wallet_provider_issuer {
             let org = self
                 .organisation_repository
@@ -180,9 +174,7 @@ impl OrganisationService {
                 tracing::info!(message = success_log);
                 Ok(())
             }
-            Err(DataLayerError::AlreadyExists) => {
-                Err(BusinessLogicError::OrganisationAlreadyExists.into())
-            }
+            Err(DataLayerError::AlreadyExists) => Err(OrganisationServiceError::AlreadyExists),
             Err(DataLayerError::RecordNotUpdated) => {
                 // Organisation does not exist, create a new one instead.
                 self.create_organisation(request.into()).await?;

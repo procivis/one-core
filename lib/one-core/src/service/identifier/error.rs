@@ -37,7 +37,7 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
             Self::MissingKey(_) => ErrorCode::BR_0037,
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

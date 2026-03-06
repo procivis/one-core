@@ -256,6 +256,7 @@ pub enum CredentialSchemaCodeTypeEnum {
     QrCode,
 }
 
+#[derive(Clone, Debug)]
 pub struct CredentialSchemaShareResponseDTO {
     pub url: String,
 }

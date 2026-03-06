@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use super::CredentialService;
 use crate::config::core_config::CoreConfig;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -934,10 +935,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
         })
         .await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::Validation(ValidationError::KeyStorageSecurityDisabled(_))
-    )));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0309);
 }
 
 #[tokio::test]

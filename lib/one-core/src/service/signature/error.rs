@@ -31,7 +31,7 @@ impl ErrorCodeMixin for SignatureServiceError {
             Self::UnsupportedIdentifierType(_) => ErrorCode::BR_0330,
             Self::IdentifierNotFound(_) => ErrorCode::BR_0207,
             Self::RevocationNotSupported => ErrorCode::BR_0101,
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

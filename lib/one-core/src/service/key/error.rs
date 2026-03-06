@@ -36,7 +36,7 @@ impl ErrorCodeMixin for KeyServiceError {
             Self::InvalidKeyStorage { .. } => ErrorCode::BR_0041,
             Self::InvalidKeyAlgorithm { .. } => ErrorCode::BR_0043,
             Self::UnsupportedKeyType { .. } => ErrorCode::BR_0039,
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

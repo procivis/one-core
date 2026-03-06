@@ -3064,10 +3064,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
     });
 
     let result = service.create_proof(request).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::Validation(ValidationError::KeyStorageSecurityDisabled(_))
-    )));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0309);
 }
 
 #[tokio::test]

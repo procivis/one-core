@@ -95,7 +95,7 @@ pub enum Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::JsonError(_) => ErrorCode::BR_0189,
             Self::NoRevocationMethod(_) => ErrorCode::BR_0098,
             Self::SuspensionNotSupported { .. } => ErrorCode::BR_0162,

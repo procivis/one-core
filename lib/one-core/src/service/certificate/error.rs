@@ -18,7 +18,7 @@ impl ErrorCodeMixin for CertificateServiceError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::NotFound(_) => ErrorCode::BR_0223,
-            Self::MappingError(_) => ErrorCode::BR_0000,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

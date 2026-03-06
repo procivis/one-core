@@ -139,18 +139,12 @@ pub enum EntityNotFoundError {
     #[error("Wallet unit `{0}` not found")]
     WalletUnit(WalletUnitId),
 
-    #[error("Wallet unit attestation by organisation `{0}` not found")]
-    WalletUnitAttestationByOrganisation(OrganisationId),
-
     #[error("Holder wallet unit `{0}` not found")]
     HolderWalletUnit(HolderWalletUnitId),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum BusinessLogicError {
-    #[error("Organisation already exists")]
-    OrganisationAlreadyExists,
-
     #[error("Organisation {0} is deactivated")]
     OrganisationIsDeactivated(OrganisationId),
 
@@ -270,9 +264,6 @@ pub enum BusinessLogicError {
     #[error("Missing schema ID")]
     MissingSchemaId,
 
-    #[error("Schema ID not allowed")]
-    SchemaIdNotAllowed,
-
     #[error("Claim schema key exceeded max length (255)")]
     ClaimSchemaKeyTooLong,
 
@@ -347,12 +338,6 @@ pub enum BusinessLogicError {
 
     #[error("Presentation submission must contain at least one credential")]
     EmptyPresentationSubmission,
-
-    #[error("Identifier does not belong to this organisation")]
-    IdentifierOrganisationMismatch,
-
-    #[error("Wallet provider is already associated to organisation `{0}`")]
-    WalletProviderAlreadyAssociated(OrganisationId),
 
     #[error("Invalid presentation submission: {reason}")]
     InvalidPresentationSubmission { reason: String },
@@ -543,14 +528,8 @@ pub enum ValidationError {
     #[error("Key storage security level `{0}` not supported")]
     KeyStorageSecurityDisabled(KeyStorageSecurity),
 
-    #[error("Transaction code not supported")]
-    TransactionCodeNotSupported,
-
     #[error("Invalid transaction code length")]
     InvalidTransactionCodeLength,
-
-    #[error("Invalid transaction code description length")]
-    InvalidTransactionCodeDescriptionLength,
 
     #[error("Notifications not allowed for protocol: `{protocol}`")]
     NotificationsNotAllowed { protocol: String },
@@ -645,7 +624,6 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Interaction(_) => ErrorCode::BR_0257,
             Self::WalletUnit(_) => ErrorCode::BR_0259,
             Self::HolderWalletUnit(_) => ErrorCode::BR_0296,
-            Self::WalletUnitAttestationByOrganisation(_) => ErrorCode::BR_0262,
             Self::RevocationListEntry(_) => ErrorCode::BR_0000,
         }
     }
@@ -654,7 +632,6 @@ impl ErrorCodeMixin for EntityNotFoundError {
 impl ErrorCodeMixin for BusinessLogicError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::OrganisationAlreadyExists => ErrorCode::BR_0023,
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
             Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
             Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
@@ -697,7 +674,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
             Self::ProofSchemaImport(_) => ErrorCode::BR_0135,
             Self::MissingSchemaId => ErrorCode::BR_0138,
-            Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
             Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
             Self::SuspensionNotAvailableForSelectedRevocationMethod => ErrorCode::BR_0162,
             Self::MultipleMatchingTrustAnchors => ErrorCode::BR_0179,
@@ -718,8 +694,6 @@ impl ErrorCodeMixin for BusinessLogicError {
                 ErrorCode::BR_0242
             }
             Self::EmptyPresentationSubmission => ErrorCode::BR_0246,
-            Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
-            Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
             Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
             Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
@@ -785,9 +759,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::ProofSchemaInvalidCredentialCombination { .. } => ErrorCode::BR_0305,
             Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
-            Self::TransactionCodeNotSupported => ErrorCode::BR_0337,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
-            Self::InvalidTransactionCodeDescriptionLength => ErrorCode::BR_0346,
             Self::NotificationsNotAllowed { .. } => ErrorCode::BR_0372,
         }
     }

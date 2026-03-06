@@ -117,7 +117,8 @@ impl CredentialService {
             &*self.session_provider,
         )?;
 
-        validate_key_storage_security_supported(schema.key_storage_security, &self.config)?;
+        validate_key_storage_security_supported(schema.key_storage_security, &self.config)
+            .error_while("validating key storage security")?;
 
         let claim_schemas = schema
             .claim_schemas

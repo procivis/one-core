@@ -31,8 +31,8 @@ pub enum BackupServiceError {
 impl ErrorCodeMixin for BackupServiceError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MappingError(_)
-            | Self::InvalidPath(_)
+            Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::InvalidPath(_)
             | Self::ChecksumMismatch
             | Self::IO(_)
             | Self::Zip(_)
