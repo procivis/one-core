@@ -590,6 +590,9 @@ pub enum MissingProviderError {
 
     #[error("Cannot find signature provider `{0}`")]
     Signer(String),
+
+    #[error("Cannot find verifier provider `{0}`")]
+    Verifier(String),
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -803,6 +806,7 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::TrustManager(_) => ErrorCode::BR_0132,
             Self::BlobStorage(_) => ErrorCode::BR_0252,
             Self::Signer(_) => ErrorCode::BR_0326,
+            Self::Verifier(_) => ErrorCode::BR_0380,
         }
     }
 }

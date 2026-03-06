@@ -287,3 +287,15 @@ task:
     params:
       public:
         allowInsecureHttpTransport: true
+verifierProvider:
+  PROCIVIS_ONE:
+    params:
+      public:
+        verifierName: "Procivis One Verifier"
+        appVersion:
+          minimum: "v1.50.0"
+          minimumRecommended: "v1.55.0"
+          reject:
+            - "v1.51.0"
+          updateScreen:
+            link: https//example.com

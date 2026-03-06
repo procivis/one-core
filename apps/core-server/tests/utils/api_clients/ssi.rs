@@ -278,4 +278,9 @@ impl SSIApi {
         let url = format!("/ssi/ca/{}", ca_id.into());
         self.client.get(&url).await
     }
+
+    pub async fn get_verifier_provider(&self, id: &str) -> Response {
+        let url = format!("/ssi/verifier-provider/v1/{}", id);
+        self.client.get(&url).await
+    }
 }

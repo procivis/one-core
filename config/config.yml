@@ -18,3 +18,4 @@ credentialIssuer: {}
 verificationEngagement: {}
 certificateValidation: {}
 signer: {}
+verifierProvider: {}

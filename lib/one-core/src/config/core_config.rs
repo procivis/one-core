@@ -65,6 +65,7 @@ pub struct CoreConfig {
     pub verification_engagement: VerificationEngagementConfig,
     pub certificate_validation: CertificateValidationConfig,
     pub signer: SignerConfig,
+    pub verifier_provider: VerifierProviderConfig,
 }
 
 impl CoreConfig {
@@ -815,6 +816,13 @@ pub enum SignerType {
     #[serde(rename = "X509_CERTIFICATE")]
     #[strum(serialize = "X509_CERTIFICATE")]
     X509Certificate,
+}
+
+pub type VerifierProviderConfig = Dict<String, VerifierProviderFields>;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VerifierProviderFields {
+    pub params: Params,
 }
 
 // Alias for the collection of traits we want config keys to implement.

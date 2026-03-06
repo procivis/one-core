@@ -123,6 +123,7 @@ rusty_fork_test! {
             verificationEngagement: {}
             certificateValidation: {}
             signer: {}
+            verifierProvider: {}
         "};
 
         let config3 = indoc::indoc! {"

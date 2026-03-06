@@ -50,6 +50,7 @@ use crate::provider::signer::provider::signer_provider_from_config;
 use crate::provider::task::provider::task_provider_from_config;
 use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
+use crate::provider::verifier::provider::verifier_provider_from_config;
 use crate::provider::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::repository::DataRepository;
 use crate::service::backup::BackupService;
@@ -82,6 +83,7 @@ use crate::service::task::TaskService;
 use crate::service::trust_anchor::TrustAnchorService;
 use crate::service::trust_entity::TrustEntityService;
 use crate::service::vc_api::VCAPIService;
+use crate::service::verifier_provider::VerifierProviderService;
 use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_unit::WalletUnitService;
 
@@ -130,6 +132,7 @@ pub struct OneCore {
     pub signature_service: SignatureService,
     pub nfc_service: NfcService,
     pub statistics_service: StatisticsService,
+    pub verifier_provider_service: VerifierProviderService,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -305,6 +308,8 @@ impl OneCore {
             data_provider.get_revocation_list_repository(),
             session_provider.clone(),
         )?;
+
+        let verifier_provider = verifier_provider_from_config(&config)?;
 
         let identifier_creator = Arc::new(IdentifierCreatorProto::new(
             did_method_provider.clone(),
@@ -743,6 +748,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 session_provider,
             ),
+            verifier_provider_service: VerifierProviderService::new(verifier_provider),
         })
     }
 

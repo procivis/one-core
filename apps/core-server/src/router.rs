@@ -713,6 +713,10 @@ fn get_external_endpoints(
                 get(ssi::controller::ssi_get_certificate_authority),
             )
             .route(
+                "/ssi/verifier-provider/v1/{verifierProvider}",
+                get(ssi::verifier_provider::controller::get_verification_provider)
+            )
+            .route(
                 "/ssi/wallet-unit/v1",
                 post(ssi::wallet_provider::controller::register_wallet_unit)
             )

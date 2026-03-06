@@ -14,4 +14,5 @@ pub mod signer;
 pub mod task;
 pub mod trust_management;
 pub mod verification_protocol;
+pub mod verifier;
 pub mod wallet_provider_client;

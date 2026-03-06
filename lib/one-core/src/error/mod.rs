@@ -793,6 +793,9 @@ pub enum ErrorCode {
     #[strum(message = "Notification not found")]
     BR_0377,
 
+    #[strum(message = "Missing verifier provider")]
+    BR_0380,
+
     #[strum(message = "Invalid signer")]
     BR_0381,
 }
