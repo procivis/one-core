@@ -10,6 +10,12 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialService;
+use super::dto::{
+    CreateCredentialRequestDTO, CredentialRequestClaimDTO, DetailCredentialClaimValueResponseDTO,
+    GetCredentialQueryDTO,
+};
+use super::error::CredentialServiceError;
+use super::validator::validate_create_request;
 use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim::Claim;
@@ -40,20 +46,10 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::credential;
-use crate::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialRequestClaimDTO, DetailCredentialClaimValueResponseDTO,
-    GetCredentialQueryDTO,
-};
-use crate::service::credential::validator::validate_create_request;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
     generic_formatter_capabilities, get_dummy_date,
 };
-use crate::util::key_selection::KeySelectionError;
 
 #[derive(Default)]
 struct Repositories {
@@ -312,12 +308,7 @@ async fn test_delete_credential_failed_credential_missing() {
     });
 
     let result = service.delete_credential(&generic_credential().id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::EntityNotFound(
-            EntityNotFoundError::Credential(_)
-        ))
-    ));
+    assert!(matches!(result, Err(CredentialServiceError::NotFound(_))));
 }
 
 #[tokio::test]
@@ -343,9 +334,7 @@ async fn test_delete_credential_incorrect_state() {
     let result = service.delete_credential(&credential.id).await;
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::InvalidCredentialState { .. }
-        ))
+        Err(CredentialServiceError::InvalidState(_))
     ));
 }
 
@@ -459,10 +448,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let result = result.unwrap();
     assert_eq!(credential.id, result.id);
     assert_eq!(None, result.revocation_date);
-    assert_eq!(
-        credential::dto::CredentialStateEnum::Suspended,
-        result.state
-    );
+    assert_eq!(super::dto::CredentialStateEnum::Suspended, result.state);
     assert_eq!(Some(suspend_end_date), result.suspend_end_date);
 }
 
@@ -491,10 +477,7 @@ async fn test_get_credential_deleted() {
 
     let result = service.get_credential(&credential.id).await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))
-    )));
+    assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::NotFound(_))));
 }
 
 #[tokio::test]
@@ -550,7 +533,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
     });
 
     let result = service.get_credential(&credential.id).await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0047);
 }
 
 #[tokio::test]
@@ -648,10 +631,7 @@ async fn test_share_credential_failed_invalid_state() {
     });
 
     let result = service.share_credential(&credential.id).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::BusinessLogic(BusinessLogicError::InvalidCredentialState { .. })
-    )));
+    assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::InvalidState(_))));
 }
 
 #[tokio::test]
@@ -676,10 +656,7 @@ async fn test_share_credential_failed_inactive_identifier() {
     });
 
     let result = service.share_credential(&credential.id).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::BusinessLogic(BusinessLogicError::IdentifierIsDeactivated(_))
-    )));
+    assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::IdentifierIsDeactivated(_))));
 }
 
 #[tokio::test]
@@ -1044,9 +1021,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
 
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::IncompatibleIssuanceIdentifier
-        ))
+        Err(CredentialServiceError::IncompatibleIssuanceIdentifier)
     ));
 }
 
@@ -1156,9 +1131,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::IncompatibleIssuanceDidMethod
-        ))
+        Err(CredentialServiceError::IncompatibleIssuanceDidMethod)
     ));
 }
 
@@ -1245,9 +1218,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         })
         .await;
 
-    assert2::assert!(
-        let ServiceError::KeySelection(KeySelectionError::DidDeactivated {..}) = result.err().unwrap()
-    );
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -1515,9 +1486,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         .await;
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::CredentialMissingClaim { .. }
-        ))
+        Err(CredentialServiceError::MissingClaimSchema(_))
     ));
 }
 
@@ -1623,9 +1592,7 @@ async fn test_create_credential_schema_deleted() {
         .await;
 
     assert2::assert!(
-        let Err(ServiceError::BusinessLogic(
-            BusinessLogicError::MissingCredentialSchema
-        )) = result
+        let Err(CredentialServiceError::MissingCredentialSchema(_)) = result
     );
 }
 
@@ -1992,12 +1959,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::KeySelection(
-            KeySelectionError::NoKeyMatchingFilter { .. }
-        ))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -2099,12 +2061,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::KeySelection(
-            KeySelectionError::KeyDidMismatch { .. }
-        ))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -2217,12 +2174,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::KeySelection(
-            KeySelectionError::KeyNotMatchingFilter { .. }
-        ))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -2335,12 +2287,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::KeySelection(
-            KeySelectionError::KeyNotMatchingFilter { .. }
-        ))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -2441,9 +2388,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::IncompatibleIssuanceExchangeProtocol
-        ))
+        Err(CredentialServiceError::IncompatibleIssuanceExchangeProtocol)
     ));
 }
 
@@ -2542,9 +2487,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::InvalidRedirectUri
-        ))
+        Err(CredentialServiceError::InvalidRedirectUri)
     ));
 }
 
@@ -2629,7 +2572,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
         .await;
 
     assert2::assert!(
-        let ServiceError::Validation(ValidationError::NotificationsNotAllowed {..}) = result.err().unwrap()
+        let CredentialServiceError::NotificationsNotAllowed {..} = result.err().unwrap()
     );
 }
 
@@ -2851,9 +2794,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     );
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::CredentialMissingClaim { .. }
-        ))
+        Err(CredentialServiceError::MissingClaimSchema(_))
     ));
 }
 
@@ -2946,9 +2887,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     );
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::CredentialMissingClaim { .. }
-        ))
+        Err(CredentialServiceError::MissingClaimSchema(_))
     ));
 
     validate_create_request(
@@ -4389,7 +4328,7 @@ async fn test_get_credential_success_array_single_element() {
 async fn test_create_credential_array(
     claim_schemas: Vec<ClaimSchema>,
     claims: Vec<Claim>,
-) -> Result<CredentialId, ServiceError> {
+) -> Result<CredentialId, CredentialServiceError> {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -4759,10 +4698,7 @@ async fn test_create_credential_session_org_mismatch() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ))
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -4785,10 +4721,7 @@ async fn test_list_credential_session_org_mismatch() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ))
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -4805,19 +4738,12 @@ async fn test_credential_ops_session_org_mismatch() {
     });
 
     let result = service.get_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+
     let result = service.delete_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+
     let result = service.share_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
     // revocation related operations are checked by the credential validity manager
 }

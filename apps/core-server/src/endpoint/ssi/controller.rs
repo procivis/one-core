@@ -10,6 +10,7 @@ use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::certificate::error::CertificateServiceError;
 use one_core::service::did::error::DidServiceError;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
+use one_core::service::revocation_list::error::RevocationServiceError;
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
     RevocationListId, TrustAnchorId,
@@ -151,7 +152,7 @@ pub(crate) async fn get_revocation_list_by_id(
             tracing::error!("Config validation error: {}", error);
             StatusCode::BAD_REQUEST.into_response()
         }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
+        Err(RevocationServiceError::NotFound(_)) => {
             tracing::error!("Missing revocation list");
             (StatusCode::NOT_FOUND, "Missing revocation list").into_response()
         }
@@ -192,7 +193,7 @@ pub(crate) async fn get_crl_by_id(
             result,
         )
             .into_response(),
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
+        Err(RevocationServiceError::NotFound(_)) => {
             tracing::error!("Missing CRL");
             (StatusCode::NOT_FOUND, "Missing CRL").into_response()
         }

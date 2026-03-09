@@ -6,9 +6,12 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CredentialAttestationBlobs, DetailCredentialSchemaResponseDTO, WalletInstanceAttestationDTO,
-    WalletUnitAttestationDTO,
+    CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
+    CredentialListItemResponseDTO, CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
+    MdocMsoValidityResponseDTO, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
+use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
@@ -22,26 +25,22 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::validity_credential::ValidityCredential;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-    CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO, MdocMsoValidityResponseDTO,
-};
-use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
     validity_credential: Option<ValidityCredential>,
     attestation: CredentialAttestationBlobs,
-) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, ServiceError> {
-    let schema = value.schema.ok_or(ServiceError::MappingError(
+) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
+    let schema = value.schema.ok_or(CredentialServiceError::MappingError(
         "credential_schema is None".to_string(),
     ))?;
 
     let claims = value
         .claims
-        .ok_or(ServiceError::MappingError("claims is None".to_string()))?
+        .ok_or(CredentialServiceError::MappingError(
+            "claims is None".to_string(),
+        ))?
         .into_iter()
         .filter(|claim| !claim.schema.as_ref().is_some_and(|s| s.metadata))
         .collect();
@@ -102,12 +101,12 @@ fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
-) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
+) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     let claim_schemas =
         credential_schema
             .claim_schemas
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(CredentialServiceError::MappingError(
                 "claim_schemas is None".to_string(),
             ))?;
 
@@ -125,7 +124,7 @@ fn insert_claim(
     claim: Claim,
     claim_schemas: &[ClaimSchema],
     config: &CoreConfig,
-) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
+) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     match (claim.path.rsplit_once(NESTED_CLAIM_MARKER), &claim.value) {
         (Some((head, _)), Some(_)) => {
             let parent_claim = get_or_insert(&mut root, head, claim_schemas)?;
@@ -133,14 +132,14 @@ fn insert_claim(
             match &mut parent_claim.value {
                 DetailCredentialClaimValueResponseDTO::Nested(claims) => {
                     let claim_schema = claim.schema.as_ref().ok_or_else(|| {
-                        ServiceError::MappingError("claim.schema is missing".into())
+                        CredentialServiceError::MappingError("claim.schema is missing".into())
                     })?;
 
                     let mut credential_claim_schema = claim_schemas
                         .iter()
                         .find(|value| value.key == claim_schema.key)
                         .ok_or_else(|| {
-                            ServiceError::MappingError("claim.schema is unknown".into())
+                            CredentialServiceError::MappingError("claim.schema is unknown".into())
                         })?
                         .clone();
 
@@ -151,22 +150,23 @@ fn insert_claim(
                     claims.push(claim_to_dto(&claim, &credential_claim_schema, config)?);
                 }
                 _ => {
-                    return Err(ServiceError::MappingError(
+                    return Err(CredentialServiceError::MappingError(
                         "Parent claim should be nested".into(),
                     ));
                 }
             }
         }
         (None, Some(_)) => {
-            let claim_schema = claim
-                .schema
-                .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("claim.schema is missing".into()))?;
+            let claim_schema = claim.schema.as_ref().ok_or_else(|| {
+                CredentialServiceError::MappingError("claim.schema is missing".into())
+            })?;
 
             let claim_schema = claim_schemas
                 .iter()
                 .find(|value| value.key == claim_schema.key)
-                .ok_or_else(|| ServiceError::MappingError("claim.schema is unknown".into()))?;
+                .ok_or_else(|| {
+                    CredentialServiceError::MappingError("claim.schema is unknown".into())
+                })?;
 
             root.push(claim_to_dto(&claim, claim_schema, config)?);
         }
@@ -183,7 +183,7 @@ fn get_or_insert<'a>(
     root: &'a mut Vec<DetailCredentialClaimResponseDTO>,
     path: &str,
     claim_schemas: &[ClaimSchema],
-) -> Result<&'a mut DetailCredentialClaimResponseDTO, ServiceError> {
+) -> Result<&'a mut DetailCredentialClaimResponseDTO, CredentialServiceError> {
     match path.rsplit_once(NESTED_CLAIM_MARKER) {
         Some((head, _)) => {
             let parent_claim = get_or_insert(root, head, claim_schemas)?;
@@ -192,15 +192,15 @@ fn get_or_insert<'a>(
             match &mut parent_claim.value {
                 DetailCredentialClaimValueResponseDTO::Nested(claims) => {
                     if let Some(i) = claims.iter().position(|claim| claim.path == path) {
-                        Ok(claims
-                            .get_mut(i)
-                            .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
+                        Ok(claims.get_mut(i).ok_or_else(|| {
+                            CredentialServiceError::MappingError("invalid index".into())
+                        })?)
                     } else {
                         let mut item_schema = claim_schemas
                             .iter()
                             .find(|schema| schema.key == key)
                             .ok_or_else(|| {
-                                ServiceError::MappingError("missing claim schema".into())
+                                CredentialServiceError::MappingError("missing claim schema".into())
                             })?
                             .to_owned();
 
@@ -214,12 +214,12 @@ fn get_or_insert<'a>(
                             value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
                         });
                         let last = claims.len() - 1;
-                        Ok(claims
-                            .get_mut(last)
-                            .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
+                        Ok(claims.get_mut(last).ok_or_else(|| {
+                            CredentialServiceError::MappingError("invalid index".into())
+                        })?)
                     }
                 }
-                _ => Err(ServiceError::MappingError(
+                _ => Err(CredentialServiceError::MappingError(
                     "Parent claim should be nested".into(),
                 )),
             }
@@ -228,14 +228,16 @@ fn get_or_insert<'a>(
             if let Some(i) = root.iter().position(|claim| claim.schema.key == path) {
                 Ok(root
                     .get_mut(i)
-                    .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
+                    .ok_or_else(|| CredentialServiceError::MappingError("invalid index".into()))?)
             } else {
                 root.push(DetailCredentialClaimResponseDTO {
                     path: path.to_owned(),
                     schema: claim_schemas
                         .iter()
                         .find(|schema| schema.key == path)
-                        .ok_or_else(|| ServiceError::MappingError("missing claim schema".into()))?
+                        .ok_or_else(|| {
+                            CredentialServiceError::MappingError("missing claim schema".into())
+                        })?
                         .to_owned()
                         .into(),
                     value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
@@ -243,7 +245,7 @@ fn get_or_insert<'a>(
                 let last = root.len() - 1;
                 Ok(root
                     .get_mut(last)
-                    .ok_or_else(|| ServiceError::MappingError("invalid index".into()))?)
+                    .ok_or_else(|| CredentialServiceError::MappingError("invalid index".into()))?)
             }
         }
     }
@@ -252,14 +254,14 @@ fn get_or_insert<'a>(
 fn from_path_to_key(
     parent: &DetailCredentialClaimResponseDTO,
     path: &str,
-) -> Result<String, ServiceError> {
+) -> Result<String, CredentialServiceError> {
     if parent.schema.array {
         return Ok(parent.schema.key.clone());
     }
 
     let suffix = path
         .strip_prefix(&parent.path)
-        .ok_or_else(|| ServiceError::MappingError("invalid path".into()))?;
+        .ok_or_else(|| CredentialServiceError::MappingError("invalid path".into()))?;
 
     Ok(format!("{}{suffix}", parent.schema.key))
 }
@@ -268,11 +270,11 @@ fn claim_to_dto(
     claim: &Claim,
     claim_schema: &ClaimSchema,
     config: &CoreConfig,
-) -> Result<DetailCredentialClaimResponseDTO, ServiceError> {
+) -> Result<DetailCredentialClaimResponseDTO, CredentialServiceError> {
     let claim_value = claim
         .value
         .as_ref()
-        .ok_or(ServiceError::MappingError(format!(
+        .ok_or(CredentialServiceError::MappingError(format!(
             "Missing value on leaf claim: {}",
             claim.id
         )))?;
@@ -322,10 +324,10 @@ fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
 }
 
 impl TryFrom<Credential> for CredentialListItemResponseDTO {
-    type Error = ServiceError;
+    type Error = CredentialServiceError;
 
-    fn try_from(value: Credential) -> Result<Self, ServiceError> {
-        let schema = value.schema.ok_or(ServiceError::MappingError(
+    fn try_from(value: Credential) -> Result<Self, Self::Error> {
+        let schema = value.schema.ok_or(CredentialServiceError::MappingError(
             "credential_schema is None".to_string(),
         ))?;
 
@@ -399,7 +401,7 @@ pub(super) fn claims_from_create_request(
     credential_id: CredentialId,
     claims: Vec<CredentialRequestClaimDTO>,
     claim_schemas: &[ClaimSchema],
-) -> Result<Vec<Claim>, ServiceError> {
+) -> Result<Vec<Claim>, CredentialServiceError> {
     let now = OffsetDateTime::now_utc();
     let mut claims_map = HashMap::<String, Claim>::new();
 
@@ -408,7 +410,7 @@ pub(super) fn claims_from_create_request(
         let schema = claim_schemas
             .iter()
             .find(|schema| schema.id == claim_schema_id)
-            .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
+            .ok_or(CredentialServiceError::MissingClaimSchema(claim_schema_id))?;
         let claim = Claim {
             id: Uuid::new_v4().into(),
             credential_id,
@@ -436,14 +438,14 @@ pub(super) fn claims_from_create_request(
         {
             current_path = parent_path.to_owned();
             let Some((parent_schema_path, _)) = current_schema_path.rsplit_once("/") else {
-                return Err(ServiceError::MappingError(format!(
+                return Err(CredentialServiceError::MappingError(format!(
                     "Expected schema path '{current_schema_path}' to contain nested property",
                 )));
             };
             let schema = claim_schemas
                 .iter()
                 .find(|schema| schema.key == parent_schema_path)
-                .ok_or(ServiceError::MappingError(format!(
+                .ok_or(CredentialServiceError::MappingError(format!(
                     "Schema not found for array or object claim with path {current_path}",
                 )))?;
             let parent_claim = Claim {
@@ -472,10 +474,10 @@ fn insert_array_parent(
     now: OffsetDateTime,
     claims_map: &mut HashMap<String, Claim>,
     current_path: String,
-) -> Result<String, ServiceError> {
+) -> Result<String, CredentialServiceError> {
     if schema.array {
         let Some((array_path, _)) = current_path.rsplit_once("/") else {
-            return Err(ServiceError::MappingError(format!(
+            return Err(CredentialServiceError::MappingError(format!(
                 "Expected '{current_path}' to contain array element index",
             )));
         };
@@ -498,11 +500,11 @@ fn insert_array_parent(
 }
 
 impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
-    type Error = ServiceError;
+    type Error = CredentialServiceError;
 
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
         let organisation_id = match value.organisation {
-            None => Err(ServiceError::MappingError(
+            None => Err(CredentialServiceError::MappingError(
                 "Organisation has not been fetched".to_string(),
             )),
             Some(value) => Ok(value.id),
@@ -530,17 +532,17 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
 }
 
 impl TryFrom<Blob> for WalletInstanceAttestationDTO {
-    type Error = ServiceError;
+    type Error = CredentialServiceError;
 
     fn try_from(value: Blob) -> Result<Self, Self::Error> {
         if value.r#type != BlobType::WalletInstanceAttestation {
-            return Err(ServiceError::MappingError(format!(
+            return Err(CredentialServiceError::MappingError(format!(
                 "Failed to parse parse wallet instance attestation blob of type: {:?}",
                 value.r#type
             )));
         }
         let wallet_instance_attestation = serde_json::from_slice(&value.value).map_err(|e| {
-            ServiceError::MappingError(format!(
+            CredentialServiceError::MappingError(format!(
                 "Failed to parse wallet instance attestation blob: {e}"
             ))
         })?;
@@ -549,17 +551,19 @@ impl TryFrom<Blob> for WalletInstanceAttestationDTO {
 }
 
 impl TryFrom<Blob> for WalletUnitAttestationDTO {
-    type Error = ServiceError;
+    type Error = CredentialServiceError;
 
     fn try_from(value: Blob) -> Result<Self, Self::Error> {
         if value.r#type != BlobType::WalletUnitAttestation {
-            return Err(ServiceError::MappingError(format!(
+            return Err(CredentialServiceError::MappingError(format!(
                 "Failed to parse parse wallet unit attestation blob of type: {:?}",
                 value.r#type
             )));
         }
         let wallet_unit_attestation = serde_json::from_slice(&value.value).map_err(|e| {
-            ServiceError::MappingError(format!("Failed to parse wallet unit attestation blob: {e}"))
+            CredentialServiceError::MappingError(format!(
+                "Failed to parse wallet unit attestation blob: {e}"
+            ))
         })?;
         Ok(wallet_unit_attestation)
     }

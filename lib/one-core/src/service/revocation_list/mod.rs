@@ -5,10 +5,9 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 
 pub mod dto;
-pub mod service;
-
+pub mod error;
 mod mapper;
-mod validator;
+pub mod service;
 
 #[derive(Clone)]
 pub struct RevocationListService {

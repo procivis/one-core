@@ -9,10 +9,14 @@ use super::dto::{
     GetCredentialListResponseDTO, GetCredentialQueryDTO, ShareCredentialResponseDTO,
     SuspendCredentialRequestDTO,
 };
+use super::error::CredentialServiceError;
 use super::mapper::{
     claims_from_create_request, credential_detail_response_from_model, from_create_request,
 };
-use super::validator::{validate_format_and_did_method_compatibility, validate_redirect_uri};
+use super::validator::{
+    throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
+    validate_redirect_uri, validate_webhook_url,
+};
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_try_into;
@@ -24,7 +28,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::identifier::{IdentifierRelations, IdentifierState};
+use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
@@ -32,16 +36,13 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::repository::error::DataLayerError;
-use crate::service::credential::validator::validate_webhook_url;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-};
+use crate::service::error::MissingProviderError;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{
-    throw_if_credential_schema_not_in_session_org, throw_if_credential_state_eq,
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+    throw_if_credential_schema_not_in_session_org, throw_if_org_not_matching_session,
+    throw_if_org_relation_not_matching_session,
 };
 
 impl CredentialService {
@@ -53,7 +54,7 @@ impl CredentialService {
     pub async fn create_credential(
         &self,
         request: CreateCredentialRequestDTO,
-    ) -> Result<CredentialId, ServiceError> {
+    ) -> Result<CredentialId, CredentialServiceError> {
         let issuer_identifier = match request.issuer {
             Some(issuer_identifier_id) => self
                 .identifier_repository
@@ -73,13 +74,11 @@ impl CredentialService {
                 )
                 .await
                 .error_while("getting identifier")?
-                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                .ok_or(CredentialServiceError::MissingIdentifier(
                     issuer_identifier_id,
-                )))?,
+                ))?,
             None => {
-                let issuer_did_id = request.issuer_did.ok_or(ServiceError::ValidationError(
-                    "No issuer or issuerDid specified".to_string(),
-                ))?;
+                let issuer_did_id = request.issuer_did.ok_or(CredentialServiceError::NoIssuer)?;
 
                 self.identifier_repository
                     .get_from_did_id(
@@ -94,7 +93,7 @@ impl CredentialService {
                     )
                     .await
                     .error_while("getting identifier")?
-                    .ok_or(ServiceError::from(EntityNotFoundError::Did(issuer_did_id)))?
+                    .ok_or(CredentialServiceError::MissingDid(issuer_did_id))?
             }
         };
 
@@ -110,27 +109,32 @@ impl CredentialService {
             .await
             .error_while("getting credential schema")?
         else {
-            return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
+            return Err(CredentialServiceError::MissingCredentialSchema(
+                request.credential_schema_id,
+            ));
         };
         throw_if_org_relation_not_matching_session(
             schema.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         validate_key_storage_security_supported(schema.key_storage_security, &self.config)
             .error_while("validating key storage security")?;
 
-        let claim_schemas = schema
-            .claim_schemas
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+        let claim_schemas =
+            schema
+                .claim_schemas
+                .to_owned()
+                .ok_or(CredentialServiceError::MappingError(
+                    "claim_schemas is None".to_string(),
+                ))?;
 
         let formatter_capabilities = self
             .formatter_provider
             .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?
+            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))
+            .error_while("getting formatter")?
             .get_capabilities();
 
         let exchange_capabilities = self
@@ -138,7 +142,8 @@ impl CredentialService {
             .get_protocol(&request.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 request.protocol.to_owned(),
-            ))?
+            ))
+            .error_while("getting protocol")?
             .get_capabilities();
 
         let key_filter = KeyFilter {
@@ -146,17 +151,19 @@ impl CredentialService {
             algorithms: Some(formatter_capabilities.signing_key_algorithms.clone()),
             ..Default::default()
         };
-        let selection = issuer_identifier.select_key(KeySelection {
-            key: request.issuer_key,
-            did: request.issuer_did,
-            certificate: request.issuer_certificate,
-            key_filter: Some(key_filter),
-        })?;
+        let selection = issuer_identifier
+            .select_key(KeySelection {
+                key: request.issuer_key,
+                did: request.issuer_did,
+                certificate: request.issuer_certificate,
+                key_filter: Some(key_filter),
+            })
+            .error_while("selecting key")?;
 
         let (issuer_key, issuer_certificate) = match selection {
             SelectedKey::Key(_) => {
-                return Err(ServiceError::ValidationError(
-                    "Key identifiers not supported".to_string(),
+                return Err(CredentialServiceError::InvalidIdentifierType(
+                    IdentifierType::Key,
                 ));
             }
             SelectedKey::Certificate { certificate, key } => (key, Some(certificate.to_owned())),
@@ -165,7 +172,8 @@ impl CredentialService {
                     &exchange_capabilities.did_methods,
                     &did.did_method,
                     &self.config.did,
-                )?;
+                )
+                .error_while("checking did compatibility")?;
                 validate_format_and_did_method_compatibility(
                     &did.did_method,
                     &formatter_capabilities,
@@ -239,7 +247,7 @@ impl CredentialService {
     pub async fn delete_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), CredentialServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -256,19 +264,20 @@ impl CredentialService {
             .error_while("getting credential")?;
 
         let Some(credential) = credential else {
-            return Err(EntityNotFoundError::Credential(*credential_id).into());
+            return Err(CredentialServiceError::NotFound(*credential_id));
         };
 
         let schema = credential
             .schema
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(CredentialServiceError::MappingError(
                 "credential_schema is None".to_string(),
             ))?;
         throw_if_org_relation_not_matching_session(
             schema.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         let is_issuer = credential.role == CredentialRole::Issuer;
         if is_issuer && let Some(method_id) = &schema.revocation_method {
@@ -286,7 +295,7 @@ impl CredentialService {
             .map_err(|error| match error {
                 // credential not found or already deleted
                 DataLayerError::RecordNotUpdated => {
-                    ServiceError::from(EntityNotFoundError::Credential(*credential_id))
+                    CredentialServiceError::NotFound(*credential_id)
                 }
                 error => error.error_while("deleting credential").into(),
             })?;
@@ -303,7 +312,8 @@ impl CredentialService {
     pub async fn get_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, ServiceError> {
+    ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError>
+    {
         let credential = self
             .credential_repository
             .get_credential(
@@ -325,11 +335,12 @@ impl CredentialService {
             .await
             .error_while("getting credential")?;
 
-        let credential = credential.ok_or(EntityNotFoundError::Credential(*credential_id))?;
-        throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)?;
+        let credential = credential.ok_or(CredentialServiceError::NotFound(*credential_id))?;
+        throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)
+            .error_while("checking session")?;
 
         if credential.deleted_at.is_some() {
-            return Err(EntityNotFoundError::Credential(*credential_id).into());
+            return Err(CredentialServiceError::NotFound(*credential_id));
         }
 
         let mdoc_validity_credentials = match &credential.schema {
@@ -356,7 +367,7 @@ impl CredentialService {
     async fn get_wallet_attestation_blobs(
         &self,
         credential: &Credential,
-    ) -> Result<CredentialAttestationBlobs, ServiceError> {
+    ) -> Result<CredentialAttestationBlobs, CredentialServiceError> {
         if credential.wallet_instance_attestation_blob_id.is_none()
             && credential.wallet_unit_attestation_blob_id.is_none()
         {
@@ -367,7 +378,8 @@ impl CredentialService {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .error_while("getting blob storage")?;
 
         let wallet_instance_attestation_blob = match &credential.wallet_instance_attestation_blob_id
         {
@@ -376,7 +388,7 @@ impl CredentialService {
                     .get(blob_id)
                     .await
                     .error_while("getting WIA blob")?
-                    .ok_or(ServiceError::MappingError(
+                    .ok_or(CredentialServiceError::MappingError(
                         "wallet instance attestation blob is None".to_string(),
                     ))?,
             ),
@@ -388,7 +400,7 @@ impl CredentialService {
                     .get(blob_id)
                     .await
                     .error_while("getting WUA blob")?
-                    .ok_or(ServiceError::MappingError(
+                    .ok_or(CredentialServiceError::MappingError(
                         "wallet unit attestation blob is None".to_string(),
                     ))?,
             ),
@@ -410,8 +422,9 @@ impl CredentialService {
         &self,
         organisation_id: &OrganisationId,
         query: GetCredentialQueryDTO,
-    ) -> Result<GetCredentialListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+    ) -> Result<GetCredentialListResponseDTO, CredentialServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let result = self
             .credential_repository
             .get_credential_list(query)
@@ -424,7 +437,7 @@ impl CredentialService {
     pub async fn reactivate_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), CredentialServiceError> {
         self.credential_validity_manager
             .change_credential_validity_state(credential_id, RevocationState::Valid)
             .await
@@ -437,7 +450,7 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
         request: SuspendCredentialRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), CredentialServiceError> {
         self.credential_validity_manager
             .change_credential_validity_state(
                 credential_id,
@@ -459,7 +472,7 @@ impl CredentialService {
     pub async fn revoke_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), CredentialServiceError> {
         self.credential_validity_manager
             .change_credential_validity_state(credential_id, RevocationState::Revoked)
             .await
@@ -477,7 +490,7 @@ impl CredentialService {
         &self,
         credential_ids: Vec<CredentialId>,
         force_refresh: bool,
-    ) -> Result<Vec<CredentialRevocationCheckResponseDTO>, ServiceError> {
+    ) -> Result<Vec<CredentialRevocationCheckResponseDTO>, CredentialServiceError> {
         let mut result = vec![];
         for credential_id in credential_ids {
             result.push(
@@ -498,21 +511,22 @@ impl CredentialService {
     pub async fn share_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<ShareCredentialResponseDTO, ServiceError> {
+    ) -> Result<ShareCredentialResponseDTO, CredentialServiceError> {
         let credential = self.get_credential_with_state(credential_id).await?;
 
         if credential.deleted_at.is_some() {
-            return Err(EntityNotFoundError::Credential(*credential_id).into());
+            return Err(CredentialServiceError::NotFound(*credential_id));
         }
         let Some(credential_schema) = credential.schema.as_ref() else {
-            return Err(ServiceError::MappingError(
+            return Err(CredentialServiceError::MappingError(
                 "Missing credential schema".to_string(),
             ));
         };
         throw_if_org_relation_not_matching_session(
             credential_schema.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         if !matches!(
             credential.state,
@@ -520,24 +534,23 @@ impl CredentialService {
                 | CredentialStateEnum::Pending
                 | CredentialStateEnum::InteractionExpired
         ) {
-            return Err(BusinessLogicError::InvalidCredentialState {
-                state: credential.state,
-            }
-            .into());
+            return Err(CredentialServiceError::InvalidState(credential.state));
         }
 
         let Some(issuer_identifier) = credential.issuer_identifier.as_ref() else {
-            return Err(ServiceError::MappingError(
+            return Err(CredentialServiceError::MappingError(
                 "Missing issuer identifier".to_string(),
             ));
         };
 
         if issuer_identifier.state != IdentifierState::Active {
-            return Err(BusinessLogicError::IdentifierIsDeactivated(issuer_identifier.id).into());
+            return Err(CredentialServiceError::IdentifierIsDeactivated(
+                issuer_identifier.id,
+            ));
         }
 
         let Some(organisation) = &credential_schema.organisation else {
-            return Err(ServiceError::MappingError(
+            return Err(CredentialServiceError::MappingError(
                 "Missing organisation".to_string(),
             ));
         };
@@ -548,7 +561,8 @@ impl CredentialService {
             .get_protocol(credential_exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 credential_exchange.clone(),
-            ))?;
+            ))
+            .error_while("getting protocol")?;
 
         let ShareResponse {
             url,
@@ -569,7 +583,8 @@ impl CredentialService {
             InteractionType::Issuance,
             expires_at,
         )
-        .await?;
+        .await
+        .error_while("adding interaction")?;
         self.credential_repository
             .update_credential(
                 *credential_id,
@@ -582,7 +597,9 @@ impl CredentialService {
             )
             .await
             .error_while("updating credential")?;
-        clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
+        clear_previous_interaction(&*self.interaction_repository, &credential.interaction)
+            .await
+            .error_while("clearing interaction")?;
         tracing::info!("Shared credential {credential_id}");
         Ok(ShareCredentialResponseDTO {
             url,
@@ -597,7 +614,7 @@ impl CredentialService {
     async fn get_credential_with_state(
         &self,
         id: &CredentialId,
-    ) -> Result<Credential, ServiceError> {
+    ) -> Result<Credential, CredentialServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -625,7 +642,7 @@ impl CredentialService {
             )
             .await
             .error_while("getting credential")?
-            .ok_or(EntityNotFoundError::Credential(*id))?;
+            .ok_or(CredentialServiceError::NotFound(*id))?;
 
         Ok(credential)
     }

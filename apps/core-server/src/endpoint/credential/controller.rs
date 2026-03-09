@@ -1,6 +1,8 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
+use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::{CredentialId, Permission};
 
@@ -72,7 +74,13 @@ pub(crate) async fn get_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>> {
-    let result = state.core.credential_service.get_credential(&id).await;
+    let result = state
+        .core
+        .credential_service
+        .get_credential(&id)
+        .await
+        .error_while("getting credential")
+        .map_err(ServiceError::from);
     OkOrErrorResponse::from_result_fallible(result, state, "getting credential")
 }
 
@@ -97,11 +105,14 @@ pub(crate) async fn get_credential_list(
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
     let result = async {
         let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
-        state
-            .core
-            .credential_service
-            .get_credential_list(&organisation_id, query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .credential_service
+                .get_credential_list(&organisation_id, query.try_into()?)
+                .await
+                .error_while("getting credential list")?,
+        )
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting credential list")

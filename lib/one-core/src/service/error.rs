@@ -1,13 +1,11 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
-    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HolderWalletUnitId,
-    IdentifierId, InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId,
-    RevocationListEntryId, RevocationListId, RevocationMethodId, TaskId, TrustAnchorId,
-    TrustEntityId, TrustEntityKey, WalletUnitId,
+    CredentialId, CredentialSchemaId, DidId, DidValue, HolderWalletUnitId, IdentifierId,
+    InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId, RevocationListEntryId,
+    RevocationMethodId, TaskId, TrustAnchorId, TrustEntityId, TrustEntityKey, WalletUnitId,
 };
 use thiserror::Error;
 
-use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
@@ -96,9 +94,6 @@ pub enum EntityNotFoundError {
     #[error("Identifier by did id `{0}` not found")]
     IdentifierByDidId(DidId),
 
-    #[error("Revocation list `{0}` not found")]
-    RevocationList(RevocationListId),
-
     #[error("Revocation list entry `{0}` not found")]
     RevocationListEntry(RevocationListEntryId),
 
@@ -150,9 +145,6 @@ pub enum BusinessLogicError {
     #[error("Incompatible identifier type, reason: {reason}")]
     IncompatibleIdentifierType { reason: String },
 
-    #[error("Identifier {0} is deactivated")]
-    IdentifierIsDeactivated(IdentifierId),
-
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
 
@@ -182,15 +174,6 @@ pub enum BusinessLogicError {
     #[error("Missing credentials for credential: {credential_id}")]
     MissingCredentialData { credential_id: CredentialId },
 
-    #[error("Missing credential schema")]
-    MissingCredentialSchema,
-
-    #[error("Missing claim schema: {claim_schema_id}")]
-    MissingClaimSchema { claim_schema_id: ClaimSchemaId },
-
-    #[error("Missing parent claim schema for: {claim_schema_id}")]
-    MissingParentClaimSchema { claim_schema_id: ClaimSchemaId },
-
     #[error("Missing proof schema: {proof_schema_id}")]
     MissingProofSchema { proof_schema_id: ProofSchemaId },
 
@@ -214,15 +197,6 @@ pub enum BusinessLogicError {
 
     #[error("Credential state is Revoked or Suspended and cannot be shared")]
     CredentialIsRevokedOrSuspended,
-
-    #[error("Incompatible issuance did method")]
-    IncompatibleIssuanceDidMethod,
-
-    #[error("Incompatible issuance exchange protocol")]
-    IncompatibleIssuanceExchangeProtocol,
-
-    #[error("Incompatible issuance identifier")]
-    IncompatibleIssuanceIdentifier,
 
     #[error("Incompatible proof exchange protocol")]
     IncompatibleProofExchangeProtocol,
@@ -341,19 +315,6 @@ pub enum ValidationError {
     #[error("Invalid key storage type: {0}")]
     InvalidKeyStorage(String),
 
-    #[error("Credential schema: Missing claims")]
-    CredentialSchemaMissingClaims,
-
-    #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
-    CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
-
-    #[error("Invalid datatype `{datatype}` for value `{value}`: {source}")]
-    InvalidDatatype {
-        datatype: String,
-        value: String,
-        source: ConfigValidationError,
-    },
-
     #[error("Did not found")]
     DidNotFound,
 
@@ -377,15 +338,6 @@ pub enum ValidationError {
 
     #[error("Redirect uri disabled or scheme not allowed")]
     InvalidRedirectUri,
-
-    #[error("Empty object not allowed")]
-    EmptyObjectNotAllowed,
-
-    #[error("Empty array value not allowed")]
-    EmptyArrayValueNotAllowed,
-
-    #[error("Empty value not allowed")]
-    EmptyValueNotAllowed,
 
     #[error("Invalid image data: `{0}`")]
     InvalidImage(String),
@@ -516,7 +468,6 @@ impl ErrorCodeMixin for EntityNotFoundError {
         match self {
             Self::Credential(_) => ErrorCode::BR_0001,
             Self::Did(_) | Self::DidValue(_) => ErrorCode::BR_0024,
-            Self::RevocationList(_) => ErrorCode::BR_0034,
             Self::Proof(_) => ErrorCode::BR_0012,
             Self::Organisation(_) => ErrorCode::BR_0022,
             Self::Key(_) => ErrorCode::BR_0037,
@@ -540,15 +491,11 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
             Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
-            Self::IdentifierIsDeactivated(_) => ErrorCode::BR_0027,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
             Self::InvalidProofState { .. } => ErrorCode::BR_0013,
             Self::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
             Self::ProofSchemaDeleted { .. } => ErrorCode::BR_0019,
             Self::MissingCredentialData { .. } => ErrorCode::BR_0005,
-            Self::MissingCredentialSchema => ErrorCode::BR_0009,
-            Self::MissingClaimSchema { .. } => ErrorCode::BR_0010,
-            Self::MissingParentClaimSchema { .. } => ErrorCode::BR_0109,
             Self::MissingProofSchema { .. } => ErrorCode::BR_0020,
             Self::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
             Self::MissingClaimSchemas => ErrorCode::BR_0011,
@@ -558,8 +505,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             Self::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
             Self::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
-            Self::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
-            Self::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
             Self::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
             Self::IncompatibleProofVerificationKeyStorage => ErrorCode::BR_0158,
             Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
@@ -577,7 +522,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::InvalidProofRole { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
             Self::InvalidHolderIdentifier(_) => ErrorCode::BR_0217,
-            Self::IncompatibleIssuanceIdentifier => ErrorCode::BR_0218,
             Self::IncompatibleProofVerificationIdentifier => ErrorCode::BR_0218,
             Self::IncompatibleHolderDidMethod => ErrorCode::BR_0218,
             Self::IncompatibleHolderIdentifier => ErrorCode::BR_0218,
@@ -600,14 +544,11 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             Self::MissingDefaultTransport => ErrorCode::BR_0142,
             Self::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
-            Self::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
-            Self::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
             Self::InvalidFormatter(_) => ErrorCode::BR_0056,
             Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::InvalidKey(_) => ErrorCode::BR_0096,
             Self::BBSNotSupported => ErrorCode::BR_0091,
             Self::InvalidKeyStorage(_) => ErrorCode::BR_0041,
-            Self::InvalidDatatype { .. } => ErrorCode::BR_0061,
             Self::DidNotFound => ErrorCode::BR_0024,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
@@ -618,10 +559,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::DeserializationError(_) => ErrorCode::BR_0189,
             Self::InvalidRedirectUri => ErrorCode::BR_0192,
             Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
-            Self::EmptyObjectNotAllowed => ErrorCode::BR_0194,
-            Self::EmptyArrayValueNotAllowed => ErrorCode::BR_0195,
             Self::InvalidImage(_) => ErrorCode::BR_0193,
-            Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
             Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
             Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,

@@ -18,20 +18,6 @@ pub(crate) mod key_security;
 pub(crate) mod permissions;
 pub(crate) mod x509;
 
-pub(crate) fn throw_if_credential_state_eq(
-    credential: &Credential,
-    state: CredentialStateEnum,
-) -> Result<(), ServiceError> {
-    let current_state = credential.state;
-    if current_state == state {
-        return Err(BusinessLogicError::InvalidCredentialState {
-            state: current_state.to_owned(),
-        }
-        .into());
-    }
-    Ok(())
-}
-
 pub(crate) fn throw_if_org_not_matching_session(
     organisation_id: &OrganisationId,
     session_provider: &dyn SessionProvider,

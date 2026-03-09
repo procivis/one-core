@@ -14,6 +14,7 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
+pub mod error;
 pub mod mapper;
 pub mod service;
 
