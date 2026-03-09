@@ -22,7 +22,7 @@ concat-kdf                   = { version = "0.1" }
 ct-codecs.workspace          = true
 ed25519-compact              = { version = "2.1" }
 hmac                         = { version = "0.12" }
-ml-dsa                       = { version = "0.1.0-rc.3", features = ["rand_core", "zeroize"] }
+ml-dsa                       = { version = "0.1.0-rc.7", features = ["zeroize"] }
 mockall                      = { workspace = true, optional = true }
 p256                         = { version = "0.13", features = ["jwk", "ecdh"] }
 pbkdf2                       = { version = "0.12", features = ["simple"] }
@@ -39,12 +39,11 @@ thiserror.workspace          = true
 # pairing_crypto is fixed to this specific commit, so the implementation of BBS+ is still the draft-06 version
 pairing_crypto = { version = "0.4.3", git = "https://github.com/procivis/pairing_crypto", rev = "0ec3629" }
 
-# should be unified
+# TODO (ONE-8329): should be unified
 rand.workspace  = true
 rand_chacha     = { version = "0.3" }
-rand_chacha_new = { package = "rand_chacha", version = "0.10.0-rc.6" }
-rand_core       = { version = "=0.10.0-rc-3" }
-rand_new        = { package = "rand", version = "0.10.0-rc.6" }
+rand_chacha_new = { package = "rand_chacha", version = "0.10" }
+rand_new        = { package = "rand", version = "0.10" }
 
 [dev-dependencies]
 hex             = { workspace = true }
