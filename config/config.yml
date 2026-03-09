@@ -19,3 +19,5 @@ verificationEngagement: {}
 certificateValidation: {}
 signer: {}
 verifierProvider: {}
+keySecurityLevel: {}
+trustListPublisher: {}

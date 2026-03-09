@@ -48,6 +48,7 @@ use crate::provider::presentation_formatter::provider::get_presentation_formatte
 use crate::provider::revocation::provider::revocation_method_provider_from_config;
 use crate::provider::signer::provider::signer_provider_from_config;
 use crate::provider::task::provider::task_provider_from_config;
+use crate::provider::trust_list_publisher::provider::trust_list_publisher_provider_from_config;
 use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
 use crate::provider::verifier::provider::verifier_provider_from_config;
@@ -338,6 +339,16 @@ impl OneCore {
             &mut config,
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
+        )?;
+
+        let _trust_list_publisher_provider = trust_list_publisher_provider_from_config(
+            &mut config,
+            clock.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            data_provider.get_trust_list_publication_repository(),
+            data_provider.get_trust_entry_repository(),
+            data_provider.get_identifier_repository(),
         )?;
 
         let blob_storage_provider = blob_storage_provider_from_config(

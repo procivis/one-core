@@ -291,6 +291,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
             leeway: 60
         signer: {}
         verifierProvider: {}
+        trustListPublisher: {}
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

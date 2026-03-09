@@ -789,12 +789,21 @@ pub enum ErrorCode {
 
     #[strum(message = "Notification not found")]
     BR_0377,
-
     #[strum(message = "Missing verifier provider")]
     BR_0380,
 
     #[strum(message = "Invalid signer")]
     BR_0381,
+    #[strum(message = "Invalid trust list identifier")]
+    BR_0382,
+    #[strum(message = "Trust list publication not found")]
+    BR_0383,
+    #[strum(message = "Trust list publisher internal error")]
+    BR_0384,
+    #[strum(message = "Invalid trust list params")]
+    BR_0385,
+    #[strum(message = "Unsupported trust list role")]
+    BR_0386,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

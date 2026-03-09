@@ -744,6 +744,14 @@ trustManagement:
       public:
         enablePublishing: true
         proofOfPossessionLeeway: 60
+trustListPublisher:
+  LOTE_PUBLISHER:
+    type: ETSI_LOTE
+    order: 1
+    display: "trustListPublisher.etsiLote"
+    params:
+      public:
+        refreshIntervalSeconds: 86400
 blobStorage:
   DB:
     enabled: true

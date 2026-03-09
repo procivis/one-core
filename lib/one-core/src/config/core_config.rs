@@ -58,6 +58,7 @@ pub struct CoreConfig {
     pub key_security_level: KeySecurityLevelConfig,
     pub task: TaskConfig,
     pub trust_management: TrustManagementConfig,
+    pub trust_list_publisher: TrustListPublisherConfig,
     pub blob_storage: BlobStorageConfig,
     pub cache_entities: CacheEntitiesConfig,
     pub wallet_provider: WalletProviderConfig,
@@ -677,6 +678,17 @@ pub enum TrustManagementType {
     #[serde(rename = "SIMPLE_TRUST_LIST")]
     #[strum(serialize = "SIMPLE_TRUST_LIST")]
     SimpleTrustList,
+}
+
+pub type TrustListPublisherConfig = ConfigBlock<String, TrustListPublisherType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum TrustListPublisherType {
+    #[serde(rename = "ETSI_LOTE")]
+    #[strum(serialize = "ETSI_LOTE")]
+    EtsiLote,
 }
 
 pub type BlobStorageConfig = Dict<BlobStorageType, BlobStorageFields>;

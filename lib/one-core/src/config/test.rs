@@ -124,6 +124,7 @@ rusty_fork_test! {
             certificateValidation: {}
             signer: {}
             verifierProvider: {}
+            trustListPublisher: {}
         "};
 
         let config3 = indoc::indoc! {"
