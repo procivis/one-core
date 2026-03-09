@@ -21,6 +21,13 @@ walletProvider:
           minimum: "v1.0.0"
         eudiWalletInfo:
           providerName: "Procivis One Dev"
+verifierProvider:
+  PROCIVIS_ONE:
+    params:
+      public:
+        verifierName: "Procivis One Dev Verifier"
+        appVersion:
+          minimum: "v1.0.0"
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

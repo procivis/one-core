@@ -26,6 +26,11 @@ walletProvider:
           minimum: "v1.50.0"
         eudiWalletInfo:
           providerName: "Procivis One Trial"
+verifierProvider:
+  PROCIVIS_ONE:
+    params:
+      public:
+        verifierName: "Procivis One Verifier"
 signer:
   ACCESS_CERTIFICATE:
     enabled: false
