@@ -4,6 +4,7 @@ use crate::config::core_config;
 use crate::proto::nfc::scanner::NfcScanner;
 
 pub mod dto;
+pub mod error;
 mod service;
 
 #[derive(Clone)]

@@ -11,6 +11,13 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
+use super::dto::{
+    CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
+    ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
+    ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofInputSchemaRequestDTO,
+    ProofSchemaFilterValue,
+};
+use super::error::ProofSchemaServiceError;
 use crate::config::core_config::{
     ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType, RevocationType,
 };
@@ -51,16 +58,6 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::error::DataLayerError;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
-use crate::service::proof_schema::ProofSchemaImportError;
-use crate::service::proof_schema::dto::{
-    CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
-    ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
-    ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofInputSchemaRequestDTO,
-    ProofSchemaFilterValue,
-};
 use crate::service::test_utilities::{
     dummy_credential_schema, dummy_organisation, dummy_proof_schema, generic_config,
     generic_formatter_capabilities, get_dummy_date,
@@ -149,10 +146,7 @@ async fn test_get_proof_schema_deleted() {
 
     let result = service.get_proof_schema(&proof_schema.id).await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::EntityNotFound(EntityNotFoundError::ProofSchema(_))
-    )));
+    assert!(result.is_err_and(|e| matches!(e, ProofSchemaServiceError::NotFound(_))));
 }
 
 #[tokio::test]
@@ -169,10 +163,7 @@ async fn test_get_proof_schema_missing() {
     });
 
     let result = service.get_proof_schema(&Uuid::new_v4().into()).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::EntityNotFound(EntityNotFoundError::ProofSchema(_))
-    )));
+    assert!(result.is_err_and(|e| matches!(e, ProofSchemaServiceError::NotFound(_))));
 }
 
 #[tokio::test]
@@ -329,12 +320,7 @@ async fn test_delete_proof_schema_failure() {
     });
 
     let result = service.delete_proof_schema(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::MissingProofSchema { .. }
-        ))
-    ));
+    assert!(matches!(result, Err(ProofSchemaServiceError::NotFound(_))));
 }
 
 #[tokio::test]
@@ -848,10 +834,9 @@ async fn test_create_proof_schema_array_object_fail() {
     });
 
     let result = service.create_proof_schema(create_request).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::Validation(ValidationError::NestedClaimInArrayRequested)
-    )));
+    assert!(
+        result.is_err_and(|e| matches!(e, ProofSchemaServiceError::NestedClaimInArrayRequested))
+    );
 }
 
 #[tokio::test]
@@ -1061,10 +1046,7 @@ async fn test_create_proof_schema_unique_name_error() {
     });
 
     let result = service.create_proof_schema(create_request).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaAlreadyExists)
-    )));
+    assert!(result.is_err_and(|e| matches!(e, ProofSchemaServiceError::AlreadyExists)));
 }
 
 #[tokio::test]
@@ -1167,9 +1149,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::MissingClaimSchema { .. }
-        ))
+        Err(ProofSchemaServiceError::MissingClaimSchema { .. })
     ));
 }
 
@@ -1191,9 +1171,7 @@ async fn test_create_proof_schema_no_claims() {
         .await;
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::ProofSchemaMissingClaims
-        ))
+        Err(ProofSchemaServiceError::MissingClaims)
     ));
 }
 
@@ -1218,9 +1196,7 @@ async fn test_create_proof_schema_no_required_claims() {
         .await;
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::ProofSchemaNoRequiredClaim
-        ))
+        Err(ProofSchemaServiceError::NoRequiredClaim)
     ));
 }
 
@@ -1246,9 +1222,7 @@ async fn test_create_proof_schema_duplicit_claims() {
         .await;
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::ProofSchemaDuplicitClaim
-        ))
+        Err(ProofSchemaServiceError::DuplicitClaim)
     ));
 }
 
@@ -1908,9 +1882,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         .await;
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::ProofSchemaAlreadyExists
-        ))
+        Err(ProofSchemaServiceError::AlreadyExists)
     ));
 }
 
@@ -1976,9 +1948,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
 
     assert!(matches!(
         err,
-        ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaImport(
-            ProofSchemaImportError::UnsupportedDatatype(_)
-        ))
+        ProofSchemaServiceError::UnsupportedDatatype(_)
     ))
 }
 
@@ -2042,12 +2012,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         .await
         .unwrap_err();
 
-    assert!(matches!(
-        err,
-        ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaImport(
-            ProofSchemaImportError::UnsupportedFormat(_)
-        ))
-    ))
+    assert!(matches!(err, ProofSchemaServiceError::UnsupportedFormat(_)))
 }
 
 fn generic_proof_schema() -> ProofSchema {
@@ -2404,10 +2369,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
             proof_input_schemas: vec![],
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service
         .import_proof_schema(ImportProofSchemaRequestDTO {
@@ -2424,10 +2386,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
             organisation_id: Uuid::new_v4().into(),
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -2448,10 +2407,7 @@ async fn test_list_proof_schema_failure_session_org_mismatch() {
             },
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -2470,29 +2426,20 @@ async fn test_proof_schema_ops_failure_session_org_mismatch() {
     });
 
     let result = service.get_proof_schema(&schema_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.delete_proof_schema(&schema_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.share_proof_schema(schema_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 async fn test_create_proof_schema_verify_nested_generic(
     keys: &[&str],
     features: &[Features],
     disclosure_features: &[SelectiveDisclosure],
-) -> Result<ProofSchemaId, ServiceError> {
+) -> Result<ProofSchemaId, ProofSchemaServiceError> {
     let claim_schemas: Vec<_> = keys
         .iter()
         .map(|key| ClaimSchema {

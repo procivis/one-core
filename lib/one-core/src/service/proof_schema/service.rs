@@ -11,10 +11,15 @@ use super::dto::{
     GetProofSchemaResponseDTO, ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO,
     ImportProofSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
-use super::mapper::{proof_input_from_import_request, proof_schema_from_create_request};
+use super::error::ProofSchemaServiceError;
+use super::mapper::{
+    convert_proof_schema_to_response, proof_input_from_import_request,
+    proof_schema_from_create_request,
+};
 use super::validator::{
     extract_claims_from_credential_schema, proof_schema_name_already_exists,
-    validate_create_request, validate_imported_proof_schema,
+    throw_if_invalid_credential_combination, validate_create_request,
+    validate_imported_proof_schema,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
@@ -35,11 +40,6 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
 };
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
-use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
-use crate::service::proof_schema::validator::throw_if_invalid_credential_combination;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -53,7 +53,7 @@ impl ProofSchemaService {
     pub async fn get_proof_schema(
         &self,
         id: &ProofSchemaId,
-    ) -> Result<GetProofSchemaResponseDTO, ServiceError> {
+    ) -> Result<GetProofSchemaResponseDTO, ProofSchemaServiceError> {
         let result = self
             .proof_schema_repository
             .get_proof_schema(
@@ -71,14 +71,15 @@ impl ProofSchemaService {
             )
             .await
             .error_while("getting proof schema")?
-            .ok_or(EntityNotFoundError::ProofSchema(*id))?;
+            .ok_or(ProofSchemaServiceError::NotFound(*id))?;
         throw_if_org_relation_not_matching_session(
             result.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         if result.deleted_at.is_some() {
-            return Err(EntityNotFoundError::ProofSchema(*id).into());
+            return Err(ProofSchemaServiceError::NotFound(*id));
         }
 
         convert_proof_schema_to_response(result, &self.config.datatype)
@@ -93,8 +94,9 @@ impl ProofSchemaService {
         &self,
         organisation_id: &OrganisationId,
         query: GetProofSchemaQueryDTO,
-    ) -> Result<GetProofSchemaListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+    ) -> Result<GetProofSchemaListResponseDTO, ProofSchemaServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let result = self
             .proof_schema_repository
             .get_proof_schema_list(query)
@@ -111,8 +113,9 @@ impl ProofSchemaService {
     pub async fn create_proof_schema(
         &self,
         request: CreateProofSchemaRequestDTO,
-    ) -> Result<ProofSchemaId, ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
+    ) -> Result<ProofSchemaId, ProofSchemaServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         validate_create_request(&request)?;
 
         proof_schema_name_already_exists(
@@ -129,13 +132,15 @@ impl ProofSchemaService {
             .error_while("getting organisation")?;
 
         let Some(organisation) = organisation else {
-            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
+            return Err(ProofSchemaServiceError::MissingOrganisation(
+                request.organisation_id,
+            ));
         };
 
         if organisation.deactivated_at.is_some() {
-            return Err(
-                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
-            );
+            return Err(ProofSchemaServiceError::OrganisationIsDeactivated(
+                request.organisation_id,
+            ));
         }
 
         let credential_schema_ids: Vec<CredentialSchemaId> = request
@@ -146,7 +151,7 @@ impl ProofSchemaService {
         let deduplicated_schema_ids =
             HashSet::<&CredentialSchemaId>::from_iter(credential_schema_ids.iter());
         if credential_schema_ids.len() != deduplicated_schema_ids.len() {
-            return Err(BusinessLogicError::DuplicateProofInputCredentialSchema.into());
+            return Err(ProofSchemaServiceError::DuplicateProofInputCredentialSchema);
         }
         let expected_credential_schemas = credential_schema_ids.len();
         let credential_schemas = self
@@ -176,7 +181,7 @@ impl ProofSchemaService {
             .values;
 
         if credential_schemas.len() != expected_credential_schemas {
-            return Err(BusinessLogicError::MissingCredentialSchema.into());
+            return Err(ProofSchemaServiceError::MissingCredentialSchema);
         }
 
         for credential_schema in &credential_schemas {
@@ -223,7 +228,10 @@ impl ProofSchemaService {
     /// # Arguments
     ///
     /// * `request` - data
-    pub async fn delete_proof_schema(&self, id: &ProofSchemaId) -> Result<(), ServiceError> {
+    pub async fn delete_proof_schema(
+        &self,
+        id: &ProofSchemaId,
+    ) -> Result<(), ProofSchemaServiceError> {
         let schema = self
             .proof_schema_repository
             .get_proof_schema(
@@ -235,13 +243,12 @@ impl ProofSchemaService {
             )
             .await
             .error_while("getting proof schema")?
-            .ok_or(BusinessLogicError::MissingProofSchema {
-                proof_schema_id: *id,
-            })?;
+            .ok_or(ProofSchemaServiceError::NotFound(*id))?;
         throw_if_org_relation_not_matching_session(
             schema.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         let now = OffsetDateTime::now_utc();
         self.proof_schema_repository
@@ -249,11 +256,7 @@ impl ProofSchemaService {
             .await
             .map_err(|error| match error {
                 // proof schema not found or already deleted
-                DataLayerError::RecordNotUpdated => {
-                    ServiceError::from(BusinessLogicError::MissingProofSchema {
-                        proof_schema_id: *id,
-                    })
-                }
+                DataLayerError::RecordNotUpdated => ProofSchemaServiceError::NotFound(*id),
                 error => error.error_while("deleting proof schema").into(),
             })?;
         tracing::info!("Deleted proof schema {}", id);
@@ -263,7 +266,7 @@ impl ProofSchemaService {
     pub async fn share_proof_schema(
         &self,
         id: ProofSchemaId,
-    ) -> Result<ProofSchemaShareResponseDTO, ServiceError> {
+    ) -> Result<ProofSchemaShareResponseDTO, ProofSchemaServiceError> {
         let proof_schema = self
             .proof_schema_repository
             .get_proof_schema(
@@ -275,14 +278,15 @@ impl ProofSchemaService {
             )
             .await
             .error_while("getting proof schema")?
-            .ok_or(EntityNotFoundError::ProofSchema(id))?;
+            .ok_or(ProofSchemaServiceError::NotFound(id))?;
         throw_if_org_relation_not_matching_session(
             proof_schema.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         let Some(url) = proof_schema.imported_source_url else {
-            return Err(ValidationError::ProofSchemaSharingNotSupported.into());
+            return Err(ProofSchemaServiceError::SharingNotSupported);
         };
 
         Ok(ProofSchemaShareResponseDTO { url })
@@ -291,21 +295,22 @@ impl ProofSchemaService {
     pub async fn import_proof_schema(
         &self,
         request: ImportProofSchemaRequestDTO,
-    ) -> Result<ImportProofSchemaResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
+    ) -> Result<ImportProofSchemaResponseDTO, ProofSchemaServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await
             .error_while("getting organisation")?
-            .ok_or::<ServiceError>(
-                BusinessLogicError::MissingOrganisation(request.organisation_id).into(),
-            )?;
+            .ok_or(ProofSchemaServiceError::MissingOrganisation(
+                request.organisation_id,
+            ))?;
 
         if organisation.deactivated_at.is_some() {
-            return Err(
-                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
-            );
+            return Err(ProofSchemaServiceError::OrganisationIsDeactivated(
+                request.organisation_id,
+            ));
         }
 
         let schema = request.schema;
@@ -390,7 +395,7 @@ impl ProofSchemaService {
         &self,
         request_input_schema: &ImportProofSchemaInputSchemaDTO,
         organisation: &Organisation,
-    ) -> Result<CredentialSchema, ServiceError> {
+    ) -> Result<CredentialSchema, ProofSchemaServiceError> {
         let credential_schema_import_request: ImportCredentialSchemaRequestSchemaDTO = async {
             self.client
                 .get(&request_input_schema.credential_schema.imported_source_url)

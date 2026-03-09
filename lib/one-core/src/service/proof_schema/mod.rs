@@ -11,9 +11,9 @@ use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 pub mod dto;
-pub mod service;
-
+pub mod error;
 mod mapper;
+pub mod service;
 mod validator;
 
 #[derive(Clone)]
@@ -57,14 +57,6 @@ impl ProofSchemaService {
             credential_schema_importer,
         }
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ProofSchemaImportError {
-    #[error("Unsupported datatype: {0}")]
-    UnsupportedDatatype(String),
-    #[error("Unsupported format: {0}")]
-    UnsupportedFormat(String),
 }
 
 #[cfg(test)]

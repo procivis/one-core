@@ -1,12 +1,11 @@
 use shared_types::HistoryId;
 
-use super::dto::HistoryResponseDTO;
+use super::HistoryService;
+use super::dto::{CreateHistoryRequestDTO, GetHistoryListResponseDTO, HistoryResponseDTO};
+use super::error::HistoryServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryListQuery, HistorySource};
 use crate::proto::session_provider::SessionExt;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::service::history::HistoryService;
-use crate::service::history::dto::{CreateHistoryRequestDTO, GetHistoryListResponseDTO};
 
 impl HistoryService {
     /// Returns history list filtered by query
@@ -17,7 +16,7 @@ impl HistoryService {
     pub async fn get_history_list(
         &self,
         query: HistoryListQuery,
-    ) -> Result<GetHistoryListResponseDTO, ServiceError> {
+    ) -> Result<GetHistoryListResponseDTO, HistoryServiceError> {
         let history_list = self
             .history_repository
             .get_history_list(query)
@@ -30,13 +29,13 @@ impl HistoryService {
     pub async fn get_history_entry(
         &self,
         history_id: HistoryId,
-    ) -> Result<HistoryResponseDTO, ServiceError> {
+    ) -> Result<HistoryResponseDTO, HistoryServiceError> {
         let history = self
             .history_repository
             .get_history_entry(history_id)
             .await
             .error_while("getting history")?
-            .ok_or(EntityNotFoundError::History(history_id))?;
+            .ok_or(HistoryServiceError::NotFound(history_id))?;
         Ok(history.into())
     }
 
@@ -44,9 +43,9 @@ impl HistoryService {
     pub async fn create_history(
         &self,
         request: CreateHistoryRequestDTO,
-    ) -> Result<HistoryId, ServiceError> {
+    ) -> Result<HistoryId, HistoryServiceError> {
         if request.source == HistorySource::Core {
-            return Err(BusinessLogicError::InvalidHistorySource.into());
+            return Err(HistoryServiceError::InvalidSource);
         }
 
         let mut request: History = request.into();

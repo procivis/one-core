@@ -1,13 +1,12 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
-    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
-    HolderWalletUnitId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HolderWalletUnitId,
+    IdentifierId, InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId,
     RevocationListEntryId, RevocationListId, RevocationMethodId, TaskId, TrustAnchorId,
     TrustEntityId, TrustEntityKey, WalletUnitId,
 };
 use thiserror::Error;
 
-use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
@@ -103,9 +102,6 @@ pub enum EntityNotFoundError {
     #[error("Revocation list entry `{0}` not found")]
     RevocationListEntry(RevocationListEntryId),
 
-    #[error("Proof schema `{0}` not found")]
-    ProofSchema(ProofSchemaId),
-
     #[error("Proof `{0}` not found")]
     Proof(ProofId),
 
@@ -120,9 +116,6 @@ pub enum EntityNotFoundError {
 
     #[error("SD-JWT VC type metadata `{0}` not found")]
     SdJwtVcTypeMetadata(String),
-
-    #[error("History entry `{0}` not found")]
-    History(HistoryId),
 
     #[error("Trust anchor `{0}` not found")]
     TrustAnchor(TrustAnchorId),
@@ -169,9 +162,6 @@ pub enum BusinessLogicError {
     #[error("Invalid Credential state: {state}")]
     InvalidCredentialState { state: CredentialStateEnum },
 
-    #[error("Proof schema already exists")]
-    ProofSchemaAlreadyExists,
-
     #[error("Invalid Proof state: {state}")]
     InvalidProofState { state: ProofStateEnum },
 
@@ -194,9 +184,6 @@ pub enum BusinessLogicError {
 
     #[error("Missing credential schema")]
     MissingCredentialSchema,
-
-    #[error("Duplicate proof input credential schema")]
-    DuplicateProofInputCredentialSchema,
 
     #[error("Missing claim schema: {claim_schema_id}")]
     MissingClaimSchema { claim_schema_id: ClaimSchemaId },
@@ -249,9 +236,6 @@ pub enum BusinessLogicError {
     #[error("Unsupported key type for CSR")]
     UnsupportedKeyTypeForCSR,
 
-    #[error("Incorrect nested disclosure level")]
-    IncorrectDisclosureLevel,
-
     #[error("Trust anchor name already in use")]
     TrustAnchorNameTaken,
 
@@ -275,9 +259,6 @@ pub enum BusinessLogicError {
 
     #[error("No trust entity found for the given did: {0}")]
     MissingTrustEntity(DidId),
-
-    #[error("Error while importing proof request schema: {0}")]
-    ProofSchemaImport(#[from] ProofSchemaImportError),
 
     #[error("Multiple matching trust anchors")]
     MultipleMatchingTrustAnchors,
@@ -320,9 +301,6 @@ pub enum BusinessLogicError {
 
     #[error("Verification protocol does not support this API endpoint version")]
     IncompatiblePresentationEndpoint,
-
-    #[error("Invalid history source")]
-    InvalidHistorySource,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -369,21 +347,6 @@ pub enum ValidationError {
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
 
-    #[error("Proof schema: Missing proof input schemas")]
-    ProofSchemaMissingProofInputSchemas,
-
-    #[error("Proof schema: Claim schemas must not be empty")]
-    ProofSchemaMissingClaims,
-
-    #[error("Proof schema: No required claim")]
-    ProofSchemaNoRequiredClaim,
-
-    #[error("Proof schema: Duplicit claim schema")]
-    ProofSchemaDuplicitClaim,
-
-    #[error("Credential format {credential_format} does not support combined presentation")]
-    ProofSchemaInvalidCredentialCombination { credential_format: String },
-
     #[error("Invalid datatype `{datatype}` for value `{value}`: {source}")]
     InvalidDatatype {
         datatype: String,
@@ -394,17 +357,11 @@ pub enum ValidationError {
     #[error("Did not found")]
     DidNotFound,
 
-    #[error("Nested claims in arrays cannot be requested")]
-    NestedClaimInArrayRequested,
-
     #[error("Schema id not allowed for format")]
     SchemaIdNotAllowedForFormat,
 
     #[error("Invalid mdl parameters")]
     InvalidMdlParameters,
-
-    #[error("Sharing not supported for requested proof-schema")]
-    ProofSchemaSharingNotSupported,
 
     #[error("Forbidden")]
     Forbidden,
@@ -560,12 +517,10 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Credential(_) => ErrorCode::BR_0001,
             Self::Did(_) | Self::DidValue(_) => ErrorCode::BR_0024,
             Self::RevocationList(_) => ErrorCode::BR_0034,
-            Self::ProofSchema(_) => ErrorCode::BR_0014,
             Self::Proof(_) => ErrorCode::BR_0012,
             Self::Organisation(_) => ErrorCode::BR_0022,
             Self::Key(_) => ErrorCode::BR_0037,
             Self::CredentialSchema(_) => ErrorCode::BR_0006,
-            Self::History(_) => ErrorCode::BR_0100,
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
             Self::TrustEntity(_) | Self::TrustEntityByEntityKey(_) => ErrorCode::BR_0121,
             Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
@@ -587,7 +542,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
             Self::IdentifierIsDeactivated(_) => ErrorCode::BR_0027,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
-            Self::ProofSchemaAlreadyExists => ErrorCode::BR_0015,
             Self::InvalidProofState { .. } => ErrorCode::BR_0013,
             Self::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
             Self::ProofSchemaDeleted { .. } => ErrorCode::BR_0019,
@@ -609,7 +563,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
             Self::IncompatibleProofVerificationKeyStorage => ErrorCode::BR_0158,
             Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
-            Self::IncorrectDisclosureLevel => ErrorCode::BR_0130,
             Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
             Self::UnknownTrustAnchorType => ErrorCode::BR_0114,
             Self::TrustAnchorMustBePublish => ErrorCode::BR_0123,
@@ -617,7 +570,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustAnchorInvalidCreateRequest { .. } => ErrorCode::BR_0177,
             Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
-            Self::ProofSchemaImport(_) => ErrorCode::BR_0135,
             Self::MultipleMatchingTrustAnchors => ErrorCode::BR_0179,
             Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
@@ -638,8 +590,6 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
             Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
             Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
-            Self::DuplicateProofInputCredentialSchema => ErrorCode::BR_0313,
-            Self::InvalidHistorySource => ErrorCode::BR_0315,
         }
     }
 }
@@ -652,9 +602,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
             Self::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
             Self::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
-            Self::ProofSchemaMissingClaims => ErrorCode::BR_0164,
-            Self::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
-            Self::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
             Self::InvalidFormatter(_) => ErrorCode::BR_0056,
             Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::InvalidKey(_) => ErrorCode::BR_0096,
@@ -662,10 +609,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             Self::InvalidDatatype { .. } => ErrorCode::BR_0061,
             Self::DidNotFound => ErrorCode::BR_0024,
-            Self::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
-            Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,
-            Self::ProofSchemaSharingNotSupported => ErrorCode::BR_0163,
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
@@ -689,7 +633,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidProofEngagement => ErrorCode::BR_0078,
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
-            Self::ProofSchemaInvalidCredentialCombination { .. } => ErrorCode::BR_0305,
             Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,

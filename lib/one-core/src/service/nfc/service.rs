@@ -2,18 +2,19 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 
 use super::NfcService;
 use super::dto::NfcScanRequestDTO;
+use super::error::NfcServiceError;
 use crate::config::core_config::VerificationEngagement;
+use crate::error::ContextWithErrorCode;
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::apdu::Response;
 use crate::proto::nfc::command::KnownCommand;
 use crate::proto::nfc::scanner::NfcScanner;
-use crate::service::error::{ServiceError, ValidationError};
 
 impl NfcService {
     pub async fn read_iso_mdl_engagement(
         &self,
         request: NfcScanRequestDTO,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, NfcServiceError> {
         let enabled = self
             .config
             .verification_engagement
@@ -21,17 +22,19 @@ impl NfcService {
             .map(|config| config.enabled.unwrap_or(true))
             .unwrap_or(false);
         if !enabled {
-            return Err(ValidationError::MissingVerificationEngagementConfig(
+            return Err(NfcServiceError::MissingVerificationEngagementConfig(
                 "NFC engagement not enabled".to_string(),
-            )
-            .into());
+            ));
         }
 
         let Some(nfc_scanner) = self.nfc_scanner.as_ref() else {
-            return Err(ServiceError::Other("Not supported".to_string()));
+            return Err(NfcServiceError::NotAvailable);
         };
 
-        nfc_scanner.scan(request.in_progress_message).await?;
+        nfc_scanner
+            .scan(request.in_progress_message)
+            .await
+            .error_while("scanning NFC")?;
 
         // NFC tag discovered - read data
         let result = read_select_handover(nfc_scanner.as_ref()).await;
@@ -64,16 +67,19 @@ impl NfcService {
         result
     }
 
-    pub async fn stop_iso_mdl_engagement(&self) -> Result<(), ServiceError> {
+    pub async fn stop_iso_mdl_engagement(&self) -> Result<(), NfcServiceError> {
         let Some(nfc_scanner) = self.nfc_scanner.as_ref() else {
-            return Err(ServiceError::Other("Not supported".to_string()));
+            return Err(NfcServiceError::NotAvailable);
         };
 
-        nfc_scanner.cancel_scan(None).await.map_err(Into::into)
+        Ok(nfc_scanner
+            .cancel_scan(None)
+            .await
+            .error_while("canceling NFC scan")?)
     }
 }
 
-async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, ServiceError> {
+async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, NfcServiceError> {
     selection(
         scanner,
         KnownCommand::SelectApplication {
@@ -92,7 +98,7 @@ async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, Servic
 
     let capability_container = read(scanner, 0, 15).await?;
     if capability_container.len() != 15 {
-        return Err(ServiceError::Other(format!(
+        return Err(NfcServiceError::ParsingError(format!(
             "Invalid CC length: {}",
             capability_container.len()
         )));
@@ -101,11 +107,11 @@ async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, Servic
     let ndef_file_id: [u8; 2] = capability_container
         .as_slice()
         .get(9..11)
-        .ok_or(ServiceError::MappingError(
+        .ok_or(NfcServiceError::ParsingError(
             "Could not extract ndef_file_id".to_string(),
         ))?
         .try_into()
-        .map_err(|e: std::array::TryFromSliceError| ServiceError::MappingError(e.to_string()))?;
+        .map_err(|e: std::array::TryFromSliceError| NfcServiceError::ParsingError(e.to_string()))?;
     selection(
         scanner,
         KnownCommand::SelectFile {
@@ -116,20 +122,22 @@ async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, Servic
 
     let ndef_length = read(scanner, 0, 2).await?;
     let ndef_length = u16::from_be_bytes(ndef_length.try_into().map_err(|bytes| {
-        ServiceError::MappingError(format!("Could not parse ndef length: {bytes:?}"))
+        NfcServiceError::ParsingError(format!("Could not parse ndef length: {bytes:?}"))
     })?);
 
     let ndef = read(scanner, 2, ndef_length as _).await?;
     tracing::debug!("Handover Select message: {ndef:?}");
 
     Base64UrlSafeNoPadding::encode_to_string(ndef)
-        .map_err(|e| ServiceError::MappingError(e.to_string()))
+        .map_err(|e| NfcServiceError::ParsingError(e.to_string()))
 }
 
-async fn selection(session: &dyn NfcScanner, command: KnownCommand) -> Result<(), ServiceError> {
-    let response = run_command(session, command).await?;
+async fn selection(session: &dyn NfcScanner, command: KnownCommand) -> Result<(), NfcServiceError> {
+    let response = run_command(session, command)
+        .await
+        .error_while("running APDU command")?;
     if !response.is_success() {
-        return Err(ServiceError::Other(format!(
+        return Err(NfcServiceError::ParsingError(format!(
             "APDU selection failed: {response:?}"
         )));
     }
@@ -141,10 +149,12 @@ async fn read(
     session: &dyn NfcScanner,
     offset: u16,
     length: usize,
-) -> Result<Vec<u8>, ServiceError> {
-    let response = run_command(session, KnownCommand::ReadBinary { offset, length }).await?;
+) -> Result<Vec<u8>, NfcServiceError> {
+    let response = run_command(session, KnownCommand::ReadBinary { offset, length })
+        .await
+        .error_while("running APDU command")?;
     if !response.is_success() {
-        return Err(ServiceError::Other(format!(
+        return Err(NfcServiceError::ParsingError(format!(
             "APDU read failed: {response:?}"
         )));
     }

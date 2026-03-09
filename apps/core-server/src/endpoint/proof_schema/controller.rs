@@ -1,6 +1,8 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
+use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::{Permission, ProofSchemaId};
 
@@ -40,11 +42,14 @@ pub(crate) async fn post_proof_schema(
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = async {
-        state
-            .core
-            .proof_schema_service
-            .create_proof_schema(request.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .proof_schema_service
+                .create_proof_schema(request.try_into()?)
+                .await
+                .error_while("creating proof schema")?,
+        )
     }
     .await;
     CreatedOrErrorResponse::from_result(result, state, "creating proof schema")
@@ -69,11 +74,14 @@ pub(crate) async fn get_proof_schemas(
 ) -> OkOrErrorResponse<GetProofSchemaListResponseRestDTO> {
     let result = async {
         let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
-        state
-            .core
-            .proof_schema_service
-            .get_proof_schema_list(&organisation_id, query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .proof_schema_service
+                .get_proof_schema_list(&organisation_id, query.try_into()?)
+                .await
+                .error_while("getting proof schema list")?,
+        )
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting proof schemas")

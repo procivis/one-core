@@ -4,9 +4,9 @@ use crate::proto::session_provider::SessionProvider;
 use crate::repository::history_repository::HistoryRepository;
 
 pub mod dto;
-pub mod service;
-
+pub mod error;
 pub(crate) mod mapper;
+pub mod service;
 
 #[derive(Clone)]
 pub struct HistoryService {
