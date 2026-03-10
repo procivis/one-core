@@ -7,7 +7,8 @@ use one_core::model::trust_list_publication::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::prelude::Expr;
+use sea_orm::{ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
 use shared_types::TrustListPublicationId;
 use time::OffsetDateTime;
 
@@ -36,6 +37,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
         relations: &TrustListPublicationRelations,
     ) -> Result<Option<TrustListPublication>, DataLayerError> {
         let entity_model = trust_list_publication::Entity::find_by_id(id)
+            .filter(trust_list_publication::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -113,6 +115,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
         query: TrustListPublicationListQuery,
     ) -> Result<GetTrustListPublicationList, DataLayerError> {
         let db_query = trust_list_publication::Entity::find()
+            .filter(trust_list_publication::Column::DeletedAt.is_null())
             .with_list_query(&query)
             .order_by_desc(trust_list_publication::Column::CreatedDate)
             .order_by_desc(trust_list_publication::Column::Id);
@@ -125,20 +128,24 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
         id: TrustListPublicationId,
         request: UpdateTrustListPublicationRequest,
     ) -> Result<(), DataLayerError> {
-        trust_list_publication::ActiveModel {
+        trust_list_publication::Entity::update(trust_list_publication::ActiveModel {
             id: Unchanged(id),
             last_modified: Set(OffsetDateTime::now_utc()),
             name: option_to_active_value(request.name),
             metadata: option_to_active_value(request.metadata),
             content: option_to_active_value(request.content),
             sequence_number: option_to_active_value(request.sequence_number),
-            deactivated_at: option_to_active_value(request.deactivated_at),
-            identifier_id: option_to_active_value(request.identifier_id),
+            deleted_at: option_to_active_value(request.deleted_at),
             key_id: option_to_active_value(request.key_id),
             certificate_id: option_to_active_value(request.certificate_id),
             ..Default::default()
-        }
-        .update(&self.db)
+        })
+        .filter(
+            Condition::all()
+                .add(trust_list_publication::Column::Id.eq(id))
+                .add(trust_list_publication::Column::DeletedAt.is_null()),
+        )
+        .exec(&self.db)
         .await
         .map_err(to_update_data_layer_error)?;
 
@@ -154,7 +161,16 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
                     .await
                     .map_err(to_data_layer_error)?;
 
-                trust_list_publication::Entity::delete_by_id(id)
+                trust_list_publication::Entity::update_many()
+                    .col_expr(
+                        trust_list_publication::Column::DeletedAt,
+                        Expr::value(OffsetDateTime::now_utc()),
+                    )
+                    .filter(
+                        Condition::all()
+                            .add(trust_list_publication::Column::Id.eq(id))
+                            .add(trust_list_publication::Column::DeletedAt.is_null()),
+                    )
                     .exec(&self.db)
                     .await
                     .map_err(to_data_layer_error)?;

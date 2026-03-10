@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::json;
+use shared_types::TrustListPublisherId;
 
 use super::TrustListPublisher;
 use super::etsi_lote::{EtsiLoteParams, EtsiLotePublisher};
@@ -16,16 +17,16 @@ use crate::repository::trust_list_publication_repository::TrustListPublicationRe
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TrustListPublisherProvider: Send + Sync {
-    fn get(&self, name: &str) -> Option<Arc<dyn TrustListPublisher>>;
+    fn get(&self, trust_list_id: &TrustListPublisherId) -> Option<Arc<dyn TrustListPublisher>>;
 }
 
 struct TrustListPublisherProviderImpl {
-    publishers: HashMap<String, Arc<dyn TrustListPublisher>>,
+    publishers: HashMap<TrustListPublisherId, Arc<dyn TrustListPublisher>>,
 }
 
 impl TrustListPublisherProvider for TrustListPublisherProviderImpl {
-    fn get(&self, name: &str) -> Option<Arc<dyn TrustListPublisher>> {
-        self.publishers.get(name).cloned()
+    fn get(&self, trust_list_id: &TrustListPublisherId) -> Option<Arc<dyn TrustListPublisher>> {
+        self.publishers.get(trust_list_id).cloned()
     }
 }
 
@@ -38,17 +39,18 @@ pub(crate) fn trust_list_publisher_provider_from_config(
     trust_entry_repository: Arc<dyn TrustEntryRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
 ) -> Result<Arc<dyn TrustListPublisherProvider>, ConfigValidationError> {
-    let mut publishers: HashMap<String, Arc<dyn TrustListPublisher>> = HashMap::new();
+    let mut publishers: HashMap<TrustListPublisherId, Arc<dyn TrustListPublisher>> = HashMap::new();
 
     for (key, fields) in config.trust_list_publisher.iter() {
         if !fields.enabled {
             continue;
         }
-
+        let method_id: TrustListPublisherId = key.as_str().into();
         let publisher: Arc<dyn TrustListPublisher> = match fields.r#type {
             TrustListPublisherType::EtsiLote => {
                 let params: EtsiLoteParams = config.trust_list_publisher.get(key)?;
                 Arc::new(EtsiLotePublisher {
+                    method_id: method_id.clone(),
                     params,
                     clock: clock.clone(),
                     key_provider: key_provider.clone(),
@@ -59,12 +61,12 @@ pub(crate) fn trust_list_publisher_provider_from_config(
                 }) as _
             }
         };
-
-        publishers.insert(key.to_string(), publisher);
+        publishers.insert(method_id, publisher);
     }
 
     for (key, value) in config.trust_list_publisher.iter_mut() {
-        if let Some(entity) = publishers.get(key) {
+        let method_id: TrustListPublisherId = key.as_str().into();
+        if let Some(entity) = publishers.get(&method_id) {
             value.capabilities = Some(json!(entity.get_capabilities()));
         }
     }

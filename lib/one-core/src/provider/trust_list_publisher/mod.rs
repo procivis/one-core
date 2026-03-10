@@ -7,13 +7,13 @@ use shared_types::{CertificateId, KeyId, OrganisationId, TrustEntryId, TrustList
 
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType};
 use crate::model::identifier::Identifier;
-use crate::model::trust_entry::{TrustEntry, TrustEntryState};
-use crate::model::trust_list_publication::{TrustListPublication, TrustRoleEnum};
+use crate::model::trust_entry::{TrustEntry, TrustEntryStatusEnum};
+use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationRoleEnum};
 use crate::provider::trust_list_publisher::error::TrustListPublisherError;
 
 pub struct CreateTrustListRequest {
     pub name: String,
-    pub role: TrustRoleEnum,
+    pub role: TrustListPublicationRoleEnum,
     pub organisation_id: OrganisationId,
     pub identifier: Identifier,
     pub key_id: Option<KeyId>,
@@ -41,7 +41,7 @@ pub trait TrustListPublisher: Send + Sync {
     async fn update_entry(
         &self,
         entry: TrustEntry,
-        state: Option<TrustEntryState>,
+        state: Option<TrustEntryStatusEnum>,
         params: Option<serde_json::Value>,
     ) -> Result<(), TrustListPublisherError>;
 
@@ -59,5 +59,5 @@ pub struct TrustListPublisherCapabilities {
     pub key_algorithms: Vec<KeyAlgorithmType>,
     pub publisher_identifier_types: Vec<IdentifierType>,
     pub entry_identifier_types: Vec<IdentifierType>,
-    pub supported_roles: Vec<TrustRoleEnum>,
+    pub supported_roles: Vec<TrustListPublicationRoleEnum>,
 }

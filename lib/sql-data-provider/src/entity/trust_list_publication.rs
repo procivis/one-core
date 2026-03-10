@@ -1,7 +1,11 @@
+use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
-use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId};
+use shared_types::{
+    CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId,
+    TrustListPublisherId,
+};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -15,10 +19,11 @@ pub struct Model {
     pub name: String,
     pub role: TrustRoleEnum,
     #[sea_orm(column_name = "type")]
-    pub r#type: String,
+    pub r#type: TrustListPublisherId,
     #[sea_orm(column_type = "Blob")]
     pub metadata: Vec<u8>,
-    pub deactivated_at: Option<OffsetDateTime>,
+    #[sea_orm(column_name = "deactivated_at")]
+    pub deleted_at: Option<OffsetDateTime>,
     #[sea_orm(column_type = "Blob", nullable)]
     pub content: Option<Vec<u8>>,
     pub sequence_number: i64,
@@ -94,8 +99,8 @@ impl Related<super::certificate::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
-#[into(one_core::model::trust_list_publication::TrustRoleEnum)]
-#[from(one_core::model::trust_list_publication::TrustRoleEnum)]
+#[into(TrustListPublicationRoleEnum)]
+#[from(TrustListPublicationRoleEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum TrustRoleEnum {
     #[sea_orm(string_value = "PID_PROVIDER")]

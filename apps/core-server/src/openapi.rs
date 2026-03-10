@@ -435,7 +435,18 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                               .add("x-displayName", "Statistics")
                               .build(),
                       ))
-                      .build()]);
+                      .build(),
+
+                               Tag::builder()
+                                   .name("trust_list_publication_management")
+                                   .description(Some(indoc::formatdoc! {""}))
+                                   .extensions(Some(
+                                       Extensions::builder()
+                                           .add("x-displayName", "Trust list publications")
+                                           .build(),
+                                   ))
+                                   .build(),
+        ]);
     }
     if config.enable_external_endpoints {
         tags.append(&mut vec![

@@ -34,6 +34,8 @@ mod wallet_unit_attestation_id;
 mod wallet_unit_attested_key_id;
 mod wallet_unit_id;
 
+mod trust_list_method_id;
+
 pub use blob_id::BlobId;
 pub use certificate_id::CertificateId;
 pub use claim_id::ClaimId;
@@ -64,6 +66,7 @@ pub use trust_anchor_id::TrustAnchorId;
 pub use trust_entity_id::TrustEntityId;
 pub use trust_entity_key::TrustEntityKey;
 pub use trust_entry_id::TrustEntryId;
+pub use trust_list_method_id::TrustListPublisherId;
 pub use trust_list_publication_id::TrustListPublicationId;
 pub use wallet_unit_attestation_id::WalletUnitAttestationId;
 pub use wallet_unit_attested_key_id::WalletUnitAttestedKeyId;

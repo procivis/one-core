@@ -8,6 +8,7 @@ use crate::transaction_context::TransactionManagerImpl;
 mod mapper;
 mod repository;
 
+mod entities;
 #[cfg(test)]
 mod test;
 

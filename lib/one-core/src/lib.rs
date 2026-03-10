@@ -83,6 +83,7 @@ use crate::service::statistics::StatisticsService;
 use crate::service::task::TaskService;
 use crate::service::trust_anchor::TrustAnchorService;
 use crate::service::trust_entity::TrustEntityService;
+use crate::service::trust_list_publication::TrustListPublicationService;
 use crate::service::vc_api::VCAPIService;
 use crate::service::verifier_provider::VerifierProviderService;
 use crate::service::wallet_provider::WalletProviderService;
@@ -134,6 +135,7 @@ pub struct OneCore {
     pub nfc_service: NfcService,
     pub statistics_service: StatisticsService,
     pub verifier_provider_service: VerifierProviderService,
+    pub trust_list_publication_service: TrustListPublicationService,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -341,7 +343,7 @@ impl OneCore {
             data_provider.get_remote_entity_cache_repository(),
         )?;
 
-        let _trust_list_publisher_provider = trust_list_publisher_provider_from_config(
+        let trust_list_publisher_provider = trust_list_publisher_provider_from_config(
             &mut config,
             clock.clone(),
             key_provider.clone(),
@@ -757,9 +759,16 @@ impl OneCore {
             statistics_service: StatisticsService::new(
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
-                session_provider,
+                session_provider.clone(),
             ),
             verifier_provider_service: VerifierProviderService::new(verifier_provider),
+            trust_list_publication_service: TrustListPublicationService::new(
+                data_provider.get_identifier_repository(),
+                data_provider.get_trust_list_publication_repository(),
+                data_provider.get_trust_entry_repository(),
+                session_provider,
+                trust_list_publisher_provider,
+            ),
         })
     }
 

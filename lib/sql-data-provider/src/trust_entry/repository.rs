@@ -5,16 +5,21 @@ use one_core::model::trust_entry::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
+use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::{Set, Unchanged};
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder};
-use shared_types::TrustEntryId;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, RelationTrait,
+};
+use shared_types::{TrustEntryId, TrustListPublicationId};
 use time::OffsetDateTime;
 
 use super::TrustEntryProvider;
-use crate::common::list_query_with_base_model;
-use crate::entity::trust_entry;
+use crate::common::calculate_pages_count;
+use crate::entity::{identifier, trust_entry};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::trust_entry::entities::TrustEntryWithIdentifier;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -57,9 +62,7 @@ impl TrustEntryRepository for TrustEntryProvider {
             );
         }
 
-        if let Some(identifier_id) = identifier_id
-            && let Some(identifier_relations) = &relations.identifier
-        {
+        if let Some(identifier_relations) = &relations.identifier {
             result.identifier = Some(
                 self.identifier_repository
                     .get(identifier_id, identifier_relations)
@@ -74,13 +77,61 @@ impl TrustEntryRepository for TrustEntryProvider {
         Ok(Some(result))
     }
 
-    async fn list(&self, query: TrustEntryListQuery) -> Result<GetTrustEntryList, DataLayerError> {
-        let db_query = trust_entry::Entity::find()
+    async fn list(
+        &self,
+        trust_list_publication_id: TrustListPublicationId,
+        query: TrustEntryListQuery,
+    ) -> Result<GetTrustEntryList, DataLayerError> {
+        let limit = query
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as _);
+
+        let query = trust_entry::Entity::find()
+            .select_only()
+            .columns([
+                trust_entry::Column::Id,
+                trust_entry::Column::CreatedDate,
+                trust_entry::Column::LastModified,
+                trust_entry::Column::Status,
+                trust_entry::Column::Metadata,
+                trust_entry::Column::TrustListPublicationId,
+                trust_entry::Column::IdentifierId,
+            ])
+            .join(
+                sea_orm::JoinType::LeftJoin,
+                trust_entry::Relation::Identifier.def(),
+            )
+            .column_as(identifier::Column::Id, "identifier_id")
+            .column_as(identifier::Column::CreatedDate, "identifier_created_date")
+            .column_as(identifier::Column::LastModified, "identifier_last_modified")
+            .column_as(identifier::Column::Name, "identifier_name")
+            .column_as(identifier::Column::Type, "identifier_type")
+            .column_as(identifier::Column::IsRemote, "identifier_is_remote")
+            .column_as(identifier::Column::State, "identifier_state")
+            .column_as(
+                identifier::Column::OrganisationId,
+                "identifier_organisation_id",
+            )
+            // list query
+            .filter(trust_entry::Column::TrustListPublicationId.eq(trust_list_publication_id))
             .with_list_query(&query)
             .order_by_desc(trust_entry::Column::CreatedDate)
             .order_by_desc(trust_entry::Column::Id);
 
-        list_query_with_base_model(db_query, query, &self.db).await
+        let (items_count, trust_entries) = tokio::join!(
+            query.to_owned().count(&self.db),
+            query.into_model::<TrustEntryWithIdentifier>().all(&self.db),
+        );
+
+        let items_count = items_count.map_err(to_data_layer_error)?;
+        let trust_entries = trust_entries.map_err(to_data_layer_error)?;
+
+        Ok(GetTrustEntryList {
+            values: convert_inner(trust_entries),
+            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+            total_items: items_count,
+        })
     }
 
     async fn update(
@@ -89,7 +140,7 @@ impl TrustEntryRepository for TrustEntryProvider {
         request: UpdateTrustEntryRequest,
     ) -> Result<(), DataLayerError> {
         let status = match request.status {
-            None => Unchanged(trust_entry::TrustEntryState::Active),
+            None => Unchanged(trust_entry::TrustEntryStatus::Active),
             Some(status) => Set(status.into()),
         };
 

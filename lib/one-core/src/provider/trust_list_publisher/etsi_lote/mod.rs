@@ -7,7 +7,7 @@ use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder as _, Encoder as _};
 use serde::Deserialize;
 use serde_with::DurationSeconds;
 use sha2::{Digest, Sha256};
-use shared_types::{TrustEntryId, TrustListPublicationId};
+use shared_types::{TrustEntryId, TrustListPublicationId, TrustListPublisherId};
 use standardized_types::etsi_119_602::{
     ListAndSchemeInformation, LoTEPayload, LoTEType, MultiLangString, MultiLangUri, PkiObject,
     ServiceDigitalIdentity, ServiceInformation, TrustedEntity, TrustedEntityInformation,
@@ -22,13 +22,9 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::KeyRelations;
-use crate::model::list_filter::ListFilterValue;
-use crate::model::trust_entry::{
-    TrustEntry, TrustEntryFilterValue, TrustEntryListQuery, TrustEntryState,
-    UpdateTrustEntryRequest,
-};
+use crate::model::trust_entry::{TrustEntry, TrustEntryStatusEnum, UpdateTrustEntryRequest};
 use crate::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations, TrustRoleEnum,
+    TrustListPublication, TrustListPublicationRelations, TrustListPublicationRoleEnum,
     UpdateTrustListPublicationRequest,
 };
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
@@ -45,6 +41,7 @@ use crate::repository::trust_list_publication_repository::TrustListPublicationRe
 use crate::util::key_selection::{KeySelection, SelectedKey};
 
 pub(crate) struct EtsiLotePublisher {
+    pub method_id: TrustListPublisherId,
     pub params: EtsiLoteParams,
     pub clock: Arc<dyn Clock>,
     pub key_provider: Arc<dyn KeyProvider>,
@@ -73,12 +70,12 @@ impl TrustListPublisher for EtsiLotePublisher {
             ],
             entry_identifier_types: vec![IdentifierType::Certificate],
             supported_roles: vec![
-                TrustRoleEnum::PidProvider,
-                TrustRoleEnum::WalletProvider,
-                TrustRoleEnum::WrpAcProvider,
-                TrustRoleEnum::WrpRcProvider,
-                TrustRoleEnum::PubEeaProvider,
-                TrustRoleEnum::NationalRegistryRegistrar,
+                TrustListPublicationRoleEnum::PidProvider,
+                TrustListPublicationRoleEnum::WalletProvider,
+                TrustListPublicationRoleEnum::WrpAcProvider,
+                TrustListPublicationRoleEnum::WrpRcProvider,
+                TrustListPublicationRoleEnum::PubEeaProvider,
+                TrustListPublicationRoleEnum::NationalRegistryRegistrar,
             ],
         }
     }
@@ -117,9 +114,9 @@ impl TrustListPublisher for EtsiLotePublisher {
             last_modified: self.clock.now_utc(),
             name: request.name,
             role: request.role,
-            r#type: "ETSI_LOTE".to_string(),
+            r#type: self.method_id.clone(),
             metadata,
-            deactivated_at: None,
+            deleted_at: None,
             content: None,
             sequence_number: 0,
             organisation_id: request.organisation_id,
@@ -159,10 +156,10 @@ impl TrustListPublisher for EtsiLotePublisher {
             id: entry_id,
             created_date: self.clock.now_utc(),
             last_modified: self.clock.now_utc(),
-            status: TrustEntryState::Active,
+            status: TrustEntryStatusEnum::Active,
             metadata,
             trust_list_publication_id: publication.id,
-            identifier_id: Some(identifier.id),
+            identifier_id: identifier.id,
             trust_list_publication: None,
             identifier: None,
         };
@@ -180,7 +177,7 @@ impl TrustListPublisher for EtsiLotePublisher {
     async fn update_entry(
         &self,
         entry: TrustEntry,
-        state: Option<TrustEntryState>,
+        state: Option<TrustEntryStatusEnum>,
         params: Option<serde_json::Value>,
     ) -> Result<(), TrustListPublisherError> {
         if state.is_none() && params.is_none() {
@@ -311,12 +308,7 @@ impl EtsiLotePublisher {
 
         let entry_list = self
             .trust_entry_repository
-            .list(TrustEntryListQuery {
-                filtering: Some(
-                    TrustEntryFilterValue::TrustListPublicationId(publication_id).condition(),
-                ),
-                ..Default::default()
-            })
+            .list(publication_id, Default::default())
             .await
             .error_while("listing trust entries")?;
 
@@ -327,22 +319,15 @@ impl EtsiLotePublisher {
 
         let mut entries_with_identifiers = Vec::new();
         for entry in entry_list.values {
-            let identifier_id = entry.identifier_id.ok_or_else(|| {
-                TrustListPublisherError::MissingRelation(format!(
-                    "entry {} missing identifier_id",
-                    entry.id
-                ))
-            })?;
-
             let identifier = self
                 .identifier_repository
-                .get(identifier_id, &identifier_relations)
+                .get(entry.identifier_id, &identifier_relations)
                 .await
                 .error_while("fetching entry identifier")?
                 .ok_or_else(|| {
                     TrustListPublisherError::MissingRelation(format!(
-                        "identifier {identifier_id} not found for entry {}",
-                        entry.id
+                        "identifier {} not found for entry {}",
+                        entry.identifier_id, entry.id
                     ))
                 })?;
 

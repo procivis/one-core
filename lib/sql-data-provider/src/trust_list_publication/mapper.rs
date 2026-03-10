@@ -3,10 +3,11 @@ use one_core::model::trust_list_publication::{
     SortableTrustListPublicationColumn, TrustListPublication, TrustListPublicationFilterValue,
 };
 use sea_orm::ActiveValue::Set;
-use sea_orm::IntoSimpleExpr;
-use sea_orm::sea_query::SimpleExpr;
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
 use crate::entity::trust_list_publication;
+use crate::entity::trust_list_publication::TrustRoleEnum;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
@@ -22,7 +23,7 @@ impl From<trust_list_publication::Model> for TrustListPublication {
             role: value.role.into(),
             r#type: value.r#type,
             metadata: value.metadata,
-            deactivated_at: value.deactivated_at,
+            deleted_at: value.deleted_at,
             content: value.content,
             sequence_number: value.sequence_number,
             organisation_id: value.organisation_id,
@@ -47,7 +48,7 @@ impl From<TrustListPublication> for trust_list_publication::ActiveModel {
             role: Set(value.role.into()),
             r#type: Set(value.r#type),
             metadata: Set(value.metadata),
-            deactivated_at: Set(value.deactivated_at),
+            deleted_at: Set(value.deleted_at),
             content: Set(value.content),
             sequence_number: Set(value.sequence_number),
             organisation_id: Set(value.organisation_id),
@@ -61,7 +62,11 @@ impl From<TrustListPublication> for trust_list_publication::ActiveModel {
 impl IntoSortingColumn for SortableTrustListPublicationColumn {
     fn get_column(&self) -> SimpleExpr {
         match self {
+            Self::Role => trust_list_publication::Column::Role.into_simple_expr(),
+            Self::Type => trust_list_publication::Column::Type.into_simple_expr(),
+            Self::Name => trust_list_publication::Column::Name.into_simple_expr(),
             Self::CreatedDate => trust_list_publication::Column::CreatedDate.into_simple_expr(),
+            Self::LastModified => trust_list_publication::Column::LastModified.into_simple_expr(),
         }
     }
 }
@@ -78,11 +83,17 @@ impl IntoFilterCondition for TrustListPublicationFilterValue {
             Self::Name(string_match) => {
                 get_string_match_condition(trust_list_publication::Column::Name, string_match)
             }
-            Self::Type(string_match) => {
-                get_string_match_condition(trust_list_publication::Column::Type, string_match)
-            }
-            Self::Role(string_match) => {
-                get_string_match_condition(trust_list_publication::Column::Role, string_match)
+            Self::Type(types) => trust_list_publication::Column::Type
+                .is_in(types)
+                .into_condition(),
+            Self::Role(roles) => {
+                let roles = roles
+                    .into_iter()
+                    .map(TrustRoleEnum::from)
+                    .collect::<Vec<_>>();
+                trust_list_publication::Column::Role
+                    .is_in(roles)
+                    .into_condition()
             }
             Self::CreatedDate(value) => {
                 get_comparison_condition(trust_list_publication::Column::CreatedDate, value)
@@ -90,6 +101,9 @@ impl IntoFilterCondition for TrustListPublicationFilterValue {
             Self::LastModified(value) => {
                 get_comparison_condition(trust_list_publication::Column::LastModified, value)
             }
+            Self::Ids(value) => trust_list_publication::Column::Id
+                .is_in(value)
+                .into_condition(),
         }
     }
 }

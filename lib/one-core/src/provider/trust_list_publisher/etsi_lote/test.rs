@@ -16,8 +16,6 @@ use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::common::GetListResponse;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
-use crate::model::trust_entry::TrustEntryState;
-use crate::model::trust_list_publication::TrustRoleEnum;
 use crate::proto::clock::DefaultClock;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
@@ -55,20 +53,23 @@ fn dummy_certificate(pem: String) -> Certificate {
     }
 }
 
-fn dummy_publication(role: TrustRoleEnum, metadata: Vec<u8>) -> TrustListPublication {
+fn dummy_publication(
+    role: TrustListPublicationRoleEnum,
+    metadata: Vec<u8>,
+) -> TrustListPublication {
     TrustListPublication {
         id: TrustListPublicationId::from(Uuid::new_v4()),
         created_date: datetime!(2025-01-01 0:00 UTC),
         last_modified: datetime!(2025-01-01 0:00 UTC),
         name: "test-publication".to_string(),
         role,
-        r#type: "ETSI_LOTE".to_string(),
+        r#type: "ETSI_LOTE".into(),
         metadata,
-        deactivated_at: None,
+        deleted_at: None,
         content: None,
         sequence_number: 42,
         organisation_id: Uuid::new_v4().into(),
-        identifier_id: None,
+        identifier_id: Some(Uuid::new_v4().into()),
         key_id: None,
         certificate_id: None,
         organisation: None,
@@ -83,10 +84,10 @@ fn dummy_entry(metadata: Vec<u8>) -> TrustEntry {
         id: Uuid::new_v4().into(),
         created_date: datetime!(2025-01-01 0:00 UTC),
         last_modified: datetime!(2025-01-01 0:00 UTC),
-        status: TrustEntryState::Active,
+        status: TrustEntryStatusEnum::Active,
         metadata,
         trust_list_publication_id: Uuid::new_v4().into(),
-        identifier_id: None,
+        identifier_id: Uuid::new_v4().into(),
         trust_list_publication: None,
         identifier: None,
     }
@@ -217,7 +218,13 @@ fn mock_entry_repo() -> MockTrustEntryRepository {
     });
 
     let store = entries.clone();
-    repo.expect_list().returning(move |_query| {
+    repo.expect_get().returning(move |id, _relations| {
+        let entries = store.lock().unwrap();
+        Ok(entries.iter().find(|e| e.id == id).cloned())
+    });
+
+    let store = entries.clone();
+    repo.expect_list().returning(move |_id, _query| {
         let entries = store.lock().unwrap().clone();
         Ok(GetListResponse {
             values: entries,
@@ -230,8 +237,8 @@ fn mock_entry_repo() -> MockTrustEntryRepository {
     repo.expect_update().returning(move |id, request| {
         let mut entries = store.lock().unwrap();
         if let Some(entry) = entries.iter_mut().find(|e| e.id == id) {
-            if let Some(status) = request.status {
-                entry.status = status;
+            if let Some(state) = request.status {
+                entry.status = state;
             }
             if let Some(metadata) = request.metadata {
                 entry.metadata = metadata;
@@ -285,6 +292,7 @@ fn make_publisher(
     identifier_repo: MockIdentifierRepository,
 ) -> EtsiLotePublisher {
     EtsiLotePublisher {
+        method_id: "ETSI_LOTE".into(),
         params: EtsiLoteParams {
             refresh_interval_seconds: time::Duration::seconds(86400),
         },
@@ -311,7 +319,8 @@ fn test_build_lote_payload_basic() {
     let entry = dummy_entry(entry_metadata);
 
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
-    let mut publication = dummy_publication(TrustRoleEnum::PidProvider, pub_metadata);
+    let mut publication =
+        dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata);
     publication.sequence_number = 42;
 
     let now = datetime!(2025-06-15 12:00 UTC);
@@ -416,7 +425,7 @@ async fn test_format_trust_list_empty_list() {
     let publication = TrustListPublication {
         key: Some(key),
         certificate: Some(certificate),
-        ..dummy_publication(TrustRoleEnum::PidProvider, pub_metadata)
+        ..dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata)
     };
 
     let publisher = make_publisher(
@@ -444,7 +453,7 @@ async fn test_format_trust_list_with_entry() {
     let mut publication = TrustListPublication {
         key: Some(key),
         certificate: Some(certificate),
-        ..dummy_publication(TrustRoleEnum::PidProvider, pub_metadata)
+        ..dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata)
     };
     publication.sequence_number = 2;
 
@@ -496,6 +505,11 @@ async fn test_format_trust_list_with_entry() {
 #[tokio::test]
 async fn test_create_trust_list_rejects_identifier_without_certificate() {
     let identifier = dummy_identifier(); // Did type, no certificates
+    let identifier_clone = identifier.clone();
+    let mut identifier_repo = MockIdentifierRepository::new();
+    identifier_repo
+        .expect_get()
+        .returning(move |_id, _relations| Ok(Some(identifier_clone.clone())));
 
     let publisher = make_publisher(
         MockKeyProvider::new(),
@@ -508,7 +522,7 @@ async fn test_create_trust_list_rejects_identifier_without_certificate() {
     let result = publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test".into(),
-            role: TrustRoleEnum::PidProvider,
+            role: TrustListPublicationRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier,
             key_id: None,
@@ -557,7 +571,7 @@ async fn test_lifecycle_create_add_update_remove() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "EU PID Providers".into(),
-            role: TrustRoleEnum::PidProvider,
+            role: TrustListPublicationRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),
@@ -606,7 +620,7 @@ async fn test_lifecycle_create_add_update_remove() {
         ..dummy_entry(vec![])
     };
     publisher
-        .update_entry(entry, Some(TrustEntryState::Active), None)
+        .update_entry(entry, Some(TrustEntryStatusEnum::Active), None)
         .await
         .unwrap();
 
@@ -659,7 +673,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
 
     let org_id = shared_types::OrganisationId::from(Uuid::new_v4());
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
-    let publication = dummy_publication(TrustRoleEnum::PidProvider, pub_metadata);
+    let publication = dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata);
 
     let mut pub_repo = MockTrustListPublicationRepository::new();
     let key_for_get = key;
@@ -668,12 +682,12 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
         Ok(Some(TrustListPublication {
             id,
             metadata: serde_json::to_vec(&sample_list_params()).unwrap(),
-            role: TrustRoleEnum::PidProvider,
+            role: TrustListPublicationRoleEnum::PidProvider,
             organisation_id: org_id,
             key: Some(key_for_get.clone()),
             certificate: Some(cert_for_get.clone()),
             organisation: Some(dummy_organisation(Some(org_id))),
-            ..dummy_publication(TrustRoleEnum::PidProvider, vec![])
+            ..dummy_publication(TrustListPublicationRoleEnum::PidProvider, vec![])
         }))
     });
     pub_repo.expect_update().returning(|_, _| Ok(()));
@@ -686,7 +700,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
         Ok(id)
     });
     let se = stored_entries.clone();
-    entry_repo.expect_list().returning(move |_| {
+    entry_repo.expect_list().returning(move |_, _| {
         Ok(GetListResponse {
             values: se.lock().unwrap().clone(),
             total_pages: 1,
@@ -714,7 +728,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
 
     let entries = stored_entries.lock().unwrap();
     assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].identifier_id, Some(identifier_id));
+    assert_eq!(entries[0].identifier_id, identifier_id);
 
     let stored_params: AddEntryParams = serde_json::from_slice(&entries[0].metadata).unwrap();
     assert!(stored_params.entity.name.is_none());
@@ -846,7 +860,7 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test List".into(),
-            role: TrustRoleEnum::PidProvider,
+            role: TrustListPublicationRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),
@@ -921,7 +935,7 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test List".into(),
-            role: TrustRoleEnum::PidProvider,
+            role: TrustListPublicationRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),
@@ -969,7 +983,6 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
         certificates: Some(vec![cert_with_key]),
         ..dummy_identifier()
     };
-
     let identifier_for_create = identifier.clone();
 
     let mut identifier_repo = MockIdentifierRepository::new();
@@ -990,7 +1003,7 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test List".into(),
-            role: TrustRoleEnum::PidProvider,
+            role: TrustListPublicationRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),

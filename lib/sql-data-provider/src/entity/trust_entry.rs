@@ -4,6 +4,8 @@ use serde::Deserialize;
 use shared_types::{IdentifierId, TrustEntryId, TrustListPublicationId};
 use time::OffsetDateTime;
 
+use crate::entity::identifier;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "trust_entry")]
 pub struct Model {
@@ -11,12 +13,11 @@ pub struct Model {
     pub id: TrustEntryId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub status: TrustEntryState,
+    pub status: TrustEntryStatus,
     #[sea_orm(column_type = "Blob")]
     pub metadata: Vec<u8>,
     pub trust_list_publication_id: TrustListPublicationId,
-    #[sea_orm(nullable)]
-    pub identifier_id: Option<IdentifierId>,
+    pub identifier_id: IdentifierId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -54,10 +55,10 @@ impl Related<super::identifier::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
-#[into(one_core::model::trust_entry::TrustEntryState)]
-#[from(one_core::model::trust_entry::TrustEntryState)]
+#[into(one_core::model::trust_entry::TrustEntryStatusEnum)]
+#[from(one_core::model::trust_entry::TrustEntryStatusEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
-pub enum TrustEntryState {
+pub enum TrustEntryStatus {
     #[sea_orm(string_value = "ACTIVE")]
     Active,
     #[sea_orm(string_value = "SUSPENDED")]

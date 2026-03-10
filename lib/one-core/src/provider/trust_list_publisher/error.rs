@@ -9,6 +9,10 @@ use crate::mapper::x509::CertificateParsingError;
 pub enum TrustListPublisherError {
     #[error("Publication not found: `{0}`")]
     PublicationNotFound(String),
+    #[error("Entry not found: `{0}`")]
+    EntryNotFound(String),
+    #[error("Identifier not found: `{0}`")]
+    IdentifierNotFound(String),
     #[error("Invalid identifier: `{0}`")]
     InvalidIdentifier(String),
     #[error("Unsupported role: `{0}`")]
@@ -42,6 +46,8 @@ impl ErrorCodeMixin for TrustListPublisherError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::PublicationNotFound(_) => ErrorCode::BR_0383,
+            Self::EntryNotFound(_) => ErrorCode::BR_0387,
+            Self::IdentifierNotFound(_) => ErrorCode::BR_0207,
             Self::InvalidIdentifier(_) => ErrorCode::BR_0382,
             Self::InvalidParams(_) => ErrorCode::BR_0385,
             Self::UnsupportedRole(_) => ErrorCode::BR_0386,

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
+use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::trust_list_publication::{
     TrustListPublication, TrustListPublicationFilterValue, TrustListPublicationListQuery,
-    TrustListPublicationRelations, TrustRoleEnum, UpdateTrustListPublicationRequest,
+    TrustListPublicationRelations, TrustListPublicationRoleEnum, UpdateTrustListPublicationRequest,
 };
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
@@ -25,6 +25,7 @@ struct TestSetup {
     pub db: DatabaseConnection,
     pub provider: TrustListPublicationProvider,
     pub org_id: shared_types::OrganisationId,
+    pub identifier_id: shared_types::IdentifierId,
 }
 
 async fn setup() -> TestSetup {
@@ -33,6 +34,10 @@ async fn setup() -> TestSetup {
     let org_id = insert_organisation_to_database(&db, None, None)
         .await
         .unwrap();
+    let identifier_id =
+        insert_identifier(&db, "testIdentifier", Uuid::new_v4(), None, org_id, false)
+            .await
+            .unwrap();
     TestSetup {
         provider: TrustListPublicationProvider {
             db: TransactionManagerImpl::new(db.clone()),
@@ -43,23 +48,27 @@ async fn setup() -> TestSetup {
         },
         db,
         org_id,
+        identifier_id,
     }
 }
 
-fn dummy_trust_list_publication(org_id: shared_types::OrganisationId) -> TrustListPublication {
+fn dummy_trust_list_publication(
+    org_id: shared_types::OrganisationId,
+    identifier_id: shared_types::IdentifierId,
+) -> TrustListPublication {
     TrustListPublication {
         id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "test-publication".to_string(),
-        role: TrustRoleEnum::Issuer,
-        r#type: "LOTE".to_string(),
+        role: TrustListPublicationRoleEnum::Issuer,
+        r#type: "LOTE".into(),
         metadata: vec![],
-        deactivated_at: None,
+        deleted_at: None,
         content: None,
         sequence_number: 0,
         organisation_id: org_id,
-        identifier_id: None,
+        identifier_id: Some(identifier_id),
         key_id: None,
         certificate_id: None,
         organisation: None,
@@ -72,10 +81,13 @@ fn dummy_trust_list_publication(org_id: shared_types::OrganisationId) -> TrustLi
 #[tokio::test]
 async fn test_create_trust_list_publication() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
 
     let result = provider.create(publication).await;
@@ -99,10 +111,13 @@ async fn test_get_trust_list_publication_missing() {
 #[tokio::test]
 async fn test_get_trust_list_publication_success() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -114,17 +129,20 @@ async fn test_get_trust_list_publication_success() {
     let found = result.unwrap().unwrap();
     assert_eq!(found.id, id);
     assert_eq!(found.name, "test-publication");
-    assert_eq!(found.role, TrustRoleEnum::Issuer);
-    assert_eq!(found.r#type, "LOTE".to_string());
+    assert_eq!(found.role, TrustListPublicationRoleEnum::Issuer);
+    assert_eq!(found.r#type, "LOTE".into());
 }
 
 #[tokio::test]
 async fn test_delete_trust_list_publication() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -140,14 +158,17 @@ async fn test_delete_trust_list_publication() {
 #[tokio::test]
 async fn test_list_trust_list_publications() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let pub1 = dummy_trust_list_publication(org_id);
+    let pub1 = dummy_trust_list_publication(org_id, identifier_id);
     let pub2 = {
-        let mut p = dummy_trust_list_publication(org_id);
+        let mut p = dummy_trust_list_publication(org_id, identifier_id);
         p.name = "second-publication".to_string();
-        p.role = TrustRoleEnum::Verifier;
+        p.role = TrustListPublicationRoleEnum::Verifier;
         p
     };
     provider.create(pub1).await.unwrap();
@@ -173,12 +194,15 @@ async fn test_list_trust_list_publications() {
 #[tokio::test]
 async fn test_list_trust_list_publications_with_name_filter() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let pub1 = dummy_trust_list_publication(org_id);
+    let pub1 = dummy_trust_list_publication(org_id, identifier_id);
     let pub2 = {
-        let mut p = dummy_trust_list_publication(org_id);
+        let mut p = dummy_trust_list_publication(org_id, identifier_id);
         p.name = "other-publication".to_string();
         p
     };
@@ -213,14 +237,15 @@ async fn test_list_trust_list_publications_with_organisation_filter() {
         db,
         provider,
         org_id,
+        identifier_id,
     } = setup().await;
 
     let other_org_id = insert_organisation_to_database(&db, None, None)
         .await
         .unwrap();
 
-    let pub1 = dummy_trust_list_publication(org_id);
-    let pub2 = dummy_trust_list_publication(other_org_id);
+    let pub1 = dummy_trust_list_publication(org_id, identifier_id);
+    let pub2 = dummy_trust_list_publication(other_org_id, identifier_id);
     provider.create(pub1).await.unwrap();
     provider.create(pub2).await.unwrap();
 
@@ -244,10 +269,13 @@ async fn test_list_trust_list_publications_with_organisation_filter() {
 #[tokio::test]
 async fn test_list_trust_list_publications_with_type_filter() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let pub1 = dummy_trust_list_publication(org_id);
+    let pub1 = dummy_trust_list_publication(org_id, identifier_id);
     provider.create(pub1).await.unwrap();
 
     let result = provider
@@ -256,9 +284,7 @@ async fn test_list_trust_list_publications_with_type_filter() {
                 page: 0,
                 page_size: 10,
             }),
-            filtering: Some(
-                TrustListPublicationFilterValue::Type(StringMatch::equals("LOTE")).condition(),
-            ),
+            filtering: Some(TrustListPublicationFilterValue::Type(vec!["LOTE".into()]).condition()),
             ..Default::default()
         })
         .await;
@@ -266,19 +292,22 @@ async fn test_list_trust_list_publications_with_type_filter() {
     assert!(result.is_ok());
     let list = result.unwrap();
     assert_eq!(list.total_items, 1);
-    assert_eq!(list.values[0].r#type, "LOTE".to_string());
+    assert_eq!(list.values[0].r#type, "LOTE".into());
 }
 
 #[tokio::test]
 async fn test_list_trust_list_publications_with_role_filter() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let pub1 = dummy_trust_list_publication(org_id); // role = Issuer
+    let pub1 = dummy_trust_list_publication(org_id, identifier_id); // role = Issuer
     let pub2 = {
-        let mut p = dummy_trust_list_publication(org_id);
-        p.role = TrustRoleEnum::Verifier;
+        let mut p = dummy_trust_list_publication(org_id, identifier_id);
+        p.role = TrustListPublicationRoleEnum::Verifier;
         p
     };
     provider.create(pub1).await.unwrap();
@@ -291,7 +320,8 @@ async fn test_list_trust_list_publications_with_role_filter() {
                 page_size: 10,
             }),
             filtering: Some(
-                TrustListPublicationFilterValue::Role(StringMatch::equals("ISSUER")).condition(),
+                TrustListPublicationFilterValue::Role(vec![TrustListPublicationRoleEnum::Issuer])
+                    .condition(),
             ),
             ..Default::default()
         })
@@ -300,16 +330,19 @@ async fn test_list_trust_list_publications_with_role_filter() {
     assert!(result.is_ok());
     let list = result.unwrap();
     assert_eq!(list.total_items, 1);
-    assert_eq!(list.values[0].role, TrustRoleEnum::Issuer);
+    assert_eq!(list.values[0].role, TrustListPublicationRoleEnum::Issuer);
 }
 
 #[tokio::test]
 async fn test_list_trust_list_publications_filter_by_created_date() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let pub1 = dummy_trust_list_publication(org_id);
+    let pub1 = dummy_trust_list_publication(org_id, identifier_id);
     provider.create(pub1).await.unwrap();
 
     let result = provider
@@ -338,10 +371,13 @@ async fn test_list_trust_list_publications_filter_by_created_date() {
 #[tokio::test]
 async fn test_list_trust_list_publications_filter_by_last_modified() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -383,11 +419,14 @@ async fn test_list_trust_list_publications_filter_by_last_modified() {
 #[tokio::test]
 async fn test_list_trust_list_publications_pagination() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
     for i in 0..5 {
-        let mut pub_item = dummy_trust_list_publication(org_id);
+        let mut pub_item = dummy_trust_list_publication(org_id, identifier_id);
         pub_item.name = format!("publication-{i}");
         provider.create(pub_item).await.unwrap();
     }
@@ -412,10 +451,13 @@ async fn test_list_trust_list_publications_pagination() {
 #[tokio::test]
 async fn test_update_trust_list_publication_name_and_metadata() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -439,16 +481,19 @@ async fn test_update_trust_list_publication_name_and_metadata() {
         .unwrap();
     assert_eq!(found.name, "updated-name");
     assert_eq!(found.metadata, new_metadata);
-    assert_eq!(found.role, TrustRoleEnum::Issuer);
+    assert_eq!(found.role, TrustListPublicationRoleEnum::Issuer);
 }
 
 #[tokio::test]
 async fn test_update_trust_list_publication_content_and_sequence_number() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -478,10 +523,13 @@ async fn test_update_trust_list_publication_content_and_sequence_number() {
 #[tokio::test]
 async fn test_update_trust_list_publication_deactivate() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -490,7 +538,7 @@ async fn test_update_trust_list_publication_deactivate() {
         .update(
             id,
             UpdateTrustListPublicationRequest {
-                deactivated_at: Some(Some(now)),
+                deleted_at: Some(Some(now)),
                 ..Default::default()
             },
         )
@@ -500,9 +548,8 @@ async fn test_update_trust_list_publication_deactivate() {
     let found = provider
         .get(id, &TrustListPublicationRelations::default())
         .await
-        .unwrap()
         .unwrap();
-    assert!(found.deactivated_at.is_some());
+    assert!(found.is_none());
 }
 
 #[tokio::test]
@@ -513,6 +560,11 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
     let org_id = insert_organisation_to_database(&db, None, None)
         .await
         .unwrap();
+
+    let identifier_id =
+        insert_identifier(&db, "test identifier", Uuid::new_v4(), None, org_id, false)
+            .await
+            .unwrap();
 
     let mut mock_org_repo = MockOrganisationRepository::default();
     mock_org_repo
@@ -537,7 +589,7 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
         certificate_repository: Arc::new(MockCertificateRepository::default()),
     };
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -577,10 +629,13 @@ async fn test_update_trust_list_publication_not_found() {
 #[tokio::test]
 async fn test_update_trust_list_publication_noop() {
     let TestSetup {
-        provider, org_id, ..
+        provider,
+        org_id,
+        identifier_id,
+        ..
     } = setup().await;
 
-    let publication = dummy_trust_list_publication(org_id);
+    let publication = dummy_trust_list_publication(org_id, identifier_id);
     let id = publication.id;
     provider.create(publication).await.unwrap();
 
@@ -595,7 +650,7 @@ async fn test_update_trust_list_publication_noop() {
         .unwrap()
         .unwrap();
     assert_eq!(found.name, "test-publication");
-    assert_eq!(found.role, TrustRoleEnum::Issuer);
+    assert_eq!(found.role, TrustListPublicationRoleEnum::Issuer);
     assert_eq!(found.sequence_number, 0);
     assert_eq!(found.metadata, Vec::<u8>::new());
 }

@@ -1,20 +1,22 @@
 use standardized_types::etsi_119_602::LoTEType;
 
 use super::dto::{AddEntryParams, CreateTrustListParams};
-use crate::model::trust_list_publication::TrustRoleEnum;
+use crate::model::trust_list_publication::TrustListPublicationRoleEnum;
 use crate::provider::trust_list_publisher::error::TrustListPublisherError;
 
-impl TryFrom<&TrustRoleEnum> for LoTEType {
+impl TryFrom<&TrustListPublicationRoleEnum> for LoTEType {
     type Error = TrustListPublisherError;
 
-    fn try_from(role: &TrustRoleEnum) -> Result<Self, Self::Error> {
+    fn try_from(role: &TrustListPublicationRoleEnum) -> Result<Self, Self::Error> {
         match role {
-            TrustRoleEnum::PidProvider => Ok(Self::EuPidProvidersList),
-            TrustRoleEnum::WalletProvider => Ok(Self::EuWalletProvidersList),
-            TrustRoleEnum::WrpAcProvider => Ok(Self::EuWrpAcProvidersList),
-            TrustRoleEnum::WrpRcProvider => Ok(Self::EuWrpRcProvidersList),
-            TrustRoleEnum::PubEeaProvider => Ok(Self::EuPubEaaProvidersList),
-            TrustRoleEnum::NationalRegistryRegistrar => Ok(Self::EuRegistrarsAndRegistersList),
+            TrustListPublicationRoleEnum::PidProvider => Ok(Self::EuPidProvidersList),
+            TrustListPublicationRoleEnum::WalletProvider => Ok(Self::EuWalletProvidersList),
+            TrustListPublicationRoleEnum::WrpAcProvider => Ok(Self::EuWrpAcProvidersList),
+            TrustListPublicationRoleEnum::WrpRcProvider => Ok(Self::EuWrpRcProvidersList),
+            TrustListPublicationRoleEnum::PubEeaProvider => Ok(Self::EuPubEaaProvidersList),
+            TrustListPublicationRoleEnum::NationalRegistryRegistrar => {
+                Ok(Self::EuRegistrarsAndRegistersList)
+            }
             other => Err(TrustListPublisherError::UnsupportedRole(format!(
                 "no ETSI LoTE type for role: {other:?}"
             ))),

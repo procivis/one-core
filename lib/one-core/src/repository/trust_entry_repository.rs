@@ -1,4 +1,4 @@
-use shared_types::TrustEntryId;
+use shared_types::{TrustEntryId, TrustListPublicationId};
 
 use crate::model::trust_entry::{
     GetTrustEntryList, TrustEntry, TrustEntryListQuery, TrustEntryRelations,
@@ -17,7 +17,11 @@ pub trait TrustEntryRepository: Send + Sync {
         relations: &TrustEntryRelations,
     ) -> Result<Option<TrustEntry>, DataLayerError>;
 
-    async fn list(&self, query: TrustEntryListQuery) -> Result<GetTrustEntryList, DataLayerError>;
+    async fn list(
+        &self,
+        trust_list_publication_id: TrustListPublicationId,
+        query: TrustEntryListQuery,
+    ) -> Result<GetTrustEntryList, DataLayerError>;
 
     async fn update(
         &self,

@@ -11,9 +11,10 @@ use one_core::service::certificate::error::CertificateServiceError;
 use one_core::service::did::error::DidServiceError;
 use one_core::service::revocation_list::error::RevocationServiceError;
 use one_core::service::ssi_issuer::error::IssuerServiceError;
+use one_core::service::trust_list_publication::error::TrustListPublicationServiceError;
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
-    RevocationListId, TrustAnchorId,
+    RevocationListId, TrustAnchorId, TrustListPublicationId,
 };
 
 use super::dto::{
@@ -523,6 +524,51 @@ pub(crate) async fn ssi_get_certificate_authority(
             .into_response(),
         Err(CertificateServiceError::NotFound(_)) => {
             tracing::warn!("Missing CA");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/trust-list/v1/{id}",
+    params(
+        ("id" = TrustListPublicationId, Path, description = "Trust list publication id")
+    ),
+    responses(
+        (status = 200, description = "OK", content_type = "application/jwt"),
+        (status = 404, description = "Trust list publication not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve Trust list publication",
+    description = indoc::formatdoc! {"
+        Retrieve a Trust list publication by its UUID.
+    "},
+)]
+pub(crate) async fn ssi_get_trust_list_publication(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<TrustListPublicationId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .trust_list_publication_service
+        .get_trust_list_publication_content(id)
+        .await;
+
+    match result {
+        Ok(result) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/jwt")],
+            result,
+        )
+            .into_response(),
+        Err(TrustListPublicationServiceError::TrustListPublicationNotFound(_)) => {
+            tracing::warn!("Missing trust list publication");
             StatusCode::NOT_FOUND.into_response()
         }
         Err(e) => {

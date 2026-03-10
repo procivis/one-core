@@ -25,8 +25,8 @@ use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
-    proof_schema, signature, ssi, statistics, task, trust_anchor, trust_entity, vc_api,
-    wallet_provider,
+    proof_schema, signature, ssi, statistics, task, trust_anchor, trust_entity,
+    trust_list_publication, vc_api, wallet_provider,
 };
 use crate::middleware::{UserInfo, get_http_request_context};
 use crate::openapi::gen_openapi_documentation;
@@ -490,6 +490,26 @@ fn get_management_endpoints(
             .route(
                 "/api/statistics/v1/dashboard/system/management",
                 get(statistics::controller::system_management_statistics),
+            )
+            .route(
+                "/api/trust-list/v1",
+                get(trust_list_publication::controller::get_trust_list_publications)
+                    .post(trust_list_publication::controller::post_trust_list_publication),
+            )
+            .route(
+                "/api/trust-list/v1/{id}",
+                get(trust_list_publication::controller::get_trust_list_publication)
+                    .delete(trust_list_publication::controller::delete_trust_list_publication),
+            )
+            .route(
+                "/api/trust-list/v1/{id}/entry",
+                get(trust_list_publication::controller::get_trust_list_publication_entries)
+                    .post(trust_list_publication::controller::post_trust_entry),
+            )
+            .route(
+                "/api/trust-list/v1/{list_id}/entry/{entry_id}",
+                patch(trust_list_publication::controller::patch_trust_entry)
+                    .delete(trust_list_publication::controller::delete_trust_entry),
             );
 
         if config.enable_signature_endpoints {
@@ -731,6 +751,10 @@ fn get_external_endpoints(
             .route(
                 "/ssi/wallet-provider/v1/{walletProvider}",
                 get(ssi::wallet_provider::controller::get_wallet_provider_metadata),
+            )
+            .route(
+                "/ssi/trust-list/v1/{id}",
+                get(ssi::controller::ssi_get_trust_list_publication),
             )
     } else {
         if let Some(paths) = openapi_paths {

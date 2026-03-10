@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId};
+use shared_types::{
+    CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId,
+    TrustListPublisherId,
+};
 use time::OffsetDateTime;
 
 use crate::model::certificate::{Certificate, CertificateRelations};
@@ -16,10 +19,10 @@ pub struct TrustListPublication {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub role: TrustRoleEnum,
-    pub r#type: String,
+    pub role: TrustListPublicationRoleEnum,
+    pub r#type: TrustListPublisherId,
     pub metadata: Vec<u8>,
-    pub deactivated_at: Option<OffsetDateTime>,
+    pub deleted_at: Option<OffsetDateTime>,
     pub content: Option<Vec<u8>>,
     pub sequence_number: i64,
 
@@ -35,9 +38,9 @@ pub struct TrustListPublication {
     pub certificate: Option<Certificate>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustRoleEnum {
+pub enum TrustListPublicationRoleEnum {
     PidProvider,
     WalletProvider,
     WrpAcProvider,
@@ -64,14 +67,17 @@ pub struct UpdateTrustListPublicationRequest {
     pub metadata: Option<Vec<u8>>,
     pub content: Option<Option<Vec<u8>>>,
     pub sequence_number: Option<i64>,
-    pub deactivated_at: Option<Option<OffsetDateTime>>,
-    pub identifier_id: Option<Option<IdentifierId>>,
+    pub deleted_at: Option<Option<OffsetDateTime>>,
     pub key_id: Option<Option<KeyId>>,
     pub certificate_id: Option<Option<CertificateId>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableTrustListPublicationColumn {
+    Role,
+    Type,
+    Name,
+    LastModified,
     CreatedDate,
 }
 
@@ -79,10 +85,11 @@ pub enum SortableTrustListPublicationColumn {
 pub enum TrustListPublicationFilterValue {
     OrganisationId(OrganisationId),
     Name(StringMatch),
-    Type(StringMatch),
-    Role(StringMatch),
+    Type(Vec<TrustListPublisherId>),
+    Role(Vec<TrustListPublicationRoleEnum>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
+    Ids(Vec<TrustListPublicationId>),
 }
 
 impl ListFilterValue for TrustListPublicationFilterValue {}
