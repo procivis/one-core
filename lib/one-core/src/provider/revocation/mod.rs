@@ -18,7 +18,6 @@ pub mod error;
 mod mapper;
 pub mod mdoc_mso_update_suspension;
 pub mod model;
-pub mod none;
 pub mod provider;
 pub mod status_list_2021;
 pub mod token_status_list;

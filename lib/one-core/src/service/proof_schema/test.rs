@@ -3,9 +3,7 @@ use std::sync::Arc;
 use mockall::PredicateBooleanExt;
 use mockall::predicate::*;
 use serde_json::json;
-use shared_types::{
-    CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId, RevocationMethodId,
-};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -19,7 +17,7 @@ use super::dto::{
 };
 use super::error::ProofSchemaServiceError;
 use crate::config::core_config::{
-    ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType, RevocationType,
+    ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -51,8 +49,6 @@ use crate::provider::credential_formatter::model::{
     Features, FormatterCapabilities, SelectiveDisclosure,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::RevocationMethodCapabilities;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
@@ -1372,7 +1368,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec![RevocationType::None],
+            revocation_methods: vec![],
             datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
@@ -1385,19 +1381,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter.clone()));
 
-    let mut revocation_method = MockRevocationMethod::new();
-    revocation_method
-        .expect_get_capabilities()
-        .returning(|| RevocationMethodCapabilities { operations: vec![] });
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("NONE".into()))
-        .return_once(move |_| Some(Arc::new(revocation_method)));
-
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
-    let revocation_method_provider = Arc::new(revocation_method_provider);
     let config = Arc::new(generic_config().core);
 
     let service = ProofSchemaService {
@@ -1412,7 +1397,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         credential_schema_import_parser: Arc::new(CredentialSchemaImportParserImpl::new(
             config.clone(),
             formatter_provider.clone(),
-            revocation_method_provider.clone(),
+            Arc::new(MockRevocationMethodProvider::default()),
         )),
         credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
             formatter_provider,
@@ -1580,7 +1565,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec![RevocationType::None],
+            revocation_methods: vec![],
             datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
@@ -1593,19 +1578,8 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter.clone()));
 
-    let mut revocation_method = MockRevocationMethod::new();
-    revocation_method
-        .expect_get_capabilities()
-        .returning(|| RevocationMethodCapabilities { operations: vec![] });
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("NONE".into()))
-        .return_once(move |_| Some(Arc::new(revocation_method)));
-
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
-    let revocation_method_provider = Arc::new(revocation_method_provider);
     let config = Arc::new(generic_config().core);
 
     let service = ProofSchemaService {
@@ -1620,7 +1594,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         credential_schema_import_parser: Arc::new(CredentialSchemaImportParserImpl::new(
             config.clone(),
             formatter_provider.clone(),
-            revocation_method_provider.clone(),
+            Arc::new(MockRevocationMethodProvider::default()),
         )),
         credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
             formatter_provider,
@@ -1755,7 +1729,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec![RevocationType::None],
+            revocation_methods: vec![],
             features: vec![Features::SelectiveDisclosure],
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             ..Default::default()

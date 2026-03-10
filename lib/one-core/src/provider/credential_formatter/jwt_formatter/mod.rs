@@ -250,7 +250,7 @@ impl CredentialFormatter for JWTFormatter {
                 VerificationProtocolType::OpenId4VpFinal1_0,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
-            revocation_methods: vec![RevocationType::None, RevocationType::BitstringStatusList],
+            revocation_methods: vec![RevocationType::BitstringStatusList],
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::Ecdsa,

@@ -8,7 +8,6 @@ use time::Duration;
 use super::bitstring_status_list::BitstringStatusList;
 use super::bitstring_status_list::resolver::StatusListCachingLoader;
 use super::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
-use super::none::NoneRevocation;
 use super::status_list_2021::StatusList2021;
 use super::token_status_list::TokenStatusList;
 use crate::config::ConfigValidationError;
@@ -95,7 +94,6 @@ pub(crate) fn revocation_method_provider_from_config(
         }
 
         let revocation_method: Arc<dyn RevocationMethod> = match fields.r#type {
-            RevocationType::None => Arc::new(NoneRevocation {}),
             RevocationType::MdocMsoUpdateSuspension => {
                 Arc::new(MdocMsoUpdateSuspensionRevocation {})
             }

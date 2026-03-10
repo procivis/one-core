@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use assert2::{assert, let_assert};
 use mockall::predicate::*;
-use shared_types::{CredentialFormat, RevocationMethodId};
+use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, RevocationType};
+use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
@@ -26,8 +26,6 @@ use crate::proto::credential_schema::parser::{
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
@@ -53,7 +51,7 @@ fn test_parse_import_credential_schema_success() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec![RevocationType::None],
+            revocation_methods: vec![],
             datatypes: vec!["STRING".into()],
             ..Default::default()
         });
@@ -65,24 +63,10 @@ fn test_parse_import_credential_schema_success() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .returning(|| RevocationMethodCapabilities {
-            operations: vec![Operation::Suspend],
-        });
-
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .once()
-        .return_once(|_| Some(Arc::new(revocation_method)));
-
     let parser = setup_parser(
         generic_config().core,
         formatter_provider,
-        revocation_method_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let request = ImportCredentialSchemaRequestDTO {
@@ -93,7 +77,7 @@ fn test_parse_import_credential_schema_success() {
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
-            revocation_method: Some("mock".into()),
+            revocation_method: None,
             organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -110,7 +94,7 @@ fn test_parse_import_credential_schema_success() {
             layout_type: Some(LayoutType::Card),
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: Some(true),
             transaction_code: Some(ImportCredentialSchemaTransactionCodeDTO {
                 r#type: TransactionCodeType::Numeric,
@@ -142,7 +126,7 @@ fn test_parse_import_with_nested_claims_success() {
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec![RevocationType::None],
+            revocation_methods: vec![],
             datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
@@ -153,24 +137,10 @@ fn test_parse_import_with_nested_claims_success() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .returning(|| RevocationMethodCapabilities {
-            operations: vec![Operation::Suspend],
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .once()
-        .return_once(|_| Some(Arc::new(revocation_method)));
-
     let parser = setup_parser(
         generic_config().core,
         formatter_provider,
-        revocation_method_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let request = ImportCredentialSchemaRequestDTO {
@@ -181,7 +151,7 @@ fn test_parse_import_with_nested_claims_success() {
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
-            revocation_method: Some("mock".into()),
+            revocation_method: None,
             organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -207,7 +177,7 @@ fn test_parse_import_with_nested_claims_success() {
             layout_type: Some(LayoutType::Card),
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: Some(true),
             transaction_code: None,
         },

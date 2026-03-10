@@ -180,11 +180,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: 'exchange.isoMdl'
                 order: 4
         revocation:
-            mock:
-                display: 'revocation.mock'
-                order: 0
-                type: 'NONE'
-                params: null
             BITSTRINGSTATUSLIST:
                 display: 'display'
                 order: 1
@@ -571,7 +566,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             VerificationProtocolType::OpenId4VpDraft25,
             VerificationProtocolType::OpenId4VpFinal1_0,
         ],
-        revocation_methods: vec![RevocationType::None, RevocationType::BitstringStatusList],
+        revocation_methods: vec![RevocationType::BitstringStatusList],
         verification_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         verification_key_storages: vec![KeyStorageType::Internal],
         datatypes: vec!["STRING".into(), "OBJECT".into()],

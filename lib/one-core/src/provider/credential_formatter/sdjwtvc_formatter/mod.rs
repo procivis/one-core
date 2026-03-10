@@ -391,7 +391,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_did_methods,
             issuance_exchange_protocols,
             proof_exchange_protocols,
-            revocation_methods: vec![RevocationType::None, RevocationType::TokenStatusList],
+            revocation_methods: vec![RevocationType::TokenStatusList],
             verification_key_algorithms: signing_algorithms.clone(),
             verification_key_storages: vec![
                 KeyStorageType::Internal,

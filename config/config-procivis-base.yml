@@ -353,11 +353,6 @@ transport:
     order: 0
     params: {}
 revocation:
-  NONE:
-    display: "revocation.none"
-    order: 0
-    type: "NONE"
-    params: null
   BITSTRINGSTATUSLIST:
     display: "revocation.bitStringStatusList"
     order: 1

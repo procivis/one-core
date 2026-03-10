@@ -165,7 +165,7 @@ async fn test_continue_issuance_endpoint() {
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [
               {

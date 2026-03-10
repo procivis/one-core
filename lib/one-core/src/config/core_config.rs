@@ -369,9 +369,6 @@ pub type RevocationConfig = ConfigBlock<RevocationMethodId, RevocationType>;
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
 )]
 pub enum RevocationType {
-    #[serde(rename = "NONE")]
-    #[strum(serialize = "NONE")]
-    None,
     #[serde(rename = "MDOC_MSO_UPDATE_SUSPENSION")]
     #[strum(serialize = "MDOC_MSO_UPDATE_SUSPENSION")]
     MdocMsoUpdateSuspension,

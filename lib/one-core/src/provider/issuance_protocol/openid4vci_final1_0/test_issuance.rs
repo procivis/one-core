@@ -10,9 +10,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::OpenID4VCIFinal1_0;
-use crate::config::core_config::{
-    CoreConfig, DatatypeType, Fields, FormatType, Params, RevocationType,
-};
+use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -42,7 +40,6 @@ use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::CredentialRevocationInfo;
-use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -217,10 +214,7 @@ async fn test_issuer_submit_succeeds() {
     assert!(result.unwrap().notification_id.is_some());
 }
 
-fn generic_mdoc_credential(
-    state: CredentialStateEnum,
-    revocation_method: Option<&'static str>,
-) -> Credential {
+fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
     let key = dummy_key();
 
     Credential {
@@ -244,7 +238,7 @@ fn generic_mdoc_credential(
         key: Some(key),
         schema: Some(CredentialSchema {
             format: CredentialFormat::from("MDOC"),
-            revocation_method: revocation_method.map(|v| v.into()),
+            revocation_method: None,
             ..dummy_credential().schema.unwrap()
         }),
         ..dummy_credential()
@@ -257,7 +251,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 
     let mut credential_repository = MockCredentialRepository::new();
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Offered, Some("mock"));
+    let credential = generic_mdoc_credential(CredentialStateEnum::Offered);
     let credential_copy = credential.clone();
     credential_repository
         .expect_get_credential()
@@ -279,13 +273,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .expect_update_credential()
         .once()
         .return_once(|_, _| Ok(()));
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .once()
-        .return_once(move |_| Some(Arc::new(NoneRevocation {})));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -337,7 +324,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
-        Arc::new(revocation_method_provider),
+        Arc::new(MockRevocationMethodProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
@@ -381,7 +368,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = CredentialFormat::from("MDOC");
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted, None);
+    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted);
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -520,7 +507,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
 async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_future_fails() {
     let credential_id: CredentialId = Uuid::new_v4().into();
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted, None);
+    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted);
 
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
@@ -627,19 +614,6 @@ fn dummy_config() -> CoreConfig {
         "STRING".to_string(),
         Fields {
             r#type: DatatypeType::String,
-            display: "display".into(),
-            order: None,
-            priority: None,
-            enabled: true,
-            capabilities: None,
-            params: None,
-        },
-    );
-
-    config.revocation.insert(
-        "NONE".into(),
-        Fields {
-            r#type: RevocationType::None,
             display: "display".into(),
             order: None,
             priority: None,

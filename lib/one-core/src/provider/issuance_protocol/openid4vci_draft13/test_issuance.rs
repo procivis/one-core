@@ -9,9 +9,7 @@ use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::{
-    CoreConfig, DatatypeType, Fields, FormatType, Params, RevocationType,
-};
+use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -600,19 +598,6 @@ fn dummy_config() -> CoreConfig {
         "STRING".to_string(),
         Fields {
             r#type: DatatypeType::String,
-            display: "display".into(),
-            order: None,
-            priority: None,
-            enabled: true,
-            capabilities: None,
-            params: None,
-        },
-    );
-
-    config.revocation.insert(
-        "NONE".into(),
-        Fields {
-            r#type: RevocationType::None,
             display: "display".into(),
             order: None,
             priority: None,

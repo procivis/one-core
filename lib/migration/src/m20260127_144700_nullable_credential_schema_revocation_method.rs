@@ -170,7 +170,7 @@ async fn alter_tables_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     Ok(())
 }
 
-async fn migrate_columns(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+pub async fn migrate_columns(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .exec_stmt(
             Query::update()
