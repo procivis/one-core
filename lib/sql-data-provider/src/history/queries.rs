@@ -721,6 +721,13 @@ impl IntoSortingColumn for SortableSystemManagementStatisticsColumn {
     }
 }
 
+const ISSUER_ACTIONS: [history::HistoryAction; 5] = [
+    history::HistoryAction::Issued,
+    history::HistoryAction::Suspended,
+    history::HistoryAction::Reactivated,
+    history::HistoryAction::Revoked,
+    history::HistoryAction::Errored,
+];
 pub(super) fn issuer_stats_query(query: &IssuerStatsQuery) -> SelectStatement {
     let mut stmt = history::Entity::find().with_list_query(query).into_query();
     let group_columns = [
@@ -736,14 +743,10 @@ pub(super) fn issuer_stats_query(query: &IssuerStatsQuery) -> SelectStatement {
                 .eq(Expr::col((credential::Entity, credential::Column::Id))),
         )
         // Only issuer actions are relevant
-        .and_where(credential::Column::Role.eq(credential::CredentialRole::Issuer));
-    for action in [
-        history::HistoryAction::Issued,
-        history::HistoryAction::Suspended,
-        history::HistoryAction::Reactivated,
-        history::HistoryAction::Revoked,
-        history::HistoryAction::Errored,
-    ] {
+        .and_where(credential::Column::Role.eq(credential::CredentialRole::Issuer))
+        .and_where(history::Column::Action.is_in(ISSUER_ACTIONS));
+
+    for action in ISSUER_ACTIONS {
         stmt.expr_as(
             // Each history event is counted once (the other cases are `null`, which do _not_ count)
             Func::count(CaseStatement::new().case(history::Column::Action.eq(action), 1)),
@@ -753,6 +756,11 @@ pub(super) fn issuer_stats_query(query: &IssuerStatsQuery) -> SelectStatement {
     stmt
 }
 
+const VERIFIER_ACTIONS: [history::HistoryAction; 3] = [
+    history::HistoryAction::Accepted,
+    history::HistoryAction::Rejected,
+    history::HistoryAction::Errored,
+];
 pub(super) fn verifier_stats_query(query: &VerifierStatsQuery) -> SelectStatement {
     let mut stmt = history::Entity::find().with_list_query(query).into_query();
     let group_columns = [
@@ -767,12 +775,10 @@ pub(super) fn verifier_stats_query(query: &VerifierStatsQuery) -> SelectStatemen
             Expr::col(history::Column::EntityId).eq(Expr::col((proof::Entity, proof::Column::Id))),
         )
         // Only verifier actions are relevant
-        .and_where(proof::Column::Role.eq(proof::ProofRole::Verifier));
-    for action in [
-        history::HistoryAction::Accepted,
-        history::HistoryAction::Rejected,
-        history::HistoryAction::Errored,
-    ] {
+        .and_where(proof::Column::Role.eq(proof::ProofRole::Verifier))
+        .and_where(history::Column::Action.is_in(VERIFIER_ACTIONS));
+
+    for action in VERIFIER_ACTIONS {
         stmt.expr_as(
             // Each history event is counted once (the other cases are `null`, which do _not_ count)
             Func::count(CaseStatement::new().case(history::Column::Action.eq(action), 1)),
