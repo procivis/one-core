@@ -9,8 +9,8 @@ use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::certificate::error::CertificateServiceError;
 use one_core::service::did::error::DidServiceError;
-use one_core::service::error::{EntityNotFoundError, ServiceError};
 use one_core::service::revocation_list::error::RevocationServiceError;
+use one_core::service::ssi_issuer::error::IssuerServiceError;
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
     RevocationListId, TrustAnchorId,
@@ -235,11 +235,11 @@ pub(crate) async fn get_json_ld_context(
             Json(JsonLDContextResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
+        Err(IssuerServiceError::MissingCredentialSchema(_)) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
-        Err(ServiceError::ValidationError(e)) => {
+        Err(e @ (IssuerServiceError::InvalidInput | IssuerServiceError::InvalidFormat)) => {
             tracing::error!("Validation error: {e}");
             StatusCode::BAD_REQUEST.into_response()
         }

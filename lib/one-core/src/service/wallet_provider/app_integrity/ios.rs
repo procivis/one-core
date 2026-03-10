@@ -1,6 +1,5 @@
 use std::any::type_name;
 
-use WalletProviderError::AppIntegrityValidationError;
 use ct_codecs::{Base64, Decoder};
 use itertools::Itertools;
 use one_crypto::Hasher;
@@ -16,7 +15,9 @@ use crate::proto::certificate_validator::{
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::wallet_provider::dto::IOSBundle;
-use crate::service::wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::error::WalletProviderError::{
+    self, AppIntegrityValidationError,
+};
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
 

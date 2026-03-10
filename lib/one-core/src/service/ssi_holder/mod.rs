@@ -18,12 +18,12 @@ use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 
 pub mod dto;
+pub mod error;
 pub mod issuance;
-pub mod service;
-pub mod verification;
-
 mod mapper;
+pub mod service;
 mod validator;
+pub mod verification;
 
 #[cfg(test)]
 mod test;

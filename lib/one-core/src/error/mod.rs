@@ -160,9 +160,6 @@ pub enum ErrorCode {
     #[strum(message = "Database error")]
     BR_0054,
 
-    #[strum(message = "Invalid formatter type")]
-    BR_0056,
-
     #[strum(message = "Formatter provider error")]
     BR_0057,
 

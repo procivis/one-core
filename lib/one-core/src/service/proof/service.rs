@@ -9,17 +9,20 @@ use uuid::Uuid;
 use super::ProofService;
 use super::dto::{
     CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
-    ProofDetailResponseDTO, ProposeProofResponseDTO, ShareProofRequestDTO, ShareProofResponseDTO,
+    ProofDetailResponseDTO, ProposeProofRequestDTO, ProposeProofResponseDTO, ShareProofRequestDTO,
+    ShareProofResponseDTO,
 };
+use super::error::ProofServiceError;
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, interaction_data_from_proof,
     proof_from_create_request,
 };
 use super::validator::{
     throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
-    validate_holder_engagements, validate_mdl_exchange, validate_proof_for_proof_definition,
-    validate_redirect_uri, validate_verification_key_storage_compatibility,
-    validate_verifier_engagement,
+    validate_format_and_exchange_protocol_compatibility, validate_holder_engagements,
+    validate_mdl_exchange, validate_proof_for_proof_definition, validate_redirect_uri,
+    validate_verification_key_storage_compatibility, validate_verifier_engagement,
+    validate_webhook_url,
 };
 use crate::config::core_config::{TransportType, VerificationEngagement, VerificationProtocolType};
 use crate::config::validator::protocol::{
@@ -37,7 +40,7 @@ use crate::model::credential::{CredentialFilterValue, CredentialRelations, GetCr
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
-use crate::model::identifier::IdentifierRelations;
+use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
@@ -67,13 +70,7 @@ use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_se
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
-};
-use crate::service::proof::dto::ProposeProofRequestDTO;
-use crate::service::proof::validator::{
-    validate_format_and_exchange_protocol_compatibility, validate_webhook_url,
-};
+use crate::service::error::MissingProviderError;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
@@ -89,7 +86,10 @@ impl ProofService {
     /// # Arguments
     ///
     /// * `id` - Proof uuid
-    pub async fn get_proof(&self, id: &ProofId) -> Result<ProofDetailResponseDTO, ServiceError> {
+    pub async fn get_proof(
+        &self,
+        id: &ProofId,
+    ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -145,7 +145,7 @@ impl ProofService {
             .error_while("getting proof")?;
 
         let Some(proof) = proof else {
-            return Err(EntityNotFoundError::Proof(*id).into());
+            return Err(ProofServiceError::NotFound(*id));
         };
 
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
@@ -197,11 +197,15 @@ impl ProofService {
     pub async fn get_proof_presentation_definition(
         &self,
         id: &ProofId,
-    ) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
+    ) -> Result<PresentationDefinitionResponseDTO, ProofServiceError> {
         let proof = self.load_proof_for_presentation_definition(id).await?;
-        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
-            MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
-        )?;
+        let exchange = self
+            .protocol_provider
+            .get_protocol(&proof.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                proof.protocol.clone(),
+            ))
+            .error_while("getting protocol")?;
         validate_proof_for_proof_definition(
             &proof,
             &*self.session_provider,
@@ -221,11 +225,15 @@ impl ProofService {
     pub async fn get_proof_presentation_definition_v2(
         &self,
         id: &ProofId,
-    ) -> Result<PresentationDefinitionV2ResponseDTO, ServiceError> {
+    ) -> Result<PresentationDefinitionV2ResponseDTO, ProofServiceError> {
         let proof = self.load_proof_for_presentation_definition(id).await?;
-        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
-            MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
-        )?;
+        let exchange = self
+            .protocol_provider
+            .get_protocol(&proof.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                proof.protocol.clone(),
+            ))
+            .error_while("getting protocol")?;
         validate_proof_for_proof_definition(
             &proof,
             &*self.session_provider,
@@ -245,7 +253,7 @@ impl ProofService {
     async fn load_proof_for_presentation_definition(
         &self,
         id: &ProofId,
-    ) -> Result<Proof, ServiceError> {
+    ) -> Result<Proof, ProofServiceError> {
         self.proof_repository
             .get_proof(
                 id,
@@ -260,7 +268,7 @@ impl ProofService {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(EntityNotFoundError::Proof(*id).into())
+            .ok_or(ProofServiceError::NotFound(*id))
     }
 
     fn storage_access(&self) -> StorageProxyImpl {
@@ -280,8 +288,9 @@ impl ProofService {
         &self,
         organisation_id: &OrganisationId,
         query: GetProofQueryDTO,
-    ) -> Result<GetProofListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+    ) -> Result<GetProofListResponseDTO, ProofServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let result = self
             .proof_repository
             .get_proof_list(query)
@@ -298,8 +307,9 @@ impl ProofService {
     pub async fn create_proof(
         &self,
         request: CreateProofRequestDTO,
-    ) -> Result<ProofId, ServiceError> {
-        validate_protocol_type(&request.protocol, &self.config.verification_protocol)?;
+    ) -> Result<ProofId, ProofServiceError> {
+        validate_protocol_type(&request.protocol, &self.config.verification_protocol)
+            .error_while("validating protocol")?;
         validate_mdl_exchange(
             &request.protocol,
             request.iso_mdl_engagement.as_deref(),
@@ -342,15 +352,16 @@ impl ProofService {
             )
             .await
             .error_while("getting proof schema")?
-            .ok_or(BusinessLogicError::MissingProofSchema { proof_schema_id })?;
+            .ok_or(ProofServiceError::MissingProofSchema(proof_schema_id))?;
         throw_if_org_relation_not_matching_session(
             proof_schema.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         // ONE-843: cannot create proof based on deleted schema
         if proof_schema.deleted_at.is_some() {
-            return Err(BusinessLogicError::ProofSchemaDeleted { proof_schema_id }.into());
+            return Err(ProofServiceError::ProofSchemaDeleted(proof_schema_id));
         }
 
         validate_format_and_exchange_protocol_compatibility(
@@ -363,7 +374,7 @@ impl ProofService {
         for credential_schema in proof_schema
             .input_schemas
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(ProofServiceError::MappingError(
                 "input_schemas is None".to_string(),
             ))?
             .iter()
@@ -386,14 +397,14 @@ impl ProofService {
         if exchange_type == VerificationProtocolType::IsoMdl {
             let iso_mdl_engagement = request
                 .iso_mdl_engagement
-                .ok_or(ValidationError::InvalidMdlParameters)?;
+                .ok_or(ProofServiceError::InvalidMdlParameters)?;
             let engagement_type = VerificationEngagement::from_str(
                 request
                     .engagement
                     .as_ref()
-                    .ok_or(ValidationError::InvalidMdlParameters)?,
+                    .ok_or(ProofServiceError::InvalidMdlParameters)?,
             )
-            .map_err(|_| ValidationError::InvalidMdlParameters)?;
+            .map_err(|_| ProofServiceError::InvalidMdlParameters)?;
             return self
                 .handle_iso_mdl_verifier(
                     proof_schema,
@@ -405,9 +416,14 @@ impl ProofService {
                 .await;
         }
 
-        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.protocol) else {
-            return Err(MissingProviderError::ExchangeProtocol(request.protocol.to_owned()).into());
-        };
+        let exchange_protocol = self
+            .protocol_provider
+            .get_protocol(&request.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                request.protocol.to_owned(),
+            ))
+            .error_while("getting protocol")?;
+
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
 
         let verifier_identifier = match request.verifier_identifier_id {
@@ -429,16 +445,11 @@ impl ProofService {
                 )
                 .await
                 .error_while("getting identifier")?
-                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
-                    verifier_identifier_id,
-                )))?,
+                .ok_or(ProofServiceError::MissingIdentifier(verifier_identifier_id))?,
             None => {
-                let verifier_did_id =
-                    request
-                        .verifier_did_id
-                        .ok_or(ServiceError::ValidationError(
-                            "No verifier or verifierDid specified".to_string(),
-                        ))?;
+                let verifier_did_id = request
+                    .verifier_did_id
+                    .ok_or(ProofServiceError::NoVerifier)?;
 
                 self.identifier_repository
                     .get_from_did_id(
@@ -453,22 +464,22 @@ impl ProofService {
                     )
                     .await
                     .error_while("getting identifier")?
-                    .ok_or(ServiceError::from(EntityNotFoundError::Did(
-                        verifier_did_id,
-                    )))?
+                    .ok_or(ProofServiceError::MissingDid(verifier_did_id))?
             }
         };
 
-        let selection = verifier_identifier.select_key(KeySelection {
-            key: request.verifier_key,
-            did: request.verifier_did_id,
-            certificate: request.verifier_certificate,
-            key_filter: Some(KeyFilter::role_filter(KeyRole::Authentication)),
-        })?;
+        let selection = verifier_identifier
+            .select_key(KeySelection {
+                key: request.verifier_key,
+                did: request.verifier_did_id,
+                certificate: request.verifier_certificate,
+                key_filter: Some(KeyFilter::role_filter(KeyRole::Authentication)),
+            })
+            .error_while("selecting key")?;
         let (verifier_key, verifier_certificate) = match selection {
             SelectedKey::Key(_) => {
-                return Err(ServiceError::ValidationError(
-                    "Key identifiers not supported".to_string(),
+                return Err(ProofServiceError::InvalidIdentifierType(
+                    IdentifierType::Key,
                 ));
             }
             SelectedKey::Certificate { certificate, key } => (key, Some(certificate.to_owned())),
@@ -477,7 +488,8 @@ impl ProofService {
                     &exchange_protocol_capabilities.did_methods,
                     &did.did_method,
                     &self.config.did,
-                )?;
+                )
+                .error_while("validating DID compatibility")?;
                 validate_did_and_format_compatibility(
                     &proof_schema,
                     did,
@@ -488,7 +500,7 @@ impl ProofService {
         };
 
         if verifier_key.key_type == "BBS_PLUS" {
-            return Err(ValidationError::BBSNotSupported.into());
+            return Err(ProofServiceError::BBSNotSupported);
         }
 
         validate_verification_key_storage_compatibility(
@@ -502,13 +514,15 @@ impl ProofService {
             verifier_identifier.clone(),
             &exchange_protocol_capabilities.verifier_identifier_types,
             &self.config.identifier,
-        )?;
+        )
+        .error_while("validating identifier")?;
 
         let transport = validate_and_select_transport_type(
             &request.transport,
             &self.config.transport,
             &exchange_protocol_capabilities,
-        )?;
+        )
+        .error_while("validating transport")?;
 
         let mut maybe_interaction = None;
         let transport = match transport {
@@ -528,7 +542,8 @@ impl ProofService {
                         InteractionType::Verification,
                         None,
                     )
-                    .await?,
+                    .await
+                    .error_while("adding interaction")?,
                 );
 
                 String::new()
@@ -568,7 +583,7 @@ impl ProofService {
         &self,
         id: &ProofId,
         request: ShareProofRequestDTO,
-    ) -> Result<ShareProofResponseDTO, ServiceError> {
+    ) -> Result<ShareProofResponseDTO, ProofServiceError> {
         let proof = self.load_proof(id).await?;
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
@@ -577,10 +592,7 @@ impl ProofService {
             previous_state,
             ProofStateEnum::Created | ProofStateEnum::Pending | ProofStateEnum::InteractionExpired
         ) {
-            return Err(BusinessLogicError::InvalidProofState {
-                state: previous_state,
-            }
-            .into());
+            return Err(ProofServiceError::InvalidState(previous_state));
         }
 
         if proof
@@ -588,18 +600,22 @@ impl ProofService {
             .as_ref()
             .is_some_and(|engagement| engagement != DEFAULT_ENGAGEMENT)
         {
-            return Err(ValidationError::InvalidProofEngagement.into());
+            return Err(ProofServiceError::InvalidEngagement);
         }
 
         let organisation = proof
             .schema
             .as_ref()
             .and_then(|schema| schema.organisation.as_ref())
-            .ok_or_else(|| ServiceError::MappingError("Missing organisation".to_string()))?;
+            .ok_or_else(|| ProofServiceError::MappingError("Missing organisation".to_string()))?;
 
-        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
-            MissingProviderError::ExchangeProtocol(proof.protocol.to_owned()),
-        )?;
+        let exchange = self
+            .protocol_provider
+            .get_protocol(&proof.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                proof.protocol.to_owned(),
+            ))
+            .error_while("getting protocol")?;
 
         let config = self.config.clone();
         let format_type_mapper: FormatMapper = Arc::new(move |input: &CredentialFormat| {
@@ -639,7 +655,8 @@ impl ProofService {
             InteractionType::Verification,
             expires_at,
         )
-        .await?;
+        .await
+        .error_while("adding interaction")?;
 
         self.proof_repository
             .update_proof(
@@ -655,12 +672,14 @@ impl ProofService {
             )
             .await
             .error_while("updating proof")?;
-        clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
+        clear_previous_interaction(&*self.interaction_repository, &proof.interaction)
+            .await
+            .error_while("clearing interaction")?;
         tracing::info!("Shared proof request {}", proof.id);
         Ok(ShareProofResponseDTO { url, expires_at })
     }
 
-    pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {
+    pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ProofServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -683,20 +702,22 @@ impl ProofService {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
-                proof_id,
-            )))?;
+            .ok_or(ProofServiceError::NotFound(proof_id))?;
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         let credential_ids = proof
             .claims
-            .ok_or(ServiceError::MappingError("claims are None".to_string()))?
+            .ok_or(ProofServiceError::MappingError(
+                "claims are None".to_string(),
+            ))?
             .into_iter()
             .map(|proof_claim| {
-                Ok::<CredentialId, ServiceError>(
+                Ok::<CredentialId, ProofServiceError>(
                     proof_claim
                         .credential
-                        .ok_or(ServiceError::MappingError("credential is None".to_string()))?
+                        .ok_or(ProofServiceError::MappingError(
+                            "credential is None".to_string(),
+                        ))?
                         .id,
                 )
             })
@@ -716,7 +737,8 @@ impl ProofService {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .error_while("getting blob storage")?;
 
         let credential_blob_ids = self
             .credential_repository
@@ -749,9 +771,8 @@ impl ProofService {
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
                 .await
-                .ok_or_else(|| {
-                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                })?;
+                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+                .error_while("getting blob storage")?;
 
             blob_storage
                 .delete(&proof_blob_id)
@@ -765,9 +786,11 @@ impl ProofService {
     pub async fn propose_proof(
         &self,
         request: ProposeProofRequestDTO,
-    ) -> Result<ProposeProofResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
-        validate_protocol_type(&request.protocol, &self.config.verification_protocol)?;
+    ) -> Result<ProposeProofResponseDTO, ProofServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
+        validate_protocol_type(&request.protocol, &self.config.verification_protocol)
+            .error_while("validating protocol")?;
         let engagement =
             validate_holder_engagements(&request.engagement, &self.config.verification_engagement)?;
         let exchange_type = self
@@ -777,11 +800,10 @@ impl ProofService {
             .error_while("getting protocol")?
             .r#type;
         if exchange_type != VerificationProtocolType::IsoMdl {
-            return Err(ValidationError::InvalidExchangeType {
+            return Err(ProofServiceError::InvalidExchangeType {
                 value: request.protocol,
                 source: anyhow::anyhow!("propose_proof"),
-            }
-            .into());
+            });
         }
 
         let organisation = self
@@ -799,15 +821,17 @@ impl ProofService {
         let ble = self
             .ble
             .as_ref()
-            .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
+            .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
         let now = OffsetDateTime::now_utc();
-        let ble_server = start_mdl_server(ble).await?;
+        let ble_server = start_mdl_server(ble)
+            .await
+            .error_while("starting mDL server")?;
         let key_pair = KeyAgreement::<EDeviceKey>::new();
         let device_engagement = DeviceEngagement {
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+                    .map_err(|e| ProofServiceError::MappingError(e.to_string()))?,
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
@@ -821,13 +845,13 @@ impl ProofService {
             let device_engagement_bytes = device_engagement
                 .clone()
                 .into_cbor()
-                .map_err(|err| ServiceError::Other(err.to_string()))?;
+                .map_err(|err| ProofServiceError::Other(err.to_string()))?;
 
             (
                 Some(
                     device_engagement_bytes
                         .generate_qr_code()
-                        .map_err(|err| ServiceError::Other(err.to_string()))?,
+                        .map_err(|err| ProofServiceError::Other(err.to_string()))?,
                 ),
                 Some(device_engagement_bytes),
             )
@@ -836,10 +860,12 @@ impl ProofService {
         };
 
         let nfc_engagement = if engagement.contains(&VerificationEngagement::NFC) {
-            let nfc_hce_provider = self
-                .nfc_hce_provider
-                .clone()
-                .ok_or(ServiceError::Other("NFC HCE provider is missing".into()))?;
+            let nfc_hce_provider =
+                self.nfc_hce_provider
+                    .clone()
+                    .ok_or(ProofServiceError::Other(
+                        "NFC HCE provider is missing".into(),
+                    ))?;
 
             // NFC device engagement does not contain device retrieval methods
             let device_engagement_bytes = {
@@ -847,26 +873,27 @@ impl ProofService {
                 device_engagement.device_retrieval_methods = vec![];
                 device_engagement
                     .into_cbor()
-                    .map_err(|err| ServiceError::Other(err.to_string()))?
+                    .map_err(|err| ProofServiceError::Other(err.to_string()))?
             };
 
             let select_message =
                 create_nfc_handover_select_message(&ble_server, device_engagement_bytes.clone())
                     .map_err(|err| {
-                        ServiceError::Other(format!("Failed to create NFC payload: {err}"))
+                        ProofServiceError::Other(format!("Failed to create NFC payload: {err}"))
                     })?
                     .to_buffer()
                     .map_err(|err| {
-                        ServiceError::Other(format!("Failed to generate NFC payload: {err}"))
+                        ProofServiceError::Other(format!("Failed to generate NFC payload: {err}"))
                     })?;
 
-            let handler = Arc::new(NfcStaticHandoverHandler::new(
-                nfc_hce_provider.clone(),
-                &select_message,
-            )?);
+            let handler = Arc::new(
+                NfcStaticHandoverHandler::new(nfc_hce_provider.clone(), &select_message)
+                    .error_while("creating NFC handler")?,
+            );
             nfc_hce_provider
                 .start_hosting(handler.to_owned(), request.ui_message)
-                .await?;
+                .await
+                .error_while("starting NFC hosting")?;
             Some(NfcHceSession {
                 handler,
                 hce: nfc_hce_provider,
@@ -885,7 +912,7 @@ impl ProofService {
             session: None,
             engagement,
         })
-        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        .map_err(|e| ProofServiceError::MappingError(e.to_string()))?;
 
         let interaction = add_new_interaction(
             interaction_id,
@@ -895,7 +922,8 @@ impl ProofService {
             InteractionType::Verification,
             None,
         )
-        .await?;
+        .await
+        .error_while("adding interaction")?;
 
         let proof_id = self
             .proof_repository
@@ -934,7 +962,8 @@ impl ProofService {
             qr_engagement,
             nfc_engagement,
         )
-        .await?;
+        .await
+        .error_while("receiving mDL request")?;
 
         Ok(ProposeProofResponseDTO {
             proof_id,
@@ -943,7 +972,7 @@ impl ProofService {
         })
     }
 
-    pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ServiceError> {
+    pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ProofServiceError> {
         let Some(proof) = self
             .proof_repository
             .get_proof(
@@ -963,7 +992,7 @@ impl ProofService {
             .await
             .error_while("getting proof")?
         else {
-            return Err(EntityNotFoundError::Proof(proof_id).into());
+            return Err(ProofServiceError::NotFound(proof_id));
         };
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
@@ -986,16 +1015,15 @@ impl ProofService {
                     .await
                     .error_while("updating proof")?;
             }
-            state => return Err(BusinessLogicError::InvalidProofState { state }.into()),
+            state => return Err(ProofServiceError::InvalidState(state)),
         };
         if let Some(proof_blob_id) = proof.proof_blob_id {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
                 .await
-                .ok_or_else(|| {
-                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                })?;
+                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+                .error_while("getting blob storage")?;
 
             blob_storage
                 .delete(&proof_blob_id)
@@ -1008,7 +1036,7 @@ impl ProofService {
 
     // ============ Private methods
 
-    async fn hard_delete_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
+    async fn hard_delete_proof(&self, proof: &Proof) -> Result<(), ProofServiceError> {
         self.proof_repository
             .delete_proof(&proof.id)
             .await
@@ -1024,7 +1052,7 @@ impl ProofService {
 
     /// Release resources consumed by the exchange protocol for this particular proof
     /// (e.g. BLE advertising).
-    async fn exchange_retract_proof(&self, proof: &Proof) -> Result<(), ServiceError> {
+    async fn exchange_retract_proof(&self, proof: &Proof) -> Result<(), ProofServiceError> {
         // If the configuration is changed such that the exchange protocol of the proof no longer
         // exists we can simply skip the retracting.
         if let Some(exchange_protocol) = self.protocol_provider.get_protocol(&proof.protocol) {
@@ -1037,7 +1065,7 @@ impl ProofService {
     }
 
     /// Get proof with relations
-    async fn load_proof(&self, id: &ProofId) -> Result<Proof, ServiceError> {
+    async fn load_proof(&self, id: &ProofId) -> Result<Proof, ProofServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -1078,7 +1106,7 @@ impl ProofService {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(EntityNotFoundError::Proof(*id))?;
+            .ok_or(ProofServiceError::NotFound(*id))?;
 
         Ok(proof)
     }

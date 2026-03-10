@@ -9,7 +9,6 @@ use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::repository::error::DataLayerError;
-use crate::service::error::ServiceError;
 use crate::service::wallet_provider::dto::{
     EudiWalletGeneralInfo, EudiWalletInfo, EudiWalletInfoConfig, RegisterWalletUnitRequestDTO,
     WscdInfo,
@@ -23,7 +22,7 @@ pub(crate) fn wallet_unit_from_request(
     public_key: Option<&PublicJwk>,
     now: OffsetDateTime,
     nonce: Option<String>,
-) -> Result<WalletUnit, ServiceError> {
+) -> Result<WalletUnit, WalletProviderError> {
     let status = match &nonce {
         None => WalletUnitStatus::Active,
         Some(_) => WalletUnitStatus::Pending,
@@ -53,19 +52,16 @@ pub(crate) fn wallet_unit_from_request(
 pub(crate) fn public_key_from_wallet_unit(
     wallet_unit: &WalletUnit,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<KeyHandle, ServiceError> {
+) -> Result<KeyHandle, WalletProviderError> {
     let ParsedKey { key, .. } = key_algorithm_provider
-        .parse_jwk(
-            wallet_unit
-                .authentication_key_jwk
-                .as_ref()
-                .ok_or(ServiceError::MappingError("Missing public key".to_string()))?,
-        )
+        .parse_jwk(wallet_unit.authentication_key_jwk.as_ref().ok_or(
+            WalletProviderError::MappingError("Missing public key".to_string()),
+        )?)
         .error_while("parsing wallet unit JWK")?;
     Ok(key)
 }
 
-pub(super) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
+pub(super) fn map_already_exists_error(error: DataLayerError) -> WalletProviderError {
     match error {
         DataLayerError::AlreadyExists => {
             WalletProviderError::WalletUnitAlreadyExists.error_while("creating wallet unit")

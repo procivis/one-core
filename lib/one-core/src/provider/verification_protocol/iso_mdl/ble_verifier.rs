@@ -39,7 +39,6 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::ServiceError;
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
@@ -119,7 +118,7 @@ pub(crate) async fn start_client(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
-) -> Result<(), ServiceError> {
+) -> Result<(), VerificationProtocolError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
 
     let (sender, receiver) = oneshot::channel();
@@ -181,7 +180,7 @@ pub(crate) async fn start_client(
         .await;
 
     if matches!(schedule_result, ScheduleResult::Busy) {
-        return Err(ServiceError::Other("BLE is busy".into()));
+        return Err(VerificationProtocolError::Failed("BLE is busy".into()));
     }
 
     Ok(())
@@ -433,9 +432,10 @@ async fn fill_proof_claims_and_credentials(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
 ) -> Result<(), anyhow::Error> {
-    let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
-        "proof_schema is None".to_string(),
-    ))?;
+    let proof_schema = proof
+        .schema
+        .as_ref()
+        .context("proof_schema is None".to_string())?;
 
     let encoded = encode_cbor_base64(&device_response)?;
 

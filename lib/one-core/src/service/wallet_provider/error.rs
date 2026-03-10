@@ -1,3 +1,4 @@
+use shared_types::{IdentifierId, WalletUnitId};
 use thiserror::Error;
 
 use crate::config::ConfigValidationError;
@@ -6,6 +7,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error)]
 pub enum WalletProviderError {
+    #[error("Wallet unit `{0}` not found")]
+    MissingWalletUnit(WalletUnitId),
     #[error("Wallet provider not enabled in config: `{0}`")]
     WalletProviderDisabled(ConfigValidationError),
     #[error("Missing proof")]
@@ -46,7 +49,11 @@ pub enum WalletProviderError {
     WalletUnitMustBePending,
     #[error("Insufficient security level")]
     InsufficientSecurityLevel,
+    #[error("Identifier `{0}` not found")]
+    MissingIdentifier(IdentifierId),
 
+    #[error("Mapping error: {0}")]
+    MappingError(String),
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -54,6 +61,7 @@ pub enum WalletProviderError {
 impl ErrorCodeMixin for WalletProviderError {
     fn error_code(&self) -> ErrorCode {
         match self {
+            Self::MissingWalletUnit(_) => ErrorCode::BR_0259,
             Self::WalletProviderDisabled(_) => ErrorCode::BR_0260,
             Self::CouldNotVerifyProof(_) => ErrorCode::BR_0071,
             Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
@@ -76,6 +84,8 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::WalletUnitMustBeActive => ErrorCode::BR_0081,
             Self::WalletUnitMustBePending => ErrorCode::BR_0168,
             Self::InsufficientSecurityLevel => ErrorCode::BR_0297,
+            Self::MissingIdentifier(_) => ErrorCode::BR_0207,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

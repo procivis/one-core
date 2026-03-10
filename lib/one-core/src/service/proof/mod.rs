@@ -27,6 +27,7 @@ use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
+pub mod error;
 mod iso_mdl;
 mod mapper;
 mod proximity_callback;

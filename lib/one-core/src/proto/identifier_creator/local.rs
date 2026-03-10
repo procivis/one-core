@@ -28,7 +28,7 @@ use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::did_from_did_request;
 use crate::service::did::service::{build_keys_request, generate_update_key};
 use crate::service::did::validator::validate_request_amount_of_keys;
-use crate::service::error::{EntityNotFoundError, MissingProviderError, ValidationError};
+use crate::service::error::MissingProviderError;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 
 impl IdentifierCreatorProto {
@@ -259,10 +259,7 @@ impl IdentifierCreatorProto {
             let key_algorithm = key
                 .key_algorithm_type()
                 .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-                .ok_or(ValidationError::InvalidKeyAlgorithm(
-                    key.key_type.to_owned(),
-                ))
-                .error_while("getting key algorithm")?;
+                .ok_or(Error::InvalidKeyAlgorithm(key.key_type.to_owned()))?;
 
             if !capabilities
                 .key_algorithms
@@ -351,8 +348,7 @@ impl IdentifierCreatorProto {
             .get_key(&request.key_id, &Default::default())
             .await
             .error_while("getting key")?
-            .ok_or(EntityNotFoundError::Key(request.key_id))
-            .error_while("getting key")?;
+            .ok_or(Error::KeyNotFound(request.key_id))?;
 
         let ParsedCertificate {
             attributes,
@@ -403,8 +399,7 @@ impl IdentifierCreatorProto {
             .get_key(&request.key_id, &Default::default())
             .await
             .error_while("getting key")?
-            .ok_or(EntityNotFoundError::Key(request.key_id))
-            .error_while("getting key")?;
+            .ok_or(Error::KeyNotFound(request.key_id))?;
 
         let self_signing = request.self_signed.is_some();
         let chain = match (request.chain, request.self_signed) {

@@ -201,7 +201,7 @@ pub(super) struct IOSBundle {
     pub enforce_production_build: bool,
 }
 
-#[derive(From)]
+#[derive(Debug, From)]
 #[from(WalletUnit)]
 pub struct GetWalletUnitResponseDTO {
     pub id: WalletUnitId,

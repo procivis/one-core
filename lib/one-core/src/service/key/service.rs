@@ -86,15 +86,12 @@ impl KeyService {
         let provider = self
             .key_provider
             .get_key_storage(&request.storage_type)
-            .ok_or(KeyServiceError::InvalidKeyStorage {
-                key_storage: request.storage_type.to_string(),
-            })?;
+            .ok_or(KeyServiceError::InvalidKeyStorage(
+                request.storage_type.to_string(),
+            ))?;
 
-        let key_type = KeyAlgorithmType::from_str(&request.key_type).map_err(|_| {
-            KeyServiceError::InvalidKeyAlgorithm {
-                key_algorithm: request.key_type.to_string(),
-            }
-        })?;
+        let key_type = KeyAlgorithmType::from_str(&request.key_type)
+            .map_err(|_| KeyServiceError::InvalidKeyAlgorithm(request.key_type.to_string()))?;
 
         if !provider.get_capabilities().algorithms.contains(&key_type) {
             return Err(KeyServiceError::UnsupportedKeyType { key_type });

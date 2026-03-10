@@ -5,10 +5,13 @@ use serde_json::Value;
 use url::Url;
 
 use super::dto::{
-    JsonLDContextDTO, JsonLDInlineEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
-    SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
+    JsonLDContextDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO,
+    JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO, SdJwtVcClaimSd,
+    SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
+use super::error::IssuerServiceError;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
@@ -16,10 +19,6 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedView,
 };
 use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
-use crate::service::error::ServiceError;
-use crate::service::ssi_issuer::dto::{
-    JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
-};
 
 impl Default for JsonLDContextDTO {
     fn default() -> Self {
@@ -36,7 +35,7 @@ impl Default for JsonLDContextDTO {
 pub(crate) fn generate_jsonld_context_response(
     claim_schemas: &Vec<ClaimSchema>,
     base_url: &str,
-) -> Result<HashMap<String, JsonLDEntityDTO>, ServiceError> {
+) -> Result<HashMap<String, JsonLDEntityDTO>, IssuerServiceError> {
     let mut entities: HashMap<String, JsonLDEntityDTO> = HashMap::new();
     for claim_schema in claim_schemas {
         // Metadata claims are not part of our JSON-LD context
@@ -53,7 +52,7 @@ fn insert_claim(
     key_parts: &Vec<&str>,
     base_url: &str,
     index: usize,
-) -> Result<(), ServiceError> {
+) -> Result<(), IssuerServiceError> {
     if index >= key_parts.len() {
         return Ok(());
     }
@@ -96,8 +95,9 @@ fn insert_claim(
 pub(crate) fn get_url_with_fragment(
     base_url: &str,
     fragment: &str,
-) -> Result<String, ServiceError> {
-    let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
+) -> Result<String, IssuerServiceError> {
+    let mut url =
+        Url::parse(base_url).map_err(|e| IssuerServiceError::MappingError(e.to_string()))?;
     // We need to url encode the fragment in case `#` is used in a claim name
     url.set_fragment(Some(&urlencoding::encode(fragment)));
     Ok(url.to_string())
@@ -106,7 +106,7 @@ pub(crate) fn get_url_with_fragment(
 pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
     vct_type: String,
     schema: CredentialSchema,
-) -> Result<SdJwtVcTypeMetadataResponseDTO, ServiceError> {
+) -> Result<SdJwtVcTypeMetadataResponseDTO, IssuerServiceError> {
     let background_color: Option<String> = schema.layout_properties.as_ref().map(|props| {
         props
             .background
@@ -129,7 +129,8 @@ pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
     };
 
     let nested_claims =
-        CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.unwrap_or_default())?;
+        CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.unwrap_or_default())
+            .error_while("converting nested claims")?;
     let claims = vct_claims_from_nested_view(nested_claims);
     Ok(SdJwtVcTypeMetadataResponseDTO {
         vct: schema.schema_id,
@@ -217,7 +218,7 @@ fn vct_claim_from_path_label(path: Vec<Value>, label: String) -> SdJwtVcClaimDTO
 
 fn vct_logo_from_schema(
     schema: &CredentialSchema,
-) -> Result<Option<SdJwtVcSimpleRenderingLogoDTO>, ServiceError> {
+) -> Result<Option<SdJwtVcSimpleRenderingLogoDTO>, IssuerServiceError> {
     Ok(schema
         .layout_properties
         .iter()
@@ -226,7 +227,9 @@ fn vct_logo_from_schema(
         .map(|s| Url::try_from(s.as_str()))
         .next()
         .transpose()
-        .map_err(|err| ServiceError::MappingError(format!("failed to parse logo URL: {err}")))?
+        .map_err(|err| {
+            IssuerServiceError::MappingError(format!("failed to parse logo URL: {err}"))
+        })?
         .map(|uri| SdJwtVcSimpleRenderingLogoDTO {
             uri,
             alt_text: None,

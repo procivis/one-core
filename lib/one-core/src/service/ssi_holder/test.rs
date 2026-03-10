@@ -66,7 +66,6 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
     InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
@@ -191,9 +190,8 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
         ProofStateEnum::Rejected,
         ProofStateEnum::Error,
     ] {
-        assert2::assert!(
-            let Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) = reject_proof_for_state(state).await
-        );
+        let result = reject_proof_for_state(state).await;
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0013);
     }
 }
 
@@ -1732,10 +1730,7 @@ async fn test_handle_invitation_session_org_mismatch() {
         .await;
 
     // then
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -1788,10 +1783,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
             None,
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -1845,10 +1837,7 @@ async fn test_accept_credential_credential_org_mismatch() {
             None,
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -1892,10 +1881,7 @@ async fn test_reject_credential_credential_org_mismatch() {
     };
 
     let result = service.reject_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -1922,8 +1908,5 @@ async fn test_initiate_issuance_session_org_mismatch() {
         .await;
 
     // then
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }

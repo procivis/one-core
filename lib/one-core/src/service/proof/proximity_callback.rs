@@ -8,6 +8,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::ProofService;
+use super::error::ProofServiceError;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
@@ -33,7 +34,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::m
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
     MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
 };
-use crate::service::error::{MissingProviderError, ServiceError};
+use crate::service::error::MissingProviderError;
 use crate::util::openid4vp::persist_accepted_proof;
 
 impl ProofService {
@@ -162,43 +163,45 @@ impl ProofService {
         &self,
         proof: Proof,
         unpacked_request: SubmissionRequestData,
-    ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VPDirectPostResponseDTO, ProofServiceError> {
         let organisation = proof
             .schema
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(ProofServiceError::MappingError(
                 "missing proof schema".to_string(),
             ))?
             .organisation
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(ProofServiceError::MappingError(
                 "missing organisation".to_string(),
             ))?;
 
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(ProofServiceError::MappingError(
                 "missing interaction".to_string(),
             ))?;
 
         let interaction_data: OpenID4VPVerifierInteractionContent = interaction
             .data
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(ProofServiceError::MappingError(
                 "missing interaction data".to_string(),
             ))
             .and_then(|d| {
-                serde_json::from_slice(d).map_err(|e| ServiceError::MappingError(e.to_string()))
+                serde_json::from_slice(d)
+                    .map_err(|e| ProofServiceError::MappingError(e.to_string()))
             })?;
 
         if let Some(used_key_id) = unpacked_request.encryption_key {
-            let verifier_key = proof
-                .verifier_key
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "missing verifier_key".to_string(),
-                ))?;
+            let verifier_key =
+                proof
+                    .verifier_key
+                    .as_ref()
+                    .ok_or(ProofServiceError::MappingError(
+                        "missing verifier_key".to_string(),
+                    ))?;
 
             if used_key_id != verifier_key.id {
                 tracing::info!("Proof encrypted with an incorrect key");
@@ -213,10 +216,11 @@ impl ProofService {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .error_while("getting blob storage")?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {
-            ServiceError::MappingError(format!("failed to serialize proof blob data: {e}"))
+            ProofServiceError::MappingError(format!("failed to serialize proof blob data: {e}"))
         })?;
 
         let blob = Blob::new(blob_value, BlobType::Proof);
@@ -248,7 +252,8 @@ impl ProofService {
                     &*self.transaction_manager,
                     &*self.identifier_creator,
                 )
-                .await?;
+                .await
+                .error_while("persisting accepted proof")?;
                 Ok(response)
             }
             Err(err) => {

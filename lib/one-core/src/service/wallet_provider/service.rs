@@ -61,7 +61,7 @@ use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
-use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
+use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
@@ -79,7 +79,7 @@ impl WalletProviderService {
     pub async fn get_wallet_unit(
         &self,
         id: &WalletUnitId,
-    ) -> Result<GetWalletUnitResponseDTO, ServiceError> {
+    ) -> Result<GetWalletUnitResponseDTO, WalletProviderError> {
         let result = self
             .wallet_unit_repository
             .get_wallet_unit(
@@ -91,11 +91,12 @@ impl WalletProviderService {
             )
             .await
             .error_while("getting wallet unit")?
-            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+            .ok_or(WalletProviderError::MissingWalletUnit(*id))?;
         throw_if_org_relation_not_matching_session(
             result.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("checking session")?;
 
         Ok(result.into())
     }
@@ -109,8 +110,9 @@ impl WalletProviderService {
         &self,
         organisation_id: &OrganisationId,
         query: WalletUnitListQuery,
-    ) -> Result<GetWalletUnitListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+    ) -> Result<GetWalletUnitListResponseDTO, WalletProviderError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
         let result = self
             .wallet_unit_repository
             .get_wallet_unit_list(query)
@@ -123,7 +125,7 @@ impl WalletProviderService {
     pub async fn register_wallet_unit(
         &self,
         request: RegisterWalletUnitRequestDTO,
-    ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
+    ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderError> {
         let wallet_provider = request.wallet_provider.to_owned();
         let (config, config_params) = self.get_wallet_provider_config_params(&wallet_provider)?;
 
@@ -215,7 +217,7 @@ impl WalletProviderService {
         request: RegisterWalletUnitRequestDTO,
         organisation: Organisation,
         wallet_provider_type: WalletProviderType,
-    ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
+    ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderError> {
         let now = self.clock.now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
         let organisation_id = organisation.id;
@@ -284,7 +286,7 @@ impl WalletProviderService {
         organisation: Organisation,
         wallet_provider_type: WalletProviderType,
         public_key_jwk: PublicJwk,
-    ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
+    ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderError> {
         let now = self.clock.now_utc();
         let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
@@ -320,7 +322,7 @@ impl WalletProviderService {
         &self,
         wallet_unit_id: WalletUnitId,
         request: WalletUnitActivationRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), WalletProviderError> {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(
@@ -332,7 +334,7 @@ impl WalletProviderService {
             )
             .await
             .error_while("getting wallet unit")?
-            .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
+            .ok_or(WalletProviderError::MissingWalletUnit(wallet_unit_id))?;
 
         match wallet_unit.status {
             WalletUnitStatus::Pending => {} // OK
@@ -354,7 +356,7 @@ impl WalletProviderService {
                 .into());
         };
         let Some(organisation) = &wallet_unit.organisation else {
-            return Err(ServiceError::MappingError(format!(
+            return Err(WalletProviderError::MappingError(format!(
                 "Missing organisation on wallet unit `{}`",
                 wallet_unit.id
             )));
@@ -431,39 +433,38 @@ impl WalletProviderService {
         // This is necessary as the attestation key might have limitations in regard to general
         // purpose crypto signatures.
         // E.g. on iOS the attestation key is only able to produce WebAuthn signatures.
-        let jwk =
-            if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
-                let device_signing_key_proof =
-                    Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)
-                        .error_while("parsing device signing key proof token")?;
-                let (_, alg) = self
-                    .key_algorithm_provider
-                    .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
-                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        device_signing_key_proof.header.algorithm.clone(),
-                    ))
-                    .error_while("getting key algorithm")?;
-                let device_signing_key = device_signing_key_proof.header.jwk.clone().ok_or(
-                    ServiceError::MappingError(
-                        "Missing JWK in device signing key header".to_string(),
-                    ),
-                )?;
-                let device_signing_key_handle = alg
-                    .parse_jwk(&device_signing_key)
-                    .error_while("parsing device signing JWK")?;
-                self.verify_device_signing_proof(
-                    &device_signing_key_proof,
-                    &device_signing_key_handle,
-                    config_params.device_auth_leeway,
-                    Some(wallet_unit_nonce),
-                )
-                .await?;
-                device_signing_key
-            } else {
-                attested_public_key
-                    .public_key_as_jwk()
-                    .error_while("creating JWK")?
-            };
+        let jwk = if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
+            let device_signing_key_proof =
+                Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)
+                    .error_while("parsing device signing key proof token")?;
+            let (_, alg) = self
+                .key_algorithm_provider
+                .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
+                .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                    device_signing_key_proof.header.algorithm.clone(),
+                ))
+                .error_while("getting key algorithm")?;
+            let device_signing_key = device_signing_key_proof.header.jwk.clone().ok_or(
+                WalletProviderError::MappingError(
+                    "Missing JWK in device signing key header".to_string(),
+                ),
+            )?;
+            let device_signing_key_handle = alg
+                .parse_jwk(&device_signing_key)
+                .error_while("parsing device signing JWK")?;
+            self.verify_device_signing_proof(
+                &device_signing_key_proof,
+                &device_signing_key_handle,
+                config_params.device_auth_leeway,
+                Some(wallet_unit_nonce),
+            )
+            .await?;
+            device_signing_key
+        } else {
+            attested_public_key
+                .public_key_as_jwk()
+                .error_while("creating JWK")?
+        };
 
         self.wallet_unit_repository
             .update_wallet_unit(
@@ -555,7 +556,7 @@ impl WalletProviderService {
         &self,
         wallet_unit: &WalletUnit,
         error_metadata: HistoryErrorMetadata,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), WalletProviderError> {
         self.wallet_unit_repository
             .update_wallet_unit(
                 &wallet_unit.id,
@@ -570,7 +571,7 @@ impl WalletProviderService {
             .error_while("updating wallet unit")?;
 
         let Some(organisation) = &wallet_unit.organisation else {
-            return Err(ServiceError::MappingError(format!(
+            return Err(WalletProviderError::MappingError(format!(
                 "Missing organisation on wallet unit `{}`",
                 wallet_unit.id
             )));
@@ -591,7 +592,7 @@ impl WalletProviderService {
         wallet_unit_id: WalletUnitId,
         bearer_token: &str,
         request: IssueWalletUnitAttestationRequestDTO,
-    ) -> Result<IssueWalletUnitAttestationResponseDTO, ServiceError> {
+    ) -> Result<IssueWalletUnitAttestationResponseDTO, WalletProviderError> {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(
@@ -605,7 +606,7 @@ impl WalletProviderService {
             )
             .await
             .error_while("getting wallet unit")?
-            .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
+            .ok_or(WalletProviderError::MissingWalletUnit(wallet_unit_id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
             return Err(WalletProviderError::WalletUnitRevoked
@@ -614,7 +615,7 @@ impl WalletProviderService {
         }
 
         let Some(organisation) = &wallet_unit.organisation else {
-            return Err(ServiceError::MappingError(format!(
+            return Err(WalletProviderError::MappingError(format!(
                 "Missing organisation on wallet unit `{}`",
                 wallet_unit.id
             )));
@@ -636,7 +637,8 @@ impl WalletProviderService {
                         revocation_method.to_owned(),
                     ))
             })
-            .transpose()?;
+            .transpose()
+            .error_while("getting revocation method")?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)
@@ -674,7 +676,7 @@ impl WalletProviderService {
             wallet_unit
                 .attested_keys
                 .to_owned()
-                .ok_or(ServiceError::MappingError(format!(
+                .ok_or(WalletProviderError::MappingError(format!(
                     "Missing attested keys on wallet unit `{}`",
                     wallet_unit.id
                 )))?;
@@ -760,7 +762,7 @@ impl WalletProviderService {
                             .await?,
                         );
                     }
-                    Ok::<_, ServiceError>(())
+                    Ok::<_, WalletProviderError>(())
                 }
                 .boxed())
                 .await
@@ -783,7 +785,7 @@ impl WalletProviderService {
         organisation: &Organisation,
         revocation_method: &Option<Arc<dyn RevocationMethod>>,
         input: KeyAttestationInput,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, WalletProviderError> {
         let revocation_info = if let Some(revocation_method) = revocation_method {
             match &input.key {
                 AttestedKeyInput::NewlyCreated(key) => Some(
@@ -820,7 +822,9 @@ impl WalletProviderService {
         let attestation_hash = SHA256
             .hash_base64(signed_attestation.as_bytes())
             .map_err(|e| {
-                ServiceError::Other(format!("Could not hash wallet unit attestation: {e}"))
+                WalletProviderError::MappingError(format!(
+                    "Could not hash wallet unit attestation: {e}"
+                ))
             })?;
         self.create_wallet_unit_history(
             &wallet_unit.id,
@@ -836,7 +840,7 @@ impl WalletProviderService {
     fn get_wallet_provider_config_params(
         &self,
         wallet_provider: &str,
-    ) -> Result<(&Fields<WalletProviderType>, WalletProviderParams), ServiceError> {
+    ) -> Result<(&Fields<WalletProviderType>, WalletProviderParams), WalletProviderError> {
         let wallet_provider_config = self
             .config
             .wallet_provider
@@ -864,7 +868,7 @@ impl WalletProviderService {
         holder_binding_jwk: PublicJwk,
         auth_fn: &AuthenticationFn,
         issuer_public_key_info: JwtPublicKeyInfo,
-    ) -> Result<Jwt<WalletInstanceAttestationClaims>, ServiceError> {
+    ) -> Result<Jwt<WalletInstanceAttestationClaims>, WalletProviderError> {
         let now = self.clock.now_utc();
         let jose_alg = auth_fn
             .jose_alg()
@@ -916,7 +920,7 @@ impl WalletProviderService {
         auth_fn: &AuthenticationFn,
         issuer_public_key_info: JwtPublicKeyInfo,
         revocation_info: Option<CredentialRevocationInfo>,
-    ) -> Result<Jwt<WalletUnitAttestationClaims>, ServiceError> {
+    ) -> Result<Jwt<WalletUnitAttestationClaims>, WalletProviderError> {
         let now = self.clock.now_utc();
         let jose_alg = auth_fn
             .jose_alg()
@@ -976,7 +980,7 @@ impl WalletProviderService {
     async fn get_key_info(
         &self,
         issuer_identifier_id: IdentifierId,
-    ) -> Result<(JwtPublicKeyInfo, AuthenticationFn), ServiceError> {
+    ) -> Result<(JwtPublicKeyInfo, AuthenticationFn), WalletProviderError> {
         let issuer_identifier = self
             .identifier_repository
             .get(
@@ -998,31 +1002,38 @@ impl WalletProviderService {
             .error_while("getting identifier")?;
 
         let Some(issuer_identifier) = issuer_identifier else {
-            return Err(EntityNotFoundError::Identifier(issuer_identifier_id).into());
+            return Err(WalletProviderError::MissingIdentifier(issuer_identifier_id));
         };
 
-        let selection = issuer_identifier.select_key(
-            KeyFilter {
-                algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-                ..Default::default()
-            }
-            .into(),
-        )?;
+        let selection = issuer_identifier
+            .select_key(
+                KeyFilter {
+                    algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
+                    ..Default::default()
+                }
+                .into(),
+            )
+            .error_while("selecting key")?;
         let issuer_key = selection.key();
 
         let key_id = if issuer_identifier.r#type == IdentifierType::Did {
-            let issuer_did = issuer_identifier
-                .did
-                .as_ref()
-                .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?;
+            let issuer_did =
+                issuer_identifier
+                    .did
+                    .as_ref()
+                    .ok_or(WalletProviderError::MappingError(
+                        "issuer did is None".to_string(),
+                    ))?;
 
-            let key = issuer_did.find_key(
-                &issuer_key.id,
-                &KeyFilter {
-                    algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-                    ..Default::default()
-                },
-            )?;
+            let key = issuer_did
+                .find_key(
+                    &issuer_key.id,
+                    &KeyFilter {
+                        algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
+                        ..Default::default()
+                    },
+                )
+                .error_while("finding key")?;
 
             Some(issuer_did.verification_method_id(key))
         } else {
@@ -1039,13 +1050,13 @@ impl WalletProviderService {
                 let key_handle = self
                     .key_provider
                     .get_key_storage(&issuer_key.storage_type)
-                    .ok_or(ServiceError::MappingError(format!(
+                    .ok_or(WalletProviderError::MappingError(format!(
                         "Key storage not found: {}",
                         issuer_key.storage_type
                     )))?
                     .key_handle(issuer_key)
                     .map_err(|e| {
-                        ServiceError::MappingError(format!("Failed to get key handle: {e}"))
+                        WalletProviderError::MappingError(format!("Failed to get key handle: {e}"))
                     })?;
                 JwtPublicKeyInfo::Jwk(key_handle.public_key_as_jwk().error_while("creating JWK")?)
             }
@@ -1053,20 +1064,20 @@ impl WalletProviderService {
                 let cert = issuer_identifier
                     .certificates
                     .as_ref()
-                    .ok_or(ServiceError::MappingError(format!(
+                    .ok_or(WalletProviderError::MappingError(format!(
                         "Missing certificates on certificate identifier {}",
                         issuer_identifier.id
                     )))?
                     .iter()
                     .find(|cert| cert.key.as_ref().is_some_and(|k| k.id == issuer_key.id))
-                    .ok_or(ServiceError::MappingError(
+                    .ok_or(WalletProviderError::MappingError(
                         "Cert with matching key not found".to_string(),
                     ))?;
                 let x5c = pem_chain_into_x5c(&cert.chain).error_while("parsing PEM chain")?;
                 JwtPublicKeyInfo::X5c(x5c)
             }
             IdentifierType::CertificateAuthority => {
-                return Err(ServiceError::MappingError(format!(
+                return Err(WalletProviderError::MappingError(format!(
                     "Invalid issuer identifier type {}",
                     issuer_identifier.r#type
                 )));
@@ -1100,7 +1111,7 @@ impl WalletProviderService {
         integrity_check_enabled: bool,
         leeway: u64,
         nonce: Option<&str>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), WalletProviderError> {
         let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
             (true, WalletUnitOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)
                 .error_while("verifying iOS attestation")?,
@@ -1123,7 +1134,7 @@ impl WalletProviderService {
         public_key: &KeyHandle,
         leeway: u64,
         nonce: Option<&str>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), WalletProviderError> {
         public_key
             .verify(proof.unverified_jwt.as_bytes(), &proof.signature)
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))
@@ -1131,7 +1142,11 @@ impl WalletProviderService {
         validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
-    pub async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicJwk, ServiceError> {
+    pub async fn verify_pop(
+        &self,
+        pop: &str,
+        leeway: u64,
+    ) -> Result<PublicJwk, WalletProviderError> {
         let pop_token =
             Jwt::<NoncePayload>::decompose_token(pop).error_while("parsing pop token")?;
         let jwk = pop_token
@@ -1153,7 +1168,7 @@ impl WalletProviderService {
         Ok(jwk)
     }
 
-    pub async fn revoke_wallet_unit(&self, id: &WalletUnitId) -> Result<(), ServiceError> {
+    pub async fn revoke_wallet_unit(&self, id: &WalletUnitId) -> Result<(), WalletProviderError> {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(
@@ -1181,7 +1196,7 @@ impl WalletProviderService {
             )
             .await
             .error_while("getting wallet unit")?
-            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+            .ok_or(WalletProviderError::MissingWalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
             return Err(WalletProviderError::WalletUnitMustBeActive
@@ -1190,7 +1205,7 @@ impl WalletProviderService {
         }
 
         let Some(organisation) = &wallet_unit.organisation else {
-            return Err(ServiceError::MappingError(format!(
+            return Err(WalletProviderError::MappingError(format!(
                 "Missing organisation on wallet unit `{}`",
                 wallet_unit.id
             )));
@@ -1225,7 +1240,7 @@ impl WalletProviderService {
 
         let keys = wallet_unit
             .attested_keys
-            .ok_or(ServiceError::MappingError(format!(
+            .ok_or(WalletProviderError::MappingError(format!(
                 "Missing attested_keys on wallet unit `{}`",
                 wallet_unit.id
             )))?
@@ -1239,7 +1254,8 @@ impl WalletProviderService {
                 .get_revocation_method(revocation_method)
                 .ok_or(MissingProviderError::RevocationMethod(
                     revocation_method.to_owned(),
-                ))?;
+                ))
+                .error_while("getting revocation method")?;
 
             revocation_method
                 .update_attestation_entries(keys, RevocationState::Revoked)
@@ -1250,13 +1266,13 @@ impl WalletProviderService {
         Ok(())
     }
 
-    pub async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), ServiceError> {
+    pub async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), WalletProviderError> {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(id, &WalletUnitRelations::default())
             .await
             .error_while("getting wallet unit")?
-            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+            .ok_or(WalletProviderError::MissingWalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Pending {
             return Err(WalletProviderError::WalletUnitMustBePending
@@ -1280,7 +1296,7 @@ impl WalletProviderService {
     pub async fn get_wallet_provider_metadata(
         &self,
         wallet_provider: String,
-    ) -> Result<WalletProviderMetadataResponseDTO, ServiceError> {
+    ) -> Result<WalletProviderMetadataResponseDTO, WalletProviderError> {
         let (_, params) = self.get_wallet_provider_config_params(&wallet_provider)?;
         let (enabled, required) = match params.wallet_registration {
             WalletRegistrationRequirement::Mandatory => (true, true),

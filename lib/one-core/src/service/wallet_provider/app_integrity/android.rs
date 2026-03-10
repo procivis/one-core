@@ -10,8 +10,9 @@ use crate::proto::certificate_validator::{
 };
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::wallet_provider::dto::AndroidBundle;
-use crate::service::wallet_provider::error::WalletProviderError;
-use crate::service::wallet_provider::error::WalletProviderError::AppIntegrityValidationError;
+use crate::service::wallet_provider::error::WalletProviderError::{
+    self, AppIntegrityValidationError,
+};
 
 // https://source.android.com/docs/security/features/keystore/attestation#attestation-extension
 static ATTESTATION_EXTENSION_OID: &str = "1.3.6.1.4.1.11129.2.1.17";

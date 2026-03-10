@@ -13,6 +13,7 @@ use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO,
 };
+use super::error::ProofServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
@@ -31,7 +32,6 @@ use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 
 fn build_claim_from_credential_claims(
@@ -39,11 +39,11 @@ fn build_claim_from_credential_claims(
     key: &str,
     path: String,
     required: bool,
-) -> Result<ProofClaimDTO, ServiceError> {
+) -> Result<ProofClaimDTO, ProofServiceError> {
     let claim_schema = &claims
         .iter()
         .find(|claim_schema| claim_schema.key == key)
-        .ok_or(ServiceError::MappingError(
+        .ok_or(ProofServiceError::MappingError(
             "nested claim is not found by key".into(),
         ))?;
     Ok(ProofClaimDTO {
@@ -67,7 +67,7 @@ fn get_or_insert_proof_container_claim<'a>(
     original_key: &str,
     credential_claim_schemas: &[ClaimSchema],
     required: bool,
-) -> Result<&'a mut ProofClaimDTO, ServiceError> {
+) -> Result<&'a mut ProofClaimDTO, ProofServiceError> {
     match path.rsplit_once(NESTED_CLAIM_MARKER) {
         // It's a nested claim
         Some((prefix, _)) => {
@@ -80,7 +80,7 @@ fn get_or_insert_proof_container_claim<'a>(
             )?;
 
             let Some(ProofClaimValueDTO::Claims(claims)) = &mut parent_claim.value else {
-                return Err(ServiceError::MappingError(
+                return Err(ProofServiceError::MappingError(
                     "Parent claim can not have a text value or be empty".into(),
                 ));
             };
@@ -88,7 +88,7 @@ fn get_or_insert_proof_container_claim<'a>(
             if let Some(i) = claims.iter().position(|claim| claim.path == path) {
                 Ok(claims
                     .get_mut(i)
-                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                    .ok_or_else(|| ProofServiceError::MappingError("invalid index".into()))?)
             } else {
                 let key = from_path_to_key(path, original_key);
                 let mut claim = build_claim_from_credential_claims(
@@ -108,7 +108,7 @@ fn get_or_insert_proof_container_claim<'a>(
                 let last = claims.len() - 1;
                 Ok(claims
                     .get_mut(last)
-                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                    .ok_or_else(|| ProofServiceError::MappingError("invalid index".into()))?)
             }
         }
         // It's a root
@@ -119,7 +119,7 @@ fn get_or_insert_proof_container_claim<'a>(
             {
                 Ok(proof_claims
                     .get_mut(i)
-                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                    .ok_or_else(|| ProofServiceError::MappingError("invalid index".into()))?)
             } else {
                 proof_claims.push(build_claim_from_credential_claims(
                     credential_claim_schemas,
@@ -130,14 +130,14 @@ fn get_or_insert_proof_container_claim<'a>(
                 let last = proof_claims.len() - 1;
                 Ok(proof_claims
                     .get_mut(last)
-                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
+                    .ok_or_else(|| ProofServiceError::MappingError("invalid index".into()))?)
             }
         }
     }
 }
 
 impl TryFrom<Proof> for ProofListItemResponseDTO {
-    type Error = ServiceError;
+    type Error = ProofServiceError;
 
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
         let retain_until_date = match (value.completed_date, &value.schema) {
@@ -172,21 +172,25 @@ pub(super) async fn get_verifier_proof_detail(
     config: &CoreConfig,
     claims_removed_event: Option<History>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
-) -> Result<ProofDetailResponseDTO, ServiceError> {
+) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
         .schema
         .as_ref()
-        .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+        .ok_or(ProofServiceError::MappingError(
+            "schema is None".to_string(),
+        ))?;
 
     let claims = proof
         .claims
         .as_ref()
-        .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
+        .ok_or(ProofServiceError::MappingError(
+            "claims is None".to_string(),
+        ))?;
 
     let organisation = schema
         .organisation
         .as_ref()
-        .ok_or(ServiceError::MappingError(
+        .ok_or(ProofServiceError::MappingError(
             "organisation is None".to_string(),
         ))?;
 
@@ -201,7 +205,7 @@ pub(super) async fn get_verifier_proof_detail(
         let credential = match proof_claim.credential.clone() {
             Some(cred) => cred,
             None => {
-                return Err(ServiceError::MappingError(format!(
+                return Err(ProofServiceError::MappingError(format!(
                     "Missing credential for proof claim {}",
                     proof_claim.claim.id
                 )));
@@ -211,7 +215,7 @@ pub(super) async fn get_verifier_proof_detail(
         let credential_schema = match credential.schema.clone() {
             Some(schema) => schema,
             None => {
-                return Err(ServiceError::MappingError(format!(
+                return Err(ProofServiceError::MappingError(format!(
                     "Missing credential schema for credential {}",
                     credential.id
                 )));
@@ -240,7 +244,7 @@ pub(super) async fn get_verifier_proof_detail(
     let proof_input_schemas = match schema.input_schemas.as_ref() {
         Some(proof_input_schemas) if !proof_input_schemas.is_empty() => proof_input_schemas,
         _ => {
-            return Err(ServiceError::MappingError(
+            return Err(ProofServiceError::MappingError(
                 "input_schemas are missing".to_string(),
             ));
         }
@@ -252,7 +256,7 @@ pub(super) async fn get_verifier_proof_detail(
         let mut input_claim_schemas = input_schema
             .claim_schemas
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(ProofServiceError::MappingError(
                 "Missing claims schemas in input_schema".to_string(),
             ))?
             .clone();
@@ -261,7 +265,7 @@ pub(super) async fn get_verifier_proof_detail(
             input_schema
                 .credential_schema
                 .as_ref()
-                .ok_or(ServiceError::MappingError(
+                .ok_or(ProofServiceError::MappingError(
                     "Missing credential schema in input_schema".to_string(),
                 ))?;
 
@@ -269,7 +273,7 @@ pub(super) async fn get_verifier_proof_detail(
             credential_schema
                 .claim_schemas
                 .as_ref()
-                .ok_or(ServiceError::MappingError(
+                .ok_or(ProofServiceError::MappingError(
                     "Missing claim schema in credential_schema".to_string(),
                 ))?;
 
@@ -358,7 +362,7 @@ pub(super) async fn get_verifier_proof_detail(
                         let Some(ProofClaimValueDTO::Claims(parent_proof_claims)) =
                             &mut parent_proof_claim.value
                         else {
-                            return Err(ServiceError::MappingError(
+                            return Err(ProofServiceError::MappingError(
                                 "Parent claim can not have a text value or be empty".to_string(),
                             ));
                         };
@@ -443,17 +447,18 @@ fn nest_proof_claims(
     flat_claims: &[ProofClaim],
     credential_claim_schemas: &[ClaimSchema],
     input_claim_schemas: Option<&[ProofInputClaimSchema]>,
-) -> Result<Vec<ProofClaimDTO>, ServiceError> {
+) -> Result<Vec<ProofClaimDTO>, ProofServiceError> {
     let mut proof_input_claims = vec![];
 
     flat_claims.iter().try_for_each(|proof_claim| {
-        let claim_schema = proof_claim
-            .claim
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "Missing schema in proof_claim".to_string(),
-            ))?;
+        let claim_schema =
+            proof_claim
+                .claim
+                .schema
+                .as_ref()
+                .ok_or(ProofServiceError::MappingError(
+                    "Missing schema in proof_claim".to_string(),
+                ))?;
 
         let mut schema = if let Some(input_claim_schemas) = input_claim_schemas {
             let Some(input_claim_schema) = input_claim_schemas
@@ -468,7 +473,7 @@ fn nest_proof_claims(
             let credential_schema_claim = credential_claim_schemas
                 .iter()
                 .find(|schema| schema.id == claim_schema.id)
-                .ok_or(ServiceError::MappingError(format!(
+                .ok_or(ProofServiceError::MappingError(format!(
                     "missing credential claim schema with id {}",
                     claim_schema.id
                 )))?;
@@ -501,7 +506,7 @@ fn nest_proof_claims(
                 let Some(ProofClaimValueDTO::Claims(parent_proof_claims)) =
                     &mut parent_proof_claim.value
                 else {
-                    return Err(ServiceError::MappingError(
+                    return Err(ProofServiceError::MappingError(
                         "Parent claim can not have a text value or be empty".to_string(),
                     ));
                 };
@@ -537,7 +542,7 @@ fn nest_proof_claims(
 fn map_to_proof_claim_value_dto(
     proof_claim: &ProofClaim,
     schema: ProofClaimSchemaResponseDTO,
-) -> Result<ProofClaimDTO, ServiceError> {
+) -> Result<ProofClaimDTO, ProofServiceError> {
     Ok(ProofClaimDTO {
         schema,
         path: proof_claim.claim.path.clone(),
@@ -546,7 +551,7 @@ fn map_to_proof_claim_value_dto(
                 .claim
                 .value
                 .as_ref()
-                .ok_or(ServiceError::MappingError(format!(
+                .ok_or(ProofServiceError::MappingError(format!(
                     "Expected proof claim {} to have value",
                     proof_claim.claim.id
                 )))?
@@ -560,7 +565,7 @@ pub(super) async fn get_holder_proof_detail(
     config: &CoreConfig,
     claims_removed_event: Option<History>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
-) -> Result<ProofDetailResponseDTO, ServiceError> {
+) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = [
         proof
             .verifier_identifier
@@ -574,7 +579,7 @@ pub(super) async fn get_holder_proof_detail(
     .into_iter()
     .find(|org| org.is_some())
     .flatten()
-    .ok_or(ServiceError::MappingError(
+    .ok_or(ProofServiceError::MappingError(
         "Missing organisation".to_string(),
     ))?
     .id;
@@ -594,18 +599,19 @@ pub(super) async fn get_holder_proof_detail(
         let credential = proof_claim
             .credential
             .as_ref()
-            .ok_or(ServiceError::MappingError(format!(
+            .ok_or(ProofServiceError::MappingError(format!(
                 "Missing credential for claim: {}",
                 proof_claim.claim.id
             )))?;
 
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(format!(
-                "Missing credential schema for credential: {}",
-                credential.id
-            )))?;
+        let credential_schema =
+            credential
+                .schema
+                .as_ref()
+                .ok_or(ProofServiceError::MappingError(format!(
+                    "Missing credential schema for credential: {}",
+                    credential.id
+                )))?;
 
         match submitted_credentials.entry(credential.id) {
             Entry::Occupied(mut entry) => {
@@ -639,24 +645,23 @@ pub(super) async fn get_holder_proof_detail(
         }
     }
 
-    let proof_inputs = submitted_credentials
-        .into_values()
-        .map(|(claims, credential, credential_schema)| {
-            let credential_claim_schemas =
-                credential_schema
-                    .claim_schemas
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(format!(
+    let proof_inputs =
+        submitted_credentials
+            .into_values()
+            .map(|(claims, credential, credential_schema)| {
+                let credential_claim_schemas = credential_schema.claim_schemas.as_ref().ok_or(
+                    ProofServiceError::MappingError(format!(
                         "Missing claim schemas for credentials schema: {}",
                         credential_schema.id
-                    )))?;
-            Ok(ProofInputDTO {
-                claims: nest_proof_claims(&claims, credential_claim_schemas, None)?,
-                credential: Some(credential),
-                credential_schema: credential_schema.into(),
+                    )),
+                )?;
+                Ok(ProofInputDTO {
+                    claims: nest_proof_claims(&claims, credential_claim_schemas, None)?,
+                    credential: Some(credential),
+                    credential_schema: credential_schema.into(),
+                })
             })
-        })
-        .collect::<Result<Vec<_>, ServiceError>>()?;
+            .collect::<Result<Vec<_>, ProofServiceError>>()?;
 
     let verifier_certificate = proof
         .verifier_certificate
@@ -741,12 +746,12 @@ fn from_path_to_key(path: &str, original_key: &str) -> String {
         .join(NESTED_CLAIM_MARKER_STR)
 }
 
-pub(super) fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ServiceError> {
+pub(super) fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ProofServiceError> {
     proof
         .interaction
         .as_ref()
         .and_then(|interaction| interaction.data.as_ref())
         .map(|interaction| serde_json::from_slice(interaction))
-        .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
-        .map_err(|err| ServiceError::MappingError(err.to_string()))
+        .ok_or_else(|| ProofServiceError::MappingError("proof interaction is missing".into()))?
+        .map_err(|err| ProofServiceError::MappingError(err.to_string()))
 }

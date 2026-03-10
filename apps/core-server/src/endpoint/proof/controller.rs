@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
 use one_core::service::error::{ServiceError, ValidationError};
 use proc_macros::require_permissions;
 use shared_types::{Permission, ProofId};
@@ -48,7 +49,9 @@ pub(crate) async fn get_proof_presentation_definition(
         .core
         .proof_service
         .get_proof_presentation_definition(&id)
-        .await;
+        .await
+        .error_while("getting presentation definition")
+        .map_err(ServiceError::from);
     OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition")
 }
 
@@ -82,7 +85,9 @@ pub(crate) async fn get_proof_presentation_definition_v2(
         .core
         .proof_service
         .get_proof_presentation_definition_v2(&id)
-        .await;
+        .await
+        .error_while("getting presentation definition V2")
+        .map_err(ServiceError::from);
     OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition v2")
 }
 
@@ -105,7 +110,13 @@ pub(crate) async fn get_proof_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<ProofDetailResponseRestDTO> {
-    let result = state.core.proof_service.get_proof(&id).await;
+    let result = state
+        .core
+        .proof_service
+        .get_proof(&id)
+        .await
+        .error_while("getting proof")
+        .map_err(ServiceError::from);
     OkOrErrorResponse::from_result_fallible(result, state, "getting proof")
 }
 
@@ -157,11 +168,14 @@ pub(crate) async fn get_proofs(
 ) -> OkOrErrorResponse<GetProofsResponseRestDTO> {
     let result = async {
         let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
-        state
-            .core
-            .proof_service
-            .get_proof_list(&organisation_id, query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .proof_service
+                .get_proof_list(&organisation_id, query.try_into()?)
+                .await
+                .error_while("getting proof list")?,
+        )
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting proofs")

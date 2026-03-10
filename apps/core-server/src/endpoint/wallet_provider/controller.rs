@@ -1,5 +1,7 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
+use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::{Permission, WalletUnitId};
 
@@ -33,11 +35,14 @@ pub(crate) async fn get_wallet_unit_list(
 ) -> OkOrErrorResponse<GetWalletUnitsResponseRestDTO> {
     let result = async {
         let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
-        state
-            .core
-            .wallet_provider_service
-            .get_wallet_unit_list(&organisation_id, query.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .wallet_provider_service
+                .get_wallet_unit_list(&organisation_id, query.try_into()?)
+                .await
+                .error_while("getting wallet units")?,
+        )
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting wallet unit list")

@@ -4,6 +4,7 @@ use crate::config::core_config;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 
 pub mod dto;
+pub mod error;
 mod mapper;
 pub mod service;
 

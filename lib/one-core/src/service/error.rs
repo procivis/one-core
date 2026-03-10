@@ -1,8 +1,8 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, DidValue, HolderWalletUnitId, IdentifierId,
-    InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId, RevocationListEntryId,
-    RevocationMethodId, TaskId, TrustAnchorId, TrustEntityId, TrustEntityKey, WalletUnitId,
+    InteractionId, OrganisationId, ProofId, RevocationListEntryId, RevocationMethodId, TaskId,
+    TrustAnchorId, TrustEntityId, TrustEntityKey,
 };
 use thiserror::Error;
 
@@ -10,15 +10,10 @@ use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::KeyStorageSecurity;
-use crate::model::did::KeyRole;
-use crate::model::proof::{ProofRole, ProofStateEnum};
-use crate::proto::csr_creator::CsrCreationError;
-use crate::proto::nfc::NfcError;
+use crate::model::proof::ProofStateEnum;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::util::key_selection::KeySelectionError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -36,9 +31,6 @@ pub enum ServiceError {
 
     #[error("OpenID4VCI issuance error `{0}`")]
     OpenIDIssuanceError(#[from] OpenIDIssuanceError),
-
-    #[error("Missing exchange protocol `{0}`")]
-    MissingExchangeProtocol(String),
 
     #[error(transparent)]
     MissingProvider(#[from] MissingProviderError),
@@ -60,18 +52,6 @@ pub enum ServiceError {
 
     #[error("Trust management error `{0}`")]
     TrustManagementError(#[from] TrustManagementError),
-
-    #[error("NFC error: `{0}`")]
-    NfcError(#[from] NfcError),
-
-    #[error("Signer error: `{0}`")]
-    SignerError(#[from] SignerError),
-
-    #[error("Key selection error: `{0}`")]
-    KeySelection(#[from] KeySelectionError),
-
-    #[error("Failed to create CSR: `{0}`")]
-    CsrCreation(#[from] CsrCreationError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -103,14 +83,8 @@ pub enum EntityNotFoundError {
     #[error("Organisation `{0}` not found")]
     Organisation(OrganisationId),
 
-    #[error("Key `{0}` not found")]
-    Key(KeyId),
-
     #[error("Credential schema `{0}` not found")]
     CredentialSchema(CredentialSchemaId),
-
-    #[error("SD-JWT VC type metadata `{0}` not found")]
-    SdJwtVcTypeMetadata(String),
 
     #[error("Trust anchor `{0}` not found")]
     TrustAnchor(TrustAnchorId),
@@ -120,12 +94,6 @@ pub enum EntityNotFoundError {
 
     #[error("Trust entity by entity key `{0}` not found")]
     TrustEntityByEntityKey(TrustEntityKey),
-
-    #[error("Interaction `{0}` not found")]
-    Interaction(InteractionId),
-
-    #[error("Wallet unit `{0}` not found")]
-    WalletUnit(WalletUnitId),
 
     #[error("Holder wallet unit `{0}` not found")]
     HolderWalletUnit(HolderWalletUnitId),
@@ -157,9 +125,6 @@ pub enum BusinessLogicError {
     #[error("Invalid Proof state: {state}")]
     InvalidProofState { state: ProofStateEnum },
 
-    #[error("Invalid proof role: {role}")]
-    InvalidProofRole { role: ProofRole },
-
     #[error("Cannot retract proof with exchange type: {exchange_type}")]
     InvalidProofExchangeForRetraction {
         exchange_type: VerificationProtocolType,
@@ -167,15 +132,6 @@ pub enum BusinessLogicError {
 
     #[error("Missing credentials for interaction: {interaction_id}")]
     MissingCredentialsForInteraction { interaction_id: InteractionId },
-
-    #[error("Proof schema {proof_schema_id} is deleted")]
-    ProofSchemaDeleted { proof_schema_id: ProofSchemaId },
-
-    #[error("Missing credentials for credential: {credential_id}")]
-    MissingCredentialData { credential_id: CredentialId },
-
-    #[error("Missing proof schema: {proof_schema_id}")]
-    MissingProofSchema { proof_schema_id: ProofSchemaId },
 
     #[error("Missing interaction for access token: {interaction_id}")]
     MissingInteractionForAccessToken { interaction_id: InteractionId },
@@ -186,9 +142,6 @@ pub enum BusinessLogicError {
     #[error("General input validation error")]
     GeneralInputValidationError,
 
-    #[error("Missing organisation: {0}")]
-    MissingOrganisation(OrganisationId),
-
     #[error("Missing proof for interaction `{0}`")]
     MissingProofForInteraction(InteractionId),
 
@@ -197,12 +150,6 @@ pub enum BusinessLogicError {
 
     #[error("Credential state is Revoked or Suspended and cannot be shared")]
     CredentialIsRevokedOrSuspended,
-
-    #[error("Incompatible proof exchange protocol")]
-    IncompatibleProofExchangeProtocol,
-
-    #[error("Incompatible proof verfication key storage")]
-    IncompatibleProofVerificationKeyStorage,
 
     #[error("Incompatible proof verification identifier")]
     IncompatibleProofVerificationIdentifier,
@@ -243,21 +190,6 @@ pub enum BusinessLogicError {
     #[error("Trust anchor is disabled")]
     TrustAnchorIsDisabled,
 
-    #[error("Invalid holder identifier: {0}")]
-    InvalidHolderIdentifier(String),
-
-    #[error("Incompatible holder did method")]
-    IncompatibleHolderDidMethod,
-
-    #[error("Incompatible holder identifier")]
-    IncompatibleHolderIdentifier,
-
-    #[error("Incompatible holder key algorithm")]
-    IncompatibleHolderKeyAlgorithm,
-
-    #[error("Rejection not supported")]
-    RejectionNotSupported,
-
     #[error("Certificate `{certificate_id}` is not associated with identifier `{identifier_id}`")]
     IdentifierCertificateIdMismatch {
         identifier_id: String,
@@ -266,12 +198,6 @@ pub enum BusinessLogicError {
 
     #[error("Certificate id not specified")]
     CertificateIdNotSpecified,
-
-    #[error("Presentation submission must contain at least one credential")]
-    EmptyPresentationSubmission,
-
-    #[error("Invalid presentation submission: {reason}")]
-    InvalidPresentationSubmission { reason: String },
 
     #[error("Verification protocol does not support this API endpoint version")]
     IncompatiblePresentationEndpoint,
@@ -300,29 +226,8 @@ pub enum ValidationError {
     #[error("No default transport specified")]
     MissingDefaultTransport,
 
-    #[error("Invalid formatter: {0}")]
-    InvalidFormatter(String),
-
     #[error("Invalid key algorithm: {0}")]
     InvalidKeyAlgorithm(String),
-
-    #[error("Invalid key: {0}")]
-    InvalidKey(String),
-
-    #[error("BBS not supported")]
-    BBSNotSupported,
-
-    #[error("Invalid key storage type: {0}")]
-    InvalidKeyStorage(String),
-
-    #[error("Did not found")]
-    DidNotFound,
-
-    #[error("Schema id not allowed for format")]
-    SchemaIdNotAllowedForFormat,
-
-    #[error("Invalid mdl parameters")]
-    InvalidMdlParameters,
 
     #[error("Forbidden")]
     Forbidden,
@@ -336,14 +241,8 @@ pub enum ValidationError {
     #[error("Exchange protocol operation disabled")]
     InvalidExchangeOperation,
 
-    #[error("Redirect uri disabled or scheme not allowed")]
-    InvalidRedirectUri,
-
     #[error("Invalid image data: `{0}`")]
     InvalidImage(String),
-
-    #[error("Missing key with role `{0}`")]
-    NoKeyWithRole(KeyRole),
 
     #[error("Identifier type `{0}` is disabled")]
     IdentifierTypeDisabled(String),
@@ -359,18 +258,6 @@ pub enum ValidationError {
 
     #[error("Trust entity subject key identifier does not match")]
     TrustEntitySubjectKeyIdentifierDoesNotMatch,
-
-    #[error("Missing configuration for verification engagement type: {0}")]
-    MissingVerificationEngagementConfig(String),
-
-    #[error("Missing engagement for ISO mDL flow")]
-    MissingEngagementForISOmDLFlow,
-
-    #[error("Invalid value of proof engagement")]
-    InvalidProofEngagement,
-
-    #[error("Engagement provided for non ISO mDL flow")]
-    EngagementProvidedForNonISOmDLFlow,
 
     #[error("Invalid wallet provider url: {0}")]
     InvalidWalletProviderUrl(String),
@@ -450,14 +337,9 @@ impl ErrorCodeMixin for ServiceError {
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
                 ErrorCode::BR_0048
             }
-            Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
-            Self::NfcError(error) => error.error_code(),
-            Self::SignerError(error) => error.error_code(),
-            Self::KeySelection(error) => error.error_code(),
-            Self::CsrCreation(error) => error.error_code(),
             Self::Nested(error) => error.error_code(),
         }
     }
@@ -470,14 +352,10 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Did(_) | Self::DidValue(_) => ErrorCode::BR_0024,
             Self::Proof(_) => ErrorCode::BR_0012,
             Self::Organisation(_) => ErrorCode::BR_0022,
-            Self::Key(_) => ErrorCode::BR_0037,
             Self::CredentialSchema(_) => ErrorCode::BR_0006,
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
             Self::TrustEntity(_) | Self::TrustEntityByEntityKey(_) => ErrorCode::BR_0121,
-            Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
-            Self::Interaction(_) => ErrorCode::BR_0257,
-            Self::WalletUnit(_) => ErrorCode::BR_0259,
             Self::HolderWalletUnit(_) => ErrorCode::BR_0296,
             Self::RevocationListEntry(_) => ErrorCode::BR_0000,
         }
@@ -494,19 +372,13 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
             Self::InvalidProofState { .. } => ErrorCode::BR_0013,
             Self::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
-            Self::ProofSchemaDeleted { .. } => ErrorCode::BR_0019,
-            Self::MissingCredentialData { .. } => ErrorCode::BR_0005,
-            Self::MissingProofSchema { .. } => ErrorCode::BR_0020,
             Self::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
             Self::MissingClaimSchemas => ErrorCode::BR_0011,
             Self::KeyAlreadyExists => ErrorCode::BR_0066,
             Self::GeneralInputValidationError => ErrorCode::BR_0084,
-            Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             Self::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
             Self::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
-            Self::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
-            Self::IncompatibleProofVerificationKeyStorage => ErrorCode::BR_0158,
             Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
             Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
             Self::UnknownTrustAnchorType => ErrorCode::BR_0114,
@@ -519,20 +391,12 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
-            Self::InvalidProofRole { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
-            Self::InvalidHolderIdentifier(_) => ErrorCode::BR_0217,
             Self::IncompatibleProofVerificationIdentifier => ErrorCode::BR_0218,
-            Self::IncompatibleHolderDidMethod => ErrorCode::BR_0218,
-            Self::IncompatibleHolderIdentifier => ErrorCode::BR_0218,
-            Self::IncompatibleHolderKeyAlgorithm => ErrorCode::BR_0218,
-            Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::IdentifierCertificateIdMismatch { .. } | Self::CertificateIdNotSpecified => {
                 ErrorCode::BR_0242
             }
-            Self::EmptyPresentationSubmission => ErrorCode::BR_0246,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
-            Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
             Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
         }
     }
@@ -543,33 +407,20 @@ impl ErrorCodeMixin for ValidationError {
         match self {
             Self::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             Self::MissingDefaultTransport => ErrorCode::BR_0142,
-            Self::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
-            Self::InvalidFormatter(_) => ErrorCode::BR_0056,
             Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
-            Self::InvalidKey(_) => ErrorCode::BR_0096,
-            Self::BBSNotSupported => ErrorCode::BR_0091,
-            Self::InvalidKeyStorage(_) => ErrorCode::BR_0041,
-            Self::DidNotFound => ErrorCode::BR_0024,
-            Self::InvalidMdlParameters => ErrorCode::BR_0147,
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
             Self::Forbidden => ErrorCode::BR_0178,
             Self::InvalidUpdateRequest => ErrorCode::BR_0181,
             Self::DeserializationError(_) => ErrorCode::BR_0189,
-            Self::InvalidRedirectUri => ErrorCode::BR_0192,
             Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
             Self::InvalidImage(_) => ErrorCode::BR_0193,
-            Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
             Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,
             Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
             Self::TrustEntityTypeInvalid => ErrorCode::BR_0230,
             Self::TrustEntitySubjectKeyIdentifierDoesNotMatch => ErrorCode::BR_0231,
-            Self::MissingVerificationEngagementConfig(_) => ErrorCode::BR_0077,
-            Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,
-            Self::InvalidProofEngagement => ErrorCode::BR_0078,
-            Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
             Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,

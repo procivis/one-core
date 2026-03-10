@@ -17,6 +17,7 @@ use super::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
     ProposeProofRequestDTO, ShareProofRequestDTO,
 };
+use super::error::ProofServiceError;
 use crate::config::core_config::{
     CoreConfig, Fields, IdentifierType, KeyStorageType, TransportType, VerificationProtocolType,
 };
@@ -91,13 +92,9 @@ use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
 use crate::service::test_utilities::{
     dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
-use crate::util::key_selection::KeySelectionError;
 
 #[derive(Default)]
 struct Repositories {
@@ -382,10 +379,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
 
     let result = service.get_proof_presentation_definition(&proof.id).await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::BusinessLogic(BusinessLogicError::InvalidProofRole { .. })
-    )));
+    assert!(result.is_err_and(|e| matches!(e, ProofServiceError::InvalidRole(_))));
 }
 
 #[tokio::test]
@@ -2201,10 +2195,7 @@ async fn test_get_proof_missing() {
     });
 
     let result = service.get_proof(&Uuid::new_v4().into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::Proof(_)))
-    ));
+    assert!(matches!(result, Err(ProofServiceError::NotFound(_))));
 }
 
 #[tokio::test]
@@ -2404,9 +2395,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
     let result = service.create_proof(request).await;
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::IncompatibleProofVerificationIdentifier
-        ))
+        Err(ProofServiceError::IncompatibleVerificationIdentifier)
     ));
 }
 
@@ -3170,10 +3159,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     });
 
     let result = service.create_proof(request).await;
-    assert!(matches!(
-        result.unwrap_err(),
-        ServiceError::KeySelection(KeySelectionError::NoKeyMatchingFilter { .. })
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -3234,7 +3220,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
     let result = service.create_proof(request).await;
     assert!(matches!(
         result.unwrap_err(),
-        ServiceError::BusinessLogic(BusinessLogicError::IncompatibleProofExchangeProtocol)
+        ProofServiceError::IncompatibleExchangeProtocol
     ));
 }
 
@@ -3341,13 +3327,7 @@ async fn test_create_proof_did_deactivated_error() {
     });
 
     let result = service.create_proof(request).await;
-    assert2::assert!(
-        let Err(
-            ServiceError::KeySelection(
-                KeySelectionError::DidDeactivated {..}
-            )
-        ) = result
-    );
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]
@@ -3393,7 +3373,7 @@ async fn test_create_proof_schema_deleted() {
         })
         .await;
     assert2::assert!(
-        let Err(ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaDeleted {..})) = result
+        let Err(ProofServiceError::ProofSchemaDeleted(_)) = result
     );
 }
 
@@ -3520,9 +3500,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
     let result = service.create_proof(request).await;
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::IncompatibleProofVerificationKeyStorage
-        ))
+        Err(ProofServiceError::IncompatibleKeyStorage)
     ));
 }
 
@@ -3551,7 +3529,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
         .await;
     assert!(matches!(
         result.unwrap_err(),
-        ServiceError::Validation(ValidationError::InvalidRedirectUri)
+        ProofServiceError::InvalidRedirectUri
     ));
 }
 
@@ -3580,7 +3558,7 @@ async fn test_create_proof_fail_webhook_not_allowed() {
 
     let result = service.create_proof(request).await;
     assert2::assert!(
-        let ServiceError::Validation(ValidationError::NotificationsNotAllowed {..}) = result.err().unwrap()
+        let ProofServiceError::NotificationsNotAllowed {..} = result.err().unwrap()
     );
 }
 
@@ -3952,12 +3930,7 @@ async fn test_share_proof_invalid_state() {
     let result = service
         .share_proof(&proof_id, ShareProofRequestDTO::default())
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::InvalidProofState { .. }
-        ))
-    ));
+    assert!(matches!(result, Err(ProofServiceError::InvalidState(_))));
 }
 
 #[tokio::test]
@@ -3986,11 +3959,7 @@ async fn test_share_proof_fails_when_engagement_is_present() {
         .await;
 
     // then
-    let_assert!(
-        Err(ServiceError::Validation(
-            ValidationError::InvalidProofEngagement
-        )) = result
-    );
+    let_assert!(Err(ProofServiceError::InvalidEngagement) = result);
 }
 
 #[rstest]
@@ -4217,7 +4186,7 @@ async fn test_delete_proof_fails_for_invalid_state(
 
     assert!(matches!(
         error,
-        ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { state: got_state }) if got_state == state
+        ProofServiceError::InvalidState(got_state) if got_state == state
     ))
 }
 
@@ -4471,10 +4440,7 @@ async fn test_create_proof_session_org_mismatch() {
             webhook_destination_url: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -4495,10 +4461,7 @@ async fn test_list_proof_session_org_mismatch() {
             },
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -4522,36 +4485,21 @@ async fn test_proof_ops_session_org_mismatch() {
     });
 
     let result = service.get_proof(&proof_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service
         .share_proof(&proof_id, ShareProofRequestDTO { params: None })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.delete_proof(proof_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.delete_proof_claims(proof_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.get_proof_presentation_definition(&proof_id).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service
         .propose_proof(ProposeProofRequestDTO {
@@ -4561,8 +4509,5 @@ async fn test_proof_ops_session_org_mismatch() {
             ui_message: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }

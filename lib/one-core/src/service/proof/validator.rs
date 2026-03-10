@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use url::Url;
 
+use super::error::ProofServiceError;
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
@@ -22,9 +23,7 @@ use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp25Params;
-use crate::service::error::{
-    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
-};
+use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_org_relation_not_matching_session,
@@ -34,7 +33,7 @@ use crate::validator::{
 pub(super) fn throw_if_proof_not_in_session_org(
     proof: &Proof,
     session_provider: &dyn SessionProvider,
-) -> Result<(), ServiceError> {
+) -> Result<(), ProofServiceError> {
     let organisation = if let Some(schema) = proof.schema.as_ref() {
         // verifier case
         schema.organisation.as_ref()
@@ -42,11 +41,14 @@ pub(super) fn throw_if_proof_not_in_session_org(
         // holder case
         interaction.organisation.as_ref()
     } else {
-        return Err(ServiceError::MappingError(
+        return Err(ProofServiceError::MappingError(
             "proof organisation could not be determined".to_string(),
         ));
     };
-    throw_if_org_relation_not_matching_session(organisation, session_provider)
+    Ok(
+        throw_if_org_relation_not_matching_session(organisation, session_provider)
+            .error_while("checking session")?,
+    )
 }
 
 pub(super) fn validate_format_and_exchange_protocol_compatibility(
@@ -54,13 +56,14 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
     config: &CoreConfig,
     proof_schema: &ProofSchema,
     formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<(), ServiceError> {
-    let input_schemas = proof_schema
-        .input_schemas
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "input_schemas is None".to_string(),
-        ))?;
+) -> Result<(), ProofServiceError> {
+    let input_schemas =
+        proof_schema
+            .input_schemas
+            .as_ref()
+            .ok_or(ProofServiceError::MappingError(
+                "input_schemas is None".to_string(),
+            ))?;
 
     let exchange_type = config
         .verification_protocol
@@ -73,7 +76,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
             input_schema
                 .credential_schema
                 .as_ref()
-                .ok_or(ServiceError::MappingError(
+                .ok_or(ProofServiceError::MappingError(
                     "credential_schema is None".to_string(),
                 ))?;
 
@@ -81,25 +84,22 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
             .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
-            ))?;
+            ))
+            .error_while("getting formatter")?;
 
         let capabilities = formatter.get_capabilities();
         if !capabilities
             .proof_exchange_protocols
             .contains(&exchange_type)
         {
-            return Err(ServiceError::BusinessLogic(
-                BusinessLogicError::IncompatibleProofExchangeProtocol,
-            ));
+            return Err(ProofServiceError::IncompatibleExchangeProtocol);
         }
 
         if !capabilities
             .verification_identifier_types
             .contains(&IdentifierType::Did)
         {
-            return Err(ServiceError::BusinessLogic(
-                BusinessLogicError::IncompatibleProofVerificationIdentifier,
-            ));
+            return Err(ProofServiceError::IncompatibleVerificationIdentifier);
         }
 
         Ok(())
@@ -112,23 +112,25 @@ pub(super) fn validate_did_and_format_compatibility(
     proof_schema: &ProofSchema,
     verifier_did: &Did,
     formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<(), ServiceError> {
-    let input_schemas = proof_schema
-        .input_schemas
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "input_schemas is None".to_string(),
-        ))?;
+) -> Result<(), ProofServiceError> {
+    let input_schemas =
+        proof_schema
+            .input_schemas
+            .as_ref()
+            .ok_or(ProofServiceError::MappingError(
+                "input_schemas is None".to_string(),
+            ))?;
 
-    let key_agreement_key =
-        verifier_did.find_first_matching_key(&KeyFilter::role_filter(KeyRole::KeyAgreement))?;
+    let key_agreement_key = verifier_did
+        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::KeyAgreement))
+        .error_while("finding key agreement key")?;
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
             input_schema
                 .credential_schema
                 .as_ref()
-                .ok_or(ServiceError::MappingError(
+                .ok_or(ProofServiceError::MappingError(
                     "credential_schema is None".to_string(),
                 ))?;
 
@@ -136,7 +138,8 @@ pub(super) fn validate_did_and_format_compatibility(
             .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
-            ))?;
+            ))
+            .error_while("getting formatter")?;
 
         let capabilities = formatter.get_capabilities();
         if capabilities
@@ -144,9 +147,7 @@ pub(super) fn validate_did_and_format_compatibility(
             .contains(&Features::RequiresPresentationEncryption)
             && key_agreement_key.is_none()
         {
-            return Err(ServiceError::Validation(ValidationError::NoKeyWithRole(
-                KeyRole::KeyAgreement,
-            )));
+            return Err(ProofServiceError::NoKeyWithRole(KeyRole::KeyAgreement));
         }
         Ok(())
     })
@@ -157,19 +158,17 @@ pub(super) fn validate_mdl_exchange(
     engagement: Option<&str>,
     redirect_uri: Option<&str>,
     config: &VerificationProtocolConfig,
-) -> Result<(), ServiceError> {
+) -> Result<(), ProofServiceError> {
     let exchange_type = config
         .get_fields(exchange)
         .error_while("getting protocol config")?
         .r#type;
     match exchange_type {
-        VerificationProtocolType::IsoMdl if redirect_uri.is_some() => Err(
-            ServiceError::Validation(ValidationError::InvalidMdlParameters),
-        ),
+        VerificationProtocolType::IsoMdl if redirect_uri.is_some() => {
+            Err(ProofServiceError::InvalidMdlParameters)
+        }
         VerificationProtocolType::IsoMdl if engagement.is_some() => Ok(()),
-        _ if engagement.is_some() => Err(ServiceError::Validation(
-            ValidationError::InvalidMdlParameters,
-        )),
+        _ if engagement.is_some() => Err(ProofServiceError::InvalidMdlParameters),
         _ => Ok(()),
     }
 }
@@ -178,7 +177,7 @@ pub(super) fn validate_redirect_uri(
     exchange: &str,
     redirect_uri: Option<&str>,
     config: &VerificationProtocolConfig,
-) -> Result<(), ServiceError> {
+) -> Result<(), ProofServiceError> {
     let fields = config
         .get_fields(exchange)
         .error_while("getting protocol config")?;
@@ -207,16 +206,16 @@ pub(super) fn validate_redirect_uri(
 
     if let Some(redirect_uri) = redirect_uri {
         let Some(config) = redirect_uri_config else {
-            return Err(ValidationError::InvalidRedirectUri.into());
+            return Err(ProofServiceError::InvalidRedirectUri);
         };
 
         if !config.enabled {
-            return Err(ValidationError::InvalidRedirectUri.into());
+            return Err(ProofServiceError::InvalidRedirectUri);
         }
-        let url = Url::parse(redirect_uri).map_err(|_| ValidationError::InvalidRedirectUri)?;
+        let url = Url::parse(redirect_uri).map_err(|_| ProofServiceError::InvalidRedirectUri)?;
 
         if !config.allowed_schemes.contains(&url.scheme().to_string()) {
-            return Err(ValidationError::InvalidRedirectUri.into());
+            return Err(ProofServiceError::InvalidRedirectUri);
         }
     }
     Ok(())
@@ -227,7 +226,7 @@ pub(super) fn validate_webhook_url(
     verification_protocol: &str,
     config: &CoreConfig,
     notification_scheduler: &dyn NotificationScheduler,
-) -> Result<(), ServiceError> {
+) -> Result<(), ProofServiceError> {
     let Some(url) = url else {
         return Ok(());
     };
@@ -238,10 +237,9 @@ pub(super) fn validate_webhook_url(
         .error_while("getting protocol params")?;
 
     let Some(task_id) = params.webhook_task else {
-        return Err(ValidationError::NotificationsNotAllowed {
+        return Err(ProofServiceError::NotificationsNotAllowed {
             protocol: verification_protocol.to_string(),
-        }
-        .into());
+        });
     };
 
     Ok(notification_scheduler
@@ -254,13 +252,14 @@ pub(super) fn validate_verification_key_storage_compatibility(
     verifier_key: &Key,
     formatter_provider: &dyn CredentialFormatterProvider,
     config: &CoreConfig,
-) -> Result<(), ServiceError> {
-    let input_schemas = proof_schema
-        .input_schemas
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "input_schemas is None".to_string(),
-        ))?;
+) -> Result<(), ProofServiceError> {
+    let input_schemas =
+        proof_schema
+            .input_schemas
+            .as_ref()
+            .ok_or(ProofServiceError::MappingError(
+                "input_schemas is None".to_string(),
+            ))?;
 
     let storage_type = config
         .key_storage
@@ -273,7 +272,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
             input_schema
                 .credential_schema
                 .as_ref()
-                .ok_or(ServiceError::MappingError(
+                .ok_or(ProofServiceError::MappingError(
                     "credential_schema is None".to_string(),
                 ))?;
 
@@ -281,16 +280,15 @@ pub(super) fn validate_verification_key_storage_compatibility(
             .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
-            ))?;
+            ))
+            .error_while("getting formatter")?;
 
         let capabilities = formatter.get_capabilities();
         if !capabilities
             .verification_key_storages
             .contains(&storage_type)
         {
-            return Err(ServiceError::BusinessLogic(
-                BusinessLogicError::IncompatibleProofVerificationKeyStorage,
-            ));
+            return Err(ProofServiceError::IncompatibleKeyStorage);
         }
 
         Ok(())
@@ -303,7 +301,7 @@ pub(super) fn validate_verifier_engagement(
     iso_mdl_engagement: Option<&str>,
     engagement: Option<&str>,
     config: &VerificationEngagementConfig,
-) -> Result<(), ServiceError> {
+) -> Result<(), ProofServiceError> {
     match (iso_mdl_engagement, engagement) {
         (None, None) => Ok(()),
         (Some(_), Some(engagement)) => {
@@ -316,23 +314,22 @@ pub(super) fn validate_verifier_engagement(
             if enabled {
                 Ok(())
             } else {
-                Err(
-                    ValidationError::MissingVerificationEngagementConfig(engagement.to_string())
-                        .into(),
-                )
+                Err(ProofServiceError::MissingVerificationEngagementConfig(
+                    engagement.to_string(),
+                ))
             }
         }
-        (Some(_), None) => Err(ValidationError::MissingEngagementForISOmDLFlow.into()),
-        (None, Some(_)) => Err(ValidationError::EngagementProvidedForNonISOmDLFlow.into()),
+        (Some(_), None) => Err(ProofServiceError::MissingEngagementForISOmDLFlow),
+        (None, Some(_)) => Err(ProofServiceError::EngagementProvidedForNonISOmDLFlow),
     }
 }
 
 pub(super) fn validate_holder_engagements(
     engagements: &[impl AsRef<str>],
     config: &VerificationEngagementConfig,
-) -> Result<HashSet<VerificationEngagement>, ValidationError> {
+) -> Result<HashSet<VerificationEngagement>, ProofServiceError> {
     if engagements.is_empty() {
-        return Err(ValidationError::MissingVerificationEngagementConfig(
+        return Err(ProofServiceError::MissingVerificationEngagementConfig(
             "-".to_string(),
         ));
     }
@@ -340,14 +337,14 @@ pub(super) fn validate_holder_engagements(
     let mut result = HashSet::new();
     for engagement in engagements {
         let engagement_type = VerificationEngagement::from_str(engagement.as_ref())
-            .map_err(|e| ValidationError::MissingVerificationEngagementConfig(e.to_string()))?;
+            .map_err(|e| ProofServiceError::MissingVerificationEngagementConfig(e.to_string()))?;
         let enabled = config
             .get(&engagement_type)
             .map(|e| e.enabled())
             .unwrap_or(false);
 
         if !enabled {
-            return Err(ValidationError::MissingVerificationEngagementConfig(
+            return Err(ProofServiceError::MissingVerificationEngagementConfig(
                 engagement.as_ref().to_string(),
             ));
         }
@@ -362,15 +359,18 @@ pub(super) fn validate_proof_for_proof_definition(
     session_provider: &dyn SessionProvider,
     verification_protocol: &dyn VerificationProtocol,
     endpoint_version: &PresentationDefinitionVersion,
-) -> Result<(), ServiceError> {
+) -> Result<(), ProofServiceError> {
     throw_if_proof_not_in_session_org(proof, session_provider)?;
 
     if proof.role != ProofRole::Holder {
-        return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
+        return Err(ProofServiceError::InvalidRole(proof.role));
     }
 
-    throw_if_proof_state_not_eq(proof, Requested)?;
-    throw_if_endpoint_version_incompatible(verification_protocol, endpoint_version)
+    throw_if_proof_state_not_eq(proof, Requested).error_while("checking proof state")?;
+    Ok(
+        throw_if_endpoint_version_incompatible(verification_protocol, endpoint_version)
+            .error_while("checking endpoint version")?,
+    )
 }
 
 #[cfg(test)]
@@ -415,9 +415,7 @@ mod tests {
 
         // then
         let_assert!(Err(e) = result);
-        let_assert!(
-            ServiceError::Validation(ValidationError::EngagementProvidedForNonISOmDLFlow) = e
-        );
+        let_assert!(ProofServiceError::EngagementProvidedForNonISOmDLFlow = e);
     }
 
     #[test]
@@ -440,7 +438,7 @@ mod tests {
 
         // then
         let_assert!(Err(e) = result);
-        let_assert!(ServiceError::Validation(ValidationError::MissingEngagementForISOmDLFlow) = e);
+        let_assert!(ProofServiceError::MissingEngagementForISOmDLFlow = e);
     }
 
     #[test]
@@ -455,9 +453,7 @@ mod tests {
 
         // then
         let_assert!(Err(e) = result);
-        let_assert!(
-            ServiceError::Validation(ValidationError::MissingVerificationEngagementConfig(m)) = e
-        );
+        let_assert!(ProofServiceError::MissingVerificationEngagementConfig(m) = e);
         assert!(m == "QR_CODE");
     }
 
@@ -481,9 +477,7 @@ mod tests {
 
         // then
         let_assert!(Err(e) = result);
-        let_assert!(
-            ServiceError::Validation(ValidationError::MissingVerificationEngagementConfig(m)) = e
-        );
+        let_assert!(ProofServiceError::MissingVerificationEngagementConfig(m) = e);
         assert!(m == "QR_CODE");
     }
 

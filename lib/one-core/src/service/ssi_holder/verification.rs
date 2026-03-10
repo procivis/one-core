@@ -11,6 +11,8 @@ use super::dto::{
     HandleInvitationResultDTO, PresentationSubmitRequestDTO,
     PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
+use super::error::HolderServiceError;
+use super::mapper::holder_did_key_jwk_from_credential;
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
@@ -43,17 +45,14 @@ use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInt
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
-};
-use crate::service::ssi_holder::mapper::holder_did_key_jwk_from_credential;
+use crate::service::error::MissingProviderError;
 use crate::validator::{throw_if_endpoint_version_incompatible, throw_if_proof_state_not_eq};
 
 impl SSIHolderService {
     pub async fn reject_proof_request(
         &self,
         interaction_id: &InteractionId,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), HolderServiceError> {
         let proof = self
             .proof_repository
             .get_proof_by_interaction_id(
@@ -72,17 +71,21 @@ impl SSIHolderService {
             .error_while("getting proof")?;
 
         let Some(proof) = proof else {
-            return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
+            return Err(HolderServiceError::MissingProofForInteraction(
+                *interaction_id,
+            ));
         };
 
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)
+            .error_while("checking proof state")?;
 
         let (state, error_metadata) = if let Err(err) = self
             .verification_protocol_provider
             .get_protocol(&proof.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.protocol.clone(),
-            ))?
+            ))
+            .error_while("getting protocol")?
             .holder_reject_proof(&proof)
             .await
         {
@@ -113,9 +116,9 @@ impl SSIHolderService {
     pub async fn submit_proof(
         &self,
         submission: PresentationSubmitRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), HolderServiceError> {
         if submission.submit_credentials.is_empty() {
-            return Err(BusinessLogicError::EmptyPresentationSubmission.into());
+            return Err(HolderServiceError::EmptyPresentationSubmission);
         }
 
         let Some(proof) = self
@@ -132,9 +135,9 @@ impl SSIHolderService {
             .await
             .error_while("getting proof")?
         else {
-            return Err(
-                BusinessLogicError::MissingProofForInteraction(submission.interaction_id).into(),
-            );
+            return Err(HolderServiceError::MissingProofForInteraction(
+                submission.interaction_id,
+            ));
         };
 
         let mut credentials = HashMap::new();
@@ -163,7 +166,7 @@ impl SSIHolderService {
                     )
                     .await
                     .error_while("getting credential")?
-                    .ok_or(EntityNotFoundError::Credential(
+                    .ok_or(HolderServiceError::MissingCredential(
                         submitted_credential.credential_id,
                     ))?;
                 credentials.insert(credential.id, credential);
@@ -175,21 +178,24 @@ impl SSIHolderService {
             .get_protocol(&proof.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.protocol.clone(),
-            ))?;
+            ))
+            .error_while("getting protocol")?;
 
         throw_if_endpoint_version_incompatible(
             &*verification_protocol,
             &PresentationDefinitionVersion::V1,
-        )?;
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        )
+        .error_while("checking endpoint version")?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)
+            .error_while("checking proof state")?;
 
         let interaction_data: serde_json::Value = proof
             .interaction
             .as_ref()
             .and_then(|interaction| interaction.data.as_ref())
             .map(|interaction| serde_json::from_slice(interaction))
-            .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
-            .map_err(|err| ServiceError::MappingError(err.to_string()))?;
+            .ok_or_else(|| HolderServiceError::MappingError("missing interaction".into()))?
+            .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
 
         let presentation_definition = verification_protocol
             .holder_get_presentation_definition(
@@ -213,12 +219,12 @@ impl SSIHolderService {
             let requested_credential = requested_credentials
                 .iter()
                 .find(|credential| credential.id == requested_credential_id)
-                .ok_or(ServiceError::MappingError(format!(
+                .ok_or(HolderServiceError::MappingError(format!(
                     "requested credential `{requested_credential_id}` not found"
                 )))?;
 
             if requested_credential.multiple.unwrap_or(false) && submitted_credentials.len() > 1 {
-                return Err(ServiceError::MappingError(format!(
+                return Err(HolderServiceError::MappingError(format!(
                     "multiple credentials not supported for requested credential `{requested_credential_id}`"
                 )));
             }
@@ -232,23 +238,20 @@ impl SSIHolderService {
                         Ok(field
                             .key_map
                             .get(&submitted_credential.credential_id)
-                            .ok_or(ServiceError::MappingError(format!(
+                            .ok_or(HolderServiceError::MappingError(format!(
                                 "no matching key for credential_id `{}`",
                                 submitted_credential.credential_id
                             )))?
                             .to_owned())
                     })
-                    .collect::<Result<Vec<String>, ServiceError>>()?;
+                    .collect::<Result<Vec<String>, HolderServiceError>>()?;
 
                 let credential = credentials.get(&submitted_credential.credential_id).ok_or(
-                    ServiceError::Other(format!(
-                        "Failed to find preloaded credential with id {}",
-                        submitted_credential.credential_id
-                    )),
+                    HolderServiceError::MissingCredential(submitted_credential.credential_id),
                 )?;
 
                 let credential_blob_id = credential.credential_blob_id.ok_or(
-                    BusinessLogicError::MissingCredentialData {
+                    HolderServiceError::MissingCredentialData {
                         credential_id: submitted_credential.credential_id,
                     },
                 )?;
@@ -259,24 +262,25 @@ impl SSIHolderService {
                     .await
                     .ok_or_else(|| {
                         MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                    })?;
+                    })
+                    .error_while("getting blob storage")?;
                 let credential_blob = db_blob_storage
                     .get(&credential_blob_id)
                     .await
                     .error_while("getting credential blob")?
-                    .ok_or(BusinessLogicError::MissingCredentialData {
+                    .ok_or(HolderServiceError::MissingCredentialData {
                         credential_id: submitted_credential.credential_id,
                     })?;
 
                 let credential_data = credential_blob.value.as_slice();
                 let credential_content = std::str::from_utf8(credential_data)
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                    .map_err(|e| HolderServiceError::MappingError(e.to_string()))?;
 
                 let credential_schema =
                     credential
                         .schema
                         .as_ref()
-                        .ok_or(ServiceError::MappingError(
+                        .ok_or(HolderServiceError::MappingError(
                             "credential_schema missing".to_string(),
                         ))?;
 
@@ -327,7 +331,7 @@ impl SSIHolderService {
         verification_protocol: &dyn VerificationProtocol,
         credential_presentations: Vec<FormattedCredentialPresentation>,
         submitted_claims: Vec<Claim>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), HolderServiceError> {
         let submit_result = verification_protocol
             .holder_submit_proof(proof, credential_presentations)
             .await
@@ -378,16 +382,18 @@ impl SSIHolderService {
         &self,
         credential_content: &str,
         credential_schema: &CredentialSchema,
-    ) -> Result<Arc<dyn CredentialFormatter>, ServiceError> {
+    ) -> Result<Arc<dyn CredentialFormatter>, HolderServiceError> {
         let format = detect_format_with_crypto_suite(
             &credential_schema.format,
             credential_content,
             &*self.formatter_provider,
-        )?;
+        )
+        .error_while("detecting format")?;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format)
-            .ok_or(MissingProviderError::Formatter(format.to_string()))?;
+            .ok_or(MissingProviderError::Formatter(format.to_string()))
+            .error_while("getting format")?;
         Ok(formatter)
     }
 
@@ -396,7 +402,7 @@ impl SSIHolderService {
         &self,
         credential_presentation: CredentialPresentation,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, HolderServiceError> {
         let presentation = formatter
             .prepare_selective_disclosure(credential_presentation)
             .await
@@ -408,9 +414,9 @@ impl SSIHolderService {
     pub async fn submit_proof_v2(
         &self,
         request: PresentationSubmitV2RequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), HolderServiceError> {
         if request.submission.is_empty() {
-            return Err(BusinessLogicError::EmptyPresentationSubmission.into());
+            return Err(HolderServiceError::EmptyPresentationSubmission);
         }
 
         let Some(proof) = self
@@ -427,9 +433,9 @@ impl SSIHolderService {
             .await
             .error_while("getting proof")?
         else {
-            return Err(
-                BusinessLogicError::MissingProofForInteraction(request.interaction_id).into(),
-            );
+            return Err(HolderServiceError::MissingProofForInteraction(
+                request.interaction_id,
+            ));
         };
 
         let verification_protocol = self
@@ -437,21 +443,24 @@ impl SSIHolderService {
             .get_protocol(&proof.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.protocol.clone(),
-            ))?;
+            ))
+            .error_while("getting protocol")?;
 
         throw_if_endpoint_version_incompatible(
             &*verification_protocol,
             &PresentationDefinitionVersion::V2,
-        )?;
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        )
+        .error_while("checking endpoint version")?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)
+            .error_while("checking proof state")?;
 
         let interaction_data: serde_json::Value = proof
             .interaction
             .as_ref()
             .and_then(|interaction| interaction.data.as_ref())
             .map(|interaction| serde_json::from_slice(interaction))
-            .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
-            .map_err(|err| ServiceError::MappingError(err.to_string()))?;
+            .ok_or_else(|| HolderServiceError::MappingError("missing interaction".into()))?
+            .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
         let presentation_definition = verification_protocol
             .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_proxy())
             .await
@@ -485,7 +494,12 @@ impl SSIHolderService {
                     .iter()
                     .map(|opts| format!("[{}]", opts.join(", ")))
                     .join(", ");
-                return Err(BusinessLogicError::InvalidPresentationSubmission { reason: format!("No option satisfied for mandatory credential set with index `{idx}`. Options are: [{}]", &string) }.into());
+                return Err(HolderServiceError::InvalidPresentationSubmission {
+                    reason: format!(
+                        "No option satisfied for mandatory credential set with index `{idx}`. Options are: [{}]",
+                        &string
+                    ),
+                });
             }
         }
 
@@ -526,11 +540,11 @@ impl SSIHolderService {
         url: Url,
         organisation: Organisation,
         transport: Option<Vec<String>>,
-    ) -> Result<HandleInvitationResultDTO, ServiceError> {
+    ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
         let (verification_exchange, verification_protocol) = self
             .verification_protocol_provider
             .detect_protocol(&url)
-            .ok_or(ServiceError::MissingExchangeProtocol(
+            .ok_or(HolderServiceError::MissingExchangeProtocol(
                 "Cannot detect exchange protocol".to_string(),
             ))?;
 
@@ -538,13 +552,14 @@ impl SSIHolderService {
             &transport,
             &self.config.transport,
             &verification_protocol.get_capabilities(),
-        )?;
+        )
+        .error_while("validating transport")?;
         let transport = match transport {
             SelectedTransportType::Single(s) => s,
             SelectedTransportType::Multiple(vec) => vec
                 .into_iter()
                 .next()
-                .ok_or_else(|| ValidationError::TransportNotAllowedForExchange)?,
+                .ok_or(HolderServiceError::TransportNotAllowedForExchange)?,
         };
 
         let InvitationResponseDTO {
@@ -571,7 +586,7 @@ impl SSIHolderService {
         })
     }
 
-    async fn fill_verifier_in_proof(&self, proof: &mut Proof) -> Result<(), ServiceError> {
+    async fn fill_verifier_in_proof(&self, proof: &mut Proof) -> Result<(), HolderServiceError> {
         if let Some(interaction) = proof.interaction.as_ref() {
             let deserialized: Result<OpenID4VPHolderInteractionData, _> =
                 deserialize_interaction_data(interaction.data.as_ref());
@@ -604,7 +619,7 @@ impl SSIHolderService {
         &self,
         proof_id: ProofId,
         update_response: UpdateResponse,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), HolderServiceError> {
         if let Some(update_proof) = update_response.update_proof {
             self.proof_repository
                 .update_proof(&proof_id, update_proof, None)
@@ -619,14 +634,15 @@ impl SSIHolderService {
         credential_query_id: String,
         credential_id: CredentialId,
         presented_paths: &[String],
-    ) -> Result<(FormattedCredentialPresentation, Vec<Claim>), ServiceError> {
+    ) -> Result<(FormattedCredentialPresentation, Vec<Claim>), HolderServiceError> {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .await
-            .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::BlobStorage("Missing blobstorage type DB".to_string()),
-            ))?;
+            .ok_or(MissingProviderError::BlobStorage(
+                "Missing blobstorage type DB".to_string(),
+            ))
+            .error_while("getting blob storage")?;
 
         let credential = self
             .credential_repository
@@ -649,29 +665,30 @@ impl SSIHolderService {
             )
             .await
             .error_while("getting credential")?
-            .ok_or(EntityNotFoundError::Credential(credential_id))?;
+            .ok_or(HolderServiceError::MissingCredential(credential_id))?;
         let blob_id = credential
             .credential_blob_id
-            .ok_or(ServiceError::MappingError(format!(
+            .ok_or(HolderServiceError::MappingError(format!(
                 "Missing blob id on credential `{credential_id}`"
             )))?;
         let credential_blob = blob_storage
             .get(&blob_id)
             .await
             .error_while("getting credential blob")?
-            .ok_or(ServiceError::MappingError(format!(
+            .ok_or(HolderServiceError::MappingError(format!(
                 "Blob with id `{blob_id}` (belonging to credential `{credential_id}`) not found"
             )))?;
 
         let credential_content = std::str::from_utf8(&credential_blob.value)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+            .map_err(|e| HolderServiceError::MappingError(e.to_string()))?;
 
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "credential_schema missing".to_string(),
-            ))?;
+        let credential_schema =
+            credential
+                .schema
+                .as_ref()
+                .ok_or(HolderServiceError::MappingError(
+                    "credential_schema missing".to_string(),
+                ))?;
         let formatter =
             self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
 
@@ -698,7 +715,7 @@ impl SSIHolderService {
 
         let claims = credential
             .claims
-            .ok_or(ServiceError::MappingError(format!(
+            .ok_or(HolderServiceError::MappingError(format!(
                 "Missing claims on credential `{credential_id}`"
             )))?
             .into_iter()
@@ -719,29 +736,26 @@ fn get_credential_paths_to_present(
     query_id: &String,
     credential_selection: Vec<PresentationSubmitV2CredentialRequestDTO>,
     presentation_definition: &PresentationDefinitionV2ResponseDTO,
-) -> Result<Vec<CredentialPathsToPresent>, ServiceError> {
+) -> Result<Vec<CredentialPathsToPresent>, HolderServiceError> {
     let Some(possible_selections) = presentation_definition.credential_queries.get(query_id) else {
-        return Err(BusinessLogicError::InvalidPresentationSubmission {
+        return Err(HolderServiceError::InvalidPresentationSubmission {
             reason: format!("Unknown credential query id `{query_id}`"),
-        }
-        .into());
+        });
     };
 
     let ApplicableCredentials {
         applicable_credentials,
     } = &possible_selections.credential_or_failure_hint
     else {
-        return Err(BusinessLogicError::InvalidPresentationSubmission {
+        return Err(HolderServiceError::InvalidPresentationSubmission {
             reason: format!("No applicable credentials for query id `{query_id}`"),
-        }
-        .into());
+        });
     };
 
     if credential_selection.len() > 1 && !possible_selections.multiple {
-        return Err(BusinessLogicError::InvalidPresentationSubmission {
+        return Err(HolderServiceError::InvalidPresentationSubmission {
             reason: format!("Only one submission allowed for credential query id `{query_id}`"),
-        }
-        .into());
+        });
     }
 
     let mut result = vec![];
@@ -753,17 +767,21 @@ fn get_credential_paths_to_present(
     {
         let deduplicated: HashSet<&String> = HashSet::from_iter(&user_selections);
         if deduplicated.len() != user_selections.len() {
-            return Err(BusinessLogicError::InvalidPresentationSubmission {
-                        reason: format!("Invalid user selections for credential `{credential_id}` for `{query_id}`: user selections contain duplicate paths"),
-                    }.into());
+            return Err(HolderServiceError::InvalidPresentationSubmission {
+                reason: format!(
+                    "Invalid user selections for credential `{credential_id}` for `{query_id}`: user selections contain duplicate paths"
+                ),
+            });
         }
         let Some(selected_credential) = applicable_credentials
             .iter()
             .find(|&credential| credential.id == credential_id)
         else {
-            return Err(BusinessLogicError::InvalidPresentationSubmission {
-                        reason: format!("Credential `{credential_id}` is not applicable for credential query id `{query_id}`"),
-                    }.into());
+            return Err(HolderServiceError::InvalidPresentationSubmission {
+                reason: format!(
+                    "Credential `{credential_id}` is not applicable for credential query id `{query_id}`"
+                ),
+            });
         };
 
         result.push(CredentialPathsToPresent {
@@ -781,16 +799,20 @@ fn get_credential_paths_to_present(
 fn presented_claim_paths_from_nested_with_selection(
     credential: &CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>,
     mut user_selections: Vec<String>,
-) -> Result<Vec<String>, ServiceError> {
+) -> Result<Vec<String>, HolderServiceError> {
     let mut presented_paths = vec![];
     credential.claims.iter().try_for_each(|child_claim| {
         select_claims(child_claim, &mut user_selections, &mut presented_paths)
     })?;
 
     if !user_selections.is_empty() {
-        return Err(BusinessLogicError::InvalidPresentationSubmission {
-            reason: format!("Invalid user selections for credential `{}`. The following selection paths do not match any known claim: [{}]", credential.id, user_selections.join(", ")),
-        }.into());
+        return Err(HolderServiceError::InvalidPresentationSubmission {
+            reason: format!(
+                "Invalid user selections for credential `{}`. The following selection paths do not match any known claim: [{}]",
+                credential.id,
+                user_selections.join(", ")
+            ),
+        });
     }
 
     Ok(presented_paths)
@@ -800,7 +822,7 @@ fn select_claims(
     current: &CredentialDetailClaimExtResponseDTO, // is selected
     user_selections: &mut Vec<String>,
     selected: &mut Vec<String>,
-) -> Result<(), ServiceError> {
+) -> Result<(), HolderServiceError> {
     if !is_selected_claim(current, user_selections)? {
         // not selected, return
         return Ok(());
@@ -818,7 +840,7 @@ fn select_claims(
 fn is_selected_claim(
     claim: &CredentialDetailClaimExtResponseDTO,
     user_selections: &mut Vec<String>,
-) -> Result<bool, ServiceError> {
+) -> Result<bool, HolderServiceError> {
     let user_selection = user_selections
         .iter()
         .find_position(|selection| **selection == claim.path);
@@ -826,10 +848,9 @@ fn is_selected_claim(
 
     if let Some((idx, _)) = user_selection {
         if !claim.user_selection {
-            return Err(BusinessLogicError::InvalidPresentationSubmission {
+            return Err(HolderServiceError::InvalidPresentationSubmission {
                 reason: format!("Path `{}` is not a valid user selection", &claim.path),
-            }
-            .into());
+            });
         }
         // remove user selections from the list once found
         user_selections.swap_remove(idx);
@@ -845,11 +866,13 @@ fn is_selected_claim(
 fn disclosed_claims_for_credential(
     credential: &Credential,
     submitted_paths: &[String],
-) -> Result<HashMap<ClaimId, Claim>, ServiceError> {
+) -> Result<HashMap<ClaimId, Claim>, HolderServiceError> {
     let claims = credential
         .claims
         .as_ref()
-        .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+        .ok_or(HolderServiceError::MappingError(
+            "claims missing".to_string(),
+        ))?
         .iter()
         .filter(|claim| claim.schema.as_ref().is_some_and(|schema| !schema.metadata))
         // parents before children

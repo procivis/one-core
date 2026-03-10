@@ -38,7 +38,6 @@ use crate::provider::verification_protocol::{
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::ServiceError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct MdocBleHolderInteractionData {
@@ -72,7 +71,9 @@ pub(crate) struct ServerInfo {
 }
 
 /// Initiates mDL advertisement
-pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, ServiceError> {
+pub(crate) async fn start_mdl_server(
+    ble: &BleWaiter,
+) -> Result<ServerInfo, VerificationProtocolError> {
     let service_uuid = Uuid::new_v4();
 
     let (task_id, result) = ble
@@ -96,11 +97,11 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
             true,
         )
         .await
-        .value_or(ServiceError::Other("BLE is busy".into()))
+        .value_or(VerificationProtocolError::Failed("BLE is busy".into()))
         .await?;
 
     let mac_address = result
-        .ok_or(ServiceError::Other("flow was aborted".into()))?
+        .ok_or(VerificationProtocolError::Failed("flow was aborted".into()))?
         .error_while("starting BLE server")?;
 
     Ok(ServerInfo {
@@ -128,7 +129,7 @@ pub(crate) async fn receive_mdl_request(
     proof_id: ProofId,
     qr_engagement: Option<EmbeddedCbor<DeviceEngagement>>,
     nfc_engagement: Option<NfcHceSession>,
-) -> Result<(), ServiceError> {
+) -> Result<(), VerificationProtocolError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
 
@@ -298,7 +299,9 @@ pub(crate) async fn receive_mdl_request(
         )
         .await
     else {
-        return Err(ServiceError::Other("ble flow was interrupted".into()));
+        return Err(VerificationProtocolError::Failed(
+            "ble flow was interrupted".into(),
+        ));
     };
 
     Ok(())

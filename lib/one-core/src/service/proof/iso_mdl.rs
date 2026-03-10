@@ -3,6 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
+use super::error::ProofServiceError;
 use crate::config::core_config::{TransportType, VerificationEngagement};
 use crate::error::ContextWithErrorCode;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -14,7 +15,6 @@ use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, RetrievalOptions,
 };
-use crate::service::error::ServiceError;
 
 impl ProofService {
     pub(super) async fn handle_iso_mdl_verifier(
@@ -24,23 +24,23 @@ impl ProofService {
         iso_mdl_engagement: String,
         engagement_type: VerificationEngagement,
         profile: Option<String>,
-    ) -> Result<ProofId, ServiceError> {
+    ) -> Result<ProofId, ProofServiceError> {
         let (device_engagement, handover, device_retrieval_method) = match engagement_type {
             VerificationEngagement::QrCode => {
                 let device_engagement = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
-                    .map_err(|err| ServiceError::Other(err.to_string()))?;
+                    .map_err(|err| ProofServiceError::Other(err.to_string()))?;
                 let device_retrieval_method = device_engagement
                     .inner()
                     .device_retrieval_methods
                     .first()
-                    .ok_or_else(|| ServiceError::Other("no device retrieval method".into()))?
+                    .ok_or_else(|| ProofServiceError::Other("no device retrieval method".into()))?
                     .clone();
                 (device_engagement, None, device_retrieval_method)
             }
             VerificationEngagement::NFC => {
                 let (device_engagement, handover, device_retrieval_method) =
                     DeviceEngagement::parse_nfc(&iso_mdl_engagement)
-                        .map_err(|err| ServiceError::Other(err.to_string()))?;
+                        .map_err(|err| ProofServiceError::Other(err.to_string()))?;
                 (
                     device_engagement,
                     Some(Handover::Nfc(handover)),
@@ -58,7 +58,7 @@ impl ProofService {
         let ble = self
             .ble
             .as_ref()
-            .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
+            .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
         let verifier_session = setup_verifier_session(device_engagement, &schema, handover)
             .error_while("setting up verifier session")?;
@@ -109,7 +109,8 @@ impl ProofService {
             self.certificate_validator.clone(),
             self.identifier_creator.clone(),
         )
-        .await?;
+        .await
+        .error_while("starting client")?;
 
         Ok(proof_id)
     }

@@ -7,11 +7,13 @@ use one_crypto::signer::ecdsa::ECDSASigner;
 use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::IdentifierId;
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config;
 use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -38,7 +40,6 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
-use crate::service::error::{ServiceError, ValidationError};
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_provider::dto::RegisterWalletUnitRequestDTO;
@@ -361,10 +362,7 @@ async fn provider_wallet_unit_ops_session_org_mismatch() {
         .await;
 
     // then
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -401,10 +399,7 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
     let result = service.get_wallet_unit(&Uuid::new_v4().into()).await;
 
     // then
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 async fn create_proof() -> (String, KeyHandle) {

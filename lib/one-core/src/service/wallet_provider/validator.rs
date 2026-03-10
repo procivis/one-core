@@ -4,10 +4,9 @@ use super::dto::{NoncePayload, WalletProviderParams};
 use super::error::WalletProviderError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
-use crate::error::ErrorCodeMixinExt;
+use crate::error::ContextWithErrorCode;
 use crate::model::organisation::Organisation;
 use crate::proto::jwt::model::DecomposedJwt;
-use crate::service::error::ServiceError;
 use crate::validator::{
     validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
@@ -58,36 +57,33 @@ pub(super) fn validate_proof_payload(
     leeway: u64,
     base_url: Option<&str>,
     nonce: Option<&str>,
-) -> Result<(), ServiceError> {
-    validate_issuance_time(&proof.payload.issued_at, leeway)?;
+) -> Result<(), WalletProviderError> {
+    validate_issuance_time(&proof.payload.issued_at, leeway)
+        .error_while("validating issuance time")?;
 
     if proof.payload.invalid_before.is_none() {
-        return Err(
-            WalletProviderError::CouldNotVerifyProof("Missing nbf".to_string())
-                .error_while("validating time")
-                .into(),
-        );
+        return Err(WalletProviderError::CouldNotVerifyProof(
+            "Missing nbf".to_string(),
+        ));
     }
-    validate_not_before_time(&proof.payload.invalid_before, leeway)?;
+    validate_not_before_time(&proof.payload.invalid_before, leeway)
+        .error_while("validating not-before")?;
 
     if proof.payload.expires_at.is_none() {
-        return Err(
-            WalletProviderError::CouldNotVerifyProof("Missing ext".to_string())
-                .error_while("validating time")
-                .into(),
-        );
+        return Err(WalletProviderError::CouldNotVerifyProof(
+            "Missing ext".to_string(),
+        ));
     }
-    validate_expiration_time(&proof.payload.expires_at, leeway)?;
+    validate_expiration_time(&proof.payload.expires_at, leeway)
+        .error_while("validating expiration")?;
 
     let Some(audience) = proof.payload.audience.as_ref() else {
-        return Err(
-            WalletProviderError::CouldNotVerifyProof("Missing aud".to_string())
-                .error_while("validating audience")
-                .into(),
-        );
+        return Err(WalletProviderError::CouldNotVerifyProof(
+            "Missing aud".to_string(),
+        ));
     };
     if let Some(expected_audience) = base_url {
-        validate_audience(audience, expected_audience)?;
+        validate_audience(audience, expected_audience).error_while("validating audience")?;
     }
     if let Some(nonce) = nonce
         && proof
@@ -97,11 +93,9 @@ pub(super) fn validate_proof_payload(
             .as_ref()
             .is_none_or(|client_nonce| client_nonce != nonce)
     {
-        return Err(
-            WalletProviderError::CouldNotVerifyProof("Invalid nonce".to_string())
-                .error_while("validating nonce")
-                .into(),
-        );
+        return Err(WalletProviderError::CouldNotVerifyProof(
+            "Invalid nonce".to_string(),
+        ));
     }
     Ok(())
 }

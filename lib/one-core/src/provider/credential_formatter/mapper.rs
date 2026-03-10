@@ -22,7 +22,6 @@ use crate::provider::credential_formatter::model::{
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
-use crate::service::error::ServiceError;
 
 pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
 
@@ -40,7 +39,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
     context: IndexSet<ContextType>,
-) -> Result<CredentialData, ServiceError> {
+) -> Result<CredentialData, FormatterError> {
     let flat_claims = map_claims(&credential_detail.claims, false);
     let claims = nest_claims(flat_claims.clone()).error_while("nesting claims")?;
 
@@ -56,9 +55,8 @@ pub(crate) fn credential_data_from_credential_detail_response(
     };
 
     let mut context = context;
-    let credential_schema_context: Url = format!("{core_base_url}/ssi/context/v1/{}", schema.id)
-        .parse()
-        .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
+    let credential_schema_context: Url =
+        format!("{core_base_url}/ssi/context/v1/{}", schema.id).parse()?;
     context.insert(ContextType::Url(credential_schema_context));
     let issuer = issuer_for_credential(credential, core_base_url)?;
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
@@ -102,7 +100,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
 fn issuer_for_credential(
     credential: &Credential,
     core_base_url: &str,
-) -> Result<Issuer, ServiceError> {
+) -> Result<Issuer, FormatterError> {
     if let Some(issuer_did) = credential
         .issuer_identifier
         .as_ref()
@@ -113,13 +111,12 @@ fn issuer_for_credential(
     let credential_schema_id = credential
         .schema
         .as_ref()
-        .ok_or(ServiceError::MappingError(
+        .ok_or(FormatterError::CouldNotFormat(
             "missing credential schema".to_string(),
         ))?
         .id;
-    let url: Url = format!("{core_base_url}/ssi/openid4vci/draft-13/{credential_schema_id}",)
-        .parse()
-        .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
+    let url: Url =
+        format!("{core_base_url}/ssi/openid4vci/draft-13/{credential_schema_id}",).parse()?;
     Ok(Issuer::Url(url))
 }
 

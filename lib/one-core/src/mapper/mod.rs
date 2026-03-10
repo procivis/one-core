@@ -247,7 +247,9 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
 
             let Some(encryption_key) = match encryption_key {
                 Ok(key) => Some(key),
-                Err(_) => verifier_did.find_first_matching_key(&key_filter)?,
+                Err(_) => verifier_did
+                    .find_first_matching_key(&key_filter)
+                    .error_while("finding matching key")?,
             }
             .to_owned() else {
                 return Ok(None);

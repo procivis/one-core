@@ -14,10 +14,10 @@ pub enum KeyServiceError {
     KeyNotFound(KeyId),
     #[error("Key already exists")]
     KeyAlreadyExists,
-    #[error("Invalid key storage: `{key_storage}`")]
-    InvalidKeyStorage { key_storage: String },
-    #[error("Invalid key algorithm: `{key_algorithm}`")]
-    InvalidKeyAlgorithm { key_algorithm: String },
+    #[error("Invalid key storage: `{0}`")]
+    InvalidKeyStorage(String),
+    #[error("Invalid key algorithm: `{0}`")]
+    InvalidKeyAlgorithm(String),
     #[error("Unsupported key type: `{key_type}`")]
     UnsupportedKeyType { key_type: KeyAlgorithmType },
     #[error("Mapping error: {0}")]
@@ -33,8 +33,8 @@ impl ErrorCodeMixin for KeyServiceError {
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
             Self::KeyNotFound(_) => ErrorCode::BR_0037,
             Self::KeyAlreadyExists => ErrorCode::BR_0004,
-            Self::InvalidKeyStorage { .. } => ErrorCode::BR_0041,
-            Self::InvalidKeyAlgorithm { .. } => ErrorCode::BR_0043,
+            Self::InvalidKeyStorage(_) => ErrorCode::BR_0041,
+            Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::UnsupportedKeyType { .. } => ErrorCode::BR_0039,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
