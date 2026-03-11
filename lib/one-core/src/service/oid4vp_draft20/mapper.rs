@@ -1,14 +1,14 @@
+use super::error::OID4VPDraft20ServiceError;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
-use crate::service::error::ServiceError;
 
 pub(super) fn parse_interaction_content(
     data: Option<&Vec<u8>>,
-) -> Result<OpenID4VPVerifierInteractionContent, ServiceError> {
+) -> Result<OpenID4VPVerifierInteractionContent, OID4VPDraft20ServiceError> {
     if let Some(interaction_data) = data {
         serde_json::from_slice(interaction_data)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))
+            .map_err(|e| OID4VPDraft20ServiceError::MappingError(e.to_string()))
     } else {
-        Err(ServiceError::MappingError(
+        Err(OID4VPDraft20ServiceError::MappingError(
             "Interaction data is missing or incorrect".to_string(),
         ))
     }

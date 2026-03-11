@@ -14,7 +14,6 @@ use crate::model::validity_credential::Mdoc;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
-use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -45,15 +44,12 @@ pub(crate) async fn persist_accepted_proof(
                     )
                     .await
                     .error_while("getting proof")?
-                    .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
-                        proof.id,
-                    )))?;
+                    .ok_or(EntityNotFoundError::Proof(proof.id))?;
                 // Double-check that proof is in the expected state
                 throw_if_proof_state_not_in(
                     &proof,
                     &[ProofStateEnum::Pending, ProofStateEnum::Requested],
-                )
-                .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
+                )?;
 
                 let (credentials, claims) = validated_proof_result.into_credentials_and_claims();
                 for proved_credential in credentials {
@@ -70,8 +66,7 @@ pub(crate) async fn persist_accepted_proof(
                         .error_while("crating credential")?;
 
                     if let Some(mso) = mdoc_mso {
-                        let mso_cbor = encode_cbor_base64(mso)
-                            .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+                        let mso_cbor = encode_cbor_base64(mso).error_while("encoding MSO")?;
 
                         validity_credential_repository
                             .insert(

@@ -5,6 +5,8 @@ use shared_types::{BlobId, KeyId, ProofId};
 use tracing::warn;
 
 use super::OID4VPDraft25Service;
+use super::error::OID4VPDraft25ServiceError;
+use super::mapper::parse_interaction_content;
 use super::proof_request::generate_authorization_request_params_draft25;
 use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
@@ -39,16 +41,16 @@ use crate::provider::verification_protocol::openid4vp::model::{
     VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata_draft;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-};
-use crate::service::oid4vp_draft25::mapper::parse_interaction_content;
+use crate::service::error::MissingProviderError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::openid4vp::persist_accepted_proof;
 use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
 
 impl OID4VPDraft25Service {
-    pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
+    pub async fn get_client_request(
+        &self,
+        id: ProofId,
+    ) -> Result<String, OID4VPDraft25ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
@@ -87,9 +89,10 @@ impl OID4VPDraft25Service {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
+            .ok_or(OID4VPDraft25ServiceError::MissingProof(id))?;
 
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)
+            .error_while("checking proof state")?;
         validate_verification_protocol_type(
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
@@ -97,15 +100,17 @@ impl OID4VPDraft25Service {
         )
         .error_while("validating protocol type")?;
 
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing proof interaction".to_string(),
-            ))?;
+        let interaction =
+            proof
+                .interaction
+                .as_ref()
+                .ok_or(OID4VPDraft25ServiceError::MappingError(
+                    "missing proof interaction".to_string(),
+                ))?;
 
         let client_metadata = create_open_id_for_vp_client_metadata_draft(
-            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)?,
+            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)
+                .error_while("getting encryption key")?,
             create_open_id_for_vp_formats(),
         );
 
@@ -114,7 +119,7 @@ impl OID4VPDraft25Service {
                 .error_while("parsing interaction data")?;
 
         let Some(response_uri) = interaction_data.response_uri else {
-            return Err(ServiceError::MappingError(
+            return Err(OID4VPDraft25ServiceError::MappingError(
                 "missing response_uri".to_string(),
             ));
         };
@@ -134,7 +139,7 @@ impl OID4VPDraft25Service {
         let client_id_scheme =
             interaction_data
                 .client_id_scheme
-                .ok_or(ServiceError::MappingError(
+                .ok_or(OID4VPDraft25ServiceError::MappingError(
                     "missing client_id_scheme".to_string(),
                 ))?;
         Ok(match client_id_scheme {
@@ -179,7 +184,7 @@ impl OID4VPDraft25Service {
     pub async fn get_client_metadata(
         &self,
         id: ProofId,
-    ) -> Result<OpenID4VPDraftClientMetadata, ServiceError> {
+    ) -> Result<OpenID4VPDraftClientMetadata, OID4VPDraft25ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
@@ -205,9 +210,10 @@ impl OID4VPDraft25Service {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
+            .ok_or(OID4VPDraft25ServiceError::MissingProof(id))?;
 
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)
+            .error_while("checking proof state")?;
         validate_verification_protocol_type(
             &[VerificationProtocolType::OpenId4VpDraft25],
             &self.config,
@@ -217,7 +223,8 @@ impl OID4VPDraft25Service {
 
         let formats = create_open_id_for_vp_formats();
         let jwk =
-            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)?;
+            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)
+                .error_while("getting encryption key")?;
 
         Ok(create_open_id_for_vp_client_metadata_draft(jwk, formats))
     }
@@ -225,7 +232,7 @@ impl OID4VPDraft25Service {
     pub async fn direct_post(
         &self,
         request: OpenID4VPDirectPostRequestDTO,
-    ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VPDirectPostResponseDTO, OID4VPDraft25ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
@@ -257,8 +264,8 @@ impl OID4VPDraft25Service {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(ServiceError::BusinessLogic(
-                BusinessLogicError::MissingProofForInteraction(interaction_id),
+            .ok_or(OID4VPDraft25ServiceError::MissingProofForInteraction(
+                interaction_id,
             ))?;
 
         let proof_id = proof.id;
@@ -271,25 +278,26 @@ impl OID4VPDraft25Service {
         &self,
         proof: Proof,
         unpacked_request: SubmissionRequestData,
-    ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VPDirectPostResponseDTO, OID4VPDraft25ServiceError> {
         let organisation = proof
             .schema
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(OID4VPDraft25ServiceError::MappingError(
                 "missing proof schema".to_string(),
             ))?
             .organisation
             .as_ref()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(OID4VPDraft25ServiceError::MappingError(
                 "missing organisation".to_string(),
             ))?;
 
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing interaction".to_string(),
-            ))?;
+        let interaction =
+            proof
+                .interaction
+                .as_ref()
+                .ok_or(OID4VPDraft25ServiceError::MappingError(
+                    "missing interaction".to_string(),
+                ))?;
 
         let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
@@ -300,7 +308,7 @@ impl OID4VPDraft25Service {
                 .encryption_key
                 .as_ref()
                 .and_then(|key| key.kid())
-                .ok_or(ServiceError::MappingError(
+                .ok_or(OID4VPDraft25ServiceError::MappingError(
                     "missing encryption key".to_string(),
                 ))?;
 
@@ -317,10 +325,13 @@ impl OID4VPDraft25Service {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .error_while("getting blob storage")?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {
-            ServiceError::MappingError(format!("failed to serialize proof blob data: {e}"))
+            OID4VPDraft25ServiceError::MappingError(format!(
+                "failed to serialize proof blob data: {e}"
+            ))
         })?;
 
         let blob = Blob::new(blob_value, BlobType::Proof);
@@ -352,7 +363,8 @@ impl OID4VPDraft25Service {
                     &*self.transaction_manager,
                     &*self.identifier_creator,
                 )
-                .await?;
+                .await
+                .error_while("persisting proof")?;
                 Ok(response)
             }
             Err(err) => {
@@ -372,7 +384,7 @@ impl OID4VPDraft25Service {
     pub async fn presentation_definition(
         &self,
         id: ProofId,
-    ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {
+    ) -> Result<OpenID4VPPresentationDefinition, OID4VPDraft25ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpDraft25],
@@ -397,7 +409,7 @@ impl OID4VPDraft25Service {
             )
             .await
             .error_while("getting proof")?
-            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
+            .ok_or(OID4VPDraft25ServiceError::MissingProof(id))?;
 
         validate_verification_protocol_type(
             &[VerificationProtocolType::OpenId4VpDraft25],
@@ -405,19 +417,21 @@ impl OID4VPDraft25Service {
             &proof.protocol,
         )
         .error_while("validating protocol type")?;
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)
+            .error_while("checking proof state")?;
 
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing interaction".to_string(),
-            ))?;
+        let interaction =
+            proof
+                .interaction
+                .as_ref()
+                .ok_or(OID4VPDraft25ServiceError::MappingError(
+                    "missing interaction".to_string(),
+                ))?;
 
         let Some(presentation_definition) =
             parse_interaction_content(interaction.data.as_ref())?.presentation_definition
         else {
-            return Err(ServiceError::MappingError(
+            return Err(OID4VPDraft25ServiceError::MappingError(
                 "missing presentation definition".to_string(),
             ));
         };
@@ -451,7 +465,7 @@ impl OID4VPDraft25Service {
     async fn unpack_direct_post_request(
         &self,
         request: OpenID4VPDirectPostRequestDTO,
-    ) -> Result<SubmissionRequestData, ServiceError> {
+    ) -> Result<SubmissionRequestData, OID4VPDraft25ServiceError> {
         match request {
             OpenID4VPDirectPostRequestDTO {
                 submission_data: VpSubmissionData::Dcql(_) | VpSubmissionData::Pex(_),
@@ -468,11 +482,15 @@ impl OID4VPDraft25Service {
                 ..
             } => {
                 let jwe_header = extract_jwe_header(&jwe).map_err(|err| {
-                    ServiceError::Other(format!("Failed parsing JWE header: {err}"))
+                    OID4VPDraft25ServiceError::ValidationError(format!(
+                        "Failed parsing JWE header: {err}"
+                    ))
                 })?;
 
                 let key_id = KeyId::from_str(&jwe_header.key_id).map_err(|err| {
-                    ServiceError::ValidationError(format!("JWE key_id value invalid format: {err}"))
+                    OID4VPDraft25ServiceError::ValidationError(format!(
+                        "JWE key_id value invalid format: {err}"
+                    ))
                 })?;
 
                 // KeyId can't be verified here since we don't know related proof yet.
@@ -482,13 +500,14 @@ impl OID4VPDraft25Service {
                     .await
                     .error_while("getting key")?
                     .ok_or_else(|| {
-                        ServiceError::ValidationError("Invalid JWE key_id".to_string())
+                        OID4VPDraft25ServiceError::ValidationError("Invalid JWE key_id".to_string())
                     })?;
 
                 let key_storage = self
                     .key_provider
                     .get_key_storage(&key.storage_type)
-                    .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
+                    .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))
+                    .error_while("getting key storage")?;
 
                 let key = key_storage
                     .key_handle(&key)
@@ -498,32 +517,43 @@ impl OID4VPDraft25Service {
                     .key_agreement()
                     .and_then(|k| k.private())
                     .ok_or_else(|| {
-                        ServiceError::ValidationError("Unsupported JWE key".to_string())
+                        OID4VPDraft25ServiceError::ValidationError(
+                            "Unsupported JWE key".to_string(),
+                        )
                     })?;
 
                 let payload = decrypt_jwe_payload(&jwe, key.as_ref())
                     .await
                     .map_err(|err| {
-                        ServiceError::Other(format!("Failed decrypting JWE payload: {err}"))
+                        OID4VPDraft25ServiceError::ValidationError(format!(
+                            "Failed decrypting JWE payload: {err}"
+                        ))
                     })?;
 
                 let payload = JwePayload::try_from_json_base64_decode(&payload).map_err(|err| {
-                    ServiceError::Other(format!("Failed deserializing JWE payload: {err}"))
+                    OID4VPDraft25ServiceError::ValidationError(format!(
+                        "Failed deserializing JWE payload: {err}"
+                    ))
                 })?;
 
                 Ok(SubmissionRequestData {
                     submission_data: payload.submission_data,
                     state: payload
                         .state
-                        .ok_or(ServiceError::ValidationError(
+                        .ok_or(OID4VPDraft25ServiceError::ValidationError(
                             "missing state parameter".to_string(),
                         ))?
-                        .parse()?,
+                        .parse()
+                        .map_err(|err| {
+                            OID4VPDraft25ServiceError::ValidationError(format!(
+                                "Invalid state: {err}"
+                            ))
+                        })?,
                     mdoc_generated_nonce: jwe_header.agreement_partyuinfo,
                     encryption_key: Some(key_id),
                 })
             }
-            _ => Err(ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest)),
+            _ => Err(OpenID4VCError::InvalidRequest.into()),
         }
     }
 }

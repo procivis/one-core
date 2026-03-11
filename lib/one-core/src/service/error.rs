@@ -13,7 +13,6 @@ use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::proof::ProofStateEnum;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::trust_management::error::TrustManagementError;
-use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -22,9 +21,6 @@ pub enum ServiceError {
 
     #[error("Validation error: `{0}`")]
     ValidationError(String),
-
-    #[error("OpenID4VC validation error `{0}`")]
-    OpenID4VCError(#[from] OpenID4VCError),
 
     #[error("OpenID4VCI validation error `{0}`")]
     OpenID4VCIError(#[from] OpenID4VCIError),
@@ -334,9 +330,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::MissingProvider(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::MappingError(_) => ErrorCode::BR_0047,
-            Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
-                ErrorCode::BR_0048
-            }
+            Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0048,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,

@@ -14,6 +14,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VPFinal1_0Service;
+use super::error::OID4VPFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -41,7 +42,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::error::ServiceError;
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -257,7 +257,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     assert!(matches!(
         err,
-        ServiceError::OpenID4VCError(OpenID4VCError::CredentialIsRevokedOrSuspended)
+        OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::CredentialIsRevokedOrSuspended)
     ));
 }
 
@@ -434,9 +434,10 @@ async fn test_submit_proof_failed_on_validator_failure() {
         })
         .await
         .unwrap_err();
+
     assert!(matches!(
         err,
-        ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(_))
+        OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(_))
     ));
 }
 
