@@ -68,7 +68,10 @@ impl TrustListPublisher for EtsiLotePublisher {
                 IdentifierType::CertificateAuthority,
                 IdentifierType::Certificate,
             ],
-            entry_identifier_types: vec![IdentifierType::Certificate],
+            entry_identifier_types: vec![
+                IdentifierType::Certificate,
+                IdentifierType::CertificateAuthority,
+            ],
             supported_roles: vec![
                 TrustListPublicationRoleEnum::PidProvider,
                 TrustListPublicationRoleEnum::WalletProvider,

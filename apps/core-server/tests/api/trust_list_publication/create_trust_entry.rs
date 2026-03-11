@@ -45,6 +45,45 @@ async fn test_create_trust_enty() {
 }
 
 #[tokio::test]
+async fn test_create_trust_entry_certificate_authority() {
+    // given
+    let (context, organisation, identifier, certificate, key) =
+        TestContext::new_with_ca_identifier(None).await;
+    let trust_list_publication = context
+        .db
+        .trust_list_publications
+        .create(
+            "test_trust_list_publication",
+            TrustListPublicationRoleEnum::PidProvider,
+            "LOTE_PUBLISHER".into(),
+            serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
+            organisation.clone(),
+            Some(identifier.clone()),
+            Some(key.id),
+            Some(certificate.id),
+        )
+        .await;
+
+    // when
+    let resp = context
+        .api
+        .trust_list_publication
+        .create_trust_entry(trust_list_publication.id, identifier.id, None)
+        .await;
+
+    // then
+    similar_asserts::assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+    let entry_id = resp_json["id"].parse::<Uuid>().into();
+    let existing_trust_entry = context.db.trust_entries.get(entry_id).await.unwrap();
+    similar_asserts::assert_eq!(existing_trust_entry.identifier_id, identifier.id);
+    similar_asserts::assert_eq!(
+        existing_trust_entry.trust_list_publication_id,
+        trust_list_publication.id
+    );
+}
+
+#[tokio::test]
 async fn test_fail_to_create_trust_entry_organisation_mismatch() {
     // given
     let (context, _organisation, identifier, certificate, key) =
