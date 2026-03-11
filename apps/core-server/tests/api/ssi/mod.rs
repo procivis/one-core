@@ -10,6 +10,7 @@ mod get_revocation_list_tests;
 mod get_sd_jwt_vc_metadata;
 mod get_trust_entity;
 mod get_trust_list;
+mod get_trust_list_publication_content;
 mod get_verifier_provider;
 mod get_wallet_provider_metadata;
 mod issue_wallet_attestations;

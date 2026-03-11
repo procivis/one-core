@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCINotificationEvent;
 use serde_json::json;
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId, TrustListPublicationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -281,6 +281,11 @@ impl SSIApi {
 
     pub async fn get_verifier_provider(&self, id: &str) -> Response {
         let url = format!("/ssi/verifier-provider/v1/{}", id);
+        self.client.get(&url).await
+    }
+
+    pub async fn get_trust_list_publication_content(&self, id: TrustListPublicationId) -> Response {
+        let url = format!("/ssi/trust-list/v1/{}", id);
         self.client.get(&url).await
     }
 }

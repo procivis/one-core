@@ -16,6 +16,8 @@ use self::proofs::ProofsDB;
 use self::revocation_lists::RevocationListsDB;
 use self::trust_anchors::TrustAnchorDB;
 use self::trust_entities::TrustEntityDB;
+use self::trust_entry::TrustEntryDB;
+use self::trust_list_publication::TrustListPublicationDB;
 use crate::utils::db_clients::blobs::BlobsDB;
 use crate::utils::db_clients::holder_wallet_unit::HolderWalletUnitsDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
@@ -41,6 +43,8 @@ pub mod remote_entity_cache;
 pub mod revocation_lists;
 pub mod trust_anchors;
 pub mod trust_entities;
+pub mod trust_entry;
+pub mod trust_list_publication;
 pub mod validity_credentials;
 pub mod wallet_unit_attestations;
 pub mod wallet_units;
@@ -63,6 +67,8 @@ pub struct DbClient {
     pub interactions: InteractionsDB,
     pub trust_anchors: TrustAnchorDB,
     pub trust_entities: TrustEntityDB,
+    pub trust_list_publications: TrustListPublicationDB,
+    pub trust_entries: TrustEntryDB,
     pub blobs: BlobsDB,
     pub wallet_units: WalletUnitsDB,
     pub holder_wallet_units: HolderWalletUnitsDB,
@@ -95,6 +101,10 @@ impl DbClient {
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
             trust_anchors: TrustAnchorDB::new(layer.get_trust_anchor_repository()),
             trust_entities: TrustEntityDB::new(layer.get_trust_entity_repository()),
+            trust_list_publications: TrustListPublicationDB::new(
+                layer.get_trust_list_publication_repository(),
+            ),
+            trust_entries: TrustEntryDB::new(layer.get_trust_entry_repository()),
             blobs: BlobsDB::new(layer.get_blob_repository()),
             wallet_units: WalletUnitsDB::new(layer.get_wallet_unit_repository()),
             holder_wallet_units: HolderWalletUnitsDB::new(

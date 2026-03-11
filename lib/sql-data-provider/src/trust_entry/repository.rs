@@ -96,7 +96,6 @@ impl TrustEntryRepository for TrustEntryProvider {
                 trust_entry::Column::Status,
                 trust_entry::Column::Metadata,
                 trust_entry::Column::TrustListPublicationId,
-                trust_entry::Column::IdentifierId,
             ])
             .join(
                 sea_orm::JoinType::LeftJoin,

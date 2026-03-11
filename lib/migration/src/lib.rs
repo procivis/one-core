@@ -218,6 +218,7 @@ mod m20260302_170100_trust_entry;
 mod m20260303_120000_trust_list_publication_role_not_null;
 mod m20260303_142434_no_more_optional_proof_schemas;
 mod m20260310_114455_migrate_none_revocation_credential_schemas;
+mod m20260310_162410_fix_trust_list_publication_sequence_number_type;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -436,6 +437,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260303_120000_trust_list_publication_role_not_null::Migration),
             Box::new(m20260303_142434_no_more_optional_proof_schemas::Migration),
             Box::new(m20260310_114455_migrate_none_revocation_credential_schemas::Migration),
+            Box::new(m20260310_162410_fix_trust_list_publication_sequence_number_type::Migration),
         ]
     }
 }

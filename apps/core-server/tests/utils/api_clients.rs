@@ -29,6 +29,7 @@ use super::field_match::FieldHelpers;
 use crate::utils::api_clients::cache::CacheApi;
 use crate::utils::api_clients::holder_wallet_unit::HolderWalletUnitsApi;
 use crate::utils::api_clients::signatures::SignaturesApi;
+use crate::utils::api_clients::trust_list_publication::TrustListPublicationApi;
 use crate::utils::api_clients::wallet_provider::WalletProviderApi;
 
 mod cache;
@@ -56,6 +57,7 @@ pub mod wallet_units;
 
 pub mod holder_wallet_unit;
 mod statistics;
+pub mod trust_list_publication;
 pub mod wallet_provider;
 
 pub fn http_client() -> &'static reqwest::Client {
@@ -218,6 +220,7 @@ pub struct Client {
     pub statistics: StatisticsApi,
     pub base_url: String,
     pub client: HttpClient,
+    pub trust_list_publication: TrustListPublicationApi,
 }
 
 impl Client {
@@ -253,6 +256,7 @@ impl Client {
             holder_wallet_units: HolderWalletUnitsApi::new(client.clone()),
             signatures: SignaturesApi::new(client.clone()),
             statistics: StatisticsApi::new(client.clone()),
+            trust_list_publication: TrustListPublicationApi::new(client.clone()),
             base_url,
             client,
         }
