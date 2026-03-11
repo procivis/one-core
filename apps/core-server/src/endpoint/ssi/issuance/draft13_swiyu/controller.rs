@@ -7,6 +7,7 @@ use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::error::{EntityNotFoundError, ServiceError};
+use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
@@ -20,7 +21,8 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::extractor::QsOrForm;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-credential-issuer",
     params(
@@ -65,7 +67,8 @@ pub(crate) async fn oid4vci_draft13_swiyu_get_issuer_metadata(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/oauth-authorization-server",
     params(
@@ -113,7 +116,8 @@ pub(crate) async fn oid4vci_draft13_swiyu_oauth_authorization_server(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-configuration",
     params(
@@ -158,7 +162,8 @@ pub(crate) async fn oid4vci_draft13_swiyu_service_discovery(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13-swiyu/{credential_schema_id}/offer/{credential_id}",
     params(
@@ -216,7 +221,8 @@ pub(crate) async fn oid4vci_draft13_swiyu_get_credential_offer(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/draft-13-swiyu/{id}/token",
     params(
@@ -281,7 +287,8 @@ pub(crate) async fn oid4vci_draft13_swiyu_create_token(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/draft-13-swiyu/{id}/credential",
     request_body(content = OpenID4VCICredentialRequestRestDTO, description = "Credential request"),

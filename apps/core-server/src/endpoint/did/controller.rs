@@ -3,7 +3,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{DidId, Permission};
 
 use super::dto::{
@@ -17,7 +17,8 @@ use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DidDetail],
     get,
     path = "/api/did/v1/{id}",
     responses(OkOrErrorResponse<DidResponseRestDTO>),
@@ -31,7 +32,6 @@ use crate::router::AppState;
     summary = "Retrieve a DID",
     description = "Returns detailed information about a DID.",
 )]
-#[require_permissions(Permission::DidDetail)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_did(
     state: State<AppState>,
@@ -57,7 +57,8 @@ pub(crate) async fn get_did(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DidList],
     get,
     path = "/api/did/v1",
     responses(OkOrErrorResponse<GetDidsResponseRestDTO>),
@@ -71,7 +72,6 @@ pub(crate) async fn get_did(
     summary = "List DIDs",
     description = "Returns a list of DIDs within an organization.",
 )]
-#[require_permissions(Permission::DidList)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_did_list(
     state: State<AppState>,
@@ -92,7 +92,8 @@ pub(crate) async fn get_did_list(
     OkOrErrorResponse::from_result(result, state, "getting dids")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DidCreate],
     post,
     path = "/api/did/v1",
     request_body = CreateDidRequestRestDTO,
@@ -112,7 +113,6 @@ pub(crate) async fn get_did_list(
         like DID deactivation.
     "},
 )]
-#[require_permissions(Permission::DidCreate)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn post_did(
     state: State<AppState>,
@@ -142,7 +142,8 @@ pub(crate) async fn post_did(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DidDeactivate],
     patch,
     path = "/api/did/v1/{id}",
     request_body = DidPatchRequestRestDTO,
@@ -160,7 +161,6 @@ pub(crate) async fn post_did(
         guide for a list of supported DID methods which allow deactivation.
     "},
 )]
-#[require_permissions(Permission::DidDeactivate)]
 pub(crate) async fn update_did(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
@@ -173,7 +173,8 @@ pub(crate) async fn update_did(
     EmptyOrErrorResponse::from_result(result, state, "updating DID")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::TrustEntityDetail],
     get,
     path = "/api/did/v1/{id}/trust-entity",
     responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
@@ -187,7 +188,6 @@ pub(crate) async fn update_did(
     summary = "Retrieve the matching trust entity for a DID",
     description = "Returns details on the matching trust entity for a DID.",
 )]
-#[require_permissions(Permission::TrustEntityDetail)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_did_trust_entity(
     state: State<AppState>,

@@ -1,7 +1,7 @@
 use axum::extract::State;
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::Permission;
 
 use super::dto::{
@@ -24,7 +24,8 @@ use crate::endpoint::statistics::mapper::{
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DashboardDetail],
     get,
     path = "/api/statistics/v1/dashboard",
     params(OrganisationStatsRequestQuery),
@@ -39,7 +40,6 @@ use crate::router::AppState;
         including detailed timelines.
     "},
 )]
-#[require_permissions(Permission::DashboardDetail)]
 pub(crate) async fn organisation_statistics(
     state: State<AppState>,
     WithRejection(Qs(request), _): WithRejection<
@@ -58,7 +58,8 @@ pub(crate) async fn organisation_statistics(
     OkOrErrorResponse::from_result(result, state, "getting organisation statistics")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DashboardDetail],
     get,
     path = "/api/statistics/v1/dashboard/issuer",
     params(GetIssuerSchemaStatsQueryRest),
@@ -74,7 +75,6 @@ pub(crate) async fn organisation_statistics(
         timelines.
     "},
 )]
-#[require_permissions(Permission::DashboardDetail)]
 pub(crate) async fn issuer_statistics(
     state: State<AppState>,
     WithRejection(Qs(request), _): WithRejection<
@@ -96,7 +96,8 @@ pub(crate) async fn issuer_statistics(
     OkOrErrorResponse::from_result(result, state, "getting organisation statistics")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::DashboardDetail],
     get,
     path = "/api/statistics/v1/dashboard/verifier",
     params(GetVerifierSchemaStatsQueryRest),
@@ -111,7 +112,6 @@ pub(crate) async fn issuer_statistics(
         including detailed timelines.
     "},
 )]
-#[require_permissions(Permission::DashboardDetail)]
 pub(crate) async fn verifier_statistics(
     state: State<AppState>,
     WithRejection(Qs(request), _): WithRejection<
@@ -134,7 +134,8 @@ pub(crate) async fn verifier_statistics(
     OkOrErrorResponse::from_result(result, state, "getting organisation statistics")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::SystemDashboardDetail],
     get,
     path = "/api/statistics/v1/dashboard/system",
     params(SystemStatsRequestQuery),
@@ -150,7 +151,6 @@ pub(crate) async fn verifier_statistics(
         organizations.
     "},
 )]
-#[require_permissions(Permission::SystemDashboardDetail)]
 pub(crate) async fn system_statistics(
     state: State<AppState>,
     WithRejection(Qs(request), _): WithRejection<Qs<SystemStatsRequestQuery>, ErrorResponseRestDTO>,
@@ -163,7 +163,8 @@ pub(crate) async fn system_statistics(
     OkOrErrorResponse::from_result(result, state, "getting system statistics")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::SystemDashboardDetail],
     get,
     path = "/api/statistics/v1/dashboard/system/interaction",
     params(GetSystemInteractionStatsQueryRest),
@@ -178,7 +179,6 @@ pub(crate) async fn system_statistics(
         including issuance, verification and lifecycle operation counts.
     "},
 )]
-#[require_permissions(Permission::SystemDashboardDetail)]
 pub(crate) async fn system_interaction_statistics(
     state: State<AppState>,
     WithRejection(Qs(request), _): WithRejection<
@@ -199,7 +199,8 @@ pub(crate) async fn system_interaction_statistics(
     OkOrErrorResponse::from_result(result, state, "getting system interaction statistics")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::SystemDashboardDetail],
     get,
     path = "/api/statistics/v1/dashboard/system/management",
     params(GetSystemManagementStatsQueryRest),
@@ -215,7 +216,6 @@ pub(crate) async fn system_interaction_statistics(
         identifiers.
     "},
 )]
-#[require_permissions(Permission::SystemDashboardDetail)]
 pub(crate) async fn system_management_statistics(
     state: State<AppState>,
     WithRejection(Qs(request), _): WithRejection<

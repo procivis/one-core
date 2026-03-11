@@ -8,14 +8,17 @@ use utoipa::openapi::{Contact, ExternalDocs, Object, Server, Tag};
 use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
+pub(crate) mod permissions;
+
 use crate::build_info::{APP_VERSION, build};
+use crate::openapi::permissions::PermissionsModifier;
 use crate::{AuthMode, ServerConfig};
 
 pub(crate) fn gen_openapi_documentation(
     server_config: Arc<ServerConfig>,
     core_config: Arc<CoreConfig>,
 ) -> utoipa::openapi::OpenApi {
-    #[utoipauto(paths = "./apps/core-server/src")]
+    #[utoipauto(paths = "./apps/core-server/src", function_attribute_name = "endpoint")]
     #[derive(OpenApi)]
     #[openapi(components(schemas(shared_types::EntityId, shared_types::RevocationListId)))]
     struct ApiDoc;
@@ -105,6 +108,8 @@ pub(crate) fn gen_openapi_documentation(
         config: server_config.clone(),
     };
     security_addon.modify(&mut docs);
+
+    PermissionsModifier.modify(&mut docs);
 
     CoreConfigModifier::new(core_config).modify(&mut docs);
 

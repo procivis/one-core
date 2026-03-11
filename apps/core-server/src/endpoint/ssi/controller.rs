@@ -12,6 +12,7 @@ use one_core::service::did::error::DidServiceError;
 use one_core::service::revocation_list::error::RevocationServiceError;
 use one_core::service::ssi_issuer::error::IssuerServiceError;
 use one_core::service::trust_list_publication::error::TrustListPublicationServiceError;
+use proc_macros::endpoint;
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
     RevocationListId, TrustAnchorId, TrustListPublicationId,
@@ -30,7 +31,8 @@ use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/did-web/v1/{id}/did.json",
     params(
@@ -51,7 +53,8 @@ pub(crate) async fn get_did_web_document(
     OkOrErrorResponse::from_result(result, state, "getting did:web document")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/did-webvh/v1/{id}/did.jsonl",
     params(
@@ -92,7 +95,8 @@ pub(crate) async fn get_did_webvh_log(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/revocation/v1/list/{id}",
     params(
@@ -164,7 +168,8 @@ pub(crate) async fn get_revocation_list_by_id(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/revocation/v1/crl/{id}",
     params(
@@ -205,7 +210,8 @@ pub(crate) async fn get_crl_by_id(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/context/v1/{id}",
     params(
@@ -251,7 +257,8 @@ pub(crate) async fn get_json_ld_context(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/trust/v1/{trustAnchorId}",
     params(
@@ -286,7 +293,8 @@ pub(crate) async fn ssi_get_trust_list(
     OkOrErrorResponse::from_result(result, state, "getting trust list")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/trust-entity/v1/{didValue}",
     params(
@@ -317,7 +325,8 @@ pub(crate) async fn ssi_get_trust_entity(
     OkOrErrorResponse::from_result(result, state, "getting trust entity")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     patch,
     path = "/ssi/trust-entity/v1/{didValue}",
     params(
@@ -359,7 +368,8 @@ pub(crate) async fn ssi_patch_trust_entity(
     EmptyOrErrorResponse::from_result(result, state, "getting trust entity")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/trust-entity/v1",
     request_body = SSIPostTrustEntityRequestRestDTO,
@@ -400,7 +410,8 @@ pub(crate) async fn ssi_post_trust_entity(
     CreatedOrErrorResponse::from_result(result, state, "getting trust entity")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/schema/v1/{id}",
     params(
@@ -430,7 +441,8 @@ pub(crate) async fn ssi_get_credential_schema(
     OkOrErrorResponse::from_result(result, state, "getting credential schema")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/proof-schema/v1/{id}",
     params(
@@ -455,7 +467,8 @@ pub(crate) async fn ssi_get_proof_schema(
     OkOrErrorResponse::from_result(result, state, "getting proof schema")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/vct/v1/{organisationId}/{vctType}",
     params(
@@ -488,7 +501,8 @@ pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
     OkOrErrorResponse::from_result(result, state, "getting SD-JWT VC type metadata")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/ca/{id}",
     params(
@@ -533,7 +547,8 @@ pub(crate) async fn ssi_get_certificate_authority(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/trust-list/v1/{id}",
     params(

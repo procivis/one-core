@@ -1,12 +1,14 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::endpoint;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::ssi::verifier_provider::dto::VerifierProviderResponseDTO;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/verifier-provider/v1/{verifierProvider}",
     responses(OkOrErrorResponse<VerifierProviderResponseDTO>),

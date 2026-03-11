@@ -4,12 +4,14 @@ use axum::Json;
 use axum::handler::Handler;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use proc_macros::endpoint;
 use serde_json::{Value, json};
 
 use crate::build_info;
 use crate::metrics::encode_metrics;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/api/build-info/v1",
     responses(
@@ -31,7 +33,8 @@ pub(crate) async fn get_build_info() -> Json<Value> {
     }))
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/health",
     responses(
@@ -45,7 +48,8 @@ pub(crate) async fn health_check() -> impl IntoResponse {
     StatusCode::NO_CONTENT
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/metrics",
     responses(

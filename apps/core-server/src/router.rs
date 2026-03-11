@@ -110,6 +110,9 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             .merge(
                 SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation),
             )
+            .layer(middleware::from_fn(
+                crate::openapi::permissions::adapted_swagger_index,
+            ))
     } else {
         Router::new()
     };

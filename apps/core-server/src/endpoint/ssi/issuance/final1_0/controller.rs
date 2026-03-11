@@ -8,6 +8,7 @@ use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::issuance_protocol::error::OpenIDIssuanceError;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
+use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
@@ -21,7 +22,8 @@ use super::dto::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}",
     params(
@@ -70,7 +72,8 @@ pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}",
     params(
@@ -122,7 +125,8 @@ pub(crate) async fn oid4vci_final1_0_oauth_authorization_server(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/final-1.0/{credential_schema_id}/offer/{credential_id}",
     params(
@@ -180,7 +184,8 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/final-1.0/{id}/token",
     request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"
@@ -262,7 +267,8 @@ pub(crate) async fn oid4vci_final1_0_create_token(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/final-1.0/{id}/credential",
     request_body(content = OpenID4VCIFinal1CredentialRequestRestDTO, description = "Credential request"),
@@ -340,7 +346,8 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/final-1.0/{id}/notification",
     request_body(content = OpenID4VCINotificationRequestRestDTO, description = "Notification request"),
@@ -407,7 +414,8 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/final-1.0/{protocol_id}/nonce",
     params(

@@ -6,6 +6,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use one_core::service::oid4vp_final1_0::error::OID4VPFinal1_0ServiceError;
+use proc_macros::endpoint;
 use shared_types::ProofId;
 use standardized_types::openid4vp::ClientMetadata;
 
@@ -14,7 +15,8 @@ use super::super::dto::{OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostRe
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vp/final-1.0/response",
     request_body(content = OpenID4VPDirectPostRequestRestDTO, description = "Verifier request", content_type = "application/x-www-form-urlencoded"
@@ -94,7 +96,8 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vp/final-1.0/{id}/client-metadata",
     params(
@@ -143,7 +146,8 @@ pub(crate) async fn oid4vp_final1_0_client_metadata(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vp/final-1.0/{id}/client-request",
     params(

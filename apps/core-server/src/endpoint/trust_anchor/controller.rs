@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{Permission, TrustAnchorId};
 
 use crate::dto::common::{EntityResponseRestDTO, GetTrustAnchorListResponseRestDTO};
@@ -14,7 +14,8 @@ use crate::endpoint::trust_anchor::dto::{
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::TrustAnchorCreate],
     post,
     path = "/api/trust-anchor/v1",
     request_body = CreateTrustAnchorRequestRestDTO,
@@ -32,7 +33,6 @@ use crate::router::AppState;
     configurations of the same type.
 "},
 )]
-#[require_permissions(Permission::TrustAnchorCreate)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn create_trust_anchor(
     state: State<AppState>,
@@ -49,7 +49,8 @@ pub(crate) async fn create_trust_anchor(
     CreatedOrErrorResponse::from_result(result, state, "creating trust anchor")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::TrustAnchorDetail],
     get,
     path = "/api/trust-anchor/v1/{id}",
     params(
@@ -63,7 +64,6 @@ pub(crate) async fn create_trust_anchor(
     summary = "Retrieve a trust anchor",
     description = "Returns details on a given trust anchor.",
 )]
-#[require_permissions(Permission::TrustAnchorDetail)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_trust_anchor(
     state: State<AppState>,
@@ -73,7 +73,8 @@ pub(crate) async fn get_trust_anchor(
     OkOrErrorResponse::from_result(result, state, "fetching trust anchor")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::TrustAnchorList],
     get,
     path = "/api/trust-anchor/v1",
     responses(OkOrErrorResponse<GetTrustAnchorListResponseRestDTO>),
@@ -85,7 +86,6 @@ pub(crate) async fn get_trust_anchor(
     summary = "List trust anchors",
     description = "Returns a list of trust anchors in an organization.",
 )]
-#[require_permissions(Permission::TrustAnchorList)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_trust_anchors(
     state: State<AppState>,
@@ -105,7 +105,8 @@ pub(crate) async fn get_trust_anchors(
     OkOrErrorResponse::from_result(result, state, "listing trust anchors")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::TrustAnchorDelete],
     delete,
     path = "/api/trust-anchor/v1/{id}",
     params(
@@ -122,7 +123,6 @@ pub(crate) async fn get_trust_anchors(
         are also deleted.
     "},
 )]
-#[require_permissions(Permission::TrustAnchorDelete)]
 #[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn delete_trust_anchor(
     state: State<AppState>,

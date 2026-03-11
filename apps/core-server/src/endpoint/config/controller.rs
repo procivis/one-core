@@ -7,7 +7,8 @@ use super::dto::ConfigRestDTO;
 use crate::dto::response::OkOrErrorResponse;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[proc_macros::endpoint(
+    permissions = [],
     get,
     path = "/api/config/v1",
     responses(OkOrErrorResponse<ConfigRestDTO>),

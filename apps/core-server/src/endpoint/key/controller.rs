@@ -4,7 +4,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{KeyId, Permission};
 
 use super::dto::GetKeyQuery;
@@ -20,7 +20,8 @@ use crate::extractor::Qs;
 use crate::mapper::list_try_from;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::KeyDetail],
     get,
     path = "/api/key/v1/{id}",
     responses(OkOrErrorResponse<KeyResponseRestDTO>),
@@ -34,7 +35,6 @@ use crate::router::AppState;
     summary = "Retrieve key",
     description = "Returns detailed information about a key.",
 )]
-#[require_permissions(Permission::KeyDetail)]
 pub(crate) async fn get_key(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<KeyId>, ErrorResponseRestDTO>,
@@ -59,7 +59,8 @@ pub(crate) async fn get_key(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::KeyCreate],
     post,
     path = "/api/key/v1",
     request_body = KeyRequestRestDTO,
@@ -79,7 +80,6 @@ pub(crate) async fn get_key(
     Related guide: [Keys](/keys)
 "},
 )]
-#[require_permissions(Permission::KeyCreate)]
 pub(crate) async fn post_key(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<KeyRequestRestDTO>, ErrorResponseRestDTO>,
@@ -95,7 +95,8 @@ pub(crate) async fn post_key(
     CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::KeyList],
     get,
     path = "/api/key/v1",
     responses(OkOrErrorResponse<GetKeyListResponseRestDTO>),
@@ -107,7 +108,6 @@ pub(crate) async fn post_key(
     summary = "List keys",
     description = "Returns a list of keys created in an organization.",
 )]
-#[require_permissions(Permission::KeyList)]
 pub(crate) async fn get_key_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetKeyQuery>, ErrorResponseRestDTO>,
@@ -146,7 +146,8 @@ pub(crate) async fn get_key_list(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::KeyGenerateCsr],
     post,
     path = "/api/key/v1/{id}/generate-csr",
     request_body = KeyGenerateCSRRequestRestDTO,
@@ -167,7 +168,6 @@ pub(crate) async fn get_key_list(
         Use the POST /identifier endpoint to import signed certificates and CAs.
     "},
 )]
-#[require_permissions(Permission::KeyGenerateCsr)]
 pub(crate) async fn generate_csr(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<KeyId>, ErrorResponseRestDTO>,

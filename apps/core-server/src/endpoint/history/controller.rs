@@ -4,7 +4,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::proto::session_provider::SessionProvider;
 use one_core::service::error::{ServiceError, ValidationError};
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{HistoryId, Permission};
 
 use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
@@ -19,7 +19,8 @@ use crate::permissions::permission_check;
 use crate::router::AppState;
 use crate::session::CoreServerSessionProvider;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::HistoryList, Permission::SystemHistoryList],
     get,
     path = "/api/history/v1",
     responses(OkOrErrorResponse<GetHistoryListResponseRestDTO>),
@@ -35,7 +36,6 @@ use crate::session::CoreServerSessionProvider;
         Related guide: [History](/history)
     "},
 )]
-#[require_permissions(Permission::HistoryList, Permission::SystemHistoryList)]
 pub(crate) async fn get_history_list(
     state: State<AppState>,
     Extension(authorization): Extension<Authorized>,
@@ -86,7 +86,8 @@ pub(crate) async fn get_history_list(
     OkOrErrorResponse::from_result(result, state, "getting history list")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::HistoryCreate],
     post,
     path = "/api/history/v1",
     request_body = CreateHistoryRequestRestDTO,
@@ -102,7 +103,6 @@ pub(crate) async fn get_history_list(
         Related guide: [History](/history)
     "},
 )]
-#[require_permissions(Permission::HistoryCreate)]
 pub(crate) async fn create_history(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -119,7 +119,8 @@ pub(crate) async fn create_history(
     CreatedOrErrorResponse::from_result(result, state, "creating history")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::HistoryDetail, Permission::SystemHistoryDetail],
     get,
     path = "/api/history/v1/{id}",
     params(
@@ -133,7 +134,6 @@ pub(crate) async fn create_history(
     summary = "Retrieve history entry",
     description = "Returns details on a single event.",
 )]
-#[require_permissions(Permission::HistoryDetail, Permission::SystemHistoryDetail)]
 pub(crate) async fn get_history_entry(
     state: State<AppState>,
     Extension(authorization): Extension<Authorized>,

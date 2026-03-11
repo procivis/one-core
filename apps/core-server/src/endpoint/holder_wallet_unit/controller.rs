@@ -1,7 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{HolderWalletUnitId, Permission};
 
 use crate::dto::common::EntityResponseRestDTO;
@@ -12,7 +12,8 @@ use crate::endpoint::holder_wallet_unit::dto::{
 };
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::HolderWalletUnitRegister],
     post,
     path = "/api/holder-wallet-unit/v1",
     request_body = HolderRegisterWalletUnitRequestRestDTO,
@@ -26,7 +27,6 @@ use crate::router::AppState;
         Register a wallet unit with a Wallet Provider.
     "},
 )]
-#[require_permissions(Permission::HolderWalletUnitRegister)]
 pub(crate) async fn wallet_unit_holder_register(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -45,7 +45,8 @@ pub(crate) async fn wallet_unit_holder_register(
     CreatedOrErrorResponse::from_result(result, state, "register wallet unit")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::HolderWalletUnitDetail],
     get,
     path = "/api/holder-wallet-unit/v1/{id}",
     responses(OkOrErrorResponse<HolderWalletUnitDetailRestDTO>),
@@ -59,7 +60,6 @@ pub(crate) async fn wallet_unit_holder_register(
     summary = "Retrieve wallet registration details",
     description = "Retrieve details of a wallet unit's registration from the Wallet Provider.",
 )]
-#[require_permissions(Permission::HolderWalletUnitDetail)]
 pub(crate) async fn wallet_unit_holder_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
@@ -73,7 +73,8 @@ pub(crate) async fn wallet_unit_holder_details(
     OkOrErrorResponse::from_result_fallible(result, state, "get holder wallet unit")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::HolderWalletUnitDetail],
     post,
     path = "/api/holder-wallet-unit/v1/{id}/status",
     responses(EmptyOrErrorResponse),
@@ -88,7 +89,6 @@ pub(crate) async fn wallet_unit_holder_details(
     description = indoc::formatdoc! {
         "Check the status of a wallet unit. Active units return `204`. Revoked units return an error."},
 )]
-#[require_permissions(Permission::HolderWalletUnitDetail)]
 pub(crate) async fn wallet_unit_holder_status(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,

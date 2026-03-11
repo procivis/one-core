@@ -8,6 +8,7 @@ use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::issuance_protocol::error::OpenIDIssuanceError;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
+use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
@@ -22,7 +23,8 @@ use crate::endpoint::ssi::issuance::draft13::dto::{
 };
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
     params(
@@ -67,7 +69,8 @@ pub(crate) async fn oid4vci_draft13_get_issuer_metadata(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}",
     params(
@@ -125,7 +128,8 @@ pub(crate) async fn oid4vci_draft13_get_credential_offer(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/openid4vci/draft-13/{id}/.well-known/oauth-authorization-server",
     params(
@@ -173,7 +177,8 @@ pub(crate) async fn oid4vci_draft13_oauth_authorization_server(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/draft-13/{id}/token",
     request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"
@@ -238,7 +243,8 @@ pub(crate) async fn oid4vci_draft13_create_token(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/draft-13/{id}/credential",
     request_body(content = OpenID4VCICredentialRequestRestDTO, description = "Credential request"),
@@ -316,7 +322,8 @@ pub(crate) async fn oid4vci_draft13_create_credential(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/draft-13/{id}/notification",
     request_body(content = OpenID4VCINotificationRequestRestDTO, description = "Notification request"),

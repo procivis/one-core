@@ -7,6 +7,7 @@ use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use one_core::provider::verification_protocol::openid4vp::model::OpenID4VPDirectPostRequestDTO;
 use one_core::service::oid4vp_draft20::error::OID4VPDraft20ServiceError;
+use proc_macros::endpoint;
 use shared_types::InteractionId;
 
 use super::super::super::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
@@ -14,7 +15,8 @@ use super::super::dto::{OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostRe
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vp/draft-20-swiyu/response/{id}",
     request_body(content = OpenID4VPDirectPostRequestRestDTO, description = "Verifier request", content_type = "application/x-www-form-urlencoded"

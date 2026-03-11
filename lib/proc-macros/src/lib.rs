@@ -2,6 +2,7 @@
 
 use proc_macro::TokenStream;
 
+mod endpoint;
 mod modify_schema;
 mod modify_schema_autodetect;
 mod options_not_nullable;
@@ -288,4 +289,31 @@ pub fn modify_schema_autodetect(args: TokenStream, input: TokenStream) -> TokenS
         Ok(tokens) => tokens,
         Err(e) => TokenStream::from(e.write_errors()),
     }
+}
+
+/// Wrapper around `utoipa::path` declarations
+///
+/// Adds permissions to the utoipa extensions and as well the `require_permissions` declaration
+/// (if some permissions are specified)
+///
+/// Example usage
+/// ```ignore
+/// // In your proc-macro consumer crate:
+/// // Annotate an endpoint handler
+/// #[proc_macros::endpoint(
+///   permissions = [], // leave empty if no permissions required
+///   get,
+///   path = "/api/endpoint"
+/// )]
+/// async fn endpoint_handler(state: State<AppState>) -> Response {
+///   // ...
+/// }
+/// ```
+///
+/// Limitations and requirements
+/// - the `permissions` parameter must be declared first, followed by utoipa::path parameters
+/// - the `utoipa:path` `extensions` cannot be used
+#[proc_macro_attribute]
+pub fn endpoint(args: TokenStream, input: TokenStream) -> TokenStream {
+    endpoint::endpoint(args, input)
 }

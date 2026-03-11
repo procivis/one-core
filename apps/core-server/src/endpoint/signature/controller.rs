@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_dto_mapper::convert_inner;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::Permission;
 use uuid::Uuid;
 
@@ -14,7 +14,8 @@ use crate::endpoint::signature::dto::{
 };
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::AccessCertificateSign, Permission::RegistrationCertificateSign, Permission::X509CertificateSign],
     post,
     path = "/api/signature/v1",
     request_body = CreateSignatureRequestRestDTO,
@@ -29,11 +30,6 @@ use crate::router::AppState;
     structure `data` accordingly.
 "},
 )]
-#[require_permissions(
-    Permission::AccessCertificateSign,
-    Permission::RegistrationCertificateSign,
-    Permission::X509CertificateSign
-)]
 pub(crate) async fn create_signature(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -45,7 +41,8 @@ pub(crate) async fn create_signature(
     CreatedOrErrorResponse::from_result(result, state, "creating signature")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::AccessCertificateRevoke, Permission::RegistrationCertificateRevoke, Permission::X509CertificateRevoke],
     post,
     path = "/api/signature/v1/{id}/revoke",
     responses(EmptyOrErrorResponse),
@@ -61,10 +58,6 @@ pub(crate) async fn create_signature(
     Revokes a previously-created signature.
 "},
 )]
-#[require_permissions(
-    Permission::RegistrationCertificateRevoke,
-    Permission::X509CertificateRevoke
-)]
 pub(crate) async fn revoke_signature(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
@@ -73,7 +66,8 @@ pub(crate) async fn revoke_signature(
     EmptyOrErrorResponse::from_result(result, state, "revoking signature")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::TaskCreate],
     post,
     path = "/api/signature/v1/revocation-check",
     request_body = SignatureRevocationCheckRequestRestDTO,
@@ -87,7 +81,6 @@ pub(crate) async fn revoke_signature(
     Returns revocation information about the specified signatures.
 "},
 )]
-#[require_permissions(Permission::TaskCreate)]
 pub(crate) async fn signature_revocation_check(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

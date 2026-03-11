@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::{ServiceError, ValidationError};
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{Permission, ProofId};
 
 use super::dto::{
@@ -19,7 +19,8 @@ use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErr
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{id}/presentation-definition",
     responses(OkOrErrorResponse<PresentationDefinitionResponseRestDTO>),
@@ -40,7 +41,6 @@ use crate::router::AppState;
         This version uses Presentation Exchange as the query language.
     "},
 )]
-#[require_permissions(Permission::ProofDetail)]
 pub(crate) async fn get_proof_presentation_definition(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -55,7 +55,8 @@ pub(crate) async fn get_proof_presentation_definition(
     OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v2/{id}/presentation-definition",
     responses(OkOrErrorResponse<PresentationDefinitionV2ResponseRestDTO>),
@@ -76,7 +77,6 @@ pub(crate) async fn get_proof_presentation_definition(
         This version uses DCQL as the query language.
     "},
 )]
-#[require_permissions(Permission::ProofDetail)]
 pub(crate) async fn get_proof_presentation_definition_v2(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -91,7 +91,8 @@ pub(crate) async fn get_proof_presentation_definition_v2(
     OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition v2")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{id}",
     responses(OkOrErrorResponse<ProofDetailResponseRestDTO>),
@@ -105,7 +106,6 @@ pub(crate) async fn get_proof_presentation_definition_v2(
     summary = "Retrieve a proof request",
     description = "Returns detailed information about a proof request.",
 )]
-#[require_permissions(Permission::ProofDetail)]
 pub(crate) async fn get_proof_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -120,7 +120,8 @@ pub(crate) async fn get_proof_details(
     OkOrErrorResponse::from_result_fallible(result, state, "getting proof")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofDelete],
     delete,
     path = "/api/proof-request/v1/{id}",
     responses(EmptyOrErrorResponse),
@@ -140,7 +141,6 @@ pub(crate) async fn get_proof_details(
     Related guide: [Manage proof requests](/verify/manage-proofs)
 "},
 )]
-#[require_permissions(Permission::ProofDelete)]
 pub(crate) async fn delete_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -149,7 +149,8 @@ pub(crate) async fn delete_proof(
     EmptyOrErrorResponse::from_result(result, state, "deleting proof")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofList],
     get,
     path = "/api/proof-request/v1",
     responses(OkOrErrorResponse<GetProofsResponseRestDTO>),
@@ -161,7 +162,6 @@ pub(crate) async fn delete_proof(
     summary = "List proof requests",
     description = "Returns a list of proof requests in an organization.",
 )]
-#[require_permissions(Permission::ProofList)]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetProofQuery>, ErrorResponseRestDTO>,
@@ -181,7 +181,8 @@ pub(crate) async fn get_proofs(
     OkOrErrorResponse::from_result(result, state, "getting proofs")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofIssue],
     post,
     path = "/api/proof-request/v1",
     request_body = CreateProofRequestRestDTO,
@@ -205,7 +206,6 @@ pub(crate) async fn get_proofs(
     Related guide: [Verify workflow](/verify)
 "},
 )]
-#[require_permissions(Permission::ProofIssue)]
 pub(crate) async fn post_proof(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -217,7 +217,8 @@ pub(crate) async fn post_proof(
     CreatedOrErrorResponse::from_result(result, state, "creating proof")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofShare],
     post,
     path = "/api/proof-request/v1/{id}/share",
     request_body(
@@ -241,7 +242,6 @@ pub(crate) async fn post_proof(
         If no scheme is specified the default scheme from the configuration will be used.
     "},
 )]
-#[require_permissions(Permission::ProofShare)]
 pub(crate) async fn share_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -265,7 +265,8 @@ pub(crate) async fn share_proof(
     CreatedOrErrorResponse::from_result(result, state, "sharing proof")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::ProofClaimsDelete],
     delete,
     path = "/api/proof-request/v1/{id}/claims",
     responses(EmptyOrErrorResponse),
@@ -282,7 +283,6 @@ pub(crate) async fn share_proof(
         holder. The proof request metadata and related history entries are still accessible.
     "},
 )]
-#[require_permissions(Permission::ProofClaimsDelete)]
 pub(crate) async fn delete_proof_claims(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,

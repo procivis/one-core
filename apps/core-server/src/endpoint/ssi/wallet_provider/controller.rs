@@ -6,6 +6,7 @@ use headers::Authorization;
 use headers::authorization::Bearer;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
+use proc_macros::endpoint;
 use shared_types::WalletUnitId;
 
 use crate::dto::error::ErrorResponseRestDTO;
@@ -17,7 +18,8 @@ use crate::endpoint::ssi::wallet_provider::dto::{
 };
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/wallet-unit/v1",
     request_body = RegisterWalletUnitRequestRestDTO,
@@ -43,7 +45,8 @@ pub(crate) async fn register_wallet_unit(
     CreatedOrErrorResponse::from_result(result, state, "registering wallet unit")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/wallet-unit/v1/{id}/activate",
     params(
@@ -73,7 +76,8 @@ pub(crate) async fn activate_wallet_unit(
     EmptyOrErrorResponse::from_result(result, state, "activating wallet unit")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/wallet-unit/v1/{id}/issue-attestation",
     params(
@@ -113,7 +117,8 @@ pub(crate) async fn issue_wallet_unit_attestation(
     OkOrErrorResponse::from_result(result, state, "issuing wallet attestation")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     get,
     path = "/ssi/wallet-provider/v1/{walletProvider}",
     params(

@@ -8,7 +8,8 @@ use crate::endpoint::jsonld::dto::ResolveJsonLDContextResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[proc_macros::endpoint(
+    permissions = [],
     get,
     path = "/api/jsonld-context/v1",
     params(ResolveJsonLDContextQuery),

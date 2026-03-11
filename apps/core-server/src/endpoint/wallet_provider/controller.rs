@@ -2,7 +2,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
-use proc_macros::require_permissions;
+use proc_macros::endpoint;
 use shared_types::{Permission, WalletUnitId};
 
 use crate::dto::error::ErrorResponseRestDTO;
@@ -14,7 +14,8 @@ use crate::endpoint::wallet_provider::dto::{
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::WalletUnitList],
     get,
     path = "/api/wallet-unit/v1",
     params(ListWalletUnitsQuery),
@@ -28,7 +29,6 @@ use crate::router::AppState;
     Returns a list of wallet units.
 "},
 )]
-#[require_permissions(Permission::WalletUnitList)]
 pub(crate) async fn get_wallet_unit_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListWalletUnitsQuery>, ErrorResponseRestDTO>,
@@ -48,7 +48,8 @@ pub(crate) async fn get_wallet_unit_list(
     OkOrErrorResponse::from_result(result, state, "getting wallet unit list")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::WalletUnitDetail],
     get,
     path = "/api/wallet-unit/v1/{id}",
     params(
@@ -62,7 +63,6 @@ pub(crate) async fn get_wallet_unit_list(
     summary = "Retrieve a wallet unit",
     description = "Returns details on a given wallet unit.",
 )]
-#[require_permissions(Permission::WalletUnitDetail)]
 pub(crate) async fn get_wallet_unit_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
@@ -75,7 +75,8 @@ pub(crate) async fn get_wallet_unit_details(
     OkOrErrorResponse::from_result(result, state, "fetching wallet unit")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::WalletUnitRevoke],
     post,
     path = "/api/wallet-unit/v1/{id}/revoke",
     params(
@@ -92,7 +93,6 @@ pub(crate) async fn get_wallet_unit_details(
         Status List is enabled for WUAs, all existing attestations are revoked as well.
     "},
 )]
-#[require_permissions(Permission::WalletUnitRevoke)]
 pub(crate) async fn revoke_wallet_unit(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
@@ -105,7 +105,8 @@ pub(crate) async fn revoke_wallet_unit(
     EmptyOrErrorResponse::from_result(result, state, "revoking wallet unit")
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [Permission::WalletUnitDelete],
     delete,
     path = "/api/wallet-unit/v1/{id}",
     params(
@@ -119,7 +120,6 @@ pub(crate) async fn revoke_wallet_unit(
     summary = "Delete a wallet unit",
     description = "Permanently deletes a given wallet unit from the database, including history entries.",
 )]
-#[require_permissions(Permission::WalletUnitDelete)]
 pub(crate) async fn remove_wallet_unit(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
