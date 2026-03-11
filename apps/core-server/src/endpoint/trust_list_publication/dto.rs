@@ -19,7 +19,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
-use crate::dto::common::{GetListResponseRestDTO, ListQueryParamsRest};
+use crate::dto::common::{ExactColumn, GetListResponseRestDTO, ListQueryParamsRest};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
@@ -159,6 +159,9 @@ pub(crate) struct TrustListPublicationFilterQueryParamsRestDTO {
     /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
+    /// Set which filters apply in an exact way.
+    #[param(rename = "exact[]", inline, nullable = false)]
+    pub exact: Option<Vec<ExactColumn>>,
     /// Return only trust lists created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]

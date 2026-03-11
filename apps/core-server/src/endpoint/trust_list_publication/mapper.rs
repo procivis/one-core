@@ -7,6 +7,7 @@ use one_core::model::trust_list_publication::TrustListPublicationFilterValue;
 use one_core::service::error::ServiceError;
 use one_dto_mapper::convert_inner;
 
+use crate::dto::common::ExactColumn;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::trust_list_publication::dto::{
     TrustEntryFilterQueryParamsRestDTO, TrustListPublicationFilterQueryParamsRestDTO,
@@ -22,9 +23,18 @@ impl TryFrom<TrustListPublicationFilterQueryParamsRestDTO>
         )
         .condition();
 
+        let exact = value.exact.unwrap_or_default();
+        let get_string_match_type = |column| {
+            if exact.contains(&column) {
+                StringMatchType::Equals
+            } else {
+                StringMatchType::StartsWith
+            }
+        };
+
         let name = value.name.map(|name| {
             TrustListPublicationFilterValue::Name(StringMatch {
-                r#match: StringMatchType::StartsWith,
+                r#match: get_string_match_type(ExactColumn::Name),
                 value: name,
             })
         });
