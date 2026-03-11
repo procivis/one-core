@@ -193,11 +193,9 @@ fn mock_publication_repo(
         if let Some(seq) = request.sequence_number {
             publication.sequence_number = seq;
         }
-        if let Some(content) = request.content {
-            if let Some(ref bytes) = content {
-                content_log.lock().unwrap().push(bytes.clone());
-            }
-            publication.content = content;
+        if let Some(ref bytes) = request.content {
+            content_log.lock().unwrap().push(bytes.clone());
+            publication.content = Some(bytes.to_owned());
         }
         publication.last_modified = OffsetDateTime::now_utc();
         Ok(())

@@ -10,6 +10,7 @@ use super::organisation::OrganisationHistoryDecorator;
 use super::proof::ProofHistoryDecorator;
 use super::proof_schema::ProofSchemaHistoryDecorator;
 use super::trust_entity::TrustEntityHistoryDecorator;
+use crate::proto::history_decorator::trust_list_publication::TrustListPublicationHistoryDecorator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::DataRepository;
@@ -56,6 +57,7 @@ struct DecoratedDataProvider {
     identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
+    trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
 }
 
 impl DataRepository for DecoratedDataProvider {
@@ -90,6 +92,9 @@ impl DataRepository for DecoratedDataProvider {
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
         self.trust_entity_repository.clone()
     }
+    fn get_trust_list_publication_repository(&self) -> Arc<dyn TrustListPublicationRepository> {
+        self.trust_list_publication_repository.clone()
+    }
 
     // non-decorated
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository> {
@@ -121,9 +126,6 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_trust_entry_repository(&self) -> Arc<dyn TrustEntryRepository> {
         self.data_provider.get_trust_entry_repository()
-    }
-    fn get_trust_list_publication_repository(&self) -> Arc<dyn TrustListPublicationRepository> {
-        self.data_provider.get_trust_list_publication_repository()
     }
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {
         self.data_provider.get_blob_repository()
@@ -213,6 +215,12 @@ pub(crate) fn decorate_data_provider(
     let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
         inner: data_provider.get_trust_entity_repository(),
         history_repository: data_provider.get_history_repository(),
+        session_provider: session_provider.clone(),
+    });
+
+    let trust_list_publication_repository = Arc::new(TrustListPublicationHistoryDecorator {
+        inner: data_provider.get_trust_list_publication_repository(),
+        history_repository: data_provider.get_history_repository(),
         session_provider,
     });
 
@@ -228,5 +236,6 @@ pub(crate) fn decorate_data_provider(
         identifier_repository,
         proof_repository,
         trust_entity_repository,
+        trust_list_publication_repository,
     })
 }

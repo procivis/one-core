@@ -1,3 +1,4 @@
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStatusEnum;
 use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
 
@@ -52,6 +53,17 @@ async fn test_delete_trust_list_publication() {
     assert!(deleted_publication.is_none());
     let deleted_enty = context.db.trust_entries.get(trust_entry.id).await;
     assert!(deleted_enty.is_none());
+
+    // verify history entry
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&trust_list_publication.id.into())
+        .await;
+    similar_asserts::assert_eq!(1, history_list.total_items);
+    let last = history_list.values.first().unwrap();
+    similar_asserts::assert_eq!(HistoryAction::Deleted, last.action);
+    similar_asserts::assert_eq!(HistoryEntityType::TrustListPublication, last.entity_type);
 }
 
 #[tokio::test]

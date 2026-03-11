@@ -1,4 +1,5 @@
 use core_server::endpoint::trust_list_publication::dto::TrustListPublicationRoleRestEnum;
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
 use uuid::Uuid;
 
@@ -52,6 +53,17 @@ async fn test_create_trust_list_publication() {
         existing_trust_list_publication.organisation_id,
         organisation.id
     );
+
+    // verify history entry
+    let history_list = context
+        .db
+        .histories
+        .get_by_entity_id(&publication_id.into())
+        .await;
+    similar_asserts::assert_eq!(1, history_list.total_items);
+    let last = history_list.values.first().unwrap();
+    similar_asserts::assert_eq!(HistoryAction::Created, last.action);
+    similar_asserts::assert_eq!(HistoryEntityType::TrustListPublication, last.entity_type);
 }
 
 #[tokio::test]

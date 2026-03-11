@@ -9,3 +9,4 @@ mod organisation;
 mod proof;
 mod proof_schema;
 mod trust_entity;
+mod trust_list_publication;

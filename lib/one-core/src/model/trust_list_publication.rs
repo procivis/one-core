@@ -63,13 +63,8 @@ pub struct TrustListPublicationRelations {
 
 #[derive(Clone, Debug, Default)]
 pub struct UpdateTrustListPublicationRequest {
-    pub name: Option<String>,
-    pub metadata: Option<Vec<u8>>,
-    pub content: Option<Option<Vec<u8>>>,
+    pub content: Option<Vec<u8>>,
     pub sequence_number: Option<i64>,
-    pub deleted_at: Option<Option<OffsetDateTime>>,
-    pub key_id: Option<Option<KeyId>>,
-    pub certificate_id: Option<Option<CertificateId>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

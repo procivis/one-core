@@ -131,13 +131,8 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
         trust_list_publication::Entity::update(trust_list_publication::ActiveModel {
             id: Unchanged(id),
             last_modified: Set(OffsetDateTime::now_utc()),
-            name: option_to_active_value(request.name),
-            metadata: option_to_active_value(request.metadata),
-            content: option_to_active_value(request.content),
-            sequence_number: option_to_active_value(request.sequence_number),
-            deleted_at: option_to_active_value(request.deleted_at),
-            key_id: option_to_active_value(request.key_id),
-            certificate_id: option_to_active_value(request.certificate_id),
+            content: request.content.map(Set).unwrap_or_default().into(),
+            sequence_number: request.sequence_number.map(Set).unwrap_or_default(),
             ..Default::default()
         })
         .filter(
@@ -178,16 +173,5 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
             }
             .boxed())
             .await?
-    }
-}
-
-fn option_to_active_value<T>(param: Option<T>) -> sea_orm::ActiveValue<T>
-where
-    sea_orm::Value: From<T>,
-    T: Default,
-{
-    match param {
-        None => Unchanged(Default::default()),
-        Some(value) => Set(value),
     }
 }

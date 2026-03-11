@@ -354,9 +354,8 @@ impl EtsiLotePublisher {
             .update(
                 publication_id,
                 UpdateTrustListPublicationRequest {
-                    content: Some(Some(content.clone())),
+                    content: Some(content.clone()),
                     sequence_number: Some(new_sequence),
-                    ..Default::default()
                 },
             )
             .await

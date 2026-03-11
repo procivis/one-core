@@ -386,7 +386,7 @@ async fn test_list_trust_list_publications_filter_by_last_modified() {
         .update(
             id,
             UpdateTrustListPublicationRequest {
-                name: Some("updated".to_string()),
+                content: Some(b"updated".to_vec()),
                 ..Default::default()
             },
         )
@@ -449,42 +449,6 @@ async fn test_list_trust_list_publications_pagination() {
 }
 
 #[tokio::test]
-async fn test_update_trust_list_publication_name_and_metadata() {
-    let TestSetup {
-        provider,
-        org_id,
-        identifier_id,
-        ..
-    } = setup().await;
-
-    let publication = dummy_trust_list_publication(org_id, identifier_id);
-    let id = publication.id;
-    provider.create(publication).await.unwrap();
-
-    let new_metadata = b"updated metadata".to_vec();
-    let result = provider
-        .update(
-            id,
-            UpdateTrustListPublicationRequest {
-                name: Some("updated-name".to_string()),
-                metadata: Some(new_metadata.clone()),
-                ..Default::default()
-            },
-        )
-        .await;
-    assert!(result.is_ok());
-
-    let found = provider
-        .get(id, &TrustListPublicationRelations::default())
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(found.name, "updated-name");
-    assert_eq!(found.metadata, new_metadata);
-    assert_eq!(found.role, TrustListPublicationRoleEnum::Issuer);
-}
-
-#[tokio::test]
 async fn test_update_trust_list_publication_content_and_sequence_number() {
     let TestSetup {
         provider,
@@ -502,9 +466,8 @@ async fn test_update_trust_list_publication_content_and_sequence_number() {
         .update(
             id,
             UpdateTrustListPublicationRequest {
-                content: Some(Some(new_content.clone())),
+                content: Some(new_content.clone()),
                 sequence_number: Some(42),
-                ..Default::default()
             },
         )
         .await;
@@ -518,38 +481,6 @@ async fn test_update_trust_list_publication_content_and_sequence_number() {
     assert_eq!(found.content, Some(new_content));
     assert_eq!(found.sequence_number, 42);
     assert_eq!(found.name, "test-publication");
-}
-
-#[tokio::test]
-async fn test_update_trust_list_publication_deactivate() {
-    let TestSetup {
-        provider,
-        org_id,
-        identifier_id,
-        ..
-    } = setup().await;
-
-    let publication = dummy_trust_list_publication(org_id, identifier_id);
-    let id = publication.id;
-    provider.create(publication).await.unwrap();
-
-    let now = time::OffsetDateTime::now_utc();
-    let result = provider
-        .update(
-            id,
-            UpdateTrustListPublicationRequest {
-                deleted_at: Some(Some(now)),
-                ..Default::default()
-            },
-        )
-        .await;
-    assert!(result.is_ok());
-
-    let found = provider
-        .get(id, &TrustListPublicationRelations::default())
-        .await
-        .unwrap();
-    assert!(found.is_none());
 }
 
 #[tokio::test]
@@ -617,8 +548,8 @@ async fn test_update_trust_list_publication_not_found() {
         .update(
             Uuid::new_v4().into(),
             UpdateTrustListPublicationRequest {
-                name: Some("updated".to_string()),
-                ..Default::default()
+                content: Some(b"updated".to_vec()),
+                sequence_number: Some(2),
             },
         )
         .await;
