@@ -1,5 +1,5 @@
 use core_server::endpoint::trust_list_publication::dto::{
-    TrustEntryStatusRestEnum, TrustListPublicationRoleRestEnum,
+    TrustEntryStateRestEnum, TrustListPublicationRoleRestEnum,
 };
 use one_core::proto::jwt::Jwt;
 use similar_asserts::assert_eq;
@@ -225,7 +225,7 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
         .update_trust_entry(
             trust_list_publication_id,
             suspended_entry_id,
-            Some(TrustEntryStatusRestEnum::Suspended),
+            Some(TrustEntryStateRestEnum::Suspended),
             None,
         )
         .await;

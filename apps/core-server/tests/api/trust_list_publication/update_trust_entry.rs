@@ -1,5 +1,5 @@
 use core_server::endpoint::trust_list_publication::dto::{
-    TrustEntryStatusRestEnum, TrustListPublicationRoleRestEnum,
+    TrustEntryStateRestEnum, TrustListPublicationRoleRestEnum,
 };
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStatusEnum;
@@ -55,7 +55,7 @@ async fn test_update_trust_entry() {
         .update_trust_entry(
             publication_id,
             entry_id,
-            Some(TrustEntryStatusRestEnum::Suspended),
+            Some(TrustEntryStateRestEnum::Suspended),
             None,
         )
         .await;
@@ -107,7 +107,7 @@ async fn test_fail_to_update_trust_entry_not_found() {
         .update_trust_entry(
             trust_list_publication.id,
             non_existent_id,
-            Some(TrustEntryStatusRestEnum::Suspended),
+            Some(TrustEntryStateRestEnum::Suspended),
             None,
         )
         .await;

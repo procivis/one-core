@@ -59,8 +59,8 @@ pub struct CreateTrustEntryRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(UpdateTrustEntryRequestDTO)]
 pub struct UpdateTrustEntryRequestRestDTO {
-    #[into(with_fn = convert_inner)]
-    pub status: Option<TrustEntryStatusRestEnum>,
+    #[into(rename = "status", with_fn = convert_inner)]
+    pub state: Option<TrustEntryStateRestEnum>,
     pub params: Option<serde_json::Value>,
 }
 
@@ -130,7 +130,8 @@ pub(crate) struct TrustEntryListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
-    pub status: TrustEntryStatusRestEnum,
+    #[from(rename = "status")]
+    pub state: TrustEntryStateRestEnum,
     pub identifier: GetIdentifierListItemResponseRestDTO,
     #[from(with_fn_ref = "map_raw_str")]
     pub params: String,
@@ -213,9 +214,9 @@ pub(crate) struct TrustEntryFilterQueryParamsRestDTO {
     /// Filter by one or more UUIDs.
     #[param(rename = "ids[]", nullable = false)]
     pub ids: Option<Vec<TrustEntryId>>,
-    /// Filter by one or more trust entry statuses.
-    #[param(rename = "statuses[]", nullable = false)]
-    pub statuses: Option<Vec<TrustEntryStatusRestEnum>>,
+    /// Filter by one or more trust entry states..
+    #[param(rename = "states[]", nullable = false)]
+    pub states: Option<Vec<TrustEntryStateRestEnum>>,
     /// Return only trust entries created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
@@ -238,13 +239,24 @@ pub(crate) struct TrustEntryFilterQueryParamsRestDTO {
     pub last_modified_before: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(SortableTrustEntryColumn)]
 pub(crate) enum SortableTrustEntryColumnRestEnum {
-    Status,
+    State,
     LastModified,
     CreatedDate,
+}
+
+impl From<SortableTrustEntryColumnRestEnum> for SortableTrustEntryColumn {
+    fn from(value: SortableTrustEntryColumnRestEnum) -> Self {
+        match value {
+            SortableTrustEntryColumnRestEnum::State => SortableTrustEntryColumn::Status,
+            SortableTrustEntryColumnRestEnum::LastModified => {
+                SortableTrustEntryColumn::LastModified
+            }
+            SortableTrustEntryColumnRestEnum::CreatedDate => SortableTrustEntryColumn::CreatedDate,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
@@ -257,7 +269,7 @@ pub(crate) enum ExactTrustEntryFilterColumnRestEnum {
 #[into(TrustEntryStatusEnum)]
 #[from(TrustEntryStatusEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustEntryStatusRestEnum {
+pub enum TrustEntryStateRestEnum {
     Active,
     Suspended,
     Removed,

@@ -1,5 +1,5 @@
 use core_server::endpoint::trust_list_publication::dto::{
-    TrustEntryStatusRestEnum, TrustListPublicationRoleRestEnum,
+    TrustEntryStateRestEnum, TrustListPublicationRoleRestEnum,
 };
 use serde_json::json;
 use shared_types::{
@@ -92,11 +92,11 @@ impl TrustListPublicationApi {
         &self,
         trust_list_id: TrustListPublicationId,
         entry_id: TrustEntryId,
-        status: Option<TrustEntryStatusRestEnum>,
+        state: Option<TrustEntryStateRestEnum>,
         params: Option<serde_json::Value>,
     ) -> Response {
         let body = json!({
-            "status": status,
+            "state": state,
             "params": params,
         });
 
