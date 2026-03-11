@@ -1,12 +1,11 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mockall::predicate::eq;
 use one_crypto::MockCryptoProvider;
 use one_crypto::hasher::sha256::SHA256;
-use shared_types::DidValue;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 
 use super::SdjwtVCPresentationFormatter;
@@ -47,8 +46,14 @@ async fn test_extract_presentation() {
     let disclosures = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
     let presentation_token = format!("{jwt_token}.{token_signature}.{disclosures}");
 
-    let expected_holder_did = DidValue::from_str("did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCJ5IjoiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9").unwrap();
-    let expected_issuer_did = "did:jwk:eyJrdHkiOiJSU0EiLCJraWQiOiJkb2Mtc2lnbmVyLTA1LTI1LTIwMjIiLCJlIjoiQVFBQiIsIm4iOiJuajNZSndzTFVGbDlCbXBBYmtPc3dDTlZ4MTdFaDl3TU8tX0FSZVp3QnFmYVdGY2ZHSHJaWHNJVjJWTUNOVk5VOFRwYjRvYlVhU1hjUmNRLVZNc2ZRUEptOUl6Z3RSZEFZOE5OOFhiN1BFY1l5a2xCanZUdHVQYnB6SWFxeWlVZXB6VVhOREZ1QU9Pa3JJb2wzV21mbFBVVWdNS1VMQk4wRVVkMWZwT0Q3MHBSTTBybHBfZ2dfV05VS29XMVYtM2tlWVVKb1hIOU56dEVEbV9EMk1RWGo5ZUdPSko4eVBnR0w4UEFaTUxlMlI3amI5VHhPQ1BERUQ3dFlfVFU0bkZQbHhwdHc1OUE0Mm1sZEVtVmlYc0tRdDYwczFTTGJvYXp4Rkt2ZXFYQ19qcExVdDIyT0M2R1VHNjNwLVJFdy1aT3Izcjg0NXo1MHdNdXppZlFyTUk5YlEifQ";
+    let expected_holder_key = PublicJwk::Ec(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc".to_string(),
+        y: Some("ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ".to_string()),
+    });
 
     let mut crypto = MockCryptoProvider::default();
 
@@ -98,7 +103,7 @@ async fn test_extract_presentation() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == expected_issuer_did));
+                assert!(matches!(params, PublicKeySource::Jwk {jwk} if jwk.kid() == Some("doc-signer-05-25-2022")));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(
@@ -158,7 +163,7 @@ async fn test_extract_presentation() {
     assert_eq!(presentation.credentials.len(), 1);
     assert_eq!(
         presentation.issuer,
-        Some(IdentifierDetails::Did(expected_holder_did))
+        Some(IdentifierDetails::Key(expected_holder_key))
     );
     assert_eq!(presentation.nonce, Some("1234567890".to_string()));
 }
@@ -174,7 +179,14 @@ async fn test_extract_presentation_with_holder_binding() {
     let disclosures_and_kb = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
     let presentation_token = format!("{jwt_token}.{token_signature}{disclosures_and_kb}");
 
-    let expected_holder_did = DidValue::from_str("did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCJ5IjoiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9").unwrap();
+    let expected_holder_key = PublicJwk::Ec(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc".to_string(),
+        y: Some("ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ".to_string()),
+    });
 
     let mut crypto = MockCryptoProvider::default();
 
@@ -273,7 +285,7 @@ async fn test_extract_presentation_with_holder_binding() {
     assert_eq!(presentation.credentials.len(), 1);
     assert_eq!(
         presentation.issuer,
-        Some(IdentifierDetails::Did(expected_holder_did))
+        Some(IdentifierDetails::Key(expected_holder_key))
     );
     assert_eq!(presentation.nonce, Some("1234567890".to_string()));
 }

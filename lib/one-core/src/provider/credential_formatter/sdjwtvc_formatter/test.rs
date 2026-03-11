@@ -11,6 +11,7 @@ use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Sig
 use serde_json::json;
 use shared_types::{DidValue, OrganisationId};
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -50,7 +51,12 @@ use crate::provider::did_method::provider::{DidMethodProvider, MockDidMethodProv
 use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
-use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
+use crate::provider::key_algorithm::provider::{
+    KeyAlgorithmProvider, MockKeyAlgorithmProvider, ParsedKey,
+};
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
@@ -505,11 +511,16 @@ async fn test_extract_credentials() {
                 .unwrap()
         )
     );
-
-    let expected_subject = "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifQ";
     assert_eq!(
         credentials.subject,
-        Some(IdentifierDetails::Did(expected_subject.parse().unwrap()))
+        Some(IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
+            crv: "Ed25519".to_string(),
+            x: "oENVsxOUiH54X8wJLaVkicCRk00wBIQ4sRgbk54N8Mo".to_string(),
+            y: None,
+        })))
     );
     assert_eq!(
         credentials.issuance_date,
@@ -534,7 +545,6 @@ async fn test_extract_credentials() {
             "family_name": "Doe",
             "iat": 1698151532,
             "iss": "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW",
-            "sub": "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifQ",
             "vct": "IdentityCredential",
         }
     );
@@ -677,10 +687,16 @@ async fn test_extract_credentials_swiyu() {
         )
     );
 
-    let expected_subject = "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlpwOXFMYVRKTWh1UC1kcE1hOXBMbHBxWmNRNGNoVkRKeVNXcmlzQUFpMmciLCJ5IjoieHVWdTVYZ1BOUUstUDBUc0RsaGE4cDVNZkFEZVpoU2dTNzdLVVYzaGN2RSJ9";
     assert_eq!(
         credentials.subject,
-        Some(IdentifierDetails::Did(expected_subject.parse().unwrap()))
+        Some(IdentifierDetails::Key(PublicJwk::Ec(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "Zp9qLaTJMhuP-dpMa9pLlpqZcQ4chVDJySWrisAAi2g".to_string(),
+            y: Some("xuVu5XgPNQK-P0TsDlha8p5MfADeZhSgS77KUV3hcvE".to_string(),)
+        })))
     );
 
     let expected_result = json!(
@@ -710,7 +726,6 @@ async fn test_extract_credentials_swiyu() {
             "expiry_date": "2025-08-05",
             "iat": 1746454355,
             "iss": "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527",
-            "sub": "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlpwOXFMYVRKTWh1UC1kcE1hOXBMbHBxWmNRNGNoVkRKeVNXcmlzQUFpMmciLCJ5IjoieHVWdTVYZ1BOUUstUDBUc0RsaGE4cDVNZkFEZVpoU2dTNzdLVVYzaGN2RSJ9",
             "vct": "betaid-sdjwt"
         }
     );
@@ -743,9 +758,6 @@ async fn test_extract_credentials_with_cnf_no_subject() {
     let token_signature =
         "2CyX0v3AAFG9y-A_Z46uz9hHsNbr0yWTbDQaajLCrsxo-JxVh4a9dAMFVYZ8GFG2wgj2jKnA42wSgv7xVM64PA";
     let disclosures = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
-
-    let expected_holder_did = DidValue::from_str("did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCJ5IjoiWnhqaVdXYlpNUUdIVldLVlE0aGJTSWlyc1ZmdWVjQ0U2dDRqVDlGMkhaUSJ9").unwrap();
-    let expected_issuer_did = "did:jwk:eyJrdHkiOiJSU0EiLCJraWQiOiJkb2Mtc2lnbmVyLTA1LTI1LTIwMjIiLCJlIjoiQVFBQiIsIm4iOiJuajNZSndzTFVGbDlCbXBBYmtPc3dDTlZ4MTdFaDl3TU8tX0FSZVp3QnFmYVdGY2ZHSHJaWHNJVjJWTUNOVk5VOFRwYjRvYlVhU1hjUmNRLVZNc2ZRUEptOUl6Z3RSZEFZOE5OOFhiN1BFY1l5a2xCanZUdHVQYnB6SWFxeWlVZXB6VVhOREZ1QU9Pa3JJb2wzV21mbFBVVWdNS1VMQk4wRVVkMWZwT0Q3MHBSTTBybHBfZ2dfV05VS29XMVYtM2tlWVVKb1hIOU56dEVEbV9EMk1RWGo5ZUdPSko4eVBnR0w4UEFaTUxlMlI3amI5VHhPQ1BERUQ3dFlfVFU0bkZQbHhwdHc1OUE0Mm1sZEVtVmlYc0tRdDYwczFTTGJvYXp4Rkt2ZXFYQ19qcExVdDIyT0M2R1VHNjNwLVJFdy1aT3Izcjg0NXo1MHdNdXppZlFyTUk5YlEifQ";
 
     let mut crypto = MockCryptoProvider::default();
     crypto
@@ -824,7 +836,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         .once()
         .withf(
             move |params, algorithm, token, received_signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == expected_issuer_did));
+                assert!(matches!(params, PublicKeySource::Jwk {jwk} if jwk.kid() == Some("doc-signer-05-25-2022")));
                 assert_eq!(KeyAlgorithmType::Ecdsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(
@@ -847,7 +859,14 @@ async fn test_extract_credentials_with_cnf_no_subject() {
 
     assert_eq!(
         credentials.subject,
-        Some(IdentifierDetails::Did(expected_holder_did))
+        Some(IdentifierDetails::Key(PublicJwk::Ec(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
+            crv: "P-256".to_string(),
+            x: "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc".to_string(),
+            y: Some("ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ".to_string()),
+        })))
     );
 }
 
@@ -1752,17 +1771,29 @@ async fn test_parse_credential() {
             }
         });
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider.expect_parse_jwk().returning(|_| {
+        let mut public_key = MockSignaturePublicKeyHandle::new();
+        public_key.expect_as_raw().returning(|| vec![0x0, 0x1]);
+
+        Ok(ParsedKey {
+            algorithm_type: KeyAlgorithmType::Eddsa,
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(public_key))),
+        })
+    });
+
     let formatter = SDJWTVCFormatter::new(
         params,
         crypto,
         Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_algorithm_provider),
         Arc::new(MockVctTypeMetadataFetcher::new()),
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(client),
         Arc::new(datatype_provider),
     );
+
     let mut verify_mock = MockTokenVerifier::new();
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -1789,7 +1820,7 @@ async fn test_parse_credential() {
     assert!(result.claims.is_some());
     let claims = result.claims.as_ref().unwrap();
 
-    assert_eq!(claims.len(), 11);
+    assert_eq!(claims.len(), 10);
 
     // Verify vct metadata claim
     let vct_claim = claims.iter().find(|c| c.path == "vct").unwrap();
@@ -1870,7 +1901,7 @@ async fn test_parse_credential() {
     assert!(schema.claim_schemas.is_some());
     let claim_schemas = schema.claim_schemas.as_ref().unwrap();
 
-    assert_eq!(claim_schemas.len(), 11);
+    assert_eq!(claim_schemas.len(), 10);
 
     // Verify claim schema keys
     let schema_keys: Vec<&str> = claim_schemas.iter().map(|cs| cs.key.as_str()).collect();

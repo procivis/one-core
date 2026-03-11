@@ -4,10 +4,12 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 
 pub(crate) mod jwk_helpers;
 
 use shared_types::{DidId, DidValue};
+use standardized_types::jwk::PublicJwk;
 
 use super::common::expect_one_key;
 use super::{DidCreated, DidKeys, DidUpdate};
@@ -16,9 +18,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::jwk::jwk_helpers::{
-    encode_to_did, extract_jwk, generate_document,
-};
+use crate::provider::did_method::jwk::jwk_helpers::{extract_jwk, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
@@ -111,6 +111,12 @@ impl DidMethod for JWKDidMethod {
     fn get_reference_for_key(&self, _key: &Key) -> Result<String, DidMethodError> {
         Ok("0".to_string())
     }
+}
+
+pub fn encode_to_did(jwk: &PublicJwk) -> Result<DidValue, DidMethodError> {
+    let jwk = serde_json::to_string(jwk)?;
+    let encoded = Base64UrlSafeNoPadding::encode_to_string(jwk)?;
+    Ok(format!("did:jwk:{encoded}").parse()?)
 }
 
 #[cfg(test)]

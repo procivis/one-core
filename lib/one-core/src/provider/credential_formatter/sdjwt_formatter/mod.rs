@@ -461,6 +461,25 @@ pub(crate) async fn extract_credentials_internal(
         }
     };
 
+    let subject = match (
+        jwt.payload.subject.as_ref(),
+        jwt.payload.proof_of_possession_key.as_ref(),
+    ) {
+        (Some(sub), None) if sub.starts_with("did:") => {
+            let did = DidValue::from_str(sub)
+                .map_err(DidMethodError::DidValueError)
+                .error_while("parsing subject DID")?;
+            Some(IdentifierDetails::Did(did))
+        }
+        (_, Some(holder_key)) => Some(IdentifierDetails::Key(holder_key.jwk.jwk().clone())),
+        (None, None) => None,
+        (Some(sub), None) => {
+            return Err(FormatterError::CouldNotExtractCredentials(format!(
+                "Could not determine public key for subject: `{sub}`"
+            )));
+        }
+    };
+
     Ok(DetailCredential {
         id: jwt.payload.jwt_id,
         issuance_date: jwt.payload.issued_at,
@@ -469,14 +488,7 @@ pub(crate) async fn extract_credentials_internal(
         update_at: None,
         invalid_before: jwt.payload.invalid_before,
         issuer,
-        subject: jwt
-            .payload
-            .subject
-            .map(|did| did.parse())
-            .transpose()
-            .map_err(DidMethodError::DidValueError)
-            .error_while("parsing subject DID")?
-            .map(IdentifierDetails::Did),
+        subject,
         claims,
         status: jwt.payload.custom.vc.credential_status,
         credential_schema: jwt

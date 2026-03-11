@@ -36,7 +36,6 @@ use crate::provider::credential_formatter::sdjwt::model::{
 use crate::provider::credential_formatter::sdjwt::x5c::resolve_jwks_url;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -305,7 +304,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         let issuer = decomposed_token.payload.issuer.as_deref();
         let x5c = decomposed_token.header.x5c.as_deref();
 
-        let (params, isuer_details) = match (issuer, x5c) {
+        let (params, issuer_details) = match (issuer, x5c) {
             // DID issuer
             (Some(iss), _) if iss.starts_with("did:") => {
                 let did: DidValue = iss
@@ -339,12 +338,10 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                         "empty JWK list".to_string(),
                     ))?;
 
-                let did = encode_to_did(jwk).error_while("encoding DID")?;
-                let params = PublicKeySource::Did {
-                    did: Cow::Owned(did.clone()),
-                    key_id: decomposed_token.header.key_id.as_deref(),
+                let params = PublicKeySource::Jwk {
+                    jwk: Cow::Owned(jwk.clone()),
                 };
-                (params, IdentifierDetails::Did(did))
+                (params, IdentifierDetails::Key(jwk.clone()))
             }
             (_, Some(x5c)) => {
                 let certificate_validator =
@@ -415,26 +412,13 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             extended_payload.set_claims(payload_before_expanding)?;
             extended_payload
         };
-
-        let subject = match (
-            decomposed_token.payload.subject.as_ref(),
-            decomposed_token.payload.proof_of_possession_key.as_ref(),
-        ) {
-            (Some(subject), _) => Some(subject.to_string()),
-            (None, Some(cnf)) => Some(
-                encode_to_did(cnf.jwk.jwk())
-                    .map(|did| did.to_string())
-                    .error_while("preparing DID subject")?,
-            ),
-            (None, None) => None,
-        };
         let new_payload = JWTPayload {
             custom: expanded_payload,
             invalid_before: decomposed_token.payload.invalid_before,
             issued_at: decomposed_token.payload.issued_at,
             expires_at: decomposed_token.payload.expires_at,
             issuer: issuer.map(String::from),
-            subject,
+            subject: decomposed_token.payload.subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,
             proof_of_possession_key: decomposed_token.payload.proof_of_possession_key,
@@ -445,7 +429,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 header: decomposed_token.header.clone(),
                 payload: new_payload,
             },
-            isuer_details,
+            issuer_details,
             key_binding_token.map(String::from),
         ))
     }
@@ -479,10 +463,8 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             ))?;
 
         if let Some(verification) = verification {
-            let kb_issuer = encode_to_did(cnf.jwk.jwk()).error_while("encoding DID")?;
-            let params = PublicKeySource::Did {
-                did: Cow::Borrowed(&kb_issuer),
-                key_id: decomposed_kb_token.header.key_id.as_deref(),
+            let params = PublicKeySource::Jwk {
+                jwk: Cow::Borrowed(cnf.jwk.jwk()),
             };
             decomposed_kb_token
                 .verify_signature(params, verification)

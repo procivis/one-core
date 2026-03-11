@@ -523,12 +523,8 @@ impl SDJWTVCFormatter {
             .error_while("getting metadata claims")?;
         let subject = jwt
             .payload
-            .subject
-            .map(|did| DidValue::from_str(&did))
-            .transpose()
-            .map_err(DidMethodError::DidValueError)
-            .error_while("parsing subject DID")?
-            .map(IdentifierDetails::Did);
+            .proof_of_possession_key
+            .map(|holder_key| IdentifierDetails::Key(holder_key.jwk.jwk().clone()));
 
         let mut claims = CredentialSubject {
             claims: jwt.payload.custom.public_claims,

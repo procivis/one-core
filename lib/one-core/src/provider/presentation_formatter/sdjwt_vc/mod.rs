@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -23,7 +22,6 @@ use crate::provider::credential_formatter::sdjwt::{
     SdJwtHolderBindingParams, append_key_binding_token,
 };
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
-use crate::provider::did_method::error::DidMethodError;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
@@ -132,7 +130,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         verification_fn: VerificationFn,
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let (subject, proof_of_key_possession) = self
+        let (issuer, proof_of_key_possession) = self
             .extract_presentation_internal(token, Some(verification_fn), &*self.crypto, &context)
             .await?;
 
@@ -140,7 +138,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             id: proof_of_key_possession.jwt_id,
             issued_at: proof_of_key_possession.issued_at,
             expires_at: proof_of_key_possession.expires_at,
-            issuer: subject.map(IdentifierDetails::Did),
+            issuer: Some(issuer),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.to_string()],
         })
@@ -151,7 +149,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         token: &str,
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let (subject, proof_of_key_possession) = self
+        let (issuer, proof_of_key_possession) = self
             .extract_presentation_internal(token, None, &*self.crypto, &context)
             .await?;
 
@@ -159,7 +157,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             id: proof_of_key_possession.jwt_id,
             issued_at: proof_of_key_possession.issued_at,
             expires_at: proof_of_key_possession.expires_at,
-            issuer: subject.map(IdentifierDetails::Did),
+            issuer: Some(issuer),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.to_string()],
         })
@@ -177,7 +175,7 @@ impl SdjwtVCPresentationFormatter {
         verification: Option<VerificationFn>,
         crypto: &dyn CryptoProvider,
         context: &ExtractPresentationCtx,
-    ) -> Result<(Option<DidValue>, JWTPayload<KeyBindingPayload>), FormatterError> {
+    ) -> Result<(IdentifierDetails, JWTPayload<KeyBindingPayload>), FormatterError> {
         let (jwt, _issuer_details, key_binding_token): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 token,
@@ -215,15 +213,9 @@ impl SdjwtVCPresentationFormatter {
             params,
         )
         .await?;
-
-        let subject = jwt
-            .payload
-            .subject
-            .map(|did| DidValue::from_str(&did))
-            .transpose()
-            .map_err(DidMethodError::DidValueError)
-            .error_while("parsing subject DID")?;
-
-        Ok((subject, proof_of_key_possession))
+        Ok((
+            IdentifierDetails::Key(cnf.jwk.jwk().clone()),
+            proof_of_key_possession,
+        ))
     }
 }
