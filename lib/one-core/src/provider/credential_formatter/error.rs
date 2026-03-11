@@ -4,6 +4,7 @@ use std::string::FromUtf8Error;
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::identifier::IdentifierType;
 use crate::util::rdf_canonization::CanonizationError;
 
 #[derive(Debug, Error)]
@@ -22,6 +23,8 @@ pub enum FormatterError {
     JsonMapping(String),
     #[error("Float value is NaN")]
     FloatValueIsNaN,
+    #[error("Unsupported identifier type `{0}`")]
+    UnsupportedIdentifierType(IdentifierType),
 
     #[error("Crypto library error: `{0}`")]
     CryptoError(#[from] one_crypto::CryptoProviderError),
@@ -94,6 +97,7 @@ impl ErrorCodeMixin for FormatterError {
             | Self::ExpandError(_)
             | Self::CanonizationError(_)
             | Self::HasherError(_)
+            | Self::UnsupportedIdentifierType(_)
             | Self::FloatValueIsNaN => ErrorCode::BR_0057,
             Self::Nested(nested) => nested.error_code(),
         }

@@ -233,12 +233,13 @@ async fn test_get_or_create_remote_identifier_key_existing() {
         });
 
     let key = dummy_key();
+    let key_clone = key.clone();
     let key_id = key.id;
     let mut key_repository = MockKeyRepository::new();
     key_repository.expect_get_key_list().once().return_once({
         move |_| {
             Ok(GetKeyList {
-                values: vec![key],
+                values: vec![key_clone],
                 total_pages: 1,
                 total_items: 1,
             })
@@ -285,6 +286,7 @@ async fn test_get_or_create_remote_identifier_key_existing() {
         .unwrap();
 
     assert_eq!(identifier.id, identifier_id);
+    assert_eq!(identifier.key, Some(key));
     let_assert!(RemoteIdentifierRelation::Key(key) = relation);
     assert_eq!(key.id, key_id);
 }

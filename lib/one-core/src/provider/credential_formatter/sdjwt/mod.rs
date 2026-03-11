@@ -73,59 +73,59 @@ pub(crate) async fn format_credential<T: Serialize>(
         format_hashed_credential(&claims, hasher, digests_to_payload, sd_array_elements)?;
 
     let proof_of_possession_key = match &additional_inputs.holder_identifier {
-        Some(identifier) => match &identifier.r#type {
+        Some(identifier) => match identifier.r#type {
             IdentifierType::Did => {
-                if let Some(did) = &identifier.did {
-                    let did_document = did_method_provider
-                        .resolve(&did.did)
-                        .await
-                        .error_while("resolving DID")?;
-                    did_document
-                        .find_verification_method(
-                            additional_inputs.holder_key_id.as_deref(),
-                            Some(KeyRole::AssertionMethod),
-                        )
-                        .map(|verification_method| verification_method.public_key_jwk.clone())
-                        .map(|jwk| ProofOfPossessionKey {
-                            key_id: None,
-                            jwk: ProofOfPossessionJwk::Jwk { jwk },
-                        })
-                } else {
-                    None
-                }
-            }
-            IdentifierType::Key => {
-                if let Some(key) = &identifier.key {
-                    let key_type = key
-                        .key_algorithm_type()
-                        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                            key.key_type.to_string(),
-                        ))
-                        .error_while("getting key algorithm")?;
-
-                    let key_algorithm = key_algorithm_provider
-                        .key_algorithm_from_type(key_type)
-                        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                            key_type.to_string(),
-                        ))
-                        .error_while("getting key algorithm")?;
-
-                    let jwk = key_algorithm
-                        .reconstruct_key(key.public_key.as_slice(), None, None)
-                        .error_while("reconstructing key")?;
-
-                    let jwk = jwk.public_key_as_jwk().error_while("getting JWK")?;
-                    Some(ProofOfPossessionKey {
+                let did = identifier
+                    .did
+                    .as_ref()
+                    .ok_or(FormatterError::CouldNotFormat("Missing did".to_string()))?;
+                let did_document = did_method_provider
+                    .resolve(&did.did)
+                    .await
+                    .error_while("resolving DID")?;
+                did_document
+                    .find_verification_method(
+                        additional_inputs.holder_key_id.as_deref(),
+                        Some(KeyRole::AssertionMethod),
+                    )
+                    .map(|verification_method| verification_method.public_key_jwk.clone())
+                    .map(|jwk| ProofOfPossessionKey {
                         key_id: None,
                         jwk: ProofOfPossessionJwk::Jwk { jwk },
                     })
-                } else {
-                    None
-                }
             }
-            _ => None,
+            IdentifierType::Key => {
+                let key = identifier
+                    .key
+                    .as_ref()
+                    .ok_or(FormatterError::CouldNotFormat("Missing key".to_string()))?;
+                let key_type = key
+                    .key_algorithm_type()
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        key.key_type.to_string(),
+                    ))
+                    .error_while("getting key algorithm")?;
+
+                let key_algorithm = key_algorithm_provider
+                    .key_algorithm_from_type(key_type)
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        key_type.to_string(),
+                    ))
+                    .error_while("getting key algorithm")?;
+
+                let jwk = key_algorithm
+                    .reconstruct_key(key.public_key.as_slice(), None, None)
+                    .error_while("reconstructing key")?;
+
+                let jwk = jwk.public_key_as_jwk().error_while("getting JWK")?;
+                Some(ProofOfPossessionKey {
+                    key_id: None,
+                    jwk: ProofOfPossessionJwk::Jwk { jwk },
+                })
+            }
+            r#type => return Err(FormatterError::UnsupportedIdentifierType(r#type)),
         },
-        _ => None,
+        None => None,
     };
 
     let subject = additional_inputs

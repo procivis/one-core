@@ -69,6 +69,7 @@ impl CredentialService {
                             key: Some(Default::default()),
                             ..Default::default()
                         }),
+                        key: Some(Default::default()),
                         ..Default::default()
                     },
                 )

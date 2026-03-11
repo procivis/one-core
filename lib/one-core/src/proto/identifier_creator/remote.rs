@@ -252,7 +252,10 @@ impl IdentifierCreatorProto {
                 .into_iter()
                 .next();
 
-            if let Some(identifier) = identifier {
+            if let Some(mut identifier) = identifier {
+                // Back-fill relations
+                identifier.key = Some(key.clone());
+                identifier.organisation = organisation.cloned();
                 return Ok((key, identifier));
             };
 
