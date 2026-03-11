@@ -107,9 +107,11 @@ pub(crate) struct GetTrustListPublicationResponseRestDTO {
     pub identifier: GetIdentifierListItemResponseRestDTO,
     pub r#type: TrustListPublisherId,
     pub role: TrustListPublicationRoleRestEnum,
-    pub content: Option<serde_json::Value>,
+    #[from(with_fn_ref = "map_raw_str_opt")]
+    pub content: Option<String>,
     pub sequence_number: i64,
-    pub metadata: serde_json::Value,
+    #[from(with_fn_ref = "map_raw_str")]
+    pub metadata: String,
     pub organisation_id: OrganisationId,
 }
 
@@ -130,7 +132,8 @@ pub(crate) struct TrustEntryListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub status: TrustEntryStatusRestEnum,
     pub identifier: GetIdentifierListItemResponseRestDTO,
-    pub params: serde_json::Value,
+    #[from(with_fn_ref = "map_raw_str")]
+    pub params: String,
 }
 
 pub(crate) type ListTrustListPublicationsEntitiesQuery = ListQueryParamsRest<
@@ -275,4 +278,12 @@ pub enum TrustListPublicationRoleRestEnum {
     NationalRegistryRegistrar,
     Issuer,
     Verifier,
+}
+
+fn map_raw_str(raw: &[u8]) -> String {
+    String::from_utf8_lossy(raw).into_owned()
+}
+
+fn map_raw_str_opt(raw: &Option<Vec<u8>>) -> Option<String> {
+    raw.as_deref().map(map_raw_str)
 }

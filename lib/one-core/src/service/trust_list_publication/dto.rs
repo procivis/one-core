@@ -55,12 +55,12 @@ pub struct GetTrustListPublicationResponseDTO {
     pub r#type: TrustListPublisherId,
     #[try_from(infallible)]
     pub role: TrustListPublicationRoleEnum,
-    #[try_from(with_fn = "map_content_option")]
-    pub content: Option<serde_json::Value>,
+    #[try_from(infallible)]
+    pub content: Option<Vec<u8>>,
     #[try_from(infallible)]
     pub sequence_number: i64,
-    #[try_from(with_fn = "map_content")]
-    pub metadata: serde_json::Value,
+    #[try_from(infallible)]
+    pub metadata: Vec<u8>,
     #[try_from(infallible)]
     pub organisation_id: OrganisationId,
 }
@@ -95,24 +95,10 @@ pub struct TrustEntryListItemResponseDTO {
     #[try_from(with_fn = "map_identifier")]
     pub identifier: GetIdentifierListItemResponseDTO,
     #[try_from(rename = "metadata", infallible)]
-    pub params: serde_json::Value,
+    pub params: Vec<u8>,
 }
 
 pub type GetTrustEntryListResponseDTO = GetListResponse<TrustEntryListItemResponseDTO>;
-
-fn map_content(content: Vec<u8>) -> Result<serde_json::Value, TrustListPublicationServiceError> {
-    serde_json::from_slice(&content)
-        .map_err(TrustListPublicationServiceError::ContentDeserialization)
-}
-
-fn map_content_option(
-    content: Option<Vec<u8>>,
-) -> Result<Option<serde_json::Value>, TrustListPublicationServiceError> {
-    match content {
-        None => Ok(None),
-        Some(content) => Ok(Some(map_content(content)?)),
-    }
-}
 
 fn map_identifier(
     identifier: Option<Identifier>,

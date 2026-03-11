@@ -61,6 +61,7 @@ fn convert_internal_structure_to_dto() {
           "credentialIssuer": {},
           "verificationEngagement": {},
           "signer": {},
+          "trustListPublisher": {},
         }),
         output
     );
@@ -119,6 +120,7 @@ fn do_not_serialize_private_parameters() {
           "credentialIssuer": {},
           "verificationEngagement": {},
           "signer": {},
+          "trustListPublisher": {},
         }),
         output
     );

@@ -25,4 +25,5 @@ pub struct ConfigDTO {
     pub credential_issuer: HashMap<String, Value>,
     pub verification_engagement: HashMap<String, Value>,
     pub signer: HashMap<String, Value>,
+    pub trust_list_publisher: HashMap<String, Value>,
 }
