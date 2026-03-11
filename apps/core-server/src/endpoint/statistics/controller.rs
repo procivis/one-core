@@ -67,9 +67,11 @@ pub(crate) async fn organisation_statistics(
     security(
         ("bearer" = [])
     ),
-    summary = "Organisation issuer statistics",
+    summary = "Issuer statistics",
     description = indoc::formatdoc! {"
-        Retrieve issuer statistics for a specific organisation.
+        Retrieve credential issuance, revocation, suspension and
+        reactivation statistics for an organization, including detailed
+        timelines.
     "},
 )]
 #[require_permissions(Permission::DashboardDetail)]
@@ -103,9 +105,10 @@ pub(crate) async fn issuer_statistics(
     security(
         ("bearer" = [])
     ),
-    summary = "Organisation verifier statistics",
+    summary = "Verifier statistics",
     description = indoc::formatdoc! {"
-        Retrieve verifier statistics for a specific organisation.
+        Retrieve proof acceptance and rejection statistics for an organization,
+        including detailed timelines.
     "},
 )]
 #[require_permissions(Permission::DashboardDetail)]
@@ -171,7 +174,8 @@ pub(crate) async fn system_statistics(
     ),
     summary = "System interaction statistics",
     description = indoc::formatdoc! {"
-        Retrieve system-wide interaction statistics across all organizations.
+        Retrieve system-wide interaction statistics across all organizations,
+        including issuance, verification and lifecycle operation counts.
     "},
 )]
 #[require_permissions(Permission::SystemDashboardDetail)]
@@ -206,7 +210,9 @@ pub(crate) async fn system_interaction_statistics(
     ),
     summary = "System management statistics",
     description = indoc::formatdoc! {"
-        Retrieve system-wide management statistics across all organizations.
+        Retrieve system-wide statistics across all organizations,
+        including counts of created credential schemas, proof schemas and
+        identifiers.
     "},
 )]
 #[require_permissions(Permission::SystemDashboardDetail)]

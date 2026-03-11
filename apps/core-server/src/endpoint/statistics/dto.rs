@@ -148,11 +148,13 @@ pub(crate) enum SortableVerifierStatisticsColumnRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
-/// Stats per organisation aggregated by either credential or proof schema.
+/// Stats per organization aggregated by either credential or proof schema.
 pub struct StatsBySchemaFilterParamsRest {
+    /// Start of the reporting period (inclusive).
     #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
+    /// End of the reporting period (exclusive).
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub to: OffsetDateTime,
     #[param(nullable = false)]
@@ -169,7 +171,9 @@ pub(crate) type GetIssuerSchemaStatsQueryRest =
 pub struct IssuerSchemaStatsResponseRestDTO {
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_name: String,
+    /// Statistics for the selected reporting period.
     pub current: IssuerStatsRestDTO,
+    /// Comparison statistics for the equivalent preceding period.
     #[from(with_fn = convert_inner)]
     pub previous: Option<IssuerStatsRestDTO>,
 }
@@ -195,7 +199,9 @@ pub(crate) type GetVerifierSchemaStatsQueryRest =
 pub struct VerifierSchemaStatsResponseRestDTO {
     pub proof_schema_id: ProofSchemaId,
     pub proof_schema_name: String,
+    /// Statistics for the selected reporting period.
     pub current: VerifierStatsRestDTO,
+    /// Comparison statistics for the equivalent preceding period.
     #[from(with_fn = convert_inner)]
     pub previous: Option<VerifierStatsRestDTO>,
 }
@@ -204,8 +210,11 @@ pub struct VerifierSchemaStatsResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(VerifierStatsDTO)]
 pub struct VerifierStatsRestDTO {
+    /// Number of successful credential verifications.
     pub accepted_count: usize,
+    /// Number of credential verifications rejected.
     pub rejected_count: usize,
+    /// Number of credential verifications resulting in error.
     pub error_count: usize,
 }
 
@@ -307,9 +316,11 @@ pub(crate) enum SortableSystemInteractionStatisticsColumnRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub struct SystemStatsFilterParamsRest {
+    /// Start of the reporting period (inclusive).
     #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
+    /// End of the reporting period (exclusive).
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub to: OffsetDateTime,
 }
@@ -324,7 +335,9 @@ pub(crate) type GetSystemInteractionStatsQueryRest = ListQueryParamsRest<
 #[serde(rename_all = "camelCase")]
 pub struct SystemInteractionStatsResponseRestDTO {
     pub organisation_id: OrganisationId,
+    /// Statistics for the selected reporting period.
     pub current: SystemInteractionCountsRestDTO,
+    /// Comparison statistics for the equivalent preceding period.
     pub previous: Option<SystemInteractionCountsRestDTO>,
 }
 
@@ -332,9 +345,15 @@ pub struct SystemInteractionStatsResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(SystemInteractionCountsDTO)]
 pub struct SystemInteractionCountsRestDTO {
+    /// Number of credentials issued in the reporting period.    
     pub issued_count: usize,
+    /// Number of credentials verified in the reporting period.    
     pub verified_count: usize,
+    /// Number of credential suspensions, reactivations, and revocations
+    /// in the reporting period.    
     pub credential_lifecycle_operation_count: usize,
+    /// Number of credential interactions resulting in an error
+    /// in the reporting period.
     pub error_count: usize,
 }
 
@@ -357,7 +376,9 @@ pub(crate) type GetSystemManagementStatsQueryRest = ListQueryParamsRest<
 #[serde(rename_all = "camelCase")]
 pub struct SystemManagementStatsResponseRestDTO {
     pub organisation_id: OrganisationId,
+    /// Statistics for the selected reporting period.
     pub current: SystemManagementCountsRestDTO,
+    /// Comparison statistics for the equivalent preceding period.
     pub previous: Option<SystemManagementCountsRestDTO>,
 }
 
