@@ -211,7 +211,7 @@ pub(crate) async fn post_trust_entry(
 #[utoipa::path(
     patch,
     path = "/api/trust-list/v1/{list_id}/entry/{entry_id}",
-    request_body = CreateTrustEntryRequestRestDTO,
+    request_body = UpdateTrustEntryRequestRestDTO,
     params(
         ("list_id" = TrustListPublicationId, Path, description = "Trust list publication id"),
         ("entry_id" = TrustListPublicationId, Path, description = "Trust entry id")
