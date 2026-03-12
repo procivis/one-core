@@ -92,6 +92,10 @@ impl TryFrom<TrustEntryFilterQueryParamsRestDTO> for ListFilterCondition<TrustEn
     fn try_from(value: TrustEntryFilterQueryParamsRestDTO) -> Result<Self, Self::Error> {
         let ids = value.ids.map(TrustEntryFilterValue::Ids);
 
+        let identifier_ids = value
+            .identifier_ids
+            .map(TrustEntryFilterValue::IdentifierIds);
+
         let statuses = value
             .states
             .map(|states| TrustEntryFilterValue::Status(convert_inner(states)));
@@ -123,6 +127,7 @@ impl TryFrom<TrustEntryFilterQueryParamsRestDTO> for ListFilterCondition<TrustEn
         });
 
         Ok(ListFilterCondition::<TrustEntryFilterValue>::from(ids)
+            & identifier_ids
             & statuses
             & created_date_after
             & created_date_before

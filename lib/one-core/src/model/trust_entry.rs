@@ -54,6 +54,7 @@ pub enum SortableTrustEntryColumn {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TrustEntryFilterValue {
     TrustListPublicationId(TrustListPublicationId),
+    IdentifierIds(Vec<IdentifierId>),
     Status(Vec<TrustEntryStatusEnum>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),

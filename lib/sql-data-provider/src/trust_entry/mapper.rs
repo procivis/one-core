@@ -73,7 +73,12 @@ impl IntoFilterCondition for TrustEntryFilterValue {
             Self::LastModified(value) => {
                 get_comparison_condition(trust_entry::Column::LastModified, value)
             }
-            Self::Ids(ids) => trust_entry::Column::Id.is_in(ids).into_condition(),
+            Self::Ids(ids) => trust_entry::Column::IdentifierId
+                .is_in(ids)
+                .into_condition(),
+            Self::IdentifierIds(identifier_ids) => trust_entry::Column::IdentifierId
+                .is_in(identifier_ids)
+                .into_condition(),
         }
     }
 }
