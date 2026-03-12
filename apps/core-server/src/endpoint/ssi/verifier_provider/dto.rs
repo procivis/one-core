@@ -1,8 +1,10 @@
 use one_core::provider::verifier::model::{Verifier, VerifierAppVersion, VerifierUpdateScreen};
 use one_dto_mapper::{From, convert_inner};
+use proc_macros::options_not_nullable;
 use serde::Serialize;
 use utoipa::ToSchema;
 
+#[options_not_nullable]
 #[derive(Clone, From, Serialize, ToSchema)]
 #[from(Verifier)]
 #[serde(rename_all = "camelCase")]
@@ -12,6 +14,7 @@ pub struct VerifierProviderResponseDTO {
     pub app_version: Option<VerifierProviderAppVersionResponseDTO>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, From, Serialize, ToSchema)]
 #[from(VerifierAppVersion)]
 #[serde(rename_all = "camelCase")]
