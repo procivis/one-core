@@ -229,9 +229,6 @@ pub enum ErrorCode {
     #[strum(message = "Invalid key")]
     BR_0096,
 
-    #[strum(message = "Requested wallet storage type cannot be fulfilled")]
-    BR_0097,
-
     #[strum(message = "Operation not supported by revocation method")]
     BR_0098,
 
@@ -441,9 +438,6 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid proof role")]
     BR_0198,
-
-    #[strum(message = "Invalid exchange type for retract proof")]
-    BR_0199,
 
     #[strum(message = "Key handle error")]
     BR_0201,

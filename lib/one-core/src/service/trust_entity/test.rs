@@ -7,6 +7,9 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::TrustEntityService;
+use super::dto::{CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO};
+use super::error::TrustEntityServiceError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::did::{Did, DidType};
 use crate::model::organisation::Organisation;
@@ -31,13 +34,8 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
-use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::test_utilities::{
     dummy_did, dummy_did_document, dummy_identifier, generic_config, get_dummy_date,
-};
-use crate::service::trust_entity::TrustEntityService;
-use crate::service::trust_entity::dto::{
-    CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO,
 };
 
 #[derive(Default)]
@@ -278,7 +276,7 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
             })
             .await
             .unwrap_err(),
-        ServiceError::BusinessLogic(BusinessLogicError::TrustEntityAlreadyPresent)
+        TrustEntityServiceError::AlreadyExists
     ));
 }
 

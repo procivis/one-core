@@ -5,9 +5,11 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityParamsDTO,
-    GetTrustEntityResponseDTO, TrustEntityCertificateResponseDTO, TrustEntityContent,
+    CreateTrustEntityRequestDTO, CreateTrustEntityTypeDTO, GetTrustEntityResponseDTO,
+    TrustEntityCertificateResponseDTO, TrustEntityContent,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
+use super::error::TrustEntityServiceError;
 use crate::model::certificate::CertificateState;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
@@ -19,15 +21,50 @@ use crate::model::trust_entity::{
 use crate::proto::certificate_validator::ParsedCertificate;
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::error::{ServiceError, ValidationError};
+
+impl TryFrom<CreateTrustEntityRequestDTO>
+    for (CreateTrustEntityTypeDTO, CreateTrustEntityParamsDTO)
+{
+    type Error = TrustEntityServiceError;
+
+    fn try_from(value: CreateTrustEntityRequestDTO) -> Result<Self, Self::Error> {
+        let key = match (
+            value.r#type,
+            value.did_id,
+            value.identifier_id,
+            value.content,
+        ) {
+            (Some(TrustEntityType::CertificateAuthority), None, None, Some(content)) => {
+                CreateTrustEntityTypeDTO::Certificate(content)
+            }
+            (Some(TrustEntityType::Did), None, Some(identifier_id), None) => {
+                CreateTrustEntityTypeDTO::Identifier(identifier_id)
+            }
+            (Some(TrustEntityType::Did), Some(did_id), None, None)
+            | (None, Some(did_id), None, None) => CreateTrustEntityTypeDTO::Did(did_id),
+            (None, _, _, _) => return Err(TrustEntityServiceError::TypeNotSpecified),
+            (Some(_), _, _, _) => return Err(TrustEntityServiceError::AmbiguousIds),
+        };
+        let params = CreateTrustEntityParamsDTO {
+            name: value.name,
+            logo: value.logo,
+            website: value.website,
+            terms_url: value.terms_url,
+            privacy_url: value.privacy_url,
+            role: value.role,
+        };
+
+        Ok((key, params))
+    }
+}
 
 impl TryFrom<&ParsedCertificate> for TrustEntityKey {
-    type Error = ServiceError;
+    type Error = TrustEntityServiceError;
     fn try_from(value: &ParsedCertificate) -> Result<Self, Self::Error> {
         value
             .subject_key_identifier
             .clone()
-            .ok_or(ServiceError::MappingError(
+            .ok_or(TrustEntityServiceError::MappingError(
                 "missing subject key identifier".to_string(),
             ))
             .map(TrustEntityKey::from)
@@ -98,7 +135,7 @@ pub(super) fn get_detail_trust_entity_response(
     did: Option<Did>,
     identifier: Option<Identifier>,
     ca: Option<TrustEntityCertificateResponseDTO>,
-) -> Result<GetTrustEntityResponseDTO, ServiceError> {
+) -> Result<GetTrustEntityResponseDTO, TrustEntityServiceError> {
     Ok(GetTrustEntityResponseDTO {
         id: trust_entity.id,
         created_date: trust_entity.created_date,
@@ -109,10 +146,9 @@ pub(super) fn get_detail_trust_entity_response(
         terms_url: trust_entity.terms_url,
         privacy_url: trust_entity.privacy_url,
         role: trust_entity.role,
-        trust_anchor: trust_entity
-            .trust_anchor
-            .map(Into::into)
-            .ok_or_else(|| ServiceError::MappingError("Missing trust anchor".to_string()))?,
+        trust_anchor: trust_entity.trust_anchor.map(Into::into).ok_or_else(|| {
+            TrustEntityServiceError::MappingError("Missing trust anchor".to_string())
+        })?,
         state: trust_entity.state,
         organisation_id: trust_entity
             .organisation
@@ -150,7 +186,7 @@ pub(super) fn trust_entity_certificate_from_x509(
 pub(super) fn update_request_from_dto(
     current_state: TrustEntityState,
     request: UpdateTrustEntityFromDidRequestDTO,
-) -> Result<UpdateTrustEntityRequest, ServiceError> {
+) -> Result<UpdateTrustEntityRequest, TrustEntityServiceError> {
     let new_state = match (request.action, current_state) {
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Activate), TrustEntityState::Withdrawn) => {
             Some(TrustEntityState::Active)
@@ -185,7 +221,7 @@ pub(super) fn update_request_from_dto(
 
         (None, _) => None,
         _ => {
-            return Err(ValidationError::InvalidUpdateRequest.into());
+            return Err(TrustEntityServiceError::InvalidUpdateRequest);
         }
     };
 
@@ -234,9 +270,9 @@ pub(super) fn trust_entity_from_partial_and_did_and_anchor(
     did: Did,
     identifier: Option<Identifier>,
     trust_anchor: TrustAnchor,
-) -> Result<GetTrustEntityResponseDTO, ServiceError> {
+) -> GetTrustEntityResponseDTO {
     let entity_key = (&did.did).into();
-    Ok(GetTrustEntityResponseDTO {
+    GetTrustEntityResponseDTO {
         id: trust_entity.id,
         organisation_id: trust_entity.organisation_id,
         name: trust_entity.name,
@@ -255,5 +291,5 @@ pub(super) fn trust_entity_from_partial_and_did_and_anchor(
         trust_anchor: trust_anchor.into(),
         entity_key,
         identifier: identifier.map(Into::into),
-    })
+    }
 }

@@ -6,13 +6,12 @@ use shared_types::{
 };
 use thiserror::Error;
 
-use crate::config::core_config::{FormatType, VerificationProtocolType};
+use crate::config::core_config::FormatType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::proof::ProofStateEnum;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::trust_management::error::TrustManagementError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -45,9 +44,6 @@ pub enum ServiceError {
 
     #[error(transparent)]
     Validation(#[from] ValidationError),
-
-    #[error("Trust management error `{0}`")]
-    TrustManagementError(#[from] TrustManagementError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -103,12 +99,6 @@ pub enum BusinessLogicError {
     #[error("Organisation not specified")]
     OrganisationNotSpecified,
 
-    #[error("Incompatible DID type, reason: {reason}")]
-    IncompatibleDidType { reason: String },
-
-    #[error("Incompatible identifier type, reason: {reason}")]
-    IncompatibleIdentifierType { reason: String },
-
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
 
@@ -120,11 +110,6 @@ pub enum BusinessLogicError {
 
     #[error("Invalid Proof state: {state}")]
     InvalidProofState { state: ProofStateEnum },
-
-    #[error("Cannot retract proof with exchange type: {exchange_type}")]
-    InvalidProofExchangeForRetraction {
-        exchange_type: VerificationProtocolType,
-    },
 
     #[error("Missing credentials for interaction: {interaction_id}")]
     MissingCredentialsForInteraction { interaction_id: InteractionId },
@@ -138,62 +123,8 @@ pub enum BusinessLogicError {
     #[error("General input validation error")]
     GeneralInputValidationError,
 
-    #[error("Missing proof for interaction `{0}`")]
-    MissingProofForInteraction(InteractionId),
-
-    #[error("Wallet storage type requirement cannot be fulfilled")]
-    UnfulfilledWalletStorageType,
-
-    #[error("Credential state is Revoked or Suspended and cannot be shared")]
-    CredentialIsRevokedOrSuspended,
-
     #[error("Incompatible proof verification identifier")]
     IncompatibleProofVerificationIdentifier,
-
-    #[error("Unsupported key type for CSR")]
-    UnsupportedKeyTypeForCSR,
-
-    #[error("Trust anchor name already in use")]
-    TrustAnchorNameTaken,
-
-    #[error("Trust anchor type not found")]
-    UnknownTrustAnchorType,
-
-    #[error("Trust anchor must be publish")]
-    TrustAnchorMustBePublish,
-
-    #[error("Trust anchor must be client")]
-    TrustAnchorMustBeClient,
-
-    #[error("Trust anchor invalid request: {reason}")]
-    TrustAnchorInvalidCreateRequest { reason: String },
-
-    #[error("trustAnchorId and entityId are already present")]
-    TrustEntityAlreadyPresent,
-
-    #[error("Trust anchor type is not SIMPLE_TRUST_LIST")]
-    TrustAnchorTypeIsNotSimpleTrustList,
-
-    #[error("No trust entity found for the given did: {0}")]
-    MissingTrustEntity(DidId),
-
-    #[error("Multiple matching trust anchors")]
-    MultipleMatchingTrustAnchors,
-
-    #[error("Trust entity has duplicates")]
-    TrustEntityHasDuplicates,
-
-    #[error("Trust anchor is disabled")]
-    TrustAnchorIsDisabled,
-
-    #[error("Certificate `{certificate_id}` is not associated with identifier `{identifier_id}`")]
-    IdentifierCertificateIdMismatch {
-        identifier_id: String,
-        certificate_id: String,
-    },
-
-    #[error("Certificate id not specified")]
-    CertificateIdNotSpecified,
 
     #[error("Verification protocol does not support this API endpoint version")]
     IncompatiblePresentationEndpoint,
@@ -228,9 +159,6 @@ pub enum ValidationError {
     #[error("Forbidden")]
     Forbidden,
 
-    #[error("Invalid update request")]
-    InvalidUpdateRequest,
-
     #[error("Deserialization error: `{0}`")]
     DeserializationError(String),
 
@@ -242,18 +170,6 @@ pub enum ValidationError {
 
     #[error("Identifier type `{0}` is disabled")]
     IdentifierTypeDisabled(String),
-
-    #[error("Trust entity type not specified")]
-    TrustEntityTypeNotSpecified,
-
-    #[error("Trust entity has ambiguous ids specified")]
-    TrustEntityAmbiguousIds,
-
-    #[error("Trust entity type does not match ids or content")]
-    TrustEntityTypeInvalid,
-
-    #[error("Trust entity subject key identifier does not match")]
-    TrustEntitySubjectKeyIdentifierDoesNotMatch,
 
     #[error("Invalid wallet provider url: {0}")]
     InvalidWalletProviderUrl(String),
@@ -333,7 +249,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0048,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
-            Self::TrustManagementError(_) => ErrorCode::BR_0185,
             Self::Nested(error) => error.error_code(),
         }
     }
@@ -360,8 +275,6 @@ impl ErrorCodeMixin for BusinessLogicError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
-            Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
-            Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
             Self::InvalidProofState { .. } => ErrorCode::BR_0013,
@@ -370,26 +283,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MissingClaimSchemas => ErrorCode::BR_0011,
             Self::KeyAlreadyExists => ErrorCode::BR_0066,
             Self::GeneralInputValidationError => ErrorCode::BR_0084,
-            Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
-            Self::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
-            Self::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
-            Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
-            Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
-            Self::UnknownTrustAnchorType => ErrorCode::BR_0114,
-            Self::TrustAnchorMustBePublish => ErrorCode::BR_0123,
-            Self::TrustAnchorMustBeClient => ErrorCode::BR_0188,
-            Self::TrustAnchorInvalidCreateRequest { .. } => ErrorCode::BR_0177,
-            Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
-            Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
-            Self::MultipleMatchingTrustAnchors => ErrorCode::BR_0179,
-            Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
-            Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
-            Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
-            Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
             Self::IncompatibleProofVerificationIdentifier => ErrorCode::BR_0218,
-            Self::IdentifierCertificateIdMismatch { .. } | Self::CertificateIdNotSpecified => {
-                ErrorCode::BR_0242
-            }
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
             Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
         }
@@ -406,15 +300,10 @@ impl ErrorCodeMixin for ValidationError {
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
             Self::Forbidden => ErrorCode::BR_0178,
-            Self::InvalidUpdateRequest => ErrorCode::BR_0181,
             Self::DeserializationError(_) => ErrorCode::BR_0189,
             Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
             Self::InvalidImage(_) => ErrorCode::BR_0193,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
-            Self::TrustEntityAmbiguousIds => ErrorCode::BR_0228,
-            Self::TrustEntityTypeNotSpecified => ErrorCode::BR_0229,
-            Self::TrustEntityTypeInvalid => ErrorCode::BR_0230,
-            Self::TrustEntitySubjectKeyIdentifierDoesNotMatch => ErrorCode::BR_0231,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
             Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,

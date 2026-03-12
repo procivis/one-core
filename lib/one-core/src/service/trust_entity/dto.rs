@@ -16,7 +16,6 @@ use crate::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityT
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
 use crate::service::common_dto::{BoundedB64Image, KB};
 use crate::service::did::dto::DidListItemResponseDTO;
-use crate::service::error::ValidationError;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 
@@ -37,42 +36,6 @@ pub struct CreateTrustEntityRequestDTO {
     pub identifier_id: Option<IdentifierId>,
     pub content: Option<TrustEntityContent>,
     pub organisation_id: OrganisationId,
-}
-
-impl TryFrom<CreateTrustEntityRequestDTO>
-    for (CreateTrustEntityTypeDTO, CreateTrustEntityParamsDTO)
-{
-    type Error = ValidationError;
-
-    fn try_from(value: CreateTrustEntityRequestDTO) -> Result<Self, Self::Error> {
-        let key = match (
-            value.r#type,
-            value.did_id,
-            value.identifier_id,
-            value.content,
-        ) {
-            (Some(TrustEntityType::CertificateAuthority), None, None, Some(content)) => {
-                CreateTrustEntityTypeDTO::Certificate(content)
-            }
-            (Some(TrustEntityType::Did), None, Some(identifier_id), None) => {
-                CreateTrustEntityTypeDTO::Identifier(identifier_id)
-            }
-            (Some(TrustEntityType::Did), Some(did_id), None, None)
-            | (None, Some(did_id), None, None) => CreateTrustEntityTypeDTO::Did(did_id),
-            (None, _, _, _) => return Err(ValidationError::TrustEntityTypeNotSpecified),
-            (Some(_), _, _, _) => return Err(ValidationError::TrustEntityAmbiguousIds),
-        };
-        let params = CreateTrustEntityParamsDTO {
-            name: value.name,
-            logo: value.logo,
-            website: value.website,
-            terms_url: value.terms_url,
-            privacy_url: value.privacy_url,
-            role: value.role,
-        };
-
-        Ok((key, params))
-    }
 }
 
 #[derive(Clone, Debug)]

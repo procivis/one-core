@@ -72,7 +72,6 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0091
         | ErrorCode::BR_0094
         | ErrorCode::BR_0096
-        | ErrorCode::BR_0097
         | ErrorCode::BR_0098
         | ErrorCode::BR_0099
         | ErrorCode::BR_0104
@@ -133,7 +132,6 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0196
         | ErrorCode::BR_0197
         | ErrorCode::BR_0198
-        | ErrorCode::BR_0199
         | ErrorCode::BR_0204
         | ErrorCode::BR_0206
         | ErrorCode::BR_0211

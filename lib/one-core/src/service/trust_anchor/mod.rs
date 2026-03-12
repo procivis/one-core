@@ -5,6 +5,7 @@ use crate::repository::trust_anchor_repository::TrustAnchorRepository;
 use crate::repository::trust_entity_repository::TrustEntityRepository;
 
 pub mod dto;
+pub mod error;
 pub mod mapper;
 pub mod service;
 
