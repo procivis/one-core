@@ -2032,7 +2032,7 @@ async fn test_handle_invitation_authorization_code() {
 
     let additional_config = Some(indoc::formatdoc! {"
             credentialIssuer:
-              EUDI_PID_FLOW:
+              EUDI:
                 params:
                   public:
                     issuer: {issuer}
@@ -2101,7 +2101,7 @@ async fn test_handle_invitation_authorization_code() {
     let authorization_code_flow_url = resp["authorizationCodeFlowUrl"].as_str().unwrap();
 
     assert!(authorization_code_flow_url.starts_with(authorization_endpoint));
-    assert!(authorization_code_flow_url.contains("client_id=procivis-wallet-dev"));
+    assert!(authorization_code_flow_url.contains("client_id=eudiw-abca"));
     assert!(authorization_code_flow_url.contains("authorization_details="));
     assert!(
         authorization_code_flow_url.contains("%22credential_configuration_id%22%3A%22config-id%22")
@@ -2117,7 +2117,7 @@ async fn test_handle_invitation_authorization_code_issuer_state() {
 
     let additional_config = Some(indoc::formatdoc! {"
             credentialIssuer:
-              EUDI_PID_FLOW:
+              EUDI:
                 params:
                   public:
                     issuer: {issuer}
@@ -2202,7 +2202,7 @@ async fn test_handle_invitation_authorization_code_authorization_server() {
 
     let additional_config = Some(indoc::formatdoc! {"
             credentialIssuer:
-              EUDI_PID_FLOW:
+              EUDI:
                 params:
                   public:
                     issuer: {issuer_server_uri}
@@ -2291,7 +2291,7 @@ async fn test_handle_invitation_fails_authorization_code_authorization_server_no
 
     let additional_config = Some(indoc::formatdoc! {"
             credentialIssuer:
-              EUDI_PID_FLOW:
+              EUDI:
                 params:
                   public:
                     issuer: {issuer_server_uri}

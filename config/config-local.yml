@@ -225,22 +225,44 @@ keySecurityLevel:
           priority: 40
           keyStorages: []
 credentialIssuer:
-  EUDI_PID_FLOW:
+  EUDI_PROCIVIS_DEV:
     display:
-      en: EUDI Issuer
-      de: EUDI Issuer
+      en: Procivis EUDI Issuer
+      de: Procivis EUDI-Aussteller
     order: 1
     enabled: true
     params:
       public:
         issuer: https://eudiw-issuer.eudi.dev.procivis-one.com
       private:
-        clientId: procivis-wallet-dev
+        clientId: eudiw-abca
+  EUDI_PROCIVIS_TRIAL:
+    display:
+      en: Procivis EUDI Issuer
+      de: Procivis EUDI-Aussteller
+    order: 2
+    enabled: true
+    params:
+      public:
+        issuer: https://eudiw-issuer.eudi.trial.procivis-one.com
+      private:
+        clientId: eudiw-abca
+  EUDI:
+    display:
+      en: EUDI Issuer
+      de: EUDI-Aussteller
+    order: 3
+    enabled: true
+    params:
+      public:
+        issuer: https://issuer.eudiw.dev
+      private:
+        clientId: eudiw-abca
   NIC_PID_FLOW:
     display:
       en: NIC Issuer
       de: NIC Issuer
-    order: 1
+    order: 4
     enabled: true
     params:
       public:
