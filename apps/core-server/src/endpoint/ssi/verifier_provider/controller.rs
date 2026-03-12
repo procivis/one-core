@@ -16,9 +16,6 @@ use crate::router::AppState;
         ("verifierProvider" = String, Path, description = "Verifier provider ID")
     ),
     tag = "verifier-provider",
-    security(
-        ("bearer" = [])
-    ),
     summary = "Retrieve verifier provider info",
     description = indoc::formatdoc! {"
     Retrieves information about a verifier provider.
