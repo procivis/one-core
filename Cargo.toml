@@ -45,7 +45,7 @@ mockall                  = { version = "0.14" }
 multihash                = { version = "0.19" }
 one-dto-mapper           = { version = "0.1.10" }
 rand                     = { version = "0.8" }
-rcgen                    = { version = "0.14", features = ["pem", "x509-parser"] }
+rcgen                    = { version = "0.14", default-features = false, features = ["pem", "aws_lc_rs", "x509-parser"] }
 regex                    = { version = "1.10" }
 reqwest                  = { version = "0.13", default-features = false, features = ["rustls", "json", "http2"] }
 rustls-platform-verifier = { version = "0.6" }
@@ -77,7 +77,7 @@ utoipa                   = { version = "5.3", default-features = false, features
 uuid                     = { version = "1.11", features = ["v4", "serde"] }
 validator                = { version = "0.20", features = ["derive"] }
 wiremock                 = { version = "0.6" }
-x509-parser              = { version = "0.18", features = ["verify"] }
+x509-parser              = { version = "0.18", features = ["verify-aws"] }
 
 [workspace.lints.rust]
 let_underscore_drop = "warn"

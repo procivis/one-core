@@ -1,15 +1,15 @@
 [package]
-authors           = ["Procivis"]
-edition.workspace = true
-license           = "Apache-2.0"
-name              = "migration"
-publish           = false
-version           = "0.1.0"
+authors                = ["Procivis"]
+edition.workspace      = true
+license                = "Apache-2.0"
+name                   = "migration"
+publish                = false
 rust-version.workspace = true
+version                = "0.1.0"
 
 [dependencies]
 sea-orm                = { workspace = true, features = ["with-time", "with-uuid"] }
-sea-orm-migration      = { version = "1.1", default-features = false, features = ["runtime-tokio-rustls", "sqlx-sqlite"] }
+sea-orm-migration      = { version = "1.1", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
 shared-types.workspace = true
 time.workspace         = true
 tokio                  = { workspace = true, features = ["macros", "rt-multi-thread"] }
@@ -28,7 +28,7 @@ sea-schema = { version = "0.17.0-rc.16", default-features = false, features = [
     "sqlx-sqlite",
     "mysql",
     "sqlx-mysql",
-    "runtime-tokio-rustls",
+    "runtime-tokio",
 ] }
 similar-asserts.workspace = true
 ulid.workspace = true

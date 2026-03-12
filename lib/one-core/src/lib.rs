@@ -807,7 +807,7 @@ fn initialize_rustls() -> Result<(), OneCoreInitializationError> {
     let mut result: Option<anyhow::Error> = None;
 
     RUSTLS_INITIALIZATION.call_once(|| {
-        if rustls::crypto::ring::default_provider()
+        if rustls::crypto::aws_lc_rs::default_provider()
             .install_default()
             .is_err()
         {

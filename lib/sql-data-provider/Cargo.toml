@@ -1,11 +1,11 @@
 [package]
-authors           = ["Procivis"]
-edition.workspace = true
-license           = "Apache-2.0"
-name              = "sql-data-provider"
-publish           = false
-version.workspace = true
+authors                = ["Procivis"]
+edition.workspace      = true
+license                = "Apache-2.0"
+name                   = "sql-data-provider"
+publish                = false
 rust-version.workspace = true
+version.workspace      = true
 
 [features]
 # Treat build warnings as error
@@ -14,26 +14,26 @@ strict     = []
 test_utils = ["dep:similar-asserts"]
 
 [dependencies]
-anyhow.workspace         = true
-async-trait.workspace    = true
-autometrics.workspace    = true
-futures                  = { version = "0.3" }
-hex.workspace            = true
-itertools.workspace      = true
-migration                = { version = "0.1.0", path = "../migration", default-features = false }
-one-core                 = { version = "0.1.0", path = "../one-core" }
-one-dto-mapper.workspace = true
-sea-orm                  = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-time", "with-json"] }
-serde.workspace          = true
-serde_json.workspace     = true
-shared-types.workspace   = true
-standardized-types.workspace   = true
-similar-asserts          = { workspace = true, optional = true }
-time.workspace           = true
-tokio                    = { workspace = true, features = ["macros"] }
-tracing.workspace        = true
-url                      = { workspace = true }
-uuid                     = { workspace = true, features = ["serde"] }
+anyhow.workspace             = true
+async-trait.workspace        = true
+autometrics.workspace        = true
+futures                      = { version = "0.3" }
+hex.workspace                = true
+itertools.workspace          = true
+migration                    = { version = "0.1.0", path = "../migration", default-features = false }
+one-core                     = { version = "0.1.0", path = "../one-core" }
+one-dto-mapper.workspace     = true
+sea-orm                      = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio", "macros", "with-time", "with-json"] }
+serde.workspace              = true
+serde_json.workspace         = true
+shared-types.workspace       = true
+similar-asserts              = { workspace = true, optional = true }
+standardized-types.workspace = true
+time.workspace               = true
+tokio                        = { workspace = true, features = ["macros"] }
+tracing.workspace            = true
+url                          = { workspace = true }
+uuid                         = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 futures.workspace         = true
