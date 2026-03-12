@@ -199,7 +199,10 @@ async fn parse_referenced_data_from_did_signed_token(
         )))?;
 
     let key = did_document
-        .find_verification_method(Some(&kid), Some(KeyRole::AssertionMethod))
+        .find_verification_method(Some(&kid), Some(KeyRole::Authentication))
+        .or_else(|| {
+            did_document.find_verification_method(Some(&kid), Some(KeyRole::AssertionMethod))
+        })
         .ok_or(VerificationProtocolError::Failed(
             "Missing key in did".to_string(),
         ))?
