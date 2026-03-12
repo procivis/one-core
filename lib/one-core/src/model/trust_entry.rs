@@ -45,6 +45,7 @@ pub struct UpdateTrustEntryRequest {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableTrustEntryColumn {
+    IdentifierId,
     Status,
     LastModified,
     CreatedDate,

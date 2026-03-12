@@ -242,6 +242,7 @@ pub(crate) struct TrustEntryFilterQueryParamsRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum SortableTrustEntryColumnRestEnum {
+    IdentifierId,
     State,
     LastModified,
     CreatedDate,
@@ -255,6 +256,9 @@ impl From<SortableTrustEntryColumnRestEnum> for SortableTrustEntryColumn {
                 SortableTrustEntryColumn::LastModified
             }
             SortableTrustEntryColumnRestEnum::CreatedDate => SortableTrustEntryColumn::CreatedDate,
+            SortableTrustEntryColumnRestEnum::IdentifierId => {
+                SortableTrustEntryColumn::IdentifierId
+            }
         }
     }
 }

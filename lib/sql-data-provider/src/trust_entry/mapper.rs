@@ -46,6 +46,7 @@ impl IntoSortingColumn for SortableTrustEntryColumn {
             Self::CreatedDate => trust_entry::Column::CreatedDate.into_simple_expr(),
             Self::Status => trust_entry::Column::Status.into_simple_expr(),
             Self::LastModified => trust_entry::Column::LastModified.into_simple_expr(),
+            Self::IdentifierId => trust_entry::Column::IdentifierId.into_simple_expr(),
         }
     }
 }
