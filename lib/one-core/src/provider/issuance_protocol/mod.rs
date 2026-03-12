@@ -19,8 +19,8 @@ pub mod error;
 mod mapper;
 pub mod model;
 pub mod openid4vci_draft13;
-pub mod openid4vci_draft13_swiyu;
 pub mod openid4vci_final1_0;
+pub mod openid4vci_final1_0_swiyu;
 pub(crate) mod provider;
 use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse};
 

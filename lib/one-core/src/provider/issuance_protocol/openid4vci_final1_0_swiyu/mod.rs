@@ -1,3 +1,5 @@
+mod proxy_http_client;
+
 use std::sync::Arc;
 
 use secrecy::SecretSlice;
@@ -13,25 +15,28 @@ use super::model::{
     CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams,
     ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
-use super::openid4vci_draft13::OpenID4VCI13;
-use super::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperations;
-use super::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use super::{HolderBindingInput, IssuanceProtocol};
+use crate::config::core_config::CoreConfig;
 use crate::config::core_config::DidType::WebVh;
-use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
+use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::dto::Features;
+use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    OpenID4VCIFinal1Params, OpenID4VCNonceParams,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -41,7 +46,7 @@ use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
 
-pub(crate) const OID4VCI_DRAFT13_SWIYU_VERSION: &str = "draft-13-swiyu";
+pub(crate) const OID4VCI_FINAL1_0_SWIYU_VERSION: &str = "final-1.0-swiyu";
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
@@ -56,12 +61,15 @@ pub(crate) struct OpenID4VCISwiyuParams {
     #[serde(deserialize_with = "deserialize_encryption_key")]
     pub encryption: SecretSlice<u8>,
     pub redirect_uri: OpenID4VCRedirectUriParams,
+    pub nonce: Option<OpenID4VCNonceParams>,
+    pub oauth_attestation_leeway: u64,
+    pub key_attestation_leeway: u64,
 
     #[serde(flatten)]
     pub common: CommonParams,
 }
 
-impl From<OpenID4VCISwiyuParams> for OpenID4VCIDraft13Params {
+impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
     fn from(value: OpenID4VCISwiyuParams) -> Self {
         Self {
             pre_authorized_code_expires_in: value.pre_authorized_code_expires_in,
@@ -71,66 +79,76 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIDraft13Params {
             encryption: value.encryption,
             url_scheme: "swiyu".to_string(),
             redirect_uri: value.redirect_uri,
-            enable_credential_preview: false,
+            nonce: value.nonce,
+            oauth_attestation_leeway: value.oauth_attestation_leeway,
+            key_attestation_leeway: value.key_attestation_leeway,
             common: value.common,
         }
     }
 }
 
-pub(crate) struct OpenID4VCI13Swiyu {
-    inner: OpenID4VCI13,
+pub(crate) struct OpenID4VCISwiyu {
+    inner: OpenID4VCIFinal1_0,
 }
 
-impl OpenID4VCI13Swiyu {
+impl OpenID4VCISwiyu {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
         key_repository: Arc<dyn KeyRepository>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
+        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-        identifier_creator: Arc<dyn IdentifierCreator>,
+        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCISwiyuParams,
-        handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
+        config_id: String,
+        holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
+        let protocol_base_url = base_url
+            .as_ref()
+            .map(|base_url| format!("{base_url}/ssi/openid4vci/final-1.0-swiyu"));
+        let client = Arc::new(proxy_http_client::ProxySwiyuHttpClient { client });
         Self {
-            inner: OpenID4VCI13::new_with_custom_version(
+            inner: OpenID4VCIFinal1_0::new_with_custom_protocol_base_url(
+                protocol_base_url,
                 client,
                 metadata_cache,
                 credential_repository,
                 key_repository,
+                identifier_creator,
+                credential_schema_importer,
                 validity_credential_repository,
                 formatter_provider,
                 revocation_provider,
                 did_method_provider,
                 key_algorithm_provider,
-                key_security_level_provider,
                 key_provider,
-                certificate_validator,
-                identifier_creator,
+                key_security_level_provider,
                 blob_storage_provider,
                 base_url,
                 config,
                 params.into(),
-                OID4VCI_DRAFT13_SWIYU_VERSION,
-                handle_invitation_operations,
+                config_id,
+                holder_wallet_unit_proto,
+                certificate_validator,
             ),
         }
     }
 }
 
 #[async_trait::async_trait]
-impl IssuanceProtocol for OpenID4VCI13Swiyu {
+impl IssuanceProtocol for OpenID4VCISwiyu {
     async fn holder_can_handle(&self, url: &Url) -> bool {
         url.scheme() == "swiyu"
     }
@@ -143,13 +161,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         self.inner
-            .holder_handle_invitation_with_protocol(
-                url,
-                organisation,
-                IssuanceProtocolType::OpenId4VciDraft13Swiyu,
-                storage_access,
-                redirect_uri,
-            )
+            .holder_handle_invitation(url, organisation, storage_access, redirect_uri)
             .await
     }
 
@@ -180,16 +192,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         &self,
         credential: &Credential,
     ) -> Result<ShareResponse, IssuanceProtocolError> {
-        let mut credential = credential.clone();
-
-        // SWIYU only supports credential offer by value and does not create a preview from the offer.
-        // So we drop all the claims from the offer to not run into problems with large claim values
-        // e.g. for images.
-        if let Some(claims) = credential.claims.as_mut() {
-            *claims = vec![]
-        }
-
-        self.inner.issuer_share_credential(&credential).await
+        self.inner.issuer_share_credential(credential).await
     }
 
     async fn issuer_issue_credential(
@@ -210,12 +213,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         storage_access: &StorageAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
         self.inner
-            .holder_continue_issuance_with_protocol(
-                continue_issuance_dto,
-                organisation,
-                IssuanceProtocolType::OpenId4VciDraft13Swiyu,
-                storage_access,
-            )
+            .holder_continue_issuance(continue_issuance_dto, organisation, storage_access)
             .await
     }
 

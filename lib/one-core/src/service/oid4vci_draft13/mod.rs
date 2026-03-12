@@ -73,40 +73,6 @@ impl OID4VCIDraft13Service {
             transaction_manager,
         }
     }
-
-    pub(crate) fn new_with_custom_protocol(
-        protocol_base_url: Option<String>,
-        protocol_type: IssuanceProtocolType,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        credential_repository: Arc<dyn CredentialRepository>,
-        interaction_repository: Arc<dyn InteractionRepository>,
-        config: Arc<core_config::CoreConfig>,
-        protocol_provider: Arc<dyn IssuanceProtocolProvider>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-        identifier_creator: Arc<dyn IdentifierCreator>,
-        transaction_manager: Arc<dyn TransactionManager>,
-    ) -> Self {
-        Self {
-            protocol_base_url,
-            protocol_type,
-            credential_schema_repository,
-            credential_repository,
-            interaction_repository,
-            config,
-            protocol_provider,
-            did_method_provider,
-            key_algorithm_provider,
-            formatter_provider,
-            revocation_method_provider,
-            certificate_validator,
-            identifier_creator,
-            transaction_manager,
-        }
-    }
 }
 
 #[cfg(test)]

@@ -22,8 +22,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
+use crate::provider::issuance_protocol::openid4vci_final1_0_swiyu::OpenID4VCISwiyuParams;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
@@ -274,7 +274,7 @@ fn encryption_key_from_config(
                 .error_while("loading encryption key from config")?;
             params.encryption
         }
-        core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
+        core_config::IssuanceProtocolType::OpenId4vciFinal1_0Swiyu => {
             let params = fields
                 .deserialize::<OpenID4VCISwiyuParams>()
                 .map_err(|source| ConfigValidationError::FieldsDeserialization {

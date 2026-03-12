@@ -110,6 +110,7 @@ pub(crate) struct OpenID4VCICredentialMetadataClaimResponseRestDTO {
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataClaimDisplayRestDTO>>,
     pub mandatory: Option<bool>,
+    #[serde(flatten)]
     pub additional_values: Option<IndexMap<String, serde_json::Value>>,
 }
 

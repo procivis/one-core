@@ -611,28 +611,40 @@ fn get_external_endpoints(
                 post(ssi::issuance::final1_0::controller::oid4vci_final1_0_nonce),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-credential-issuer",
-                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_get_issuer_metadata),
+                "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{id}",
+                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_get_issuer_metadata),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-configuration",
-                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_service_discovery),
+                "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{id}/.well-known/openid-credential-issuer",
+                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_get_issuer_metadata_legacy),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/oauth-authorization-server",
-                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_oauth_authorization_server),
+                "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{id}",
+                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_oauth_authorization_server),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{credential_schema_id}/offer/{credential_id}",
-                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_get_credential_offer),
+                "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{id}/.well-known/oauth-authorization-server",
+                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_oauth_authorization_server_legacy),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{id}/token",
-                post(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_create_token),
+                "/ssi/openid4vci/final-1.0-swiyu/{credential_schema_id}/offer/{credential_id}",
+                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_get_credential_offer),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{id}/credential",
-                post(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_create_credential),
+                "/ssi/openid4vci/final-1.0-swiyu/{id}/token",
+                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_create_token),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0-swiyu/{id}/credential",
+                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_create_credential),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/nonce",
+                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_nonce),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0-swiyu/{id}/notification",
+                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_credential_notification),
             )
             .route(
                 "/ssi/openid4vp/draft-20/response",

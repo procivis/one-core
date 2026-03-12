@@ -121,16 +121,18 @@ issuanceProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-  OPENID4VCI_DRAFT13_SWIYU:
+  OPENID4VCI_FINAL1_SWIYU:
     display:
       en: "OpenID4VCI (SWIYU)"
       de: "OpenID4VCI (SWIYU)"
     order: 2
-    type: "OPENID4VCI_DRAFT13_SWIYU"
+    type: "OPENID4VCI_FINAL1_SWIYU"
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
         urlScheme: swiyu
+        oauthAttestationLeeway: 60
+        keyAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -554,6 +556,7 @@ datatype:
       public:
         accept:
           - image/jpeg
+          - image/png
         fileSize: 4194304
         supportedInputMode: FILE_UPLOAD
         showAs: IMAGE

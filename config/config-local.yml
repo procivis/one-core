@@ -85,13 +85,17 @@ issuanceProtocol:
       private:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
-  OPENID4VCI_DRAFT13_SWIYU:
+  OPENID4VCI_FINAL1_SWIYU:
     params:
       public:
         allowedSchemes: ["http", "https"]
       private:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        nonce:
+          signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+          expiration: 300
+          leeway: 0
   OPENID4VCI_FINAL1:
     params:
       public:

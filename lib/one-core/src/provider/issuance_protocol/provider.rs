@@ -6,8 +6,8 @@ use serde_json::json;
 use url::Url;
 
 use super::openid4vci_draft13::OpenID4VCI13;
-use super::openid4vci_draft13_swiyu::OpenID4VCI13Swiyu;
 use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
+use super::openid4vci_final1_0_swiyu::OpenID4VCISwiyu;
 use super::{IssuanceProtocol, openid4vci_draft13};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
@@ -168,41 +168,34 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     Arc::new(handle_invitation_operations),
                 ))
             }
-            IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
+            IssuanceProtocolType::OpenId4vciFinal1_0Swiyu => {
                 let params = fields.deserialize().map_err(|source| {
                     ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
                     }
                 })?;
-
-                let handle_invitation_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
-                    vct_type_metadata_cache.clone(),
-                    client.clone(),
-                    credential_schema_importer.clone(),
-                    credential_schema_import_parser.clone(),
-                    core_config.clone(),
-                );
-
-                Arc::new(OpenID4VCI13Swiyu::new(
+                Arc::new(OpenID4VCISwiyu::new(
                     client.clone(),
                     openid_metadata_cache.clone(),
                     credential_repository.clone(),
                     key_repository.clone(),
+                    identifier_creator.clone(),
+                    credential_schema_importer.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
                     revocation_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
-                    key_security_level_provider.clone(),
                     key_provider.clone(),
-                    certificate_validator.clone(),
-                    identifier_creator.clone(),
+                    key_security_level_provider.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
                     core_config.clone(),
                     params,
-                    Arc::new(handle_invitation_operations),
+                    name.to_owned(),
+                    wallet_unit_proto.clone(),
+                    certificate_validator.clone(),
                 ))
             }
         };

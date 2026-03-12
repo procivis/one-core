@@ -977,7 +977,7 @@ fn enable_credential_preview_from_config(
                 .error_while("getting protocol params")?;
             params.enable_credential_preview
         }
-        core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu => false,
+        core_config::IssuanceProtocolType::OpenId4vciFinal1_0Swiyu => false,
         core_config::IssuanceProtocolType::OpenId4VciFinal1_0 => {
             // this should not happen, we are in the draft13 service
             return Err(ServiceError::Validation(

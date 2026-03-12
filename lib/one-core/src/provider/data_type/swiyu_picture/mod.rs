@@ -1,5 +1,5 @@
 use ct_codecs::{Base64, Decoder};
-use mime::IMAGE_JPEG;
+use mime::{IMAGE_JPEG, IMAGE_PNG};
 use serde::Deserialize;
 
 use crate::config::ConfigValidationError;
@@ -7,7 +7,7 @@ use crate::config::validator::datatype::{DatatypeValidationError, base64_byte_le
 use crate::provider::data_type::DataType;
 use crate::provider::data_type::error::DataTypeError;
 use crate::provider::data_type::model::{DataTypeCapabilities, ExtractionResult, JsonType};
-use crate::provider::data_type::picture_utils::{JPEG_HEADER, JPEG_SUFFIX};
+use crate::provider::data_type::picture_utils::{JPEG_HEADER, JPEG_SUFFIX, PNG_HEADER};
 
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +24,7 @@ impl SwiyuPictureDataType {
     pub fn new(params: Params) -> Result<Self, ConfigValidationError> {
         if let Some(accept) = &params.accept {
             for mime_type in accept.iter() {
-                if mime_type != IMAGE_JPEG.essence_str() {
+                if mime_type != IMAGE_JPEG.essence_str() && mime_type != IMAGE_PNG.essence_str() {
                     return Err(DatatypeValidationError::FileUnsupportedMediaType(
                         mime_type.to_string(),
                     )
@@ -35,16 +35,22 @@ impl SwiyuPictureDataType {
         Ok(Self { params })
     }
 
-    fn valid_swiyu_picture(&self, value: &str) -> bool {
+    fn valid_swiyu_picture(&self, value: &str) -> Option<String> {
         if let Some(max_size) = self.params.file_size
             && base64_byte_length(value) > max_size
         {
-            return false;
+            return None;
         }
         let Ok(data) = Base64::decode_to_vec(value, None) else {
-            return false;
+            return None;
         };
-        data.starts_with(JPEG_HEADER.as_slice()) && data.ends_with(JPEG_SUFFIX.as_slice())
+        if data.starts_with(JPEG_HEADER.as_slice()) && data.ends_with(JPEG_SUFFIX.as_slice()) {
+            return Some("image/jpeg".to_string());
+        }
+        if data.starts_with(PNG_HEADER.as_slice()) {
+            return Some("image/png".to_string());
+        }
+        None
     }
 }
 
@@ -53,12 +59,15 @@ impl DataType for SwiyuPictureDataType {
         &self,
         value: &serde_json::Value,
     ) -> Result<ExtractionResult, DataTypeError> {
-        match value {
-            serde_json::Value::String(value) if self.valid_swiyu_picture(value) => Ok(
-                ExtractionResult::Value(format!("data:image/jpeg;base64,{value}")),
-            ),
-            _ => Ok(ExtractionResult::NotApplicable),
-        }
+        let serde_json::Value::String(value) = value else {
+            return Ok(ExtractionResult::NotApplicable);
+        };
+        let Some(mime_type) = self.valid_swiyu_picture(value) else {
+            return Ok(ExtractionResult::NotApplicable);
+        };
+        Ok(ExtractionResult::Value(format!(
+            "data:{mime_type};base64,{value}"
+        )))
     }
 
     fn extract_cbor_claim(

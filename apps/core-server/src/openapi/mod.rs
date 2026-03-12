@@ -564,7 +564,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
-                .name("openid4vci-draft13-swiyu")
+                .name("openid4vci-final1_0-swiyu")
                 .description(Some(indoc::formatdoc! {"
 
                 :::warning

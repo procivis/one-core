@@ -20,7 +20,7 @@ use super::validator::{
     verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match,
 };
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{FormatType, IssuanceProtocolType};
+use crate::config::core_config::FormatType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
@@ -82,12 +82,8 @@ impl OID4VCIFinal1_0Service {
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            protocol_id,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
+            .error_while("validating protocol type")?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -167,12 +163,8 @@ impl OID4VCIFinal1_0Service {
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            protocol_id,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
+            .error_while("validating protocol type")?;
 
         let protocol_base_url = self
             .protocol_base_url
@@ -282,12 +274,8 @@ impl OID4VCIFinal1_0Service {
             return Err(EntityNotFoundError::Credential(credential_id).into());
         };
 
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            &credential.protocol,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
 
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
@@ -299,7 +287,7 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting protocol config")?
             .r#type;
 
-        if issuance_protocol_type != IssuanceProtocolType::OpenId4VciFinal1_0 {
+        if issuance_protocol_type != self.protocol_type {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
         let credential_schema = credential
@@ -401,12 +389,8 @@ impl OID4VCIFinal1_0Service {
             );
         };
 
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            &credential.protocol,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
 
         let Some(OpenID4VCICredentialRequestProofs::Jwt(jwts)) = request.proofs.as_ref() else {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
@@ -801,12 +785,8 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
         };
 
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            &credential.protocol,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
 
         match (credential.state, &request.event) {
             (
@@ -936,12 +916,8 @@ impl OID4VCIFinal1_0Service {
             .first()
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            &credential.protocol,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
 
         let wallet_instance_attestation_token = self
             .validate_oauth_client_attestation(
@@ -1200,12 +1176,8 @@ impl OID4VCIFinal1_0Service {
         &self,
         protocol_id: &str,
     ) -> Result<OpenID4VCINonceResponseDTO, ServiceError> {
-        validate_issuance_protocol_type(
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-            &self.config,
-            protocol_id,
-        )
-        .error_while("validating protocol type")?;
+        validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
+            .error_while("validating protocol type")?;
 
         let params: OpenID4VCIFinal1Params = self
             .config

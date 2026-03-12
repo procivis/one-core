@@ -80,7 +80,7 @@ async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
                     }
                 }
             },
-            "OPENID4VCI_DRAFT13_SWIYU": {
+            "OPENID4VCI_FINAL1_SWIYU": {
                 "params": {
                     "private": {
                         "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"

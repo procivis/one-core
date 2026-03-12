@@ -318,9 +318,9 @@ pub enum IssuanceProtocolType {
     #[serde(rename = "OPENID4VCI_DRAFT13")]
     #[strum(serialize = "OPENID4VCI_DRAFT13")]
     OpenId4VciDraft13,
-    #[serde(rename = "OPENID4VCI_DRAFT13_SWIYU")]
-    #[strum(serialize = "OPENID4VCI_DRAFT13_SWIYU")]
-    OpenId4VciDraft13Swiyu,
+    #[serde(rename = "OPENID4VCI_FINAL1_SWIYU")]
+    #[strum(serialize = "OPENID4VCI_FINAL1_SWIYU")]
+    OpenId4vciFinal1_0Swiyu,
     #[serde(rename = "OPENID4VCI_FINAL1")]
     #[strum(serialize = "OPENID4VCI_FINAL1")]
     OpenId4VciFinal1_0,

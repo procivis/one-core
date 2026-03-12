@@ -196,54 +196,6 @@ impl OpenID4VCI13 {
         }
     }
 
-    #[expect(clippy::too_many_arguments)]
-    pub fn new_with_custom_version(
-        client: Arc<dyn HttpClient>,
-        metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
-        credential_repository: Arc<dyn CredentialRepository>,
-        key_repository: Arc<dyn KeyRepository>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        revocation_provider: Arc<dyn RevocationMethodProvider>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
-        key_provider: Arc<dyn KeyProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-        identifier_creator: Arc<dyn IdentifierCreator>,
-        blob_storage_provider: Arc<dyn BlobStorageProvider>,
-        base_url: Option<String>,
-        config: Arc<CoreConfig>,
-        params: OpenID4VCIDraft13Params,
-        protocol_version: &str,
-        handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
-    ) -> Self {
-        let protocol_base_url = base_url
-            .as_ref()
-            .map(|url| format!("{url}/ssi/openid4vci/{protocol_version}"));
-        Self {
-            client,
-            metadata_cache,
-            credential_repository,
-            key_repository,
-            validity_credential_repository,
-            formatter_provider,
-            revocation_provider,
-            did_method_provider,
-            key_algorithm_provider,
-            key_security_level_provider,
-            key_provider,
-            base_url,
-            protocol_base_url,
-            config,
-            params,
-            certificate_validator,
-            identifier_creator,
-            blob_storage_provider,
-            handle_invitation_operations,
-        }
-    }
-
     async fn validate_credential_issuable(
         &self,
         credential_id: &CredentialId,

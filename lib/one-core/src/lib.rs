@@ -67,8 +67,8 @@ use crate::service::jsonld::JsonLdService;
 use crate::service::key::KeyService;
 use crate::service::nfc::NfcService;
 use crate::service::oid4vci_draft13::OID4VCIDraft13Service;
-use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
+use crate::service::oid4vci_final1_0_swiyu::OID4VCIFinal1_0SwiyuService;
 use crate::service::oid4vp_draft20::OID4VPDraft20Service;
 use crate::service::oid4vp_draft25::OID4VPDraft25Service;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
@@ -117,7 +117,7 @@ pub struct OneCore {
     pub config_service: ConfigService,
     pub revocation_list_service: RevocationListService,
     pub oid4vci_draft13_service: OID4VCIDraft13Service,
-    pub oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService,
+    pub oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService,
     pub oid4vci_final1_0_service: OID4VCIFinal1_0Service,
     pub oid4vp_draft20_service: OID4VPDraft20Service,
     pub oid4vp_draft25_service: OID4VPDraft25Service,
@@ -551,7 +551,7 @@ impl OneCore {
                 wallet_unit_proto.clone(),
                 identifier_creator.clone(),
             ),
-            oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
+            oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService::new(
                 core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
@@ -565,6 +565,8 @@ impl OneCore {
                 certificate_validator.clone(),
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
+                blob_storage_provider.clone(),
+                wallet_unit_proto.clone(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 data_provider.get_credential_repository(),
