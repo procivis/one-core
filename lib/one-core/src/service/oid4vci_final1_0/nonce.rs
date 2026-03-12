@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::proto::jwt::Jwt;
@@ -14,7 +15,6 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCNonceParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
-use crate::service::error::ServiceError;
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ impl Default for NonceJwtPayload {
 pub(super) async fn generate_nonce(
     params: OpenID4VCNonceParams,
     base_url: Option<String>,
-) -> Result<String, ServiceError> {
+) -> Result<String, OID4VCIFinal1_0ServiceError> {
     let expiration = params.expiration.unwrap_or(300);
     let now = OffsetDateTime::now_utc();
 
@@ -60,7 +60,7 @@ pub(super) fn validate_nonce(
     params: &OpenID4VCNonceParams,
     base_url: Option<String>,
     nonce: &str,
-) -> Result<Uuid, ServiceError> {
+) -> Result<Uuid, OID4VCIFinal1_0ServiceError> {
     let DecomposedJwt::<NonceJwtPayload> {
         header,
         payload,
@@ -85,8 +85,8 @@ pub(super) fn validate_nonce(
                 .into(),
         );
     };
-    validate_issuance_time(&Some(issued_at), params.leeway)?;
-    validate_expiration_time(&Some(expires_at), params.leeway)?;
+    validate_issuance_time(&Some(issued_at), params.leeway).error_while("checking validity")?;
+    validate_expiration_time(&Some(expires_at), params.leeway).error_while("checking validity")?;
     if Some(&issuer) != base_url.as_ref() {
         return Err(
             FormatterError::CouldNotVerify(format!("Invalid nonce issuer: {issuer}"))

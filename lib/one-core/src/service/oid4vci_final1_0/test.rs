@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
+use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -35,9 +36,7 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
-use crate::provider::issuance_protocol::error::{
-    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
-};
+use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::model::SubmitIssuerResponse;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -51,7 +50,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::service::error::ServiceError;
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -667,8 +665,8 @@ async fn test_create_token_empty_pre_authorized_code() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenIDIssuanceError(
-            OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::InvalidRequest)
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest
         ))
     ));
 }
@@ -730,8 +728,8 @@ async fn test_create_token_pre_authorized_code_used() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenIDIssuanceError(
-            OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::InvalidGrant)
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidGrant
         ))
     ));
 }
@@ -793,9 +791,7 @@ async fn test_create_token_wrong_credential_state() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenIDIssuanceError(
-            OpenIDIssuanceError::InvalidCredentialState { .. }
-        ))
+        Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(_))
     ));
 }
 
@@ -1386,7 +1382,7 @@ async fn test_create_credential_configuration_id_invalid() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialType
         ))
     ));
@@ -1429,7 +1425,9 @@ async fn test_create_credential_format_invalid_bearer_token() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidToken
+        ))
     ));
 }
 
@@ -1481,7 +1479,9 @@ async fn test_create_credential_pre_authorized_code_not_used() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidToken
+        ))
     ));
 }
 
@@ -1533,7 +1533,9 @@ async fn test_create_credential_interaction_data_invalid() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidToken
+        ))
     ));
 }
 
@@ -1593,7 +1595,9 @@ async fn test_create_credential_access_token_expired() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidToken
+        ))
     ));
 }
 
@@ -1891,7 +1895,9 @@ async fn test_create_credential_nonce_reused() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce))
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidNonce
+        ))
     ));
 }
 
@@ -2153,7 +2159,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
         .err()
         .unwrap();
 
-    assert2::assert!(let ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::InvalidToken)) = result);
+    assert2::assert!(let OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken) = result);
 }
 
 #[tokio::test]
@@ -2209,7 +2215,7 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest
         ))
     ));
@@ -2268,7 +2274,7 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest
         ))
     ));
@@ -2326,7 +2332,7 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCIError(
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest
         ))
     ));

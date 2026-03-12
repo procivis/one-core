@@ -4,7 +4,7 @@ use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCITokenRequestDTO, Timestamp,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaCodeTypeEnum;
-use one_core::service::error::ServiceError;
+use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use super::dto::{
@@ -60,7 +60,7 @@ impl From<OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign>
 }
 
 impl TryFrom<OpenID4VCITokenRequestRestDTO> for OpenID4VCITokenRequestDTO {
-    type Error = ServiceError;
+    type Error = OID4VCIFinal1_0ServiceError;
 
     fn try_from(value: OpenID4VCITokenRequestRestDTO) -> Result<Self, Self::Error> {
         match (
@@ -82,16 +82,12 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for OpenID4VCITokenRequestDTO {
                 Ok(Self::RefreshToken { refresh_token })
             }
             ("urn:ietf:params:oauth:grant-type:pre-authorized_code" | "refresh_token", _, _, _) => {
-                Err(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidRequest,
-                ))
+                Err(OpenID4VCIError::InvalidRequest.into())
             }
-            (grant, _, _, _) if !grant.is_empty() => Err(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::UnsupportedGrantType,
-            )),
-            _ => Err(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::InvalidRequest,
-            )),
+            (grant, _, _, _) if !grant.is_empty() => {
+                Err(OpenID4VCIError::UnsupportedGrantType.into())
+            }
+            _ => Err(OpenID4VCIError::InvalidRequest.into()),
         }
     }
 }

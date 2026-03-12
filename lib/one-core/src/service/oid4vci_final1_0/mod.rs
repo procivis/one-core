@@ -18,6 +18,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
 pub mod dto;
+pub mod error;
 pub mod mapper;
 mod nonce;
 pub mod service;

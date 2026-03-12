@@ -11,7 +11,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
-use super::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCICredentialResponseEntryDTO};
+use super::dto::{
+    OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
+    OpenID4VCICredentialResponseEntryDTO,
+};
+use super::error::OID4VCIFinal1_0ServiceError;
 use super::mapper::interaction_data_to_dto;
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
@@ -45,9 +49,7 @@ use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::issuance_protocol::error::{
-    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
-};
+use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
     map_cryptographic_binding_methods_supported, map_proof_types_supported,
 };
@@ -68,10 +70,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
 use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-};
-use crate::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO;
+use crate::service::error::MissingProviderError;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::service::wallet_provider::dto::WalletInstanceAttestationClaims;
 use crate::validator::throw_if_credential_state_not_eq;
@@ -81,14 +80,14 @@ impl OID4VCIFinal1_0Service {
         &self,
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
-    ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
             .error_while("validating protocol type")?;
 
         let protocol_base_url =
             self.protocol_base_url
                 .as_ref()
-                .ok_or(ServiceError::MappingError(
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
                     "Host URL not specified".to_string(),
                 ))?;
 
@@ -105,7 +104,9 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting credential schema")?;
 
         let Some(schema) = schema else {
-            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+            return Err(OID4VCIFinal1_0ServiceError::MissingCredentialSchema(
+                *credential_schema_id,
+            ));
         };
 
         let format_type = self
@@ -126,7 +127,8 @@ impl OID4VCIFinal1_0Service {
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
+            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))
+            .error_while("getting formatter")?;
 
         let format_capabilities = formatter.get_capabilities();
         let credential_signing_alg_values_supported = format_capabilities
@@ -162,14 +164,16 @@ impl OID4VCIFinal1_0Service {
         &self,
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
-    ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
+    ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
             .error_while("validating protocol type")?;
 
-        let protocol_base_url = self
-            .protocol_base_url
-            .as_ref()
-            .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
+        let protocol_base_url =
+            self.protocol_base_url
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "Missing base_url".to_owned(),
+                ))?;
 
         let Some(credential_schema) = self
             .credential_schema_repository
@@ -182,7 +186,9 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credential schema")?
         else {
-            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+            return Err(OID4VCIFinal1_0ServiceError::MissingCredentialSchema(
+                *credential_schema_id,
+            ));
         };
 
         let token_endpoint_auth_methods_supported =
@@ -211,15 +217,15 @@ impl OID4VCIFinal1_0Service {
         let credential_issuer = format!("{protocol_base_url}/{protocol_id}/{credential_schema_id}");
 
         Ok(OAuthAuthorizationServerMetadata {
-            issuer: credential_issuer
-                .parse()
-                .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
+            issuer: credential_issuer.parse().map_err(|e| {
+                OID4VCIFinal1_0ServiceError::MappingError(format!("Invalid issuer URL: {e}"))
+            })?,
             authorization_endpoint: Some(
                 // ONE-8318: required in iOS EUDI wallet
                 format!("{protocol_base_url}/{credential_schema_id}/authorize")
                     .parse()
                     .map_err(|e| {
-                        ServiceError::MappingError(format!(
+                        OID4VCIFinal1_0ServiceError::MappingError(format!(
                             "Invalid authorization endpoint URL: {e}"
                         ))
                     })?,
@@ -228,7 +234,9 @@ impl OID4VCIFinal1_0Service {
                 format!("{protocol_base_url}/{credential_schema_id}/token")
                     .parse()
                     .map_err(|e| {
-                        ServiceError::MappingError(format!("Invalid token endpoint URL: {e}"))
+                        OID4VCIFinal1_0ServiceError::MappingError(format!(
+                            "Invalid token endpoint URL: {e}"
+                        ))
                     })?,
             ),
             jwks_uri: None,
@@ -253,7 +261,7 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
-    ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, ServiceError> {
+    ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, OID4VCIFinal1_0ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -271,14 +279,16 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting credential")?;
 
         let Some(credential) = credential else {
-            return Err(EntityNotFoundError::Credential(credential_id).into());
+            return Err(OID4VCIFinal1_0ServiceError::MissingCredential(
+                credential_id,
+            ));
         };
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
             .error_while("validating protocol type")?;
 
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
-            .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
+            .map_err(|_| OpenID4VCIError::InvalidRequest)?;
 
         let issuance_protocol_type = self
             .config
@@ -290,28 +300,32 @@ impl OID4VCIFinal1_0Service {
         if issuance_protocol_type != self.protocol_type {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "credential schema missing".to_string(),
-            ))?;
+        let credential_schema =
+            credential
+                .schema
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "credential schema missing".to_string(),
+                ))?;
 
         if credential_schema.id != credential_schema_id {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
-        let interaction = credential
-            .interaction
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "interaction missing".to_string(),
-            ))?;
+        let interaction =
+            credential
+                .interaction
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "interaction missing".to_string(),
+                ))?;
 
-        let protocol_base_url = self
-            .protocol_base_url
-            .as_ref()
-            .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
+        let protocol_base_url =
+            self.protocol_base_url
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "Missing base_url".to_owned(),
+                ))?;
 
         Ok(create_credential_offer(
             protocol_base_url,
@@ -326,7 +340,7 @@ impl OID4VCIFinal1_0Service {
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
-    ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         let Some(schema) = self
             .credential_schema_repository
             .get_credential_schema(
@@ -339,7 +353,9 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credential schema")?
         else {
-            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+            return Err(OID4VCIFinal1_0ServiceError::MissingCredentialSchema(
+                *credential_schema_id,
+            ));
         };
 
         throw_if_credential_request_invalid(&schema, &request)?;
@@ -358,7 +374,7 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting interaction")?
         else {
             return Err(
-                BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
+                OID4VCIFinal1_0ServiceError::MissingInteractionForAccessToken { interaction_id },
             );
         };
 
@@ -385,7 +401,7 @@ impl OID4VCIFinal1_0Service {
                 .is_some_and(|schema| schema.id == *credential_schema_id)
         }) else {
             return Err(
-                BusinessLogicError::MissingCredentialsForInteraction { interaction_id }.into(),
+                OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
             );
         };
 
@@ -414,7 +430,7 @@ impl OID4VCIFinal1_0Service {
             .await
             .map_err(|err| {
                 tracing::debug!("holder proof validation failed: {err}");
-                ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+                OpenID4VCIError::InvalidOrMissingProof
             })?;
 
         let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
@@ -443,7 +459,7 @@ impl OID4VCIFinal1_0Service {
             .await
             .map_err(|e| match e {
                 DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
-                    ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
+                    OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
                 }
                 e => e.error_while("marking nonce as used").into(),
             })?;
@@ -452,9 +468,7 @@ impl OID4VCIFinal1_0Service {
         if let Some(key_storage_security) = schema.key_storage_security {
             let Some(key_attestation_jwt) = &key_attestation else {
                 tracing::debug!("expected key attestation but none provided");
-                return Err(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidOrMissingProof,
-                ));
+                return Err(OpenID4VCIError::InvalidOrMissingProof.into());
             };
 
             let attested_keys = validator::validate_key_attestation(
@@ -473,9 +487,7 @@ impl OID4VCIFinal1_0Service {
 
             if wallet_unit_attestation_status == WalletUnitStatusCheckResponse::Revoked {
                 tracing::error!("wallet unit attestation is revoked");
-                return Err(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidOrMissingProof,
-                ));
+                return Err(OpenID4VCIError::InvalidOrMissingProof.into());
             }
 
             if schema.requires_wallet_instance_attestation {
@@ -485,9 +497,7 @@ impl OID4VCIFinal1_0Service {
                     tracing::debug!(
                         "app attestation required but no wallet app attestation blob ID found"
                     );
-                    return Err(ServiceError::OpenID4VCIError(
-                        OpenID4VCIError::InvalidOrMissingProof,
-                    ));
+                    return Err(OpenID4VCIError::InvalidOrMissingProof.into());
                 };
 
                 let db_blob_storage = self
@@ -496,13 +506,14 @@ impl OID4VCIFinal1_0Service {
                     .await
                     .ok_or_else(|| {
                         MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                    })?;
+                    })
+                    .error_while("getting blob storage")?;
 
                 let wallet_instance_attestation_blob = db_blob_storage
                     .get(wallet_instance_attestation_blob_id)
                     .await
                     .error_while("getting WIA blob")?
-                    .ok_or(ServiceError::MappingError(
+                    .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
                         "wallet app attestation blob is None".to_string(),
                     ))?;
 
@@ -510,7 +521,9 @@ impl OID4VCIFinal1_0Service {
                     &wallet_instance_attestation_blob.value,
                 )
                 .map_err(|e| {
-                    ServiceError::MappingError(format!("Failed to deserialize WIA blob: {e}"))
+                    OID4VCIFinal1_0ServiceError::MappingError(format!(
+                        "Failed to deserialize WIA blob: {e}"
+                    ))
                 })?;
 
                 let wia =
@@ -525,7 +538,7 @@ impl OID4VCIFinal1_0Service {
                     let did_document =
                         self.did_method_provider.resolve(did).await.map_err(|e| {
                             tracing::debug!("failed to resolve DID for key attestation check: {e}");
-                            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+                            OpenID4VCIError::InvalidOrMissingProof
                         })?;
 
                     did_document
@@ -535,7 +548,7 @@ impl OID4VCIFinal1_0Service {
                             tracing::debug!(
                                 "missing verification method for key attestation check: {key_id}"
                             );
-                            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+                            OpenID4VCIError::InvalidOrMissingProof
                         })?
                 }
                 OpenID4VCIProofHolderBinding::Jwk(jwk) => jwk.clone(),
@@ -543,16 +556,12 @@ impl OID4VCIFinal1_0Service {
 
             if !attested_keys.contains(&proof_signing_key) {
                 tracing::debug!("proof signing key is not in the attested_keys list");
-                return Err(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidOrMissingProof,
-                ));
+                return Err(OpenID4VCIError::InvalidOrMissingProof.into());
             }
         } else if key_attestation.is_some() {
             // Key attestation provided but not required
             tracing::debug!("key attestation provided but not required");
-            return Err(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::InvalidOrMissingProof,
-            ));
+            return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         }
 
         let (holder_identifier, holder_key_id) = match holder_binding {
@@ -579,7 +588,7 @@ impl OID4VCIFinal1_0Service {
                     .await
                     .error_while("creating remote holder identifier")?
                 else {
-                    return Err(ServiceError::MappingError(
+                    return Err(OID4VCIFinal1_0ServiceError::MappingError(
                         "Invalid identifier type".to_string(),
                     ));
                 };
@@ -615,7 +624,7 @@ impl OID4VCIFinal1_0Service {
         holder_key_id: String,
         credential: &Credential,
         key_attestation: Option<String>,
-    ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         // Lock interaction, so that the issuance process is done only by one thread
         let Some(interaction) = self
             .interaction_repository
@@ -630,7 +639,7 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting interaction")?
         else {
             return Err(
-                BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
+                OID4VCIFinal1_0ServiceError::MissingInteractionForAccessToken { interaction_id },
             );
         };
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
@@ -642,10 +651,11 @@ impl OID4VCIFinal1_0Service {
                 .await
                 .ok_or(MissingProviderError::BlobStorage(
                     BlobStorageType::Db.to_string(),
-                ))?;
+                ))
+                .error_while("getting blob storage")?;
 
             let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             let wua_blob = Blob::new(wua_dto, BlobType::WalletUnitAttestation);
             blob_storage
                 .create(wua_blob.clone())
@@ -659,7 +669,7 @@ impl OID4VCIFinal1_0Service {
         let issued_credential = self
             .protocol_provider
             .get_protocol(&credential.protocol)
-            .ok_or(ServiceError::MappingError(
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
                 "issuance protocol not found".to_string(),
             ))?
             .issuer_issue_credential(&credential.id, holder_identifier, holder_key_id)
@@ -683,7 +693,7 @@ impl OID4VCIFinal1_0Service {
                     interaction_data.notification_id = Some(notification_id.to_owned());
 
                     let data = serde_json::to_vec(&interaction_data)
-                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                        .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
 
                     self.interaction_repository
                         .update_interaction(
@@ -732,7 +742,7 @@ impl OID4VCIFinal1_0Service {
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
         request: OpenID4VCINotificationRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
@@ -827,16 +837,20 @@ impl OID4VCIFinal1_0Service {
             return Ok(());
         }
 
-        let schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+        let schema =
+            credential
+                .schema
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "schema is None".to_string(),
+                ))?;
 
         let revocation_method = match &schema.revocation_method {
             Some(method_id) => Some(
                 self.revocation_method_provider
                     .get_revocation_method(method_id)
-                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))?,
+                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))
+                    .error_while("getting revocation method")?,
             ),
             None => None,
         };
@@ -877,7 +891,7 @@ impl OID4VCIFinal1_0Service {
         request: OpenID4VCITokenRequestDTO,
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
-    ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VCITokenResponseDTO, OID4VCIFinal1_0ServiceError> {
         let params = validator::get_config_entity(&self.config).error_while("checking config")?;
 
         let credential_schema = self
@@ -885,21 +899,19 @@ impl OID4VCIFinal1_0Service {
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
             .await
             .error_while("getting credential schema")?
-            .ok_or(EntityNotFoundError::CredentialSchema(*credential_schema_id))?;
+            .ok_or(OID4VCIFinal1_0ServiceError::MissingCredentialSchema(
+                *credential_schema_id,
+            ))?;
 
         let interaction_id = match &request {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code,
                 tx_code: _,
             } => Uuid::from_str(pre_authorized_code)
-                .map_err(|_| {
-                    ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(
-                        OpenID4VCIError::InvalidRequest,
-                    ))
-                })?
+                .map_err(|_| OpenID4VCIError::InvalidRequest)?
                 .into(),
             OpenID4VCITokenRequestDTO::AuthorizationCode { .. } => {
-                return Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidGrant));
+                return Err(OpenID4VCIError::InvalidGrant.into());
             }
             OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } => {
                 parse_refresh_token(refresh_token)?
@@ -912,9 +924,9 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credentials")?;
 
-        let credential = credentials
-            .first()
-            .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
+        let credential = credentials.first().ok_or(
+            OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
+        )?;
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
             .error_while("validating protocol type")?;
@@ -948,7 +960,7 @@ impl OID4VCIFinal1_0Service {
             get_issuance_param_refresh_token_expires_in(&self.config, &credential.protocol)
                 .error_while("getting issuance params")?;
 
-        let tx: BoxFuture<Result<_, ServiceError>> = async {
+        let tx: BoxFuture<Result<_, OID4VCIFinal1_0ServiceError>> = async {
             // Lock the interaction to ensure exclusive access
             let mut interaction = self
                 .interaction_repository
@@ -959,7 +971,7 @@ impl OID4VCIFinal1_0Service {
                 )
                 .await
                 .error_while("getting interaction")?
-                .ok_or(ServiceError::MappingError(format!(
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(format!(
                     "Interaction `{}` not found",
                     interaction_id
                 )))?;
@@ -988,11 +1000,13 @@ impl OID4VCIFinal1_0Service {
                                 .await
                                 .ok_or(MissingProviderError::BlobStorage(
                                     BlobStorageType::Db.to_string(),
-                                ))?;
+                                ))
+                                .error_while("getting blob storage")?;
 
                             let attestation_token =
-                                serde_json::to_vec(&wallet_instance_attestation_token)
-                                    .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                                serde_json::to_vec(&wallet_instance_attestation_token).map_err(
+                                    |e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()),
+                                )?;
 
                             let blob =
                                 Blob::new(attestation_token, BlobType::WalletInstanceAttestation);
@@ -1042,7 +1056,7 @@ impl OID4VCIFinal1_0Service {
 
             let interaction_data: OpenID4VCIIssuerInteractionDataDTO = (&response).try_into()?;
             let data = serde_json::to_vec(&interaction_data)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             interaction.data = Some(data);
 
             self.interaction_repository
@@ -1062,9 +1076,7 @@ impl OID4VCIFinal1_0Service {
             Ok(result) => result,
             // Invalid tx-code entry means the issuance failed, we do not allow to retry
             Err(
-                err @ ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(
-                    OpenID4VCIError::InvalidGrant,
-                )),
+                err @ OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidGrant),
             ) if matches!(
                 request,
                 OpenID4VCITokenRequestDTO::PreAuthorizedCode {
@@ -1106,24 +1118,20 @@ impl OID4VCIFinal1_0Service {
         credential_schema: &CredentialSchema,
         protocol_id: &str,
         leeway: u64,
-    ) -> Result<Option<WalletInstanceAttestationDTO>, ServiceError> {
+    ) -> Result<Option<WalletInstanceAttestationDTO>, OID4VCIFinal1_0ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
         if !credential_schema.requires_wallet_instance_attestation {
             if oauth_client_attestation.is_some() || oauth_client_attestation_pop.is_some() {
-                return Err(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidRequest,
-                ));
+                return Err(OpenID4VCIError::InvalidRequest.into());
             }
             return Ok(None);
         }
 
         // Parse tokens
-        let wallet_instance_attestation_token = oauth_client_attestation.ok_or(
-            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest),
-        )?;
-        let proof_of_key_possesion_token = oauth_client_attestation_pop.ok_or(
-            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest),
-        )?;
+        let wallet_instance_attestation_token =
+            oauth_client_attestation.ok_or(OpenID4VCIError::InvalidRequest)?;
+        let proof_of_key_possesion_token =
+            oauth_client_attestation_pop.ok_or(OpenID4VCIError::InvalidRequest)?;
 
         let wallet_instance_attestation = Jwt::<WalletInstanceAttestationClaims>::decompose_token(
             wallet_instance_attestation_token,
@@ -1141,9 +1149,7 @@ impl OID4VCIFinal1_0Service {
             .protocol_base_url
             .as_ref()
             .map(|base_url| format!("{base_url}/{protocol_id}/{}", credential_schema.id))
-            .ok_or(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::InvalidRequest,
-            ))?;
+            .ok_or(OpenID4VCIError::InvalidRequest)?;
         validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
 
         // Verify signatures
@@ -1175,7 +1181,7 @@ impl OID4VCIFinal1_0Service {
     pub async fn generate_nonce(
         &self,
         protocol_id: &str,
-    ) -> Result<OpenID4VCINonceResponseDTO, ServiceError> {
+    ) -> Result<OpenID4VCINonceResponseDTO, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
             .error_while("validating protocol type")?;
 

@@ -6,8 +6,7 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
-use one_core::service::error::{EntityNotFoundError, ServiceError};
-use one_core::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO;
+use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId};
 
@@ -126,7 +125,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
         ErrorResponseRestDTO,
     >,
 ) -> Response {
-    let result: Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> = state
+    let result = state
         .core
         .oid4vci_final1_0_swiyu_service
         .oauth_authorization_server(&protocol_id, &credential_schema_id)
@@ -215,7 +214,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_credential_offer(
             Json(OpenID4VCIFinal1CredentialOfferRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCIError(error)) => {
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential offer error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -223,7 +222,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_credential_offer(
             )
                 .into_response()
         }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))) => {
+        Err(OID4VCIFinal1_0ServiceError::MissingCredential(_)) => {
             tracing::error!("Missing credential");
             StatusCode::NOT_FOUND.into_response()
         }
@@ -295,7 +294,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
             Json(OpenID4VCITokenResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCIError(error)) => {
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -367,7 +366,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
             Json(OpenID4VCIFinal1CredentialResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCIError(error)) => {
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -475,7 +474,7 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
 
     match result {
         Ok(_) => (StatusCode::NO_CONTENT).into_response(),
-        Err(ServiceError::OpenID4VCIError(error)) => {
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential notification error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
