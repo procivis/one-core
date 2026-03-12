@@ -215,7 +215,7 @@ pub(crate) struct TrustEntryFilterQueryParamsRestDTO {
     #[param(rename = "ids[]", nullable = false)]
     pub ids: Option<Vec<TrustEntryId>>,
     /// Filter by one or more identifier UUIDs.
-    #[param(rename = "ids[]", nullable = false)]
+    #[param(rename = "identifierIds[]", nullable = false)]
     pub identifier_ids: Option<Vec<IdentifierId>>,
     /// Filter by one or more trust entry states..
     #[param(rename = "states[]", nullable = false)]
