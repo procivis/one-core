@@ -261,11 +261,14 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
         serde_json::Value::String("test_trust_list_with_suspended".into())
     );
     assert_eq!(
-        jwt.payload.custom["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"][0]["value"],
-        serde_json::Value::String("Suspended Test Entity".into())
+        jwt.payload.custom["TrustedEntitiesList"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
     );
     assert_eq!(
-        jwt.payload.custom["TrustedEntitiesList"][1]["TrustedEntityInformation"]["TEName"][0]["value"],
+        jwt.payload.custom["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"][0]["value"],
         serde_json::Value::String("Active Test Entity".into())
     );
 }

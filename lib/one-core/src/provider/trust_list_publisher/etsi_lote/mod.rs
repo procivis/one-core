@@ -22,7 +22,11 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::KeyRelations;
-use crate::model::trust_entry::{TrustEntry, TrustEntryStatusEnum, UpdateTrustEntryRequest};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::trust_entry::{
+    TrustEntry, TrustEntryFilterValue, TrustEntryListQuery, TrustEntryStatusEnum,
+    UpdateTrustEntryRequest,
+};
 use crate::model::trust_list_publication::{
     TrustListPublication, TrustListPublicationRelations, TrustListPublicationRoleEnum,
     UpdateTrustListPublicationRequest,
@@ -311,7 +315,16 @@ impl EtsiLotePublisher {
 
         let entry_list = self
             .trust_entry_repository
-            .list(publication_id, Default::default())
+            .list(
+                publication_id,
+                TrustEntryListQuery {
+                    filtering: Some(
+                        TrustEntryFilterValue::Status(vec![TrustEntryStatusEnum::Active])
+                            .condition(),
+                    ),
+                    ..Default::default()
+                },
+            )
             .await
             .error_while("listing trust entries")?;
 
