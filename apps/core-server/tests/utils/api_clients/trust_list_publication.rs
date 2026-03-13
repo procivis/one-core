@@ -123,7 +123,7 @@ impl TrustListPublicationApi {
     pub async fn get_trust_list_publication_entries(
         &self,
         id: TrustListPublicationId,
-        query: Option<String>,
+        query: Option<&str>,
     ) -> Response {
         let path = if let Some(query) = query {
             format!("/api/trust-list/v1/{id}/entry?pageSize=20&page=0&{query}")

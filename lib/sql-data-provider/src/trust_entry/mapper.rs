@@ -1,7 +1,7 @@
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::trust_entry::{SortableTrustEntryColumn, TrustEntry, TrustEntryFilterValue};
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{Alias, ColumnRef, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
 use crate::entity::trust_entry;
@@ -46,7 +46,9 @@ impl IntoSortingColumn for SortableTrustEntryColumn {
             Self::CreatedDate => trust_entry::Column::CreatedDate.into_simple_expr(),
             Self::Status => trust_entry::Column::Status.into_simple_expr(),
             Self::LastModified => trust_entry::Column::LastModified.into_simple_expr(),
-            Self::IdentifierId => trust_entry::Column::IdentifierId.into_simple_expr(),
+            Self::Identifier => {
+                SimpleExpr::Column(ColumnRef::Column(Alias::new("identifier_name").into_iden()))
+            }
         }
     }
 }
@@ -73,9 +75,7 @@ impl IntoFilterCondition for TrustEntryFilterValue {
             Self::LastModified(value) => {
                 get_comparison_condition(trust_entry::Column::LastModified, value)
             }
-            Self::Ids(ids) => trust_entry::Column::IdentifierId
-                .is_in(ids)
-                .into_condition(),
+            Self::Ids(ids) => trust_entry::Column::Id.is_in(ids).into_condition(),
             Self::IdentifierIds(identifier_ids) => trust_entry::Column::IdentifierId
                 .is_in(identifier_ids)
                 .into_condition(),
