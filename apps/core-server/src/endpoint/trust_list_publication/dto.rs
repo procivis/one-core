@@ -109,7 +109,7 @@ pub(crate) struct GetTrustListPublicationResponseRestDTO {
     pub role: TrustListPublicationRoleRestEnum,
     #[from(with_fn_ref = "map_raw_str_opt")]
     pub content: Option<String>,
-    pub sequence_number: i64,
+    pub sequence_number: u32,
     #[from(with_fn_ref = "map_raw_str")]
     pub metadata: String,
     pub organisation_id: OrganisationId,

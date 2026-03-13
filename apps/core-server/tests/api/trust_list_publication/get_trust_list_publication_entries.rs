@@ -27,7 +27,7 @@ async fn test_get_trust_list_publication_entries() {
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )
@@ -86,7 +86,7 @@ async fn test_get_trust_list_publication_entries_empty() {
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )
@@ -140,7 +140,7 @@ async fn test_get_trust_list_publication_entries_sorted_by_identifier() {
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )

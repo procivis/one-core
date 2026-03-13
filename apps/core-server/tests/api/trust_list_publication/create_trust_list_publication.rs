@@ -45,10 +45,7 @@ async fn test_create_trust_list_publication() {
         existing_trust_list_publication.role,
         TrustListPublicationRoleEnum::PidProvider
     );
-    similar_asserts::assert_eq!(
-        existing_trust_list_publication.identifier_id,
-        Some(identifier.id)
-    );
+    similar_asserts::assert_eq!(existing_trust_list_publication.identifier_id, identifier.id);
     similar_asserts::assert_eq!(
         existing_trust_list_publication.organisation_id,
         organisation.id

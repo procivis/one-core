@@ -24,12 +24,11 @@ pub struct Model {
     pub metadata: Vec<u8>,
     #[sea_orm(column_name = "deactivated_at")]
     pub deleted_at: Option<OffsetDateTime>,
-    #[sea_orm(column_type = "Blob", nullable)]
-    pub content: Option<Vec<u8>>,
-    pub sequence_number: i64,
+    #[sea_orm(column_type = "Blob")]
+    pub content: Vec<u8>,
+    pub sequence_number: u32,
     pub organisation_id: OrganisationId,
-    #[sea_orm(nullable)]
-    pub identifier_id: Option<IdentifierId>,
+    pub identifier_id: IdentifierId,
     #[sea_orm(nullable)]
     pub key_id: Option<KeyId>,
     #[sea_orm(nullable)]

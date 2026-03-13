@@ -176,3 +176,158 @@ async fn test_db_schema_trust_entity() {
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(true);
 }
+
+#[tokio::test]
+async fn test_db_schema_trust_list_publication() {
+    let schema = get_schema().await;
+
+    let trust_list_publication = schema.table("trust_list_publication").columns(&[
+        "id",
+        "created_date",
+        "last_modified",
+        "name",
+        "role",
+        "type",
+        "metadata",
+        "deactivated_at",
+        "content",
+        "sequence_number",
+        "organisation_id",
+        "identifier_id",
+        "key_id",
+        "certificate_id",
+    ]);
+    trust_list_publication
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    trust_list_publication
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("name")
+        .r#type(ColumnType::Text)
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("role")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("metadata")
+        .r#type(ColumnType::Blob)
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("deactivated_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    trust_list_publication
+        .column("content")
+        .r#type(ColumnType::Blob)
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("sequence_number")
+        .r#type(ColumnType::Unsigned)
+        .nullable(false)
+        .default(None);
+    trust_list_publication
+        .column("organisation_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-TrustListPublication-OrganisationId",
+            "organisation",
+            "id",
+        );
+    trust_list_publication
+        .column("identifier_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-TrustListPublication-IdentifierId", "identifier", "id");
+    trust_list_publication
+        .column("key_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-TrustListPublication-KeyId", "key", "id");
+    trust_list_publication
+        .column("certificate_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-TrustListPublication-CertificateId", "certificate", "id");
+}
+
+#[tokio::test]
+async fn test_db_schema_trust_entry() {
+    let schema = get_schema().await;
+
+    let trust_entry = schema.table("trust_entry").columns(&[
+        "id",
+        "created_date",
+        "last_modified",
+        "status",
+        "metadata",
+        "trust_list_publication_id",
+        "identifier_id",
+    ]);
+    trust_entry
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    trust_entry
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("status")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("metadata")
+        .r#type(ColumnType::Blob)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("trust_list_publication_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-TrustEntry-TrustListPublicationId",
+            "trust_list_publication",
+            "id",
+        );
+    trust_entry
+        .column("identifier_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-TrustEntry-IdentifierId", "identifier", "id");
+}

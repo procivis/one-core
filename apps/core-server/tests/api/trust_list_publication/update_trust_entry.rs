@@ -93,7 +93,7 @@ async fn test_fail_to_update_trust_entry_not_found() {
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )

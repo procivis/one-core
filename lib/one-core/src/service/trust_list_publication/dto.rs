@@ -58,7 +58,7 @@ pub struct GetTrustListPublicationResponseDTO {
     #[try_from(infallible)]
     pub content: Option<Vec<u8>>,
     #[try_from(infallible)]
-    pub sequence_number: i64,
+    pub sequence_number: u32,
     #[try_from(infallible)]
     pub metadata: Vec<u8>,
     #[try_from(infallible)]

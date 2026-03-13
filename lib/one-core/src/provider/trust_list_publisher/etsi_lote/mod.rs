@@ -124,10 +124,10 @@ impl TrustListPublisher for EtsiLotePublisher {
             r#type: self.method_id.clone(),
             metadata,
             deleted_at: None,
-            content: None,
+            content: Vec::new(),
             sequence_number: 0,
             organisation_id: request.organisation_id,
-            identifier_id: Some(request.identifier.id),
+            identifier_id: request.identifier.id,
             key_id: Some(key.id),
             certificate_id: Some(certificate.id),
             organisation: None,
@@ -231,12 +231,7 @@ impl TrustListPublisher for EtsiLotePublisher {
         let refresh_interval = self.params.refresh_interval_seconds;
 
         if publication.last_modified + refresh_interval > self.clock.now_utc() {
-            let content = publication.content.ok_or_else(|| {
-                TrustListPublisherError::MissingRelation(
-                    "publication missing trust list content".to_string(),
-                )
-            })?;
-            return Ok(String::from_utf8(content)?);
+            return Ok(String::from_utf8(publication.content)?);
         }
 
         let content = self.sign_trust_list(publication.id).await?;
@@ -453,7 +448,7 @@ fn build_lote_payload(
     let lote_type = LoTEType::try_from(&publication.role)?;
     let list_params: dto::CreateTrustListParams = serde_json::from_slice(&publication.metadata)?;
 
-    let sequence_number = publication.sequence_number as u64;
+    let sequence_number = u64::from(publication.sequence_number);
 
     let scheme_info = ListAndSchemeInformation {
         lote_version_identifier: 1,

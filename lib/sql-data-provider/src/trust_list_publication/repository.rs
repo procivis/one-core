@@ -65,9 +65,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
             );
         }
 
-        if let Some(identifier_id) = identifier_id
-            && let Some(identifier_relations) = &relations.identifier
-        {
+        if let Some(identifier_relations) = &relations.identifier {
             result.identifier = Some(
                 self.identifier_repository
                     .get(identifier_id, identifier_relations)
@@ -131,7 +129,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
         trust_list_publication::Entity::update(trust_list_publication::ActiveModel {
             id: Unchanged(id),
             last_modified: Set(OffsetDateTime::now_utc()),
-            content: request.content.map(Set).unwrap_or_default().into(),
+            content: request.content.map(Set).unwrap_or_default(),
             sequence_number: request.sequence_number.map(Set).unwrap_or_default(),
             ..Default::default()
         })

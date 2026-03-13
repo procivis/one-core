@@ -65,10 +65,10 @@ fn dummy_trust_list_publication(
         r#type: "LOTE".into(),
         metadata: vec![],
         deleted_at: None,
-        content: None,
+        content: Vec::new(),
         sequence_number: 0,
         organisation_id: org_id,
-        identifier_id: Some(identifier_id),
+        identifier_id,
         key_id: None,
         certificate_id: None,
         organisation: None,
@@ -478,7 +478,7 @@ async fn test_update_trust_list_publication_content_and_sequence_number() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(found.content, Some(new_content));
+    assert_eq!(found.content, new_content);
     assert_eq!(found.sequence_number, 42);
     assert_eq!(found.name, "test-publication");
 }

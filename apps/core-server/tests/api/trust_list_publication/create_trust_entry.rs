@@ -82,7 +82,7 @@ async fn test_create_trust_entry_certificate_authority() {
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )
@@ -122,7 +122,7 @@ async fn test_fail_to_create_trust_entry_organisation_mismatch() {
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             other_organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )
@@ -155,7 +155,7 @@ async fn test_fail_to_create_trust_entry_missing_entry_identifier_capabilities()
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
-            Some(identifier.clone()),
+            identifier.clone(),
             Some(key.id),
             Some(certificate.id),
         )

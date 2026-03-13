@@ -66,10 +66,10 @@ fn dummy_publication(
         r#type: "ETSI_LOTE".into(),
         metadata,
         deleted_at: None,
-        content: None,
+        content: Vec::new(),
         sequence_number: 42,
         organisation_id: Uuid::new_v4().into(),
-        identifier_id: Some(Uuid::new_v4().into()),
+        identifier_id: Uuid::new_v4().into(),
         key_id: None,
         certificate_id: None,
         organisation: None,
@@ -195,7 +195,7 @@ fn mock_publication_repo(
         }
         if let Some(ref bytes) = request.content {
             content_log.lock().unwrap().push(bytes.clone());
-            publication.content = Some(bytes.to_owned());
+            publication.content = bytes.to_owned();
         }
         publication.last_modified = OffsetDateTime::now_utc();
         Ok(())
@@ -582,7 +582,7 @@ async fn test_lifecycle_create_add_update_remove() {
     {
         let pub_entity = repos.stored_publication.lock().unwrap().clone().unwrap();
         assert_eq!(pub_entity.sequence_number, 1);
-        let payload = decode_jws_payload(pub_entity.content.as_ref().unwrap());
+        let payload = decode_jws_payload(&pub_entity.content);
         assert!(payload.trusted_entities_list.is_none());
     }
 
@@ -595,7 +595,7 @@ async fn test_lifecycle_create_add_update_remove() {
     {
         let pub_entity = repos.stored_publication.lock().unwrap().clone().unwrap();
         assert_eq!(pub_entity.sequence_number, 2);
-        let payload = decode_jws_payload(pub_entity.content.as_ref().unwrap());
+        let payload = decode_jws_payload(&pub_entity.content);
         assert_eq!(payload.trusted_entities_list.as_ref().unwrap().len(), 1);
         assert_eq!(
             payload.trusted_entities_list.as_ref().unwrap()[0]
@@ -643,7 +643,7 @@ async fn test_lifecycle_create_add_update_remove() {
     {
         let pub_entity = repos.stored_publication.lock().unwrap().clone().unwrap();
         assert_eq!(pub_entity.sequence_number, 4);
-        let payload = decode_jws_payload(pub_entity.content.as_ref().unwrap());
+        let payload = decode_jws_payload(&pub_entity.content);
         assert!(payload.trusted_entities_list.is_none());
     }
 
@@ -878,7 +878,7 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
     );
     assert_eq!(stored_params.scheme_territory.as_deref().unwrap(), "DE");
 
-    let payload = decode_jws_payload(pub_entity.content.as_ref().unwrap());
+    let payload = decode_jws_payload(&pub_entity.content);
     let info = &payload.list_and_scheme_information;
     assert_eq!(info.scheme_operator_name[0].lang, "de");
     assert_eq!(info.scheme_operator_name[0].value, "Betreiber GmbH");
