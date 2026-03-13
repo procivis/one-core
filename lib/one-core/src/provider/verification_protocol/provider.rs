@@ -184,6 +184,8 @@ pub(crate) fn verification_protocol_provider_from_config(
                     name,
                     params.url_scheme.to_string(),
                 )?;
+                validate_url_scheme_unique(&mut openid_url_schemes, name, "https".to_string())?;
+                let allow_insecure_http_transport = params.allow_insecure_http_transport;
                 let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
                     credential_formatter_provider.clone(),
@@ -197,7 +199,11 @@ pub(crate) fn verification_protocol_provider_from_config(
                     params,
                     core_config.clone(),
                 )?;
-                Arc::new(OpenID4VP20Swiyu::new(http20))
+                Arc::new(OpenID4VP20Swiyu::new(
+                    http20,
+                    client.clone(),
+                    allow_insecure_http_transport,
+                ))
             }
             VerificationProtocolType::OpenId4VpProximityDraft00 => {
                 let params = fields
