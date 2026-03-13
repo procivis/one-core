@@ -122,11 +122,23 @@ pub(crate) struct CreateCertificateAuthorityRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateSelfSignedCertificateAuthorityRequestDTO)]
 pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
+    /// Certificate content for the self-signed CA, including subject
+    /// information and an optional issuer alternative name, required for
+    /// mdoc CAs.
     pub content: CreateSelfSignedCaRequestContentRestDTO,
+    /// Signer instance to use for CA certificate signing. Must reference
+    /// an `X509_CERTIFICATE` signer configured in the signing configuration.
+    /// For mdoc CAs, ensure the referenced instance is configured with
+    /// `pathLenConstraint: 0` and `keyIdDerivation: "sha-1"`.
     #[modify_schema(field = signer)]
     pub signer: String,
+    /// Start of the CA certificate validity period (RFC 3339). If omitted,
+    /// defaults to time of issuance.
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_start: Option<OffsetDateTime>,
+    /// End of the CA certificate validity period (RFC 3339). Must not
+    /// exceed the `maxValidityDuration` set in the referenced signer
+    /// configuration.
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_end: Option<OffsetDateTime>,
 }
@@ -137,6 +149,7 @@ pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
 #[into(CreateSelfSignedCertificateAuthorityContentRequestDTO)]
 pub(crate) struct CreateSelfSignedCaRequestContentRestDTO {
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    /// If you are creating an mdoc CA, provide an alternative name.
     #[into(with_fn = convert_inner)]
     pub issuer_alternative_name: Option<CreateSelfSignedCaRequestIssuerAlternativeNameRestDTO>,
 }
