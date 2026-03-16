@@ -835,6 +835,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Trust collection already exists")]
     BR_0398,
+
+    #[strum(message = "Invalid trust list subscription reference")]
+    BR_0399,
+
+    #[strum(message = "Trust list subscriber provider not found")]
+    BR_0400,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

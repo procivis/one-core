@@ -1,7 +1,7 @@
 use autometrics::autometrics;
 use one_core::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionListQuery,
-    TrustListSubscriptionRelations,
+    TrustListSubscriptionRelations, TrustListSubscriptionState,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
@@ -28,6 +28,23 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
         let model: trust_list_subscription::ActiveModel = entity.into();
         model.insert(&self.db).await.map_err(to_data_layer_error)?;
         Ok(id)
+    }
+
+    async fn update_state(
+        &self,
+        id: TrustListSubscriptionId,
+        state: TrustListSubscriptionState,
+    ) -> Result<(), DataLayerError> {
+        trust_list_subscription::Entity::update(trust_list_subscription::ActiveModel {
+            id: Unchanged(id),
+            last_modified: Set(OffsetDateTime::now_utc()),
+            state: Set(state.into()),
+            ..Default::default()
+        })
+        .exec(&self.db)
+        .await
+        .map_err(to_update_data_layer_error)?;
+        Ok(())
     }
 
     async fn get(
@@ -78,6 +95,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     async fn delete(&self, id: TrustListSubscriptionId) -> Result<(), DataLayerError> {
         trust_list_subscription::Entity::update(trust_list_subscription::ActiveModel {
             id: Unchanged(id),
+            last_modified: Set(OffsetDateTime::now_utc()),
             deactivated_at: Set(Some(OffsetDateTime::now_utc())),
             ..Default::default()
         })

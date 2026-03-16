@@ -2,7 +2,7 @@ use one_crypto::CryptoProviderError;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, DidValue, IdentifierId, InteractionId, OrganisationId,
     ProofId, RevocationListEntryId, RevocationMethodId, TaskId, TrustAnchorId, TrustEntityId,
-    TrustEntityKey,
+    TrustEntityKey, TrustListSubscriberId,
 };
 use thiserror::Error;
 
@@ -217,6 +217,9 @@ pub enum MissingProviderError {
 
     #[error("Cannot find verifier provider `{0}`")]
     Verifier(String),
+
+    #[error("Cannot find trust list subscriber provider `{0}`")]
+    TrustListSubscriber(TrustListSubscriberId),
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -311,6 +314,7 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::BlobStorage(_) => ErrorCode::BR_0252,
             Self::Signer(_) => ErrorCode::BR_0326,
             Self::Verifier(_) => ErrorCode::BR_0380,
+            Self::TrustListSubscriber(_) => ErrorCode::BR_0400,
         }
     }
 }

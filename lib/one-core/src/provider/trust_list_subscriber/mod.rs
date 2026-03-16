@@ -36,12 +36,12 @@ pub struct TrustListSubscriberCapabilities {
     pub roles: Vec<TrustListRoleEnum>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrustListValidationSuccess {
     pub role: TrustListRoleEnum,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TrustEntityResponse {
     LOTE(TrustedEntityInformation),
 }

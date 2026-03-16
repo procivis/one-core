@@ -186,6 +186,8 @@ pub enum HistoryEntityType {
     SupervisoryAuthority,
     #[sea_orm(string_value = "TRUST_LIST_PUBLICATION")]
     TrustListPublication,
+    #[sea_orm(string_value = "TRUST_LIST_SUBSCRIPTION")]
+    TrustListSubscription,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

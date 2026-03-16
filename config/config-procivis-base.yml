@@ -691,6 +691,10 @@ task:
           interval: 1
           maxAttempts: 5
           exponentialFactor: 2.5
+  TRUST_LIST_SUBSCRIPTION_UPDATE:
+    type: "TRUST_LIST_SUBSCRIPTION_UPDATE"
+    display: "task.trustListSubscriptionUpdate"
+    order: 6
 cacheEntities:
   X509_CRL:
     cacheType: DB

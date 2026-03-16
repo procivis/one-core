@@ -198,6 +198,7 @@ pub enum HistoryEntityType {
     Notification,
     SupervisoryAuthority,
     TrustListPublication,
+    TrustListSubscription,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

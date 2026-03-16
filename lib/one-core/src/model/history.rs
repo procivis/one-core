@@ -5,7 +5,7 @@ use shared_types::{
 };
 use time::OffsetDateTime;
 
-use crate::error::ErrorCode;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
@@ -23,6 +23,24 @@ pub enum HistoryMetadata {
 pub struct HistoryErrorMetadata {
     pub error_code: ErrorCode,
     pub message: String,
+}
+
+impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {
+    fn from(value: T) -> Self {
+        Self::ErrorMetadata(HistoryErrorMetadata {
+            error_code: value.error_code(),
+            message: value.to_string(),
+        })
+    }
+}
+
+impl From<Box<dyn ErrorCodeMixin>> for HistoryMetadata {
+    fn from(value: Box<dyn ErrorCodeMixin>) -> Self {
+        Self::ErrorMetadata(HistoryErrorMetadata {
+            error_code: value.error_code(),
+            message: value.to_string(),
+        })
+    }
 }
 
 impl From<UnexportableEntitiesResponseDTO> for HistoryMetadata {
@@ -107,6 +125,7 @@ pub enum HistoryEntityType {
     Notification,
     SupervisoryAuthority,
     TrustListPublication,
+    TrustListSubscription,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

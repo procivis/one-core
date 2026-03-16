@@ -188,6 +188,7 @@ pub enum HistoryEntityTypeBindingEnum {
     Notification,
     SupervisoryAuthority,
     TrustListPublication,
+    TrustListSubscription,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]

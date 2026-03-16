@@ -665,6 +665,9 @@ pub enum TaskType {
     #[serde(rename = "WEBHOOK_NOTIFY")]
     #[strum(serialize = "WEBHOOK_NOTIFY")]
     WebhookNotify,
+    #[serde(rename = "TRUST_LIST_SUBSCRIPTION_UPDATE")]
+    #[strum(serialize = "TRUST_LIST_SUBSCRIPTION_UPDATE")]
+    TrustListSubscriptionUpdate,
 }
 
 pub type TrustManagementConfig = ConfigBlock<String, TrustManagementType>;

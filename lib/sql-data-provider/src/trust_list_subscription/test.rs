@@ -140,6 +140,31 @@ async fn test_delete_trust_list_subscription() {
 }
 
 #[tokio::test]
+async fn test_update_trust_list_state_subscription() {
+    let TestSetup {
+        provider,
+        trust_collection_id,
+        ..
+    } = setup().await;
+
+    let subscription = dummy_trust_list_subscription(trust_collection_id);
+    let id = subscription.id;
+    provider.create(subscription).await.unwrap();
+
+    let result = provider
+        .update_state(id, TrustListSubscriptionState::Error)
+        .await;
+    assert!(result.is_ok());
+
+    let get_result = provider
+        .get(&id, &TrustListSubscriptionRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(get_result.state, TrustListSubscriptionState::Error);
+}
+
+#[tokio::test]
 async fn test_list_trust_list_subscription() {
     let TestSetup {
         provider,

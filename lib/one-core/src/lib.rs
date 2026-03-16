@@ -359,7 +359,6 @@ impl OneCore {
             data_provider.get_identifier_repository(),
         )?;
 
-        #[expect(unused)]
         let trust_list_subscriber_provider = trust_list_subscriber_provider_from_config(
             &mut config,
             clock.clone(),
@@ -468,11 +467,13 @@ impl OneCore {
             data_provider.get_identifier_repository(),
             data_provider.get_interaction_repository(),
             data_provider.get_notification_repository(),
+            data_provider.get_trust_list_subscription_repository(),
             credential_validity_manager,
             certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
             notification_sender.clone(),
+            trust_list_subscriber_provider,
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

@@ -2,7 +2,7 @@ use shared_types::TrustListSubscriptionId;
 
 use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionListQuery,
-    TrustListSubscriptionRelations,
+    TrustListSubscriptionRelations, TrustListSubscriptionState,
 };
 use crate::repository::error::DataLayerError;
 
@@ -13,6 +13,12 @@ pub trait TrustListSubscriptionRepository: Send + Sync {
         &self,
         entity: TrustListSubscription,
     ) -> Result<TrustListSubscriptionId, DataLayerError>;
+
+    async fn update_state(
+        &self,
+        id: TrustListSubscriptionId,
+        state: TrustListSubscriptionState,
+    ) -> Result<(), DataLayerError>;
 
     async fn get(
         &self,
