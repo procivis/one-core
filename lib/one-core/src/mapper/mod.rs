@@ -286,7 +286,7 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     {
         Some(JwkUse::Encryption)
     } else {
-        None
+        return Ok(None);
     };
 
     let mut jwk = key_algorithm
