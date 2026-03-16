@@ -1,0 +1,33 @@
+services:
+  mariadb:
+    image: mariadb:10.9
+    ports:
+      - 3306:3306
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MYSQL_USER: core
+      MYSQL_DATABASE: core
+    restart: on-failure
+
+
+  core-one:
+    image: hub.fity.tech/fidentity/procivis-one-core:0.0.0-dev
+    ports:
+      - 3210:3210
+    environment:
+      ONE_app__databaseUrl: "mysql://core:886eOqVMmlHsayu6Vyxw@mariadb/core"
+      ONE_app__coreBaseUrl: "https://fidentity2.ngrok.dev"
+      ONE_app__authToken: "test"
+      ONE_app__serverPort: "3210"
+      ONE_app__enableOpenApi: "true"
+      ONE_app__enableExternalEndpoints: "true"
+      ONE_app__enableManagementEndpoints: "true"
+    depends_on:
+      - mariadb
+    restart: on-failure
+
+volumes:
+  mariadb_data:
+  mysql_data:
+  postgres_data:
