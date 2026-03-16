@@ -145,6 +145,12 @@ pub struct OpenID4VPDraftClientMetadata {
     pub id_token_encrypted_response_alg: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub subject_syntax_types_supported: Vec<String>,
+    #[serde(default)]
+    pub client_id: Option<String>,
+    #[serde(default)]
+    pub client_name: Option<String>,
+    #[serde(default)]
+    pub logo_uri: Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
