@@ -7,8 +7,9 @@ use one_core::model::trust_entry::{
     TrustEntryStatusEnum, UpdateTrustEntryRequest,
 };
 use one_core::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations, TrustListPublicationRoleEnum,
+    TrustListPublication, TrustListPublicationRelations,
 };
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
@@ -507,7 +508,7 @@ async fn test_get_trust_entry_with_publication_relation() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "test-publication".to_string(),
-            role: TrustListPublicationRoleEnum::Issuer,
+            role: TrustListRoleEnum::Issuer,
             r#type: "LOTE".into(),
             metadata: vec![],
             deleted_at: None,

@@ -1,6 +1,6 @@
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStatusEnum;
-use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
+use one_core::model::trust_list_role::TrustListRoleEnum;
 
 use crate::utils::context::TestContext;
 
@@ -14,7 +14,7 @@ async fn test_delete_trust_list_publication() {
         .trust_list_publications
         .create(
             "test_trust_list_publication",
-            TrustListPublicationRoleEnum::PidProvider,
+            TrustListRoleEnum::PidProvider,
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),

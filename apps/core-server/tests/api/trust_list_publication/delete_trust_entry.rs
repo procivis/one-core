@@ -1,7 +1,7 @@
-use core_server::endpoint::trust_list_publication::dto::TrustListPublicationRoleRestEnum;
+use core_server::endpoint::trust_list_publication::dto::TrustListRoleRestEnum;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStatusEnum;
-use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use uuid::Uuid;
 
 use crate::utils::api_clients::trust_list_publication::CreateTrustListPublicationTestParams;
@@ -21,7 +21,7 @@ async fn test_delete_trust_entry() {
             identifier_id: identifier.id,
             organisation_id: organisation.id,
             name: "test_trust_list_publication",
-            role: TrustListPublicationRoleRestEnum::PidProvider,
+            role: TrustListRoleRestEnum::PidProvider,
             r#type: "LOTE_PUBLISHER".into(),
             key_id: None,
             certificate_id: None,
@@ -80,7 +80,7 @@ async fn test_fail_to_delete_trust_entry_entry_does_not_belong_to_list() {
         .trust_list_publications
         .create(
             "test_trust_list_publication",
-            TrustListPublicationRoleEnum::PidProvider,
+            TrustListRoleEnum::PidProvider,
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
@@ -123,7 +123,7 @@ async fn test_fail_to_delete_trust_entry_not_found() {
         .trust_list_publications
         .create(
             "test_trust_list_publication",
-            TrustListPublicationRoleEnum::PidProvider,
+            TrustListRoleEnum::PidProvider,
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),

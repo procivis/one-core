@@ -1,7 +1,6 @@
 use one_core::model::trust_entry::{SortableTrustEntryColumn, TrustEntryStatusEnum};
-use one_core::model::trust_list_publication::{
-    SortableTrustListPublicationColumn, TrustListPublicationRoleEnum,
-};
+use one_core::model::trust_list_publication::SortableTrustListPublicationColumn;
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::service::error::ServiceError;
 use one_core::service::trust_list_publication::dto::{
     CreateTrustEntryRequestDTO, CreateTrustListPublicationRequestDTO,
@@ -42,7 +41,7 @@ pub struct CreateTrustListRequestRestDTO {
     #[try_into(infallible)]
     pub name: String,
     #[try_into(infallible)]
-    pub role: TrustListPublicationRoleRestEnum,
+    pub role: TrustListRoleRestEnum,
     #[try_into(infallible)]
     pub params: Option<serde_json::Value>,
 }
@@ -82,7 +81,7 @@ pub(crate) struct TrustListPublicationListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
     pub r#type: TrustListPublisherId,
-    pub role: TrustListPublicationRoleRestEnum,
+    pub role: TrustListRoleRestEnum,
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deleted_at: Option<OffsetDateTime>,
@@ -106,7 +105,7 @@ pub(crate) struct GetTrustListPublicationResponseRestDTO {
     pub name: String,
     pub identifier: GetIdentifierListItemResponseRestDTO,
     pub r#type: TrustListPublisherId,
-    pub role: TrustListPublicationRoleRestEnum,
+    pub role: TrustListRoleRestEnum,
     #[from(with_fn_ref = "map_raw_str_opt")]
     pub content: Option<String>,
     pub sequence_number: u32,
@@ -157,7 +156,7 @@ pub(crate) struct TrustListPublicationFilterQueryParamsRestDTO {
     pub types: Option<Vec<String>>,
     /// Filter by one or more trust list roles.
     #[param(rename = "roles[]", nullable = false)]
-    pub roles: Option<Vec<TrustListPublicationRoleRestEnum>>,
+    pub roles: Option<Vec<TrustListRoleRestEnum>>,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
@@ -281,10 +280,10 @@ pub enum TrustEntryStateRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From, Deserialize, Serialize, ToSchema)]
-#[into(TrustListPublicationRoleEnum)]
-#[from(TrustListPublicationRoleEnum)]
+#[into(TrustListRoleEnum)]
+#[from(TrustListRoleEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustListPublicationRoleRestEnum {
+pub enum TrustListRoleRestEnum {
     PidProvider,
     WalletProvider,
     WrpAcProvider,

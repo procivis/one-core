@@ -14,8 +14,8 @@ use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_entry::{TrustEntry, TrustEntryListQuery, TrustEntryRelations};
 use crate::model::trust_list_publication::{
     TrustListPublication, TrustListPublicationListQuery, TrustListPublicationRelations,
-    TrustListPublicationRoleEnum,
 };
+use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::provider::trust_list_publisher::{
     CreateTrustListRequest, TrustListPublisher, TrustListPublisherCapabilities,
 };
@@ -338,7 +338,7 @@ fn validate_organisation_matches(
 }
 
 fn validate_trust_list_role_capabilities(
-    role: &TrustListPublicationRoleEnum,
+    role: &TrustListRoleEnum,
     capabilities: TrustListPublisherCapabilities,
 ) -> Result<(), TrustListPublicationServiceError> {
     if !capabilities.supported_roles.contains(role) {
@@ -443,7 +443,7 @@ mod tests {
     use crate::model::key::Key;
     use crate::model::organisation::Organisation;
     use crate::model::trust_entry::TrustEntryStatusEnum;
-    use crate::model::trust_list_publication::TrustListPublicationRoleEnum;
+    use crate::model::trust_list_role::TrustListRoleEnum;
     use crate::proto::session_provider::MockSessionProvider;
     use crate::provider::trust_list_publisher::provider::MockTrustListPublisherProvider;
     use crate::provider::trust_list_publisher::{
@@ -524,7 +524,7 @@ mod tests {
                     crate::config::core_config::IdentifierType::Certificate,
                 ],
                 entry_identifier_types: vec![],
-                supported_roles: vec![TrustListPublicationRoleEnum::PidProvider],
+                supported_roles: vec![TrustListRoleEnum::PidProvider],
             });
 
         trust_list_publisher
@@ -557,7 +557,7 @@ mod tests {
                 key_id: None,
                 certificate_id: None,
                 name: "testName".to_string(),
-                role: TrustListPublicationRoleEnum::PidProvider,
+                role: TrustListRoleEnum::PidProvider,
                 params: Default::default(),
             })
             .await;

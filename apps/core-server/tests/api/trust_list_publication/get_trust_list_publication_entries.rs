@@ -5,7 +5,7 @@ use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entry::TrustEntryStatusEnum;
-use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ async fn test_get_trust_list_publication_entries() {
         .trust_list_publications
         .create(
             "test_trust_list_publication",
-            TrustListPublicationRoleEnum::PidProvider,
+            TrustListRoleEnum::PidProvider,
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
@@ -82,7 +82,7 @@ async fn test_get_trust_list_publication_entries_empty() {
         .trust_list_publications
         .create(
             "test_trust_list_publication",
-            TrustListPublicationRoleEnum::PidProvider,
+            TrustListRoleEnum::PidProvider,
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
@@ -136,7 +136,7 @@ async fn test_get_trust_list_publication_entries_sorted_by_identifier() {
         .trust_list_publications
         .create(
             "test_trust_list_publication",
-            TrustListPublicationRoleEnum::PidProvider,
+            TrustListRoleEnum::PidProvider,
             "LOTE_PUBLISHER".into(),
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),

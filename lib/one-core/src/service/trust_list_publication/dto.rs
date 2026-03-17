@@ -8,7 +8,8 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::identifier::Identifier;
 use crate::model::trust_entry::{TrustEntry, TrustEntryStatusEnum};
-use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationRoleEnum};
+use crate::model::trust_list_publication::TrustListPublication;
+use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
 
@@ -20,7 +21,7 @@ pub struct CreateTrustListPublicationRequestDTO {
     pub key_id: Option<KeyId>,
     pub certificate_id: Option<CertificateId>,
     pub name: String,
-    pub role: TrustListPublicationRoleEnum,
+    pub role: TrustListRoleEnum,
     pub params: Option<serde_json::Value>,
 }
 
@@ -54,7 +55,7 @@ pub struct GetTrustListPublicationResponseDTO {
     #[try_from(infallible)]
     pub r#type: TrustListPublisherId,
     #[try_from(infallible)]
-    pub role: TrustListPublicationRoleEnum,
+    pub role: TrustListRoleEnum,
     #[try_from(infallible)]
     pub content: Option<Vec<u8>>,
     #[try_from(infallible)]
@@ -74,7 +75,7 @@ pub struct TrustListPublicationListItemResponseDTO {
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
     pub r#type: TrustListPublisherId,
-    pub role: TrustListPublicationRoleEnum,
+    pub role: TrustListRoleEnum,
     pub deleted_at: Option<OffsetDateTime>,
 }
 

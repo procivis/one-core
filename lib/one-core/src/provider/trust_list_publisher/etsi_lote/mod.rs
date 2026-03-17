@@ -28,9 +28,9 @@ use crate::model::trust_entry::{
     UpdateTrustEntryRequest,
 };
 use crate::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations, TrustListPublicationRoleEnum,
-    UpdateTrustListPublicationRequest,
+    TrustListPublication, TrustListPublicationRelations, UpdateTrustListPublicationRequest,
 };
+use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::clock::Clock;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -77,12 +77,12 @@ impl TrustListPublisher for EtsiLotePublisher {
                 IdentifierType::CertificateAuthority,
             ],
             supported_roles: vec![
-                TrustListPublicationRoleEnum::PidProvider,
-                TrustListPublicationRoleEnum::WalletProvider,
-                TrustListPublicationRoleEnum::WrpAcProvider,
-                TrustListPublicationRoleEnum::WrpRcProvider,
-                TrustListPublicationRoleEnum::PubEeaProvider,
-                TrustListPublicationRoleEnum::NationalRegistryRegistrar,
+                TrustListRoleEnum::PidProvider,
+                TrustListRoleEnum::WalletProvider,
+                TrustListRoleEnum::WrpAcProvider,
+                TrustListRoleEnum::WrpRcProvider,
+                TrustListRoleEnum::PubEeaProvider,
+                TrustListRoleEnum::NationalRegistryRegistrar,
             ],
         }
     }

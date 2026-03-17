@@ -53,10 +53,7 @@ fn dummy_certificate(pem: String) -> Certificate {
     }
 }
 
-fn dummy_publication(
-    role: TrustListPublicationRoleEnum,
-    metadata: Vec<u8>,
-) -> TrustListPublication {
+fn dummy_publication(role: TrustListRoleEnum, metadata: Vec<u8>) -> TrustListPublication {
     TrustListPublication {
         id: TrustListPublicationId::from(Uuid::new_v4()),
         created_date: datetime!(2025-01-01 0:00 UTC),
@@ -317,8 +314,7 @@ fn test_build_lote_payload_basic() {
     let entry = dummy_entry(entry_metadata);
 
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
-    let mut publication =
-        dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata);
+    let mut publication = dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata);
     publication.sequence_number = 42;
 
     let now = datetime!(2025-06-15 12:00 UTC);
@@ -423,7 +419,7 @@ async fn test_format_trust_list_empty_list() {
     let publication = TrustListPublication {
         key: Some(key),
         certificate: Some(certificate),
-        ..dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata)
+        ..dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata)
     };
 
     let publisher = make_publisher(
@@ -451,7 +447,7 @@ async fn test_format_trust_list_with_entry() {
     let mut publication = TrustListPublication {
         key: Some(key),
         certificate: Some(certificate),
-        ..dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata)
+        ..dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata)
     };
     publication.sequence_number = 2;
 
@@ -520,7 +516,7 @@ async fn test_create_trust_list_rejects_identifier_without_certificate() {
     let result = publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test".into(),
-            role: TrustListPublicationRoleEnum::PidProvider,
+            role: TrustListRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier,
             key_id: None,
@@ -569,7 +565,7 @@ async fn test_lifecycle_create_add_update_remove() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "EU PID Providers".into(),
-            role: TrustListPublicationRoleEnum::PidProvider,
+            role: TrustListRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),
@@ -671,7 +667,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
 
     let org_id = shared_types::OrganisationId::from(Uuid::new_v4());
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
-    let publication = dummy_publication(TrustListPublicationRoleEnum::PidProvider, pub_metadata);
+    let publication = dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata);
 
     let mut pub_repo = MockTrustListPublicationRepository::new();
     let key_for_get = key;
@@ -680,12 +676,12 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
         Ok(Some(TrustListPublication {
             id,
             metadata: serde_json::to_vec(&sample_list_params()).unwrap(),
-            role: TrustListPublicationRoleEnum::PidProvider,
+            role: TrustListRoleEnum::PidProvider,
             organisation_id: org_id,
             key: Some(key_for_get.clone()),
             certificate: Some(cert_for_get.clone()),
             organisation: Some(dummy_organisation(Some(org_id))),
-            ..dummy_publication(TrustListPublicationRoleEnum::PidProvider, vec![])
+            ..dummy_publication(TrustListRoleEnum::PidProvider, vec![])
         }))
     });
     pub_repo.expect_update().returning(|_, _| Ok(()));
@@ -858,7 +854,7 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test List".into(),
-            role: TrustListPublicationRoleEnum::PidProvider,
+            role: TrustListRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),
@@ -933,7 +929,7 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test List".into(),
-            role: TrustListPublicationRoleEnum::PidProvider,
+            role: TrustListRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),
@@ -1001,7 +997,7 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
     publisher
         .create_trust_list(CreateTrustListRequest {
             name: "Test List".into(),
-            role: TrustListPublicationRoleEnum::PidProvider,
+            role: TrustListRoleEnum::PidProvider,
             organisation_id: Uuid::new_v4().into(),
             identifier: identifier_for_create,
             key_id: Some(key.id),

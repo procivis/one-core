@@ -1,6 +1,6 @@
-use core_server::endpoint::trust_list_publication::dto::TrustListPublicationRoleRestEnum;
+use core_server::endpoint::trust_list_publication::dto::TrustListRoleRestEnum;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
-use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use uuid::Uuid;
 
 use crate::fixtures::create_organisation;
@@ -22,7 +22,7 @@ async fn test_create_trust_list_publication() {
             identifier_id: identifier.id,
             organisation_id: organisation.id,
             name: "name",
-            role: TrustListPublicationRoleRestEnum::PidProvider,
+            role: TrustListRoleRestEnum::PidProvider,
             r#type: "LOTE_PUBLISHER".into(),
             key_id: None,
             certificate_id: None,
@@ -43,7 +43,7 @@ async fn test_create_trust_list_publication() {
     similar_asserts::assert_eq!(existing_trust_list_publication.name, "name");
     similar_asserts::assert_eq!(
         existing_trust_list_publication.role,
-        TrustListPublicationRoleEnum::PidProvider
+        TrustListRoleEnum::PidProvider
     );
     similar_asserts::assert_eq!(existing_trust_list_publication.identifier_id, identifier.id);
     similar_asserts::assert_eq!(
@@ -75,7 +75,7 @@ async fn test_fail_to_create_trust_list_publication_missing_trust_list_publisher
         .trust_list_publication
         .create_trust_list_publication(CreateTrustListPublicationTestParams {
             name: "name",
-            role: TrustListPublicationRoleRestEnum::PidProvider,
+            role: TrustListRoleRestEnum::PidProvider,
             r#type: "UnknownProvider".into(),
             identifier_id: identifier.id,
             organisation_id: organisation.id,
@@ -102,7 +102,7 @@ async fn test_fail_to_create_trust_list_publication_missing_role_capabilities() 
         .trust_list_publication
         .create_trust_list_publication(CreateTrustListPublicationTestParams {
             name: "name",
-            role: TrustListPublicationRoleRestEnum::Issuer,
+            role: TrustListRoleRestEnum::Issuer,
             r#type: "LOTE_PUBLISHER".into(),
             identifier_id: identifier.id,
             organisation_id: organisation.id,
@@ -130,7 +130,7 @@ async fn test_fail_to_create_trust_list_publication_mismatch_organisation() {
         .trust_list_publication
         .create_trust_list_publication(CreateTrustListPublicationTestParams {
             name: "name",
-            role: TrustListPublicationRoleRestEnum::PidProvider,
+            role: TrustListRoleRestEnum::PidProvider,
             r#type: "LOTE_PUBLISHER".into(),
             identifier_id: identifier.id,
             organisation_id: other_organisation.id,
@@ -156,7 +156,7 @@ async fn test_fail_to_create_trust_list_publication_missing_identifier_type_capa
         .trust_list_publication
         .create_trust_list_publication(CreateTrustListPublicationTestParams {
             name: "name",
-            role: TrustListPublicationRoleRestEnum::PidProvider,
+            role: TrustListRoleRestEnum::PidProvider,
             r#type: "LOTE_PUBLISHER".into(),
             identifier_id: identifier.id,
             organisation_id: organisation.id,

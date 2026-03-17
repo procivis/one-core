@@ -3,8 +3,9 @@ use std::sync::Arc;
 use one_core::model::identifier::Identifier;
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations, TrustListPublicationRoleEnum,
+    TrustListPublication, TrustListPublicationRelations,
 };
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use shared_types::{CertificateId, KeyId, TrustListPublicationId, TrustListPublisherId};
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -23,7 +24,7 @@ impl TrustListPublicationDB {
     pub async fn create(
         &self,
         name: &str,
-        role: TrustListPublicationRoleEnum,
+        role: TrustListRoleEnum,
         r#type: TrustListPublisherId,
         metadata: Vec<u8>,
         organisation: Organisation,

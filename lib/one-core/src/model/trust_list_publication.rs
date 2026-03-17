@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId,
     TrustListPublisherId,
@@ -12,6 +11,7 @@ use crate::model::key::{Key, KeyRelations};
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::trust_list_role::TrustListRoleEnum;
 
 #[derive(Clone, Debug)]
 pub struct TrustListPublication {
@@ -19,7 +19,7 @@ pub struct TrustListPublication {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub role: TrustListPublicationRoleEnum,
+    pub role: TrustListRoleEnum,
     pub r#type: TrustListPublisherId,
     pub metadata: Vec<u8>,
     pub deleted_at: Option<OffsetDateTime>,
@@ -36,21 +36,6 @@ pub struct TrustListPublication {
     pub identifier: Option<Identifier>,
     pub key: Option<Key>,
     pub certificate: Option<Certificate>,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustListPublicationRoleEnum {
-    PidProvider,
-    WalletProvider,
-    WrpAcProvider,
-    PubEeaProvider,
-    QeaaProvider,
-    QesrcProvider,
-    WrpRcProvider,
-    NationalRegistryRegistrar,
-    Issuer,
-    Verifier,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -81,7 +66,7 @@ pub enum TrustListPublicationFilterValue {
     OrganisationId(OrganisationId),
     Name(StringMatch),
     Type(Vec<TrustListPublisherId>),
-    Role(Vec<TrustListPublicationRoleEnum>),
+    Role(Vec<TrustListRoleEnum>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
     Ids(Vec<TrustListPublicationId>),

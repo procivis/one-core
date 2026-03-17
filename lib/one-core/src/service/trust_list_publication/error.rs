@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::trust_list_publication::TrustListPublicationRoleEnum;
+use crate::model::trust_list_role::TrustListRoleEnum;
 
 #[derive(Debug, Error)]
 pub enum TrustListPublicationServiceError {
@@ -20,10 +20,7 @@ pub enum TrustListPublicationServiceError {
     #[error("Selected key not matching supported types")]
     InvalidSelectedKey,
     #[error("Unsupported trust list publication role `{0:?}`: expected one of `{1:?}`")]
-    InvalidTrustListRole(
-        TrustListPublicationRoleEnum,
-        Vec<TrustListPublicationRoleEnum>,
-    ),
+    InvalidTrustListRole(TrustListRoleEnum, Vec<TrustListRoleEnum>),
     #[error("Unknown key algorithm `{0}`")]
     UnknownKeyAlgorithm(String),
     #[error("Unsupported key type `{0}`: expected one of `{1:?}`")]

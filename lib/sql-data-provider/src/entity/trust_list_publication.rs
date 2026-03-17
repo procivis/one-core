@@ -1,4 +1,4 @@
-use one_core::model::trust_list_publication::TrustListPublicationRoleEnum;
+use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
@@ -98,8 +98,8 @@ impl Related<super::certificate::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
-#[into(TrustListPublicationRoleEnum)]
-#[from(TrustListPublicationRoleEnum)]
+#[into(TrustListRoleEnum)]
+#[from(TrustListRoleEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum TrustRoleEnum {
     #[sea_orm(string_value = "PID_PROVIDER")]

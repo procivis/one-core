@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::macros::{impl_display, impl_from};
 
-/// Identifier of a trust list based in CoreConfig.trust_list
+/// Identifier of a trust list based in CoreConfig.trust_list_publisher
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]

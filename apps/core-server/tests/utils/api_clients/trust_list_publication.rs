@@ -1,5 +1,5 @@
 use core_server::endpoint::trust_list_publication::dto::{
-    TrustEntryStateRestEnum, TrustListPublicationRoleRestEnum,
+    TrustEntryStateRestEnum, TrustListRoleRestEnum,
 };
 use serde_json::json;
 use shared_types::{
@@ -18,7 +18,7 @@ pub struct CreateTrustListPublicationTestParams<'a> {
     pub organisation_id: OrganisationId,
     pub identifier_id: IdentifierId,
     pub name: &'a str,
-    pub role: TrustListPublicationRoleRestEnum,
+    pub role: TrustListRoleRestEnum,
     pub r#type: TrustListPublisherId,
     pub key_id: Option<KeyId>,
     pub certificate_id: Option<CertificateId>,
