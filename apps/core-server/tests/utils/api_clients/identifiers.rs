@@ -112,6 +112,41 @@ impl IdentifiersApi {
             .await
     }
 
+    #[expect(clippy::too_many_arguments)]
+    pub async fn create_certificate_identifier_ca_signed(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+        ca_identifier_id: IdentifierId,
+        common_name: &str,
+        signer: &str,
+        profile: &str,
+    ) -> Response {
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!( {
+                    "name": name,
+                    "organisationId": organisation_id,
+                    "certificates": [{
+                        "keyId": key_id,
+                        "content": {
+                            "certificateAuthority": {
+                                "identifierId": ca_identifier_id
+                            },
+                            "subject": {
+                                "commonName": common_name
+                            },
+                            "profile": profile,
+                            "signer": signer
+                        }
+                    }]
+                }),
+            )
+            .await
+    }
+
     pub async fn create_certificate_authority_identifier(
         &self,
         name: &str,

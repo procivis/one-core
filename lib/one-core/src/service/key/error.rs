@@ -32,7 +32,7 @@ impl ErrorCodeMixin for KeyServiceError {
             Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
             Self::KeyNotFound(_) => ErrorCode::BR_0037,
-            Self::KeyAlreadyExists => ErrorCode::BR_0004,
+            Self::KeyAlreadyExists => ErrorCode::BR_0066,
             Self::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::UnsupportedKeyType { .. } => ErrorCode::BR_0039,

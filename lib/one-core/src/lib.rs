@@ -324,6 +324,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             data_provider.get_identifier_repository(),
             signer_provider.clone(),
+            csr_creator.clone(),
             Arc::new(config.clone()),
             data_provider.get_tx_manager(),
         ));

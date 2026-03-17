@@ -689,9 +689,7 @@ pub enum ErrorCode {
     #[strum(message = "Invalid key selection")]
     BR_0330,
 
-    #[strum(
-        message = "Chain or self-signed must be specified when creating Certificate Authority identifier"
-    )]
+    #[strum(message = "Chain or content must be specified when creating Certificate")]
     BR_0331,
 
     #[strum(message = "Invalid signature payload")]

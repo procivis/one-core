@@ -3,19 +3,18 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha1::SHA1;
 use rcgen::string::{BmpString, UniversalString};
 use rcgen::{
-    CertificateParams, CustomExtension, DistinguishedName, DnType, DnValue, KeyIdMethod,
-    KeyUsagePurpose, PublicKeyData, SignatureAlgorithm,
+    CertificateParams, DistinguishedName, DnType, DnValue, KeyIdMethod, KeyUsagePurpose,
+    PublicKeyData, SignatureAlgorithm,
 };
 use x509_parser::prelude::{KeyUsage, ParsedExtension};
 use x509_parser::x509::X509Name;
 
-use super::dto::{
-    IssuerAlternativeNameRequest, IssuerAlternativeNameType, KeyIdDerivation, SelfSignedRequest,
-};
+use super::dto::{KeyIdDerivation, SelfSignedRequest};
 use crate::proto::csr_creator::{
     OID_EXTENDED_KEY_USAGE_ISO_MDL_DS, prepare_distinguished_name,
     prepare_extended_key_usage_extension_iso_mdl_ds,
 };
+use crate::provider::signer::x509_utils::prepare_issuer_alternative_name_extension;
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum CSRError {
@@ -73,31 +72,6 @@ pub(super) fn prepare_self_signed_params(request: SelfSignedRequest) -> Certific
     }
 
     params
-}
-
-// https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.7
-fn prepare_issuer_alternative_name_extension(
-    data: &IssuerAlternativeNameRequest,
-) -> CustomExtension {
-    const OID_ISSUER_ALTERNATIVE_NAME: [u64; 4] = [2, 5, 29, 18];
-
-    let names = yasna::construct_der(|writer| {
-        writer.write_sequence(|writer| {
-            // https://datatracker.ietf.org/doc/html/rfc5280#appendix-A.2
-            // GeneralName
-            let tag = match &data.r#type {
-                IssuerAlternativeNameType::Email => 1, // rfc822Name [1] IA5String
-                IssuerAlternativeNameType::Uri => 6,   // uniformResourceIdentifier [6] IA5String
-            };
-
-            writer
-                .next()
-                .write_tagged_implicit(yasna::Tag::context(tag), |writer| {
-                    writer.write_ia5_string(&data.name);
-                });
-        })
-    });
-    CustomExtension::from_oid_content(&OID_ISSUER_ALTERNATIVE_NAME, names)
 }
 
 pub(super) fn parse_csr(csr_pem: &str) -> Result<(CertificateParams, PublicKey), CSRError> {

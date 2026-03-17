@@ -57,11 +57,11 @@ impl X509CertificateSigner {
 #[async_trait::async_trait]
 impl Signer for X509CertificateSigner {
     fn get_capabilities(&self) -> SignerCapabilities {
-        let features = if self.params.payload.allow_ca_signing {
-            vec![Feature::SupportsSelfSigned]
-        } else {
-            vec![]
-        };
+        let mut features = vec![Feature::SupportsCaSigned];
+        if self.params.payload.allow_ca_signing {
+            features.push(Feature::SupportsSelfSigned);
+        }
+
         SignerCapabilities {
             features,
             supported_identifiers: vec![IdentifierType::CertificateAuthority],
@@ -187,6 +187,9 @@ impl X509CertificateSigner {
                 None => BasicConstraints::Unconstrained,
             };
             cert_params.is_ca = IsCa::Ca(constraints);
+        } else if self.params.payload.key_id_derivation.is_some() {
+            // the rcgen crate adds SubjectKeyIdentifier if `ExplicitNoCa` specified
+            cert_params.is_ca = IsCa::ExplicitNoCa;
         }
 
         // key-id derivation

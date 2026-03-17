@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use one_core::model::identifier::{IdentifierState, IdentifierType, SortableIdentifierColumn};
-use one_core::service::certificate::dto::CreateCertificateRequestDTO;
+use one_core::service::certificate::dto::{
+    CreateCertificateCaDTO, CreateCertificateContentDTO, CreateCertificateRequestDTO,
+};
 use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
     CreateCertificateAuthorityRequestDTO, CreateIdentifierDidRequestDTO,
@@ -32,7 +34,9 @@ use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
-use crate::endpoint::key::dto::{KeyGenerateCSRRequestSubjectRestDTO, KeyResponseRestDTO};
+use crate::endpoint::key::dto::{
+    KeyGenerateCSRRequestProfileRest, KeyGenerateCSRRequestSubjectRestDTO, KeyResponseRestDTO,
+};
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
@@ -82,13 +86,49 @@ pub(crate) struct CreateIdentifierDidRequestRestDTO {
 #[derive(Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateCertificateRequestDTO)]
+/// Either `chain` or `content` must be specified
 pub(crate) struct CreateCertificateRequestRestDTO {
     pub name: Option<String>,
+    pub key_id: KeyId,
     /// Full certificate chain in PEM format, where the leaf certificate is
     /// signed by the key specified in keyId. The chain should include all
     /// certificates from the leaf up to the root.
-    pub chain: String,
-    pub key_id: KeyId,
+    pub chain: Option<String>,
+    /// Details to use for a new certificate generation
+    #[into(with_fn = convert_inner)]
+    pub content: Option<CreateCertificateContentRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, Into, ModifySchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CreateCertificateContentDTO)]
+pub(crate) struct CreateCertificateContentRestDTO {
+    pub profile: KeyGenerateCSRRequestProfileRest,
+    pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    pub certificate_authority: CreateCertificateCaRestDTO,
+    /// Signer instance to use for certificate signing. Must reference
+    /// an `X509_CERTIFICATE` signer configured in the signing configuration.
+    #[modify_schema(field = signer)]
+    pub signer: String,
+    /// Start of the CA certificate validity period (RFC 3339). If omitted,
+    /// defaults to time of issuance.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub validity_start: Option<OffsetDateTime>,
+    /// End of the CA certificate validity period (RFC 3339). Must not
+    /// exceed the `maxValidityDuration` set in the referenced signer
+    /// configuration.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub validity_end: Option<OffsetDateTime>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CreateCertificateCaDTO)]
+pub(crate) struct CreateCertificateCaRestDTO {
+    pub identifier_id: IdentifierId,
+    pub certificate_id: Option<CertificateId>,
 }
 
 #[options_not_nullable]

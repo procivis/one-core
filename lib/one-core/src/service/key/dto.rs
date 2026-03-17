@@ -55,7 +55,7 @@ pub struct KeyGenerateCSRRequestDTO {
     pub subject: KeyGenerateCSRRequestSubjectDTO,
 }
 
-#[derive(Debug, Clone, Into)]
+#[derive(Debug, Clone, Into, PartialEq, Eq)]
 #[into(crate::proto::csr_creator::CsrRequestProfile)]
 pub enum KeyGenerateCSRRequestProfile {
     Generic,

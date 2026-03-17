@@ -10,15 +10,16 @@ use super::creator::IdentifierCreatorProto;
 use crate::config::core_config::SignerType;
 use crate::config::validator::did::validate_did_method;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::Did;
-use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::key::Key;
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::x509_extension::validate_ca;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CrlMode, EnforceKeyUsage, ParsedCertificate,
 };
+use crate::proto::csr_creator::GenerateCsrRequest;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::signer::dto::{CreateSignatureRequest, Issuer};
 use crate::provider::signer::x509_certificate;
@@ -30,6 +31,7 @@ use crate::service::did::service::{build_keys_request, generate_update_key};
 use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::MissingProviderError;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
+use crate::service::key::dto::KeyGenerateCSRRequestProfile;
 
 impl IdentifierCreatorProto {
     pub(super) async fn create_local_did_identifier(
@@ -345,10 +347,112 @@ impl IdentifierCreatorProto {
     ) -> Result<Certificate, Error> {
         let key = self
             .key_repository
-            .get_key(&request.key_id, &Default::default())
+            .get_key(
+                &request.key_id,
+                &KeyRelations {
+                    organisation: Some(Default::default()),
+                },
+            )
             .await
             .error_while("getting key")?
             .ok_or(Error::KeyNotFound(request.key_id))?;
+
+        match (&key.organisation, organisation_id) {
+            (Some(key_org), org_id) if org_id == key_org.id => {}
+            _ => {
+                return Err(Error::OrganisationMismatch);
+            }
+        };
+
+        let generated = request.content.is_some();
+        let chain = match (request.chain, request.content) {
+            (Some(chain), None) => chain,
+            (None, Some(content)) => {
+                let signer_type = self
+                    .config
+                    .signer
+                    .get_type(&content.signer)
+                    .error_while("checking signer")?;
+                if signer_type != SignerType::X509Certificate {
+                    return Err(Error::InvalidSignerType(signer_type));
+                }
+
+                let signer = self
+                    .signer_provider
+                    .get(&content.signer)
+                    .ok_or(MissingProviderError::Signer(content.signer.clone()))
+                    .error_while("getting signer")?;
+
+                let identifier = self
+                    .identifier_repository
+                    .get(
+                        content.certificate_authority.identifier_id,
+                        &IdentifierRelations {
+                            organisation: Some(Default::default()),
+                            certificates: Some(CertificateRelations {
+                                key: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("getting CA identifier")?
+                    .ok_or(Error::IdentifierNotFound(
+                        content.certificate_authority.identifier_id,
+                    ))?;
+
+                if identifier.r#type != IdentifierType::CertificateAuthority {
+                    return Err(Error::InvalidIdentifierType(identifier.r#type));
+                }
+
+                match (&identifier.organisation, organisation_id) {
+                    (Some(identifier_org), org_id) if org_id == identifier_org.id => {}
+                    _ => {
+                        return Err(Error::OrganisationMismatch);
+                    }
+                };
+
+                if content.profile == KeyGenerateCSRRequestProfile::Ca {
+                    return Err(Error::InvalidCSRProfile);
+                }
+
+                let csr = self
+                    .csr_creator
+                    .create_csr(
+                        key.clone(),
+                        GenerateCsrRequest {
+                            profile: content.profile.into(),
+                            subject: content.subject.into(),
+                        },
+                    )
+                    .await
+                    .error_while("creating CSR")?;
+
+                signer
+                    .sign(
+                        Issuer::Identifier {
+                            identifier: Box::new(identifier),
+                            certificate: content.certificate_authority.certificate_id,
+                            key: None,
+                        },
+                        CreateSignatureRequest {
+                            data: serde_json::to_value(x509_certificate::dto::RequestData::Csr(
+                                csr,
+                            ))
+                            .map_err(|e| Error::MappingError(e.to_string()))?,
+                            validity_start: content.validity_start,
+                            validity_end: content.validity_end,
+                        },
+                    )
+                    .await
+                    .error_while("self-signing CA certificate")?
+                    .result
+            }
+            _ => {
+                return Err(Error::InvalidCertificateInput);
+            }
+        };
 
         let ParsedCertificate {
             attributes,
@@ -358,10 +462,13 @@ impl IdentifierCreatorProto {
         } = self
             .certificate_validator
             .parse_pem_chain(
-                &request.chain,
-                CertificateValidationOptions::signature_and_revocation(Some(vec![
-                    EnforceKeyUsage::DigitalSignature,
-                ])),
+                &chain,
+                CertificateValidationOptions {
+                    validity_check: (!generated).then_some(CrlMode::X509),
+                    ..CertificateValidationOptions::signature_and_revocation(Some(vec![
+                        EnforceKeyUsage::DigitalSignature,
+                    ]))
+                },
             )
             .await
             .error_while("parsing PEM chain")?;
@@ -381,7 +488,7 @@ impl IdentifierCreatorProto {
             last_modified: OffsetDateTime::now_utc(),
             expiry_date: attributes.not_after,
             name,
-            chain: request.chain,
+            chain,
             fingerprint: attributes.fingerprint,
             state: CertificateState::Active,
             key: Some(key),
@@ -439,7 +546,7 @@ impl IdentifierCreatorProto {
                     .result
             }
             _ => {
-                return Err(Error::InvalidCertificateAuthorityIdentifierInput);
+                return Err(Error::InvalidCertificateInput);
             }
         };
 

@@ -2,13 +2,32 @@ use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::certificate::CertificateState;
-use crate::service::key::dto::KeyListItemResponseDTO;
+use crate::service::key::dto::{
+    KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO, KeyListItemResponseDTO,
+};
 
 #[derive(Clone, Debug)]
 pub struct CreateCertificateRequestDTO {
     pub name: Option<String>,
-    pub chain: String,
+    pub chain: Option<String>,
     pub key_id: KeyId,
+    pub content: Option<CreateCertificateContentDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateCertificateContentDTO {
+    pub profile: KeyGenerateCSRRequestProfile,
+    pub subject: KeyGenerateCSRRequestSubjectDTO,
+    pub certificate_authority: CreateCertificateCaDTO,
+    pub signer: String,
+    pub validity_start: Option<OffsetDateTime>,
+    pub validity_end: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateCertificateCaDTO {
+    pub identifier_id: IdentifierId,
+    pub certificate_id: Option<CertificateId>,
 }
 
 #[derive(Clone, Debug)]

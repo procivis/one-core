@@ -18,6 +18,7 @@ use crate::model::certificate::{Certificate, CertificateState, GetCertificateLis
 use crate::model::identifier::{GetIdentifierList, Identifier};
 use crate::model::key::{GetKeyList, Key};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
+use crate::proto::csr_creator::MockCsrCreator;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::did_method::model::{DidCapabilities, Operation};
@@ -52,6 +53,7 @@ struct Mocks {
     key_algorithm_provider: MockKeyAlgorithmProvider,
     identifier_repository: MockIdentifierRepository,
     signer_provider: MockSignerProvider,
+    csr_creator: MockCsrCreator,
     config: CoreConfig,
 }
 
@@ -66,6 +68,7 @@ fn setup_creator(mocks: Mocks) -> Box<dyn IdentifierCreator> {
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.identifier_repository),
         Arc::new(mocks.signer_provider),
+        Arc::new(mocks.csr_creator),
         Arc::new(mocks.config),
         Arc::new(NoTransactionManager),
     ))

@@ -18,4 +18,5 @@ pub struct SignerCapabilities {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Feature {
     SupportsSelfSigned,
+    SupportsCaSigned,
 }

@@ -1,11 +1,11 @@
-use shared_types::{DidValue, KeyId};
+use shared_types::{DidValue, IdentifierId, KeyId};
 use strum::Display;
 
 use crate::config::core_config::SignerType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::certificate::Certificate;
 use crate::model::did::Did;
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -79,10 +79,8 @@ pub(crate) enum Error {
     DidValueAlreadyExists(DidValue),
     #[error("Key must not be remote: `{0}`")]
     KeyMustNotBeRemote(String),
-    #[error(
-        "Chain or self-signed must be specified when creating Certificate Authority identifier"
-    )]
-    InvalidCertificateAuthorityIdentifierInput,
+    #[error("Chain or content must be specified when creating Certificate")]
+    InvalidCertificateInput,
     #[error("Key does not match public key of certificate")]
     CertificateKeyNotMatching,
     #[error("Certificate missing common name")]
@@ -93,6 +91,14 @@ pub(crate) enum Error {
     InvalidKeyAlgorithm(String),
     #[error("Key `{0}` not found")]
     KeyNotFound(KeyId),
+    #[error("Identifier `{0}` not found")]
+    IdentifierNotFound(IdentifierId),
+    #[error("Identifier type `{0}` not supported")]
+    InvalidIdentifierType(IdentifierType),
+    #[error("Identifier does not belong to this organisation")]
+    OrganisationMismatch,
+    #[error("Invalid CSR profile")]
+    InvalidCSRProfile,
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -108,11 +114,15 @@ impl ErrorCodeMixin for Error {
             Self::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
             Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
-            Self::InvalidCertificateAuthorityIdentifierInput => ErrorCode::BR_0331,
+            Self::InvalidCertificateInput => ErrorCode::BR_0331,
             Self::InvalidSignerType(_) => ErrorCode::BR_0381,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::MissingCertificateCommonName => ErrorCode::BR_0224,
             Self::KeyNotFound(_) => ErrorCode::BR_0037,
+            Self::IdentifierNotFound(_) => ErrorCode::BR_0207,
+            Self::InvalidIdentifierType(_) => ErrorCode::BR_0330,
+            Self::OrganisationMismatch => ErrorCode::BR_0285,
+            Self::InvalidCSRProfile => ErrorCode::BR_0323,
             Self::Nested(nested) => nested.error_code(),
         }
     }

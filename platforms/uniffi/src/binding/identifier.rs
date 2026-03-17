@@ -455,16 +455,25 @@ pub struct CreateIdentifierKeyRequestBindingDTO {
     pub key_id: String,
 }
 
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = CreateCertificateRequestDTO, Error = ErrorResponseBindingDTO)]
+#[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "CreateCertificateRequest")]
 pub struct CreateCertificateRequestBindingDTO {
-    #[try_into(infallible)]
     pub name: Option<String>,
-    #[try_into(infallible)]
     pub chain: String,
-    #[try_into(with_fn_ref = "into_id")]
     pub key_id: String,
+}
+
+impl TryFrom<CreateCertificateRequestBindingDTO> for CreateCertificateRequestDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: CreateCertificateRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            chain: Some(value.chain),
+            key_id: into_id(value.key_id)?,
+            content: None,
+        })
+    }
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
