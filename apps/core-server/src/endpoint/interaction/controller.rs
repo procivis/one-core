@@ -38,8 +38,8 @@ use crate::router::AppState;
         endpoint URL (for example, scans the QR code of an offered credential or
         request for proof).
 
-        To start the wallet-initiated Authorization Code Flow request for issuance,
-        use the [initiate-issuance](/reference/core/initiate-issuance) endpoint.
+        To instead start the wallet-initiated Authorization Code Flow request for
+        issuance, use the Initiate OID4VCI Issuance endpoint.
     "},
 )]
 pub(crate) async fn handle_invitation(

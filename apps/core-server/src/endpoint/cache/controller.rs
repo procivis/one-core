@@ -24,7 +24,7 @@ use crate::router::AppState;
     description = indoc::formatdoc! {"
         Removes cached entities. If types are not specified, all cached entities are pruned.
 
-        Related guide: [Caching](/configure/caching)
+        Related guide: [Caching](https://docs.procivis.ch/configure/caching)
     "}
 )]
 pub(crate) async fn prune_cache(

@@ -29,9 +29,12 @@ use crate::router::AppState;
     ),
     summary = "Create proof schema",
     description = indoc::formatdoc! {"
-        Creates a proof schema, for creating proof requests.
+        Creates a proof schema, which defines the claims to request from a holder
+        during verification. Proof schemas reference credential schemas already
+        created in your system — create those first before building a proof schema
+        that includes their claims.
 
-        Related guide: [Proof schemas](/proof-schemas)
+        Related guide: [Proof schemas](https://docs.procivis.ch/proof-schemas)
     "},
 )]
 pub(crate) async fn post_proof_schema(

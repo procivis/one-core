@@ -171,80 +171,72 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
     ];
 
     if config.enable_management_endpoints {
-        tags.append(& mut vec![Tag::builder()
-                       .name("organisation_management")
-                       .description(Some(indoc::formatdoc! {"
+        tags.append(&mut vec![
+            Tag::builder()
+                .name("organisation_management")
+                .description(Some(indoc::formatdoc! {"
                 The organization is the fundamental unit in Procivis One. All
                 issuing, holding, and verifying actions are performed by an
                 organization. Keys, DIDs, credentials, and proofs belong exclusively
                 to the organization that created them.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Organizations")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("key")
-                       .description(Some(indoc::formatdoc! {"
-                Create cryptographic keys using different key algorithms and storage types.
-                The public key can be seen in the system (`publicKey`) and is used to verify
-                credentials. The private key is stored in the system and used to sign credentials,
-                but cannot be exported and is not visible through the API.
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Organizations")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("key")
+                .description(Some(indoc::formatdoc! {"
+                Manage cryptographic keys. Keys are the foundation of identifiers — used to
+                create DIDs, certificates, and CAs, or as identifiers directly. Private keys
+                are stored securely and never exposed through the API.
 
-                Keys form the basis of identifiers: a key pair can be used as an identifier,
-                or it can be used to create a DID or a certificate.
-
-                This resource also generates Certificate Signing Requests (CSRs), a necessary
-                component of certificate creation.
+                Related guide: [Keys](https://docs.procivis.ch/keys)
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Keys")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("identifier_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder().add("x-displayName", "Keys").build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("identifier_management")
+                .description(Some(indoc::formatdoc! {"
                 Create and manage identifiers of different types for different identity
                 ecosystems. An identifier is needed to issue, hold, or verify.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Identifiers")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("certificate_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Identifiers")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("certificate_management")
+                .description(Some(indoc::formatdoc! {"
                 Manage certificates in the system. To add a certificate as an identifier,
-                see the [identifiers](/reference/core/identifier-management) endpoints.
+                see the Identifiers endpoints.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Certificates")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("did_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Certificates")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("did_management")
+                .description(Some(indoc::formatdoc! {"
                 Use the identifier API to create DIDs. The system assigns an ID to both
                 the identifier and the DID. Use the DID ID returned from the identifier
                 response with this DID API for management operations like deactivation.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "DIDs")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("credential_schema_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder().add("x-displayName", "DIDs").build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("credential_schema_management")
+                .description(Some(indoc::formatdoc! {"
                 A credential schema defines the structure and format of a credential,
                 including the attributes that issuers make claims about. Schemas also
                 specify how issued credentials should be presented in digital wallets,
@@ -253,15 +245,15 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
 
                 The system supports the creation of as many credential schemas as needed.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Credential schemas")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("credential_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Credential schemas")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("credential_management")
+                .description(Some(indoc::formatdoc! {"
                 Issue credentials and manage the lifecycle of issued credentials, including
                 suspension, reactivation, revocation and status check for holders and verifiers.
 
@@ -269,35 +261,30 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 Then create a share endpoint URL for the wallet holder to access the offered
                 credential. Suspension and revocation options are determined by the schema.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Credentials")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("proof_schema_management")
-                       .description(Some(indoc::formatdoc! {"
-                A proof schema defines which attributes a verifier requests from a credential holder.
-                It specifies what information will be requested.
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Credentials")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("proof_schema_management")
+                .description(Some(indoc::formatdoc! {"
+                Manage proof schemas, which define the claims requested from a holder during
+                verification. A proof schema can combine claims from any number of credential
+                schemas in your organization.
 
-                Proof schemas are built from attributes defined in credential schemas. Each requested
-                attribute must first exist in a credential schema within the system. A proof schema
-                can pull attributes from multiple credential schemas and is not restricted by credential
-                format—it can combine any number of attributes from any number of credential schemas
-                within the organization.
-
-                Proof schemas cannot combine hardware- and software-based credentials.
+                Related guide: [Proof schemas](https://docs.procivis.ch/proof-schemas)
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Proof schemas")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("proof_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Proof schemas")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("proof_management")
+                .description(Some(indoc::formatdoc! {"
                 A proof request is a request of one or more claims from a wallet holder.
 
                 Create a proof request then create a share endpoint URL for the holder
@@ -306,16 +293,18 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 This resource also includes claim data deletion and presentation definition,
                 a filtering function for wallet holders to see what credentials stored in
                 their wallet match a proof request.
+
+                Related guide: [Verify](https://docs.procivis.ch/verify)
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Proof requests")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("interaction")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Proof requests")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("interaction")
+                .description(Some(indoc::formatdoc! {"
                 For wallet agents, handle interactions with issuers and verifiers.
 
                 When the holder scans the QR code offered by an issuer or a verifier, the
@@ -323,134 +312,131 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ID along with either the credential being offered or the proof being requested.
 
                 The holder then makes the choice to accept or reject the exchange.
+
+                Related guide: [Wallets](https://docs.procivis.ch/hold)
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Wallet interaction")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("history_management")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Wallet interaction")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("history_management")
+                .description(Some(indoc::formatdoc! {"
                 Retrieve event history.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "History")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("trust_anchor")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "History")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("trust_anchor")
+                .description(Some(indoc::formatdoc! {"
                 Manage trust anchors as a publisher or subscribe to trust anchors as a consumer.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Trust anchors")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("trust_entity")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Trust anchors")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("trust_entity")
+                .description(Some(indoc::formatdoc! {"
                 Manage trust entities on an anchor.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Trust entities")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("wallet_unit")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Trust entities")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("wallet_unit")
+                .description(Some(indoc::formatdoc! {"
                 For Wallet Providers, manage wallet units and attestations issued by the system.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Wallet units (Provider)")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("holder_wallet_unit")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Wallet units (Provider)")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("holder_wallet_unit")
+                .description(Some(indoc::formatdoc! {"
                 For wallet units, register with the Wallet Provider and check status.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Wallet units (Holder)")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                        .name("signature")
-                        .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Wallet units (Holder)")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("signature")
+                .description(Some(indoc::formatdoc! {"
                 Create and revoke signatures.
             "}))
-                        .extensions(Some(
-                            Extensions::builder()
-                                .add("x-displayName", "Signatures")
-                                .build(),
-                        ))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Signatures")
                         .build(),
-                   Tag::builder()
-                       .name("jsonld")
-                       .description(Some(indoc::formatdoc! {"
+                ))
+                .build(),
+            Tag::builder()
+                .name("jsonld")
+                .description(Some(indoc::formatdoc! {"
                 Operations for credentials formatted with JSON-LD.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "JSON-LD")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("task")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "JSON-LD")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("task")
+                .description(Some(indoc::formatdoc! {"
                 Run tasks.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Task")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("cache")
-                       .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder().add("x-displayName", "Task").build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("cache")
+                .description(Some(indoc::formatdoc! {"
                 Manage cached entities.
             "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Cache")
-                               .build(),
-                       ))
-                       .build(),
-                  Tag::builder()
-                      .name("statistics")
-                      .description(Some(indoc::formatdoc! {"
+                .extensions(Some(
+                    Extensions::builder().add("x-displayName", "Cache").build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("statistics")
+                .description(Some(indoc::formatdoc! {"
                 Retrieve organizational and system statistics including issuance and
                 verification counts, and active wallet unit counts. 
             "}))
-                      .extensions(Some(
-                          Extensions::builder()
-                              .add("x-displayName", "Statistics")
-                              .build(),
-                      ))
-                      .build(),
-
-                               Tag::builder()
-                                   .name("trust_list_publication_management")
-                                   .description(Some(indoc::formatdoc! {""}))
-                                   .extensions(Some(
-                                       Extensions::builder()
-                                           .add("x-displayName", "Trust list publications")
-                                           .build(),
-                                   ))
-                                   .build(),
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Statistics")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("trust_list_publication_management")
+                .description(Some(indoc::formatdoc! {""}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Trust list publications")
+                        .build(),
+                ))
+                .build(),
         ]);
     }
     if config.enable_external_endpoints {

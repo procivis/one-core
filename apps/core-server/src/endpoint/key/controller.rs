@@ -71,13 +71,14 @@ pub(crate) async fn get_key(
     ),
     summary = "Create a key",
     description = indoc::formatdoc! {"
-    Creates a key within an organization, which can be used to create a DID.
+    Creates a key within an organization. When creating identifiers for your own
+    use — key identifiers, certificate identifiers, CA identifiers, or DID identifiers
+    — a key is the first step.
 
     The `keyType` and `storageType` values must reference specific configuration
-    instances from your system configuration. This is because the system allows
-    multiple configurations of the same type.
+    instances from your system configuration.
 
-    Related guide: [Keys](/keys)
+    Related guide: [Keys](https://docs.procivis.ch/keys)
 "},
 )]
 pub(crate) async fn post_key(

@@ -44,6 +44,7 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
     /// schema will not be deleted.
     #[try_into(infallible)]
     pub expire_duration: Option<u32>,
+    /// Set of all claims to request.
     #[try_into(with_fn = convert_inner, infallible)]
     #[schema(min_items = 1)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
@@ -57,7 +58,8 @@ pub(crate) struct ProofInputSchemaRequestRestDTO {
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
     pub credential_schema_id: Uuid,
-    /// Defines the set of attributes being requested when making proof requests using this schema.
+    /// Defines the set of attributes being requested when making proof
+    /// requests using this schema.
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,

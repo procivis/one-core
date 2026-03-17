@@ -20,28 +20,13 @@ use crate::router::AppState;
     description = indoc::formatdoc! {"
     Returns the system configuration.
 
-    While the system configuration cannot be modified via the API, it
-    is partially exposed through the API. Understanding the configuration
-    is important for determining which solution components are available,
-    how to invoke each component, and how to retrieve capabilities and
-    instance reports.
+    The configuration is read-only via the API but exposes the available
+    components and their instance identifiers. Use this to determine which
+    credential formats, key algorithms, DID methods, protocols, and other
+    components are available in your deployment, and how to reference them
+    in other API calls.
 
-    The API uses a pattern of referencing configuration instances rather
-    than specifying types directly. Always check your system configuration
-    to determine the correct reference identifiers for:
-
-    - Credential formats
-    - Key algorithms
-    - Key storage providers
-    - Issuance protocols
-    - Verification protocols
-    - Revocation methods
-    - Datatypes
-    - Transport protocols
-    - Trust management solutions
-    - DID methods
-
-    Related guide: [Configuration](/configure)
+    Related guide: [Configuration in the API](https://docs.procivis.ch/api/configuration)
 "},
 )]
 pub(crate) async fn get_config(state: State<AppState>) -> OkOrErrorResponse<ConfigRestDTO> {

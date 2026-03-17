@@ -157,8 +157,7 @@ pub(crate) async fn post_did(
     ),
     summary = "Deactivate a DID",
     description = indoc::formatdoc! {"
-        Deactivate a DID. See the [DID deactivation](/dids#deactivate-a-did)
-        guide for a list of supported DID methods which allow deactivation.
+        Permanently deactivates a DID.
     "},
 )]
 pub(crate) async fn update_did(

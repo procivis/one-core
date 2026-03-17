@@ -161,14 +161,14 @@ pub(crate) async fn import_credential_schema(
     ),
     summary = "Create credential schema",
     description = indoc::formatdoc! {"
-        Creates a credential schema, for issuing credentials.
+        Creates a credential schema, which defines the structure and claims of a
+        credential type. Schemas are reusable templates — each credential you issue
+        is based on a schema.
 
-        The `format`, `revocationMethod` and `datatype` values must
-        reference specific configuration instances from your system
-        configuration. This is because the system allows multiple
-        configurations of the same type.
+        The `format`, `revocationMethod`, and `datatype` values must reference
+        configuration instance identifiers from your system configuration.
 
-        Related guide: [Credential schemas](/credential-schemas)
+        Related guide: [Credential schemas](https://docs.procivis.ch/credential-schemas)
     "},
 )]
 pub(crate) async fn post_credential_schema(

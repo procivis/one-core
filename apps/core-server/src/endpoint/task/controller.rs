@@ -24,7 +24,7 @@ use crate::router::AppState;
         Runs a task. Tasks can be also be run via the CLI after starting
         the core-server.
 
-        Related guide: [Configuration](/configure)
+        Related guide: [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
     "},
 )]
 pub(crate) async fn post_task(

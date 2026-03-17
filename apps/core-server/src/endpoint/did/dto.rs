@@ -127,7 +127,7 @@ pub(crate) struct CreateDidRequestRestDTO {
 }
 
 /// Each DID has five verification relationships defining the verification
-/// method used for different purposes. Related guide: [Keys object](/dids#keys-object)
+/// method used for different purposes. Related guide: https://docs.procivis.ch/dids#keys-object
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

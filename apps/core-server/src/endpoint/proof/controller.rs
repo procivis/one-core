@@ -138,7 +138,7 @@ pub(crate) async fn get_proof_details(
     `REQUESTED` state then the proof is retracted instead, retaining history
     of the interaction.
 
-    Related guide: [Manage proof requests](/verify/manage-proofs)
+    Related guide: [Managing Proof Requests](https://docs.procivis.ch/verify/manage-proofs)
 "},
 )]
 pub(crate) async fn delete_proof(
@@ -199,11 +199,10 @@ pub(crate) async fn get_proofs(
     which verification protocol to use.
 
     The `protocol` and `transport` values must reference specific configuration
-    instances from your system configuration. This is because the system allows
-    multiple configurations of the same type. For `protocol`, reference a configured
+    instances from your system configuration. For `protocol`, reference a configured
     instance of `verificationProtocol`.
 
-    Related guide: [Verify workflow](/verify)
+    Related guide: [Verifying Presentations](https://docs.procivis.ch/verify)
 "},
 )]
 pub(crate) async fn post_proof(
