@@ -22,7 +22,7 @@ async fn test_unpack_real_backup_1_71() {
     );
 
     let credential_schemas = core
-        .get_credential_schemas(CredentialSchemaListQueryBindingDTO {
+        .list_credential_schemas(CredentialSchemaListQueryBindingDTO {
             page: 0,
             page_size: 10,
             sort: None,
@@ -48,7 +48,7 @@ async fn test_unpack_real_backup_1_71() {
     assert_eq!(credential_schema.name, "sdjwt-none");
 
     let proof_schemas = core
-        .get_proof_schemas(ListProofSchemasFiltersBindingDTO {
+        .list_proof_schemas(ListProofSchemasFiltersBindingDTO {
             page: 0,
             page_size: 10,
             sort: None,

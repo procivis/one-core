@@ -5,10 +5,10 @@ use std::{env, fs};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::binding::OneCoreBinding;
+use crate::binding::OneCore;
 use crate::binding::key_storage::MockNativeKeyStorage;
 use crate::binding::organisation::CreateOrganisationRequestBindingDTO;
-use crate::{InitParamsDTO, initialize};
+use crate::{InitParams, initialize};
 
 mod initialize;
 mod migration;
@@ -56,7 +56,7 @@ impl Drop for TempDirContext {
     }
 }
 
-async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
+async fn initialize_core(data_dir_path: String) -> Arc<OneCore> {
     let additional_config = json!({
         "keyStorage": {
             "INTERNAL": {
@@ -107,7 +107,7 @@ async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
 
     initialize(
         data_dir_path,
-        InitParamsDTO {
+        InitParams {
             config_json: Some(additional_config),
             native_secure_element: Some(Arc::new(MockNativeKeyStorage::new())),
             remote_secure_element: Some(Arc::new(MockNativeKeyStorage::new())),
@@ -120,7 +120,7 @@ async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
 
 pub struct TestContext {
     pub data_dir: TempDirContext,
-    pub core: Arc<OneCoreBinding>,
+    pub core: Arc<OneCore>,
 }
 
 impl TestContext {
@@ -133,7 +133,7 @@ impl TestContext {
 
 pub struct TestContextWithOrganisation {
     pub data_dir: TempDirContext,
-    pub core: Arc<OneCoreBinding>,
+    pub core: Arc<OneCore>,
     pub organisation_id: String,
 }
 

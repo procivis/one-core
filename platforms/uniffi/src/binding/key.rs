@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
-use one_core::service::key::dto::KeyGenerateCSRRequestSubjectDTO;
-use one_dto_mapper::Into;
+use one_core::service::key::dto::{KeyGenerateCSRRequestSubjectDTO, KeyListItemResponseDTO};
+use one_dto_mapper::{From, Into};
 
-use super::OneCoreBinding;
+use super::OneCore;
 use crate::error::BindingError;
+use crate::utils::TimestampFormat;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn generate_key(
         &self,
@@ -23,6 +24,7 @@ impl OneCoreBinding {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "GenerateKeyRequest")]
 pub struct KeyRequestBindingDTO {
     pub organisation_id: String,
     pub key_type: String,
@@ -34,6 +36,7 @@ pub struct KeyRequestBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(KeyGenerateCSRRequestSubjectDTO)]
+#[uniffi(name = "CSRSubject")]
 pub struct KeyGenerateCSRRequestSubjectBindingDTO {
     /// Two-letter country code.
     pub country_name: Option<String>,
@@ -44,4 +47,20 @@ pub struct KeyGenerateCSRRequestSubjectBindingDTO {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(KeyListItemResponseDTO)]
+#[uniffi(name = "KeyListItem")]
+pub struct KeyListItemBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    pub public_key: Vec<u8>,
+    pub key_type: String,
+    pub storage_type: String,
 }

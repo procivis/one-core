@@ -43,7 +43,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     @SuppressLint("MissingPermission")
     override suspend fun startAdvertisement(
         deviceName: String?,
-        services: List<ServiceDescriptionBindingDto>
+        services: List<ServiceDescription>
     ): String? {
         return asyncCallback { promise ->
             synchronized(lock) {
@@ -126,7 +126,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     }
 
     private fun addServiceToBuilders(
-        service: ServiceDescriptionBindingDto,
+        service: ServiceDescription,
         advertiseDataBuilder: AdvertiseData.Builder,
         scanResultBuilder: AdvertiseData.Builder
     ): BluetoothGattService {
@@ -143,7 +143,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 getCharacteristicPermissions(characteristic.permissions)
             )
 
-            if (characteristic.properties.contains(CharacteristicPropertyBindingEnum.NOTIFY)) {
+            if (characteristic.properties.contains(CharacteristicProperty.NOTIFY)) {
                 val descriptor = BluetoothGattDescriptor(
                     CLIENT_CONFIG_DESCRIPTOR,
                     BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
@@ -266,13 +266,13 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     }
 
     private class Connections {
-        val events: MutableList<ConnectionEventBindingEnum> = mutableListOf()
-        var promise: Promise<List<ConnectionEventBindingEnum>>? = null
+        val events: MutableList<ConnectionEvent> = mutableListOf()
+        var promise: Promise<List<ConnectionEvent>>? = null
     }
 
     private val mConnections = Connections()
 
-    override suspend fun getConnectionChangeEvents(): List<ConnectionEventBindingEnum> {
+    override suspend fun getConnectionChangeEvents(): List<ConnectionEvent> {
         return asyncCallback { promise ->
             synchronized(lock) {
                 if (mConnections.promise != null) {
@@ -521,8 +521,8 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     private fun onMtuNegotiated(deviceAddress: String, mtu: Int) {
         synchronized(lock) {
             onConnectionEvent(
-                ConnectionEventBindingEnum.Connected(
-                    DeviceInfoBindingDto(
+                ConnectionEvent.Connected(
+                    DeviceInfo(
                         deviceAddress, mtu.coerceAtMost(
                             MAX_MTU
                         ).toUShort()
@@ -533,23 +533,23 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     }
 
     private fun onConnectionEvent(
-        event: ConnectionEventBindingEnum
+        event: ConnectionEvent
     ) {
         val deviceAddress = when (event) {
-            is ConnectionEventBindingEnum.Connected ->
+            is ConnectionEvent.Connected ->
                 event.deviceInfo.address
 
-            is ConnectionEventBindingEnum.Disconnected ->
+            is ConnectionEvent.Disconnected ->
                 event.deviceAddress
         }
 
         // replace outdated events
         mConnections.events.removeAll {
             when (val oldEvent = it) {
-                is ConnectionEventBindingEnum.Connected ->
+                is ConnectionEvent.Connected ->
                     oldEvent.deviceInfo.address == deviceAddress
 
-                is ConnectionEventBindingEnum.Disconnected ->
+                is ConnectionEvent.Disconnected ->
                     oldEvent.deviceAddress == deviceAddress
             }
         }
@@ -598,26 +598,26 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
         return Pair(characteristic, characteristicAddress)
     }
 
-    private fun getCharacteristicProperties(properties: List<CharacteristicPropertyBindingEnum>): Int {
+    private fun getCharacteristicProperties(properties: List<CharacteristicProperty>): Int {
         var result = 0
         properties.forEach {
             result = result or when (it) {
-                CharacteristicPropertyBindingEnum.READ -> BluetoothGattCharacteristic.PROPERTY_READ
-                CharacteristicPropertyBindingEnum.WRITE -> BluetoothGattCharacteristic.PROPERTY_WRITE
-                CharacteristicPropertyBindingEnum.WRITE_WITHOUT_RESPONSE -> BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
-                CharacteristicPropertyBindingEnum.NOTIFY -> BluetoothGattCharacteristic.PROPERTY_NOTIFY
-                CharacteristicPropertyBindingEnum.INDICATE -> BluetoothGattCharacteristic.PROPERTY_INDICATE
+                CharacteristicProperty.READ -> BluetoothGattCharacteristic.PROPERTY_READ
+                CharacteristicProperty.WRITE -> BluetoothGattCharacteristic.PROPERTY_WRITE
+                CharacteristicProperty.WRITE_WITHOUT_RESPONSE -> BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
+                CharacteristicProperty.NOTIFY -> BluetoothGattCharacteristic.PROPERTY_NOTIFY
+                CharacteristicProperty.INDICATE -> BluetoothGattCharacteristic.PROPERTY_INDICATE
             }
         }
         return result
     }
 
-    private fun getCharacteristicPermissions(permissions: List<CharacteristicPermissionBindingEnum>): Int {
+    private fun getCharacteristicPermissions(permissions: List<CharacteristicPermission>): Int {
         var result = 0
         permissions.forEach {
             result = result or when (it) {
-                CharacteristicPermissionBindingEnum.READ -> BluetoothGattCharacteristic.PERMISSION_READ
-                CharacteristicPermissionBindingEnum.WRITE -> BluetoothGattCharacteristic.PERMISSION_WRITE
+                CharacteristicPermission.READ -> BluetoothGattCharacteristic.PERMISSION_READ
+                CharacteristicPermission.WRITE -> BluetoothGattCharacteristic.PERMISSION_WRITE
             }
         }
         return result
@@ -767,7 +767,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
             when (newState) {
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     synchronized(lock) {
-                        val event = ConnectionEventBindingEnum.Disconnected(deviceAddress)
+                        val event = ConnectionEvent.Disconnected(deviceAddress)
                         parent.get()?.onConnectionEvent(event)
                         parent.get()?.onDeviceDisconnected(deviceAddress)
                     }

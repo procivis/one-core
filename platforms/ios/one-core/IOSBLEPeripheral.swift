@@ -33,9 +33,9 @@ public class IOSBLEPeripheral: NSObject {
     private var characteristicWritesQueue: [CharacteristicKey: [Data]] = [:]
     
     private let connectionLock = NSLock()
-    private var getConnectionChangeEventsResultCallback: BLEThrowingResultCallback<[ConnectionEventBindingEnum]>?
+    private var getConnectionChangeEventsResultCallback: BLEThrowingResultCallback<[ConnectionEvent]>?
     private var connectedCentrals: [CBCentral: [CBCharacteristic]] = [:]
-    private var connectionChangeEventsQueue: [ConnectionEventBindingEnum] = []
+    private var connectionChangeEventsQueue: [ConnectionEvent] = []
 }
 
 // MARK: - BLEPeripheral interface implementation
@@ -66,7 +66,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    private func setupServicesAndCharacteristics(servicesWithCharacteristics: [ServiceDescriptionBindingDto]) {
+    private func setupServicesAndCharacteristics(servicesWithCharacteristics: [ServiceDescription]) {
         peripheralManager.removeAllServices()
         services = servicesWithCharacteristics.map { CBMutableService(with: $0) }
         services.forEach { service in
@@ -75,7 +75,7 @@ extension IOSBLEPeripheral: BlePeripheral {
     }
     
     @discardableResult
-    public func startAdvertisement(deviceName: String?, services: [ServiceDescriptionBindingDto]) async throws -> String? {
+    public func startAdvertisement(deviceName: String?, services: [ServiceDescription]) async throws -> String? {
         guard try await isAdapterEnabled() else {
             throw BleError.AdapterNotEnabled
         }
@@ -201,7 +201,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    public func getConnectionChangeEvents() async throws -> [ConnectionEventBindingEnum] {
+    public func getConnectionChangeEvents() async throws -> [ConnectionEvent] {
         return try await withCheckedThrowingContinuation { continuation in
             connectionLock.withLock {
                 guard connectionChangeEventsQueue.isEmpty else {
@@ -323,7 +323,7 @@ private extension IOSBLEPeripheral {
     private func sendConnectedEventIfIsNewCentral(central: CBCentral) {
         if connectedCentrals[central] == nil {
             connectedCentrals[central] = []
-            let deviceInfo = DeviceInfoBindingDto(address: central.identifier.uuidString,
+            let deviceInfo = DeviceInfo(address: central.identifier.uuidString,
                                                   mtu: UInt16(central.maximumUpdateValueLength))
             if let callback = getConnectionChangeEventsResultCallback {
                 callback(Result.success([.connected(deviceInfo: deviceInfo)]))

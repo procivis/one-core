@@ -4,14 +4,14 @@ use one_core::service::wallet_unit::dto::{
 };
 use one_dto_mapper::{From, Into, TryInto};
 
+use super::OneCore;
+use super::key::KeyListItemBindingDTO;
 use crate::ServiceError;
-use crate::binding::OneCoreBinding;
-use crate::binding::identifier::KeyListItemResponseBindingDTO;
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     /// Register with a Wallet Provider.
     #[uniffi::method]
     pub async fn holder_register_wallet_unit(
@@ -56,12 +56,14 @@ impl OneCoreBinding {
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]
 #[into(WalletProviderType)]
 #[from(WalletProviderType)]
+#[uniffi(name = "WalletProviderType")]
 pub enum WalletProviderTypeBindingEnum {
     ProcivisOne,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T=HolderRegisterWalletUnitRequestDTO, Error=ServiceError)]
+#[uniffi(name = "HolderRegisterWalletUnitRequest")]
 pub struct HolderRegisterWalletUnitRequestBindingDTO {
     #[try_into(with_fn = into_id)]
     organisation_id: String,
@@ -74,6 +76,7 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(WalletProviderDTO)]
+#[uniffi(name = "WalletProvider")]
 struct WalletProviderBindingDTO {
     url: String,
     r#type: WalletProviderTypeBindingEnum,
@@ -81,6 +84,7 @@ struct WalletProviderBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(HolderWalletUnitResponseDTO)]
+#[uniffi(name = "HolderWalletUnit")]
 pub struct HolderWalletUnitResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -94,11 +98,12 @@ pub struct HolderWalletUnitResponseBindingDTO {
     pub wallet_provider_type: WalletProviderTypeBindingEnum,
     pub wallet_provider_name: String,
     pub status: WalletUnitStatusBindingEnum,
-    pub authentication_key: KeyListItemResponseBindingDTO,
+    pub authentication_key: KeyListItemBindingDTO,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, From)]
 #[from(WalletUnitStatus)]
+#[uniffi(name = "WalletUnitStatus")]
 pub enum WalletUnitStatusBindingEnum {
     Pending,
     Active,

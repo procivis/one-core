@@ -1,7 +1,6 @@
 use one_core::model::common::ExactColumn;
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::service::error::ServiceError;
-use one_core::service::proof::dto::ProofClaimDTO;
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
     ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO,
@@ -11,7 +10,7 @@ use one_core::service::proof_schema::dto::{
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use shared_types::ProofSchemaId;
 
-use super::OneCoreBinding;
+use super::OneCore;
 use super::common::SortDirection;
 use super::credential_schema::{
     CredentialSchemaBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
@@ -22,7 +21,7 @@ use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, into_id, into_timestamp, into_timestamp_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn create_proof_schema(
         &self,
@@ -54,7 +53,7 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
-    pub async fn get_proof_schemas(
+    pub async fn list_proof_schemas(
         &self,
         filter: ListProofSchemasFiltersBindingDTO,
     ) -> Result<ProofSchemaListBindingDTO, BindingError> {
@@ -110,6 +109,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofSchemaListItemDTO)]
+#[uniffi(name = "ProofSchemaListItem")]
 pub struct GetProofSchemaListItemBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -125,6 +125,7 @@ pub struct GetProofSchemaListItemBindingDTO {
 
 #[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaRequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ImportProofSchemaRequest")]
 pub struct ImportProofSchemaRequestBindingsDTO {
     pub schema: ImportProofSchemaBindingDTO,
     #[try_into(with_fn_ref = into_id)]
@@ -133,6 +134,7 @@ pub struct ImportProofSchemaRequestBindingsDTO {
 
 #[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ImportProofSchema")]
 pub struct ImportProofSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub id: String,
@@ -154,6 +156,7 @@ pub struct ImportProofSchemaBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofSchemaResponseDTO)]
+#[uniffi(name = "ProofSchemaDetail")]
 pub struct GetProofSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -173,6 +176,7 @@ pub struct GetProofSchemaBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofInputSchemaResponseDTO)]
+#[uniffi(name = "ProofInputSchema")]
 pub struct ProofInputSchemaBindingDTO {
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaBindingDTO>,
@@ -181,6 +185,7 @@ pub struct ProofInputSchemaBindingDTO {
 
 #[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaInputSchemaDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ImportProofSchemaInputSchema")]
 pub struct ImportProofSchemaInputSchemaBindingDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
@@ -189,6 +194,7 @@ pub struct ImportProofSchemaInputSchemaBindingDTO {
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaCredentialSchemaDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ImportProofSchemaCredentialSchema")]
 pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub id: String,
@@ -221,6 +227,7 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "ImportProofSchemaClaimSchema")]
 pub struct ImportProofSchemaClaimSchemaBindingDTO {
     pub id: String,
     pub requested: bool,
@@ -232,15 +239,8 @@ pub struct ImportProofSchemaClaimSchemaBindingDTO {
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
-#[from(ProofClaimDTO)]
-pub struct ProofRequestClaimBindingDTO {
-    pub schema: ProofClaimSchemaBindingDTO,
-    #[from(with_fn = convert_inner)]
-    pub value: Option<ProofRequestClaimValueBindingDTO>,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofClaimSchemaResponseDTO)]
+#[uniffi(name = "ProofClaimSchema")]
 pub struct ProofClaimSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -253,24 +253,16 @@ pub struct ProofClaimSchemaBindingDTO {
     pub array: bool,
 }
 
-#[derive(Clone, Debug, uniffi::Enum)]
-pub enum ProofRequestClaimValueBindingDTO {
-    Value {
-        value: String,
-    },
-    Claims {
-        value: Vec<ProofRequestClaimBindingDTO>,
-    },
-}
-
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofSchemaShareResponseDTO)]
+#[uniffi(name = "ProofSchemaShareResponse")]
 pub struct ProofSchemaShareResponseBindingDTO {
     pub url: String,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaRequestDTO, Error = ServiceError)]
+#[uniffi(name = "CreateProofSchemaRequest")]
 pub struct CreateProofSchemaRequestDTO {
     #[try_into(infallible)]
     pub name: String,
@@ -284,6 +276,7 @@ pub struct CreateProofSchemaRequestDTO {
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = one_core::service::proof_schema::dto::ProofInputSchemaRequestDTO, Error = ServiceError)]
+#[uniffi(name = "CreateProofSchemaInput")]
 pub struct ProofInputSchemaRequestDTO {
     #[try_into(with_fn_ref = into_id)]
     pub credential_schema_id: String,
@@ -293,6 +286,7 @@ pub struct ProofInputSchemaRequestDTO {
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaClaimRequestDTO, Error = ServiceError)]
+#[uniffi(name = "CreateProofSchemaInputClaim")]
 pub struct CreateProofSchemaClaimRequestDTO {
     #[try_into(with_fn_ref = into_id)]
     pub id: String,
@@ -302,11 +296,13 @@ pub struct CreateProofSchemaClaimRequestDTO {
 
 #[derive(Clone, Debug, Into, PartialEq, uniffi::Enum)]
 #[into(ExactColumn)]
+#[uniffi(name = "ProofSchemaListQueryExactColumn")]
 pub enum ProofSchemaListQueryExactColumnBinding {
     Name,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "ProofSchemaListQuery")]
 pub struct ListProofSchemasFiltersBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -328,6 +324,7 @@ pub struct ListProofSchemasFiltersBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableProofSchemaColumn)]
+#[uniffi(name = "SortableProofSchemaColumn")]
 pub enum SortableProofSchemaColumnBinding {
     Name,
     CreatedDate,
@@ -335,6 +332,7 @@ pub enum SortableProofSchemaColumnBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofSchemaListResponseDTO)]
+#[uniffi(name = "ProofSchemaList")]
 pub struct ProofSchemaListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<GetProofSchemaListItemBindingDTO>,

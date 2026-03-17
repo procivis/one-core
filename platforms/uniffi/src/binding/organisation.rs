@@ -1,9 +1,9 @@
-use super::OneCoreBinding;
-use crate::binding::mapper::OptionalString;
+use super::OneCore;
+use super::mapper::OptionalString;
 use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn create_organisation(
         &self,
@@ -31,12 +31,14 @@ impl OneCoreBinding {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CreateOrganisationRequest")]
 pub struct CreateOrganisationRequestBindingDTO {
     pub id: Option<String>,
     pub name: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "UpsertOrganisationRequest")]
 pub struct UpsertOrganisationRequestBindingDTO {
     pub id: String,
     pub name: Option<String>,

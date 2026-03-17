@@ -1,23 +1,19 @@
-use std::collections::HashMap;
-
-use one_core::provider::issuance_protocol::model::{
-    OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
-};
+use one_core::provider::issuance_protocol::model::{OpenID4VCITxCode, OpenID4VCITxCodeInputMode};
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::{
-    ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
-    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
+    ContinueIssuanceResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
+    InitiateIssuanceResponseDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner_of_inner};
 use url::Url;
 
-use crate::OneCoreBinding;
-use crate::binding::credential_schema::KeyStorageSecurityBindingEnum;
+use super::credential_schema::KeyStorageSecurityBindingEnum;
+use crate::OneCore;
 use crate::error::BindingError;
 use crate::utils::{into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     /// For a wallet, handles the interaction once the wallet connects to a share
     /// endpoint URL (for example, scans the QR code of an offered credential or
     /// request for proof).
@@ -112,6 +108,7 @@ impl OneCoreBinding {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HandleInvitationRequest")]
 pub struct HandleInvitationRequestBindingDTO {
     /// Typically encoded as a QR code or deep link by the issuer or
     /// verifier. For example: "https://example.com/credential-offer".
@@ -129,6 +126,7 @@ pub struct HandleInvitationRequestBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
+#[uniffi(name = "HandleInvitationResponse")]
 pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         /// For reference.
@@ -160,53 +158,23 @@ pub enum HandleInvitationResponseBindingEnum {
     },
 }
 
-#[derive(Clone, Debug, uniffi::Record)]
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(ContinueIssuanceResponseDTO)]
+#[uniffi(name = "ContinueIssuanceResponse")]
 pub struct ContinueIssuanceResponseBindingDTO {
     /// For reference.
+    #[from(with_fn_ref = "ToString::to_string")]
     pub interaction_id: String,
+    #[from(with_fn = convert_inner_of_inner )]
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
     pub key_algorithms: Option<Vec<String>>,
     pub requires_wallet_instance_attestation: bool,
     pub protocol: String,
 }
 
-impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
-    fn from(value: ContinueIssuanceResponseDTO) -> Self {
-        Self {
-            interaction_id: value.interaction_id.to_string(),
-            key_storage_security_levels: convert_inner_of_inner(value.key_storage_security_levels),
-            key_algorithms: value.key_algorithms,
-            requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
-            protocol: value.protocol,
-        }
-    }
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-pub struct CredentialConfigurationSupportedResponseBindingDTO {
-    pub proof_types_supported: Option<HashMap<String, OpenID4VCIProofTypeSupportedBindingDTO>>,
-}
-
-impl From<CredentialConfigurationSupportedResponseDTO>
-    for CredentialConfigurationSupportedResponseBindingDTO
-{
-    fn from(value: CredentialConfigurationSupportedResponseDTO) -> Self {
-        Self {
-            proof_types_supported: value
-                .proof_types_supported
-                .map(|m| m.into_iter().map(|(i, v)| (i, v.into())).collect()),
-        }
-    }
-}
-
-#[derive(Clone, Debug, From, Default, uniffi::Record)]
-#[from(OpenID4VCIProofTypeSupported)]
-pub struct OpenID4VCIProofTypeSupportedBindingDTO {
-    pub proof_signing_alg_values_supported: Vec<String>,
-}
-
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(OpenID4VCITxCode)]
+#[uniffi(name = "OpenID4VCITxCode")]
 pub struct OpenID4VCITxCodeBindingDTO {
     pub input_mode: OpenID4VCITxCodeInputModeBindingEnum,
     pub length: Option<i64>,
@@ -215,12 +183,14 @@ pub struct OpenID4VCITxCodeBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(OpenID4VCITxCodeInputMode)]
+#[uniffi(name = "OpenID4VCITxCodeInputMode")]
 pub enum OpenID4VCITxCodeInputModeBindingEnum {
     Numeric,
     Text,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "InitiateIssuanceRequest")]
 pub struct InitiateIssuanceRequestBindingDTO {
     pub organisation_id: String,
     pub protocol: String,
@@ -233,6 +203,7 @@ pub struct InitiateIssuanceRequestBindingDTO {
 
 #[derive(Clone, Debug, uniffi::Record, Into)]
 #[into(InitiateIssuanceAuthorizationDetailDTO)]
+#[uniffi(name = "InitiateIssuanceAuthorizationDetail")]
 pub struct InitiateIssuanceAuthorizationDetailBindingDTO {
     pub r#type: String,
     pub credential_configuration_id: String,
@@ -240,11 +211,13 @@ pub struct InitiateIssuanceAuthorizationDetailBindingDTO {
 
 #[derive(Clone, Debug, uniffi::Record, From)]
 #[from(InitiateIssuanceResponseDTO)]
+#[uniffi(name = "InitiateIssuanceResponse")]
 pub struct InitiateIssuanceResponseBindingDTO {
     pub url: String,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HolderAcceptCredentialRequest")]
 pub struct HolderAcceptCredentialRequestBindingDTO {
     pub interaction_id: String,
     pub did_id: Option<String>,

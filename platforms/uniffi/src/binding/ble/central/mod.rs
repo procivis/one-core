@@ -62,6 +62,7 @@ pub trait BleCentral: Send + Sync {
 
 #[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(CharacteristicWriteType)]
+#[uniffi(name = "CharacteristicWriteType")]
 pub enum CharacteristicWriteTypeBindingEnum {
     WithResponse,
     WithoutResponse,
@@ -69,6 +70,7 @@ pub enum CharacteristicWriteTypeBindingEnum {
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(PeripheralDiscoveryData)]
+#[uniffi(name = "PeripheralDiscoveryData")]
 pub struct PeripheralDiscoveryDataBindingDTO {
     pub device_address: DeviceAddress,
     pub local_device_name: Option<String>,

@@ -7,12 +7,12 @@ use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO}
 use one_dto_mapper::{From, Into, convert_inner};
 
 use super::common::SortDirection;
-use crate::OneCoreBinding;
+use crate::OneCore;
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn create_did(&self, request: DidRequestBindingDTO) -> Result<String, BindingError> {
         let core = self.use_core().await?;
@@ -24,7 +24,7 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
-    pub async fn get_dids(
+    pub async fn list_dids(
         &self,
         query: DidListQueryBindingDTO,
     ) -> Result<DidListBindingDTO, BindingError> {
@@ -117,6 +117,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(DidListItemResponseDTO)]
+#[uniffi(name = "DidListItem")]
 pub struct DidListItemBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -135,12 +136,14 @@ pub struct DidListItemBindingDTO {
 #[derive(Clone, Debug, Into, From, uniffi::Enum)]
 #[into(DidType)]
 #[from(DidType)]
+#[uniffi(name = "DidType")]
 pub enum DidTypeBindingEnum {
     Local,
     Remote,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DidListQuery")]
 pub struct DidListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -163,6 +166,7 @@ pub struct DidListQueryBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetDidListResponseDTO)]
+#[uniffi(name = "DidList")]
 pub struct DidListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<DidListItemBindingDTO>,
@@ -172,6 +176,7 @@ pub struct DidListBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableDidColumn)]
+#[uniffi(name = "SortableDidColumn")]
 pub enum SortableDidColumnBindingEnum {
     Name,
     CreatedDate,
@@ -182,12 +187,14 @@ pub enum SortableDidColumnBindingEnum {
 }
 
 #[derive(Clone, Debug, PartialEq, uniffi::Enum)]
+#[uniffi(name = "DidListQueryExactColumn")]
 pub enum ExactDidFilterColumnBindingEnum {
     Name,
     Did,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CreateDidRequest")]
 pub struct DidRequestBindingDTO {
     pub organisation_id: String,
     pub name: String,
@@ -197,6 +204,7 @@ pub struct DidRequestBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DidRequestKeys")]
 pub struct DidRequestKeysBindingDTO {
     pub authentication: Vec<String>,
     pub assertion_method: Vec<String>,
@@ -207,6 +215,7 @@ pub struct DidRequestKeysBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(KeyRole)]
+#[uniffi(name = "KeyRole")]
 pub enum KeyRoleBindingEnum {
     Authentication,
     AssertionMethod,

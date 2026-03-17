@@ -24,14 +24,14 @@ internal object Init {
  * @param params Additional optional init parameters
  * @param dataDirPath Optional directory where ONE Core SDK should persist its data
  *
- * Note that [InitParamsDto.bleCentral], [InitParamsDto.blePeripheral] and [InitParamsDto.nativeSecureElement] fallback to the default implmementations if not provided
+ * Note that [InitParams.bleCentral], [InitParams.blePeripheral] and [InitParams.nativeSecureElement] fallback to the default implmementations if not provided
  */
-public fun initializeCore(context: Context, params: InitParamsDto, dataDirPath: String = context.filesDir.absolutePath): OneCoreBindingInterface {
+public fun initializeCore(context: Context, params: InitParams, dataDirPath: String = context.filesDir.absolutePath): OneCoreInterface {
     Init.initializeRustls(context)
 
     return uniffiInitializeCore(
         dataDirPath = dataDirPath,
-        params = InitParamsDto(
+        params = InitParams(
             configJson = params.configJson,
             nativeSecureElement = params.nativeSecureElement ?: AndroidKeyStoreKeyStorage(context),
             bleCentral = params.bleCentral ?: AndroidBLECentral(context),

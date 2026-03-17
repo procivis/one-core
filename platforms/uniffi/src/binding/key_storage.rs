@@ -39,6 +39,7 @@ pub trait NativeKeyStorage: Send + Sync {
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(StorageGeneratedKey)]
+#[uniffi(name = "GeneratedKey")]
 pub struct GeneratedKeyBindingDTO {
     pub key_reference: Vec<u8>,
     pub public_key: Vec<u8>,

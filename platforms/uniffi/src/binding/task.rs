@@ -1,11 +1,11 @@
 use one_core::service::error::ServiceError;
 use serde_json::to_string;
 
-use super::OneCoreBinding;
+use super::OneCore;
 use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn run_task(&self, task: String) -> Result<String, BindingError> {
         let core = self.use_core().await?;

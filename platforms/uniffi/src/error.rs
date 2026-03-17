@@ -24,6 +24,7 @@ impl ErrorCodeMixin for SDKError {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+#[uniffi(name = "ErrorResponse")]
 pub struct ErrorResponseBindingDTO {
     pub code: String,
     pub message: String,
@@ -44,14 +45,15 @@ impl Cause {
 }
 
 #[derive(Error, Debug, uniffi::Error)]
+#[uniffi(name = "OneCoreError")]
 pub enum BindingError {
     #[error("Error: {data:?}")]
-    ErrorResponse { data: ErrorResponseBindingDTO },
+    Response { data: ErrorResponseBindingDTO },
 }
 
 impl<T: Into<ErrorResponseBindingDTO>> From<T> for BindingError {
     fn from(value: T) -> Self {
-        Self::ErrorResponse { data: value.into() }
+        Self::Response { data: value.into() }
     }
 }
 

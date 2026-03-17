@@ -19,11 +19,11 @@ import java.security.spec.ECGenParameterSpec
  * Default implementation of native secure element
  */
 class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage {
-    override suspend fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
+    override suspend fun generateKey(keyAlias: String): GeneratedKey {
         return generateKeyInner(keyAlias, null)
     }
 
-    private suspend fun generateKeyInner(keyAlias: String, nonce: String?): GeneratedKeyBindingDto {
+    private suspend fun generateKeyInner(keyAlias: String, nonce: String?): GeneratedKey {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
@@ -82,7 +82,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             val ySign = ((y[31].toInt() and 0x01) + 0x02).toByte()
             val compressed = byteArrayOf(ySign) + x
 
-            return GeneratedKeyBindingDto(keyAlias.toByteArray(Charsets.UTF_8), compressed)
+            return GeneratedKey(keyAlias.toByteArray(Charsets.UTF_8), compressed)
         } catch (e: NativeKeyStorageException) {
             throw e;
         } catch (e: Throwable) {
@@ -93,7 +93,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
     override suspend fun generateAttestationKey(
         keyAlias: String,
         nonce: String?
-    ): GeneratedKeyBindingDto {
+    ): GeneratedKey {
         return generateKeyInner(keyAlias, nonce)
     }
 

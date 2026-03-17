@@ -13,15 +13,15 @@ public class IOSBLECentral: NSObject {
         }
     }
     
-    private var discoverServicesResultCallback: BLEThrowingResultCallback<[ServiceDescriptionBindingDto]>?
-    private var discoverCharacteristicsResultCallbacks: [CBUUID: BLEThrowingResultCallback<ServiceDescriptionBindingDto>] = [:]
+    private var discoverServicesResultCallback: BLEThrowingResultCallback<[ServiceDescription]>?
+    private var discoverCharacteristicsResultCallbacks: [CBUUID: BLEThrowingResultCallback<ServiceDescription>] = [:]
     
     private let adapterStateLock = NSLock()
     private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     
     private let deviceDiscoveryLock = NSLock()
-    private var getDiscoveredDevicesCallback: BLEThrowingResultCallback<[PeripheralDiscoveryDataBindingDto]>?
-    private var discoveredPeripheralsQueue: [PeripheralDiscoveryDataBindingDto] = []
+    private var getDiscoveredDevicesCallback: BLEThrowingResultCallback<[PeripheralDiscoveryData]>?
+    private var discoveredPeripheralsQueue: [PeripheralDiscoveryData] = []
     
     private let deviceConnectionLock = NSLock()
     private var peripheralConnectResultCallback: BLEThrowingResultCallback<Void>?
@@ -115,8 +115,8 @@ extension IOSBLECentral: BleCentral {
         }
         try await connectWithoutDiscovery(peripheral: peripheralUuid)
         let discoveredServices = try await discoverServices(peripheral: peripheralUuid, services: nil)
-        let servicesWithCharacteristics = try await withThrowingTaskGroup(of: ServiceDescriptionBindingDto.self) { group in
-            var services = [ServiceDescriptionBindingDto]()
+        let servicesWithCharacteristics = try await withThrowingTaskGroup(of: ServiceDescription.self) { group in
+            var services = [ServiceDescription]()
             let serviceUUIDs = Array(Set(discoveredServices)).map { $0.uuid }
             services.reserveCapacity(serviceUUIDs.count)
             for uuid in serviceUUIDs {
@@ -161,7 +161,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    public func getDiscoveredDevices() async throws -> [PeripheralDiscoveryDataBindingDto] {
+    public func getDiscoveredDevices() async throws -> [PeripheralDiscoveryData] {
         return try await withCheckedThrowingContinuation { continuation in
             deviceDiscoveryLock.withLock {
                 guard discoveredPeripheralsQueue.isEmpty else {
@@ -178,7 +178,7 @@ extension IOSBLECentral: BleCentral {
         }
     }
     
-    public func writeData(peripheral: String, service: String, characteristic: String, data: Data, writeType: CharacteristicWriteTypeBindingEnum) async throws {
+    public func writeData(peripheral: String, service: String, characteristic: String, data: Data, writeType: CharacteristicWriteType) async throws {
 #if DEBUG
         print("writeData: \(peripheral), characteristic: \(characteristic)")
 #endif
@@ -379,7 +379,7 @@ private extension IOSBLECentral {
         }
     }
     
-    private func discoverServices(peripheral: UUID, services: [CBUUID]?) async throws -> [ServiceDescriptionBindingDto] {
+    private func discoverServices(peripheral: UUID, services: [CBUUID]?) async throws -> [ServiceDescription] {
         let cbPeripheral: CBPeripheral
         if let services = services, !services.isEmpty {
             cbPeripheral = try retrieveConnectedPeripheral(peripheral: peripheral, services: services)
@@ -405,7 +405,7 @@ private extension IOSBLECentral {
     }
     
     @MainActor
-    private func discoverCharacteristics(peripheral: UUID, service: CBUUID, characteristics: [CBUUID]?) async throws -> ServiceDescriptionBindingDto {
+    private func discoverCharacteristics(peripheral: UUID, service: CBUUID, characteristics: [CBUUID]?) async throws -> ServiceDescription {
         let (cbService, cbPeripheral) = try retrieveService(peripheral: peripheral, service: service)
         return try await withCheckedThrowingContinuation { continuation in
             discoverCharacteristicsResultCallbacks[service] = { [weak self] result in
@@ -512,10 +512,10 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         print("central manager did discover \(peripheral)")
 #endif
         let uuids = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?.map { $0.uuidString } ?? []
-        let peripheral = PeripheralDiscoveryDataBindingDto(deviceAddress: peripheral.identifier.uuidString,
-                                                           localDeviceName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
-                                                           advertisedServices: uuids,
-                                                           advertisedServiceData: advertisementData[CBAdvertisementDataServiceDataKey] as? [String: Data])
+        let peripheral = PeripheralDiscoveryData(deviceAddress: peripheral.identifier.uuidString,
+                                                 localDeviceName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
+                                                 advertisedServices: uuids,
+                                                 advertisedServiceData: advertisementData[CBAdvertisementDataServiceDataKey] as? [String: Data])
         deviceDiscoveryLock.withLock {
             guard let callback = getDiscoveredDevicesCallback else {
                 discoveredPeripheralsQueue.append(peripheral)
@@ -640,7 +640,7 @@ extension IOSBLECentral: CBPeripheralDelegate {
 #if DEBUG
         let deviceAddress: UUID = peripheral.identifier
         print("discovered services of \(peripheral.name ?? "") \(deviceAddress)")
-        let services: [ServiceDescriptionBindingDto] = peripheral.servicesDescriptions
+        let services: [ServiceDescription] = peripheral.servicesDescriptions
         print(services)
 #endif
     }

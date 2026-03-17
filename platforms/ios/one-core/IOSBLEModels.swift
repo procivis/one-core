@@ -11,7 +11,7 @@ struct CharacteristicKey: Hashable, Equatable {
 
 extension CBCharacteristicProperties {
     
-    init(with propertiesArray: [CharacteristicPropertyBindingEnum]) {
+    init(with propertiesArray: [CharacteristicProperty]) {
         self.init()
         propertiesArray.forEach { property in
             switch property {
@@ -29,9 +29,9 @@ extension CBCharacteristicProperties {
         }
     }
     
-    var propertiesArray: [CharacteristicPropertyBindingEnum] {
+    var propertiesArray: [CharacteristicProperty] {
         get {
-            var properties: [CharacteristicPropertyBindingEnum] = []
+            var properties: [CharacteristicProperty] = []
             if self.contains(.read) {
                 properties.append(.read)
             }
@@ -46,7 +46,7 @@ extension CBCharacteristicProperties {
     }
 }
 
-extension Array where Element == CharacteristicPropertyBindingEnum {
+extension Array where Element == CharacteristicProperty {
     
     var propertiesSet: CBCharacteristicProperties {
         get {
@@ -57,7 +57,7 @@ extension Array where Element == CharacteristicPropertyBindingEnum {
 
 extension CBAttributePermissions {
     
-    init(with permissionsArray: [CharacteristicPermissionBindingEnum]) {
+    init(with permissionsArray: [CharacteristicPermission]) {
         self.init()
         permissionsArray.forEach { property in
             switch property {
@@ -69,9 +69,9 @@ extension CBAttributePermissions {
         }
     }
     
-    var permissionsArray: [CharacteristicPermissionBindingEnum] {
+    var permissionsArray: [CharacteristicPermission] {
         get {
-            var permissions: [CharacteristicPermissionBindingEnum] = []
+            var permissions: [CharacteristicPermission] = []
             if self.contains(.readable) {
                 permissions.append(.read)
             }
@@ -83,7 +83,7 @@ extension CBAttributePermissions {
     }
 }
 
-extension Array where Element == CharacteristicPermissionBindingEnum {
+extension Array where Element == CharacteristicPermission {
     
     var permissionsSet: CBAttributePermissions {
         get {
@@ -94,23 +94,23 @@ extension Array where Element == CharacteristicPermissionBindingEnum {
 
 extension CBCharacteristic {
     
-    var characteristic: CharacteristicBindingDto {
+    var characteristic: CharacteristicSettings {
         get {
-            var permissions: [CharacteristicPermissionBindingEnum] = []
+            var permissions: [CharacteristicPermission] = []
             if let mutableCharacteristic = self as? CBMutableCharacteristic {
                 permissions = mutableCharacteristic.permissions.permissionsArray
             }
             let properties = self.properties.propertiesArray
-            return CharacteristicBindingDto(uuid: uuid.uuidString,
-                                            permissions: permissions,
-                                            properties: properties)
+            return CharacteristicSettings(uuid: uuid.uuidString,
+                                          permissions: permissions,
+                                          properties: properties)
         }
     }
 }
 
 extension CBMutableCharacteristic {
     
-    convenience init(with characteristic: CharacteristicBindingDto) {
+    convenience init(with characteristic: CharacteristicSettings) {
         self.init(type: CBUUID(string: characteristic.uuid),
                   properties: characteristic.properties.propertiesSet,
                   value: nil,
@@ -120,19 +120,19 @@ extension CBMutableCharacteristic {
 
 extension CBService {
     
-    var servicesDescription: ServiceDescriptionBindingDto {
+    var servicesDescription: ServiceDescription {
         get {
-            return ServiceDescriptionBindingDto(uuid: self.uuid.uuidString,
-                                                advertise: false,
-                                                advertisedServiceData: nil,
-                                                characteristics: self.characteristics?.map { $0.characteristic } ?? [])
+            return ServiceDescription(uuid: self.uuid.uuidString,
+                                      advertise: false,
+                                      advertisedServiceData: nil,
+                                      characteristics: self.characteristics?.map { $0.characteristic } ?? [])
         }
     }
 }
 
 extension CBMutableService {
     
-    convenience init(with serviceDescription: ServiceDescriptionBindingDto, primary: Bool = true) {
+    convenience init(with serviceDescription: ServiceDescription, primary: Bool = true) {
         self.init(type: CBUUID(string: serviceDescription.uuid), primary: primary)
         self.characteristics = serviceDescription.characteristics.map { CBMutableCharacteristic(with: $0) }
     }
@@ -140,7 +140,7 @@ extension CBMutableService {
 
 extension CBPeripheral {
     
-    var servicesDescriptions: [ServiceDescriptionBindingDto] {
+    var servicesDescriptions: [ServiceDescription] {
         get {
             return self.services?.map { service in
                 return service.servicesDescription
@@ -149,7 +149,7 @@ extension CBPeripheral {
     }
 }
 
-extension CharacteristicWriteTypeBindingEnum {
+extension CharacteristicWriteType {
     
     var cbCharacteristicWriteType: CBCharacteristicWriteType {
         get {

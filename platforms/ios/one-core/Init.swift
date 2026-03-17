@@ -6,9 +6,9 @@ import Foundation
  - Parameter params: Additional optional init parameters
  - Parameter dataDirPath: Optional directory where ONE Core SDK should persist its data
 
- - Note: ``InitParamsDto/bleCentral``, ``InitParamsDto/blePeripheral``, ``InitParamsDto/nativeSecureElement`` and ``InitParamsDto/nfcScanner`` fallback to the default implmementations if not provided
+ - Note: ``InitParams/bleCentral``, ``InitParams/blePeripheral``, ``InitParams/nativeSecureElement`` and ``InitParams/nfcScanner`` fallback to the default implmementations if not provided
 */
-public func initializeCore(params: InitParamsDto, dataDirPath: String? = nil) throws -> OneCoreBindingProtocol {
+public func initializeCore(params: InitParams, dataDirPath: String? = nil) throws -> OneCoreProtocol {
   var dataDir: String? = dataDirPath
   if dataDir == nil {
     dataDir = NSSearchPathForDirectoriesInDomains(
@@ -18,10 +18,10 @@ public func initializeCore(params: InitParamsDto, dataDirPath: String? = nil) th
       ).first
   }
   if dataDir == nil {
-      throw BindingError.ErrorResponse(
-        data: ErrorResponseBindingDto(code: "BR_0000", message: "invalid DataDir", cause: nil)
-      )
-    }
+    throw OneCoreError.Response(
+      data: ErrorResponse(code: "BR_0000", message: "invalid DataDir", cause: nil)
+    )
+  }
 
   // create folder if not exists
   try FileManager.default.createDirectory(
@@ -31,7 +31,7 @@ public func initializeCore(params: InitParamsDto, dataDirPath: String? = nil) th
 
   return try uniffiInitializeCore(
     dataDirPath: dataDir!,
-    params: InitParamsDto(
+    params: InitParams(
       configJson: params.configJson,
       nativeSecureElement: params.nativeSecureElement ?? SecureEnclaveKeyStorage(),
       remoteSecureElement: params.remoteSecureElement,

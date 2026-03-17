@@ -10,13 +10,13 @@ use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 
 use super::backup::UnexportableEntitiesBindingDTO;
-use crate::OneCoreBinding;
-use crate::binding::mapper::deserialize_timestamp;
+use super::mapper::deserialize_timestamp;
+use crate::OneCore;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn get_history_entry(
         &self,
@@ -31,7 +31,7 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
-    pub async fn get_history_list(
+    pub async fn list_history(
         &self,
         query: HistoryListQueryBindingDTO,
     ) -> Result<HistoryListBindingDTO, BindingError> {
@@ -126,6 +126,7 @@ impl OneCoreBinding {
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
 #[from(HistoryAction)]
 #[into(HistoryAction)]
+#[uniffi(name = "HistoryAction")]
 pub enum HistoryActionBindingEnum {
     Accepted,
     Created,
@@ -160,6 +161,7 @@ pub enum HistoryActionBindingEnum {
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
 #[from(HistoryEntityType)]
 #[into(HistoryEntityType)]
+#[uniffi(name = "HistoryEntityType")]
 pub enum HistoryEntityTypeBindingEnum {
     Key,
     Did,
@@ -189,6 +191,7 @@ pub enum HistoryEntityTypeBindingEnum {
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
+#[uniffi(name = "HistoryMetadata")]
 pub enum HistoryMetadataBinding {
     UnexportableEntities {
         value: UnexportableEntitiesBindingDTO,
@@ -200,12 +203,14 @@ pub enum HistoryMetadataBinding {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[uniffi(name = "HistoryErrorMetadata")]
 pub struct HistoryErrorMetadataBindingDTO {
     pub error_code: String,
     pub message: String,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HistoryListItem")]
 pub struct HistoryListItemBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -220,6 +225,7 @@ pub struct HistoryListItemBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HistoryListQuery")]
 pub struct HistoryListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -239,6 +245,7 @@ pub struct HistoryListQueryBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetHistoryListResponseDTO)]
+#[uniffi(name = "HistoryList")]
 pub struct HistoryListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<HistoryListItemBindingDTO>,
@@ -248,7 +255,8 @@ pub struct HistoryListBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(HistorySearchEnum)]
-pub enum HistorySearchEnumBindingEnum {
+#[uniffi(name = "HistorySearchType")]
+pub enum HistorySearchTypeBindingEnum {
     ClaimName,
     ClaimValue,
     CredentialSchemaName,
@@ -260,9 +268,10 @@ pub enum HistorySearchEnumBindingEnum {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HistorySearch")]
 pub struct HistorySearchBindingDTO {
     pub text: String,
-    pub r#type: Option<HistorySearchEnumBindingEnum>,
+    pub r#type: Option<HistorySearchTypeBindingEnum>,
 }
 
 fn search_query_to_filter_value(value: HistorySearchBindingDTO) -> HistoryFilterValue {

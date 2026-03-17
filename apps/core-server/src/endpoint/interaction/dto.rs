@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 
 use one_core::model::interaction::InteractionType;
-use one_core::provider::issuance_protocol::model::{
-    OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
-};
+use one_core::provider::issuance_protocol::model::{OpenID4VCITxCode, OpenID4VCITxCodeInputMode};
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{ProposeProofRequestDTO, ProposeProofResponseDTO};
 use one_core::service::ssi_holder::dto::{
-    ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
-    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
-    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
-    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
+    ContinueIssuanceResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
+    InitiateIssuanceResponseDTO, PresentationSubmitCredentialRequestDTO,
+    PresentationSubmitRequestDTO, PresentationSubmitV2CredentialRequestDTO,
+    PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -92,22 +90,6 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     pub key_algorithms: Option<Vec<String>>,
     pub requires_wallet_instance_attestation: bool,
     pub protocol: String,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(CredentialConfigurationSupportedResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialConfigurationSupportedResponseRestDTO {
-    #[from(with_fn = convert_inner_of_inner)]
-    pub proof_types_supported: Option<HashMap<String, ProofTypeSupported>>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, Default, From)]
-#[from(OpenID4VCIProofTypeSupported)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ProofTypeSupported {
-    pub proof_signing_alg_values_supported: Vec<String>,
 }
 
 #[options_not_nullable]

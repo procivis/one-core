@@ -5,7 +5,7 @@ use shared_types::{CredentialId, InteractionId, OrganisationId, ProofId};
 
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::interaction::InteractionType;
-use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
+use crate::provider::issuance_protocol::model::OpenID4VCITxCode;
 
 #[derive(Clone, Debug)]
 pub struct PresentationSubmitRequestDTO {
@@ -31,11 +31,6 @@ pub struct PresentationSubmitV2CredentialRequestDTO {
     pub credential_id: CredentialId,
     /// Path of claims that were optionally selected by the user.
     pub user_selections: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CredentialConfigurationSupportedResponseDTO {
-    pub proof_types_supported: Option<HashMap<String, OpenID4VCIProofTypeSupported>>,
 }
 
 #[derive(Clone, Debug)]

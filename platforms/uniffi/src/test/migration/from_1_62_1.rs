@@ -24,7 +24,7 @@ async fn test_unpack_real_backup_1_62_1() {
     );
 
     let credentials = core
-        .get_credentials(CredentialListQueryBindingDTO {
+        .list_credentials(CredentialListQueryBindingDTO {
             page: 0,
             page_size: 10,
             sort: None,

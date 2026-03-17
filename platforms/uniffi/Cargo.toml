@@ -15,8 +15,6 @@ strict = []
 
 [dependencies]
 async-trait.workspace    = true
-futures.workspace        = true
-indexmap.workspace       = true
 one-core                 = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json"] }
 one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true

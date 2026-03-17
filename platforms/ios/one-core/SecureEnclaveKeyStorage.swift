@@ -7,7 +7,7 @@ import DeviceCheck
 public class SecureEnclaveKeyStorage: NativeKeyStorage {
     public init() {}
     
-    public func generateKey(keyAlias: String) async throws -> GeneratedKeyBindingDto {
+    public func generateKey(keyAlias: String) async throws -> GeneratedKey {
         if (!isSupported()) {
             throw NativeKeyStorageError.Unsupported;
         }
@@ -29,7 +29,7 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
             var compressed: [UInt8] = [2 + ySign];
             compressed.append(contentsOf: x);
             
-            return GeneratedKeyBindingDto(keyReference: newKey.dataRepresentation, publicKey: Data(compressed));
+            return GeneratedKey(keyReference: newKey.dataRepresentation, publicKey: Data(compressed));
         } catch {
             throw NativeKeyStorageError.KeyGenerationFailure(reason: error.localizedDescription);
         }
@@ -88,7 +88,7 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
         }
     }
 
-    public func generateAttestationKey(keyAlias: String, nonce: String?) async throws -> GeneratedKeyBindingDto {
+    public func generateAttestationKey(keyAlias: String, nonce: String?) async throws -> GeneratedKey {
         guard #available(iOS 14.0, *) else {
             throw NativeKeyStorageError.Unsupported
         }
@@ -103,7 +103,7 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
                     continuation.resume(throwing: NativeKeyStorageError.KeyGenerationFailure(reason: error.localizedDescription))
                 } else if let keyId = keyId {
                     let keyReference = keyId.data(using: .utf8) ?? Data()
-                    continuation.resume(returning: GeneratedKeyBindingDto(keyReference: keyReference, publicKey: Data()))
+                    continuation.resume(returning: GeneratedKey(keyReference: keyReference, publicKey: Data()))
                 } else {
                     continuation.resume(throwing: NativeKeyStorageError.KeyGenerationFailure(reason: "No key ID returned"))
                 }

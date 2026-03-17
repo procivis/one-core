@@ -19,14 +19,8 @@ struct IntfTsTemplate<'ci> {
     ci: &'ci ComponentInterface,
 }
 
-impl<'ci> IntfTsTemplate<'ci> {
-    pub fn new(ci: &'ci ComponentInterface) -> Self {
-        Self { ci }
-    }
-}
-
 pub fn generate_ts_bindings(ci: &ComponentInterface) -> Result<Bindings> {
-    let ts_file_contents = IntfTsTemplate::new(ci)
+    let ts_file_contents = IntfTsTemplate { ci }
         .render()
         .context("failed to render intf.ts template")?;
 

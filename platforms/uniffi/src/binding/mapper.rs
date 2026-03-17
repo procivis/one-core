@@ -37,7 +37,8 @@ use one_core::service::proof_schema::dto::{
 use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
 use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
 use one_core::service::trust_entity::dto::{
-    ListTrustEntitiesQueryDTO, TrustEntityFilterValue, TrustListLogo,
+    ListTrustEntitiesQueryDTO, ResolvedIdentifierTrustEntityResponseDTO, TrustEntityFilterValue,
+    TrustListLogo, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
@@ -45,41 +46,40 @@ use shared_types::{KeyId, TrustEntityKey};
 use time::OffsetDateTime;
 
 use super::ble::DeviceInfoBindingDTO;
-use crate::binding::credential::{
+use super::credential::{
     ClaimBindingDTO, ClaimValueBindingDTO, CredentialDetailBindingDTO,
     CredentialListItemBindingDTO, MdocMsoValidityResponseBindingDTO,
 };
-use crate::binding::credential_schema::{
+use super::credential_schema::{
     CredentialSchemaBindingDTO, ImportCredentialSchemaClaimSchemaBindingDTO,
 };
-use crate::binding::did::{DidRequestBindingDTO, DidRequestKeysBindingDTO};
-use crate::binding::history::{
+use super::did::{DidRequestBindingDTO, DidRequestKeysBindingDTO};
+use super::history::{
     HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
-use crate::binding::identifier::CreateIdentifierDidRequestBindingDTO;
-use crate::binding::interaction::{
-    HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO,
-};
-use crate::binding::key::KeyRequestBindingDTO;
-use crate::binding::organisation::{
+use super::identifier::CreateIdentifierDidRequestBindingDTO;
+use super::interaction::{HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO};
+use super::key::KeyRequestBindingDTO;
+use super::organisation::{
     CreateOrganisationRequestBindingDTO, UpsertOrganisationRequestBindingDTO,
 };
-use crate::binding::proof::{
+use super::proof::{
     ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
     PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestedCredentialBindingDTO,
     PresentationDefinitionV2ClaimBindingDTO, PresentationDefinitionV2ClaimValueBindingDTO,
     PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
-    ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
+    ProofListQueryExactColumnBindingEnum, ProofRequestClaimValueBindingDTO,
+    ProofResponseBindingDTO,
 };
-use crate::binding::proof_schema::{
+use super::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
-    ProofRequestClaimValueBindingDTO, ProofSchemaListQueryExactColumnBinding,
+    ProofSchemaListQueryExactColumnBinding,
 };
-use crate::binding::trust_anchor::{
-    ExactTrustAnchorFilterColumnBindings, ListTrustAnchorsFiltersBindings,
-};
-use crate::binding::trust_entity::{
+use super::trust_anchor::{ExactTrustAnchorFilterColumnBindings, ListTrustAnchorsFiltersBindings};
+use super::trust_entity::{
     ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
+    ResolvedIdentifierTrustEntityResponseBindingDTO,
+    UpdateRemoteTrustEntityFromDidRequestBindingDTO,
 };
 use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{TimestampFormat, into_id, into_id_opt, into_timestamp};
@@ -1080,6 +1080,48 @@ impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailu
                     failure_hint: (*failure_hint).into(),
                 }
             }
+        }
+    }
+}
+
+impl TryFrom<UpdateRemoteTrustEntityFromDidRequestBindingDTO>
+    for UpdateTrustEntityFromDidRequestDTO
+{
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(
+        value: UpdateRemoteTrustEntityFromDidRequestBindingDTO,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            action: value.action.map(Into::into),
+            name: value.name,
+            logo: value.logo.map(TryInto::try_into).transpose()?,
+            website: value.website.map(Into::into),
+            terms_url: value.terms_url.map(Into::into),
+            privacy_url: value.privacy_url.map(Into::into),
+            role: value.role.map(Into::into),
+            content: None,
+        })
+    }
+}
+
+impl From<ResolvedIdentifierTrustEntityResponseDTO>
+    for ResolvedIdentifierTrustEntityResponseBindingDTO
+{
+    fn from(value: ResolvedIdentifierTrustEntityResponseDTO) -> Self {
+        let certificate_ids: Vec<_> = value
+            .certificate_ids
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+
+        Self {
+            trust_entity: value.trust_entity.into(),
+            certificate_ids: if certificate_ids.is_empty() {
+                None
+            } else {
+                Some(certificate_ids)
+            },
         }
     }
 }

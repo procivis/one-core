@@ -3,7 +3,6 @@
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
 
-use one_core::OneCore;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::error::ContextWithErrorCode;
 use one_core::proto::http_client::HttpClient;
@@ -15,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use sql_data_provider::DataLayer;
 use tracing::warn;
 
-use crate::binding::OneCoreBinding;
+use crate::binding::OneCore;
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
 use crate::binding::nfc::hce::{NfcHce, NfcHceWrapper};
@@ -39,7 +38,7 @@ struct MobileConfig {
 }
 
 #[derive(Default, uniffi::Record)]
-pub struct InitParamsDTO {
+pub struct InitParams {
     pub config_json: Option<String>,
     pub native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     pub remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
@@ -53,8 +52,8 @@ pub struct InitParamsDTO {
 #[uniffi::export]
 fn uniffi_initialize_core(
     data_dir_path: String,
-    params: InitParamsDTO,
-) -> Result<Arc<OneCoreBinding>, BindingError> {
+    params: InitParams,
+) -> Result<Arc<OneCore>, BindingError> {
     // Sets tokio as global runtime for all async exports
     static TOKIO_RUNTIME: LazyLock<Result<tokio::runtime::Runtime, std::io::Error>> =
         LazyLock::new(|| {
@@ -95,8 +94,8 @@ pub extern "system" fn android_rustls_init(
 
 async fn initialize(
     data_dir_path: String,
-    params: InitParamsDTO,
-) -> Result<Arc<OneCoreBinding>, BindingError> {
+    params: InitParams,
+) -> Result<Arc<OneCore>, BindingError> {
     let native_secure_element: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
     > = params
@@ -197,7 +196,7 @@ async fn initialize(
             let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
             let session_provider = Arc::new(NoSessionProvider);
 
-            OneCore::new(
+            one_core::OneCore::new(
                 core_config,
                 None,
                 session_provider,
@@ -215,7 +214,7 @@ async fn initialize(
         }) as _
     };
 
-    let core_binding = Arc::new(OneCoreBinding::new(
+    let core_binding = Arc::new(OneCore::new(
         main_db_path,
         backup_db_path,
         Box::new(core_builder),

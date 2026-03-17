@@ -5,19 +5,19 @@ use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
 use one_core::service::error::ServiceError;
-use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_dto_mapper::{From, convert_inner};
 use secrecy::SecretString;
 
-use super::OneCoreBinding;
+use super::OneCore;
 use super::credential::CredentialDetailBindingDTO;
 use super::did::DidListItemBindingDTO;
-use crate::binding::identifier::GetIdentifierListItemBindingDTO;
+use super::identifier::GetIdentifierListItemBindingDTO;
+use super::key::KeyListItemBindingDTO;
 use crate::error::BindingError;
 use crate::utils::TimestampFormat;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn create_backup(
         &self,
@@ -98,6 +98,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(BackupCreateResponseDTO)]
+#[uniffi(name = "CreatedBackup")]
 pub struct BackupCreateBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub history_id: String,
@@ -107,6 +108,7 @@ pub struct BackupCreateBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(MetadataDTO)]
+#[uniffi(name = "Metadata")]
 pub struct MetadataBindingDTO {
     pub db_version: String,
     pub db_hash: String,
@@ -116,6 +118,7 @@ pub struct MetadataBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(UnexportableEntitiesResponseDTO)]
+#[uniffi(name = "UnexportableEntities")]
 pub struct UnexportableEntitiesBindingDTO {
     #[from(with_fn = convert_inner)]
     pub credentials: Vec<CredentialDetailBindingDTO>,
@@ -129,21 +132,6 @@ pub struct UnexportableEntitiesBindingDTO {
     pub total_keys: u64,
     pub total_dids: u64,
     pub total_identifiers: u64,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(KeyListItemResponseDTO)]
-pub struct KeyListItemBindingDTO {
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_modified: String,
-    pub name: String,
-    pub public_key: Vec<u8>,
-    pub key_type: String,
-    pub storage_type: String,
 }
 
 #[cfg(test)]
@@ -229,7 +217,7 @@ mod tests {
             .await
             .unwrap();
 
-        let Err(BindingError::ErrorResponse {
+        let Err(BindingError::Response {
             data: ErrorResponseBindingDTO { cause, .. },
         }) = core.unpack_backup("wrong".to_string(), file).await
         else {
@@ -262,7 +250,7 @@ mod tests {
         core.finalize_import().await.unwrap();
 
         let history = core
-            .get_history_list(HistoryListQueryBindingDTO {
+            .list_history(HistoryListQueryBindingDTO {
                 page: 0,
                 page_size: 1,
                 organisation_id,

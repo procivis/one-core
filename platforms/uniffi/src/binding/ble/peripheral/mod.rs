@@ -54,6 +54,7 @@ pub trait BlePeripheral: Send + Sync {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ServiceDescription)]
+#[uniffi(name = "ServiceDescription")]
 pub struct ServiceDescriptionBindingDTO {
     pub uuid: String,
     pub advertise: bool,
@@ -64,6 +65,7 @@ pub struct ServiceDescriptionBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CreateCharacteristicOptions)]
+#[uniffi(name = "CharacteristicSettings")]
 pub struct CharacteristicBindingDTO {
     pub uuid: String,
     #[from(with_fn = convert_inner)]
@@ -74,6 +76,7 @@ pub struct CharacteristicBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(CharacteristicPermissions)]
+#[uniffi(name = "CharacteristicPermission")]
 pub enum CharacteristicPermissionBindingEnum {
     Read,
     Write,
@@ -81,6 +84,7 @@ pub enum CharacteristicPermissionBindingEnum {
 
 #[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(CharacteristicProperties)]
+#[uniffi(name = "CharacteristicProperty")]
 pub enum CharacteristicPropertyBindingEnum {
     Read,
     Write,
@@ -91,12 +95,14 @@ pub enum CharacteristicPropertyBindingEnum {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(ConnectionEvent)]
+#[uniffi(name = "ConnectionEvent")]
 pub enum ConnectionEventBindingEnum {
     Connected { device_info: DeviceInfoBindingDTO },
     Disconnected { device_address: DeviceAddress },
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DeviceInfo")]
 pub struct DeviceInfoBindingDTO {
     pub address: String,
     pub mtu: u16,

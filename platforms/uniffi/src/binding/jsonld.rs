@@ -1,8 +1,8 @@
-use super::OneCoreBinding;
+use super::OneCore;
 use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn resolve_jsonld_context(
         &self,
@@ -17,6 +17,7 @@ impl OneCoreBinding {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "ResolvedJsonLDContext")]
 pub struct ResolveJsonLDContextResponseBindingDTO {
     pub context: String,
 }

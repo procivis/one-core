@@ -31,8 +31,8 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         var callback: ScanCallback? = null // ongoing scan
 
         // next batch for getDiscoveredDevices
-        val devices: MutableList<PeripheralDiscoveryDataBindingDto> = mutableListOf()
-        var promise: Promise<List<PeripheralDiscoveryDataBindingDto>>? = null
+        val devices: MutableList<PeripheralDiscoveryData> = mutableListOf()
+        var promise: Promise<List<PeripheralDiscoveryData>>? = null
 
         // cache of scanned devices
         val scannedDevices: MutableMap<String, BluetoothDevice> = HashMap()
@@ -68,7 +68,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         }
     }
 
-    override suspend fun getDiscoveredDevices(): List<PeripheralDiscoveryDataBindingDto> {
+    override suspend fun getDiscoveredDevices(): List<PeripheralDiscoveryData> {
         return asyncCallback { promise ->
             synchronized(lock) {
                 if (mScanning.callback == null) {
@@ -306,7 +306,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         service: String,
         characteristic: String,
         data: ByteArray,
-        writeType: CharacteristicWriteTypeBindingEnum
+        writeType: CharacteristicWriteType
     ) {
         return asyncCallback { promise ->
             synchronized(lock) {
@@ -336,7 +336,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         gatt: BluetoothGatt,
         address: DeviceCharacteristicAddress,
         data: ByteArray,
-        writeType: CharacteristicWriteTypeBindingEnum
+        writeType: CharacteristicWriteType
     ) {
         val statusCode =
             gatt.writeCharacteristic(characteristic, data, getWriteType(writeType))
@@ -354,7 +354,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         characteristic: BluetoothGattCharacteristic,
         gatt: BluetoothGatt,
         data: ByteArray,
-        writeType: CharacteristicWriteTypeBindingEnum
+        writeType: CharacteristicWriteType
     ) {
         characteristic.writeType = getWriteType(writeType)
         if (!characteristic.setValue(data) || !gatt.writeCharacteristic(
@@ -405,7 +405,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                     data
                 } else null
 
-                val data = PeripheralDiscoveryDataBindingDto(
+                val data = PeripheralDiscoveryData(
                     device.address,
                     device.name,
                     advertisedServices.map { it.toString() },
@@ -490,10 +490,10 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         return Triple(characteristic, gatt, address)
     }
 
-    private fun getWriteType(writeType: CharacteristicWriteTypeBindingEnum): Int {
+    private fun getWriteType(writeType: CharacteristicWriteType): Int {
         return when (writeType) {
-            CharacteristicWriteTypeBindingEnum.WITH_RESPONSE -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            CharacteristicWriteTypeBindingEnum.WITHOUT_RESPONSE -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            CharacteristicWriteType.WITH_RESPONSE -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            CharacteristicWriteType.WITHOUT_RESPONSE -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
         }
     }
 

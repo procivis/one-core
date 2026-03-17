@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use one_core::service::config::dto::ConfigDTO;
 use one_dto_mapper::From;
 
-use super::OneCoreBinding;
+use super::OneCore;
 use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn get_config(&self) -> Result<ConfigBindingDTO, BindingError> {
         let core = self.use_core().await?;
@@ -18,6 +18,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ConfigDTO)]
+#[uniffi(name = "Config")]
 pub struct ConfigBindingDTO {
     #[from(with_fn = serialize_config_entity)]
     pub format: HashMap<String, String>,

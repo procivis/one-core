@@ -1,9 +1,9 @@
 use one_dto_mapper::From;
 
-use crate::OneCoreBinding;
+use crate::OneCore;
 
 #[uniffi::export]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub fn version(&self) -> VersionBindingDTO {
         one_core::OneCore::version().into()
@@ -12,6 +12,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(one_core::Version)]
+#[uniffi(name = "Version")]
 pub struct VersionBindingDTO {
     pub target: String,
     pub build_time: String,

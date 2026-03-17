@@ -4,27 +4,26 @@ use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEnti
 use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityRequestDTO,
     GetRemoteTrustEntityResponseDTO, GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO,
-    ResolveTrustEntitiesRequestDTO, ResolveTrustEntityRequestDTO,
-    ResolvedIdentifierTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
+    ResolveTrustEntitiesRequestDTO, ResolveTrustEntityRequestDTO, SortableTrustEntityColumnEnum,
     TrustEntitiesResponseItemDTO, TrustEntityCertificateResponseDTO,
-    UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
+    UpdateTrustEntityActionFromDidRequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 
-use super::OneCoreBinding;
+use super::OneCore;
 use super::common::SortDirection;
 use super::did::DidListItemBindingDTO;
-use super::mapper::OptionalString;
-use super::trust_anchor::GetTrustAnchorResponseBindingDTO;
-use crate::binding::identifier::{
+use super::identifier::{
     CertificateStateBindingEnum, CertificateX509ExtensionBindingDTO,
     GetIdentifierListItemBindingDTO,
 };
+use super::mapper::OptionalString;
+use super::trust_anchor::GetTrustAnchorResponseBindingDTO;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn create_trust_entity(
         &self,
@@ -139,6 +138,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, uniffi::Enum)]
 #[into(SortableTrustEntityColumnEnum)]
+#[uniffi(name = "SortableTrustEntityColumn")]
 pub enum SortableTrustEntityColumnBindings {
     Name,
     Role,
@@ -147,11 +147,13 @@ pub enum SortableTrustEntityColumnBindings {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, uniffi::Enum)]
+#[uniffi(name = "TrustEntityListQueryExactColumn")]
 pub enum ExactTrustEntityFilterColumnBindings {
     Name,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "TrustEntityListQuery")]
 pub struct ListTrustEntitiesFiltersBindings {
     pub page: u32,
     pub page_size: u32,
@@ -178,6 +180,7 @@ pub struct ListTrustEntitiesFiltersBindings {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(TrustEntitiesResponseItemDTO)]
+#[uniffi(name = "TrustEntityListItem")]
 pub struct TrustEntitiesListItemResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -201,6 +204,7 @@ pub struct TrustEntitiesListItemResponseBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustEntitiesResponseDTO)]
+#[uniffi(name = "TrustEntityList")]
 pub struct TrustEntitiesListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<TrustEntitiesListItemResponseBindingDTO>,
@@ -210,6 +214,7 @@ pub struct TrustEntitiesListBindingDTO {
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "CreateTrustEntityRequest")]
 pub struct CreateTrustEntityRequestBindingDTO {
     #[try_into(infallible)]
     pub name: String,
@@ -239,6 +244,7 @@ pub struct CreateTrustEntityRequestBindingDTO {
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "CreateRemoteTrustEntityRequest")]
 pub struct CreateRemoteTrustEntityRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub did_id: String,
@@ -261,40 +267,28 @@ pub struct CreateRemoteTrustEntityRequestBindingDTO {
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(TrustEntityRole)]
 #[into(TrustEntityRole)]
+#[uniffi(name = "TrustEntityRole")]
 pub enum TrustEntityRoleBindingEnum {
     Issuer,
     Verifier,
     Both,
 }
 
-#[derive(Clone, Debug, uniffi::Enum)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
+#[from(TrustEntityType)]
+#[into(TrustEntityType)]
+#[uniffi(name = "TrustEntityType")]
 pub enum TrustEntityTypeBindingEnum {
     Did,
     /// certificate authority
-    Ca,
-}
-
-impl From<TrustEntityType> for TrustEntityTypeBindingEnum {
-    fn from(value: TrustEntityType) -> Self {
-        match value {
-            TrustEntityType::Did => Self::Did,
-            TrustEntityType::CertificateAuthority => Self::Ca,
-        }
-    }
-}
-
-impl From<TrustEntityTypeBindingEnum> for TrustEntityType {
-    fn from(value: TrustEntityTypeBindingEnum) -> Self {
-        match value {
-            TrustEntityTypeBindingEnum::Did => Self::Did,
-            TrustEntityTypeBindingEnum::Ca => Self::CertificateAuthority,
-        }
-    }
+    #[uniffi(name = "CA")]
+    CertificateAuthority,
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(TrustEntityState)]
 #[into(TrustEntityState)]
+#[uniffi(name = "TrustEntityState")]
 pub enum TrustEntityStateBindingEnum {
     Active,
     Removed,
@@ -304,6 +298,7 @@ pub enum TrustEntityStateBindingEnum {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustEntityResponseDTO)]
+#[uniffi(name = "TrustEntityDetail")]
 pub struct GetTrustEntityResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -335,6 +330,7 @@ pub struct GetTrustEntityResponseBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(TrustEntityCertificateResponseDTO)]
+#[uniffi(name = "TrustEntityCertificate")]
 pub struct TrustEntityCertificateResponseBindingDTO {
     pub state: CertificateStateBindingEnum,
     pub public_key: String,
@@ -353,6 +349,7 @@ pub struct TrustEntityCertificateResponseBindingDTO {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetRemoteTrustEntityResponseDTO)]
+#[uniffi(name = "RemoteTrustEntityDetail")]
 pub struct GetRemoteTrustEntityResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -376,6 +373,7 @@ pub struct GetRemoteTrustEntityResponseBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(UpdateTrustEntityActionFromDidRequestDTO)]
+#[uniffi(name = "TrustEntityUpdateAction")]
 pub enum TrustEntityUpdateActionBindingEnum {
     AdminActivate,
     Activate,
@@ -384,6 +382,7 @@ pub enum TrustEntityUpdateActionBindingEnum {
 }
 
 #[derive(uniffi::Record)]
+#[uniffi(name = "UpdateRemoteTrustEntityRequest")]
 pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
     pub did_id: String,
     pub action: Option<TrustEntityUpdateActionBindingEnum>,
@@ -395,29 +394,9 @@ pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
     pub role: Option<TrustEntityRoleBindingEnum>,
 }
 
-impl TryFrom<UpdateRemoteTrustEntityFromDidRequestBindingDTO>
-    for UpdateTrustEntityFromDidRequestDTO
-{
-    type Error = ErrorResponseBindingDTO;
-
-    fn try_from(
-        value: UpdateRemoteTrustEntityFromDidRequestBindingDTO,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            action: value.action.map(Into::into),
-            name: value.name,
-            logo: value.logo.map(TryInto::try_into).transpose()?,
-            website: value.website.map(Into::into),
-            terms_url: value.terms_url.map(Into::into),
-            privacy_url: value.privacy_url.map(Into::into),
-            role: value.role.map(Into::into),
-            content: None,
-        })
-    }
-}
-
 #[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ResolveTrustEntitiesRequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ResolveTrustEntitiesRequest")]
 pub struct ResolveTrustEntitiesRequestBindingDTO {
     #[try_into(with_fn = "try_convert_inner")]
     pub identifiers: Vec<ResolveTrustEntityRequestBindingDTO>,
@@ -425,6 +404,7 @@ pub struct ResolveTrustEntitiesRequestBindingDTO {
 
 #[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ResolveTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ResolveTrustEntityRequest")]
 pub struct ResolveTrustEntityRequestBindingDTO {
     #[try_into(with_fn = into_id)]
     pub id: String,
@@ -433,28 +413,8 @@ pub struct ResolveTrustEntityRequestBindingDTO {
 }
 
 #[derive(Debug, uniffi::Record)]
+#[uniffi(name = "ResolvedTrustEntity")]
 pub struct ResolvedIdentifierTrustEntityResponseBindingDTO {
     pub trust_entity: GetTrustEntityResponseBindingDTO,
     pub certificate_ids: Option<Vec<String>>,
-}
-
-impl From<ResolvedIdentifierTrustEntityResponseDTO>
-    for ResolvedIdentifierTrustEntityResponseBindingDTO
-{
-    fn from(value: ResolvedIdentifierTrustEntityResponseDTO) -> Self {
-        let certificate_ids: Vec<_> = value
-            .certificate_ids
-            .iter()
-            .map(ToString::to_string)
-            .collect();
-
-        Self {
-            trust_entity: value.trust_entity.into(),
-            certificate_ids: if certificate_ids.is_empty() {
-                None
-            } else {
-                Some(certificate_ids)
-            },
-        }
-    }
 }

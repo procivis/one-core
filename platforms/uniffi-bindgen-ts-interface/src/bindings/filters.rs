@@ -4,7 +4,7 @@
 
 use askama::Result;
 use heck::{ToLowerCamelCase, ToPascalCase, ToShoutySnakeCase};
-use uniffi_bindgen::interface::{AsType, Type};
+use uniffi_bindgen::interface::{AsType, Enum, Method, Object, Record, Type};
 
 /// Workaround types that need to be treated differently
 fn type_exception(type_name: &str) -> Option<String> {
@@ -94,4 +94,34 @@ pub fn typescript_docstring(s: &str, _: &dyn askama::Values, level: &i32) -> Res
         format!("/** {s} */")
     };
     Ok(textwrap::indent(&comment, &" ".repeat(*level as usize)))
+}
+
+pub fn sort_entries<T: Keyed + Clone>(records: &[T], _: &dyn askama::Values) -> Result<Vec<T>> {
+    let mut records = records.to_vec();
+    records.sort_by_key(|r| r.key().to_string());
+    Ok(records)
+}
+
+pub trait Keyed {
+    fn key(&self) -> &str;
+}
+impl Keyed for Record {
+    fn key(&self) -> &str {
+        self.name()
+    }
+}
+impl Keyed for Enum {
+    fn key(&self) -> &str {
+        self.name()
+    }
+}
+impl Keyed for Object {
+    fn key(&self) -> &str {
+        self.name()
+    }
+}
+impl Keyed for &Method {
+    fn key(&self) -> &str {
+        self.name()
+    }
 }

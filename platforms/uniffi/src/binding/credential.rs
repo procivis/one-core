@@ -16,13 +16,13 @@ use one_dto_mapper::{From, Into, convert_inner};
 use super::common::SortDirection;
 use super::credential_schema::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
 use super::identifier::GetIdentifierListItemBindingDTO;
-use crate::OneCoreBinding;
-use crate::binding::mapper::deserialize_timestamp;
+use super::mapper::deserialize_timestamp;
+use crate::OneCore;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn get_credential(
         &self,
@@ -37,7 +37,7 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
-    pub async fn get_credentials(
+    pub async fn list_credentials(
         &self,
         query: CredentialListQueryBindingDTO,
     ) -> Result<CredentialListBindingDTO, BindingError> {
@@ -264,6 +264,7 @@ impl OneCoreBinding {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CredentialDetail")]
 pub struct CredentialDetailBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -285,12 +286,14 @@ pub struct CredentialDetailBindingDTO {
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
 #[into(ExactColumn)]
+#[uniffi(name = "CredentialListQueryExactColumn")]
 pub enum CredentialListQueryExactColumnBindingEnum {
     Name,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableCredentialColumn)]
+#[uniffi(name = "SortableCredentialColumn")]
 pub enum SortableCredentialColumnBindingEnum {
     CreatedDate,
     SchemaName,
@@ -299,6 +302,7 @@ pub enum SortableCredentialColumnBindingEnum {
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
+#[uniffi(name = "CredentialListQuerySearchType")]
 pub enum SearchTypeBindingEnum {
     ClaimName,
     ClaimValue,
@@ -306,6 +310,7 @@ pub enum SearchTypeBindingEnum {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CredentialListQuery")]
 pub struct CredentialListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -337,6 +342,7 @@ pub struct CredentialListQueryBindingDTO {
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(one_core::model::credential::CredentialListIncludeEntityTypeEnum)]
+#[uniffi(name = "CredentialListIncludeEntityType")]
 pub enum CredentialListIncludeEntityTypeBindingEnum {
     LayoutProperties,
     Credential,
@@ -344,6 +350,7 @@ pub enum CredentialListIncludeEntityTypeBindingEnum {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetCredentialListResponseDTO)]
+#[uniffi(name = "CredentialList")]
 pub struct CredentialListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<CredentialListItemBindingDTO>,
@@ -352,6 +359,7 @@ pub struct CredentialListBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "MdocMsoValidity")]
 pub struct MdocMsoValidityResponseBindingDTO {
     pub expiration: String,
     pub next_update: String,
@@ -361,6 +369,7 @@ pub struct MdocMsoValidityResponseBindingDTO {
 #[derive(Clone, Debug, From, Into, Eq, PartialEq, uniffi::Enum)]
 #[from(CredentialStateEnum)]
 #[into(one_core::model::credential::CredentialStateEnum)]
+#[uniffi(name = "CredentialState")]
 pub enum CredentialStateBindingEnum {
     Created,
     Pending,
@@ -375,6 +384,7 @@ pub enum CredentialStateBindingEnum {
 
 #[derive(Clone, Debug, uniffi::Record, From)]
 #[from(DetailCredentialClaimResponseDTO)]
+#[uniffi(name = "Claim")]
 pub struct ClaimBindingDTO {
     pub path: String,
     pub schema: CredentialClaimSchemaBindingDTO,
@@ -382,6 +392,7 @@ pub struct ClaimBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
+#[uniffi(name = "ClaimValue")]
 pub enum ClaimValueBindingDTO {
     Boolean { value: bool },
     Float { value: f64 },
@@ -393,6 +404,7 @@ pub enum ClaimValueBindingDTO {
 #[derive(Clone, Debug, Into, From, uniffi::Enum)]
 #[from(CredentialRole)]
 #[into(CredentialRole)]
+#[uniffi(name = "CredentialRole")]
 pub enum CredentialRoleBindingDTO {
     Holder,
     Issuer,
@@ -400,6 +412,7 @@ pub enum CredentialRoleBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CredentialListItem")]
 pub struct CredentialListItemBindingDTO {
     pub id: String,
     pub created_date: String,

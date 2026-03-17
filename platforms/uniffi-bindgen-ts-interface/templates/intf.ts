@@ -3,7 +3,7 @@
 // ==========
 // Record definitions:
 // ==========
-{%- for record_def in ci.record_definitions() %}
+{%- for record_def in ci.record_definitions() | sort_entries %}
 {% call ts::docstring(record_def, 0) %}
 export interface {{ record_def.name() | typescript_class_name }} {
   {%- for field_def in record_def.fields() -%}
@@ -15,7 +15,7 @@ export interface {{ record_def.name() | typescript_class_name }} {
 // ==========
 // Enum definitions:
 // ==========
-{%- for enum_def in ci.enum_definitions() %}
+{%- for enum_def in ci.enum_definitions() | sort_entries %}
 {%- if !(enum_def | hidden_type) -%}
 {%- include "Enum.ts" %}
 {%- endif -%}
@@ -24,10 +24,10 @@ export interface {{ record_def.name() | typescript_class_name }} {
 // ==========
 // Object definitions:
 // ==========
-{%- for object_def in ci.object_definitions() %}
+{%- for object_def in ci.object_definitions() | sort_entries %}
 {% call ts::docstring(object_def, 0) %}
 export interface {{ object_def.name() | typescript_class_name }} {
-  {%- for method_def in object_def.methods() -%}
+  {%- for method_def in object_def.methods().as_slice() | sort_entries -%}
   {% call ts::docstring(method_def, 2) %}
   {{ method_def.name() | typescript_fn_name }}(
     {%- call ts::param_list(method_def) -%}

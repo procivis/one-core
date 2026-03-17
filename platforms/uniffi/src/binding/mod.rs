@@ -42,7 +42,7 @@ type CoreBuilder = Box<
 >;
 
 #[derive(uniffi::Object)]
-pub(crate) struct OneCoreBinding {
+pub(crate) struct OneCore {
     inner: RwLock<Option<one_core::OneCore>>,
     pub(crate) main_db_path: String,
     pub(crate) backup_db_path: String,
@@ -50,7 +50,7 @@ pub(crate) struct OneCoreBinding {
 }
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
         let mut guard = self.inner.write().await;
@@ -74,7 +74,7 @@ impl OneCoreBinding {
     }
 }
 
-impl OneCoreBinding {
+impl OneCore {
     pub(crate) fn new(
         main_db_path: String,
         backup_db_path: String,

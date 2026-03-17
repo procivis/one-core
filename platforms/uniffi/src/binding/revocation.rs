@@ -1,13 +1,13 @@
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use one_dto_mapper::{From, convert_inner};
 
-use super::OneCoreBinding;
+use super::OneCore;
 use super::credential::CredentialStateBindingEnum;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
-impl OneCoreBinding {
+impl OneCore {
     #[uniffi::method]
     pub async fn check_revocation(
         &self,
@@ -31,6 +31,7 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CredentialRevocationCheckResponseDTO)]
+#[uniffi(name = "CredentialRevocationCheckResponse")]
 pub struct CredentialRevocationCheckResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub credential_id: String,

@@ -15,5 +15,4 @@ heck                     = "0.5"
 serde.workspace          = true
 textwrap                 = "0.16"
 toml                     = "0.9"
-uniffi.workspace         = true
 uniffi_bindgen.workspace = true
