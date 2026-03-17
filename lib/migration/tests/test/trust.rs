@@ -331,3 +331,140 @@ async fn test_db_schema_trust_entry() {
         .default(None)
         .foreign_key("fk-TrustEntry-IdentifierId", "identifier", "id");
 }
+
+#[tokio::test]
+async fn test_db_schema_trust_collection() {
+    let schema = get_schema().await;
+
+    let mut columns = vec![
+        "id",
+        "created_date",
+        "last_modified",
+        "deactivated_at",
+        "name",
+        "organisation_id",
+    ];
+    if schema.backend() == DbBackend::MySql {
+        columns.push("deactivated_at_materialized");
+    }
+    let trust_entry = schema.table("trust_collection").columns(&columns).index(
+        "index-TrustCollection-Name-DeactivatedAt-Unique",
+        true,
+        &["name", "deactivated_at_materialized"],
+    );
+    trust_entry
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    trust_entry
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("deactivated_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    trust_entry
+        .column("name")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("organisation_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-TrustCollection-OrganisationId", "organisation", "id");
+}
+
+#[tokio::test]
+async fn test_db_schema_trust_subscription() {
+    let schema = get_schema().await;
+
+    let mut columns = vec![
+        "id",
+        "created_date",
+        "last_modified",
+        "deactivated_at",
+        "name",
+        "reference",
+        "type",
+        "state",
+        "role",
+        "trust_collection_id",
+    ];
+    if schema.backend() == DbBackend::MySql {
+        columns.push("deactivated_at_materialized");
+    }
+    let trust_entry = schema
+        .table("trust_list_subscription")
+        .columns(&columns)
+        .index(
+            "index-TrustListSubscription-Name-DeactivatedAt-Unique",
+            true,
+            &["name", "deactivated_at_materialized"],
+        )
+        .index(
+            "index-TrustListSubscription-Reference-DeactivatedAt-Unique",
+            true,
+            &["reference", "deactivated_at_materialized"],
+        );
+    trust_entry
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    trust_entry
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("deactivated_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    trust_entry
+        .column("name")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("reference")
+        .r#type(ColumnType::Text)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("role")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("state")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("trust_collection_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-TrustListSubscription-TrustCollectionId",
+            "trust_collection",
+            "id",
+        );
+}

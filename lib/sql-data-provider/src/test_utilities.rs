@@ -15,7 +15,7 @@ use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId,
     DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId,
     ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, RevocationMethodId,
-    WalletUnitAttestedKeyId, WalletUnitId,
+    TrustCollectionId, WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -36,7 +36,8 @@ use crate::entity::revocation_list_entry::{RevocationListEntryStatus, Revocation
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
     key_did, organisation, proof, proof_claim, proof_input_claim_schema, proof_input_schema,
-    proof_schema, revocation_list, revocation_list_entry, wallet_unit, wallet_unit_attested_key,
+    proof_schema, revocation_list, revocation_list_entry, trust_collection, wallet_unit,
+    wallet_unit_attested_key,
 };
 use crate::{DataLayer, db_conn};
 
@@ -719,6 +720,24 @@ pub async fn insert_wallet_unit_attested_key_to_database(
     .unwrap();
 
     id
+}
+
+pub async fn insert_trust_collection_to_database(
+    database: &DatabaseConnection,
+    organisation_id: OrganisationId,
+) -> Result<TrustCollectionId, DbErr> {
+    let id = Uuid::new_v4().into();
+    let collection = trust_collection::ActiveModel {
+        id: Set(id),
+        name: Set(id.to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        deactivated_at: NotSet,
+        organisation_id: Set(organisation_id),
+    }
+    .insert(database)
+    .await?;
+    Ok(collection.id)
 }
 
 pub fn random_jwk_string() -> String {

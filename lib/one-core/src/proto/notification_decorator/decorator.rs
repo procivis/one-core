@@ -26,9 +26,11 @@ use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::trust_anchor_repository::TrustAnchorRepository;
+use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_entity_repository::TrustEntityRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
+use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
@@ -129,6 +131,14 @@ impl DataRepository for DecoratedDataProvider {
     fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository> {
         self.data_provider.get_wallet_unit_attested_key_repository()
     }
+    fn get_trust_collection_repository(&self) -> Arc<dyn TrustCollectionRepository> {
+        self.data_provider.get_trust_collection_repository()
+    }
+
+    fn get_trust_list_subscription_repository(&self) -> Arc<dyn TrustListSubscriptionRepository> {
+        self.data_provider.get_trust_list_subscription_repository()
+    }
+
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
         self.data_provider.get_tx_manager()
     }
