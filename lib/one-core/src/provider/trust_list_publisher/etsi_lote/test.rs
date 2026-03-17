@@ -7,6 +7,7 @@ use serde_json::json;
 use shared_types::TrustListPublicationId;
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_602::{LoTEPayload, LoTEType, MultiLangString};
+use time::format_description::well_known::Rfc3339;
 use time::macros::datetime;
 use uuid::Uuid;
 
@@ -317,7 +318,8 @@ fn test_build_lote_payload_basic() {
     let mut publication = dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata);
     publication.sequence_number = 42;
 
-    let now = datetime!(2025-06-15 12:00 UTC);
+    // add fractional seconds to the publication date, to make sure it's rounded off
+    let now = datetime!(2025-06-15 12:00:00.55 UTC);
 
     let payload = build_lote_payload(
         &publication,
@@ -335,15 +337,15 @@ fn test_build_lote_payload_basic() {
     assert_eq!(payload.list_and_scheme_information.lote_sequence_number, 42);
     assert_eq!(
         payload.list_and_scheme_information.lote_type,
-        "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList"
+        Some(LoTEType::EuPidProvidersList),
     );
     assert_eq!(
         payload.list_and_scheme_information.list_issue_date_time,
-        "2025-06-15T12:00:00Z"
+        OffsetDateTime::parse("2025-06-15T12:00:00Z", &Rfc3339).unwrap()
     );
     assert_eq!(
         payload.list_and_scheme_information.next_update,
-        "2025-06-16T12:00:00Z"
+        OffsetDateTime::parse("2025-06-16T12:00:00Z", &Rfc3339).unwrap()
     );
     assert_eq!(
         payload.list_and_scheme_information.scheme_operator_name[0].value,
@@ -354,7 +356,9 @@ fn test_build_lote_payload_basic() {
         payload
             .list_and_scheme_information
             .status_determination_approach,
-        LoTEType::EuPidProvidersList.status_determination_approach()
+        LoTEType::EuPidProvidersList
+            .status_determination_approach()
+            .unwrap()
     );
     assert_eq!(payload.trusted_entities_list.as_ref().unwrap().len(), 1);
     let entity = &payload.trusted_entities_list.as_ref().unwrap()[0];
@@ -397,7 +401,10 @@ fn test_parse_and_verify_sprind_lote() {
     assert_eq!(info.lote_sequence_number, 1);
     assert_eq!(
         info.lote_type,
-        "http://uri.etsi.org/19602/LoTEType/RegistrarsAndRegistersListProvidersList"
+        Some(LoTEType::Other(
+            "http://uri.etsi.org/19602/LoTEType/RegistrarsAndRegistersListProvidersList"
+                .to_string()
+        ))
     );
     assert_eq!(info.scheme_territory, "EU");
     assert_eq!(info.scheme_operator_name[0].value, "SPRIND GmbH");
@@ -879,7 +886,7 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
     assert_eq!(info.scheme_operator_name[0].lang, "de");
     assert_eq!(info.scheme_operator_name[0].value, "Betreiber GmbH");
     assert_eq!(info.scheme_territory, "DE");
-    assert!(info.lote_type.contains("PID"));
+    assert_eq!(info.lote_type, Some(LoTEType::EuPidProvidersList));
     assert!(info.status_determination_approach.contains("PID"));
     assert!(info.scheme_type_community_rules.is_some());
 

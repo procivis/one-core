@@ -397,6 +397,11 @@ fn build_trusted_entity(
 
     let services = lote_type
         .service_type_identifiers()
+        .ok_or_else(|| {
+            TrustListPublisherError::UnsupportedRole(format!(
+                "Unknown service type identifiers for LoTE type `{lote_type}`"
+            ))
+        })?
         .into_iter()
         .map(|(uri, display_name)| TrustedEntityService {
             service_information: ServiceInformation {
@@ -445,6 +450,7 @@ fn build_lote_payload(
     refresh_interval: time::Duration,
     now: OffsetDateTime,
 ) -> Result<LoTEPayload, TrustListPublisherError> {
+    let now = now.truncate_to_second();
     let lote_type = LoTEType::try_from(&publication.role)?;
     let list_params: dto::CreateTrustListParams = serde_json::from_slice(&publication.metadata)?;
 
@@ -453,7 +459,7 @@ fn build_lote_payload(
     let scheme_info = ListAndSchemeInformation {
         lote_version_identifier: 1,
         lote_sequence_number: sequence_number,
-        lote_type: lote_type.to_string(),
+        lote_type: Some(lote_type.clone()),
         scheme_operator_name: list_params.scheme_operator_name.unwrap_or_else(|| {
             vec![MultiLangString {
                 lang: "en".into(),
@@ -461,10 +467,24 @@ fn build_lote_payload(
             }]
         }),
         scheme_information_uri: list_params.scheme_information_uri,
-        status_determination_approach: lote_type.status_determination_approach().to_string(),
+        status_determination_approach: lote_type
+            .status_determination_approach()
+            .ok_or_else(|| {
+                TrustListPublisherError::UnsupportedRole(format!(
+                    "Unknown status determination approach for LoTE type `{lote_type}`"
+                ))
+            })?
+            .to_string(),
         scheme_type_community_rules: Some(vec![MultiLangUri {
             lang: "en".into(),
-            uri_value: lote_type.scheme_type_community_rules().to_string(),
+            uri_value: lote_type
+                .scheme_type_community_rules()
+                .ok_or_else(|| {
+                    TrustListPublisherError::UnsupportedRole(format!(
+                        "Unknown scheme type community rules for LoTE type `{lote_type}`"
+                    ))
+                })?
+                .to_string(),
         }]),
         scheme_territory: list_params
             .scheme_territory
@@ -481,8 +501,8 @@ fn build_lote_payload(
         pointers_to_other_lote: list_params.pointers_to_other_lote,
         distribution_points: list_params.distribution_points,
         scheme_extensions: list_params.scheme_extensions,
-        list_issue_date_time: format_iso8601(now)?,
-        next_update: format_iso8601(now + refresh_interval)?,
+        list_issue_date_time: now,
+        next_update: now + refresh_interval,
     };
 
     let trusted_entities: Vec<TrustedEntity> = entries
@@ -497,11 +517,6 @@ fn build_lote_payload(
         list_and_scheme_information: scheme_info,
         trusted_entities_list: (!trusted_entities.is_empty()).then_some(trusted_entities),
     })
-}
-
-fn format_iso8601(dt: OffsetDateTime) -> Result<String, TrustListPublisherError> {
-    let format = time::format_description::well_known::Rfc3339;
-    Ok(dt.format(&format)?)
 }
 
 /// Produce a JAdES Baseline B-B compact JWS (ETSI TS 119 182-1 V1.2.1).

@@ -6,28 +6,37 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use strum::Display;
+use time::OffsetDateTime;
 
 /// LoTE type URIs per ETSI TS 119 602 Annex C.
-#[derive(Clone, Debug, PartialEq, Eq, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Display, Serialize, Deserialize)]
 pub enum LoTEType {
     #[strum(to_string = "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList")]
+    #[serde(rename = "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList")]
     EuPidProvidersList,
     #[strum(to_string = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList")]
+    #[serde(rename = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList")]
     EuWalletProvidersList,
     #[strum(to_string = "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList")]
+    #[serde(rename = "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList")]
     EuWrpAcProvidersList,
     #[strum(to_string = "http://uri.etsi.org/19602/LoTEType/EUWRPRCProvidersList")]
+    #[serde(rename = "http://uri.etsi.org/19602/LoTEType/EUWRPRCProvidersList")]
     EuWrpRcProvidersList,
     #[strum(to_string = "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList")]
+    #[serde(rename = "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList")]
     EuPubEaaProvidersList,
     #[strum(to_string = "http://uri.etsi.org/19602/LoTEType/EURegistrarsAndRegistersList")]
+    #[serde(rename = "http://uri.etsi.org/19602/LoTEType/EURegistrarsAndRegistersList")]
     EuRegistrarsAndRegistersList,
+    #[serde(untagged)]
+    Other(String),
 }
 
 impl LoTEType {
     /// StatusDeterminationApproach URI, annex C.2.2
-    pub fn status_determination_approach(&self) -> &'static str {
-        match self {
+    pub fn status_determination_approach(&self) -> Option<&'static str> {
+        let str = match self {
             Self::EuPidProvidersList => "http://uri.etsi.org/19602/PIDProvidersList/StatusDetn/EU",
             Self::EuWalletProvidersList => {
                 "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU"
@@ -44,12 +53,14 @@ impl LoTEType {
             Self::EuRegistrarsAndRegistersList => {
                 "http://uri.etsi.org/19602/RegistrarsAndRegistersList/StatusDetn/EU"
             }
-        }
+            Self::Other(_) => return None,
+        };
+        Some(str)
     }
 
     /// SchemeTypeCommunityRules URI, annex C.2.3
-    pub fn scheme_type_community_rules(&self) -> &'static str {
-        match self {
+    pub fn scheme_type_community_rules(&self) -> Option<&'static str> {
+        let str = match self {
             Self::EuPidProvidersList => "http://uri.etsi.org/19602/PIDProviders/schemerules/EU",
             Self::EuWalletProvidersList => {
                 "http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU"
@@ -66,7 +77,9 @@ impl LoTEType {
             Self::EuRegistrarsAndRegistersList => {
                 "http://uri.etsi.org/19602/RegistrarsAndRegistersList/schemerules/EU"
             }
-        }
+            Self::Other(_) => return None,
+        };
+        Some(str)
     }
 
     /// SchemeTerritory — always "EU" for EU profiles.
@@ -76,8 +89,8 @@ impl LoTEType {
 
     /// Service type identifier URIs for this EU profile.
     /// Annexes D.1,2,3
-    pub fn service_type_identifiers(&self) -> Vec<(&'static str, &'static str)> {
-        match self {
+    pub fn service_type_identifiers(&self) -> Option<Vec<(&'static str, &'static str)>> {
+        let str = match self {
             Self::EuPidProvidersList => vec![
                 (
                     "http://uri.etsi.org/19602/SvcType/PID/Issuance",
@@ -131,7 +144,9 @@ impl LoTEType {
             Self::EuRegistrarsAndRegistersList => {
                 vec![("http://uri.etsi.org/19602/SvcType/Register", "Register")]
             }
-        }
+            Self::Other(_) => return None,
+        };
+        Some(str)
     }
 }
 
@@ -154,7 +169,7 @@ pub struct ListAndSchemeInformation {
     pub lote_sequence_number: u64,
 
     #[serde(rename = "LoTEType")]
-    pub lote_type: String,
+    pub lote_type: Option<LoTEType>,
 
     #[serde(rename = "SchemeOperatorName")]
     pub scheme_operator_name: Vec<MultiLangString>,
@@ -192,11 +207,11 @@ pub struct ListAndSchemeInformation {
     #[serde(rename = "SchemeExtensions")]
     pub scheme_extensions: Option<Vec<serde_json::Value>>,
 
-    #[serde(rename = "ListIssueDateTime")]
-    pub list_issue_date_time: String,
+    #[serde(rename = "ListIssueDateTime", with = "time::serde::rfc3339")]
+    pub list_issue_date_time: OffsetDateTime,
 
-    #[serde(rename = "NextUpdate")]
-    pub next_update: String,
+    #[serde(rename = "NextUpdate", with = "time::serde::rfc3339")]
+    pub next_update: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -399,8 +414,8 @@ pub struct ServiceHistoryInstance {
     pub service_digital_identity: ServiceDigitalIdentity,
     #[serde(rename = "ServiceStatus")]
     pub service_status: String,
-    #[serde(rename = "StatusStartingTime")]
-    pub status_starting_time: String,
+    #[serde(rename = "StatusStartingTime", with = "time::serde::rfc3339")]
+    pub status_starting_time: OffsetDateTime,
     #[serde(rename = "ServiceTypeIdentifier")]
     pub service_type_identifier: Option<String>,
     #[serde(rename = "ServiceInformationExtensions")]
