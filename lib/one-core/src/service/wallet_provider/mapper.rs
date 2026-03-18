@@ -89,9 +89,8 @@ impl From<EudiWalletInfoConfig> for EudiWalletInfo {
 }
 
 pub(super) fn params_into_display_names(params: HashMap<String, String>) -> Vec<DisplayNameDTO> {
-    let mut result = vec![];
-    for (lang, value) in params {
-        result.push(DisplayNameDTO { lang, value });
-    }
-    result
+    params
+        .into_iter()
+        .map(|(lang, value)| DisplayNameDTO { lang, value })
+        .collect()
 }

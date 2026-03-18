@@ -33,6 +33,8 @@ verifierProvider:
     params:
       public:
         verifierName: "Procivis One Verifier"
+        featureFlags:
+          trustEcosystemsEnabled: false
 signer:
   ACCESS_CERTIFICATE:
     enabled: false

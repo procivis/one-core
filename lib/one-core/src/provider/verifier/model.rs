@@ -1,13 +1,19 @@
-use serde::Deserialize;
+use std::collections::HashMap;
 
-#[derive(Clone, Deserialize)]
+use serde::{Deserialize, Serialize};
+use shared_types::TrustCollectionId;
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Verifier {
     pub verifier_name: String,
     pub app_version: Option<VerifierAppVersion>,
+    #[serde(default)]
+    pub trust_collections: Vec<TrustCollectionParams>,
+    pub feature_flags: FeatureFlags,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifierAppVersion {
     pub minimum: Option<String>,
@@ -16,8 +22,23 @@ pub struct VerifierAppVersion {
     pub update_screen: Option<VerifierUpdateScreen>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifierUpdateScreen {
     pub link: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureFlags {
+    pub trust_ecosystems_enabled: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustCollectionParams {
+    pub id: TrustCollectionId,
+    pub logo: String,
+    pub display_name: HashMap<String, String>,
+    pub description: HashMap<String, String>,
 }

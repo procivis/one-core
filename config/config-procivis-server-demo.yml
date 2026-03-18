@@ -25,6 +25,8 @@ verifierProvider:
     params:
       public:
         verifierName: "Procivis One Demo Verifier"
+        featureFlags:
+          trustEcosystemsEnabled: true
 keyStorage:
   AZURE_VAULT:
     params:

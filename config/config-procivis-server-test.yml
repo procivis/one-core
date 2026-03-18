@@ -27,6 +27,8 @@ verifierProvider:
     params:
       public:
         verifierName: "Procivis One Test Verifier"
+        featureFlags:
+          trustEcosystemsEnabled: true
 signer:
   REGISTRATION_CERTIFICATE:
     params:

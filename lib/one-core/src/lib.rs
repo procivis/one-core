@@ -765,7 +765,10 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 session_provider.clone(),
             ),
-            verifier_provider_service: VerifierProviderService::new(verifier_provider),
+            verifier_provider_service: VerifierProviderService::new(
+                verifier_provider,
+                data_provider.get_trust_collection_repository(),
+            ),
             trust_list_publication_service: TrustListPublicationService::new(
                 data_provider.get_identifier_repository(),
                 data_provider.get_trust_list_publication_repository(),

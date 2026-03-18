@@ -28,6 +28,7 @@ pub(crate) async fn get_verification_provider(
     let result = state
         .core
         .verifier_provider_service
-        .get_verifier_by_id(id.as_str());
+        .get_verifier_by_id(id.as_str())
+        .await;
     OkOrErrorResponse::from_result(result, state, "retrieving verifier provider")
 }

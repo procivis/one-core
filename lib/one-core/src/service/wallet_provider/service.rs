@@ -17,10 +17,9 @@ use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to
 use super::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
     IssueWalletUnitAttestationResponseDTO, NoncePayload, ProviderTrustCollectionDTO,
-    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, TrustCollectionParams,
-    WalletInstanceAttestationClaims, WalletProviderMetadataResponseDTO, WalletProviderParams,
-    WalletRegistrationRequirement, WalletUnitActivationRequestDTO, WalletUnitAttestationClaims,
-    WalletUnitAttestationMetadataDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletInstanceAttestationClaims,
+    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
+    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
@@ -42,8 +41,10 @@ use crate::model::history::{
 };
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::KeyRelations;
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::revocation_list::RevocationListRelations;
+use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
 use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
@@ -1306,10 +1307,45 @@ impl WalletProviderService {
             WalletRegistrationRequirement::Disabled => (false, false),
         };
 
-        let mut trust_collections = vec![];
-        for collection in params.trust_collections {
-            trust_collections.push(self.fetch_trust_collection_info(collection).await?);
-        }
+        let trust_collections = if params.trust_collections.is_empty() {
+            vec![]
+        } else {
+            let models = self
+                .trust_collection_repository
+                .list(TrustCollectionListQuery {
+                    filtering: Some(
+                        TrustCollectionFilterValue::Ids(
+                            params.trust_collections.iter().map(|c| c.id).collect(),
+                        )
+                        .condition(),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("getting trust collections")?
+                .values;
+
+            params
+                .trust_collections
+                .into_iter()
+                .map(|collection| {
+                    let model = models.iter().find(|m| m.id == collection.id).ok_or(
+                        WalletProviderError::MappingError(format!(
+                            "Missing collection {}",
+                            collection.id
+                        )),
+                    )?;
+
+                    Ok(ProviderTrustCollectionDTO {
+                        id: collection.id,
+                        name: model.name.to_owned(),
+                        logo: collection.logo,
+                        display_name: params_into_display_names(collection.display_name),
+                        description: params_into_display_names(collection.description),
+                    })
+                })
+                .collect::<Result<_, WalletProviderError>>()?
+        };
 
         Ok(WalletProviderMetadataResponseDTO {
             wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
@@ -1324,26 +1360,6 @@ impl WalletProviderService {
             app_version: params.app_version,
             feature_flags: params.feature_flags,
             trust_collections,
-        })
-    }
-
-    async fn fetch_trust_collection_info(
-        &self,
-        params: TrustCollectionParams,
-    ) -> Result<ProviderTrustCollectionDTO, WalletProviderError> {
-        let collection = self
-            .trust_collection_repository
-            .get(&params.id, &Default::default())
-            .await
-            .error_while("getting trust collection")?
-            .ok_or(WalletProviderError::MissingTrustCollection(params.id))?;
-
-        Ok(ProviderTrustCollectionDTO {
-            id: collection.id,
-            name: collection.name,
-            logo: params.logo,
-            display_name: params_into_display_names(params.display_name),
-            description: params_into_display_names(params.description),
         })
     }
 }

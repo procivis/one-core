@@ -30,6 +30,8 @@ verifierProvider:
         verifierName: "Procivis One Dev Verifier"
         appVersion:
           minimum: "v1.0.0"
+        featureFlags:
+          trustEcosystemsEnabled: true
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

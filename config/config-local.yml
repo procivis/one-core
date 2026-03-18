@@ -327,3 +327,5 @@ verifierProvider:
             - "v1.51.0"
           updateScreen:
             link: https//example.com
+        featureFlags:
+          trustEcosystemsEnabled: true
