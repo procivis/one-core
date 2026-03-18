@@ -41,7 +41,7 @@ pub struct CreateHolderWalletUnitRequest {
     pub provider_wallet_unit_id: WalletUnitId,
     pub status: WalletUnitStatus,
     pub organisation: Organisation,
-    pub authentication_key: Key,
+    pub authentication_key: Option<Key>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

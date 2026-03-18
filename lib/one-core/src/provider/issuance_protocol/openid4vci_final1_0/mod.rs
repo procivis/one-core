@@ -62,6 +62,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::model::wallet_unit::WalletUnitStatus;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
@@ -94,6 +95,7 @@ use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
@@ -142,6 +144,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config_id: String,
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
 }
 
@@ -167,6 +170,7 @@ impl OpenID4VCIFinal1_0 {
         params: OpenID4VCIFinal1Params,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
@@ -190,6 +194,7 @@ impl OpenID4VCIFinal1_0 {
             blob_storage_provider,
             config_id,
             holder_wallet_unit_proto,
+            holder_wallet_unit_repository,
             key_security_level_provider,
             certificate_validator,
         }
@@ -217,6 +222,7 @@ impl OpenID4VCIFinal1_0 {
         params: OpenID4VCIFinal1Params,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
@@ -239,6 +245,7 @@ impl OpenID4VCIFinal1_0 {
             blob_storage_provider,
             config_id,
             holder_wallet_unit_proto,
+            holder_wallet_unit_repository,
             key_security_level_provider,
             certificate_validator,
         }
@@ -581,11 +588,19 @@ impl OpenID4VCIFinal1_0 {
             token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
 
         let wallet_attestation_required = requires_wia(token_endpoint_auth_methods);
-        let wallet_unit_provided = holder_wallet_unit_id.is_some();
+
+        let wallet_unit_provided = if let Some(holder_wallet_unit_id) = holder_wallet_unit_id {
+            WalletUnitStatus::Active
+                == self
+                    .get_current_wallet_unit_status(holder_wallet_unit_id)
+                    .await?
+        } else {
+            false
+        };
 
         if wallet_attestation_required && !wallet_unit_provided {
             return Err(IssuanceProtocolError::Failed(
-                "holder wallet unit id is required".to_string(),
+                "Active holder wallet unit id is required".to_string(),
             ));
         }
 
@@ -605,7 +620,7 @@ impl OpenID4VCIFinal1_0 {
 
         if key_storage_security_level.is_some() && !wallet_unit_provided {
             return Err(IssuanceProtocolError::Failed(
-                "key storage attestation requires holder wallet unit id".to_string(),
+                "key storage attestation requires active holder wallet unit id".to_string(),
             ));
         }
 
@@ -731,6 +746,22 @@ impl OpenID4VCIFinal1_0 {
             wia_request,
             wua_proof,
         })
+    }
+
+    async fn get_current_wallet_unit_status(
+        &self,
+        holder_wallet_unit_id: HolderWalletUnitId,
+    ) -> Result<WalletUnitStatus, IssuanceProtocolError> {
+        let wallet_unit = self
+            .holder_wallet_unit_repository
+            .get_holder_wallet_unit(&holder_wallet_unit_id, &Default::default())
+            .await
+            .error_while("fetching wallet unit")?
+            .ok_or(IssuanceProtocolError::InvalidRequest(
+                "Wallet unit not found".to_string(),
+            ))?;
+
+        Ok(wallet_unit.status)
     }
 
     async fn holder_process_accepted_credential(

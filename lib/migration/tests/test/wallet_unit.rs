@@ -134,8 +134,7 @@ async fn test_db_schema_holder_wallet_unit() {
     holder_wallet_unit
         .column("authentication_key_id")
         .r#type(ColumnType::Uuid)
-        .nullable(false)
-        .default(None)
+        .nullable(true)
         .foreign_key("fk-HolderWalletUnitAuthKey-Key", "key", "id");
     holder_wallet_unit
         .column("wallet_provider_name")

@@ -42,6 +42,7 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::CredentialRevocationInfo;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
@@ -199,6 +200,7 @@ async fn test_issuer_submit_succeeds() {
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockHolderWalletUnitRepository::new()),
         Arc::new(MockCertificateValidator::new()),
     );
 
@@ -350,6 +352,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockHolderWalletUnitRepository::new()),
         Arc::new(MockCertificateValidator::new()),
     );
 
@@ -490,6 +493,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockHolderWalletUnitRepository::new()),
         Arc::new(MockCertificateValidator::new()),
     );
 
@@ -592,6 +596,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockHolderWalletUnitRepository::new()),
         Arc::new(MockCertificateValidator::new()),
     );
 

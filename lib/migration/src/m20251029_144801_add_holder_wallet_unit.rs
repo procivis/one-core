@@ -183,8 +183,8 @@ impl MigrationTrait for Migration {
     }
 }
 
-#[derive(DeriveIden)]
-enum HolderWalletUnit {
+#[derive(DeriveIden, Clone)]
+pub(crate) enum HolderWalletUnit {
     Table,
     Id,
     OrganisationId,

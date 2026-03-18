@@ -221,6 +221,7 @@ mod m20260310_114455_migrate_none_revocation_credential_schemas;
 mod m20260310_162410_fix_trust_list_publication_sequence_number_type;
 mod m20260313_120000_sync_trust_list_publication_and_entry_with_model;
 mod m20260316_143109_trust_collection_subscription;
+mod m20260318_113035_holder_wallet_unit_key_optional;
 mod migrate_enum;
 mod soft_delete_unique_idx;
 
@@ -443,6 +444,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260310_162410_fix_trust_list_publication_sequence_number_type::Migration),
             Box::new(m20260313_120000_sync_trust_list_publication_and_entry_with_model::Migration),
             Box::new(m20260316_143109_trust_collection_subscription::Migration),
+            Box::new(m20260318_113035_holder_wallet_unit_key_optional::Migration),
         ]
     }
 }

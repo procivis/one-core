@@ -1,6 +1,6 @@
 use one_core::service::error::ServiceError;
 use one_core::service::wallet_unit::dto;
-use one_dto_mapper::{From, Into, TryFrom, TryInto};
+use one_dto_mapper::{From, Into, TryFrom, TryInto, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{HolderWalletUnitId, OrganisationId, WalletUnitId};
@@ -28,6 +28,14 @@ pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
     pub wallet_provider: WalletProviderRestDTO,
     #[try_into(infallible)]
     pub key_type: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(dto::HolderWalletUnitRegisterResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HolderRegisterWalletUnitResponseRestDTO {
+    pub id: HolderWalletUnitId,
+    pub status: WalletUnitStatusRestEnum,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, From)]
@@ -70,5 +78,6 @@ pub(crate) struct HolderWalletUnitDetailRestDTO {
     pub wallet_provider_name: String,
     #[try_from(infallible)]
     pub status: WalletUnitStatusRestEnum,
-    pub authentication_key: KeyListItemResponseRestDTO,
+    #[try_from(with_fn = try_convert_inner)]
+    pub authentication_key: Option<KeyListItemResponseRestDTO>,
 }

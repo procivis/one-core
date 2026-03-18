@@ -87,6 +87,7 @@ impl Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
+            Error::StatusCodeError(status) if status.is_client_error() => ErrorCode::BR_0395,
             Error::HttpError(_) | Error::StatusCodeError(_) | Error::JsonError(_) => {
                 ErrorCode::BR_0347
             }

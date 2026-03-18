@@ -36,7 +36,7 @@ impl From<CreateHolderWalletUnitRequest> for ActiveModel {
             wallet_provider_url: Set(value.wallet_provider_url),
             provider_wallet_unit_id: Set(value.provider_wallet_unit_id),
             organisation_id: Set(value.organisation.id),
-            authentication_key_id: Set(value.authentication_key.id),
+            authentication_key_id: Set(value.authentication_key.map(|key| key.id)),
         }
     }
 }

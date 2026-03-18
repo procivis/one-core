@@ -42,6 +42,7 @@ use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
@@ -113,6 +114,7 @@ impl OpenID4VCISwiyu {
         params: OpenID4VCISwiyuParams,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         let protocol_base_url = base_url
@@ -141,6 +143,7 @@ impl OpenID4VCISwiyu {
                 params.into(),
                 config_id,
                 holder_wallet_unit_proto,
+                holder_wallet_unit_repository,
                 certificate_validator,
             ),
         }

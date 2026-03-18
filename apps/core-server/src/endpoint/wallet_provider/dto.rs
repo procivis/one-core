@@ -68,6 +68,7 @@ pub(crate) enum WalletUnitStatusRestEnum {
     Active,
     Revoked,
     Pending,
+    Unattested,
     Error,
 }
 

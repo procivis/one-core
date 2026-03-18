@@ -48,6 +48,7 @@ pub enum WalletUnitStatus {
     Pending,
     Active,
     Revoked,
+    Unattested,
     Error,
 }
 

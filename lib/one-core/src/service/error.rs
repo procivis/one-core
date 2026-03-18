@@ -1,8 +1,8 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, DidValue, HolderWalletUnitId, IdentifierId,
-    InteractionId, OrganisationId, ProofId, RevocationListEntryId, RevocationMethodId, TaskId,
-    TrustAnchorId, TrustEntityId, TrustEntityKey,
+    CredentialId, CredentialSchemaId, DidId, DidValue, IdentifierId, InteractionId, OrganisationId,
+    ProofId, RevocationListEntryId, RevocationMethodId, TaskId, TrustAnchorId, TrustEntityId,
+    TrustEntityKey,
 };
 use thiserror::Error;
 
@@ -86,24 +86,15 @@ pub enum EntityNotFoundError {
 
     #[error("Trust entity by entity key `{0}` not found")]
     TrustEntityByEntityKey(TrustEntityKey),
-
-    #[error("Holder wallet unit `{0}` not found")]
-    HolderWalletUnit(HolderWalletUnitId),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum BusinessLogicError {
-    #[error("Organisation {0} is deactivated")]
-    OrganisationIsDeactivated(OrganisationId),
-
     #[error("Organisation not specified")]
     OrganisationNotSpecified,
 
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
-
-    #[error("Key already exists")]
-    KeyAlreadyExists,
 
     #[error("Invalid Credential state: {state}")]
     InvalidCredentialState { state: CredentialStateEnum },
@@ -152,9 +143,6 @@ pub enum ValidationError {
 
     #[error("No default transport specified")]
     MissingDefaultTransport,
-
-    #[error("Invalid key algorithm: {0}")]
-    InvalidKeyAlgorithm(String),
 
     #[error("Forbidden")]
     Forbidden,
@@ -265,7 +253,6 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
             Self::TrustEntity(_) | Self::TrustEntityByEntityKey(_) => ErrorCode::BR_0121,
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
-            Self::HolderWalletUnit(_) => ErrorCode::BR_0296,
             Self::RevocationListEntry(_) => ErrorCode::BR_0000,
         }
     }
@@ -274,14 +261,12 @@ impl ErrorCodeMixin for EntityNotFoundError {
 impl ErrorCodeMixin for BusinessLogicError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
             Self::InvalidProofState { .. } => ErrorCode::BR_0013,
             Self::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
             Self::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
             Self::MissingClaimSchemas => ErrorCode::BR_0011,
-            Self::KeyAlreadyExists => ErrorCode::BR_0066,
             Self::GeneralInputValidationError => ErrorCode::BR_0084,
             Self::IncompatibleProofVerificationIdentifier => ErrorCode::BR_0218,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
@@ -295,7 +280,6 @@ impl ErrorCodeMixin for ValidationError {
         match self {
             Self::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             Self::MissingDefaultTransport => ErrorCode::BR_0142,
-            Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,

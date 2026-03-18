@@ -341,7 +341,7 @@ impl WalletProviderService {
 
         match wallet_unit.status {
             WalletUnitStatus::Pending => {} // OK
-            WalletUnitStatus::Active | WalletUnitStatus::Error => {
+            WalletUnitStatus::Active | WalletUnitStatus::Unattested | WalletUnitStatus::Error => {
                 return Err(WalletProviderError::InvalidWalletUnitState
                     .error_while("checking status")
                     .into());

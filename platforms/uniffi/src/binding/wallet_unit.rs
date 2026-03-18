@@ -1,8 +1,9 @@
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use one_core::service::wallet_unit::dto::{
-    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitResponseDTO, WalletProviderDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitRegisterResponseDTO,
+    HolderWalletUnitResponseDTO, WalletProviderDTO,
 };
-use one_dto_mapper::{From, Into, TryInto};
+use one_dto_mapper::{From, Into, TryInto, convert_inner};
 
 use super::OneCore;
 use super::key::KeyListItemBindingDTO;
@@ -17,13 +18,13 @@ impl OneCore {
     pub async fn holder_register_wallet_unit(
         &self,
         request: HolderRegisterWalletUnitRequestBindingDTO,
-    ) -> Result<String, BindingError> {
+    ) -> Result<HolderRegisterWalletUnitResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
         let response = core
             .wallet_unit_service
             .holder_register(request.try_into()?)
             .await?;
-        Ok(response.to_string())
+        Ok(response.into())
     }
 
     /// Check status of wallet unit with the Wallet Provider. Will return an error
@@ -47,7 +48,7 @@ impl OneCore {
 
         Ok(core
             .wallet_unit_service
-            .get_wallet_unit_details(into_id(&id)?)
+            .holder_get_wallet_unit_details(into_id(&id)?)
             .await?
             .into())
     }
@@ -74,6 +75,15 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     key_type: String,
 }
 
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(HolderWalletUnitRegisterResponseDTO)]
+#[uniffi(name = "HolderRegisterWalletUnitResponse")]
+pub struct HolderRegisterWalletUnitResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub status: WalletUnitStatusBindingEnum,
+}
+
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(WalletProviderDTO)]
 #[uniffi(name = "WalletProvider")]
@@ -98,7 +108,8 @@ pub struct HolderWalletUnitResponseBindingDTO {
     pub wallet_provider_type: WalletProviderTypeBindingEnum,
     pub wallet_provider_name: String,
     pub status: WalletUnitStatusBindingEnum,
-    pub authentication_key: KeyListItemBindingDTO,
+    #[from(with_fn = convert_inner)]
+    pub authentication_key: Option<KeyListItemBindingDTO>,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, From)]
@@ -108,5 +119,6 @@ pub enum WalletUnitStatusBindingEnum {
     Pending,
     Active,
     Revoked,
+    Unattested,
     Error,
 }

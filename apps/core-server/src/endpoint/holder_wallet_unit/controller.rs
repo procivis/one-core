@@ -1,15 +1,17 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
+use one_core::service::error::ServiceError;
 use proc_macros::endpoint;
 use shared_types::{HolderWalletUnitId, Permission};
 
-use crate::dto::common::EntityResponseRestDTO;
+use super::dto::{
+    HolderRegisterWalletUnitRequestRestDTO, HolderRegisterWalletUnitResponseRestDTO,
+    HolderWalletUnitDetailRestDTO,
+};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
-use crate::endpoint::holder_wallet_unit::dto::{
-    HolderRegisterWalletUnitRequestRestDTO, HolderWalletUnitDetailRestDTO,
-};
 use crate::router::AppState;
 
 #[endpoint(
@@ -17,7 +19,7 @@ use crate::router::AppState;
     post,
     path = "/api/holder-wallet-unit/v1",
     request_body = HolderRegisterWalletUnitRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    responses(CreatedOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO>),
     tag = "holder_wallet_unit",
     security(
         ("bearer" = [])
@@ -33,13 +35,16 @@ pub(crate) async fn wallet_unit_holder_register(
         Json<HolderRegisterWalletUnitRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+) -> CreatedOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO> {
     let result = async {
-        state
-            .core
-            .wallet_unit_service
-            .holder_register(request.try_into()?)
-            .await
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .wallet_unit_service
+                .holder_register(request.try_into()?)
+                .await
+                .error_while("registering holder wallet unit")?,
+        )
     }
     .await;
     CreatedOrErrorResponse::from_result(result, state, "register wallet unit")
@@ -67,10 +72,12 @@ pub(crate) async fn wallet_unit_holder_details(
     let result = state
         .core
         .wallet_unit_service
-        .get_wallet_unit_details(id)
-        .await;
+        .holder_get_wallet_unit_details(id)
+        .await
+        .error_while("getting holder wallet unit")
+        .map_err(ServiceError::from);
 
-    OkOrErrorResponse::from_result_fallible(result, state, "get holder wallet unit")
+    OkOrErrorResponse::from_result_fallible(result, state, "getting holder wallet unit")
 }
 
 #[endpoint(

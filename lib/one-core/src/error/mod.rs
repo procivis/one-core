@@ -814,6 +814,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Trust collection not found")]
     BR_0391,
+
+    #[strum(message = "Remote HTTP request status failure (4xx)")]
+    BR_0395,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

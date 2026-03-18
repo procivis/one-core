@@ -57,7 +57,7 @@ async fn test_holder_wallet_unit_status_already_revoked() {
         .holder_wallet_units
         .create(
             org.clone(),
-            authentication_key.clone(),
+            Some(authentication_key.clone()),
             TestHolderWalletUnit {
                 status: Some(WalletUnitStatus::Revoked),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),

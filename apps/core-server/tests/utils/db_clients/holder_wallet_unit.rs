@@ -31,7 +31,7 @@ impl HolderWalletUnitsDB {
     pub async fn create(
         &self,
         organisation: Organisation,
-        authentication_key: Key,
+        authentication_key: Option<Key>,
         test_holder_wallet_unit: TestHolderWalletUnit,
     ) -> HolderWalletUnit {
         let wallet_unit = CreateHolderWalletUnitRequest {

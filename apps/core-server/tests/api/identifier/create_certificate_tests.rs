@@ -435,7 +435,7 @@ async fn test_create_certificate_identifier_crl_not_available() {
 
     // http client error
     assert_eq!(result.status(), 400);
-    assert_eq!(result.error_code().await, "BR_0347");
+    assert_eq!(result.error_code().await, "BR_0395");
 }
 
 #[tokio::test]

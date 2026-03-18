@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::config::core_config::CoreConfig;
 use crate::model::holder_wallet_unit::CreateHolderWalletUnitRequest;
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit::WalletUnitStatus;
+use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use crate::proto::clock::DefaultClock;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
@@ -18,6 +18,7 @@ use crate::proto::wallet_unit::{MockHolderWalletUnitProto, WalletUnitStatusCheck
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
+use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::wallet_provider_client::MockWalletProviderClient;
@@ -197,7 +198,7 @@ async fn holder_register_success() {
         organisation_id,
         key_type: "EDDSA".to_string(),
         wallet_provider: WalletProviderDTO {
-            r#type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+            r#type: WalletProviderType::ProcivisOne,
             url: "https://wallet.provider/register".to_string(),
         },
     };
@@ -207,6 +208,122 @@ async fn holder_register_success() {
 
     // then
     assert!(result.is_ok(), "holder_register failed: {result:?}");
+}
+
+#[tokio::test]
+async fn holder_register_key_attestation_not_supported() {
+    // given
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .once()
+        .return_once(move |id, _| {
+            check!(id == &organisation_id);
+            Ok(Some(Organisation {
+                id: *id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "Org".to_string(),
+                deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
+            }))
+        });
+
+    let (_holder_private, _holder_public) = ECDSASigner::generate_key_pair();
+
+    let mut key_storage = MockKeyStorage::new();
+    key_storage
+        .expect_generate_attestation_key()
+        .once()
+        .returning(|_, _| Err(KeyStorageError::NotSupported("test".to_string())));
+
+    let key_storage = Arc::new(key_storage);
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .returning(move |_| Some(key_storage.clone()));
+
+    let mut os_info_provider = MockOSInfoProvider::new();
+    os_info_provider
+        .expect_get_os_name()
+        .once()
+        .return_once(|| OSName::Android);
+
+    let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
+    let mut wallet_provider_client = MockWalletProviderClient::new();
+    wallet_provider_client
+        .expect_register()
+        .once()
+        .return_once(move |url, _dto| {
+            check!(url == "https://wallet.provider");
+            Ok(RegisterWalletUnitResponseDTO {
+                id: wallet_unit_id,
+                nonce: Some("test_nonce".to_string()),
+            })
+        });
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .once()
+        .return_once(move |_| {
+            Ok(WalletProviderMetadataResponseDTO {
+                wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
+                    app_integrity_check_required: true,
+                    enabled: true,
+                    required: true,
+                },
+                name: "Wallet Provider Name".to_string(),
+                app_version: None,
+                feature_flags: FeatureFlags {
+                    trust_ecosystems_enabled: true,
+                },
+                trust_collections: vec![],
+            })
+        });
+
+    let mut att_repo = MockHolderWalletUnitRepository::new();
+    att_repo
+        .expect_create_holder_wallet_unit()
+        .once()
+        .return_once(move |att: CreateHolderWalletUnitRequest| {
+            check!(att.status == WalletUnitStatus::Unattested);
+            check!(att.provider_wallet_unit_id == wallet_unit_id);
+            Ok(att.id)
+        });
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
+    let service = WalletUnitService {
+        organisation_repository: Arc::new(organisation_repository),
+        wallet_provider_client: Arc::new(wallet_provider_client),
+        holder_wallet_unit_repository: Arc::new(att_repo),
+        history_repository: Arc::new(history_repository),
+        key_provider: Arc::new(key_provider),
+        os_info_provider: Arc::new(os_info_provider),
+        config: Arc::new(generic_config().core),
+        ..mock_wallet_unit_service()
+    };
+
+    let request = HolderRegisterWalletUnitRequestDTO {
+        organisation_id,
+        key_type: "EDDSA".to_string(),
+        wallet_provider: WalletProviderDTO {
+            r#type: WalletProviderType::ProcivisOne,
+            url: "https://wallet.provider/register".to_string(),
+        },
+    };
+
+    // when
+    let result = service.holder_register(request).await.unwrap();
+
+    // then
+    assert_eq!(result.status, WalletUnitStatus::Unattested);
 }
 
 #[tokio::test]
@@ -224,7 +341,7 @@ async fn holder_wallet_unit_status_check_still_valid() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 status: WalletUnitStatus::Active,
-                wallet_provider_type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+                wallet_provider_type: WalletProviderType::ProcivisOne,
                 wallet_provider_name: "PROCIVIS_ONE".to_string(),
                 wallet_provider_url: "https://wallet.provider".to_string(),
                 provider_wallet_unit_id: Uuid::new_v4().into(),
@@ -271,7 +388,7 @@ async fn holder_wallet_unit_status_check_revocation() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 status: WalletUnitStatus::Active,
-                wallet_provider_type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+                wallet_provider_type: WalletProviderType::ProcivisOne,
                 wallet_provider_name: "PROCIVIS_ONE".to_string(),
                 wallet_provider_url: "https://wallet.provider".to_string(),
                 provider_wallet_unit_id: Uuid::new_v4().into(),
@@ -365,7 +482,7 @@ async fn holder_wallet_unit_status_check_already_revoked() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 status: WalletUnitStatus::Revoked,
-                wallet_provider_type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+                wallet_provider_type: WalletProviderType::ProcivisOne,
                 wallet_provider_name: "PROCIVIS_ONE".to_string(),
                 wallet_provider_url: "https://wallet.provider".to_string(),
                 provider_wallet_unit_id: Uuid::new_v4().into(),

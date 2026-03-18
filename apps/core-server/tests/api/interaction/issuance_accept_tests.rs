@@ -2727,7 +2727,7 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         .holder_wallet_units
         .create(
             organisation.clone(),
-            holder_auth_key,
+            Some(holder_auth_key),
             TestHolderWalletUnit {
                 wallet_provider_url: Some(context.config.app.core_base_url.clone()),
                 provider_wallet_unit_id: Some(wallet_unit.id),

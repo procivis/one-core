@@ -22,7 +22,7 @@ pub struct Model {
     pub wallet_provider_url: String,
     pub provider_wallet_unit_id: WalletUnitId,
     pub organisation_id: OrganisationId,
-    pub authentication_key_id: KeyId,
+    pub authentication_key_id: Option<KeyId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

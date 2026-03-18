@@ -26,7 +26,7 @@ pub(super) struct NoncePayload {
     pub nonce: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone)]
 pub struct HolderWalletUnitResponseDTO {
     pub id: HolderWalletUnitId,
     pub created_date: OffsetDateTime,
@@ -36,5 +36,11 @@ pub struct HolderWalletUnitResponseDTO {
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
     pub status: WalletUnitStatus,
-    pub authentication_key: KeyListItemResponseDTO,
+    pub authentication_key: Option<KeyListItemResponseDTO>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HolderWalletUnitRegisterResponseDTO {
+    pub id: HolderWalletUnitId,
+    pub status: WalletUnitStatus,
 }

@@ -25,9 +25,11 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::holder_wallet_unit::HolderWalletUnit;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
+use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
@@ -69,6 +71,7 @@ use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGenerat
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::storage_proxy::MockStorageProxy;
@@ -93,6 +96,7 @@ struct TestInputs {
     pub key_security_level_provider: MockKeySecurityLevelProvider,
     pub certificate_validator: MockCertificateValidator,
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
+    pub holder_wallet_unit_repository: MockHolderWalletUnitRepository,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIFinal1Params>,
 }
@@ -133,6 +137,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(inputs.holder_wallet_unit_proto),
+        Arc::new(inputs.holder_wallet_unit_repository),
         Arc::new(inputs.certificate_validator),
     )
 }
@@ -1792,7 +1797,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
     let err = result.unwrap_err();
     assert!(
         err.to_string()
-            .contains("key storage attestation requires holder wallet unit id"),
+            .contains("key storage attestation requires active holder wallet unit id"),
     );
 }
 
@@ -1995,6 +2000,26 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             Some(Arc::new(security))
         });
 
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit()
+        .once()
+        .return_once(|id, _| {
+            Ok(Some(HolderWalletUnit {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                wallet_provider_type: WalletProviderType::ProcivisOne,
+                wallet_provider_name: "provider".to_string(),
+                wallet_provider_url: "provider.url".to_string(),
+                provider_wallet_unit_id: Uuid::new_v4().into(),
+                status: WalletUnitStatus::Active,
+                organisation: None,
+                authentication_key: None,
+                wallet_unit_attestations: None,
+            }))
+        });
+
     let mut holder_wallet_unit_proto = MockHolderWalletUnitProto::new();
     holder_wallet_unit_proto
         .expect_issue_wallet_attestations()
@@ -2024,6 +2049,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         identifier_creator,
         key_security_level_provider,
         holder_wallet_unit_proto,
+        holder_wallet_unit_repository,
         config: dummy_config(),
         ..Default::default()
     });

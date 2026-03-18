@@ -15,9 +15,7 @@ impl TryFrom<HolderWalletUnit> for CreateHolderWalletUnitRequest {
             organisation: value.organisation.ok_or(ServiceError::MappingError(
                 "Missing organisation".to_string(),
             ))?,
-            authentication_key: value.authentication_key.ok_or(ServiceError::MappingError(
-                "Missing authentication key".to_string(),
-            ))?,
+            authentication_key: value.authentication_key,
         })
     }
 }
