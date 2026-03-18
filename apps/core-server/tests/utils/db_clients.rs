@@ -21,6 +21,7 @@ use self::trust_list_publication::TrustListPublicationDB;
 use crate::utils::db_clients::blobs::BlobsDB;
 use crate::utils::db_clients::holder_wallet_unit::HolderWalletUnitsDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
+use crate::utils::db_clients::trust_collection::TrustCollectionDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 use crate::utils::db_clients::wallet_unit_attestations::WalletUnitAttestationsDB;
 use crate::utils::db_clients::wallet_units::WalletUnitsDB;
@@ -42,6 +43,7 @@ pub mod proofs;
 pub mod remote_entity_cache;
 pub mod revocation_lists;
 pub mod trust_anchors;
+pub mod trust_collection;
 pub mod trust_entities;
 pub mod trust_entry;
 pub mod trust_list_publication;
@@ -68,6 +70,7 @@ pub struct DbClient {
     pub trust_anchors: TrustAnchorDB,
     pub trust_entities: TrustEntityDB,
     pub trust_list_publications: TrustListPublicationDB,
+    pub trust_collections: TrustCollectionDB,
     pub trust_entries: TrustEntryDB,
     pub blobs: BlobsDB,
     pub wallet_units: WalletUnitsDB,
@@ -105,6 +108,7 @@ impl DbClient {
                 layer.get_trust_list_publication_repository(),
             ),
             trust_entries: TrustEntryDB::new(layer.get_trust_entry_repository()),
+            trust_collections: TrustCollectionDB::new(layer.get_trust_collection_repository()),
             blobs: BlobsDB::new(layer.get_blob_repository()),
             wallet_units: WalletUnitsDB::new(layer.get_wallet_unit_repository()),
             holder_wallet_units: HolderWalletUnitsDB::new(

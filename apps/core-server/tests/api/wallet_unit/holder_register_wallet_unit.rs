@@ -24,7 +24,11 @@ async fn holder_register_wallet_unit_successfully() {
             "appIntegrityCheckRequired": false,
             "enabled": true,
             "required": true
-          }
+          },
+          "featureFlags": {
+            "trustEcosystemsEnabled": true
+          },
+          "trustCollections": []
         })))
         .expect(1)
         .mount(&mock_server)

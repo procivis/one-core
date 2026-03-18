@@ -26,6 +26,8 @@ walletProvider:
           minimum: "v1.50.0"
         eudiWalletInfo:
           providerName: "Procivis One Trial"
+        featureFlags:
+          trustEcosystemsEnabled: false
 verifierProvider:
   PROCIVIS_ONE:
     params:

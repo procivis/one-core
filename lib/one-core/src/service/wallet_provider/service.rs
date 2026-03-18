@@ -16,14 +16,16 @@ use super::app_integrity::android::validate_attestation_android;
 use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
 use super::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
-    IssueWalletUnitAttestationResponseDTO, NoncePayload, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletInstanceAttestationClaims,
-    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
-    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
+    IssueWalletUnitAttestationResponseDTO, NoncePayload, ProviderTrustCollectionDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, TrustCollectionParams,
+    WalletInstanceAttestationClaims, WalletProviderMetadataResponseDTO, WalletProviderParams,
+    WalletRegistrationRequirement, WalletUnitActivationRequestDTO, WalletUnitAttestationClaims,
+    WalletUnitAttestationMetadataDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
-    map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
+    map_already_exists_error, params_into_display_names, public_key_from_wallet_unit,
+    wallet_unit_from_request,
 };
 use super::validator::{
     validate_org_wallet_provider, validate_proof_payload, validate_revocation_method,
@@ -1303,6 +1305,12 @@ impl WalletProviderService {
             WalletRegistrationRequirement::Optional => (true, false),
             WalletRegistrationRequirement::Disabled => (false, false),
         };
+
+        let mut trust_collections = vec![];
+        for collection in params.trust_collections {
+            trust_collections.push(self.fetch_trust_collection_info(collection).await?);
+        }
+
         Ok(WalletProviderMetadataResponseDTO {
             wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
                 app_integrity_check_required: params
@@ -1314,6 +1322,28 @@ impl WalletProviderService {
             },
             name: wallet_provider,
             app_version: params.app_version,
+            feature_flags: params.feature_flags,
+            trust_collections,
+        })
+    }
+
+    async fn fetch_trust_collection_info(
+        &self,
+        params: TrustCollectionParams,
+    ) -> Result<ProviderTrustCollectionDTO, WalletProviderError> {
+        let collection = self
+            .trust_collection_repository
+            .get(&params.id, &Default::default())
+            .await
+            .error_while("getting trust collection")?
+            .ok_or(WalletProviderError::MissingTrustCollection(params.id))?;
+
+        Ok(ProviderTrustCollectionDTO {
+            id: collection.id,
+            name: collection.name,
+            logo: params.logo,
+            display_name: params_into_display_names(params.display_name),
+            description: params_into_display_names(params.description),
         })
     }
 }

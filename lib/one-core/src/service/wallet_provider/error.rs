@@ -1,4 +1,4 @@
-use shared_types::{IdentifierId, WalletUnitId};
+use shared_types::{IdentifierId, TrustCollectionId, WalletUnitId};
 use thiserror::Error;
 
 use crate::config::ConfigValidationError;
@@ -51,6 +51,8 @@ pub enum WalletProviderError {
     InsufficientSecurityLevel,
     #[error("Identifier `{0}` not found")]
     MissingIdentifier(IdentifierId),
+    #[error("Trust collection `{0}` not found")]
+    MissingTrustCollection(TrustCollectionId),
 
     #[error("Mapping error: {0}")]
     MappingError(String),
@@ -85,6 +87,7 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::WalletUnitMustBePending => ErrorCode::BR_0168,
             Self::InsufficientSecurityLevel => ErrorCode::BR_0297,
             Self::MissingIdentifier(_) => ErrorCode::BR_0207,
+            Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

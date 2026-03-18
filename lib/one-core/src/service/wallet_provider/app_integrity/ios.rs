@@ -431,6 +431,9 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
                     "issuerIdentifier": Uuid::new_v4(),
                     "integrityCheck": {
                         "enabled": true
+                    },
+                    "featureFlags": {
+                        "trustEcosystemsEnabled": true
                     }
                 })),
                 private: None,

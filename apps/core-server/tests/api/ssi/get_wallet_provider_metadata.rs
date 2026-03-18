@@ -1,4 +1,5 @@
 use similar_asserts::assert_eq;
+use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 
@@ -28,7 +29,11 @@ async fn test_wallet_provider_metadata_success() {
             "name":"PROCIVIS_ONE",
             "appVersion": {
                 "minimum":"v1.50.0"
-            }
+            },
+            "featureFlags": {
+              "trustEcosystemsEnabled": true
+            },
+            "trustCollections": []
         })
     );
 }
@@ -83,7 +88,11 @@ async fn test_wallet_provider_metadata_success_all_fields() {
                 "updateScreen": {
                     "link": "https://example.com"
                 }
-            }
+            },
+            "featureFlags": {
+              "trustEcosystemsEnabled": true
+            },
+            "trustCollections": []
         })
     );
 }
@@ -119,7 +128,11 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
             "name":"PROCIVIS_ONE",
             "appVersion": {
                 "minimum":"v1.50.0"
-            }
+            },
+            "featureFlags": {
+              "trustEcosystemsEnabled": true
+            },
+            "trustCollections": []
         })
     );
 }
@@ -138,4 +151,97 @@ async fn test_wallet_provider_metadata_fails_unknown_wallet_provider() {
 
     // THEN
     assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_wallet_provider_metadata_with_trust_collections() {
+    // GIVEN
+    let collection_1_id = Uuid::new_v4().into();
+    let collection_2_id = Uuid::new_v4().into();
+
+    let config = indoc::formatdoc! {"
+      walletProvider:
+        PROCIVIS_ONE:
+          params:
+            public:
+              trustCollections:
+                - id: {collection_1_id}
+                  logo: logo1
+                  displayName:
+                    en: name1
+                  description:
+                    en: description1
+                - id: {collection_2_id}
+                  logo: logo2
+                  displayName:
+                    en: name2
+                  description:
+                    en: description2
+    "};
+    let (context, organisation) = TestContext::new_with_organisation(Some(config)).await;
+
+    let collection_1 = context
+        .db
+        .trust_collections
+        .create("collection1", organisation.clone(), Some(collection_1_id))
+        .await;
+
+    let collection_2 = context
+        .db
+        .trust_collections
+        .create("collection2", organisation, Some(collection_2_id))
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_wallet_provider_metadata("PROCIVIS_ONE")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(
+        resp,
+        serde_json::json!({
+            "walletUnitAttestation": {
+                "appIntegrityCheckRequired": true,
+                "enabled": true,
+                "required": false
+            },
+            "name":"PROCIVIS_ONE",
+            "appVersion": {
+                "minimum":"v1.50.0"
+            },
+            "featureFlags": {
+              "trustEcosystemsEnabled": true
+            },
+            "trustCollections": [{
+                "id": collection_1.id,
+                "name": "collection1",
+                "logo": "logo1",
+                "displayName": [{
+                    "lang": "en",
+                    "value": "name1"
+                }],
+                "description": [{
+                    "lang": "en",
+                    "value": "description1"
+                }]
+            },{
+                "id": collection_2.id,
+                "name": "collection2",
+                "logo": "logo2",
+                "displayName": [{
+                    "lang": "en",
+                    "value": "name2"
+                }],
+                "description": [{
+                    "lang": "en",
+                    "value": "description2"
+                }]
+            }]
+        })
+    );
 }

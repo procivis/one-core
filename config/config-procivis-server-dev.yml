@@ -21,6 +21,8 @@ walletProvider:
           minimum: "v1.0.0"
         eudiWalletInfo:
           providerName: "Procivis One Dev"
+        featureFlags:
+          trustEcosystemsEnabled: true
 verifierProvider:
   PROCIVIS_ONE:
     params:

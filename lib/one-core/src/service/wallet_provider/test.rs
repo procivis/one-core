@@ -39,6 +39,7 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_provider::WalletProviderService;
@@ -52,6 +53,7 @@ fn mock_wallet_provider_service() -> WalletProviderService {
         wallet_unit_repository: Arc::new(MockWalletUnitRepository::default()),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
         tx_manager: Arc::new(NoTransactionManager),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
@@ -103,6 +105,9 @@ fn wallet_provider_config(
                 "appVersion": {
                     "minimum": "v1.50.0",
                 },
+                "featureFlags": {
+                    "trustEcosystemsEnabled": true
+                }
             })),
             private: None,
         }),

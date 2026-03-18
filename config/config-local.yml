@@ -63,6 +63,8 @@ walletProvider:
           solutionId: "PROCIVIS_ONE"
           solutionVersion: "1"
           wscdType: HYBRID
+        featureFlags:
+          trustEcosystemsEnabled: true
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

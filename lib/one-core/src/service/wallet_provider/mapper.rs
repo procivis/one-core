@@ -1,7 +1,14 @@
+use std::collections::HashMap;
+
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::dto::{
+    DisplayNameDTO, EudiWalletGeneralInfo, EudiWalletInfo, EudiWalletInfoConfig,
+    RegisterWalletUnitRequestDTO, WscdInfo,
+};
+use super::error::WalletProviderError;
 use crate::config::core_config::WalletProviderType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::organisation::Organisation;
@@ -9,11 +16,6 @@ use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::repository::error::DataLayerError;
-use crate::service::wallet_provider::dto::{
-    EudiWalletGeneralInfo, EudiWalletInfo, EudiWalletInfoConfig, RegisterWalletUnitRequestDTO,
-    WscdInfo,
-};
-use crate::service::wallet_provider::error::WalletProviderError;
 
 pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,
@@ -84,4 +86,12 @@ impl From<EudiWalletInfoConfig> for EudiWalletInfo {
             }),
         }
     }
+}
+
+pub(super) fn params_into_display_names(params: HashMap<String, String>) -> Vec<DisplayNameDTO> {
+    let mut result = vec![];
+    for (lang, value) in params {
+        result.push(DisplayNameDTO { lang, value });
+    }
+    result
 }

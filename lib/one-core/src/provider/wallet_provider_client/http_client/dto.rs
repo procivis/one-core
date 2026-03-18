@@ -6,7 +6,7 @@ use standardized_types::jwk::PublicJwk;
 
 use crate::model::wallet_unit::WalletUnitOs;
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
-use crate::service::wallet_provider::dto;
+use crate::service::wallet_provider::dto::{self, FeatureFlags, ProviderTrustCollectionDTO};
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, From)]
@@ -78,6 +78,8 @@ pub(super) struct WalletProviderMetadataResponseRestDTO {
     name: String,
     #[into(with_fn = convert_inner)]
     app_version: Option<AppVersionRestDTO>,
+    trust_collections: Vec<ProviderTrustCollectionDTO>,
+    feature_flags: FeatureFlags,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]

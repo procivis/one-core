@@ -811,6 +811,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Trust entry doesn't belong to specified trust list")]
     BR_0390,
+
+    #[strum(message = "Trust collection not found")]
+    BR_0391,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

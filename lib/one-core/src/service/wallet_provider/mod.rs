@@ -11,6 +11,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
+use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
 
 pub mod dto;
@@ -29,6 +30,7 @@ pub struct WalletProviderService {
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     tx_manager: Arc<dyn TransactionManager>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -47,6 +49,7 @@ impl WalletProviderService {
         wallet_unit_repository: Arc<dyn WalletUnitRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         tx_manager: Arc<dyn TransactionManager>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -62,6 +65,7 @@ impl WalletProviderService {
             wallet_unit_repository,
             identifier_repository,
             history_repository,
+            trust_collection_repository,
             tx_manager,
             key_provider,
             key_algorithm_provider,

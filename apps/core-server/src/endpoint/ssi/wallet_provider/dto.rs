@@ -4,7 +4,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
-use shared_types::WalletUnitId;
+use shared_types::{TrustCollectionId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
 use utoipa::ToSchema;
 
@@ -107,6 +107,37 @@ pub(crate) struct WalletProviderMetadataResponseRestDTO {
     name: String,
     #[from(with_fn = convert_inner)]
     app_version: Option<AppVersionRestDTO>,
+    #[from(with_fn = convert_inner)]
+    trust_collections: Vec<ProviderTrustCollectionRestDTO>,
+    feature_flags: FeatureFlagsRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::FeatureFlags)]
+pub(crate) struct FeatureFlagsRestDTO {
+    pub trust_ecosystems_enabled: bool,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::ProviderTrustCollectionDTO)]
+pub(crate) struct ProviderTrustCollectionRestDTO {
+    pub id: TrustCollectionId,
+    pub name: String,
+    pub logo: String,
+    #[from(with_fn = convert_inner)]
+    pub display_name: Vec<DisplayNameRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub description: Vec<DisplayNameRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::DisplayNameDTO)]
+pub(crate) struct DisplayNameRestDTO {
+    pub lang: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

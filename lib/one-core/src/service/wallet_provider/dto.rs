@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use one_dto_mapper::From;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{RevocationMethodId, WalletUnitId};
+use shared_types::{RevocationMethodId, TrustCollectionId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
@@ -79,6 +81,24 @@ pub(super) struct WalletProviderParams {
     pub device_auth_leeway: u64,
     pub app_version: Option<AppVersionDTO>,
     pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
+    #[serde(default)]
+    pub trust_collections: Vec<TrustCollectionParams>,
+    pub feature_flags: FeatureFlags,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureFlags {
+    pub trust_ecosystems_enabled: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct TrustCollectionParams {
+    pub id: TrustCollectionId,
+    pub logo: String,
+    pub display_name: HashMap<String, String>,
+    pub description: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -223,6 +243,25 @@ pub struct WalletProviderMetadataResponseDTO {
     pub wallet_unit_attestation: WalletUnitAttestationMetadataDTO,
     pub name: String,
     pub app_version: Option<AppVersionDTO>,
+    pub trust_collections: Vec<ProviderTrustCollectionDTO>,
+    pub feature_flags: FeatureFlags,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderTrustCollectionDTO {
+    pub id: TrustCollectionId,
+    pub name: String,
+    pub logo: String,
+    pub display_name: Vec<DisplayNameDTO>,
+    pub description: Vec<DisplayNameDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DisplayNameDTO {
+    pub lang: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug)]

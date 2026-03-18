@@ -27,7 +27,7 @@ use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::{generic_config, get_dummy_date};
 use crate::service::wallet_provider::dto::{
-    RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
+    FeatureFlags, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
     WalletUnitAttestationMetadataDTO,
 };
 use crate::service::wallet_unit::WalletUnitService;
@@ -150,6 +150,10 @@ async fn holder_register_success() {
                 },
                 name: "Wallet Provider Name".to_string(),
                 app_version: None,
+                feature_flags: FeatureFlags {
+                    trust_ecosystems_enabled: true,
+                },
+                trust_collections: vec![],
             })
         });
 
