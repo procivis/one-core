@@ -18,6 +18,7 @@ use self::trust_anchors::TrustAnchorDB;
 use self::trust_entities::TrustEntityDB;
 use self::trust_entry::TrustEntryDB;
 use self::trust_list_publication::TrustListPublicationDB;
+use self::trust_list_subscription::TrustListSubscriptionDB;
 use crate::utils::db_clients::blobs::BlobsDB;
 use crate::utils::db_clients::holder_wallet_unit::HolderWalletUnitsDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
@@ -47,6 +48,7 @@ pub mod trust_collections;
 pub mod trust_entities;
 pub mod trust_entry;
 pub mod trust_list_publication;
+pub mod trust_list_subscription;
 pub mod validity_credentials;
 pub mod wallet_unit_attestations;
 pub mod wallet_units;
@@ -70,6 +72,7 @@ pub struct DbClient {
     pub trust_anchors: TrustAnchorDB,
     pub trust_entities: TrustEntityDB,
     pub trust_list_publications: TrustListPublicationDB,
+    pub trust_list_subscriptions: TrustListSubscriptionDB,
     pub trust_collections: TrustCollectionDB,
     pub trust_entries: TrustEntryDB,
     pub blobs: BlobsDB,
@@ -106,6 +109,9 @@ impl DbClient {
             trust_entities: TrustEntityDB::new(layer.get_trust_entity_repository()),
             trust_list_publications: TrustListPublicationDB::new(
                 layer.get_trust_list_publication_repository(),
+            ),
+            trust_list_subscriptions: TrustListSubscriptionDB::new(
+                layer.get_trust_list_subscription_repository(),
             ),
             trust_entries: TrustEntryDB::new(layer.get_trust_entry_repository()),
             trust_collections: TrustCollectionDB::new(layer.get_trust_collection_repository()),

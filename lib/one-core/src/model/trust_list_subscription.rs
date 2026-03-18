@@ -50,6 +50,7 @@ pub enum TrustListSubscriptionFilterValue {
     Name(StringMatch),
     TrustCollectionId(TrustCollectionId),
     Role(Vec<TrustListRoleEnum>),
+    State(Vec<TrustListSubscriptionState>),
     Type(Vec<TrustListSubscriberId>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),

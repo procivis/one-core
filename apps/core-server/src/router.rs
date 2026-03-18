@@ -781,6 +781,10 @@ fn get_external_endpoints(
                 "/ssi/trust-list/v1/{id}",
                 get(ssi::controller::ssi_get_trust_list_publication),
             )
+            .route(
+                "/ssi/trust-collection/v1/{id}",
+                get(ssi::controller::ssi_get_trust_collection),
+            )
     } else {
         if let Some(paths) = openapi_paths {
             paths.shift_remove("/ssi");

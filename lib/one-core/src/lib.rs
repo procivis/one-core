@@ -795,6 +795,7 @@ impl OneCore {
             ),
             trust_collection_service: TrustCollectionService::new(
                 data_provider.get_trust_collection_repository(),
+                data_provider.get_trust_list_subscription_repository(),
                 session_provider,
                 clock,
             ),

@@ -84,6 +84,15 @@ impl IntoFilterCondition for TrustListSubscriptionFilterValue {
                     .is_in(roles)
                     .into_condition()
             }
+            Self::State(states) => {
+                let states = states
+                    .into_iter()
+                    .map(trust_list_subscription::TrustListSubscriptionState::from)
+                    .collect::<Vec<_>>();
+                trust_list_subscription::Column::State
+                    .is_in(states)
+                    .into_condition()
+            }
             Self::Type(types) => trust_list_subscription::Column::Type
                 .is_in(types)
                 .into_condition(),

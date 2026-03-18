@@ -288,4 +288,9 @@ impl SSIApi {
         let url = format!("/ssi/trust-list/v1/{}", id);
         self.client.get(&url).await
     }
+
+    pub async fn get_trust_collection(&self, trust_collection_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/trust-collection/v1/{}", trust_collection_id.into());
+        self.client.get(&url).await
+    }
 }

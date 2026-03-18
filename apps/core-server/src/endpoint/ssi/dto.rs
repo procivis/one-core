@@ -15,6 +15,7 @@ use one_core::service::ssi_issuer::dto::{
 use one_core::service::trust_anchor::dto::{
     GetTrustAnchorEntityListResponseDTO, GetTrustAnchorResponseDTO,
 };
+use one_core::service::trust_collection::dto::{TrustCollectionPublicResponseDTO, TrustListDTO};
 use one_core::service::trust_entity::dto::{
     CreateTrustEntityFromDidPublisherRequestDTO, UpdateTrustEntityActionFromDidRequestDTO,
     UpdateTrustEntityFromDidRequestDTO,
@@ -27,7 +28,10 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
+use shared_types::{
+    DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey, TrustListSubscriberId,
+    TrustListSubscriptionId,
+};
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use url::Url;
@@ -38,6 +42,7 @@ use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRes
 use crate::endpoint::trust_entity::dto::{
     TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
 };
+use crate::endpoint::trust_list_publication::dto::TrustListRoleRestEnum;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
@@ -388,4 +393,26 @@ pub(crate) struct SSIPostTrustEntityRequestRestDTO {
     pub privacy_url: Option<String>,
     #[try_into(infallible)]
     pub role: TrustEntityRoleRest,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(TrustCollectionPublicResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TrustCollectionResponseRestDTO {
+    pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub trust_lists: Vec<TrustListRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(TrustListDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TrustListRestDTO {
+    pub name: String,
+    pub id: TrustListSubscriptionId,
+    pub role: TrustListRoleRestEnum,
+    pub reference: String,
+    pub r#type: TrustListSubscriberId,
 }

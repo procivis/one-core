@@ -1,17 +1,21 @@
 use shared_types::{OrganisationId, TrustCollectionId};
 use tracing::info;
-use uuid::Uuid;
 
+use super::TrustCollectionService;
+use super::dto::{
+    CreateTrustCollectionRequestDTO, GetTrustCollectionListResponseDTO,
+    GetTrustCollectionResponseDTO, TrustCollectionPublicResponseDTO,
+};
+use super::error::TrustCollectionServiceError;
+use super::mapper::{get_public_dto, map_create_trust_collection_request};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
+use crate::model::list_filter::ListFilterValue;
 use crate::model::trust_collection::{TrustCollection, TrustCollectionListQuery};
-use crate::repository::error::DataLayerError;
-use crate::service::trust_collection::TrustCollectionService;
-use crate::service::trust_collection::dto::{
-    CreateTrustCollectionRequestDTO, GetTrustCollectionListResponseDTO,
-    GetTrustCollectionResponseDTO,
+use crate::model::trust_list_subscription::{
+    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
-use crate::service::trust_collection::error::TrustCollectionServiceError;
+use crate::repository::error::DataLayerError;
 use crate::validator::throw_if_org_not_matching_session;
 
 impl TrustCollectionService {
@@ -21,7 +25,8 @@ impl TrustCollectionService {
     ) -> Result<TrustCollectionId, TrustCollectionServiceError> {
         throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
-        let trust_collection = self.map_create_trust_collection_request(request.clone())?;
+        let trust_collection =
+            map_create_trust_collection_request(self.clock.as_ref(), request.clone());
 
         let trust_collection_id = self
             .trust_collection_repository
@@ -91,6 +96,31 @@ impl TrustCollectionService {
         Ok(list_response_into(trust_collection_list))
     }
 
+    pub async fn get_public_trust_collection(
+        &self,
+        trust_collection_id: TrustCollectionId,
+    ) -> Result<TrustCollectionPublicResponseDTO, TrustCollectionServiceError> {
+        let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
+
+        let trust_lists = self
+            .trust_list_subscription_repository
+            .list(TrustListSubscriptionListQuery {
+                filtering: Some(
+                    TrustListSubscriptionFilterValue::TrustCollectionId(trust_collection_id)
+                        .condition()
+                        & TrustListSubscriptionFilterValue::State(vec![
+                            TrustListSubscriptionState::Active,
+                        ]),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting trust lists")?
+            .values;
+
+        Ok(get_public_dto(trust_collection, trust_lists))
+    }
+
     async fn fetch_trust_collection(
         &self,
         trust_collection_id: &TrustCollectionId,
@@ -100,21 +130,5 @@ impl TrustCollectionService {
             .await
             .error_while("getting trust collection")?
             .ok_or(TrustCollectionServiceError::NotFound(*trust_collection_id))
-    }
-
-    fn map_create_trust_collection_request(
-        &self,
-        request: CreateTrustCollectionRequestDTO,
-    ) -> Result<TrustCollection, TrustCollectionServiceError> {
-        let now = self.clock.now_utc();
-        Ok(TrustCollection {
-            id: Uuid::new_v4().into(),
-            name: request.name,
-            created_date: now,
-            last_modified: now,
-            deactivated_at: None,
-            organisation_id: request.organisation_id,
-            organisation: None,
-        })
     }
 }
