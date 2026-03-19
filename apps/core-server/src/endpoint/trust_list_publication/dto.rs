@@ -28,20 +28,37 @@ use crate::serialize::{front_time, front_time_option};
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = CreateTrustListPublicationRequestDTO, Error = ServiceError)]
 pub struct CreateTrustListRequestRestDTO {
+    /// Reference a configured `trustListPublisher` instance.
     #[try_into(infallible)]
     pub r#type: String,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.    
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
+    /// ID of identifier used to sign each publication of the list.
     #[try_into(infallible)]
     pub identifier_id: IdentifierId,
+    /// Specify key to use from publisher identifier. Omit for
+    /// automatic selection.
     #[try_into(with_fn = convert_inner, infallible)]
     pub key_id: Option<KeyId>,
+    /// Specify certificate to use from publisher identifier. Omit
+    /// for automatic selection.
     #[try_into(with_fn = convert_inner, infallible)]
     pub certificate_id: Option<CertificateId>,
+    /// Provide an internal label for this trust list publication.
     #[try_into(infallible)]
     pub name: String,
+    /// The profile this trust list conforms to. Determines the
+    /// profile-specific URIs and requirements applied to the
+    /// published list.
     #[try_into(infallible)]
     pub role: TrustListRoleRestEnum,
+    /// Optional scheme information fields that cannot be derived
+    /// from the profile type or signing certificate. See the
+    /// [Scheme Operators Guide](https://docs.procivis.ch/trust/etsi/scheme-operators)
+    /// for details.
     #[try_into(infallible)]
     pub params: Option<serde_json::Value>,
 }
@@ -50,7 +67,13 @@ pub struct CreateTrustListRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateTrustEntryRequestDTO)]
 pub struct CreateTrustEntryRequestRestDTO {
+    /// ID of the identifier holding the trusted entity's certificate.
+    /// The entity's digital identity in the published list is derived
+    /// from this certificate.
     pub identifier_id: IdentifierId,
+    /// Optional entity and service information fields. See the
+    /// [Scheme Operators Guide](https://docs.procivis.ch/trust/etsi/scheme-operators)
+    /// for details.
     pub params: Option<serde_json::Value>,
 }
 
@@ -58,8 +81,12 @@ pub struct CreateTrustEntryRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(UpdateTrustEntryRequestDTO)]
 pub struct UpdateTrustEntryRequestRestDTO {
+    /// Update the entry's status on the trust list publication.
     #[into(rename = "status", with_fn = convert_inner)]
     pub state: Option<TrustEntryStateRestEnum>,
+    /// Optional entity and service information fields. See the
+    /// [Scheme Operators Guide](https://docs.procivis.ch/trust/etsi/scheme-operators)
+    /// for details.
     pub params: Option<serde_json::Value>,
 }
 
@@ -72,6 +99,7 @@ pub(crate) type GetTrustListPublicationListResponseRestDTO =
 #[from(TrustListPublicationListItemResponseDTO)]
 pub(crate) struct TrustListPublicationListItemResponseRestDTO {
     pub id: TrustListPublicationId,
+    /// Internal label for the trust list publication.
     pub name: String,
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
@@ -80,7 +108,10 @@ pub(crate) struct TrustListPublicationListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
+    /// The configured trust list publisher instance used to
+    /// publish the list.
     pub r#type: TrustListPublisherId,
+    /// The profile this trust list conforms to.
     pub role: TrustListRoleRestEnum,
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
@@ -102,13 +133,23 @@ pub(crate) struct GetTrustListPublicationResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deleted_at: Option<OffsetDateTime>,
+    /// Internal label for the trust list publication.
     pub name: String,
+    /// Identifier used for signing the trust list.
     pub identifier: GetIdentifierListItemResponseRestDTO,
+    /// The configured trust list publisher instance used to
+    /// publish this list.
     pub r#type: TrustListPublisherId,
+    /// The profile this trust list conforms to.
     pub role: TrustListRoleRestEnum,
+    /// The trust list in JWT form.
     #[from(with_fn_ref = "map_raw_str_opt")]
     pub content: Option<String>,
+    /// The sequence number increments with each publication of
+    /// the list.
     pub sequence_number: u32,
+    /// Scheme information, originally passed as `params` in the
+    /// API call to create the trust list.
     #[from(with_fn_ref = "map_raw_str")]
     pub metadata: String,
     pub organisation_id: OrganisationId,
@@ -129,9 +170,12 @@ pub(crate) struct TrustEntryListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
+    /// The entry's current state on the trust list publication.
     #[from(rename = "status")]
     pub state: TrustEntryStateRestEnum,
+    /// Identifier of the trusted entity.
     pub identifier: GetIdentifierListItemResponseRestDTO,
+    /// Entity and service information for the trusted entity.
     #[from(with_fn_ref = "map_raw_str")]
     pub params: String,
 }
@@ -166,22 +210,22 @@ pub(crate) struct TrustListPublicationFilterQueryParamsRestDTO {
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
     /// Return only trust lists created after this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only trust lists created before this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only trust lists last modified after this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only trust lists last modified before this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_before: Option<OffsetDateTime>,
@@ -216,26 +260,26 @@ pub(crate) struct TrustEntryFilterQueryParamsRestDTO {
     /// Filter by one or more identifier UUIDs.
     #[param(rename = "identifierIds[]", nullable = false)]
     pub identifier_ids: Option<Vec<IdentifierId>>,
-    /// Filter by one or more trust entry states..
+    /// Filter by one or more trust entry states.
     #[param(rename = "states[]", nullable = false)]
     pub states: Option<Vec<TrustEntryStateRestEnum>>,
     /// Return only trust entries created after this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only trust entries created before this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only trust entries last modified after this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only trust entries last modified before this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_before: Option<OffsetDateTime>,

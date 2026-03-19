@@ -430,7 +430,9 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 .build(),
             Tag::builder()
                 .name("trust_list_publication_management")
-                .description(Some(indoc::formatdoc! {""}))
+                .description(Some(indoc::formatdoc! {"
+        Publish and manage trust lists.        
+    "}))
                 .extensions(Some(
                     Extensions::builder()
                         .add("x-displayName", "Trust list publications")

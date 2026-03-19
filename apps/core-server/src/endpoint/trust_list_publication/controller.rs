@@ -29,8 +29,11 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
-    summary = "Create a trust list publication",
-    description = "Create a trust list publication.",
+    summary = "Publish a trust list",
+    description = indoc::formatdoc! {"
+    Publish a trust list using a configured `trustListPublisher` instance.
+    The published list is accessible at `/ssi/trust-list/v1/{{id}}`.
+"},
 )]
 pub(crate) async fn post_trust_list_publication(
     state: State<AppState>,
@@ -65,8 +68,11 @@ pub(crate) async fn post_trust_list_publication(
     security(
         ("bearer" = [])
     ),
-    summary = "Retrieve an trust list publication",
-    description = "Returns detailed information about an trust list publication.",
+    summary = "Retrieve a trust list publication",
+    description = indoc::formatdoc! {"
+    Returns the content, configuration, and status of a trust list
+    publication managed by this system.
+    "},
 )]
 pub(crate) async fn get_trust_list_publication(
     state: State<AppState>,
@@ -101,7 +107,7 @@ pub(crate) async fn get_trust_list_publication(
         ("bearer" = [])
     ),
     summary = "List trust list publications",
-    description = "Returns a list of trust list publications in an organization.",
+    description = "Returns a list of trust list publications managed by this system.",
 )]
 pub(crate) async fn get_trust_list_publications(
     state: State<AppState>,
@@ -146,7 +152,11 @@ pub(crate) async fn get_trust_list_publications(
         ("bearer" = [])
     ),
     summary = "Delete a trust list publication",
-    description = "Delete a trust list publication.",
+    description = indoc::formatdoc! {"
+    Deletes a trust list publication. The publication record is retained and
+    retrievable by ID, but all entries are permanently removed. Use the retrieve
+    endpoint to confirm deletion details, including the `deletedAt` timestamp.
+    "},
 )]
 pub(crate) async fn delete_trust_list_publication(
     state: State<AppState>,
@@ -181,7 +191,11 @@ pub(crate) async fn delete_trust_list_publication(
         ("bearer" = [])
     ),
     summary = "Create a trust entry",
-    description = "Create a trust entry in a trust list publication.",
+    description = indoc::formatdoc! {"
+    Adds a trusted entity to a trust list publication. The trusted entity's
+    certificate must first be uploaded as an identifier, which is then
+    referenced in the request via `identifierId`.
+    "},
 )]
 pub(crate) async fn post_trust_entry(
     state: State<AppState>,
@@ -222,8 +236,12 @@ pub(crate) async fn post_trust_entry(
     security(
         ("bearer" = [])
     ),
-    summary = "Update trust entry",
-    description = "Update trust entry",
+    summary = "Update a trust entry",
+    description = indoc::formatdoc! {"
+    Updates the entity or service information of a trusted entity in a trust list
+    publication. Only the fields provided in the request body are updated; all
+    other fields remain unchanged.
+    "},
 )]
 pub(crate) async fn patch_trust_entry(
     state: State<AppState>,
@@ -263,8 +281,8 @@ pub(crate) async fn patch_trust_entry(
     security(
         ("bearer" = [])
     ),
-    summary = "Delete trust entry",
-    description = "Delete trust entry",
+    summary = "Delete a trust entry",
+    description = "Permanently removes a trusted entity from a trust list publication.",
 )]
 pub(crate) async fn delete_trust_entry(
     state: State<AppState>,
@@ -301,7 +319,7 @@ pub(crate) async fn delete_trust_entry(
         ("bearer" = [])
     ),
     summary = "List trust list publication entries",
-    description = "Returns a list of trust list publications in an organization.",
+    description = "Returns a filterable list of trusted entities in a trust list publication.",
 )]
 pub(crate) async fn get_trust_list_publication_entries(
     state: State<AppState>,
