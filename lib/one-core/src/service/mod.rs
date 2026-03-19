@@ -40,3 +40,4 @@ pub mod wallet_unit;
 
 #[cfg(any(test, feature = "mock"))]
 pub mod test_utilities;
+pub mod trust_collection;

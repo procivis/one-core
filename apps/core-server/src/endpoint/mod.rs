@@ -20,6 +20,7 @@ pub mod ssi;
 pub mod statistics;
 pub mod task;
 pub mod trust_anchor;
+pub mod trust_collection;
 pub mod trust_entity;
 pub mod trust_list_publication;
 pub mod vc_api;

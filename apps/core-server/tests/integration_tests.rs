@@ -90,3 +90,6 @@ mod authorization;
 
 #[path = "api/trust_list_publication/mod.rs"]
 mod trust_list_publication;
+
+#[path = "api/trust_collection/mod.rs"]
+mod trust_collection;

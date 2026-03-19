@@ -832,6 +832,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Failed to encode public key")]
     BR_0397,
+
+    #[strum(message = "Trust collection already exists")]
+    BR_0398,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

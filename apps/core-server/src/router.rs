@@ -25,7 +25,7 @@ use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
-    proof_schema, signature, ssi, statistics, task, trust_anchor, trust_entity,
+    proof_schema, signature, ssi, statistics, task, trust_anchor, trust_collection, trust_entity,
     trust_list_publication, vc_api, wallet_provider,
 };
 use crate::middleware::{UserInfo, get_http_request_context};
@@ -513,6 +513,16 @@ fn get_management_endpoints(
                 "/api/trust-list/v1/{list_id}/entry/{entry_id}",
                 patch(trust_list_publication::controller::patch_trust_entry)
                     .delete(trust_list_publication::controller::delete_trust_entry),
+            )
+            .route(
+                "/api/trust-collection/v1",
+                get(trust_collection::controller::get_trust_collection_list)
+                    .post(trust_collection::controller::post_trust_collection),
+            )
+            .route(
+                "/api/trust-collection/v1/{id}",
+                get(trust_collection::controller::get_trust_collection)
+                    .delete(trust_collection::controller::delete_trust_collection),
             );
 
         if config.enable_signature_endpoints {

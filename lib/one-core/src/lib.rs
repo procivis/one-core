@@ -85,6 +85,7 @@ use crate::service::ssi_issuer::SSIIssuerService;
 use crate::service::statistics::StatisticsService;
 use crate::service::task::TaskService;
 use crate::service::trust_anchor::TrustAnchorService;
+use crate::service::trust_collection::TrustCollectionService;
 use crate::service::trust_entity::TrustEntityService;
 use crate::service::trust_list_publication::TrustListPublicationService;
 use crate::service::vc_api::VCAPIService;
@@ -139,6 +140,7 @@ pub struct OneCore {
     pub statistics_service: StatisticsService,
     pub verifier_provider_service: VerifierProviderService,
     pub trust_list_publication_service: TrustListPublicationService,
+    pub trust_collection_service: TrustCollectionService,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -734,7 +736,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 revocation_method_provider,
                 certificate_validator,
-                clock,
+                clock.clone(),
                 session_provider.clone(),
                 config.clone(),
                 core_base_url.clone(),
@@ -788,8 +790,13 @@ impl OneCore {
                 data_provider.get_identifier_repository(),
                 data_provider.get_trust_list_publication_repository(),
                 data_provider.get_trust_entry_repository(),
-                session_provider,
+                session_provider.clone(),
                 trust_list_publisher_provider,
+            ),
+            trust_collection_service: TrustCollectionService::new(
+                data_provider.get_trust_collection_repository(),
+                session_provider,
+                clock,
             ),
         })
     }
