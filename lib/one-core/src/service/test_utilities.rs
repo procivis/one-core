@@ -287,6 +287,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         signer: {}
         verifierProvider: {}
         trustListPublisher: {}
+        trustListSubscriber: {}
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

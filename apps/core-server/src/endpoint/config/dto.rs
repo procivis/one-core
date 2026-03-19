@@ -67,6 +67,8 @@ pub(crate) struct ConfigRestDTO {
     pub signer: HashMap<String, Value>,
     #[schema(example = json!({}))]
     pub trust_list_publisher: HashMap<String, Value>,
+    #[schema(example = json!({}))]
+    pub trust_list_subscriber: HashMap<String, Value>,
 }
 
 impl From<ConfigDTO> for ConfigRestDTO {
@@ -93,6 +95,7 @@ impl From<ConfigDTO> for ConfigRestDTO {
             wallet_provider: config.wallet_provider,
             signer: config.signer,
             trust_list_publisher: config.trust_list_publisher,
+            trust_list_subscriber: config.trust_list_subscriber,
         }
     }
 }

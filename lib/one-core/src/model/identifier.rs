@@ -5,7 +5,7 @@ use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::certificate::{Certificate, CertificateRelations};
+use super::certificate::{Certificate, CertificateRelations, CertificateState};
 use super::common::GetListResponse;
 use super::did::{Did, DidRelations, KeyRole};
 use super::key::{Key, KeyRelations};
@@ -46,6 +46,18 @@ impl Identifier {
             | IdentifierType::Certificate
             | IdentifierType::CertificateAuthority => None,
         }
+    }
+
+    pub(crate) fn active_certs(&self) -> Option<Vec<&Certificate>> {
+        if self.r#type != IdentifierType::Certificate {
+            return Some(vec![]);
+        }
+        self.certificates.as_ref().map(|certs| {
+            certs
+                .iter()
+                .filter(|cert| cert.state == CertificateState::Active)
+                .collect()
+        })
     }
 }
 

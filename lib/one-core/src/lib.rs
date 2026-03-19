@@ -1,3 +1,5 @@
+extern crate core;
+
 use std::sync::{Arc, Once};
 
 use one_crypto::initialize_crypto_provider;
@@ -49,6 +51,7 @@ use crate::provider::revocation::provider::revocation_method_provider_from_confi
 use crate::provider::signer::provider::signer_provider_from_config;
 use crate::provider::task::provider::task_provider_from_config;
 use crate::provider::trust_list_publisher::provider::trust_list_publisher_provider_from_config;
+use crate::provider::trust_list_subscriber::provider::trust_list_subscriber_provider_from_config;
 use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
 use crate::provider::verifier::provider::verifier_provider_from_config;
@@ -352,6 +355,17 @@ impl OneCore {
             data_provider.get_trust_list_publication_repository(),
             data_provider.get_trust_entry_repository(),
             data_provider.get_identifier_repository(),
+        )?;
+
+        #[expect(unused)]
+        let trust_list_subscriber_provider = trust_list_subscriber_provider_from_config(
+            &mut config,
+            clock.clone(),
+            client.clone(),
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            certificate_validator.clone(),
+            data_provider.get_remote_entity_cache_repository(),
         )?;
 
         let blob_storage_provider = blob_storage_provider_from_config(

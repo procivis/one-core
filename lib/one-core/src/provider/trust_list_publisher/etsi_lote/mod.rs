@@ -451,7 +451,7 @@ fn build_lote_payload(
     now: OffsetDateTime,
 ) -> Result<LoTEPayload, TrustListPublisherError> {
     let now = now.truncate_to_second();
-    let lote_type = LoTEType::try_from(&publication.role)?;
+    let lote_type = LoTEType::try_from(&publication.role).error_while("mapping trust list role")?;
     let list_params: dto::CreateTrustListParams = serde_json::from_slice(&publication.metadata)?;
 
     let sequence_number = u64::from(publication.sequence_number);

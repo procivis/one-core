@@ -10,6 +10,7 @@
 //! [cac]: https://docs.procivis.ch/api/caching
 
 use std::cmp::min;
+use std::str::Utf8Error;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -24,6 +25,7 @@ use crate::error::{
 };
 
 pub mod android_attestation_crl;
+pub mod etsi_lote;
 pub mod json_ld_context;
 pub mod openid_metadata;
 pub mod trust_list;
@@ -67,13 +69,25 @@ pub enum ResolverError {
     InvalidResponse(String),
 
     #[error("Failed deserializing response body: {0}")]
-    InvalidResponseBody(#[from] serde_json::Error),
+    InvalidResponseBody(Box<dyn std::error::Error + Send + Sync>),
 
     #[error("Unexpected resolve result")]
     UnexpectedResolveResult,
 
     #[error(transparent)]
     Nested(#[from] NestedError),
+}
+
+impl From<serde_json::Error> for ResolverError {
+    fn from(err: serde_json::Error) -> Self {
+        ResolverError::InvalidResponseBody(Box::new(err))
+    }
+}
+
+impl From<Utf8Error> for ResolverError {
+    fn from(err: Utf8Error) -> Self {
+        ResolverError::InvalidResponseBody(Box::new(err))
+    }
 }
 
 impl ErrorCodeMixin for ResolverError {

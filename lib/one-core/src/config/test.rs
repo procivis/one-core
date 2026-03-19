@@ -120,6 +120,7 @@ rusty_fork_test! {
             signer: {}
             verifierProvider: {}
             trustListPublisher: {}
+            trustListSubscriber: {}
         "};
 
         let config3 = indoc::indoc! {"

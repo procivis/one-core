@@ -750,6 +750,15 @@ trustListPublisher:
     params:
       public:
         refreshIntervalSeconds: 86400
+trustListSubscriber:
+  LOTE_SUBSCRIBER:
+    type: ETSI_LOTE
+    order: 1
+    display: "trustListSubscriber.etsiLote"
+    params:
+      private:
+        accepts: "application/jwt"
+        leeway: 60
 blobStorage:
   DB:
     enabled: true

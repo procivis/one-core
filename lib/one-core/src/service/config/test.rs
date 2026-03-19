@@ -62,6 +62,7 @@ fn convert_internal_structure_to_dto() {
           "verificationEngagement": {},
           "signer": {},
           "trustListPublisher": {},
+          "trustListSubscriber": {},
         }),
         output
     );
@@ -121,6 +122,7 @@ fn do_not_serialize_private_parameters() {
           "verificationEngagement": {},
           "signer": {},
           "trustListPublisher": {},
+          "trustListSubscriber": {},
         }),
         output
     );

@@ -815,8 +815,23 @@ pub enum ErrorCode {
     #[strum(message = "Trust collection not found")]
     BR_0391,
 
+    #[strum(message = "Trust list role was not provided and is not specified by resolved list")]
+    BR_0392,
+
+    #[strum(message = "Invalid LoTE content")]
+    BR_0393,
+
+    #[strum(message = "Ambiguous trust resolution, identifier has multiple active certificates")]
+    BR_0394,
+
     #[strum(message = "Remote HTTP request status failure (4xx)")]
     BR_0395,
+
+    #[strum(message = "Unsupported identifier type")]
+    BR_0396,
+
+    #[strum(message = "Failed to encode public key")]
+    BR_0397,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
