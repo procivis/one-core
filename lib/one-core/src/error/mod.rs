@@ -841,6 +841,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Trust list subscriber provider not found")]
     BR_0400,
+
+    #[strum(message = "Local trust collection cannot be synced")]
+    BR_0401,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

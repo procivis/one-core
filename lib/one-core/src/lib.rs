@@ -29,6 +29,9 @@ use crate::proto::notification_sender::NotificationSenderImpl;
 use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorProto;
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::trust_list_subscription_sync::{
+    TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
+};
 use crate::proto::wallet_unit::HolderWalletUnitProtoImpl;
 use crate::provider::blob_storage_provider::blob_storage_provider_from_config;
 use crate::provider::caching_loader::json_ld_context::{
@@ -456,6 +459,13 @@ impl OneCore {
             credential_validity_manager.clone(),
             notification_scheduler.clone(),
         );
+
+        #[expect(unused)]
+        let trust_list_subscription_sync_proto: Arc<dyn TrustListSubscriptionSync> =
+            Arc::new(TrustListSubscriptionSyncImpl::new(
+                client.clone(),
+                data_provider.get_trust_list_subscription_repository(),
+            ));
 
         let task_provider = task_provider_from_config(
             &config,
