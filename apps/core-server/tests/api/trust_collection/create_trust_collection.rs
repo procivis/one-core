@@ -1,6 +1,8 @@
+use shared_types::TrustCollectionId;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_post_trust_collection() {
@@ -16,8 +18,18 @@ async fn test_post_trust_collection() {
 
     // THEN
     assert_eq!(resp.status(), 201);
-    let body = resp.json_value().await;
-    assert!(body["id"].is_string());
+    let trust_collection_id_json = &resp.json_value().await["id"];
+    let trust_collection_id = trust_collection_id_json.parse::<TrustCollectionId>();
+    let history_entries = context
+        .db
+        .histories
+        .get_by_entity_id(&trust_collection_id.into())
+        .await;
+    let contains_history_entry = history_entries.values.iter().any(|entry| {
+        entry.entity_type == one_core::model::history::HistoryEntityType::TrustCollection
+            && entry.action == one_core::model::history::HistoryAction::Created
+    });
+    assert!(contains_history_entry);
 }
 
 #[tokio::test]

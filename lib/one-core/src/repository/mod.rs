@@ -96,6 +96,5 @@ pub trait DataRepository: Send + Sync {
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository>;
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository>;
     fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository>;
-
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }

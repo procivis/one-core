@@ -20,6 +20,13 @@ async fn test_delete_trust_collection() {
 
     let resp = context.api.trust_collections.get(tc.id).await;
     assert_eq!(resp.status(), 404);
+
+    let history_entries = context.db.histories.get_by_entity_id(&tc.id.into()).await;
+    let contains_history_entry = history_entries.values.iter().any(|entry| {
+        entry.entity_type == one_core::model::history::HistoryEntityType::TrustCollection
+            && entry.action == one_core::model::history::HistoryAction::Deleted
+    });
+    assert!(contains_history_entry);
 }
 
 #[tokio::test]

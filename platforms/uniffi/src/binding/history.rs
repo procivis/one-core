@@ -188,6 +188,7 @@ pub enum HistoryEntityTypeBindingEnum {
     Notification,
     SupervisoryAuthority,
     TrustListPublication,
+    TrustCollection,
     TrustListSubscription,
 }
 

@@ -125,6 +125,7 @@ pub enum HistoryEntityType {
     Notification,
     SupervisoryAuthority,
     TrustListPublication,
+    TrustCollection,
     TrustListSubscription,
 }
 
