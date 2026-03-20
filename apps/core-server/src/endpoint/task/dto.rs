@@ -12,7 +12,6 @@ pub(crate) struct TaskRequestRestDTO {
     pub name: String,
     /// Parameters to pass to the task.
     #[schema(value_type = Option<Object>)]
-    #[expect(dead_code)]
     pub params: Option<serde_json::Value>,
 }
 

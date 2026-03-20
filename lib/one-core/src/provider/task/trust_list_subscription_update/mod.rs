@@ -124,7 +124,7 @@ impl TrustListSubscriptionUpdateTask {
 
 #[async_trait::async_trait]
 impl Task for TrustListSubscriptionUpdateTask {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let mut page = 0;
         let mut result = UpdateResultDTO {
             updated_subscriptions: vec![],

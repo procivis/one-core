@@ -46,7 +46,7 @@ impl HolderCheckCredentialStatus {
 
 #[async_trait::async_trait]
 impl Task for HolderCheckCredentialStatus {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let option = self
             .params
             .clone()

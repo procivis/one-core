@@ -164,7 +164,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         HolderCheckCredentialStatus::new(Some(params), credential_repository, validity_manager);
 
     // when
-    let result = holder_check_credential_status.run().await;
+    let result = holder_check_credential_status.run(None).await;
 
     // then
     assert!(result.is_ok());

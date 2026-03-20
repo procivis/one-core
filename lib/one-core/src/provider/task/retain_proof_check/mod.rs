@@ -51,7 +51,7 @@ impl RetainProofCheck {
 
 #[async_trait::async_trait]
 impl Task for RetainProofCheck {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let processed_events: Vec<_> = self
             .history_repository
             .get_history_list(ListQuery {

@@ -36,7 +36,7 @@ impl SuspendCheckProvider {
 
 #[async_trait::async_trait]
 impl Task for SuspendCheckProvider {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let credential_list = self
             .credential_repository
             .get_credential_list(GetCredentialQuery {

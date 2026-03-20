@@ -70,7 +70,7 @@ async fn test_trust_list_subscription_update_active() {
         Arc::new(NoSessionProvider),
     );
 
-    let result: UpdateResultDTO = serde_json::from_value(task.run().await.unwrap()).unwrap();
+    let result: UpdateResultDTO = serde_json::from_value(task.run(None).await.unwrap()).unwrap();
     assert_eq!(result.total_checks, 1);
     assert_eq!(result.updated_subscriptions.len(), 0);
 }
@@ -121,7 +121,7 @@ async fn test_trust_list_subscription_update_error() {
         Arc::new(NoSessionProvider),
     );
 
-    let result: UpdateResultDTO = serde_json::from_value(task.run().await.unwrap()).unwrap();
+    let result: UpdateResultDTO = serde_json::from_value(task.run(None).await.unwrap()).unwrap();
     assert_eq!(result.total_checks, 1);
     assert_eq!(result.updated_subscriptions.len(), 0);
 }
@@ -180,7 +180,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
         Arc::new(NoSessionProvider),
     );
 
-    let result: UpdateResultDTO = serde_json::from_value(task.run().await.unwrap()).unwrap();
+    let result: UpdateResultDTO = serde_json::from_value(task.run(None).await.unwrap()).unwrap();
     assert_eq!(result.total_checks, 1);
     assert_eq!(result.updated_subscriptions, vec![subscription_id]);
 }
@@ -242,7 +242,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
         Arc::new(NoSessionProvider),
     );
 
-    let result: UpdateResultDTO = serde_json::from_value(task.run().await.unwrap()).unwrap();
+    let result: UpdateResultDTO = serde_json::from_value(task.run(None).await.unwrap()).unwrap();
     assert_eq!(result.total_checks, 1);
     assert_eq!(result.updated_subscriptions, vec![subscription_id]);
 }

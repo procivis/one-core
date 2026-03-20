@@ -46,7 +46,7 @@ impl WebhookNotify {
 
 #[async_trait::async_trait]
 impl Task for WebhookNotify {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let notifications = self
             .notification_repository
             .list(NotificationListQuery {

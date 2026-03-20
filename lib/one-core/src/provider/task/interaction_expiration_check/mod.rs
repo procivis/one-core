@@ -50,7 +50,7 @@ impl InteractionExpirationCheckProvider {
 
 #[async_trait::async_trait]
 impl Task for InteractionExpirationCheckProvider {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let now = OffsetDateTime::now_utc();
         let updated_credentials = self
             .interaction_repository

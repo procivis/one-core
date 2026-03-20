@@ -25,6 +25,10 @@ struct Cli {
     #[arg(long)]
     task: Option<String>,
 
+    /// Arguments to pass to the task (JSON).
+    #[arg(long)]
+    task_params: Option<String>,
+
     /// Decrypt and load a database from a backup file.
     /// This will override the databaseUrl specified in the config file.
     #[arg(long)]
@@ -90,7 +94,12 @@ fn main() {
                 .expect("Unable to initialize core");
 
             if let Some(task) = cli.task {
-                run_task(task, core).await
+                let params = cli
+                    .task_params
+                    .map(|p| serde_json::from_str(&p))
+                    .transpose()
+                    .expect("Failed to parse task params");
+                run_task(task, params, core).await
             } else {
                 run_server(app_config.app, core).await
             }
@@ -112,8 +121,8 @@ async fn run_server(config: ServerConfig, core: OneCore) {
 }
 
 #[expect(clippy::expect_used)]
-async fn run_task(task: String, core: OneCore) {
-    match core.task_service.run(&task.into()).await {
+async fn run_task(task: String, params: Option<serde_json::Value>, core: OneCore) {
+    match core.task_service.run(&task.into(), params).await {
         Ok(result) => {
             print!(
                 "{}",

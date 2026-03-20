@@ -41,7 +41,7 @@ impl CertificateCheck {
 
 #[async_trait::async_trait]
 impl Task for CertificateCheck {
-    async fn run(&self) -> Result<Value, ServiceError> {
+    async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
         let expired_certificates = self.check_expired_certificates().await?;
         let revoked_certificates = self.check_revoked_certificates().await?;
 
