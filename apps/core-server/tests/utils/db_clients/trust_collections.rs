@@ -28,6 +28,7 @@ impl TrustCollectionDB {
             last_modified: get_dummy_date(),
             name: name.to_string(),
             deactivated_at: None,
+            remote_trust_collection_url: None,
             organisation_id: organisation.id,
             organisation: Some(organisation),
         };

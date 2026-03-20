@@ -1,6 +1,7 @@
 use sea_orm::entity::prelude::*;
 use shared_types::{OrganisationId, TrustCollectionId};
 use time::OffsetDateTime;
+use url::Url;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "trust_collection")]
@@ -10,6 +11,7 @@ pub struct Model {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub remote_trust_collection_url: Option<String>,
     pub deactivated_at: Option<OffsetDateTime>,
 
     pub organisation_id: OrganisationId,

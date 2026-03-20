@@ -732,6 +732,7 @@ pub async fn insert_trust_collection_to_database(
         name: Set(id.to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
+        remote_trust_collection_url: NotSet,
         deactivated_at: NotSet,
         organisation_id: Set(organisation_id),
     }

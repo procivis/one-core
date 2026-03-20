@@ -17,6 +17,7 @@ pub(super) fn map_create_trust_collection_request(
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        remote_trust_collection_url: None,
         organisation_id: request.organisation_id,
         organisation: None,
     }

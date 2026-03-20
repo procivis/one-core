@@ -3,6 +3,7 @@ use shared_types::{
     OrganisationId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use time::OffsetDateTime;
+use url::Url;
 
 use crate::model::common::GetListResponse;
 use crate::model::trust_collection::TrustCollection;
@@ -23,6 +24,7 @@ pub struct GetTrustCollectionResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub organisation_id: OrganisationId,
+    pub remote_trust_collection_url: Option<Url>,
 }
 
 pub type GetTrustCollectionListResponseDTO = GetListResponse<TrustCollectionListItemResponseDTO>;
@@ -35,6 +37,7 @@ pub struct TrustCollectionListItemResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub organisation_id: OrganisationId,
+    pub remote_trust_collection_url: Option<Url>,
 }
 
 #[derive(Clone, Debug)]

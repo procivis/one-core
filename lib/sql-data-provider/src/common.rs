@@ -1,7 +1,7 @@
 use one_core::model::common::GetListResponse;
 use one_core::model::list_query::ListQuery;
 use one_core::repository::error::DataLayerError;
-use one_dto_mapper::convert_inner;
+use one_dto_mapper::try_convert_inner;
 use sea_orm::{EntityTrait, PaginatorTrait, Select};
 use serde::de::{Deserialize, Deserializer, Error, Unexpected};
 use serde_json::Value;
@@ -45,7 +45,8 @@ where
 pub(crate) async fn list_query_with_base_model<
     'db,
     E: EntityTrait,
-    ListItem: From<E::Model>,
+    ItemErr: Into<DataLayerError>,
+    ListItem: TryFrom<E::Model, Error = ItemErr>,
     SortableColumn,
     FV,
     Include,
@@ -69,7 +70,7 @@ where
     let items = items.map_err(to_data_layer_error)?;
 
     Ok(GetListResponse::<ListItem> {
-        values: convert_inner(items),
+        values: try_convert_inner(items).map_err(ItemErr::into)?,
         total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
         total_items: items_count,
     })

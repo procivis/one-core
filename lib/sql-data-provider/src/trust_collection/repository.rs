@@ -44,7 +44,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
         };
 
         let organisation_id = trust_collection.organisation_id;
-        let mut result = TrustCollection::from(trust_collection);
+        let mut result = TrustCollection::try_from(trust_collection)?;
         if let Some(organisation_relations) = &relations.organisation {
             result.organisation = Some(
                 self.organisation_repository

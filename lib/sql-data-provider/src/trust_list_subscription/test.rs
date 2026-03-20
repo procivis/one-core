@@ -525,6 +525,7 @@ async fn test_get_trust_list_subscription_with_trust_collection_relation() {
                 organisation_id: org_id,
                 organisation: None,
                 deactivated_at: None,
+                remote_trust_collection_url: None,
             }))
         });
 

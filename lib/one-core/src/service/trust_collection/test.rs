@@ -44,6 +44,7 @@ fn dummy_trust_collection(organisation_id: OrganisationId) -> TrustCollection {
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        remote_trust_collection_url: None,
         organisation_id,
         organisation: None,
     }

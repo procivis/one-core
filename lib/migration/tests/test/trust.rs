@@ -343,6 +343,7 @@ async fn test_db_schema_trust_collection() {
         "deactivated_at",
         "name",
         "organisation_id",
+        "remote_trust_collection_url",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.push("deactivated_at_materialized");
@@ -377,6 +378,10 @@ async fn test_db_schema_trust_collection() {
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
+    trust_entry
+        .column("remote_trust_collection_url")
+        .r#type(ColumnType::Text)
+        .nullable(true);
     trust_entry
         .column("organisation_id")
         .r#type(ColumnType::Uuid)

@@ -9,6 +9,7 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, TrustCollectionId};
 use time::OffsetDateTime;
+use url::Url;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::{ExactColumn, GetListResponseRestDTO, ListQueryParamsRest};
@@ -43,6 +44,7 @@ pub(crate) struct TrustCollectionListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
+    pub remote_trust_collection_url: Option<Url>,
 }
 
 #[options_not_nullable]
@@ -59,6 +61,7 @@ pub(crate) struct GetTrustCollectionResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
+    pub remote_trust_collection_url: Option<Url>,
 }
 
 pub(crate) type ListTrustCollectionEntitiesQuery = ListQueryParamsRest<

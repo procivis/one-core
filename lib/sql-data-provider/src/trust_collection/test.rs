@@ -10,6 +10,7 @@ use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use sea_orm::DatabaseConnection;
 use shared_types::OrganisationId;
+use url::Url;
 use uuid::Uuid;
 
 use crate::test_utilities::{
@@ -49,6 +50,7 @@ fn dummy_trust_collection(org_id: OrganisationId) -> TrustCollection {
         organisation_id: org_id,
         organisation: None,
         deactivated_at: None,
+        remote_trust_collection_url: Some(Url::parse("https://example.com").unwrap()),
     }
 }
 

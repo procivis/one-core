@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use shared_types::{ClaimId, ClaimSchemaId, ProofId};
 use thiserror::Error;
 
@@ -66,5 +68,11 @@ impl ErrorCodeMixin for DataLayerError {
             | Self::UnsupportedDbBackend => ErrorCode::BR_0000,
             Self::Nested(nested) => nested.error_code(),
         }
+    }
+}
+
+impl From<Infallible> for DataLayerError {
+    fn from(value: Infallible) -> Self {
+        match value {}
     }
 }

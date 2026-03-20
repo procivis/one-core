@@ -1,5 +1,6 @@
 use shared_types::{OrganisationId, TrustCollectionId};
 use time::OffsetDateTime;
+use url::Url;
 
 use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
@@ -13,6 +14,7 @@ pub struct TrustCollection {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deactivated_at: Option<OffsetDateTime>,
+    pub remote_trust_collection_url: Option<Url>,
     pub organisation_id: OrganisationId,
 
     // Relations

@@ -33,6 +33,7 @@ async fn test_trust_list_subscription_update_active() {
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        remote_trust_collection_url: None,
         organisation_id: Uuid::new_v4().into(),
         organisation: None,
     };
@@ -84,6 +85,7 @@ async fn test_trust_list_subscription_update_error() {
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        remote_trust_collection_url: None,
         organisation_id: Uuid::new_v4().into(),
         organisation: None,
     };
@@ -135,6 +137,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        remote_trust_collection_url: None,
         organisation_id: Uuid::new_v4().into(),
         organisation: None,
     };
@@ -197,6 +200,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        remote_trust_collection_url: None,
         organisation_id: Uuid::new_v4().into(),
         organisation: None,
     };

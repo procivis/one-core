@@ -2,9 +2,11 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::trust_collection::{
     SortableTrustCollectionColumn, TrustCollection, TrustCollectionFilterValue,
 };
+use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use url::Url;
 
 use crate::entity::trust_collection;
 use crate::list_query_generic::{
@@ -12,17 +14,23 @@ use crate::list_query_generic::{
     get_string_match_condition,
 };
 
-impl From<trust_collection::Model> for TrustCollection {
-    fn from(value: trust_collection::Model) -> Self {
-        Self {
+impl TryFrom<trust_collection::Model> for TrustCollection {
+    type Error = DataLayerError;
+    fn try_from(value: trust_collection::Model) -> Result<Self, Self::Error> {
+        Ok(Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
             deactivated_at: value.deactivated_at,
+            remote_trust_collection_url: value
+                .remote_trust_collection_url
+                .map(|url| Url::parse(&url))
+                .transpose()
+                .map_err(|_| DataLayerError::MappingError)?,
             organisation_id: value.organisation_id,
             organisation: None,
-        }
+        })
     }
 }
 
@@ -35,6 +43,9 @@ impl From<TrustCollection> for trust_collection::ActiveModel {
             name: Set(value.name),
             deactivated_at: Set(value.deactivated_at),
             organisation_id: Set(value.organisation_id),
+            remote_trust_collection_url: Set(value
+                .remote_trust_collection_url
+                .map(|url| url.to_string())),
         }
     }
 }
