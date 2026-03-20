@@ -4,6 +4,7 @@ use crate::config::core_config::CoreConfig;
 use crate::proto::clock::Clock;
 use crate::proto::os_provider::OSInfoProvider;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -32,6 +33,7 @@ pub struct WalletUnitService {
     wallet_provider_client: Arc<dyn WalletProviderClient>,
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     os_info_provider: Arc<dyn OSInfoProvider>,
+    trust_collection_manager: Arc<dyn TrustCollectionManager>,
     clock: Arc<dyn Clock>,
     base_url: Option<String>,
     config: Arc<CoreConfig>,
@@ -50,6 +52,7 @@ impl WalletUnitService {
         wallet_provider_client: Arc<dyn WalletProviderClient>,
         wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         os_info_provider: Arc<dyn OSInfoProvider>,
+        trust_collection_manager: Arc<dyn TrustCollectionManager>,
         clock: Arc<dyn Clock>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
@@ -62,6 +65,7 @@ impl WalletUnitService {
             key_repository,
             key_algorithm_provider,
             os_info_provider,
+            trust_collection_manager,
             organisation_repository,
             holder_wallet_unit_repository,
             history_repository,

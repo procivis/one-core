@@ -21,5 +21,6 @@ pub(crate) mod openid4vp_proof_validator;
 pub(crate) mod os_provider;
 pub mod session_provider;
 pub mod transaction_manager;
+pub(crate) mod trust_collection;
 pub(crate) mod trust_list_subscription_sync;
 pub(crate) mod wallet_unit;

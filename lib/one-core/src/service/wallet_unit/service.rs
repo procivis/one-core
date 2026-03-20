@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use one_dto_mapper::convert_inner;
 use shared_types::{HolderWalletUnitId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
@@ -179,6 +180,16 @@ impl WalletUnitService {
             })
             .await
             .error_while("creating history")?;
+
+        self.trust_collection_manager
+            .create_empty_trust_collections(
+                &request.wallet_provider.url,
+                convert_inner(metadata.trust_collections),
+                organisation.id,
+            )
+            .await
+            .error_while("creating empty trust collections")?;
+
         tracing::info!(message = success_log);
         Ok(HolderWalletUnitRegisterResponseDTO {
             id: holder_wallet_unit_id,

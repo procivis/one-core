@@ -6,7 +6,9 @@ use super::dto::HolderWalletUnitResponseDTO;
 use crate::model::holder_wallet_unit::HolderWalletUnit;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::provider::key_storage::model::StorageGeneratedKey;
+use crate::service::wallet_provider::dto::ProviderTrustCollectionDTO;
 
 pub(super) fn key_from_generated_key(
     key_id: KeyId,
@@ -42,6 +44,15 @@ impl From<HolderWalletUnit> for HolderWalletUnitResponseDTO {
             wallet_provider_name: value.wallet_provider_name,
             status: value.status,
             authentication_key: convert_inner(value.authentication_key),
+        }
+    }
+}
+
+impl From<ProviderTrustCollectionDTO> for RemoteTrustCollectionInfoDTO {
+    fn from(value: ProviderTrustCollectionDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
         }
     }
 }

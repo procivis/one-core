@@ -29,6 +29,7 @@ use crate::proto::notification_sender::NotificationSenderImpl;
 use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorProto;
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
@@ -371,6 +372,11 @@ impl OneCore {
             certificate_validator.clone(),
             data_provider.get_remote_entity_cache_repository(),
         )?;
+
+        let trust_collection_manager = Arc::new(TrustCollectionManagerImpl::new(
+            data_provider.get_trust_collection_repository(),
+            data_provider.get_tx_manager(),
+        ));
 
         let blob_storage_provider = blob_storage_provider_from_config(
             &config.blob_storage,
@@ -776,6 +782,7 @@ impl OneCore {
                 Arc::new(HTTPWalletProviderClient::new(client)),
                 wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
+                trust_collection_manager,
                 Arc::new(DefaultClock),
                 core_base_url,
                 config,

@@ -14,6 +14,7 @@ use crate::proto::clock::DefaultClock;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::trust_collection::MockTrustCollectionManager;
 use crate::proto::wallet_unit::{MockHolderWalletUnitProto, WalletUnitStatusCheckResponse};
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -51,6 +52,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         config: Arc::new(CoreConfig::default()),
         session_provider: Arc::new(NoSessionProvider),
         wallet_unit_proto: Arc::new(MockHolderWalletUnitProto::default()),
+        trust_collection_manager: Arc::new(MockTrustCollectionManager::default()),
     }
 }
 
@@ -166,8 +168,8 @@ async fn holder_register_success() {
             Ok(())
         });
 
-    let mut att_repo = MockHolderWalletUnitRepository::new();
-    att_repo
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
         .expect_create_holder_wallet_unit()
         .once()
         .return_once(move |att: CreateHolderWalletUnitRequest| {
@@ -175,6 +177,12 @@ async fn holder_register_success() {
             check!(att.provider_wallet_unit_id == wallet_unit_id);
             Ok(att.id)
         });
+
+    let mut trust_collection_manager = MockTrustCollectionManager::new();
+    trust_collection_manager
+        .expect_create_empty_trust_collections()
+        .once()
+        .return_once(|_, _, _| Ok(vec![]));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -186,10 +194,11 @@ async fn holder_register_success() {
         organisation_repository: Arc::new(organisation_repository),
         key_repository: Arc::new(key_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        holder_wallet_unit_repository: Arc::new(att_repo),
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
+        trust_collection_manager: Arc::new(trust_collection_manager),
         config: Arc::new(generic_config().core),
         ..mock_wallet_unit_service()
     };
@@ -283,8 +292,8 @@ async fn holder_register_key_attestation_not_supported() {
             })
         });
 
-    let mut att_repo = MockHolderWalletUnitRepository::new();
-    att_repo
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
         .expect_create_holder_wallet_unit()
         .once()
         .return_once(move |att: CreateHolderWalletUnitRequest| {
@@ -292,6 +301,12 @@ async fn holder_register_key_attestation_not_supported() {
             check!(att.provider_wallet_unit_id == wallet_unit_id);
             Ok(att.id)
         });
+
+    let mut trust_collection_manager = MockTrustCollectionManager::new();
+    trust_collection_manager
+        .expect_create_empty_trust_collections()
+        .once()
+        .return_once(|_, _, _| Ok(vec![]));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -302,10 +317,11 @@ async fn holder_register_key_attestation_not_supported() {
     let service = WalletUnitService {
         organisation_repository: Arc::new(organisation_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        holder_wallet_unit_repository: Arc::new(att_repo),
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
+        trust_collection_manager: Arc::new(trust_collection_manager),
         config: Arc::new(generic_config().core),
         ..mock_wallet_unit_service()
     };
