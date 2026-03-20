@@ -7,6 +7,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 pub enum HolderWalletUnitError {
     #[error("Wallet unit revoked")]
     WalletUnitRevoked,
+    #[error("Wallet unit `{0}` already exists")]
+    WalletUnitAlreadyExists(HolderWalletUnitId),
 
     #[error(
         "App integrity check required: proof and public key must only be provided on wallet unit activation"
@@ -40,6 +42,7 @@ impl ErrorCodeMixin for HolderWalletUnitError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::WalletUnitRevoked => ErrorCode::BR_0261,
+            Self::WalletUnitAlreadyExists(_) => ErrorCode::BR_0271,
             Self::AppIntegrityCheckRequired => ErrorCode::BR_0280,
             Self::AppIntegrityCheckNotRequired => ErrorCode::BR_0281,
             Self::HolderWalletUnitNotFound(_) => ErrorCode::BR_0296,

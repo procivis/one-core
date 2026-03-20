@@ -6,8 +6,8 @@ use one_core::model::holder_wallet_unit::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, Unchanged};
-use shared_types::HolderWalletUnitId;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
+use shared_types::{HolderWalletUnitId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::holder_wallet_unit;
@@ -81,6 +81,18 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         }
 
         Ok(Some(holder_wallet_unit))
+    }
+
+    async fn get_holder_wallet_unit_by_org_id(
+        &self,
+        organisation_id: &OrganisationId,
+    ) -> Result<Option<HolderWalletUnit>, DataLayerError> {
+        let model = holder_wallet_unit::Entity::find()
+            .filter(holder_wallet_unit::Column::OrganisationId.eq(organisation_id))
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+        Ok(model.map(Into::into))
     }
 
     async fn update_holder_wallet_unit(

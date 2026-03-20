@@ -223,6 +223,7 @@ mod m20260313_120000_sync_trust_list_publication_and_entry_with_model;
 mod m20260316_143109_trust_collection_subscription;
 mod m20260318_113035_holder_wallet_unit_key_optional;
 mod m20260319_161207_trust_collection_remote_url;
+mod m20260320_085842_holder_wallet_unit_unique;
 mod migrate_enum;
 mod soft_delete_unique_idx;
 
@@ -447,6 +448,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260316_143109_trust_collection_subscription::Migration),
             Box::new(m20260318_113035_holder_wallet_unit_key_optional::Migration),
             Box::new(m20260319_161207_trust_collection_remote_url::Migration),
+            Box::new(m20260320_085842_holder_wallet_unit_unique::Migration),
         ]
     }
 }

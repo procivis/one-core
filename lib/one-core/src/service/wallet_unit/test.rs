@@ -6,8 +6,11 @@ use shared_types::{OrganisationId, WalletUnitId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use super::WalletUnitService;
+use super::dto::{HolderRegisterWalletUnitRequestDTO, WalletProviderDTO};
+use super::error::HolderWalletUnitError;
 use crate::config::core_config::CoreConfig;
-use crate::model::holder_wallet_unit::CreateHolderWalletUnitRequest;
+use crate::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnit};
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use crate::proto::clock::DefaultClock;
@@ -32,8 +35,6 @@ use crate::service::wallet_provider::dto::{
     FeatureFlags, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
     WalletUnitAttestationMetadataDTO,
 };
-use crate::service::wallet_unit::WalletUnitService;
-use crate::service::wallet_unit::dto::{HolderRegisterWalletUnitRequestDTO, WalletProviderDTO};
 
 const BASE_URL: &str = "https://localhost";
 
@@ -170,6 +171,10 @@ async fn holder_register_success() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
     holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit_by_org_id()
+        .once()
+        .return_once(|_| Ok(None));
+    holder_wallet_unit_repository
         .expect_create_holder_wallet_unit()
         .once()
         .return_once(move |att: CreateHolderWalletUnitRequest| {
@@ -293,6 +298,10 @@ async fn holder_register_key_attestation_not_supported() {
         });
 
     let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit_by_org_id()
+        .once()
+        .return_once(|_| Ok(None));
     holder_wallet_unit_repository
         .expect_create_holder_wallet_unit()
         .once()
@@ -525,4 +534,72 @@ async fn holder_wallet_unit_status_check_already_revoked() {
         result.is_ok(),
         "status check should succeed without checking revocation"
     );
+}
+
+#[tokio::test]
+async fn holder_register_already_exists() {
+    // given
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .once()
+        .return_once(move |id, _| {
+            check!(id == &organisation_id);
+            Ok(Some(Organisation {
+                id: *id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "Org".to_string(),
+                deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
+            }))
+        });
+
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit_by_org_id()
+        .once()
+        .return_once(|_| {
+            Ok(Some(HolderWalletUnit {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                status: WalletUnitStatus::Revoked,
+                wallet_provider_type: WalletProviderType::ProcivisOne,
+                wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                wallet_provider_url: "https://wallet.provider".to_string(),
+                provider_wallet_unit_id: Uuid::new_v4().into(),
+                organisation: None,
+                authentication_key: None,
+                wallet_unit_attestations: None,
+            }))
+        });
+
+    let service = WalletUnitService {
+        organisation_repository: Arc::new(organisation_repository),
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        config: Arc::new(generic_config().core),
+        ..mock_wallet_unit_service()
+    };
+
+    let request = HolderRegisterWalletUnitRequestDTO {
+        organisation_id,
+        key_type: "EDDSA".to_string(),
+        wallet_provider: WalletProviderDTO {
+            r#type: WalletProviderType::ProcivisOne,
+            url: "https://wallet.provider/register".to_string(),
+        },
+    };
+
+    // when
+    let result = service.holder_register(request).await;
+
+    // then
+    assert!(matches!(
+        result.unwrap_err(),
+        HolderWalletUnitError::WalletUnitAlreadyExists(_)
+    ));
 }

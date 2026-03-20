@@ -61,6 +61,17 @@ impl WalletUnitService {
             ));
         }
 
+        if let Some(wallet_unit) = self
+            .holder_wallet_unit_repository
+            .get_holder_wallet_unit_by_org_id(&request.organisation_id)
+            .await
+            .error_while("checking presence of wallet unit")?
+        {
+            return Err(HolderWalletUnitError::WalletUnitAlreadyExists(
+                wallet_unit.id,
+            ));
+        }
+
         let os = WalletUnitOs::from(self.os_info_provider.get_os_name().await);
         let key_storage_type = match os {
             WalletUnitOs::Android | WalletUnitOs::Ios => KeyStorageType::SecureElement,

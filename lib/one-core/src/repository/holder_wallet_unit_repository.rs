@@ -1,4 +1,4 @@
-use shared_types::HolderWalletUnitId;
+use shared_types::{HolderWalletUnitId, OrganisationId};
 
 use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnit, HolderWalletUnitRelations,
@@ -18,6 +18,11 @@ pub trait HolderWalletUnitRepository: Send + Sync {
         &self,
         id: &HolderWalletUnitId,
         relations: &HolderWalletUnitRelations,
+    ) -> Result<Option<HolderWalletUnit>, DataLayerError>;
+
+    async fn get_holder_wallet_unit_by_org_id(
+        &self,
+        organisation_id: &OrganisationId,
     ) -> Result<Option<HolderWalletUnit>, DataLayerError>;
 
     async fn update_holder_wallet_unit(

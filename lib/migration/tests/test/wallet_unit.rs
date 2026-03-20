@@ -105,9 +105,9 @@ async fn test_db_schema_holder_wallet_unit() {
             "status",
         ])
         .index(
-            "index-HolderWalletUnit-AuthenticationKey-Unique",
+            "index-HolderWalletUnit-OrganisationId-Unique",
             true,
-            &["authentication_key_id"],
+            &["organisation_id"],
         );
     holder_wallet_unit
         .column("id")
