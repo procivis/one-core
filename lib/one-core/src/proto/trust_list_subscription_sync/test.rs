@@ -12,6 +12,7 @@ use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionState,
 };
 use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_list_subscription_sync::dto::{
     RemoteTrustCollection, RemoteTrustList, RemoteTrustListRole,
 };
@@ -29,6 +30,7 @@ async fn test_sync_subscriptions_not_remote() {
     let proto = TrustListSubscriptionSyncImpl::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockTrustListSubscriptionRepository::new()),
+        Arc::new(NoTransactionManager),
     );
     let result = proto.sync_subscriptions(&trust_collection).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0401);
@@ -124,7 +126,11 @@ async fn test_sync_subscriptions() {
             Ok(Uuid::new_v4().into())
         });
 
-    let proto = TrustListSubscriptionSyncImpl::new(Arc::new(client), Arc::new(repository));
+    let proto = TrustListSubscriptionSyncImpl::new(
+        Arc::new(client),
+        Arc::new(repository),
+        Arc::new(NoTransactionManager),
+    );
     proto.sync_subscriptions(&trust_collection).await.unwrap();
 }
 

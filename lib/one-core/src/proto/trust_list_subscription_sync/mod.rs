@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use futures::FutureExt;
 use shared_types::TrustCollectionId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -12,6 +13,7 @@ use crate::model::trust_list_subscription::{
     TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
 use crate::proto::http_client::HttpClient;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::trust_list_subscription_sync::dto::RemoteTrustCollection;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 
@@ -48,16 +50,19 @@ impl ErrorCodeMixin for TrustListSubscriptionSyncError {
 pub struct TrustListSubscriptionSyncImpl {
     client: Arc<dyn HttpClient>,
     subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 }
 
 impl TrustListSubscriptionSyncImpl {
     pub fn new(
         client: Arc<dyn HttpClient>,
         subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+        transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
             client,
             subscription_repository,
+            transaction_manager,
         }
     }
 }
@@ -74,18 +79,6 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
             ));
         };
 
-        let existing_subscriptions: GetTrustListSubscriptionList = self
-            .subscription_repository
-            .list(TrustListSubscriptionListQuery {
-                filtering: Some(
-                    TrustListSubscriptionFilterValue::TrustCollectionId(trust_collection.id)
-                        .condition(),
-                ),
-                ..Default::default()
-            })
-            .await
-            .error_while("listing existing trust list subscriptions")?;
-
         let remote_collection: RemoteTrustCollection = async {
             self.client
                 .get(url.as_str())
@@ -98,62 +91,81 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
         .json()
         .error_while("parsing response")?;
 
-        // remove the ones we already have
-        let mut new_lists = remote_collection.trust_lists.clone();
-        new_lists.retain(|list| {
-            existing_subscriptions
-                .values
-                .iter()
-                .any(|s| s.reference != list.reference)
-        });
+        self.transaction_manager
+            .tx(async {
+                let existing_subscriptions: GetTrustListSubscriptionList = self
+                    .subscription_repository
+                    .list(TrustListSubscriptionListQuery {
+                        filtering: Some(
+                            TrustListSubscriptionFilterValue::TrustCollectionId(
+                                trust_collection.id,
+                            )
+                            .condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("listing existing trust list subscriptions")?;
+                // remove the ones we already have
+                let mut new_lists = remote_collection.trust_lists.clone();
+                new_lists.retain(|list| {
+                    existing_subscriptions
+                        .values
+                        .iter()
+                        .any(|s| s.reference != list.reference)
+                });
 
-        let to_add = remote_collection
-            .trust_lists
-            .iter()
-            .filter(|s| {
-                !existing_subscriptions
-                    .values
-                    .iter()
-                    .any(|list| list.reference == s.reference)
-            })
-            .cloned();
-
-        for list in to_add {
-            let now = OffsetDateTime::now_utc();
-            self.subscription_repository
-                .create(TrustListSubscription {
-                    id: Uuid::new_v4().into(),
-                    name: list.name,
-                    created_date: now,
-                    last_modified: now,
-                    deactivated_at: None,
-                    r#type: list.r#type,
-                    reference: list.reference,
-                    role: list.role.into(),
-                    state: TrustListSubscriptionState::Active,
-                    trust_collection_id: trust_collection.id,
-                    trust_collection: None,
-                })
-                .await
-                .error_while("creating trust list subscription")?;
-        }
-
-        let to_delete = existing_subscriptions
-            .values
-            .iter()
-            .filter(|s| {
-                !remote_collection
+                let to_add = remote_collection
                     .trust_lists
                     .iter()
-                    .any(|list| list.reference == s.reference)
-            })
-            .map(|s| s.id);
-        for id in to_delete {
-            self.subscription_repository
-                .delete(id)
-                .await
-                .error_while("deleting trust list subscription")?;
-        }
-        Ok(())
+                    .filter(|s| {
+                        !existing_subscriptions
+                            .values
+                            .iter()
+                            .any(|list| list.reference == s.reference)
+                    })
+                    .cloned();
+
+                for list in to_add {
+                    let now = OffsetDateTime::now_utc();
+                    self.subscription_repository
+                        .create(TrustListSubscription {
+                            id: Uuid::new_v4().into(),
+                            name: list.name,
+                            created_date: now,
+                            last_modified: now,
+                            deactivated_at: None,
+                            r#type: list.r#type,
+                            reference: list.reference,
+                            role: list.role.into(),
+                            state: TrustListSubscriptionState::Active,
+                            trust_collection_id: trust_collection.id,
+                            trust_collection: None,
+                        })
+                        .await
+                        .error_while("creating trust list subscription")?;
+                }
+
+                let to_delete = existing_subscriptions
+                    .values
+                    .iter()
+                    .filter(|s| {
+                        !remote_collection
+                            .trust_lists
+                            .iter()
+                            .any(|list| list.reference == s.reference)
+                    })
+                    .map(|s| s.id);
+                for id in to_delete {
+                    self.subscription_repository
+                        .delete(id)
+                        .await
+                        .error_while("deleting trust list subscription")?;
+                }
+                Ok::<_, TrustListSubscriptionSyncError>(())
+            }
+            .boxed())
+            .await
+            .error_while("syncing subscription")?
     }
 }

@@ -473,6 +473,7 @@ impl OneCore {
             Arc::new(TrustListSubscriptionSyncImpl::new(
                 client.clone(),
                 data_provider.get_trust_list_subscription_repository(),
+                data_provider.get_tx_manager(),
             ));
 
         let task_provider = task_provider_from_config(
