@@ -2,10 +2,10 @@ pub mod dto;
 pub mod error;
 pub mod http_client;
 
+use dto::IssueWalletAttestationResponse;
+use error::WalletProviderClientError;
 use shared_types::WalletUnitId;
 
-use crate::provider::wallet_provider_client::dto::IssueWalletAttestationResponse;
-use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, IssueWalletUnitAttestationRequestDTO,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,

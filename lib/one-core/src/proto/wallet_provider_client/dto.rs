@@ -1,6 +1,4 @@
-use dto::IssueWalletUnitAttestationResponseDTO;
-
-use crate::service::wallet_provider::dto;
+use crate::service::wallet_provider::dto::IssueWalletUnitAttestationResponseDTO;
 
 #[derive(Clone, Debug)]
 pub enum IssueWalletAttestationResponse {

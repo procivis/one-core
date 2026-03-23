@@ -33,6 +33,7 @@ use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
+use crate::proto::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::proto::wallet_unit::HolderWalletUnitProtoImpl;
 use crate::provider::blob_storage_provider::blob_storage_provider_from_config;
 use crate::provider::caching_loader::json_ld_context::{
@@ -59,7 +60,6 @@ use crate::provider::trust_list_subscriber::provider::trust_list_subscriber_prov
 use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
 use crate::provider::verifier::provider::verifier_provider_from_config;
-use crate::provider::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::repository::DataRepository;
 use crate::service::backup::BackupService;
 use crate::service::cache::CacheService;

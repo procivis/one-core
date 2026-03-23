@@ -17,4 +17,3 @@ pub mod trust_list_subscriber;
 pub mod trust_management;
 pub mod verification_protocol;
 pub mod verifier;
-pub mod wallet_provider_client;
