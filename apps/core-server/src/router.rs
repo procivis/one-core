@@ -22,6 +22,10 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::ServerConfig;
 use crate::authentication::{Authentication, authentication};
 use crate::dto::response::ErrorResponse;
+use crate::endpoint::trust_collection::controller::{
+    delete_trust_list_subscription, get_trust_list_subscription_entries,
+    post_trust_list_subscription,
+};
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
@@ -524,6 +528,14 @@ fn get_management_endpoints(
                 "/api/trust-collection/v1/{id}",
                 get(trust_collection::controller::get_trust_collection)
                     .delete(trust_collection::controller::delete_trust_collection),
+            )
+            .route(
+                "/api/trust-collection/v1/{trust_collection_id}/trust-list",
+                get(get_trust_list_subscription_entries).post(post_trust_list_subscription),
+            )
+            .route(
+                "/api/trust-collection/v1/{trust_collection_id}/trust-list/{trust_list_id}",
+                delete(delete_trust_list_subscription),
             );
 
         if config.enable_signature_endpoints {

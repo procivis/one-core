@@ -494,7 +494,7 @@ impl OneCore {
             blob_storage_provider.clone(),
             session_provider.clone(),
             notification_sender.clone(),
-            trust_list_subscriber_provider,
+            trust_list_subscriber_provider.clone(),
             trust_collection_manager.clone(),
             trust_list_subscription_sync.clone(),
             wallet_unit_client,
@@ -828,6 +828,7 @@ impl OneCore {
             trust_collection_service: TrustCollectionService::new(
                 data_provider.get_trust_collection_repository(),
                 data_provider.get_trust_list_subscription_repository(),
+                trust_list_subscriber_provider,
                 session_provider,
                 clock,
             ),

@@ -106,7 +106,6 @@ impl Resolver for EtsiLoteResolver {
                         .custom
                         .list_and_scheme_information
                         .next_update;
-                    println!("expiry: {:#?}", expiry);
                     if expiry + self.leeway < self.clock.now_utc() {
                         return Err(ResolverError::InvalidResponse(
                             "LoTE trust list is expired".to_string(),

@@ -8,12 +8,20 @@ use url::Url;
 use crate::model::common::GetListResponse;
 use crate::model::trust_collection::TrustCollection;
 use crate::model::trust_list_role::TrustListRoleEnum;
-use crate::model::trust_list_subscription::TrustListSubscription;
+use crate::model::trust_list_subscription::{TrustListSubscription, TrustListSubscriptionState};
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustCollectionRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateTrustListSubscriptionRequestDTO {
+    pub name: String,
+    pub role: Option<TrustListRoleEnum>,
+    pub reference: Url,
+    pub r#type: TrustListSubscriberId,
 }
 
 #[derive(Clone, Debug, From)]
@@ -54,4 +62,20 @@ pub struct TrustListDTO {
     pub role: TrustListRoleEnum,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
+}
+
+pub type GetTrustListSubscriptionListResponseDTO =
+    GetListResponse<TrustListSubscriptionListItemResponseDTO>;
+
+#[derive(Debug, Clone, From)]
+#[from(TrustListSubscription)]
+pub struct TrustListSubscriptionListItemResponseDTO {
+    pub id: TrustListSubscriptionId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub role: TrustListRoleEnum,
+    pub reference: String,
+    pub r#type: TrustListSubscriberId,
+    pub state: TrustListSubscriptionState,
 }

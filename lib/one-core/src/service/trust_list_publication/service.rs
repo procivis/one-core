@@ -277,7 +277,7 @@ impl TrustListPublicationService {
         self.trust_list_publisher_provider
             .get(trust_list_provider_id)
             .ok_or_else(|| {
-                TrustListPublicationServiceError::MissingTrustListProvider(
+                TrustListPublicationServiceError::MissingTrustListPublisher(
                     trust_list_provider_id.clone(),
                 )
             })

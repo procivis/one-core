@@ -1,4 +1,7 @@
 mod create_trust_collection;
+mod create_trust_list_subscription;
 mod delete_trust_collection;
+mod delete_trust_list_subscription;
 mod get_trust_collection;
 mod list_trust_collections;
+mod list_trust_list_subscriptions;

@@ -3,11 +3,16 @@ use one_core::model::list_filter::{
     ValueComparison,
 };
 use one_core::model::trust_collection::TrustCollectionFilterValue;
+use one_core::model::trust_list_subscription::TrustListSubscriptionFilterValue;
 use one_core::service::error::ServiceError;
+use one_dto_mapper::convert_inner;
 
 use crate::dto::common::ExactColumn;
 use crate::dto::mapper::fallback_organisation_id_from_session;
-use crate::endpoint::trust_collection::dto::TrustCollectionFilterQueryParamsRestDTO;
+use crate::endpoint::trust_collection::dto::{
+    TrustCollectionFilterQueryParamsRestDTO, TrustListSubscriptionExactColumn,
+    TrustListSubscriptionFilterQueryParamsRestDTO,
+};
 
 impl TryFrom<TrustCollectionFilterQueryParamsRestDTO>
     for ListFilterCondition<TrustCollectionFilterValue>
@@ -70,5 +75,86 @@ impl TryFrom<TrustCollectionFilterQueryParamsRestDTO>
             & created_date_before
             & last_modified_after
             & last_modified_before)
+    }
+}
+
+impl TryFrom<TrustListSubscriptionFilterQueryParamsRestDTO>
+    for ListFilterCondition<TrustListSubscriptionFilterValue>
+{
+    type Error = ServiceError;
+
+    fn try_from(value: TrustListSubscriptionFilterQueryParamsRestDTO) -> Result<Self, Self::Error> {
+        let exact = value.exact.unwrap_or_default();
+        let get_string_match_type = |column| {
+            if exact.contains(&column) {
+                StringMatchType::Equals
+            } else {
+                StringMatchType::StartsWith
+            }
+        };
+
+        let ids = value.ids.map(TrustListSubscriptionFilterValue::Ids);
+        let name = value.name.map(|name| {
+            TrustListSubscriptionFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(TrustListSubscriptionExactColumn::Name),
+                value: name,
+            })
+        });
+        let reference = value.reference.map(|reference| {
+            TrustListSubscriptionFilterValue::Reference(StringMatch {
+                r#match: get_string_match_type(TrustListSubscriptionExactColumn::Reference),
+                value: reference,
+            })
+        });
+
+        let roles = value
+            .roles
+            .map(convert_inner)
+            .map(TrustListSubscriptionFilterValue::Role);
+        let states = value
+            .states
+            .map(convert_inner)
+            .map(TrustListSubscriptionFilterValue::State);
+        let types = value.types.map(TrustListSubscriptionFilterValue::Type);
+
+        let created_date_after = value.created_date_after.map(|date| {
+            TrustListSubscriptionFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            TrustListSubscriptionFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            TrustListSubscriptionFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            TrustListSubscriptionFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        Ok(
+            ListFilterCondition::<TrustListSubscriptionFilterValue>::default()
+                & states
+                & reference
+                & roles
+                & types
+                & name
+                & ids
+                & created_date_after
+                & created_date_before
+                & last_modified_after
+                & last_modified_before,
+        )
     }
 }

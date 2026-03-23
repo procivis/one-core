@@ -50,7 +50,6 @@ impl TrustListSubscriptionDB {
         trust_list_subscription
     }
 
-    #[expect(unused)]
     pub async fn get(&self, id: &TrustListSubscriptionId) -> Option<TrustListSubscription> {
         self.repository
             .get(

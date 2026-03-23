@@ -2,12 +2,14 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::trust_list_subscription::{
     SortableTrustListSubscriptionColumn, TrustListSubscription, TrustListSubscriptionFilterValue,
 };
+use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
 use crate::entity::trust_list_publication::TrustRoleEnum;
 use crate::entity::trust_list_subscription;
+use crate::entity::trust_list_subscription::TrustListSubscriptionState;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
@@ -75,24 +77,12 @@ impl IntoFilterCondition for TrustListSubscriptionFilterValue {
                 trust_list_subscription::Column::TrustCollectionId,
                 trust_collection_id,
             ),
-            Self::Role(roles) => {
-                let roles = roles
-                    .into_iter()
-                    .map(TrustRoleEnum::from)
-                    .collect::<Vec<_>>();
-                trust_list_subscription::Column::Role
-                    .is_in(roles)
-                    .into_condition()
-            }
-            Self::State(states) => {
-                let states = states
-                    .into_iter()
-                    .map(trust_list_subscription::TrustListSubscriptionState::from)
-                    .collect::<Vec<_>>();
-                trust_list_subscription::Column::State
-                    .is_in(states)
-                    .into_condition()
-            }
+            Self::Role(roles) => trust_list_subscription::Column::Role
+                .is_in(convert_inner::<_, TrustRoleEnum>(roles))
+                .into_condition(),
+            Self::State(states) => trust_list_subscription::Column::State
+                .is_in(convert_inner::<_, TrustListSubscriptionState>(states))
+                .into_condition(),
             Self::Type(types) => trust_list_subscription::Column::Type
                 .is_in(types)
                 .into_condition(),

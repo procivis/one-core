@@ -69,6 +69,7 @@ pub enum Permission {
     TrustAnchorDetail,
     TrustAnchorList,
     TrustCollectionCreate,
+    TrustCollectionEdit,
     TrustCollectionDelete,
     TrustCollectionDetail,
     TrustCollectionList,

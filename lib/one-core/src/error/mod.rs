@@ -803,7 +803,7 @@ pub enum ErrorCode {
     #[strum(message = "Trust entry not found")]
     BR_0387,
 
-    #[strum(message = "Missing trust list provider")]
+    #[strum(message = "Missing trust list publisher")]
     BR_0388,
 
     #[strum(message = "Unsupported trust list key type")]
@@ -844,6 +844,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Local trust collection cannot be synced")]
     BR_0401,
+
+    #[strum(message = "Trust list subscription not found")]
+    BR_0402,
+
+    #[strum(message = "Trust list subscription already exists")]
+    BR_0403,
 
     #[strum(message = "Missing task params")]
     BR_0404,

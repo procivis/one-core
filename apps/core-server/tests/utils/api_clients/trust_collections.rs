@@ -79,4 +79,56 @@ impl TrustCollectionsApi {
         let url = format!("/api/trust-collection/v1/{}", id.into());
         self.client.delete(&url).await
     }
+
+    pub async fn create_subscription(
+        &self,
+        trust_collection_id: impl Into<Uuid>,
+        name: &str,
+        role: Option<&str>,
+        reference: &str,
+        r#type: &str,
+    ) -> Response {
+        let body = json!({
+          "name": name,
+          "role": role,
+          "reference": reference,
+          "type": r#type,
+        });
+
+        let url = format!(
+            "/api/trust-collection/v1/{}/trust-list",
+            trust_collection_id.into()
+        );
+        self.client.post(&url, body).await
+    }
+
+    pub async fn delete_subscription(
+        &self,
+        trust_collection_id: impl Into<Uuid>,
+        subscription_id: impl Into<Uuid>,
+    ) -> Response {
+        let url = format!(
+            "/api/trust-collection/v1/{}/trust-list/{}",
+            trust_collection_id.into(),
+            subscription_id.into()
+        );
+        self.client.delete(&url).await
+    }
+
+    pub async fn list_subscriptions(
+        &self,
+        trust_collection_id: impl Into<Uuid>,
+        organisation_id: Option<OrganisationId>,
+    ) -> Response {
+        let mut url = format!(
+            "/api/trust-collection/v1/{}/trust-list?pageSize=20&page=0",
+            trust_collection_id.into()
+        );
+
+        if let Some(organisation_id) = organisation_id {
+            url += &format!("&organisationId={organisation_id}");
+        }
+
+        self.client.get(&url).await
+    }
 }
