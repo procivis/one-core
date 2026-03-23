@@ -32,6 +32,7 @@ use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::repository::verifier_instance_repository::VerifierInstanceRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
@@ -124,6 +125,9 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository> {
         self.data_provider.get_holder_wallet_unit_repository()
+    }
+    fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository> {
+        self.data_provider.get_verifier_instance_repository()
     }
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository> {
         self.data_provider.get_wallet_unit_attestation_repository()

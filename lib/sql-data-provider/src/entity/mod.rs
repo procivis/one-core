@@ -30,6 +30,7 @@ pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod validity_credential;
+pub mod verifier_instance;
 pub mod wallet_unit;
 pub mod wallet_unit_attestation;
 pub mod wallet_unit_attested_key;

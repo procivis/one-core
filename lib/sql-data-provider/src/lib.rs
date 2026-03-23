@@ -36,6 +36,7 @@ use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
+use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
 use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
@@ -62,6 +63,7 @@ use crate::notification::NotificationProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
 use crate::transaction_context::TransactionManagerImpl;
+use crate::verifier_instance::VerifierInstanceProvider;
 use crate::wallet_unit_attestation::WalletUnitAttestationProvider;
 use crate::wallet_unit_attested_key::WalletUnitAttestedKeyProvider;
 
@@ -96,6 +98,7 @@ pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod validity_credential;
+pub mod verifier_instance;
 pub mod wallet_unit;
 
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
@@ -134,6 +137,7 @@ pub struct DataLayer {
     notification_repository: Arc<dyn NotificationRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     wallet_unit_attested_key_repository: Arc<dyn WalletUnitAttestedKeyRepository>,
 }
@@ -304,6 +308,11 @@ impl DataLayer {
             wallet_unit_attestation_repository: wallet_unit_attestation_repository.clone(),
         });
 
+        let verifier_instance_repository = Arc::new(VerifierInstanceProvider {
+            db: transaction_manager.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
+
         Self {
             transaction_manager,
             organisation_repository,
@@ -334,6 +343,7 @@ impl DataLayer {
             notification_repository,
             wallet_unit_repository,
             holder_wallet_unit_repository,
+            verifier_instance_repository,
             wallet_unit_attestation_repository,
             wallet_unit_attested_key_repository,
         }
@@ -436,6 +446,9 @@ impl DataRepository for DataLayer {
 
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository> {
         self.holder_wallet_unit_repository.clone()
+    }
+    fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository> {
+        self.verifier_instance_repository.clone()
     }
 }
 

@@ -27,6 +27,7 @@ pub mod trust_entry_repository;
 pub mod trust_list_publication_repository;
 pub mod trust_list_subscription_repository;
 pub mod validity_credential_repository;
+pub mod verifier_instance_repository;
 pub mod wallet_unit_attestation_repository;
 pub mod wallet_unit_attested_key_repository;
 pub mod wallet_unit_repository;
@@ -60,6 +61,7 @@ use trust_entry_repository::TrustEntryRepository;
 use trust_list_publication_repository::TrustListPublicationRepository;
 use trust_list_subscription_repository::TrustListSubscriptionRepository;
 use validity_credential_repository::ValidityCredentialRepository;
+use verifier_instance_repository::VerifierInstanceRepository;
 use wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
 use wallet_unit_repository::WalletUnitRepository;
@@ -96,5 +98,6 @@ pub trait DataRepository: Send + Sync {
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository>;
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository>;
     fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository>;
+    fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository>;
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }
