@@ -7,8 +7,8 @@ use proc_macros::endpoint;
 use shared_types::{HolderWalletUnitId, Permission};
 
 use super::dto::{
-    HolderRegisterWalletUnitRequestRestDTO, HolderRegisterWalletUnitResponseRestDTO,
-    HolderWalletUnitDetailRestDTO,
+    EditHolderWalletUnitRequestRestDTO, HolderRegisterWalletUnitRequestRestDTO,
+    HolderRegisterWalletUnitResponseRestDTO, HolderWalletUnitDetailRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -107,4 +107,37 @@ pub(crate) async fn wallet_unit_holder_status(
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "holder wallet unit status check")
+}
+
+#[endpoint(
+    permissions = [Permission::HolderWalletUnitEdit],
+    patch,
+    path = "/api/holder-wallet-unit/v1/{id}",
+    request_body = EditHolderWalletUnitRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
+    ),
+    tag = "holder_wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Edit wallet settings",
+    description = "Modify wallet settings.",
+)]
+pub(crate) async fn edit_holder_wallet_unit(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<EditHolderWalletUnitRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .wallet_unit_service
+        .edit_holder_wallet_unit(id, request.into())
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "editing holder wallet unit")
 }

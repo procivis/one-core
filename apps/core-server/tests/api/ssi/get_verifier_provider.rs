@@ -3,6 +3,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
 async fn test_get_verifier_provider_success() {
@@ -69,7 +70,13 @@ async fn test_get_verifier_provider_with_trust_collection() {
     let collection = context
         .db
         .trust_collections
-        .create("collection", organisation.clone(), Some(collection_id))
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                id: Some(collection_id),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN
@@ -86,7 +93,7 @@ async fn test_get_verifier_provider_with_trust_collection() {
         trust_collections[0],
         json!({
             "id": collection.id,
-            "name": "collection",
+            "name": collection.name,
             "logo": "Logo",
             "displayName": [{
                 "lang": "en",

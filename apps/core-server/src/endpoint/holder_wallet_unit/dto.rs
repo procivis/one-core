@@ -3,7 +3,7 @@ use one_core::service::wallet_unit::dto;
 use one_dto_mapper::{From, Into, TryFrom, TryInto, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::{HolderWalletUnitId, OrganisationId, WalletUnitId};
+use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId, WalletUnitId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
@@ -80,4 +80,11 @@ pub(crate) struct HolderWalletUnitDetailRestDTO {
     pub status: WalletUnitStatusRestEnum,
     #[try_from(with_fn = try_convert_inner)]
     pub authentication_key: Option<KeyListItemResponseRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(dto::EditHolderWalletUnitRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct EditHolderWalletUnitRequestRestDTO {
+    pub trust_collections: Vec<TrustCollectionId>,
 }

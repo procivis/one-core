@@ -2,6 +2,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
 async fn test_wallet_provider_metadata_success() {
@@ -183,13 +184,27 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
     let collection_1 = context
         .db
         .trust_collections
-        .create("collection1", organisation.clone(), Some(collection_1_id))
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                id: Some(collection_1_id),
+                name: Some("collection1".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     let collection_2 = context
         .db
         .trust_collections
-        .create("collection2", organisation, Some(collection_2_id))
+        .create(
+            organisation,
+            TestTrustCollectionParams {
+                id: Some(collection_2_id),
+                name: Some("collection2".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN

@@ -2,6 +2,7 @@ use shared_types::TrustCollectionId;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -39,7 +40,13 @@ async fn test_post_trust_collection_already_exists() {
     context
         .db
         .trust_collections
-        .create("existing collection", organisation.clone(), None)
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("existing collection".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN

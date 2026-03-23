@@ -9,7 +9,7 @@ async fn test_delete_trust_collection() {
     let tc = context
         .db
         .trust_collections
-        .create("test collection", organisation.clone(), None)
+        .create(organisation, Default::default())
         .await;
 
     // WHEN
@@ -49,7 +49,7 @@ async fn test_delete_trust_collection_twice() {
     let tc = context
         .db
         .trust_collections
-        .create("test collection", organisation.clone(), None)
+        .create(organisation, Default::default())
         .await;
 
     // WHEN

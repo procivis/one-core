@@ -4,7 +4,9 @@ use crate::config::core_config::CoreConfig;
 use crate::proto::clock::Clock;
 use crate::proto::os_provider::OSInfoProvider;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::trust_collection::TrustCollectionManager;
+use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -13,6 +15,8 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
+use crate::repository::trust_collection_repository::TrustCollectionRepository;
+use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 
 pub mod dto;
 pub mod error;
@@ -34,6 +38,10 @@ pub struct WalletUnitService {
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     os_info_provider: Arc<dyn OSInfoProvider>,
     trust_collection_manager: Arc<dyn TrustCollectionManager>,
+    trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync>,
+    trust_collection_repository: Arc<dyn TrustCollectionRepository>,
+    trust_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+    tx_manager: Arc<dyn TransactionManager>,
     clock: Arc<dyn Clock>,
     base_url: Option<String>,
     config: Arc<CoreConfig>,
@@ -53,6 +61,10 @@ impl WalletUnitService {
         wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         os_info_provider: Arc<dyn OSInfoProvider>,
         trust_collection_manager: Arc<dyn TrustCollectionManager>,
+        trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync>,
+        trust_collection_repository: Arc<dyn TrustCollectionRepository>,
+        trust_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+        tx_manager: Arc<dyn TransactionManager>,
         clock: Arc<dyn Clock>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
@@ -66,6 +78,10 @@ impl WalletUnitService {
             key_algorithm_provider,
             os_info_provider,
             trust_collection_manager,
+            trust_list_subscription_sync,
+            trust_collection_repository,
+            trust_subscription_repository,
+            tx_manager,
             organisation_repository,
             holder_wallet_unit_repository,
             history_repository,

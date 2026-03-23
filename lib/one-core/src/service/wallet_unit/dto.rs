@@ -1,5 +1,5 @@
 use serde::Serialize;
-use shared_types::{HolderWalletUnitId, OrganisationId, WalletUnitId};
+use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId, WalletUnitId};
 use time::OffsetDateTime;
 
 pub use crate::model::wallet_unit::{
@@ -43,4 +43,9 @@ pub struct HolderWalletUnitResponseDTO {
 pub struct HolderWalletUnitRegisterResponseDTO {
     pub id: HolderWalletUnitId,
     pub status: WalletUnitStatus,
+}
+
+#[derive(Debug, Clone)]
+pub struct EditHolderWalletUnitRequestDTO {
+    pub trust_collections: Vec<TrustCollectionId>,
 }

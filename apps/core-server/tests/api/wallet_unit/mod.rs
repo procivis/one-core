@@ -9,6 +9,7 @@ use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 
 pub mod get_wallet_unit_tests;
+pub mod holder_edit_wallet_unit;
 pub mod holder_get_wallet_unit;
 pub mod holder_register_wallet_unit;
 pub mod holder_wallet_unit_status_tests;

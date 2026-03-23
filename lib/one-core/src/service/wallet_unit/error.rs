@@ -1,4 +1,4 @@
-use shared_types::{HolderWalletUnitId, OrganisationId};
+use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId};
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
@@ -30,6 +30,8 @@ pub enum HolderWalletUnitError {
     InvalidWalletProviderUrl(url::ParseError),
     #[error("Key already exists")]
     KeyAlreadyExists,
+    #[error("Trust collection not found: {0}")]
+    MissingTrustCollection(TrustCollectionId),
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -51,6 +53,7 @@ impl ErrorCodeMixin for HolderWalletUnitError {
             Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
             Self::KeyAlreadyExists => ErrorCode::BR_0066,
+            Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

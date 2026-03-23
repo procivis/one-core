@@ -32,4 +32,5 @@ pub trait TrustListSubscriptionRepository: Send + Sync {
     ) -> Result<GetTrustListSubscriptionList, DataLayerError>;
 
     async fn delete(&self, id: TrustListSubscriptionId) -> Result<(), DataLayerError>;
+    async fn delete_many(&self, ids: Vec<TrustListSubscriptionId>) -> Result<(), DataLayerError>;
 }

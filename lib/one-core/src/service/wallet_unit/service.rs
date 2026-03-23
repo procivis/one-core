@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use shared_types::{HolderWalletUnitId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
@@ -10,8 +11,8 @@ use uuid::Uuid;
 
 use super::WalletUnitService;
 use super::dto::{
-    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitRegisterResponseDTO,
-    HolderWalletUnitResponseDTO, NoncePayload,
+    EditHolderWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
+    HolderWalletUnitRegisterResponseDTO, HolderWalletUnitResponseDTO, NoncePayload,
 };
 use super::error::HolderWalletUnitError;
 use super::mapper::key_from_generated_key;
@@ -22,7 +23,12 @@ use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
 };
 use crate::model::key::{Key, KeyRelations};
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
+use crate::model::trust_list_subscription::{
+    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
+};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
@@ -285,6 +291,99 @@ impl WalletUnitService {
                 .await
                 .error_while("creating history")?;
         }
+        Ok(())
+    }
+
+    pub async fn edit_holder_wallet_unit(
+        &self,
+        id: HolderWalletUnitId,
+        request: EditHolderWalletUnitRequestDTO,
+    ) -> Result<(), HolderWalletUnitError> {
+        let holder_wallet_unit = self
+            .holder_wallet_unit_repository
+            .get_holder_wallet_unit(
+                &id,
+                &HolderWalletUnitRelations {
+                    organisation: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("getting holder wallet unit")?
+            .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
+
+        let organisation =
+            holder_wallet_unit
+                .organisation
+                .ok_or(HolderWalletUnitError::MappingError(
+                    "Missing organisation".to_string(),
+                ))?;
+
+        self.tx_manager
+            .tx(async {
+                let all_trust_collections = self
+                    .trust_collection_repository
+                    .list(TrustCollectionListQuery {
+                        filtering: Some(
+                            TrustCollectionFilterValue::OrganisationId(organisation.id).condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting trust collections")?
+                    .values;
+
+                let collections_to_remove = all_trust_collections
+                    .iter()
+                    .filter(|c| !request.trust_collections.contains(&c.id))
+                    .map(|c| c.id);
+
+                let mut subscriptions_to_remove = vec![];
+                for collection_id in collections_to_remove {
+                    subscriptions_to_remove.extend(
+                        self.trust_subscription_repository
+                            .list(TrustListSubscriptionListQuery {
+                                filtering: Some(
+                                    TrustListSubscriptionFilterValue::TrustCollectionId(
+                                        collection_id,
+                                    )
+                                    .condition(),
+                                ),
+                                ..Default::default()
+                            })
+                            .await
+                            .error_while("listing subscriptions")?
+                            .values
+                            .into_iter()
+                            .map(|s| s.id)
+                            .collect::<Vec<_>>(),
+                    );
+                }
+
+                self.trust_subscription_repository
+                    .delete_many(subscriptions_to_remove)
+                    .await
+                    .error_while("deleting subscriptions")?;
+
+                for requested in request.trust_collections {
+                    let collection = all_trust_collections
+                        .iter()
+                        .find(|c| c.id == requested)
+                        .ok_or(HolderWalletUnitError::MissingTrustCollection(requested))?;
+
+                    self.trust_list_subscription_sync
+                        .sync_subscriptions(collection)
+                        .await
+                        .error_while("syncing trust collection")?;
+                }
+
+                Ok::<_, HolderWalletUnitError>(())
+            }
+            .boxed())
+            .await
+            .error_while("updating collections")??;
+
+        tracing::info!("Modified holder wallet unit ({id})");
         Ok(())
     }
 

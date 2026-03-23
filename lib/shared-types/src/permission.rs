@@ -89,6 +89,7 @@ pub enum Permission {
     TrustEntryPublicationDelete,
     HolderWalletUnitRegister,
     HolderWalletUnitDetail,
+    HolderWalletUnitEdit,
     WalletUnitDetail,
     WalletUnitList,
     WalletUnitRevoke,

@@ -93,15 +93,34 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     }
 
     async fn delete(&self, id: TrustListSubscriptionId) -> Result<(), DataLayerError> {
+        let now = OffsetDateTime::now_utc();
+
         trust_list_subscription::Entity::update(trust_list_subscription::ActiveModel {
             id: Unchanged(id),
-            last_modified: Set(OffsetDateTime::now_utc()),
-            deactivated_at: Set(Some(OffsetDateTime::now_utc())),
+            last_modified: Set(now),
+            deactivated_at: Set(Some(now)),
             ..Default::default()
         })
         .exec(&self.db)
         .await
         .map_err(to_update_data_layer_error)?;
+
+        Ok(())
+    }
+
+    async fn delete_many(&self, ids: Vec<TrustListSubscriptionId>) -> Result<(), DataLayerError> {
+        let now = OffsetDateTime::now_utc();
+
+        trust_list_subscription::Entity::update_many()
+            .filter(trust_list_subscription::Column::Id.is_in(ids))
+            .set(trust_list_subscription::ActiveModel {
+                last_modified: Set(now),
+                deactivated_at: Set(Some(now)),
+                ..Default::default()
+            })
+            .exec(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }

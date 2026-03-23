@@ -460,7 +460,8 @@ fn get_management_endpoints(
             )
             .route(
                 "/api/holder-wallet-unit/v1/{id}",
-                get(holder_wallet_unit::controller::wallet_unit_holder_details),
+                get(holder_wallet_unit::controller::wallet_unit_holder_details)
+                    .patch(holder_wallet_unit::controller::edit_holder_wallet_unit),
             )
             .route(
                 "/api/holder-wallet-unit/v1/{id}/status",

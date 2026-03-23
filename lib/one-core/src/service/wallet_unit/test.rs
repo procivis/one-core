@@ -17,7 +17,9 @@ use crate::proto::clock::DefaultClock;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_collection::MockTrustCollectionManager;
+use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
 use crate::proto::wallet_provider_client::MockWalletProviderClient;
 use crate::proto::wallet_unit::{MockHolderWalletUnitProto, WalletUnitStatusCheckResponse};
 use crate::provider::credential_formatter::model::MockSignatureProvider;
@@ -30,6 +32,8 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
+use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
 use crate::service::test_utilities::{generic_config, get_dummy_date};
 use crate::service::wallet_provider::dto::{
     FeatureFlags, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
@@ -54,6 +58,10 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         session_provider: Arc::new(NoSessionProvider),
         wallet_unit_proto: Arc::new(MockHolderWalletUnitProto::default()),
         trust_collection_manager: Arc::new(MockTrustCollectionManager::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        tx_manager: Arc::new(NoTransactionManager),
     }
 }
 

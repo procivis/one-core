@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::model::trust_list_subscription::{
-    TrustListSubscription, TrustListSubscriptionRelations, TrustListSubscriptionState,
+    TrustListSubscription, TrustListSubscriptionListQuery, TrustListSubscriptionRelations,
+    TrustListSubscriptionState,
 };
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use shared_types::{TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId};
@@ -60,5 +61,9 @@ impl TrustListSubscriptionDB {
             )
             .await
             .unwrap()
+    }
+
+    pub async fn list(&self, query: TrustListSubscriptionListQuery) -> Vec<TrustListSubscription> {
+        self.repository.list(query).await.unwrap().values
     }
 }

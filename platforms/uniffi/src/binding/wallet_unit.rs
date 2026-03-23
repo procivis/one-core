@@ -52,6 +52,20 @@ impl OneCore {
             .await?
             .into())
     }
+
+    /// Edit holder wallet unit
+    #[uniffi::method]
+    pub async fn holder_wallet_unit_update(
+        &self,
+        id: String,
+        request: EditHolderWalletUnitRequestBindingDTO,
+    ) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        core.wallet_unit_service
+            .edit_holder_wallet_unit(into_id(&id)?, request.try_into()?)
+            .await?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]
@@ -121,4 +135,10 @@ pub enum WalletUnitStatusBindingEnum {
     Revoked,
     Unattested,
     Error,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HolderWalletUnitUpdateRequest")]
+pub struct EditHolderWalletUnitRequestBindingDTO {
+    pub trust_collections: Vec<String>,
 }

@@ -13,7 +13,7 @@ pub enum TrustCollectionServiceError {
     MissingOrganisation(OrganisationId),
     #[error("Trust collection already exists")]
     AlreadyExists,
-    #[error("Trust collection not found")]
+    #[error("Trust collection not found: {0}")]
     NotFound(TrustCollectionId),
 }
 

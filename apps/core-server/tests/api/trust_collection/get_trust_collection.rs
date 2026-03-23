@@ -10,7 +10,7 @@ async fn test_get_trust_collection() {
     let tc = context
         .db
         .trust_collections
-        .create("test collection", organisation.clone(), None)
+        .create(organisation, Default::default())
         .await;
 
     // WHEN

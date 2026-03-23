@@ -2,6 +2,7 @@ use similar_asserts::assert_eq;
 
 use crate::utils::api_clients::trust_collections::ListFilters;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
 async fn test_get_trust_collection_list() {
@@ -10,12 +11,24 @@ async fn test_get_trust_collection_list() {
     context
         .db
         .trust_collections
-        .create("test collection 1", organisation.clone(), None)
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("test collection 1".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
     context
         .db
         .trust_collections
-        .create("test collection 2", organisation.clone(), None)
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("test collection 2".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN

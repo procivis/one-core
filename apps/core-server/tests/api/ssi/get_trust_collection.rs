@@ -14,7 +14,7 @@ async fn test_get_trust_collection_success() {
     let collection = context
         .db
         .trust_collections
-        .create("collection", organisation, None)
+        .create(organisation, Default::default())
         .await;
 
     let list = context

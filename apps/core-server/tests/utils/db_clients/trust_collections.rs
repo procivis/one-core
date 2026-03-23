@@ -5,10 +5,20 @@ use one_core::model::trust_collection::{TrustCollection, TrustCollectionRelation
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use shared_types::TrustCollectionId;
 use sql_data_provider::test_utilities::get_dummy_date;
+use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 
 pub struct TrustCollectionDB {
     repository: Arc<dyn TrustCollectionRepository>,
+}
+
+#[derive(Default)]
+pub struct TestTrustCollectionParams {
+    pub id: Option<TrustCollectionId>,
+    pub name: Option<String>,
+    pub deactivated_at: Option<OffsetDateTime>,
+    pub remote_trust_collection_url: Option<Url>,
 }
 
 impl TrustCollectionDB {
@@ -18,17 +28,16 @@ impl TrustCollectionDB {
 
     pub async fn create(
         &self,
-        name: &str,
         organisation: Organisation,
-        id: Option<TrustCollectionId>,
+        params: TestTrustCollectionParams,
     ) -> TrustCollection {
         let trust_collection = TrustCollection {
-            id: id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(Uuid::new_v4().into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            name: name.to_string(),
-            deactivated_at: None,
-            remote_trust_collection_url: None,
+            name: params.name.unwrap_or("collection".to_string()),
+            deactivated_at: params.deactivated_at,
+            remote_trust_collection_url: params.remote_trust_collection_url,
             organisation_id: organisation.id,
             organisation: Some(organisation),
         };
