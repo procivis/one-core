@@ -33,6 +33,8 @@ pub enum TrustCollectionFilterValue {
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
     Ids(Vec<TrustCollectionId>),
+    Remote(bool),
+    Empty(bool),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

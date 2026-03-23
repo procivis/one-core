@@ -15,6 +15,13 @@ pub trait TrustCollectionManager: Send + Sync {
         collections: Vec<RemoteTrustCollectionInfoDTO>,
         organisation_id: OrganisationId,
     ) -> Result<Vec<TrustCollectionId>, Error>;
+
+    async fn sync_remote_trust_collections(
+        &self,
+        provider_url: &str,
+        collections: Vec<RemoteTrustCollectionInfoDTO>,
+        organisation_id: OrganisationId,
+    ) -> Result<Vec<TrustCollectionId>, Error>;
 }
 
 #[derive(Debug, thiserror::Error)]

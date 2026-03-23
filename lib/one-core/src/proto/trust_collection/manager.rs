@@ -9,7 +9,10 @@ use uuid::Uuid;
 use super::dto::RemoteTrustCollectionInfoDTO;
 use super::{Error, TrustCollectionManager};
 use crate::error::ContextWithErrorCode;
-use crate::model::trust_collection::TrustCollection;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::trust_collection::{
+    GetTrustCollectionList, TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
+};
 use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 
@@ -72,6 +75,57 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
             .error_while("creating trust collections")??;
 
         Ok(result)
+    }
+
+    async fn sync_remote_trust_collections(
+        &self,
+        provider_url: &str,
+        remote_collections: Vec<RemoteTrustCollectionInfoDTO>,
+        organisation_id: OrganisationId,
+    ) -> Result<Vec<TrustCollectionId>, Error> {
+        self.tx_manager
+            .tx(async {
+                let existing_collections: GetTrustCollectionList = self
+                    .repository
+                    .list(TrustCollectionListQuery {
+                        filtering: Some(
+                            TrustCollectionFilterValue::OrganisationId(organisation_id).condition()
+                                & TrustCollectionFilterValue::Remote(true),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("listing existing trust collections")?;
+                let (to_keep, to_delete): (Vec<_>, Vec<_>) =
+                    existing_collections.values.iter().partition(|existing| {
+                        remote_collections
+                            .iter()
+                            .any(|remote| existing.name == remote.name)
+                    });
+                for collection_to_delete in to_delete {
+                    self.repository
+                        .delete(collection_to_delete.id)
+                        .await
+                        .error_while("deleting trust collection")?;
+                }
+                let to_create = remote_collections
+                    .into_iter()
+                    .filter(|remote| {
+                        !existing_collections
+                            .values
+                            .iter()
+                            .any(|existing| existing.name == remote.name)
+                    })
+                    .collect();
+                let mut created = self
+                    .create_empty_trust_collections(provider_url, to_create, organisation_id)
+                    .await?;
+                created.extend(to_keep.iter().map(|c| c.id));
+                Ok(created)
+            }
+            .boxed())
+            .await
+            .error_while("syncing trust collections")?
     }
 }
 

@@ -19,7 +19,6 @@ mod dto;
 #[cfg(test)]
 mod test;
 
-#[allow(unused)]
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait TrustListSubscriptionSync: Send + Sync {
@@ -29,7 +28,6 @@ pub trait TrustListSubscriptionSync: Send + Sync {
     ) -> Result<(), TrustListSubscriptionSyncError>;
 }
 
-#[allow(unused)]
 #[derive(Debug, thiserror::Error)]
 pub enum TrustListSubscriptionSyncError {
     #[error("Trust collection {0} is not a remote collection")]
@@ -47,7 +45,6 @@ impl ErrorCodeMixin for TrustListSubscriptionSyncError {
     }
 }
 
-#[allow(unused)]
 pub struct TrustListSubscriptionSyncImpl {
     client: Arc<dyn HttpClient>,
     subscription_repository: Arc<dyn TrustListSubscriptionRepository>,

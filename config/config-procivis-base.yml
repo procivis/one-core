@@ -695,6 +695,10 @@ task:
     type: "TRUST_LIST_SUBSCRIPTION_UPDATE"
     display: "task.trustListSubscriptionUpdate"
     order: 6
+  TRUST_COLLECTION_SYNC:
+    type: "TRUST_COLLECTION_SYNC"
+    display: "task.trustCollectionSync"
+    order: 7
 cacheEntities:
   X509_CRL:
     cacheType: DB

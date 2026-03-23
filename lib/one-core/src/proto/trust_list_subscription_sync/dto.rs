@@ -4,7 +4,6 @@ use shared_types::{TrustListSubscriberId, TrustListSubscriptionId};
 
 use crate::model::trust_list_role::TrustListRoleEnum;
 
-#[allow(unused)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct RemoteTrustCollection {

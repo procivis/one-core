@@ -296,10 +296,11 @@ impl OneCore {
             data_provider.get_credential_schema_repository(),
         ));
 
+        let wallet_unit_client = Arc::new(HTTPWalletProviderClient::new(client.clone()));
         let wallet_unit_proto = Arc::new(HolderWalletUnitProtoImpl::new(
             key_provider.clone(),
             key_algorithm_provider.clone(),
-            Arc::new(HTTPWalletProviderClient::new(client.clone())),
+            wallet_unit_client.clone(),
             revocation_method_provider.clone(),
             data_provider.get_holder_wallet_unit_repository(),
             certificate_validator.clone(),
@@ -466,8 +467,7 @@ impl OneCore {
             notification_scheduler.clone(),
         );
 
-        #[expect(unused)]
-        let trust_list_subscription_sync_proto: Arc<dyn TrustListSubscriptionSync> =
+        let trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync> =
             Arc::new(TrustListSubscriptionSyncImpl::new(
                 client.clone(),
                 data_provider.get_trust_list_subscription_repository(),
@@ -484,12 +484,17 @@ impl OneCore {
             data_provider.get_interaction_repository(),
             data_provider.get_notification_repository(),
             data_provider.get_trust_list_subscription_repository(),
+            data_provider.get_holder_wallet_unit_repository(),
+            data_provider.get_trust_collection_repository(),
             credential_validity_manager,
             certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
             notification_sender.clone(),
             trust_list_subscriber_provider,
+            trust_collection_manager.clone(),
+            trust_list_subscription_sync,
+            wallet_unit_client,
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

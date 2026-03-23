@@ -668,6 +668,9 @@ pub enum TaskType {
     #[serde(rename = "TRUST_LIST_SUBSCRIPTION_UPDATE")]
     #[strum(serialize = "TRUST_LIST_SUBSCRIPTION_UPDATE")]
     TrustListSubscriptionUpdate,
+    #[serde(rename = "TRUST_COLLECTION_SYNC")]
+    #[strum(serialize = "TRUST_COLLECTION_SYNC")]
+    TrustCollectionSync,
 }
 
 pub type TrustManagementConfig = ConfigBlock<String, TrustManagementType>;

@@ -4,11 +4,11 @@ use one_core::model::trust_collection::{
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use url::Url;
 
-use crate::entity::trust_collection;
+use crate::entity::{trust_collection, trust_list_subscription};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
@@ -80,6 +80,28 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
                 get_comparison_condition(trust_collection::Column::LastModified, value)
             }
             Self::Ids(ids) => trust_collection::Column::Id.is_in(ids).into_condition(),
+            Self::Remote(true) => trust_collection::Column::RemoteTrustCollectionUrl
+                .is_not_null()
+                .into_condition(),
+            Self::Remote(false) => trust_collection::Column::RemoteTrustCollectionUrl
+                .is_null()
+                .into_condition(),
+            TrustCollectionFilterValue::Empty(true) => trust_collection::Column::Id
+                .not_in_subquery(
+                    Query::select()
+                        .column(trust_list_subscription::Column::TrustCollectionId)
+                        .from(trust_list_subscription::Entity)
+                        .to_owned(),
+                )
+                .into_condition(),
+            TrustCollectionFilterValue::Empty(false) => trust_collection::Column::Id
+                .in_subquery(
+                    Query::select()
+                        .column(trust_list_subscription::Column::TrustCollectionId)
+                        .from(trust_list_subscription::Entity)
+                        .to_owned(),
+                )
+                .into_condition(),
         }
     }
 }
