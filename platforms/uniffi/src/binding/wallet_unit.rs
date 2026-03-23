@@ -1,7 +1,8 @@
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::service::wallet_provider::dto::DisplayNameDTO;
 use one_core::service::wallet_unit::dto::{
     HolderRegisterWalletUnitRequestDTO, HolderWalletUnitRegisterResponseDTO,
-    HolderWalletUnitResponseDTO, WalletProviderDTO,
+    HolderWalletUnitResponseDTO, TrustCollectionsDetailResponseDTO, WalletProviderDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 
@@ -65,6 +66,20 @@ impl OneCore {
             .edit_holder_wallet_unit(into_id(&id)?, request.try_into()?)
             .await?;
         Ok(())
+    }
+
+    #[uniffi::method]
+    pub async fn holder_get_wallet_unit_trust_collections(
+        &self,
+        id: String,
+    ) -> Result<TrustCollectionsBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+
+        Ok(core
+            .wallet_unit_service
+            .holder_get_wallet_unit_trust_collections(into_id(&id)?)
+            .await?
+            .into())
     }
 }
 
@@ -141,4 +156,31 @@ pub enum WalletUnitStatusBindingEnum {
 #[uniffi(name = "HolderWalletUnitUpdateRequest")]
 pub struct EditHolderWalletUnitRequestBindingDTO {
     pub trust_collections: Vec<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(TrustCollectionsDetailResponseDTO)]
+#[uniffi(name = "TrustCollections")]
+pub struct TrustCollectionsBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub trust_collections: Vec<TrustCollectionInfoBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "TrustCollectionInfo")]
+pub struct TrustCollectionInfoBindingDTO {
+    pub selected: bool,
+    pub id: String,
+    pub name: String,
+    pub logo: String,
+    pub display_name: Vec<DisplayNameBindingDTO>,
+    pub description: Vec<DisplayNameBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(DisplayNameDTO)]
+#[uniffi(name = "DisplayName")]
+pub struct DisplayNameBindingDTO {
+    pub lang: String,
+    pub value: String,
 }

@@ -859,6 +859,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Verifier instance not found")]
     BR_0406,
+
+    #[strum(message = "Trust collections out of sync")]
+    BR_0407,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

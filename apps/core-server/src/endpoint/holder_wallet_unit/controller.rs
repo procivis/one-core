@@ -12,6 +12,7 @@ use super::dto::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::holder_wallet_unit::dto::TrustCollectionsDetailRestDTO;
 use crate::router::AppState;
 
 #[endpoint(
@@ -140,4 +141,36 @@ pub(crate) async fn edit_holder_wallet_unit(
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "editing holder wallet unit")
+}
+
+#[endpoint(
+    permissions = [Permission::HolderWalletUnitDetail],
+    get,
+    path = "/api/holder-wallet-unit/v1/{id}/trust-collections",
+    responses(OkOrErrorResponse<TrustCollectionsDetailRestDTO>),
+    params(
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
+    ),
+    tag = "holder_wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Get trust collections",
+    description = "Get trust collections associated with the given holder wallet unit",
+)]
+pub(crate) async fn get_holder_wallet_unit_trust_collections(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<TrustCollectionsDetailRestDTO> {
+    let result = state
+        .core
+        .wallet_unit_service
+        .holder_get_wallet_unit_trust_collections(id)
+        .await;
+
+    OkOrErrorResponse::from_result(
+        result,
+        state,
+        "getting holder wallet unit trust collections",
+    )
 }

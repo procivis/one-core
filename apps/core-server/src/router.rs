@@ -468,6 +468,10 @@ fn get_management_endpoints(
                     .patch(holder_wallet_unit::controller::edit_holder_wallet_unit),
             )
             .route(
+                "/api/holder-wallet-unit/v1/{id}/trust-collections",
+                get(holder_wallet_unit::controller::get_holder_wallet_unit_trust_collections),
+            )
+            .route(
                 "/api/holder-wallet-unit/v1/{id}/status",
                 post(holder_wallet_unit::controller::wallet_unit_holder_status),
             )

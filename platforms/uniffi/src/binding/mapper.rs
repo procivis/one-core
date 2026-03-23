@@ -40,7 +40,7 @@ use one_core::service::trust_entity::dto::{
     ListTrustEntitiesQueryDTO, ResolvedIdentifierTrustEntityResponseDTO, TrustEntityFilterValue,
     TrustListLogo, UpdateTrustEntityFromDidRequestDTO,
 };
-use one_core::service::wallet_unit::dto::EditHolderWalletUnitRequestDTO;
+use one_core::service::wallet_unit::dto::{EditHolderWalletUnitRequestDTO, TrustCollectionInfoDTO};
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::{KeyId, TrustEntityKey};
@@ -82,7 +82,9 @@ use super::trust_entity::{
     ResolvedIdentifierTrustEntityResponseBindingDTO,
     UpdateRemoteTrustEntityFromDidRequestBindingDTO,
 };
-use crate::binding::wallet_unit::EditHolderWalletUnitRequestBindingDTO;
+use crate::binding::wallet_unit::{
+    EditHolderWalletUnitRequestBindingDTO, TrustCollectionInfoBindingDTO,
+};
 use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{TimestampFormat, into_id, into_id_opt, into_timestamp};
 
@@ -1139,5 +1141,18 @@ impl TryFrom<EditHolderWalletUnitRequestBindingDTO> for EditHolderWalletUnitRequ
                 .map(into_id)
                 .collect::<Result<_, _>>()?,
         })
+    }
+}
+
+impl From<TrustCollectionInfoDTO> for TrustCollectionInfoBindingDTO {
+    fn from(value: TrustCollectionInfoDTO) -> Self {
+        Self {
+            selected: value.selected,
+            id: value.collection.id.to_string(),
+            name: value.collection.name,
+            logo: value.collection.logo,
+            display_name: convert_inner(value.collection.display_name),
+            description: convert_inner(value.collection.description),
+        }
     }
 }

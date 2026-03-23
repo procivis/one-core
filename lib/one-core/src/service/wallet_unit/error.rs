@@ -32,6 +32,8 @@ pub enum HolderWalletUnitError {
     KeyAlreadyExists,
     #[error("Trust collection not found: {0}")]
     MissingTrustCollection(TrustCollectionId),
+    #[error("Trust collections not in sync with remote")]
+    TrustCollectionsNotInSync,
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -54,6 +56,7 @@ impl ErrorCodeMixin for HolderWalletUnitError {
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
             Self::KeyAlreadyExists => ErrorCode::BR_0066,
             Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
+            Self::TrustCollectionsNotInSync => ErrorCode::BR_0407,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

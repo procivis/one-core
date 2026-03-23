@@ -6,6 +6,7 @@ pub use crate::model::wallet_unit::{
     WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus,
 };
 use crate::service::key::dto::KeyListItemResponseDTO;
+use crate::service::wallet_provider::dto::ProviderTrustCollectionDTO;
 
 #[derive(Debug, Clone)]
 pub struct HolderRegisterWalletUnitRequestDTO {
@@ -48,4 +49,15 @@ pub struct HolderWalletUnitRegisterResponseDTO {
 #[derive(Debug, Clone)]
 pub struct EditHolderWalletUnitRequestDTO {
     pub trust_collections: Vec<TrustCollectionId>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TrustCollectionsDetailResponseDTO {
+    pub trust_collections: Vec<TrustCollectionInfoDTO>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TrustCollectionInfoDTO {
+    pub selected: bool,
+    pub collection: ProviderTrustCollectionDTO,
 }

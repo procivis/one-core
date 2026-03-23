@@ -29,6 +29,18 @@ impl HolderWalletUnitsApi {
             .await
     }
 
+    pub async fn holder_get_wallet_unit_trust_collections(
+        &self,
+        wallet_unit_id: &HolderWalletUnitId,
+    ) -> Response {
+        self.client
+            .get(&format!(
+                "/api/holder-wallet-unit/v1/{}/trust-collections",
+                wallet_unit_id
+            ))
+            .await
+    }
+
     pub async fn holder_register(&self, request: TestHolderRegisterRequest) -> Response {
         let body = json!(
             {

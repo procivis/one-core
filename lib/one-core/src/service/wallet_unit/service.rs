@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
-use shared_types::{HolderWalletUnitId, WalletUnitId};
+use shared_types::{HolderWalletUnitId, TrustCollectionId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -13,6 +14,7 @@ use super::WalletUnitService;
 use super::dto::{
     EditHolderWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
     HolderWalletUnitRegisterResponseDTO, HolderWalletUnitResponseDTO, NoncePayload,
+    TrustCollectionInfoDTO, TrustCollectionsDetailResponseDTO,
 };
 use super::error::HolderWalletUnitError;
 use super::mapper::key_from_generated_key;
@@ -24,10 +26,13 @@ use crate::model::holder_wallet_unit::{
 };
 use crate::model::key::{Key, KeyRelations};
 use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
+use crate::model::trust_collection::{
+    TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
+};
 use crate::model::trust_list_subscription::{
-    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
+    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
@@ -41,7 +46,8 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::MissingProviderError;
 use crate::service::wallet_provider::dto::{
-    ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitRequestDTO, ProviderTrustCollectionDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO,
 };
 use crate::validator::throw_if_org_not_matching_session;
 
@@ -232,6 +238,97 @@ impl WalletUnitService {
             .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
 
         Ok(result.into())
+    }
+
+    pub async fn holder_get_wallet_unit_trust_collections(
+        &self,
+        id: HolderWalletUnitId,
+    ) -> Result<TrustCollectionsDetailResponseDTO, HolderWalletUnitError> {
+        let unit = self
+            .holder_wallet_unit_repository
+            .get_holder_wallet_unit(
+                &id,
+                &HolderWalletUnitRelations {
+                    organisation: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("getting holder wallet unit")?
+            .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
+
+        let organisation = unit
+            .organisation
+            .ok_or(HolderWalletUnitError::MappingError(
+                "Missing organisation".to_string(),
+            ))?;
+
+        let wallet_provider_metadata_url = format!(
+            "{}/ssi/wallet-provider/v1/{}",
+            unit.wallet_provider_url, unit.wallet_provider_name
+        );
+        let metadata = self
+            .wallet_provider_client
+            .get_wallet_provider_metadata(&wallet_provider_metadata_url)
+            .await
+            .error_while("getting wallet provider metadata")?;
+
+        let local_trust_collections = self
+            .trust_collection_repository
+            .list(TrustCollectionListQuery {
+                filtering: Some(
+                    TrustCollectionFilterValue::OrganisationId(organisation.id).condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting local trust collections")?
+            .values;
+
+        if metadata.trust_collections.len() != local_trust_collections.len() {
+            return Err(HolderWalletUnitError::TrustCollectionsNotInSync);
+        }
+
+        let mut local_with_metadata =
+            HashMap::<TrustCollectionId, (TrustCollection, ProviderTrustCollectionDTO)>::new();
+        for local_collection in local_trust_collections {
+            let metadata_info = metadata
+                .trust_collections
+                .iter()
+                .find(|mc| mc.name == local_collection.name)
+                .ok_or(HolderWalletUnitError::TrustCollectionsNotInSync)?
+                .to_owned();
+
+            local_with_metadata.insert(local_collection.id, (local_collection, metadata_info));
+        }
+
+        let mut trust_collections = vec![];
+        for (id, (_, metadata)) in local_with_metadata {
+            let subscriptions = self
+                .trust_subscription_repository
+                .list(TrustListSubscriptionListQuery {
+                    filtering: Some(
+                        TrustListSubscriptionFilterValue::TrustCollectionId(id).condition()
+                            & TrustListSubscriptionFilterValue::State(vec![
+                                TrustListSubscriptionState::Active,
+                            ]),
+                    ),
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 1,
+                    }),
+                    ..Default::default()
+                })
+                .await
+                .error_while("listing subscriptions")?;
+
+            trust_collections.push(TrustCollectionInfoDTO {
+                selected: subscriptions.total_items > 0,
+                collection: ProviderTrustCollectionDTO { id, ..metadata },
+            });
+        }
+
+        Ok(TrustCollectionsDetailResponseDTO { trust_collections })
     }
 
     pub async fn holder_wallet_unit_status(
