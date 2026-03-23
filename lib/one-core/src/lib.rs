@@ -33,6 +33,7 @@ use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
+use crate::proto::verifier_provider_client::http_client::HTTPVerifierProviderClient;
 use crate::proto::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::proto::wallet_unit::HolderWalletUnitProtoImpl;
 use crate::provider::blob_storage_provider::blob_storage_provider_from_config;
@@ -297,6 +298,7 @@ impl OneCore {
         ));
 
         let wallet_unit_client = Arc::new(HTTPWalletProviderClient::new(client.clone()));
+        let verifier_provider_client = Arc::new(HTTPVerifierProviderClient::new(client.clone()));
         let wallet_unit_proto = Arc::new(HolderWalletUnitProtoImpl::new(
             key_provider.clone(),
             key_algorithm_provider.clone(),
@@ -495,6 +497,8 @@ impl OneCore {
             trust_collection_manager.clone(),
             trust_list_subscription_sync,
             wallet_unit_client,
+            data_provider.get_verifier_instance_repository(),
+            verifier_provider_client,
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

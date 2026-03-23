@@ -2,20 +2,23 @@ use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
 use serde_json::{Value, json};
-use shared_types::HolderWalletUnitId;
+use shared_types::{HolderWalletUnitId, VerifierInstanceId};
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::holder_wallet_unit::HolderWalletUnitRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
+use crate::model::verifier_instance::VerifierInstanceRelations;
 use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
+use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::task::Task;
 use crate::provider::task::trust_collection_sync::dto::Params;
 use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
+use crate::repository::verifier_instance_repository::VerifierInstanceRepository;
 use crate::service::error::ServiceError;
 
 mod dto;
@@ -25,6 +28,8 @@ mod test;
 pub(crate) struct TrustCollectionSyncTask {
     wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
     wallet_unit_client: Arc<dyn WalletProviderClient>,
+    verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
+    verifier_client: Arc<dyn VerifierProviderClient>,
     trust_collection_sync: Arc<dyn TrustCollectionManager>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     subscription_sync: Arc<dyn TrustListSubscriptionSync>,
@@ -38,6 +43,8 @@ pub enum TrustCollectionSyncError {
     InvalidParams(#[from] serde_json::Error),
     #[error("Wallet unit not found: {0}")]
     WalletUnitNotFound(HolderWalletUnitId),
+    #[error("Verifier instance not found: {0}")]
+    VerifierInstanceNotFound(VerifierInstanceId),
     #[error("Mapping error: {0}")]
     MappingError(String),
     #[error(transparent)]
@@ -47,11 +54,12 @@ pub enum TrustCollectionSyncError {
 impl ErrorCodeMixin for TrustCollectionSyncError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            TrustCollectionSyncError::MissingParams => ErrorCode::BR_0404,
-            TrustCollectionSyncError::InvalidParams(_) => ErrorCode::BR_0405,
-            TrustCollectionSyncError::WalletUnitNotFound(_) => ErrorCode::BR_0259,
-            TrustCollectionSyncError::MappingError(_) => ErrorCode::BR_0047,
-            TrustCollectionSyncError::Nested(nested_error) => nested_error.error_code(),
+            Self::MissingParams => ErrorCode::BR_0404,
+            Self::InvalidParams(_) => ErrorCode::BR_0405,
+            Self::WalletUnitNotFound(_) => ErrorCode::BR_0259,
+            Self::VerifierInstanceNotFound(_) => ErrorCode::BR_0406,
+            Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::Nested(nested_error) => nested_error.error_code(),
         }
     }
 }
@@ -71,6 +79,8 @@ impl TrustCollectionSyncTask {
     pub fn new(
         wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
         wallet_unit_client: Arc<dyn WalletProviderClient>,
+        verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
+        verifier_client: Arc<dyn VerifierProviderClient>,
         trust_collection_sync: Arc<dyn TrustCollectionManager>,
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         subscription_sync: Arc<dyn TrustListSubscriptionSync>,
@@ -78,6 +88,8 @@ impl TrustCollectionSyncTask {
         Self {
             wallet_unit_repository,
             wallet_unit_client,
+            verifier_instance_repository,
+            verifier_client,
             trust_collection_sync,
             trust_collection_repository,
             subscription_sync,
@@ -124,8 +136,38 @@ impl TrustCollectionSyncTask {
                     convert_inner(metadata.trust_collections),
                 )
             }
-            Params::VerifierInstanceId => {
-                unimplemented!("TODO ONE-9261: Implement handling verifier instance id")
+            Params::VerifierInstanceId(id) => {
+                let verifier_instance = self
+                    .verifier_instance_repository
+                    .get(
+                        &id,
+                        &VerifierInstanceRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                        },
+                    )
+                    .await
+                    .error_while("loading verifier instance")?
+                    .ok_or(TrustCollectionSyncError::VerifierInstanceNotFound(id))?;
+                let metadata_url = format!(
+                    "{}/ssi/verifier-provider/v1/{}",
+                    verifier_instance.provider_url, verifier_instance.provider_name
+                );
+                let metadata = self
+                    .verifier_client
+                    .get_verifier_provider_metadata(&metadata_url)
+                    .await
+                    .error_while("getting verifier provider metadata")?;
+                let org_id = verifier_instance
+                    .organisation
+                    .ok_or(TrustCollectionSyncError::MappingError(
+                        "Missing organisation".to_string(),
+                    ))?
+                    .id;
+                (
+                    org_id,
+                    verifier_instance.provider_url,
+                    convert_inner(metadata.trust_collections),
+                )
             }
         };
 

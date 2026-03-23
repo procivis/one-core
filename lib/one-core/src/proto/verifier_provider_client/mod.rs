@@ -7,7 +7,6 @@ use crate::service::verifier_provider::dto::VerifierProviderMetadataResponseDTO;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-#[expect(unused)]
 pub trait VerifierProviderClient: Send + Sync {
     async fn get_verifier_provider_metadata(
         &self,

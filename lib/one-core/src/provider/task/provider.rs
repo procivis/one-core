@@ -20,6 +20,7 @@ use crate::proto::notification_sender::NotificationSender;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
+use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::task::trust_collection_sync::TrustCollectionSyncTask;
@@ -35,6 +36,7 @@ use crate::repository::notification_repository::NotificationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
+use crate::repository::verifier_instance_repository::VerifierInstanceRepository;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TaskProvider: Send + Sync {
@@ -74,6 +76,8 @@ pub(crate) fn task_provider_from_config(
     collection_sync: Arc<dyn TrustCollectionManager>,
     subscription_sync: Arc<dyn TrustListSubscriptionSync>,
     wallet_unit_client: Arc<dyn WalletProviderClient>,
+    verifier_repository: Arc<dyn VerifierInstanceRepository>,
+    verifier_provider_client: Arc<dyn VerifierProviderClient>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
     let mut tasks: HashMap<TaskId, Arc<dyn Task>> = HashMap::new();
 
@@ -139,6 +143,8 @@ pub(crate) fn task_provider_from_config(
             TaskType::TrustCollectionSync => Arc::new(TrustCollectionSyncTask::new(
                 holder_wallet_unit_repository.clone(),
                 wallet_unit_client.clone(),
+                verifier_repository.clone(),
+                verifier_provider_client.clone(),
                 collection_sync.clone(),
                 trust_collection_repository.clone(),
                 subscription_sync.clone(),

@@ -844,10 +844,15 @@ pub enum ErrorCode {
 
     #[strum(message = "Local trust collection cannot be synced")]
     BR_0401,
+
     #[strum(message = "Missing task params")]
     BR_0404,
+
     #[strum(message = "Invalid task params")]
     BR_0405,
+
+    #[strum(message = "Verifier instance not found")]
+    BR_0406,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
