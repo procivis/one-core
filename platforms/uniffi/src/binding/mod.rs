@@ -32,6 +32,7 @@ pub mod revocation;
 pub mod task;
 pub mod trust_anchor;
 pub mod trust_entity;
+pub mod verifier_instance;
 pub mod version;
 pub mod wallet_unit;
 

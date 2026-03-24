@@ -377,6 +377,17 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
+                .name("verifier_instance")
+                .description(Some(indoc::formatdoc! {"
+                For verifiers, registration and trust management.
+            "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Verifier instance")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
                 .name("signature")
                 .description(Some(indoc::formatdoc! {"
                 Create and revoke signatures.

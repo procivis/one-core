@@ -24,6 +24,7 @@ use crate::utils::db_clients::holder_wallet_unit::HolderWalletUnitsDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::trust_collections::TrustCollectionDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
+use crate::utils::db_clients::verifier_instances::VerifierInstancesDB;
 use crate::utils::db_clients::wallet_unit_attestations::WalletUnitAttestationsDB;
 use crate::utils::db_clients::wallet_units::WalletUnitsDB;
 
@@ -50,6 +51,7 @@ pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod validity_credentials;
+pub mod verifier_instances;
 pub mod wallet_unit_attestations;
 pub mod wallet_units;
 
@@ -78,6 +80,7 @@ pub struct DbClient {
     pub blobs: BlobsDB,
     pub wallet_units: WalletUnitsDB,
     pub holder_wallet_units: HolderWalletUnitsDB,
+    pub verifier_instances: VerifierInstancesDB,
     #[expect(unused)]
     pub wallet_unit_attestations: WalletUnitAttestationsDB,
     pub db_conn: DbConn,
@@ -120,6 +123,7 @@ impl DbClient {
             holder_wallet_units: HolderWalletUnitsDB::new(
                 layer.get_holder_wallet_unit_repository(),
             ),
+            verifier_instances: VerifierInstancesDB::new(layer.get_verifier_instance_repository()),
             wallet_unit_attestations: WalletUnitAttestationsDB::new(
                 layer.get_wallet_unit_attestation_repository(),
             ),

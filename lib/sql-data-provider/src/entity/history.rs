@@ -190,6 +190,8 @@ pub enum HistoryEntityType {
     TrustCollection,
     #[sea_orm(string_value = "TRUST_LIST_SUBSCRIPTION")]
     TrustListSubscription,
+    #[sea_orm(string_value = "VERIFIER_INSTANCE")]
+    VerifierInstance,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

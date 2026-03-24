@@ -30,7 +30,7 @@ use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
     proof_schema, signature, ssi, statistics, task, trust_anchor, trust_collection, trust_entity,
-    trust_list_publication, vc_api, wallet_provider,
+    trust_list_publication, vc_api, verifier_instance, wallet_provider,
 };
 use crate::middleware::{UserInfo, get_http_request_context};
 use crate::openapi::gen_openapi_documentation;
@@ -540,6 +540,10 @@ fn get_management_endpoints(
             .route(
                 "/api/trust-collection/v1/{trust_collection_id}/trust-list/{trust_list_id}",
                 delete(delete_trust_list_subscription),
+            )
+            .route(
+                "/api/verifier-instance/v1",
+                post(verifier_instance::controller::register_verifier_instance),
             );
 
         if config.enable_signature_endpoints {

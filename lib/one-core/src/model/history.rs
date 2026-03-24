@@ -127,6 +127,7 @@ pub enum HistoryEntityType {
     TrustListPublication,
     TrustCollection,
     TrustListSubscription,
+    VerifierInstance,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

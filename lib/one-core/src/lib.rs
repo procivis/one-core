@@ -94,6 +94,7 @@ use crate::service::trust_collection::TrustCollectionService;
 use crate::service::trust_entity::TrustEntityService;
 use crate::service::trust_list_publication::TrustListPublicationService;
 use crate::service::vc_api::VCAPIService;
+use crate::service::verifier_instance::VerifierInstanceService;
 use crate::service::verifier_provider::VerifierProviderService;
 use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_unit::WalletUnitService;
@@ -140,6 +141,7 @@ pub struct OneCore {
     pub vc_api_service: VCAPIService,
     pub cache_service: CacheService,
     pub wallet_unit_service: WalletUnitService,
+    pub verifier_instance_service: VerifierInstanceService,
     pub signature_service: SignatureService,
     pub nfc_service: NfcService,
     pub statistics_service: StatisticsService,
@@ -499,7 +501,7 @@ impl OneCore {
             trust_list_subscription_sync.clone(),
             wallet_unit_client,
             data_provider.get_verifier_instance_repository(),
-            verifier_provider_client,
+            verifier_provider_client.clone(),
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(
@@ -792,7 +794,7 @@ impl OneCore {
                 Arc::new(HTTPWalletProviderClient::new(client)),
                 wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
-                trust_collection_manager,
+                trust_collection_manager.clone(),
                 trust_list_subscription_sync,
                 data_provider.get_trust_collection_repository(),
                 data_provider.get_trust_list_subscription_repository(),
@@ -800,6 +802,15 @@ impl OneCore {
                 Arc::new(DefaultClock),
                 core_base_url,
                 config,
+                session_provider.clone(),
+            ),
+            verifier_instance_service: VerifierInstanceService::new(
+                data_provider.get_organisation_repository(),
+                data_provider.get_verifier_instance_repository(),
+                data_provider.get_history_repository(),
+                verifier_provider_client,
+                trust_collection_manager,
+                data_provider.get_tx_manager(),
                 session_provider.clone(),
             ),
             signature_service: SignatureService::new(
