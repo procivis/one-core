@@ -78,9 +78,10 @@ async fn test_generate_generic_csr_for_eddsa_success() {
     let value = resp.json_value().await;
 
     let expected = r#"-----BEGIN CERTIFICATE REQUEST-----
-MH8wMwIBADAAMCowBQYDK2VwAyEASgRJyZPui8lPLXDEmCMPJr6NOhNluCVU0mUT
-9SWr71+gADAFBgMrZXADQQD1zJ7xBpJX0xG0O1nbqMgJ54LrtndQru1F5P4bNOAq
-SI5aYyAmSqLvuy8x7fsCmJ7AdsUI7lrDFUJ0Ivi3/GsH
+MIGgMFQCAQAwADAqMAUGAytlcAMhAEoEScmT7ovJTy1wxJgjDya+jToTZbglVNJl
+E/Ulq+9foCEwHwYJKoZIhvcNAQkOMRIwEDAOBgNVHQ8BAf8EBAMCB4AwBQYDK2Vw
+A0EA51Drn3m5rhmagKmShYhiPj1yu5Yul2MTJ4XrGF1jBjriMoHvpkoeVp2rYoLO
+Jqoes8/uLKBLmVisv5rmxJbGDg==
 -----END CERTIFICATE REQUEST-----
 "#;
 

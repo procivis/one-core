@@ -715,7 +715,7 @@ async fn test_create_certificate_identifier_missing_digital_signature() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_create_certificate_authority_self_signed_and_certificate() {
+async fn test_create_certificate_authority_self_signed_and_certificate_mdl_profile() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let ca_key = context
@@ -801,8 +801,107 @@ async fn test_create_certificate_authority_self_signed_and_certificate() {
     })));
     assert!(extensions.contains(&json!({
         "critical": true,
+        "oid": "2.5.29.15", // key usage
+        "value": "digitalSignature"
+    })));
+    assert!(extensions.contains(&json!({
+        "critical": true,
         "oid": "2.5.29.37", // extended key usage
         "value": "1.0.18013.5.1.2"
+    })));
+
+    let certificate_id = certificate["id"].as_str().unwrap().parse().unwrap();
+    let result = context.api.certificates.get(&certificate_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+    resp["id"].assert_eq(&certificate_id);
+    resp["organisationId"].assert_eq(&organisation.id);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_certificate_authority_self_signed_and_certificate_generic_profile() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let ca_key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let cert_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_authority_identifier_self_signed(
+            "CA-identifier",
+            ca_key.id,
+            organisation.id,
+            "CA",
+            "X509_CERTIFICATE",
+            None,
+        )
+        .await;
+
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let ca_identifier_id = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier_ca_signed(
+            "cert-identifier",
+            cert_key.id,
+            organisation.id,
+            ca_identifier_id,
+            "Cert",
+            "X509_CERTIFICATE",
+            "GENERIC",
+        )
+        .await;
+
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let cert_identifier_id = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let result = context.api.identifiers.get(&cert_identifier_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+
+    assert_eq!(resp["name"].as_str().unwrap(), "cert-identifier");
+    assert_eq!(resp["type"].as_str().unwrap(), "CERTIFICATE");
+    assert_eq!(resp["state"].as_str().unwrap(), "ACTIVE");
+    assert!(!resp["isRemote"].as_bool().unwrap());
+    assert_eq!(
+        resp["organisationId"].as_str().unwrap(),
+        organisation.id.to_string()
+    );
+    assert_eq!(resp["certificates"].as_array().length().unwrap(), 1);
+
+    let certificate = &resp["certificates"][0];
+    assert_eq!(certificate["name"].as_str().unwrap(), "Cert");
+    assert_eq!(certificate["state"].as_str().unwrap(), "ACTIVE");
+    assert_eq!(
+        certificate["x509Attributes"]["issuer"].as_str().unwrap(),
+        "CN=CA"
+    );
+    assert_eq!(
+        certificate["x509Attributes"]["subject"].as_str().unwrap(),
+        "CN=Cert"
+    );
+
+    let extensions = certificate["x509Attributes"]["extensions"]
+        .as_array()
+        .unwrap();
+    assert!(extensions.contains(&json!({
+        "critical": true,
+        "oid": "2.5.29.15", // key usage
+        "value": "digitalSignature"
     })));
 
     let certificate_id = certificate["id"].as_str().unwrap().parse().unwrap();

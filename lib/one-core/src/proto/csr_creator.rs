@@ -145,7 +145,9 @@ fn request_to_certificate_params(request: GenerateCsrRequest) -> CertificatePara
     params.distinguished_name = prepare_distinguished_name(request.subject);
 
     match request.profile {
-        CsrRequestProfile::Generic => {} // nothing to add
+        CsrRequestProfile::Generic => {
+            params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+        }
         CsrRequestProfile::Mdl => {
             params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
             params
