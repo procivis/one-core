@@ -71,6 +71,10 @@ pub(crate) enum Error {
 
     #[error("Certificate already exists")]
     CertificateAlreadyExists,
+    #[error(
+        "Certificates on the same identifier must not be duplicates and must not have the same name and expiry"
+    )]
+    ConflictingCertificates,
     #[error("Identifier already exists")]
     IdentifierAlreadyExists,
     #[error("Incapable DID method: {key_algorithm}")]
@@ -123,6 +127,7 @@ impl ErrorCodeMixin for Error {
             Self::InvalidIdentifierType(_) => ErrorCode::BR_0330,
             Self::OrganisationMismatch => ErrorCode::BR_0285,
             Self::InvalidCSRProfile => ErrorCode::BR_0323,
+            Self::ConflictingCertificates => ErrorCode::BR_0408,
             Self::Nested(nested) => nested.error_code(),
         }
     }

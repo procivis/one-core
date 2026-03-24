@@ -112,6 +112,33 @@ impl IdentifiersApi {
             .await
     }
 
+    pub async fn create_certificate_identifier_multiple_certs(
+        &self,
+        name: &str,
+        organisation_id: OrganisationId,
+        certs: &[(KeyId, &str)],
+    ) -> Response {
+        let certs: Vec<_> = certs
+            .iter()
+            .map(|(key_id, chain)| {
+                json!({
+                    "chain": chain,
+                    "keyId": key_id
+                })
+            })
+            .collect();
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!( {
+                    "name": name,
+                    "organisationId": organisation_id,
+                    "certificates": certs
+                }),
+            )
+            .await
+    }
+
     #[expect(clippy::too_many_arguments)]
     pub async fn create_certificate_identifier_ca_signed(
         &self,

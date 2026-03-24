@@ -862,6 +862,11 @@ pub enum ErrorCode {
 
     #[strum(message = "Trust collections out of sync")]
     BR_0407,
+
+    #[strum(
+        message = "Certificates on the same identifier must not be duplicates and must not have the same name and expiry"
+    )]
+    BR_0408,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

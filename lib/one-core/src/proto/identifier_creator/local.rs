@@ -118,12 +118,13 @@ impl IdentifierCreatorProto {
     ) -> Result<Identifier, Error> {
         let id = Uuid::new_v4().into();
 
-        let mut certificates = vec![];
+        let mut certificates: Vec<Certificate> = vec![];
         for request in requests {
-            certificates.push(
-                self.validate_and_prepare_certificate(id, organisation.id, request)
-                    .await?,
-            );
+            let cert = self
+                .validate_and_prepare_certificate(id, organisation.id, request)
+                .await?;
+            validate_no_conflicts(&certificates, &cert)?;
+            certificates.push(cert);
         }
 
         let now = OffsetDateTime::now_utc();
@@ -169,10 +170,11 @@ impl IdentifierCreatorProto {
 
         let mut certificates = vec![];
         for request in requests {
-            certificates.push(
-                self.validate_and_prepare_certificate_authority(id, organisation.id, request)
-                    .await?,
-            );
+            let cert = self
+                .validate_and_prepare_certificate_authority(id, organisation.id, request)
+                .await?;
+            validate_no_conflicts(&certificates, &cert)?;
+            certificates.push(cert);
         }
 
         let now = OffsetDateTime::now_utc();
@@ -591,6 +593,17 @@ impl IdentifierCreatorProto {
             state: CertificateState::Active,
             key: Some(key),
         })
+    }
+}
+
+fn validate_no_conflicts(certificates: &[Certificate], cert: &Certificate) -> Result<(), Error> {
+    if certificates.iter().any(|c| {
+        c.fingerprint == cert.fingerprint
+            || c.name == cert.name && c.expiry_date == cert.expiry_date
+    }) {
+        Err(Error::ConflictingCertificates)
+    } else {
+        Ok(())
     }
 }
 

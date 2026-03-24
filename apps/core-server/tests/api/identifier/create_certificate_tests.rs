@@ -619,6 +619,42 @@ async fn test_create_certificate_identifier_cert_already_exists() {
 }
 
 #[tokio::test]
+async fn test_create_certificate_identifier_conflicting_certs() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+
+    let cert = create_cert(
+        &mut CertificateParams::default(),
+        ecdsa::Key,
+        &ca_issuer,
+        &ca_params,
+    );
+
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_identifier_multiple_certs(
+            "test-identifier",
+            organisation.id,
+            &[(key.id, &chain), (key.id, &chain)],
+        )
+        .await;
+
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0408");
+}
+
+#[tokio::test]
 async fn test_create_certificate_identifier_unknown_critical_extension() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
