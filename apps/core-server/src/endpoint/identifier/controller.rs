@@ -30,38 +30,15 @@ use crate::router::AppState;
     ),
     summary = "Create an identifier",
     description = indoc::formatdoc! {"
-    Creates a new identifier to use for issuing or verifying.
+    Creates a new identifier for use in credential issuance and verification.
 
-    All identifiers have an identifier ID used in credential operations
-    (like the `issuer` field). The underlying resource (key, certificate,
-    DID, or CA) has its own separate ID used with resource-specific APIs
-    for management operations.
+    An identifier wraps an underlying resource (key, certificate, CA, or DID)
+    and provides a stable identifier ID for credential operations. The
+    underlying resource retains its own ID for resource-specific management
+    via its respective API.
 
-    For a key identifier: First, create the key using the key API. Then,
-    use this API, passing the key ID and a name for the identifier. The
-    identifier ID is used for credential operations. The key ID is used
-    with the key API for key-specific management operations.
-
-    For a certificate identifier: Use the key API to generate a key and
-    a Certificate Signing Request (CSR). When you have a signed certificate,
-    pass the certificate in PEM format, also specifying the original key
-    ID and a name for the identifier. The identifier ID is used for
-    credential operations. The certificate ID is used with the certificate
-    API for certificate-specific operations like viewing certificate details
-    or checking expiration.
-    
-    For a Certificate Authority identifier: Import an existing certificate
-    chain by passing the full chain in PEM format (where the leaf certificate
-    is a CA certificate signed by the key specified in `keyId`). Alternatively,
-    generate a self-signed root CA by specifying a key and passing the
-    certificate subject information in `selfSigned`. The identifier ID is used
-    for credential operations. The CA certificate ID is used with the
-    certificate API for CA-specific operations.
-    
-    For a DID identifier: Specify a name, the DID method, and the key(s) to
-    use for the verification methods. The system assigns an identifier ID and
-    a DID. The identifier ID is used for credential operations. The DID ID is
-    used with the DID API for operations like deactivation or resolution.
+    Provide one of: `key`, `certificates`, `certificateAuthorities`, or
+    `did`.
     "},
 )]
 pub(crate) async fn post_identifier(
@@ -202,7 +179,7 @@ pub(crate) async fn get_identifier_list(
     decide how to proceed with any given interaction.
 "},
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism"]
 pub(crate) async fn resolve_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

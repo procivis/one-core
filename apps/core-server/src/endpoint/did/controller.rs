@@ -32,7 +32,7 @@ use crate::router::AppState;
     summary = "Retrieve a DID",
     description = "Returns detailed information about a DID.",
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_did(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
@@ -72,7 +72,7 @@ pub(crate) async fn get_did(
     summary = "List DIDs",
     description = "Returns a list of DIDs within an organization.",
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_did_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetDidQuery>, ErrorResponseRestDTO>,
@@ -113,7 +113,7 @@ pub(crate) async fn get_did_list(
         like DID deactivation.
     "},
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn post_did(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -187,7 +187,7 @@ pub(crate) async fn update_did(
     summary = "Retrieve the matching trust entity for a DID",
     description = "Returns details on the matching trust entity for a DID.",
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn get_did_trust_entity(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,

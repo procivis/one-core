@@ -277,7 +277,7 @@ pub(crate) async fn get_json_ld_context(
         Retrieve a trust list by the UUID of the trust anchor.
     "},
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn ssi_get_trust_list(
     state: State<AppState>,
     WithRejection(Path(trust_anchor_id), _): WithRejection<
@@ -311,7 +311,7 @@ pub(crate) async fn ssi_get_trust_list(
         Retrieve a trust entity by the value of the DID.
     "},
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn ssi_get_trust_entity(
     state: State<AppState>,
     WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,
@@ -344,7 +344,7 @@ pub(crate) async fn ssi_get_trust_entity(
         Update a trust entity by its DID value.
     "},
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn ssi_patch_trust_entity(
     state: State<AppState>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
@@ -384,7 +384,7 @@ pub(crate) async fn ssi_patch_trust_entity(
         Add a trust entity to a trust anchor.
     "},
 )]
-#[deprecated = "Deprecated in favour of trust list publisher mechanism (ONE-8838)"]
+#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
 pub(crate) async fn ssi_post_trust_entity(
     state: State<AppState>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
