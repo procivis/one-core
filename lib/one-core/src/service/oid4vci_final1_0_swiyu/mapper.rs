@@ -5,11 +5,11 @@ pub(super) fn to_swiyu_data_type(
     data_type: DatatypeType,
 ) -> Result<&'static str, OID4VCIFinal1_0ServiceError> {
     Ok(match data_type {
-        DatatypeType::String => "string",
+        // Swiyu handling of data and booleans is different in the iOS and Android wallets so it is
+        // declared as string.
+        DatatypeType::String | DatatypeType::Date | DatatypeType::Boolean => "string",
         DatatypeType::Number => "numeric",
-        DatatypeType::Date => "datetime",
         DatatypeType::SwiyuPicture => "image/jpeg",
-        DatatypeType::Boolean => "bool",
         _ => {
             return Err(OID4VCIFinal1_0ServiceError::MappingError(format!(
                 "Unsupported data type: {data_type:?}"
