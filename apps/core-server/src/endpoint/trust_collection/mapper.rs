@@ -78,12 +78,10 @@ impl TryFrom<TrustCollectionFilterQueryParamsRestDTO>
     }
 }
 
-impl TryFrom<TrustListSubscriptionFilterQueryParamsRestDTO>
+impl From<TrustListSubscriptionFilterQueryParamsRestDTO>
     for ListFilterCondition<TrustListSubscriptionFilterValue>
 {
-    type Error = ServiceError;
-
-    fn try_from(value: TrustListSubscriptionFilterQueryParamsRestDTO) -> Result<Self, Self::Error> {
+    fn from(value: TrustListSubscriptionFilterQueryParamsRestDTO) -> Self {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = |column| {
             if exact.contains(&column) {
@@ -143,18 +141,16 @@ impl TryFrom<TrustListSubscriptionFilterQueryParamsRestDTO>
             })
         });
 
-        Ok(
-            ListFilterCondition::<TrustListSubscriptionFilterValue>::default()
-                & states
-                & reference
-                & roles
-                & types
-                & name
-                & ids
-                & created_date_after
-                & created_date_before
-                & last_modified_after
-                & last_modified_before,
-        )
+        ListFilterCondition::<TrustListSubscriptionFilterValue>::default()
+            & states
+            & reference
+            & roles
+            & types
+            & name
+            & ids
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
     }
 }

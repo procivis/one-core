@@ -115,20 +115,12 @@ impl TrustCollectionsApi {
         self.client.delete(&url).await
     }
 
-    pub async fn list_subscriptions(
-        &self,
-        trust_collection_id: impl Into<Uuid>,
-        organisation_id: Option<OrganisationId>,
-    ) -> Response {
-        let mut url = format!(
-            "/api/trust-collection/v1/{}/trust-list?pageSize=20&page=0",
-            trust_collection_id.into()
-        );
-
-        if let Some(organisation_id) = organisation_id {
-            url += &format!("&organisationId={organisation_id}");
-        }
-
-        self.client.get(&url).await
+    pub async fn list_subscriptions(&self, trust_collection_id: impl Into<Uuid>) -> Response {
+        self.client
+            .get(&format!(
+                "/api/trust-collection/v1/{}/trust-list?pageSize=20&page=0",
+                trust_collection_id.into()
+            ))
+            .await
     }
 }

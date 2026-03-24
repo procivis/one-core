@@ -235,13 +235,11 @@ pub(crate) async fn get_trust_list_subscription_entries(
     >,
 ) -> OkOrErrorResponse<GetTrustListSubscriptionListResponseRestDTO> {
     let result = async {
-        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)
-            .error_while("fallback organisation id")?;
         let query = query.try_into().error_while("mapping query")?;
         state
             .core
             .trust_collection_service
-            .get_trust_list_subscription_list(&organisation_id, id, query)
+            .get_trust_list_subscription_list(id, query)
             .await
     }
     .await;

@@ -178,11 +178,6 @@ pub(crate) struct TrustListSubscriptionFilterQueryParamsRestDTO {
     /// Not case-sensitive.
     #[param(nullable = false)]
     pub reference: Option<String>,
-    /// Required when not using STS authentication mode. Specifies the
-    /// organizational context for this operation. When using STS
-    /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
-    pub organisation_id: Option<OrganisationId>,
     #[param(nullable = false)]
     pub roles: Option<Vec<TrustListRoleRestEnum>>,
     #[param(nullable = false)]

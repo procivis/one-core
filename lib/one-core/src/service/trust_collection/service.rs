@@ -180,13 +180,15 @@ impl TrustCollectionService {
 
     pub async fn get_trust_list_subscription_list(
         &self,
-        organisation_id: &OrganisationId,
         trust_collection_id: TrustCollectionId,
         query: TrustListSubscriptionListQuery,
     ) -> Result<GetTrustListSubscriptionListResponseDTO, TrustCollectionServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
-            .error_while("validating organisation")?;
-
+        let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
+        throw_if_org_not_matching_session(
+            &trust_collection.organisation_id,
+            &*self.session_provider,
+        )
+        .error_while("validating organisation")?;
         let trust_list_subscription_list = self
             .trust_list_subscription_repository
             .list(ListQuery {
@@ -197,6 +199,7 @@ impl TrustCollectionService {
             })
             .await
             .error_while("getting trust list subscriptions")?;
+
         Ok(list_response_into(trust_list_subscription_list))
     }
 

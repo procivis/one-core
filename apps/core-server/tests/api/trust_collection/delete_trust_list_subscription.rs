@@ -40,7 +40,7 @@ async fn test_delete_trust_list_subscription() {
     let list_resp = context
         .api
         .trust_collections
-        .list_subscriptions(trust_collection.id, Some(organisation.id))
+        .list_subscriptions(trust_collection.id)
         .await;
     assert_eq!(list_resp.status(), 200);
     let list_body = list_resp.json_value().await;

@@ -631,10 +631,13 @@ async fn test_delete_trust_list_subscription_not_found() {
 #[tokio::test]
 async fn test_get_trust_list_subscription_list_success() {
     // given
-    let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
-
     let session_provider = StaticSessionProvider::new_random();
-    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let org_id = session_provider.0.organisation_id.unwrap();
+    let mut trust_collection_repository = MockTrustCollectionRepository::new();
+    trust_collection_repository
+        .expect_get()
+        .returning(move |_, _| Ok(Some(dummy_trust_collection(org_id))));
+    let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
 
     let trust_collection_id = Uuid::new_v4().into();
     let query = TrustListSubscriptionListQuery::default();
@@ -650,6 +653,7 @@ async fn test_get_trust_list_subscription_list_success() {
         });
 
     let service = mock_service(Mocks {
+        trust_collection_repository,
         trust_list_subscription_repository,
         session_provider,
         ..Default::default()
@@ -657,27 +661,9 @@ async fn test_get_trust_list_subscription_list_success() {
 
     // when
     let result = service
-        .get_trust_list_subscription_list(&organisation_id, trust_collection_id, query)
+        .get_trust_list_subscription_list(trust_collection_id, query)
         .await;
 
     // then
     assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_get_trust_list_subscription_list_org_mismatch() {
-    // given
-    let other_organisation_id = Uuid::new_v4().into();
-    let trust_collection_id = Uuid::new_v4().into();
-    let query = TrustListSubscriptionListQuery::default();
-
-    let service = mock_service(Default::default());
-
-    // when
-    let result = service
-        .get_trust_list_subscription_list(&other_organisation_id, trust_collection_id, query)
-        .await;
-
-    // then
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
