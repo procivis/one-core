@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
+use shared_types::VerifierInstanceId;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -11,8 +12,10 @@ use super::dto::{RegisterVerifierInstanceRequestDTO, RegisterVerifierInstanceRes
 use super::error::VerifierInstanceServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::verifier_instance::VerifierInstance;
+use crate::model::verifier_instance::{VerifierInstance, VerifierInstanceRelations};
 use crate::proto::session_provider::SessionExt;
+use crate::service::wallet_unit::dto::TrustCollectionsDetailResponseDTO;
+use crate::service::wallet_unit::mapper::prepare_trust_collection_info;
 use crate::validator::throw_if_org_not_matching_session;
 
 impl VerifierInstanceService {
@@ -133,5 +136,53 @@ impl VerifierInstanceService {
         Ok(RegisterVerifierInstanceResponseDTO {
             id: verifier_instance_id,
         })
+    }
+
+    pub async fn get_trust_collections(
+        &self,
+        id: VerifierInstanceId,
+    ) -> Result<TrustCollectionsDetailResponseDTO, VerifierInstanceServiceError> {
+        let instance = self
+            .verifier_instance_repository
+            .get(
+                &id,
+                &VerifierInstanceRelations {
+                    organisation: Some(Default::default()),
+                },
+            )
+            .await
+            .error_while("getting verifier instance")?
+            .ok_or(VerifierInstanceServiceError::VerifierInstanceNotFound(id))?;
+
+        let organisation =
+            instance
+                .organisation
+                .ok_or(VerifierInstanceServiceError::MappingError(
+                    "Missing organisation".to_string(),
+                ))?;
+
+        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+            .error_while("checking session")?;
+
+        let provider_metadata_url = format!(
+            "{}/ssi/verifier-provider/v1/{}",
+            instance.provider_url, instance.provider_type
+        );
+        let metadata = self
+            .verifier_provider_client
+            .get_verifier_provider_metadata(&provider_metadata_url)
+            .await
+            .error_while("getting verifier provider metadata")?;
+
+        let trust_collections = prepare_trust_collection_info(
+            self.trust_collection_repository.as_ref(),
+            self.trust_subscription_repository.as_ref(),
+            convert_inner(metadata.trust_collections),
+            organisation.id,
+        )
+        .await
+        .error_while("preparing trust collections")?;
+
+        Ok(TrustCollectionsDetailResponseDTO { trust_collections })
     }
 }

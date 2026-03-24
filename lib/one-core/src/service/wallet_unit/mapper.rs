@@ -1,13 +1,25 @@
+use std::collections::HashMap;
+
 use one_dto_mapper::convert_inner;
-use shared_types::KeyId;
+use shared_types::{KeyId, OrganisationId, TrustCollectionId};
 use time::OffsetDateTime;
 
-use super::dto::HolderWalletUnitResponseDTO;
+use super::dto::{HolderWalletUnitResponseDTO, TrustCollectionInfoDTO};
+use super::error::HolderWalletUnitError;
+use crate::error::ContextWithErrorCode;
 use crate::model::holder_wallet_unit::HolderWalletUnit;
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
+use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
+use crate::model::trust_list_subscription::{
+    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery, TrustListSubscriptionState,
+};
 use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::provider::key_storage::model::StorageGeneratedKey;
+use crate::repository::trust_collection_repository::TrustCollectionRepository;
+use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::service::wallet_provider::dto::ProviderTrustCollectionDTO;
 
 pub(super) fn key_from_generated_key(
@@ -55,4 +67,63 @@ impl From<ProviderTrustCollectionDTO> for RemoteTrustCollectionInfoDTO {
             name: value.name,
         }
     }
+}
+
+pub(crate) async fn prepare_trust_collection_info(
+    trust_collection_repository: &dyn TrustCollectionRepository,
+    trust_subscription_repository: &dyn TrustListSubscriptionRepository,
+    provider_metadata_trust_collections: Vec<ProviderTrustCollectionDTO>,
+    organisation_id: OrganisationId,
+) -> Result<Vec<TrustCollectionInfoDTO>, HolderWalletUnitError> {
+    let local_trust_collections = trust_collection_repository
+        .list(TrustCollectionListQuery {
+            filtering: Some(
+                TrustCollectionFilterValue::OrganisationId(organisation_id).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .error_while("getting local trust collections")?
+        .values;
+
+    if provider_metadata_trust_collections.len() != local_trust_collections.len() {
+        return Err(HolderWalletUnitError::TrustCollectionsNotInSync);
+    }
+
+    let mut local_id_to_metadata = HashMap::<TrustCollectionId, ProviderTrustCollectionDTO>::new();
+    for metadata_collection in provider_metadata_trust_collections {
+        let local_collection = local_trust_collections
+            .iter()
+            .find(|lc| lc.name == metadata_collection.name)
+            .ok_or(HolderWalletUnitError::TrustCollectionsNotInSync)?;
+
+        local_id_to_metadata.insert(local_collection.id, metadata_collection);
+    }
+
+    let mut result = vec![];
+    for (id, metadata) in local_id_to_metadata {
+        let subscriptions = trust_subscription_repository
+            .list(TrustListSubscriptionListQuery {
+                filtering: Some(
+                    TrustListSubscriptionFilterValue::TrustCollectionId(id).condition()
+                        & TrustListSubscriptionFilterValue::State(vec![
+                            TrustListSubscriptionState::Active,
+                        ]),
+                ),
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                ..Default::default()
+            })
+            .await
+            .error_while("listing subscriptions")?;
+
+        result.push(TrustCollectionInfoDTO {
+            selected: subscriptions.total_items > 0,
+            collection: ProviderTrustCollectionDTO { id, ..metadata },
+        });
+    }
+
+    Ok(result)
 }

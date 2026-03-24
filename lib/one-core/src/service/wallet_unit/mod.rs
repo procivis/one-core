@@ -20,9 +20,8 @@ use crate::repository::trust_list_subscription_repository::TrustListSubscription
 
 pub mod dto;
 pub mod error;
+pub(crate) mod mapper;
 pub mod service;
-
-mod mapper;
 #[cfg(test)]
 mod test;
 

@@ -96,6 +96,7 @@ pub enum Permission {
     WalletUnitRevoke,
     WalletUnitDelete,
     VerifierInstanceRegister,
+    VerifierInstanceDetail,
     X509CertificateCreate,
     X509CertificateRevoke,
     X509CertificateSign,

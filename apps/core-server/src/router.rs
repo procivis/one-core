@@ -544,6 +544,10 @@ fn get_management_endpoints(
             .route(
                 "/api/verifier-instance/v1",
                 post(verifier_instance::controller::register_verifier_instance),
+            )
+            .route(
+                "/api/verifier-instance/v1/{id}/trust-collections",
+                get(verifier_instance::controller::get_verifier_instance_trust_collections),
             );
 
         if config.enable_signature_endpoints {

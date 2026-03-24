@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, VerifierInstanceId};
 
 use crate::utils::api_clients::{HttpClient, Response};
 
@@ -27,5 +27,16 @@ impl VerifierIntanceApi {
         });
 
         self.client.post("/api/verifier-instance/v1", body).await
+    }
+
+    pub async fn get_trust_collections(
+        &self,
+        verifier_instance_id: &VerifierInstanceId,
+    ) -> Response {
+        self.client
+            .get(&format!(
+                "/api/verifier-instance/v1/{verifier_instance_id}/trust-collections",
+            ))
+            .await
     }
 }

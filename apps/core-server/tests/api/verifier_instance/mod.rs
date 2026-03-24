@@ -1,1 +1,2 @@
+mod get_trust_collections;
 mod register_verifier_instance;

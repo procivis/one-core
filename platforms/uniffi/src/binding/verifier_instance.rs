@@ -4,6 +4,7 @@ use one_core::service::verifier_instance::dto::{
 use one_dto_mapper::{From, TryInto};
 
 use super::OneCore;
+use crate::binding::wallet_unit::TrustCollectionsBindingDTO;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::into_id;
 
@@ -20,6 +21,19 @@ impl OneCore {
             .register_verifier_instance(request.try_into()?)
             .await?;
         Ok(response.into())
+    }
+
+    #[uniffi::method]
+    pub async fn get_verifier_instance_trust_collections(
+        &self,
+        id: String,
+    ) -> Result<TrustCollectionsBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .verifier_instance_service
+            .get_trust_collections(into_id(&id)?)
+            .await?
+            .into())
     }
 }
 

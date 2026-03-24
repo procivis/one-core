@@ -810,6 +810,8 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 verifier_provider_client,
                 trust_collection_manager,
+                data_provider.get_trust_collection_repository(),
+                data_provider.get_trust_list_subscription_repository(),
                 data_provider.get_tx_manager(),
                 session_provider.clone(),
             ),
