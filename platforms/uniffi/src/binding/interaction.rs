@@ -113,6 +113,7 @@ pub struct HandleInvitationRequestBindingDTO {
     /// Typically encoded as a QR code or deep link by the issuer or
     /// verifier. For example: "https://example.com/credential-offer".
     pub url: String,
+    /// Specifies the organizational context for this operation.
     pub organisation_id: String,
     /// For configurations with multiple transport protocols enabled you
     /// can specify which one to use for this interaction. For example:
@@ -131,14 +132,18 @@ pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         /// For reference.
         interaction_id: String,
+        /// Key storage required to complete issuance.
         key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
+        /// Key algorithms suitable for issuance.
         key_algorithms: Option<Vec<String>>,
         /// Metadata for entering a transaction code
         /// If a pre-authorized code is issued with a transaction code object, the
         /// wallet user must input a transaction code to receive the offered credential.
         /// This code is typically sent through a separate channel such as SMS or email.
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
+        /// Protocol used for issuance.
         protocol: String,
+        /// Whether a valid WIA is required to complete issuance.
         requires_wallet_instance_attestation: bool,
     },
     AuthorizationCodeFlow {
@@ -147,6 +152,7 @@ pub enum HandleInvitationResponseBindingEnum {
         /// For issuer-initiated Authorization Code Flows, use this URL to start
         /// the authorization process with the authorization server.
         authorization_code_flow_url: String,
+        /// Protocol used for issuance.
         protocol: String,
     },
     ProofRequest {
@@ -154,6 +160,7 @@ pub enum HandleInvitationResponseBindingEnum {
         interaction_id: String,
         /// Proof request.
         proof_id: String,
+        /// Protocol used for issuance.
         protocol: String,
     },
 }
@@ -165,10 +172,14 @@ pub struct ContinueIssuanceResponseBindingDTO {
     /// For reference.
     #[from(with_fn_ref = "ToString::to_string")]
     pub interaction_id: String,
+    /// Key storage required to complete issuance.
     #[from(with_fn = convert_inner_of_inner )]
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
+    /// Key algorithms suitable for issuance.
     pub key_algorithms: Option<Vec<String>>,
+    /// Whether a valid WIA is required to complete issuance.
     pub requires_wallet_instance_attestation: bool,
+    /// Protocol used for issuance.
     pub protocol: String,
 }
 
@@ -176,8 +187,12 @@ pub struct ContinueIssuanceResponseBindingDTO {
 #[from(OpenID4VCITxCode)]
 #[uniffi(name = "OpenID4VCITxCode")]
 pub struct OpenID4VCITxCodeBindingDTO {
+    /// For validation.
     pub input_mode: OpenID4VCITxCodeInputModeBindingEnum,
+    /// Character length of code, to assist the user.
     pub length: Option<i64>,
+    /// Guidance text displayed in the wallet, describing how to
+    /// obtain the transaction code.
     pub description: Option<String>,
 }
 
@@ -192,12 +207,19 @@ pub enum OpenID4VCITxCodeInputModeBindingEnum {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "InitiateIssuanceRequest")]
 pub struct InitiateIssuanceRequestBindingDTO {
+    /// Specifies the organizational context for this operation.
     pub organisation_id: String,
+    /// Choose a protocol to complete issuance.
     pub protocol: String,
+    /// OpenID4VCI authorization request parameter.
     pub issuer: String,
+    /// OpenID4VCI authorization request parameter.
     pub client_id: String,
+    /// OpenID4VCI authorization request parameter.
     pub redirect_uri: Option<String>,
+    /// OpenID4VCI authorization request parameter.
     pub scope: Option<Vec<String>>,
+    /// OpenID4VCI authorization request parameter.
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailBindingDTO>>,
 }
 
@@ -219,10 +241,16 @@ pub struct InitiateIssuanceResponseBindingDTO {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "HolderAcceptCredentialRequest")]
 pub struct HolderAcceptCredentialRequestBindingDTO {
+    /// ID for this issuance.
     pub interaction_id: String,
+    /// Deprecated. Use `identifierId`.
     pub did_id: Option<String>,
     pub identifier_id: Option<String>,
+    /// If you are using an identifier with multiple keys for authentication,
+    /// specify which key to use. If no key is specified, the first suitable
+    /// key listed will be used.
     pub key_id: Option<String>,
+    /// User-provided transaction code.
     pub tx_code: Option<String>,
     pub holder_wallet_unit_id: Option<String>,
 }

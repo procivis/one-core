@@ -14,7 +14,7 @@ use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
-    /// Register with a Wallet Provider.
+    /// Registers with a Wallet Provider.
     #[uniffi::method]
     pub async fn holder_register_wallet_unit(
         &self,
@@ -40,6 +40,7 @@ impl OneCore {
             .await?)
     }
 
+    /// Returns wallet registration details from the Wallet Provider.
     #[uniffi::method]
     pub async fn holder_get_wallet_unit(
         &self,
@@ -95,9 +96,10 @@ pub enum WalletProviderTypeBindingEnum {
 #[try_into(T=HolderRegisterWalletUnitRequestDTO, Error=ServiceError)]
 #[uniffi(name = "HolderRegisterWalletUnitRequest")]
 pub struct HolderRegisterWalletUnitRequestBindingDTO {
+    /// Specifies the organizational context for this operation.
     #[try_into(with_fn = into_id)]
     organisation_id: String,
-    /// Reference the `walletProvider` configuration of the Wallet Provider.
+    /// Reference the `walletProvider` configuration.
     #[try_into(infallible)]
     wallet_provider: WalletProviderBindingDTO,
     #[try_into(infallible)]

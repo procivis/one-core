@@ -38,6 +38,7 @@ use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt, into_time
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Creates a new identifier.
     #[uniffi::method]
     pub async fn create_identifier(
         &self,
@@ -51,6 +52,7 @@ impl OneCore {
             .to_string())
     }
 
+    /// Returns a filterable list of identifiers.
     #[uniffi::method]
     pub async fn list_identifiers(
         &self,

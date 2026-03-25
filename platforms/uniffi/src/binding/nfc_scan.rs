@@ -6,7 +6,7 @@ use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
-    /// Scan NFC for ISO 18013-5 engagment
+    /// Scan NFC for ISO 18013-5 engagment.
     #[uniffi::method]
     pub async fn nfc_read_iso_mdl_engagement(
         &self,
@@ -19,7 +19,7 @@ impl OneCore {
             .await?)
     }
 
-    /// Cancel previously started NFC scan via `nfc_read_iso_mdl_engagement`
+    /// Cancel previously started NFC scan via `nfc_read_iso_mdl_engagement`.
     #[uniffi::method]
     pub async fn nfc_stop_iso_mdl_engagement(&self) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -27,7 +27,7 @@ impl OneCore {
     }
 }
 
-/// Optional messages to be displayed on (iOS) system overlay
+/// Optional messages to be displayed on (iOS) system overlay.
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(NfcScanRequestDTO)]
 #[uniffi(name = "NFCScanRequest")]

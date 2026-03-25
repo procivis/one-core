@@ -6,6 +6,8 @@ use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Runs a task. Check the `task` object of your configuration and reference
+    /// the configured instance.
     #[uniffi::method]
     pub async fn run_task(
         &self,

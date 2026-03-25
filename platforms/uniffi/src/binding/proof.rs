@@ -39,7 +39,9 @@ use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
-    /// For verifiers, creates a proof request.
+    /// For verifiers, creates a proof request. Choose what information to
+    /// request via a proof schema, an identifier, and which protocol to use
+    /// for making the request.
     #[uniffi::method]
     pub async fn create_proof(
         &self,
@@ -50,6 +52,7 @@ impl OneCore {
         Ok(core.proof_service.create_proof(request).await?.to_string())
     }
 
+    /// Returns detailed information about a proof request.
     #[uniffi::method]
     pub async fn get_proof(
         &self,
@@ -60,6 +63,8 @@ impl OneCore {
         Ok(proof.into())
     }
 
+    /// Deletes an incomplete proof request. If the request is in `REQUESTED`
+    /// state the proof is retracted instead, retaining history of the interaction.
     #[uniffi::method]
     pub async fn delete_proof(&self, proof_id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -67,6 +72,7 @@ impl OneCore {
         Ok(())
     }
 
+    /// Returns a filterable list of proof requests.
     #[uniffi::method]
     pub async fn list_proofs(
         &self,
@@ -81,6 +87,7 @@ impl OneCore {
         Ok(proofs.into())
     }
 
+    /// Rejects a proof request.
     #[uniffi::method]
     pub async fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -90,6 +97,8 @@ impl OneCore {
             .await?)
     }
 
+    /// Submits a presentation using Presentation Exchange as the query
+    /// language; this should be used after `getPresentationDefinition`.
     #[uniffi::method]
     pub async fn holder_submit_proof(
         &self,
@@ -108,6 +117,8 @@ impl OneCore {
         Ok(())
     }
 
+    /// Submits a presentation using DCQL as a query language; this should
+    /// be used after `getPresentationDefinitionv2`.
     #[uniffi::method]
     pub async fn holder_submit_proof_v2(
         &self,
@@ -142,6 +153,8 @@ impl OneCore {
             .into())
     }
 
+    /// Creates a share URL from a proof request. A wallet holder can use this
+    /// URL to access the request.
     #[uniffi::method]
     pub async fn share_proof(
         &self,
@@ -198,16 +211,37 @@ impl OneCore {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "CreateProofRequest")]
 pub struct CreateProofRequestBindingDTO {
+    /// Choose a proof schema to use.
     pub proof_schema_id: String,
+    /// Deprecated. Use `verifierIdentifierId`.
     pub verifier_did_id: Option<String>,
+    /// Choose the identifier to use to make the request.
     pub verifier_identifier_id: Option<String>,
+    /// Choose the protocol to use for verification. Check the
+    /// `verificationProtocol` object of your configuration for
+    /// supported options and reference the configuration instance.
     pub protocol: String,
+    /// When a shared proof is accepted, the wallet will be redirected
+    /// to the resource specified here, if redirects are enabled in the
+    /// configuration. The URI must use a scheme that is allowed by the
+    /// configuration.
     pub redirect_uri: Option<String>,
+    /// If the identifier contains multiple keys, use this to specify
+    /// which key to use. If omitted, the first suitable key is used.
     pub verifier_key: Option<String>,
+    /// If the identifier contains multiple certificates, use this to
+    /// specify which key to use. If omitted, the first suitable
+    /// certificate is used.
     pub verifier_certificate: Option<String>,
+    /// Use to specify device engagement type.
     pub iso_mdl_engagement: Option<String>,
+    /// Choose the transport protocol for the exchange. Check the
+    /// `transport` object of your configuration for supported
+    /// options and reference the configuration instance.
     pub transport: Option<Vec<String>>,
+    /// Country profile to associate with this request.
     pub profile: Option<String>,
+    /// Use for ISO mDL verification over BLE.
     pub engagement: Option<String>,
 }
 
@@ -231,26 +265,55 @@ pub enum SortableProofListColumnBinding {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "ProofListQuery")]
 pub struct ProofListQueryBindingDTO {
+    /// Page number to retrieve (0-based indexing).
     pub page: u32,
+    /// Number of items to return per page.
     pub page_size: u32,
+    /// Specifies the organizational context for this operation.
     pub organisation_id: String,
+    /// Field value to sort results by.
     pub sort: Option<SortableProofListColumnBinding>,
+    /// Direction to sort results by.
     pub sort_direction: Option<SortDirection>,
+    /// Return only proof requests with a name starting with this string.
     pub name: Option<String>,
+    /// Filter by one or more country profiles.
     pub profiles: Option<Vec<String>>,
+    /// Filter by one or more UUIDs.
     pub ids: Option<Vec<String>>,
+    /// Filter by one or more proof request states.
     pub proof_states: Option<Vec<ProofStateBindingEnum>>,
+    /// Filter proof requests by one or more roles: requested by the
+    /// system (`VERIFIER`) or received by the system (`HOLDER`).
     pub proof_roles: Option<Vec<ProofRoleBindingEnum>>,
+    /// Filter by associated proof schemas.
     pub proof_schema_ids: Option<Vec<String>>,
+    /// Set which filters apply in an exact way.
     pub exact: Option<Vec<ProofListQueryExactColumnBindingEnum>>,
 
+    /// Return only proof requests created after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub created_date_after: Option<String>,
+    /// Return only proof requests created before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub created_date_before: Option<String>,
+    /// Return only proof requests last modified after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub last_modified_after: Option<String>,
+    /// Return only proof requests last modified before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub last_modified_before: Option<String>,
+    /// Return only proofs requested after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub requested_date_after: Option<String>,
+    /// Return only proofs requested before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub requested_date_before: Option<String>,
+    /// Return only proofs requested completed after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub completed_date_after: Option<String>,
+    /// Return only proofs requested completed before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub completed_date_before: Option<String>,
 }
 
@@ -266,19 +329,29 @@ pub struct ProofListItemBindingDTO {
     pub last_modified: String,
     #[from(with_fn = optional_time)]
     pub requested_date: Option<String>,
+    /// When the wallet holder submitted valid proof.
     #[from(with_fn = optional_time)]
     pub completed_date: Option<String>,
     #[from(with_fn = optional_identifier_id_string)]
     pub verifier: Option<String>,
+    /// Protocol used for verification.
     pub protocol: String,
+    /// Channel used for this request.
     pub transport: String,
+    /// Engagement method used for this request.
     pub engagement: Option<String>,
+    /// State representation of this request.
     pub state: ProofStateBindingEnum,
+    /// The role the system has in relation to this request.
     pub role: ProofRoleBindingEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemBindingDTO>,
+    /// Time at which the data shared by the wallet holder for this request
+    /// will be deleted. Determined by the `expireDuration` parameter of the
+    /// proof schema.
     #[from(with_fn = optional_time)]
     pub retain_until_date: Option<String>,
+    /// Country profile associated with this request.
     pub profile: Option<String>,
 }
 
@@ -288,19 +361,35 @@ pub struct ProofResponseBindingDTO {
     pub id: String,
     pub created_date: String,
     pub last_modified: String,
+    /// Identifier of the verifier of this request.
     pub verifier: Option<GetIdentifierListItemBindingDTO>,
     pub state: ProofStateBindingEnum,
+    /// The role the system has in relation to this request.
     pub role: ProofRoleBindingEnum,
+    /// Schema used for this request.
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
+    /// Protocol used for verification.
     pub protocol: String,
+    /// Engagement method used for this request.
     pub engagement: Option<String>,
+    /// Channel used for this request.
     pub transport: String,
+    /// The wallet is redirected to this resource once a shared proof
+    /// is accepted.
     pub redirect_uri: Option<String>,
+    /// Credential and claim data shared by the wallet holder.
     pub proof_inputs: Vec<ProofInputBindingDTO>,
+    /// Time at which the data shared by the wallet holder for this request
+    /// will be deleted. Determined by the `expireDuration` parameter of the
+    /// proof schema.
     pub retain_until_date: Option<String>,
+    /// When the request was shared with the wallet holder.
     pub requested_date: Option<String>,
+    /// When the wallet holder submitted valid proof.
     pub completed_date: Option<String>,
+    /// When claim data was deleted.
     pub claims_removed_at: Option<String>,
+    /// Country profile associated with this request.
     pub profile: Option<String>,
 }
 
@@ -308,10 +397,13 @@ pub struct ProofResponseBindingDTO {
 #[from(ProofInputDTO)]
 #[uniffi(name = "ProofInput")]
 pub struct ProofInputBindingDTO {
+    /// Set of claims asserted by the shared credential.
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofRequestClaimBindingDTO>,
+    /// Shared credential metadata.
     #[from(with_fn = convert_inner)]
     pub credential: Option<CredentialDetailBindingDTO>,
+    /// Credential schema metadata.
     pub credential_schema: CredentialSchemaBindingDTO,
 }
 
@@ -353,6 +445,7 @@ pub enum ProofRoleBindingEnum {
 #[try_into(T = PresentationSubmitCredentialRequestDTO, Error = ServiceError)]
 #[uniffi(name = "PresentationSubmitCredentialRequest")]
 pub struct PresentationSubmitCredentialRequestBindingDTO {
+    /// ID of the credential to submit.
     #[try_into(with_fn_ref = into_id)]
     pub credential_id: String,
     #[try_into(infallible)]
@@ -363,8 +456,13 @@ pub struct PresentationSubmitCredentialRequestBindingDTO {
 #[try_into(T = PresentationSubmitV2CredentialRequestDTO, Error = ServiceError)]
 #[uniffi(name = "PresentationSubmitV2CredentialRequest")]
 pub struct PresentationSubmitV2CredentialRequestBindingDTO {
+    /// ID of the credential to submit.
     #[try_into(with_fn_ref = into_id)]
     pub credential_id: String,
+    /// Array of claim paths for claims where `userSelection: true` that the
+    /// holder chooses to share. Only include paths for optional claims the
+    /// holder selects. Omit entirely or use an empty array if withholding all
+    /// optional claims.
     #[try_into(infallible)]
     pub user_selections: Vec<String>,
 }
@@ -406,6 +504,9 @@ pub struct ShareProofRequestBindingDTO {
 #[into(ShareProofRequestParamsDTO)]
 #[uniffi(name = "ShareProofRequestParams")]
 pub struct ShareProofRequestParamsBindingDTO {
+    /// For requests made with OpenID4VC, a Client ID Scheme can be
+    /// specified here. If no scheme is specified the default scheme
+    /// from the configuration is used.
     #[into(with_fn = "convert_inner")]
     pub client_id_scheme: Option<ClientIdSchemeBindingEnum>,
 }

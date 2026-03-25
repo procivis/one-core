@@ -39,8 +39,11 @@ struct MobileConfig {
 
 #[derive(Default, uniffi::Record)]
 pub struct InitParams {
+    /// Pass a serialized JSON to override the default configuration.
     pub config_json: Option<String>,
+    /// Create an instance of the native implementation of Secure Element and pass it here.
     pub native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    /// Create a custom implementation of HSM and pass it.
     pub remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     pub ble_central: Option<Arc<dyn BleCentral>>,
     pub ble_peripheral: Option<Arc<dyn BlePeripheral>>,

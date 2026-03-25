@@ -3,6 +3,7 @@ use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Returns the @context of a JSON-LD credential. The result is cached.
     #[uniffi::method]
     pub async fn resolve_jsonld_context(
         &self,

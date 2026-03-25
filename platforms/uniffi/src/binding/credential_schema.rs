@@ -29,6 +29,12 @@ use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Returns detailed information about a credential schema.
+    /// A credential schema defines the structure and format of a credential,
+    /// including the attributes that issuers make claims about. Schemas also
+    /// specify how issued credentials should be presented in wallets, whether
+    /// a revocation method is used to manage credential status, and issuer
+    /// preferences for suitable key storage types for wallets to use.
     #[uniffi::method]
     pub async fn get_credential_schema(
         &self,
@@ -44,6 +50,7 @@ impl OneCore {
             .into())
     }
 
+    /// Returns a filterable list of credential schemas.
     #[uniffi::method]
     pub async fn list_credential_schemas(
         &self,
@@ -156,6 +163,8 @@ impl OneCore {
             .into())
     }
 
+    /// Produces a URL for sharing a credential schema with another mobile
+    /// verifier device using the one-core.
     #[uniffi::method]
     pub async fn share_credential_schema(
         &self,
@@ -170,6 +179,8 @@ impl OneCore {
             .into())
     }
 
+    /// Imports a credential schema shared from another mobile verifier device
+    /// using the one-core.
     #[uniffi::method]
     pub async fn import_credential_schema(
         &self,
@@ -185,6 +196,7 @@ impl OneCore {
             .map(|schema| schema.to_string())?)
     }
 
+    /// Permanently removes a credential schema.
     #[uniffi::method]
     pub async fn delete_credential_schema(
         &self,

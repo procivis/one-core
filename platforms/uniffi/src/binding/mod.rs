@@ -52,6 +52,8 @@ pub(crate) struct OneCore {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Deleting data while uninitializing the Core erases all wallet data permanently.
+    /// If data is not deleted it is reused when Core is reinitialized.
     #[uniffi::method]
     pub async fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
         let mut guard = self.inner.write().await;

@@ -17,6 +17,7 @@ use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Returns details on a single event.
     #[uniffi::method]
     pub async fn get_history_entry(
         &self,
@@ -30,6 +31,7 @@ impl OneCore {
             .into())
     }
 
+    /// Returns a filterable list of history events.
     #[uniffi::method]
     pub async fn list_history(
         &self,
@@ -230,19 +232,35 @@ pub struct HistoryListItemBindingDTO {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "HistoryListQuery")]
 pub struct HistoryListQueryBindingDTO {
+    /// Page number to retrieve (0-based indexing).
     pub page: u32,
+    /// Number of items to return per page.
     pub page_size: u32,
+    /// Specifies the organizational context for this operation.
     pub organisation_id: String,
+    /// Return only events associated with the provided entity IDs.
     pub entity_ids: Option<Vec<String>>,
+    /// Return only events associated with the provided entity types.
     pub entity_types: Option<Vec<HistoryEntityTypeBindingEnum>>,
+    /// Return only the provided events.
     pub actions: Option<Vec<HistoryActionBindingEnum>>,
+    /// Return only entries created after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub created_date_after: Option<String>,
+    /// Return only entries created before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub created_date_before: Option<String>,
+    /// Return only events associated with the provided identifier ID.
     pub identifier_id: Option<String>,
+    /// Return only events associated with the provided credential ID.
     pub credential_id: Option<String>,
+    /// Return only events associated with the provided credential schema ID.
     pub credential_schema_id: Option<String>,
+    /// Return only events associated with the provided proof schema ID.
     pub proof_schema_id: Option<String>,
+    /// Search for a string.
     pub search: Option<HistorySearchBindingDTO>,
+    /// Return only events associated with the provided user(s).
     pub users: Option<Vec<String>>,
 }
 

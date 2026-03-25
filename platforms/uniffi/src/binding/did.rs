@@ -13,6 +13,7 @@ use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Deprecated. Use the `createIdentifier` method.
     #[uniffi::method]
     pub async fn create_did(&self, request: DidRequestBindingDTO) -> Result<String, BindingError> {
         let core = self.use_core().await?;
@@ -23,6 +24,7 @@ impl OneCore {
             .to_string())
     }
 
+    /// Deprecated. Use the `listIdentifiers` method.
     #[uniffi::method]
     pub async fn list_dids(
         &self,

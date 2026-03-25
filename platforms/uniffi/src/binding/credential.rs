@@ -23,6 +23,7 @@ use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Returns detailed information about a credential in the system.
     #[uniffi::method]
     pub async fn get_credential(
         &self,
@@ -36,6 +37,7 @@ impl OneCore {
             .into())
     }
 
+    /// Returns a filterable list of credentials in the system.
     #[uniffi::method]
     pub async fn list_credentials(
         &self,
@@ -271,16 +273,28 @@ pub struct CredentialDetailBindingDTO {
     pub issuance_date: Option<String>,
     pub last_modified: String,
     pub revocation_date: Option<String>,
+    /// Credential issuer metadata.
     pub issuer: Option<GetIdentifierListItemBindingDTO>,
+    /// Credential holder metadata.
     pub holder: Option<GetIdentifierListItemBindingDTO>,
+    /// State representation of the credential in the system.
     pub state: CredentialStateBindingEnum,
+    /// Schema of the credential.
     pub schema: CredentialSchemaBindingDTO,
     pub claims: Vec<ClaimBindingDTO>,
     pub redirect_uri: Option<String>,
+    /// The role the system has in relation to the credential. For example,
+    /// if the system received the credential as a wallet this value will
+    /// be `HOLDER`. If the system verified this credential during a presentation,
+    /// this value will be `VERIFIER`.
     pub role: CredentialRoleBindingDTO,
+    /// Scheduled date for credential reactivation.
     pub suspend_end_date: Option<String>,
+    /// Validity details for ISO mdocs.
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
+    /// Protocol used to issue the credential.
     pub protocol: String,
+    /// Country profile associated with the credential.
     pub profile: Option<String>,
 }
 
@@ -312,31 +326,63 @@ pub enum SearchTypeBindingEnum {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "CredentialListQuery")]
 pub struct CredentialListQueryBindingDTO {
+    /// Page number to retrieve (0-based indexing).
     pub page: u32,
+    /// Number of items to return per page.
     pub page_size: u32,
-
+    /// Field value to sort results by.
     pub sort: Option<SortableCredentialColumnBindingEnum>,
+    /// Direction to sort results by.
     pub sort_direction: Option<SortDirection>,
-
+    /// Specifies the organizational context for this operation.
     pub organisation_id: String,
+    /// Return only credentials with a name starting with this string.
     pub name: Option<String>,
+    /// Filter by one or more country profiles.
     pub profiles: Option<Vec<String>>,
+    /// Search for a string.
     pub search_text: Option<String>,
+    /// Changes where `searchText` is searched. Choose one or more
+    /// `searchType`s and pass a `searchText`.
     pub search_type: Option<Vec<SearchTypeBindingEnum>>,
+    /// Set which filters apply in an exact way.
     pub exact: Option<Vec<CredentialListQueryExactColumnBindingEnum>>,
+    /// Filter credentials by one or more roles: issued by the system,
+    /// verified by the system, or held by the system as a wallet.
     pub roles: Option<Vec<CredentialRoleBindingDTO>>,
+    /// Filter by one or more UUIDs.
     pub ids: Option<Vec<String>>,
+    /// Filter by one or more credential states.
     pub states: Option<Vec<CredentialStateBindingEnum>>,
+    /// Additional fields to include in response objects. Omitting
+    /// this keeps responses shorter.
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
+    /// Return only credentials with the specified credential schema(s).
     pub credential_schema_ids: Option<Vec<String>>,
 
+    /// Return only credentials created after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub created_date_after: Option<String>,
+    /// Return only credentials created before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub created_date_before: Option<String>,
+    /// Return only credentials last modified after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub last_modified_after: Option<String>,
+    /// Return only credentials last modified before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub last_modified_before: Option<String>,
+    /// Return only credentials issued after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub issuance_date_after: Option<String>,
+    /// Return only credentials issued before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub issuance_date_before: Option<String>,
+    /// Return only credentials revoked after this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub revocation_date_after: Option<String>,
+    /// Return only credentials revoked before this time. Timestamp in
+    /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub revocation_date_before: Option<String>,
 }
 
@@ -419,11 +465,21 @@ pub struct CredentialListItemBindingDTO {
     pub issuance_date: Option<String>,
     pub last_modified: String,
     pub revocation_date: Option<String>,
+    /// Credential issuer metadata.
     pub issuer: Option<String>,
+    /// State representation of the credential in the system.
     pub state: CredentialStateBindingEnum,
+    /// Schema of the credential.
     pub schema: CredentialSchemaBindingDTO,
+    /// The role the system has in relation to the credential. For example,
+    /// if the system received the credential as a wallet this value will
+    /// be `HOLDER`. If the system verified this credential during a presentation,
+    /// this value will be `VERIFIER`.
     pub role: CredentialRoleBindingDTO,
+    /// Scheduled date for credential reactivation.
     pub suspend_end_date: Option<String>,
+    /// Protocol used to issue the credential.
     pub protocol: String,
+    /// Country profile associated with the credential.
     pub profile: Option<String>,
 }

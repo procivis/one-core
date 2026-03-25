@@ -4,6 +4,7 @@ use crate::OneCore;
 
 #[uniffi::export]
 impl OneCore {
+    /// Returns build information.
     #[uniffi::method]
     pub fn version(&self) -> VersionBindingDTO {
         one_core::OneCore::version().into()

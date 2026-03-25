@@ -26,10 +26,17 @@ impl OneCore {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "GenerateKeyRequest")]
 pub struct KeyRequestBindingDTO {
+    /// Specifies the organizational context of this operation.
     pub organisation_id: String,
+    /// Choose which key algorithm to use to create the key pair. Check
+    /// `keyAlgorithm` of your configuration for supported options and
+    /// reference the configured instance.
     pub key_type: String,
     pub key_params: HashMap<String, String>,
+    /// Internal label for created key pair.
     pub name: String,
+    /// Choose how to store the key. Check `keyStorage` of your configuration
+    /// for supported options and reference the configured instance.
     pub storage_type: String,
     pub storage_params: HashMap<String, String>,
 }

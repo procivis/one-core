@@ -8,6 +8,15 @@ use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Checks whether a held credential has been suspended or revoked.
+    ///
+    /// For list-based revocation methods, the signed lists and any DID
+    /// documents containing public keys used to verify the lists are
+    /// cached. Use `forceRefresh` to force the system to retrieve these
+    /// from the external resource.
+    ///
+    /// For modcs, use `forceRefresh` to force the system to request a
+    /// new MSO.
     #[uniffi::method]
     pub async fn check_revocation(
         &self,

@@ -22,6 +22,10 @@ use crate::utils::{TimestampFormat, into_id, into_timestamp, into_timestamp_opt}
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Creates a proof schema, which defines the credentials and claims to
+    /// request from a wallet. Proof schemas reference credential schemas
+    /// already created in your own system; create or import those first
+    /// before building a proof schema that includes their claims.
     #[uniffi::method]
     pub async fn create_proof_schema(
         &self,
@@ -120,6 +124,10 @@ pub struct GetProofSchemaListItemBindingDTO {
     #[from(with_fn = optional_time)]
     pub deleted_at: Option<String>,
     pub name: String,
+    /// Defines how long the system will store data received from wallets. After
+    /// the defined duration, the received proof and its data are deleted from
+    /// the system. If 0, proofs received when using this schema will not be
+    /// deleted.
     pub expire_duration: u32,
 }
 
@@ -144,12 +152,18 @@ pub struct ImportProofSchemaBindingDTO {
     pub last_modified: String,
     #[try_into(infallible)]
     pub name: String,
+    /// Specifies the organizational context for this operation.
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
+    /// Defines how long the system will store data received from wallets. After
+    /// the defined duration, the received proof and its data are deleted from
+    /// the system. If 0, proofs received when using this schema will not be
+    /// deleted.
     #[try_into(infallible)]
     pub expire_duration: u32,
     #[try_into(infallible)]
     pub imported_source_url: String,
+    /// Set of all claims to request.
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaBindingDTO>,
 }
@@ -165,11 +179,18 @@ pub struct GetProofSchemaBindingDTO {
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
     pub name: String,
+    /// Specifies organizational context for this operation.
     #[from(with_fn_ref = "ToString::to_string")]
     pub organisation_id: String,
+    /// Defines how long the system will store data received from wallets. After
+    /// the defined duration, the received proof and its data are deleted from
+    /// the system. If 0, proofs received when using this schema will not be
+    /// deleted.
     pub expire_duration: u32,
+    /// Set of requested claims.
     #[from(with_fn = convert_inner)]
     pub proof_input_schemas: Vec<ProofInputSchemaBindingDTO>,
+    /// Source URL for imported schema.
     #[from(with_fn = convert_inner)]
     pub imported_source_url: Option<String>,
 }
@@ -270,6 +291,7 @@ pub struct CreateProofSchemaRequestDTO {
     pub organisation_id: String,
     #[try_into(infallible)]
     pub expire_duration: u32,
+    /// Set of all claims to request.
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
 }

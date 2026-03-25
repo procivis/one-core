@@ -18,6 +18,7 @@ use crate::utils::TimestampFormat;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Creates a backup of the current database and writes it to a file.
     #[uniffi::method]
     pub async fn create_backup(
         &self,
@@ -32,12 +33,16 @@ impl OneCore {
             .into())
     }
 
+    /// Returns information about items that will be excluded from the
+    /// export.
     #[uniffi::method]
     pub async fn backup_info(&self) -> Result<UnexportableEntitiesBindingDTO, BindingError> {
         let core = self.use_core().await?;
         Ok(core.backup_service.backup_info().await?.into())
     }
 
+    /// Commits to the restored database, replacing the original. The old
+    /// database is deleted.
     #[uniffi::method]
     pub async fn finalize_import(&self) -> Result<(), BindingError> {
         if !Path::new(&self.backup_db_path).exists() {
@@ -58,6 +63,7 @@ impl OneCore {
         Ok(())
     }
 
+    /// Discards the restored database and continues using the original.
     #[uniffi::method]
     pub async fn rollback_import(&self) -> Result<(), BindingError> {
         if !Path::new(&self.backup_db_path).exists() {
@@ -72,6 +78,8 @@ impl OneCore {
         Ok(())
     }
 
+    /// Makes the restored database active for calls.
+    /// Follow by calling either `finalizeImport` or `rollbackImport`.
     #[uniffi::method]
     pub async fn unpack_backup(
         &self,

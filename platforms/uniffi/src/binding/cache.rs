@@ -5,6 +5,9 @@ use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
+    /// Deletes the system cache. See the
+    /// [Caching](https://docs.procivis.ch/configure/caching#cached-entities)
+    /// guide for details on cached entities.
     #[uniffi::method]
     pub async fn delete_cache(
         &self,
