@@ -546,6 +546,10 @@ fn get_management_endpoints(
                 post(verifier_instance::controller::register_verifier_instance),
             )
             .route(
+                "/api/verifier-instance/v1/{id}",
+                patch(verifier_instance::controller::edit_verifier_instance),
+            )
+            .route(
                 "/api/verifier-instance/v1/{id}/trust-collections",
                 get(verifier_instance::controller::get_verifier_instance_trust_collections),
             );

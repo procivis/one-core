@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::trust_collection::TrustCollectionManager;
+use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -25,6 +26,7 @@ pub struct VerifierInstanceService {
     trust_collection_manager: Arc<dyn TrustCollectionManager>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+    trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync>,
     tx_manager: Arc<dyn TransactionManager>,
     session_provider: Arc<dyn SessionProvider>,
 }
@@ -39,6 +41,7 @@ impl VerifierInstanceService {
         trust_collection_manager: Arc<dyn TrustCollectionManager>,
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         trust_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+        trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync>,
         tx_manager: Arc<dyn TransactionManager>,
         session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
@@ -46,6 +49,7 @@ impl VerifierInstanceService {
             trust_collection_manager,
             trust_collection_repository,
             trust_subscription_repository,
+            trust_list_subscription_sync,
             tx_manager,
             organisation_repository,
             verifier_instance_repository,

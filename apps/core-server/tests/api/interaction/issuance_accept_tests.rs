@@ -29,7 +29,7 @@ use crate::fixtures::{
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
-use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnit;
+use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::wallet_units::TestWalletUnit;
 use crate::utils::field_match::FieldHelpers;
@@ -2728,7 +2728,7 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         .create(
             organisation.clone(),
             Some(holder_auth_key),
-            TestHolderWalletUnit {
+            TestHolderWalletUnitParams {
                 wallet_provider_url: Some(context.config.app.core_base_url.clone()),
                 provider_wallet_unit_id: Some(wallet_unit.id),
                 ..Default::default()

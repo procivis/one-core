@@ -35,6 +35,19 @@ impl OneCore {
             .await?
             .into())
     }
+
+    #[uniffi::method]
+    pub async fn update_verifier_instance(
+        &self,
+        id: String,
+        request: EditVerifierInstanceRequestBindingDTO,
+    ) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        core.verifier_instance_service
+            .edit_verifier_instance(into_id(&id)?, request.try_into()?)
+            .await?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -53,4 +66,10 @@ pub struct RegisterVerifierInstanceRequestBindingDTO {
 pub struct RegisterVerifierInstanceResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "UpdateVerifierInstanceRequest")]
+pub struct EditVerifierInstanceRequestBindingDTO {
+    pub trust_collections: Vec<String>,
 }

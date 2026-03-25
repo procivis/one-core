@@ -24,12 +24,7 @@ use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
 };
 use crate::model::key::{Key, KeyRelations};
-use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
-use crate::model::trust_list_subscription::{
-    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
-};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
@@ -44,6 +39,7 @@ use crate::service::error::MissingProviderError;
 use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
+use crate::service::wallet_unit::mapper::set_active_trust_collections;
 use crate::validator::throw_if_org_not_matching_session;
 
 impl WalletUnitService {
@@ -367,65 +363,19 @@ impl WalletUnitService {
                     "Missing organisation".to_string(),
                 ))?;
 
+        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+            .error_while("checking session")?;
+
         self.tx_manager
             .tx(async {
-                let all_trust_collections = self
-                    .trust_collection_repository
-                    .list(TrustCollectionListQuery {
-                        filtering: Some(
-                            TrustCollectionFilterValue::OrganisationId(organisation.id).condition(),
-                        ),
-                        ..Default::default()
-                    })
-                    .await
-                    .error_while("getting trust collections")?
-                    .values;
-
-                let collections_to_remove = all_trust_collections
-                    .iter()
-                    .filter(|c| !request.trust_collections.contains(&c.id))
-                    .map(|c| c.id);
-
-                let mut subscriptions_to_remove = vec![];
-                for collection_id in collections_to_remove {
-                    subscriptions_to_remove.extend(
-                        self.trust_subscription_repository
-                            .list(TrustListSubscriptionListQuery {
-                                filtering: Some(
-                                    TrustListSubscriptionFilterValue::TrustCollectionId(
-                                        collection_id,
-                                    )
-                                    .condition(),
-                                ),
-                                ..Default::default()
-                            })
-                            .await
-                            .error_while("listing subscriptions")?
-                            .values
-                            .into_iter()
-                            .map(|s| s.id)
-                            .collect::<Vec<_>>(),
-                    );
-                }
-
-                self.trust_subscription_repository
-                    .delete_many(subscriptions_to_remove)
-                    .await
-                    .error_while("deleting subscriptions")?;
-
-                for requested in request.trust_collections {
-                    let collection = all_trust_collections
-                        .iter()
-                        .find(|c| c.id == requested)
-                        .ok_or(HolderWalletUnitError::MissingTrustCollection(requested))?;
-
-                    self.trust_list_subscription_sync
-                        .sync_subscriptions(collection)
-                        .await
-                        .error_while("syncing trust collection")?;
-                }
-
-                Ok::<_, HolderWalletUnitError>(())
+                set_active_trust_collections(
+                    request.trust_collections,
+                    organisation.id,
+                    self.trust_collection_repository.as_ref(),
+                    self.trust_subscription_repository.as_ref(),
+                    self.trust_list_subscription_sync.as_ref(),
+                )
+                .await
             }
             .boxed())
             .await

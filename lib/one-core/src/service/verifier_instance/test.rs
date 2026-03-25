@@ -14,6 +14,7 @@ use crate::model::verifier_instance::VerifierInstance;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_collection::MockTrustCollectionManager;
+use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::MockVerifierProviderClient;
 use crate::provider::verifier::model::FeatureFlags;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -35,6 +36,7 @@ pub struct Mocks {
     trust_collection_manager: MockTrustCollectionManager,
     trust_collection_repository: MockTrustCollectionRepository,
     trust_subscription_repository: MockTrustListSubscriptionRepository,
+    trust_list_subscription_sync: MockTrustListSubscriptionSync,
 }
 
 fn get_service(mocks: Mocks) -> VerifierInstanceService {
@@ -46,6 +48,7 @@ fn get_service(mocks: Mocks) -> VerifierInstanceService {
         Arc::new(mocks.trust_collection_manager),
         Arc::new(mocks.trust_collection_repository),
         Arc::new(mocks.trust_subscription_repository),
+        Arc::new(mocks.trust_list_subscription_sync),
         Arc::new(NoTransactionManager),
         Arc::new(NoSessionProvider),
     )

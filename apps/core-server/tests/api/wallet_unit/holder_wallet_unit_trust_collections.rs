@@ -9,7 +9,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnit;
+use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
 use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
@@ -24,7 +24,7 @@ async fn test_holder_wallet_unit_trust_collections() {
         .create(
             org.clone(),
             None,
-            TestHolderWalletUnit {
+            TestHolderWalletUnitParams {
                 status: Some(WalletUnitStatus::Unattested),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),

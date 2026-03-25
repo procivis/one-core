@@ -8,14 +8,19 @@ use url::Url;
 use uuid::Uuid;
 
 use super::VerifierInstanceService;
-use super::dto::{RegisterVerifierInstanceRequestDTO, RegisterVerifierInstanceResponseDTO};
+use super::dto::{
+    EditVerifierInstanceRequestDTO, RegisterVerifierInstanceRequestDTO,
+    RegisterVerifierInstanceResponseDTO,
+};
 use super::error::VerifierInstanceServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::verifier_instance::{VerifierInstance, VerifierInstanceRelations};
 use crate::proto::session_provider::SessionExt;
 use crate::service::wallet_unit::dto::TrustCollectionsDetailResponseDTO;
-use crate::service::wallet_unit::mapper::prepare_trust_collection_info;
+use crate::service::wallet_unit::mapper::{
+    prepare_trust_collection_info, set_active_trust_collections,
+};
 use crate::validator::throw_if_org_not_matching_session;
 
 impl VerifierInstanceService {
@@ -184,5 +189,52 @@ impl VerifierInstanceService {
         .error_while("preparing trust collections")?;
 
         Ok(TrustCollectionsDetailResponseDTO { trust_collections })
+    }
+
+    pub async fn edit_verifier_instance(
+        &self,
+        id: VerifierInstanceId,
+        request: EditVerifierInstanceRequestDTO,
+    ) -> Result<(), VerifierInstanceServiceError> {
+        let instance = self
+            .verifier_instance_repository
+            .get(
+                &id,
+                &VerifierInstanceRelations {
+                    organisation: Some(Default::default()),
+                },
+            )
+            .await
+            .error_while("getting verifier instance")?
+            .ok_or(VerifierInstanceServiceError::VerifierInstanceNotFound(id))?;
+
+        let organisation =
+            instance
+                .organisation
+                .ok_or(VerifierInstanceServiceError::MappingError(
+                    "Missing organisation".to_string(),
+                ))?;
+
+        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+            .error_while("checking session")?;
+
+        self.tx_manager
+            .tx(async {
+                set_active_trust_collections(
+                    request.trust_collections,
+                    organisation.id,
+                    self.trust_collection_repository.as_ref(),
+                    self.trust_subscription_repository.as_ref(),
+                    self.trust_list_subscription_sync.as_ref(),
+                )
+                .await
+            }
+            .boxed())
+            .await
+            .error_while("updating collections")?
+            .error_while("updating collections")?;
+
+        tracing::info!("Modified verifier instance ({id})");
+        Ok(())
     }
 }

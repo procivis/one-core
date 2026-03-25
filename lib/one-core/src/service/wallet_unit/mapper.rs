@@ -17,6 +17,7 @@ use crate::model::trust_list_subscription::{
     TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
 use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
+use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
@@ -126,4 +127,67 @@ pub(crate) async fn prepare_trust_collection_info(
     }
 
     Ok(result)
+}
+
+pub(crate) async fn set_active_trust_collections(
+    trust_collections: Vec<TrustCollectionId>,
+    organisation_id: OrganisationId,
+    trust_collection_repository: &dyn TrustCollectionRepository,
+    trust_subscription_repository: &dyn TrustListSubscriptionRepository,
+    trust_list_subscription_sync: &dyn TrustListSubscriptionSync,
+) -> Result<(), HolderWalletUnitError> {
+    let all_trust_collections = trust_collection_repository
+        .list(TrustCollectionListQuery {
+            filtering: Some(
+                TrustCollectionFilterValue::OrganisationId(organisation_id).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .error_while("getting trust collections")?
+        .values;
+
+    let collections_to_remove = all_trust_collections
+        .iter()
+        .filter(|c| !trust_collections.contains(&c.id))
+        .map(|c| c.id);
+
+    let mut subscriptions_to_remove = vec![];
+    for collection_id in collections_to_remove {
+        subscriptions_to_remove.extend(
+            trust_subscription_repository
+                .list(TrustListSubscriptionListQuery {
+                    filtering: Some(
+                        TrustListSubscriptionFilterValue::TrustCollectionId(collection_id)
+                            .condition(),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("listing subscriptions")?
+                .values
+                .into_iter()
+                .map(|s| s.id)
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    trust_subscription_repository
+        .delete_many(subscriptions_to_remove)
+        .await
+        .error_while("deleting subscriptions")?;
+
+    for requested in trust_collections {
+        let collection = all_trust_collections
+            .iter()
+            .find(|c| c.id == requested)
+            .ok_or(HolderWalletUnitError::MissingTrustCollection(requested))?;
+
+        trust_list_subscription_sync
+            .sync_subscriptions(collection)
+            .await
+            .error_while("syncing trust collection")?;
+    }
+
+    Ok(())
 }

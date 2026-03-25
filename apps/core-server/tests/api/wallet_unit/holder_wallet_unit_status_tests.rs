@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnit;
+use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
 
 #[tokio::test]
 async fn test_holder_wallet_unit_status_not_found() {
@@ -58,7 +58,7 @@ async fn test_holder_wallet_unit_status_already_revoked() {
         .create(
             org.clone(),
             Some(authentication_key.clone()),
-            TestHolderWalletUnit {
+            TestHolderWalletUnitParams {
                 status: Some(WalletUnitStatus::Revoked),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),

@@ -1,32 +1,27 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use serde_json::json;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
 use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
+use crate::utils::db_clients::verifier_instances::TestVerifierInstanceParams;
 
 #[tokio::test]
-async fn test_edit_wallet_unit_holder_successfully() {
+async fn test_edit_verifier_instance() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
-    let wallet_unit = context
+    let verifier_instance = context
         .db
-        .holder_wallet_units
+        .verifier_instances
         .create(
             org.clone(),
-            None,
-            TestHolderWalletUnitParams {
-                status: Some(WalletUnitStatus::Unattested),
-                wallet_provider_type: Some(WalletProviderType::ProcivisOne),
-                wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
-                wallet_provider_url: Some("https://wallet.provider".to_string()),
-                provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+            TestVerifierInstanceParams {
+                provider_type: Some("PROCIVIS_ONE".to_string()),
+                provider_url: Some("https://verifier.provider".to_string()),
+                ..Default::default()
             },
         )
         .await;
@@ -66,8 +61,8 @@ async fn test_edit_wallet_unit_holder_successfully() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_wallet_unit_edit(&wallet_unit.id, &[collection.id])
+        .verifier_instances
+        .patch_verifier_instance(&verifier_instance.id, &[collection.id])
         .await;
 
     // THEN
@@ -87,8 +82,8 @@ async fn test_edit_wallet_unit_holder_successfully() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_wallet_unit_edit(&wallet_unit.id, &[])
+        .verifier_instances
+        .patch_verifier_instance(&verifier_instance.id, &[])
         .await;
 
     // THEN

@@ -4,9 +4,12 @@ use axum_extra::extract::WithRejection;
 use proc_macros::endpoint;
 use shared_types::{Permission, VerifierInstanceId};
 
-use super::dto::{RegisterVerifierInstanceRequestRestDTO, RegisterVerifierInstanceResponseRestDTO};
+use super::dto::{
+    EditVerifierInstanceRequestRestDTO, RegisterVerifierInstanceRequestRestDTO,
+    RegisterVerifierInstanceResponseRestDTO,
+};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::holder_wallet_unit::dto::TrustCollectionsDetailRestDTO;
 use crate::router::AppState;
 
@@ -63,4 +66,37 @@ pub(crate) async fn get_verifier_instance_trust_collections(
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting verifier instance trust collections")
+}
+
+#[endpoint(
+    permissions = [Permission::VerifierInstanceEdit],
+    patch,
+    path = "/api/verifier-instance/v1/{id}",
+    request_body = EditVerifierInstanceRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = VerifierInstanceId, Path, description = "Verifier instance ID")
+    ),
+    tag = "verifier_instance",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Edit verifier instance",
+    description = "Modify verifier settings.",
+)]
+pub(crate) async fn edit_verifier_instance(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<VerifierInstanceId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<EditVerifierInstanceRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .verifier_instance_service
+        .edit_verifier_instance(id, request.into())
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "editing verifier instance")
 }
