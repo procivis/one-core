@@ -11,38 +11,36 @@ use utoipa::ToSchema;
 use crate::deserialize::one_or_many;
 use crate::endpoint::wallet_provider::dto::WalletUnitOsRestEnum;
 
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(dto::IssueWalletUnitAttestationRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssueWalletUnitAttestationRequestRestDTO {
     #[serde(default)]
-    #[schema(deprecated)]
-    /// deprecated, replaced by `wia`
-    pub waa: Vec<IssueWiaRequestRestDTO>,
-
-    #[serde(default)]
+    #[into(with_fn = convert_inner)]
     pub wia: Vec<IssueWiaRequestRestDTO>,
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
     pub wua: Vec<IssueWuaRequestRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[serde(deny_unknown_fields)]
 #[into(dto::IssueWiaRequestDTO)]
-pub struct IssueWiaRequestRestDTO {
+pub(crate) struct IssueWiaRequestRestDTO {
     pub proof: String,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::IssueWuaRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct IssueWuaRequestRestDTO {
+pub(crate) struct IssueWuaRequestRestDTO {
     pub proof: String,
     pub security_level: KeyStorageSecurityLevelRestEnum,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyStorageSecurityLevel)]
-pub enum KeyStorageSecurityLevelRestEnum {
+pub(crate) enum KeyStorageSecurityLevelRestEnum {
     #[serde(rename = "iso_18045_high")]
     High,
     #[serde(rename = "iso_18045_moderate")]
@@ -53,13 +51,10 @@ pub enum KeyStorageSecurityLevelRestEnum {
     Basic,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(dto::IssueWalletUnitAttestationResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[schema(deprecated)]
-    /// deprecated, replaced by `wia`
-    pub waa: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub wia: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]

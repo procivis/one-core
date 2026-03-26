@@ -4,8 +4,6 @@ use axum_extra::TypedHeader;
 use axum_extra::extract::WithRejection;
 use headers::Authorization;
 use headers::authorization::Bearer;
-use one_core::error::ContextWithErrorCode;
-use one_core::service::error::ServiceError;
 use proc_macros::endpoint;
 use shared_types::WalletUnitId;
 
@@ -103,17 +101,11 @@ pub(crate) async fn issue_wallet_unit_attestation(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO> {
-    let result = async {
-        Ok::<_, ServiceError>(
-            state
-                .core
-                .wallet_provider_service
-                .issue_attestation(id, bearer.token(), request.try_into()?)
-                .await
-                .error_while("issuing attestation")?,
-        )
-    }
-    .await;
+    let result = state
+        .core
+        .wallet_provider_service
+        .issue_attestation(id, bearer.token(), request.into())
+        .await;
     OkOrErrorResponse::from_result(result, state, "issuing wallet attestation")
 }
 
