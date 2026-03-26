@@ -91,6 +91,7 @@ impl NotificationSenderImpl {
             Ok::<_, http_client::Error>(
                 self.client
                     .post(url)
+                    .header("Content-Type", "application/json")
                     .body(payload)
                     .timeout(params.request_timeout)
                     .send()

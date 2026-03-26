@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::time::Duration;
 
-use reqwest::header::AUTHORIZATION;
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 use serde_json::json;
 use time::OffsetDateTime;
@@ -257,6 +257,7 @@ impl MockServer {
     pub async fn webhook(&self, expected_content: serde_json::Value) {
         Mock::given(method(Method::POST))
             .and(path("/webhook"))
+            .and(header(CONTENT_TYPE, "application/json"))
             .and(body_partial_json(expected_content))
             .respond_with(ResponseTemplate::new(204))
             .expect(1)
