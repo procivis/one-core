@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use anyhow::{Context, Error};
 use shared_types::ProofId;
-use time::OffsetDateTime;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -277,7 +276,7 @@ async fn process_proof(
             &proof.id,
             UpdateProofRequest {
                 state: Some(ProofStateEnum::Requested),
-                requested_date: Some(Some(OffsetDateTime::now_utc())),
+                requested_date: Some(Some(crate::clock::now_utc())),
                 ..Default::default()
             },
             None,

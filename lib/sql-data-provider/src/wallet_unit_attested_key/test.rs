@@ -4,7 +4,6 @@ use one_core::model::wallet_unit_attested_key::{
 use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::test_utilities::{
@@ -23,7 +22,7 @@ async fn test_upsert_wallet_unit_attested_key_success() {
     let request = WalletUnitAttestedKeyUpsertRequest {
         id,
         wallet_unit_id: test_setup.wallet_unit_ids[0],
-        expiration_date: OffsetDateTime::now_utc(),
+        expiration_date: one_core::clock::now_utc(),
         public_key_jwk: random_jwk(),
     };
     provider.upsert_attested_key(request.clone()).await.unwrap();
@@ -45,7 +44,7 @@ async fn test_upsert_wallet_unit_attested_key_conflict_success() {
     let provider = test_setup.provider;
 
     let id: WalletUnitAttestedKeyId = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let original_attested_key = WalletUnitAttestedKey {
         id,
         wallet_unit_id: test_setup.wallet_unit_ids[0],
@@ -63,7 +62,7 @@ async fn test_upsert_wallet_unit_attested_key_conflict_success() {
     let request = WalletUnitAttestedKeyUpsertRequest {
         id,
         wallet_unit_id: test_setup.wallet_unit_ids[1],
-        expiration_date: OffsetDateTime::now_utc(),
+        expiration_date: one_core::clock::now_utc(),
         public_key_jwk: random_jwk(),
     };
     provider.upsert_attested_key(request.clone()).await.unwrap();
@@ -86,7 +85,7 @@ async fn test_get_wallet_unit_attested_key_by_wallet_unit() {
     let provider = test_setup.provider;
 
     let id: WalletUnitAttestedKeyId = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let attested_key = WalletUnitAttestedKey {
         id,
         wallet_unit_id: test_setup.wallet_unit_ids[0],

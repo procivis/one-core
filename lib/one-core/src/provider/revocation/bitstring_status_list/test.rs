@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::model::identifier::Identifier;
@@ -63,8 +63,8 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         .returning(|_, _, purpose, r#type, _| {
             Ok(Some(RevocationList {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 formatted_list: vec![],
                 format: StatusListCredentialFormat::Jwt,
                 r#type: r#type.to_owned(),

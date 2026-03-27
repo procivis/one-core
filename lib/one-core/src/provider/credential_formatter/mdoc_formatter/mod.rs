@@ -193,11 +193,11 @@ impl CredentialFormatter for MdocFormatter {
         };
 
         let validity_info = ValidityInfo {
-            signed: DateTime(OffsetDateTime::now_utc()),
-            valid_from: DateTime(OffsetDateTime::now_utc()),
-            valid_until: DateTime(OffsetDateTime::now_utc() + self.params.mso_expires_in),
+            signed: DateTime(crate::clock::now_utc()),
+            valid_from: DateTime(crate::clock::now_utc()),
+            valid_until: DateTime(crate::clock::now_utc() + self.params.mso_expires_in),
             expected_update: Some(DateTime(
-                OffsetDateTime::now_utc() + self.params.mso_expected_update_in,
+                crate::clock::now_utc() + self.params.mso_expected_update_in,
             )),
         };
 
@@ -442,7 +442,7 @@ impl CredentialFormatter for MdocFormatter {
         };
         verify_digests(&mso, &namespaces)?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let doctype = mso.doc_type;
         let credential_id = Uuid::new_v4().into();
         let mut claims = parse_claims(namespaces, self.datatype_provider.as_ref(), credential_id)?;
@@ -509,8 +509,8 @@ impl CredentialFormatter for MdocFormatter {
 
         Ok(Credential {
             id: credential_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             issuance_date: Some(mso.validity_info.signed.into()),
             deleted_at: None,
             protocol: "".to_string(),
@@ -1135,7 +1135,7 @@ fn parse_claims(
             result.extend(claims);
         }
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         result.push(Claim {
             id: Uuid::new_v4().into(),
             credential_id,
@@ -1192,7 +1192,7 @@ fn parse_claim(
     datatype_provider: &dyn DataTypeProvider,
     credential_id: CredentialId,
 ) -> Result<Vec<Claim>, FormatterError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     // specific case of encoding picture claim as array
     if matches!(value, Value::Array(_))

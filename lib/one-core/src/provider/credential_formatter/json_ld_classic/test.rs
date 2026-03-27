@@ -7,7 +7,7 @@ use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::Value;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 use super::{JsonLdClassic, Params};
 use crate::config::core_config::KeyAlgorithmType;
@@ -83,7 +83,7 @@ async fn create_token(include_layout: bool) -> Value {
         datatype: Some("STRING".to_string()),
         array_item: false,
     }];
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 

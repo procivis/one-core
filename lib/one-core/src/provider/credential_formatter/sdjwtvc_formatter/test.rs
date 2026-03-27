@@ -643,7 +643,7 @@ async fn test_extract_credentials_swiyu() {
         )
         .return_once(|_,  _, _, _| Ok(()));
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let credential_schema = crate::model::credential_schema::CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
@@ -920,7 +920,7 @@ fn test_schema_id() {
 
 #[tokio::test]
 async fn test_format_extract_round_trip_non_sd_array_elements() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let params = Params {
         leeway: 60,
         embed_layout_properties: false,
@@ -1133,7 +1133,7 @@ fn test_auth_fn(key_pair: KeyPair, issuer_did: DidValue) -> MockSignatureProvide
 
 #[tokio::test]
 async fn test_format_extract_round_trip_sd_array_elements() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let params = Params {
         leeway: 60,
         embed_layout_properties: false,
@@ -1455,7 +1455,7 @@ async fn test_parse_credential_eudi() {
                 KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
             };
             use crate::service::certificate::dto::CertificateX509AttributesDTO;
-            let now = OffsetDateTime::now_utc();
+            let now = crate::clock::now_utc();
             Ok(ParsedCertificate {
                 attributes: CertificateX509AttributesDTO {
                     serial_number: "test".to_string(),

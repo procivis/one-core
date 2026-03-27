@@ -15,7 +15,6 @@ use sea_orm::{
 use shared_types::{
     CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
 };
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::revocation_list_entry::{RevocationListEntryStatus, RevocationListEntryType};
@@ -186,7 +185,7 @@ impl RevocationListRepository for RevocationListProvider {
     ) -> Result<(), DataLayerError> {
         let update_model = revocation_list::ActiveModel {
             id: Unchanged(*revocation_list_id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             formatted_list: Set(formatted_list),
             ..Default::default()
         };
@@ -280,7 +279,7 @@ impl RevocationListRepository for RevocationListProvider {
             }
         };
 
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         let entry_id: RevocationListEntryId = Uuid::new_v4().into();
         revocation_list_entry::ActiveModel {
             id: Set(entry_id),
@@ -325,7 +324,7 @@ impl RevocationListRepository for RevocationListProvider {
 
         let model = revocation_list_entry::ActiveModel {
             id: NotSet,
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             status,
             ..Default::default()
         };

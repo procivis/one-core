@@ -6,7 +6,7 @@ use rcgen::{
     CertificateRevocationListParams, DistinguishedName, DnType, IsCa, Issuer, KeyUsagePurpose,
     PublicKeyData, SigningKey,
 };
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 // hardcoded key pair - equivalent of `ecdsa_testing_params()`
 pub mod ecdsa {
@@ -209,10 +209,10 @@ pub(crate) fn create_ca_cert<S: SigningKey + Copy>(
         params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
     }
 
-    let min_not_before = OffsetDateTime::now_utc()
+    let min_not_before = one_core::clock::now_utc()
         .checked_sub(Duration::weeks(100))
         .unwrap(); // ~2year before now
-    let max_not_after = OffsetDateTime::now_utc()
+    let max_not_after = one_core::clock::now_utc()
         .checked_add(Duration::weeks(500))
         .unwrap(); // ~10years from now
 

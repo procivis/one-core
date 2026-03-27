@@ -29,7 +29,7 @@ pub fn mock_http_get_request(http_client: &mut MockHttpClient, url: String, resp
 }
 
 pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCachingLoader {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let context = include_str!("context_vc2_0.jsonld");
     let mut contexts = vec![
         (

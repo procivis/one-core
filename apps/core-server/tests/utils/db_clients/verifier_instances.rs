@@ -4,7 +4,6 @@ use one_core::model::organisation::Organisation;
 use one_core::model::verifier_instance::{VerifierInstance, VerifierInstanceRelations};
 use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
 use shared_types::VerifierInstanceId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct VerifierInstancesDB {
@@ -31,8 +30,8 @@ impl VerifierInstancesDB {
     ) -> VerifierInstance {
         let verifier_instance = VerifierInstance {
             id: params.id.unwrap_or(Uuid::new_v4().into()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             provider_type: params.provider_type.unwrap_or("PROCIVIS_ONE".to_string()),
             provider_name: params.provider_name.unwrap_or("provider-name".to_string()),
             provider_url: params

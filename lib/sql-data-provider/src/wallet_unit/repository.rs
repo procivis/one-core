@@ -11,7 +11,6 @@ use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use one_dto_mapper::try_convert_inner;
 use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder, Set, Unchanged};
 use shared_types::WalletUnitId;
-use time::OffsetDateTime;
 
 use super::WalletUnitProvider;
 use crate::common::calculate_pages_count;
@@ -134,7 +133,7 @@ impl WalletUnitRepository for WalletUnitProvider {
             .map_err(|_| DataLayerError::MappingError)?;
         let update_model = wallet_unit::ActiveModel {
             id: Unchanged(*id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             status: request
                 .status
                 .map(|status| Set(status.into()))

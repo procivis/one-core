@@ -165,7 +165,7 @@ pub(crate) fn extracted_credential_to_model(
     exchange: String,
     issuance_date: Option<OffsetDateTime>,
 ) -> Result<Credential, ServiceError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let credential_id = Uuid::new_v4().into();
 
     let mut model_claims = vec![];
@@ -506,8 +506,8 @@ mod tests {
             id: Uuid::new_v4().into(),
             key: "namespace".to_string(),
             data_type: "OBJECT".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -517,8 +517,8 @@ mod tests {
             id: Uuid::new_v4().into(),
             key: "namespace/element".to_string(),
             data_type: "STRING".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -526,12 +526,12 @@ mod tests {
 
         let claim_schemas = vec![namespace_claim_schema.clone(), element_claim_schema.clone()];
 
-        let issuance_date = OffsetDateTime::now_utc();
+        let issuance_date = crate::clock::now_utc();
 
         let did = Did {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             name: "IssuerDid".to_string(),
             did: "did:issuer:123".parse().unwrap(),
             did_type: DidType::Remote,
@@ -546,8 +546,8 @@ mod tests {
             CredentialSchema {
                 id: Uuid::new_v4().into(),
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "CredentialSchema".to_string(),
                 format: "MDOC".into(),
                 revocation_method: None,
@@ -568,8 +568,8 @@ mod tests {
             )],
             Identifier {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "IssuerIdentifier".to_string(),
                 r#type: IdentifierType::Did,
                 is_remote: true,

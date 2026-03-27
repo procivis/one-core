@@ -8,7 +8,7 @@ use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::IdentifierId;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::config;
@@ -415,7 +415,7 @@ async fn create_proof() -> (String, KeyHandle) {
 
     let jwk = holder_key_handle.public_key_as_jwk().unwrap();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let proof = Jwt {
         header: JWTHeader {
             algorithm: "ES256".to_string(),

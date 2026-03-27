@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::error::FormatterError;
@@ -65,7 +64,7 @@ fn parse_claim(
     datatype_provider: &dyn DataTypeProvider,
     credential_id: shared_types::CredentialId,
 ) -> Result<Vec<Claim>, FormatterError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     Ok(match claim_value.value {
         CredentialClaimValue::Array(values) => {
@@ -222,7 +221,7 @@ pub fn prepare_identifier(
     detail: &IdentifierDetails,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<Identifier, FormatterError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let identifier_id = Uuid::new_v4().into();
     let name = format!("identifier {identifier_id}");
 

@@ -4,7 +4,6 @@ use one_core::model::organisation::{
 };
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{IntoSimpleExpr, Set, Unchanged};
-use time::OffsetDateTime;
 
 use crate::entity::organisation;
 use crate::list_query_generic::{
@@ -33,9 +32,9 @@ impl From<UpdateOrganisationRequest> for organisation::ActiveModel {
                 Some(name) => Set(name),
                 None => Unchanged(Default::default()),
             },
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             deactivated_at: match value.deactivate {
-                Some(true) => Set(Some(OffsetDateTime::now_utc())),
+                Some(true) => Set(Some(one_core::clock::now_utc())),
                 Some(false) => Set(None),
                 _ => Unchanged(Default::default()),
             },

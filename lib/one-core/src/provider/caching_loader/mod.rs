@@ -230,7 +230,7 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
                         media_type,
                         expiry_date,
                     } => {
-                        context.last_modified = OffsetDateTime::now_utc();
+                        context.last_modified = crate::clock::now_utc();
                         context.value = content;
                         context.media_type = media_type;
                         context.expiration_date = self.effective_expiry(expiry_date)
@@ -247,7 +247,7 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
             }
         }
 
-        context.last_used = OffsetDateTime::now_utc();
+        context.last_used = crate::clock::now_utc();
 
         if let Err(error) = self.storage.insert(context.to_owned()).await {
             match error {
@@ -276,7 +276,7 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
                 media_type,
                 expiry_date,
             } => {
-                let now = OffsetDateTime::now_utc();
+                let now = crate::clock::now_utc();
                 if let Err(err) = self
                     .storage
                     .insert(RemoteEntity {
@@ -308,7 +308,7 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
     /// Calculates the effective expiry date to use based on the value suggested by the resolver (if any)
     /// and the cache configuration.
     fn effective_expiry(&self, resolved_expiry: Option<OffsetDateTime>) -> Option<OffsetDateTime> {
-        let default_exp = OffsetDateTime::now_utc() + self.cache_refresh_timeout;
+        let default_exp = crate::clock::now_utc() + self.cache_refresh_timeout;
         resolved_expiry
             .map(|exp| min(exp, default_exp))
             .or(Some(default_exp))
@@ -331,7 +331,7 @@ fn context_requires_update(
     expiration_date: OffsetDateTime,
     refresh_after: time::Duration,
 ) -> ContextRequiresUpdate {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     if expiration_date < now {
         return ContextRequiresUpdate::MustBeUpdated;

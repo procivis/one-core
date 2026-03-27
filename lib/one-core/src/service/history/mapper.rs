@@ -1,5 +1,4 @@
 use one_dto_mapper::convert_inner;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::history::{GetHistoryList, History, HistoryMetadata};
@@ -19,7 +18,7 @@ impl From<CreateHistoryRequestDTO> for History {
     fn from(value: CreateHistoryRequestDTO) -> Self {
         Self {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
             action: value.action,
             name: value.name,
             target: value.target,

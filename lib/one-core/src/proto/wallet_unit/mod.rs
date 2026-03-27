@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use shared_types::HolderWalletUnitId;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::mapper::x509::x5c_into_pem_chain;
@@ -164,7 +164,7 @@ impl HolderWalletUnitProtoImpl {
 
         let public_key = key_handle.public_key_as_jwk().error_while("creating JWK")?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let jwt = Jwt::new(
             "JWT".to_string(),
             jose_alg,

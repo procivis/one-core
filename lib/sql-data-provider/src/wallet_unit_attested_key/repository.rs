@@ -12,7 +12,6 @@ use sea_orm::{
     Unchanged,
 };
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
-use time::OffsetDateTime;
 
 use crate::entity::{revocation_list_entry, wallet_unit_attested_key};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -36,7 +35,7 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
         let id = request.id;
         let mut model = wallet_unit_attested_key::ActiveModel::try_from(request)?;
         model.id = Unchanged(id);
-        model.last_modified = Set(OffsetDateTime::now_utc());
+        model.last_modified = Set(one_core::clock::now_utc());
         wallet_unit_attested_key::Entity::update(model)
             .exec(&self.db)
             .await

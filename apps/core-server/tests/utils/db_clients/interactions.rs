@@ -26,8 +26,8 @@ impl InteractionsDB {
     ) -> Interaction {
         let interaction = Interaction {
             id: id.unwrap_or(Uuid::new_v4().into()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             data: Some(data.into()),
             organisation: Some(organisation.to_owned()),
             nonce_id: None,

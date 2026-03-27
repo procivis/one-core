@@ -114,7 +114,7 @@ pub(crate) fn validate_issuance_time(
         return Ok(());
     };
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     if *issued_at > now.add(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Issued in future".to_owned()));
     }
@@ -129,7 +129,7 @@ pub fn validate_not_before_time(
         return Ok(());
     };
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     if *not_before > now.add(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError(
             "Not before in future".to_owned(),
@@ -146,7 +146,7 @@ pub fn validate_expiration_time(
         return Ok(());
     };
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     if *expires_at < now.sub(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Expired".to_owned()));
     }
@@ -189,10 +189,10 @@ mod tests {
     fn test_validate_issuance_time() {
         let leeway = 5u64;
 
-        let correctly_issued = validate_issuance_time(&Some(OffsetDateTime::now_utc()), leeway);
+        let correctly_issued = validate_issuance_time(&Some(crate::clock::now_utc()), leeway);
         assert!(correctly_issued.is_ok());
 
-        let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
+        let now_plus_minute = crate::clock::now_utc().add(Duration::from_secs(60));
         let issued_in_future = validate_issuance_time(&Some(now_plus_minute), leeway);
         assert!(issued_in_future.is_err());
 
@@ -204,10 +204,10 @@ mod tests {
     fn test_validate_expiration_time() {
         let leeway = 5u64;
 
-        let correctly_issued = validate_expiration_time(&Some(OffsetDateTime::now_utc()), leeway);
+        let correctly_issued = validate_expiration_time(&Some(crate::clock::now_utc()), leeway);
         assert!(correctly_issued.is_ok());
 
-        let now_minus_minute = OffsetDateTime::now_utc().sub(Duration::from_secs(60));
+        let now_minus_minute = crate::clock::now_utc().sub(Duration::from_secs(60));
         let issued_in_future = validate_expiration_time(&Some(now_minus_minute), leeway);
         assert!(issued_in_future.is_err());
 
@@ -219,10 +219,10 @@ mod tests {
     fn test_validate_not_before_time() {
         let leeway = 5u64;
 
-        let correct_not_before = validate_not_before_time(&Some(OffsetDateTime::now_utc()), leeway);
+        let correct_not_before = validate_not_before_time(&Some(crate::clock::now_utc()), leeway);
         assert!(correct_not_before.is_ok());
 
-        let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
+        let now_plus_minute = crate::clock::now_utc().add(Duration::from_secs(60));
         let not_before_in_future = validate_not_before_time(&Some(now_plus_minute), leeway);
         assert!(not_before_in_future.is_err());
 

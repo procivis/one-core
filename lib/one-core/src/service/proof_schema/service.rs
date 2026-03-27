@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use futures::future;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
@@ -200,7 +199,7 @@ impl ProofSchemaService {
             &*self.formatter_provider,
         )?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let proof_schema = proof_schema_from_create_request(
             request,
             now,
@@ -250,7 +249,7 @@ impl ProofSchemaService {
         )
         .error_while("checking session")?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         self.proof_schema_repository
             .delete_proof_schema(id, now)
             .await
@@ -323,7 +322,7 @@ impl ProofSchemaService {
         )
         .await?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let input_schemas =
             schema
                 .proof_input_schemas

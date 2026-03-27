@@ -9,7 +9,6 @@ use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{
     ClientMetadataJwks, GenericAlgs, LdpVcAlgs, PresentationFormat, SdJwtVcAlgs,
 };
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VPDraft20Service;
@@ -120,7 +119,7 @@ async fn test_presentation_definition_success() {
     .unwrap();
 
     {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         proof_repository
             .expect_get_proof()
             .once()
@@ -274,7 +273,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         response_uri: None,
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let interaction = Interaction {
         id: interaction_id,
         created_date: now,
@@ -403,7 +402,7 @@ async fn test_get_client_metadata_success() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let mut key_provider = MockKeyProvider::default();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let proof_id: ProofId = Uuid::new_v4().into();
 
     let verifier_key = Key {
@@ -581,7 +580,7 @@ async fn test_get_client_metadata_success() {
 async fn test_get_client_metadata_success_no_encryption() {
     let mut proof_repository = MockProofRepository::default();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_key = Key {
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")

@@ -8,7 +8,6 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::{HolderWalletUnitId, OrganisationId};
-use time::OffsetDateTime;
 
 use crate::entity::holder_wallet_unit;
 use crate::holder_wallet_unit::HolderWalletUnitProvider;
@@ -103,7 +102,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         let action = async {
             let update_model = holder_wallet_unit::ActiveModel {
                 id: Unchanged(*id),
-                last_modified: Set(OffsetDateTime::now_utc()),
+                last_modified: Set(one_core::clock::now_utc()),
                 status: request
                     .status
                     .map(|status| Set(status.into()))

@@ -6,7 +6,6 @@ use secrecy::SecretString;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{
@@ -235,8 +234,8 @@ async fn test_azure_vault_sign() {
     let key_handle = vault
         .key_handle(&Key {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key: vec![],
             name: "".to_string(),
             key_reference: Some(key_reference.as_bytes().to_vec()),

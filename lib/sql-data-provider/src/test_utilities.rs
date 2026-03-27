@@ -57,7 +57,7 @@ pub async fn insert_credential(
     credential_blob_id: BlobId,
     role: CredentialRole,
 ) -> Result<Credential, DbErr> {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     blob::ActiveModel {
         id: Set(credential_blob_id),
@@ -448,7 +448,7 @@ pub async fn insert_did(
     did_type: DidType,
     deactivated: impl Into<Option<bool>>,
 ) -> Result<DidId, DbErr> {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let did = did::ActiveModel {
         id: Set(did_id),
@@ -495,7 +495,7 @@ pub async fn insert_identifier(
     organisation_id: OrganisationId,
     remote: impl Into<bool>,
 ) -> Result<IdentifierId, DbErr> {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let identifier = identifier::ActiveModel {
         id: Set(identifier_id.into()),
@@ -523,7 +523,7 @@ pub async fn insert_interaction(
     nonce_id: Option<NonceId>,
     interaction_type: InteractionType,
 ) -> Result<InteractionId, DbErr> {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let interaction = interaction::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -567,7 +567,7 @@ pub async fn insert_history(
     organisation_id: OrganisationId,
     name: String,
 ) -> Result<HistoryId, DbErr> {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let model = history::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -598,7 +598,7 @@ pub async fn insert_revocation_list(
     issuer_certificate_id: Option<CertificateId>,
 ) -> Result<RevocationListId, DbErr> {
     let id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let _model = revocation_list::ActiveModel {
         id: Set(id),
@@ -624,7 +624,7 @@ pub async fn insert_revocation_list_entry(
     credential_id: Option<CredentialId>,
 ) -> Result<RevocationListEntryId, DbErr> {
     let id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let _model = revocation_list_entry::ActiveModel {
         id: Set(id),
@@ -661,8 +661,8 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
     Organisation {
         name: format!("{id}"),
         id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: one_core::clock::now_utc(),
+        last_modified: one_core::clock::now_utc(),
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,

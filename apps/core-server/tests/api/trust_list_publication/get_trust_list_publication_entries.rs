@@ -6,7 +6,7 @@ use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entry::TrustEntryStatusEnum;
 use one_core::model::trust_list_role::TrustListRoleEnum;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::TestingIdentifierParams;
@@ -213,7 +213,7 @@ async fn create_dummy_certificate_identifier(
     identifier_name: impl Into<String>,
 ) -> (Identifier, Certificate) {
     let identifier_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,

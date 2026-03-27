@@ -193,7 +193,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                deleted_at: Some(one_core::clock::now_utc()),
                 ..Default::default()
             },
         )

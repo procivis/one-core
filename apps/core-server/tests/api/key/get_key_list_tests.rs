@@ -1,7 +1,7 @@
 use reqwest::StatusCode;
 use shared_types::KeyId;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::api_clients::keys::KeyFilters;
@@ -299,9 +299,9 @@ async fn test_get_keys_filter_by_date() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let time_1 = OffsetDateTime::now_utc() - Duration::hours(2);
-    let time_2 = OffsetDateTime::now_utc() - Duration::hours(1);
-    let time_3 = OffsetDateTime::now_utc();
+    let time_1 = one_core::clock::now_utc() - Duration::hours(2);
+    let time_2 = one_core::clock::now_utc() - Duration::hours(1);
+    let time_3 = one_core::clock::now_utc();
 
     let key_time_1 = context
         .db

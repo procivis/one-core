@@ -14,7 +14,6 @@ use sea_orm::{
     QueryOrder, QuerySelect, Set, Unchanged,
 };
 use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
-use time::OffsetDateTime;
 
 use super::TrustEntityProvider;
 use crate::common::calculate_pages_count;
@@ -271,7 +270,7 @@ impl TrustEntityRepository for TrustEntityProvider {
             Some(state) => Set(TrustEntityState::from(state)),
         };
 
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         let deactivated_at = match &state {
             ActiveValue::Set(state) => match state {
                 TrustEntityState::Active => Set(None),

@@ -314,7 +314,7 @@ pub async fn create_key(
     params: Option<TestingKeyParams>,
 ) -> Key {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let params = params.unwrap_or_default();
 
     let key = Key {
@@ -410,7 +410,7 @@ pub async fn create_did(
     params: Option<TestingDidParams>,
 ) -> Did {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let params = params.unwrap_or_default();
 
     let did_id = params.id.unwrap_or(DidId::from(Uuid::new_v4()));
@@ -460,7 +460,7 @@ pub async fn create_identifier(
     params: Option<TestingIdentifierParams>,
 ) -> Identifier {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let params = params.unwrap_or_default();
 
     let id = params.id.unwrap_or(IdentifierId::from(Uuid::new_v4()));
@@ -523,7 +523,7 @@ pub async fn create_credential_schema(
     let claim_schemas = vec![claim_schema.to_owned()];
 
     let params = params.unwrap_or_default();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let id = params
         .id
         .unwrap_or(CredentialSchemaId::from(Uuid::new_v4()));
@@ -678,8 +678,8 @@ pub async fn create_interaction_with_id(
 
     let interaction = Interaction {
         id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: one_core::clock::now_utc(),
+        last_modified: one_core::clock::now_utc(),
         data: Some(data.into()),
         organisation: Some(organisation.to_owned()),
         nonce_id: None,
@@ -821,12 +821,12 @@ pub async fn create_proof(
         | ProofStateEnum::Requested
         | ProofStateEnum::Accepted
         | ProofStateEnum::Rejected
-        | ProofStateEnum::Error => Some(OffsetDateTime::now_utc()),
+        | ProofStateEnum::Error => Some(one_core::clock::now_utc()),
         _ => None,
     };
 
     let completed_date = match state {
-        ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(OffsetDateTime::now_utc()),
+        ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(one_core::clock::now_utc()),
         _ => None,
     };
 

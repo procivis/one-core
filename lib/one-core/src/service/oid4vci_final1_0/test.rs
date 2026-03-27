@@ -9,7 +9,6 @@ use serde_json::json;
 use shared_types::{CredentialFormat, DidId, InteractionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -90,7 +89,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
 }
 
 fn generic_organisation() -> Organisation {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     Organisation {
         id: Uuid::new_v4().into(),
         name: "organisation name".to_string(),
@@ -103,7 +102,7 @@ fn generic_organisation() -> Organisation {
 }
 
 fn generic_credential_schema() -> CredentialSchema {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
@@ -163,8 +162,8 @@ fn dummy_interaction(
 
     Interaction {
         id: id.unwrap_or(Uuid::new_v4().into()),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: Some(data.to_string().into_bytes()),
         organisation: None,
         nonce_id: None,
@@ -181,9 +180,9 @@ fn dummy_credential(
 ) -> Credential {
     Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: protocol.to_string(),
         redirect_uri: None,
@@ -475,7 +474,7 @@ async fn test_get_issuer_metadata_mdoc() {
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".into();
     schema.organisation = Some(generic_organisation());
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     schema.claim_schemas = Some(vec![
         ClaimSchema {
             id: Uuid::new_v4().into(),

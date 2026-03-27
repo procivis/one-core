@@ -1,7 +1,6 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
@@ -64,7 +63,7 @@ async fn test_share_credential_failed_deleted_credential() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                deleted_at: Some(one_core::clock::now_utc()),
                 ..Default::default()
             },
         )

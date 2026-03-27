@@ -3,7 +3,6 @@ use one_core::model::wallet_unit::WalletUnitStatus;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::wallet_provider::{
@@ -76,7 +75,7 @@ async fn activate_wallet_unit_attestation_invalid() {
                 public_key: None,
                 status: Some(WalletUnitStatus::Pending),
                 nonce: Some("nonce-1234".to_string()),
-                last_modified: Some(OffsetDateTime::now_utc()),
+                last_modified: Some(one_core::clock::now_utc()),
                 ..Default::default()
             },
         )

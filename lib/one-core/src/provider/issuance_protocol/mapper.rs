@@ -85,7 +85,7 @@ pub(super) async fn autogenerate_holder_binding(
         .await
         .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let key = Key {
         id: key_id,
         created_date: now,

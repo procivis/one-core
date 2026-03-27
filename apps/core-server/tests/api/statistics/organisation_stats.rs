@@ -22,7 +22,7 @@ async fn test_organisation_stats_empty() {
     let resp = context
         .api
         .statistics
-        .organisation_stats(None, OffsetDateTime::now_utc(), org.id)
+        .organisation_stats(None, one_core::clock::now_utc(), org.id)
         .await;
 
     // THEN
@@ -40,8 +40,8 @@ async fn test_organisation_stats() {
     // GIVEN
     let (context, org, identifier, .., key) =
         TestContext::new_with_certificate_identifier(None).await;
-    let now = OffsetDateTime::now_utc();
-    dummy_history_data(&context, &org, &identifier, key, OffsetDateTime::now_utc()).await;
+    let now = one_core::clock::now_utc();
+    dummy_history_data(&context, &org, &identifier, key, one_core::clock::now_utc()).await;
     // WHEN
     let one_day = Duration::days(1);
     let resp = context
@@ -67,8 +67,8 @@ async fn test_organisation_issuer_stats() {
     // GIVEN
     let (context, org, identifier, .., key) =
         TestContext::new_with_certificate_identifier(None).await;
-    let now = OffsetDateTime::now_utc();
-    dummy_history_data(&context, &org, &identifier, key, OffsetDateTime::now_utc()).await;
+    let now = one_core::clock::now_utc();
+    dummy_history_data(&context, &org, &identifier, key, one_core::clock::now_utc()).await;
     // WHEN
     let one_day = Duration::days(1);
     let resp = context
@@ -94,8 +94,8 @@ async fn test_organisation_verifier_stats() {
     // GIVEN
     let (context, org, identifier, .., key) =
         TestContext::new_with_certificate_identifier(None).await;
-    let now = OffsetDateTime::now_utc();
-    dummy_history_data(&context, &org, &identifier, key, OffsetDateTime::now_utc()).await;
+    let now = one_core::clock::now_utc();
+    dummy_history_data(&context, &org, &identifier, key, one_core::clock::now_utc()).await;
     // WHEN
     let one_day = Duration::days(1);
     let resp = context

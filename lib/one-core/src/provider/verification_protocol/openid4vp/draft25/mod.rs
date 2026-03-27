@@ -7,7 +7,6 @@ use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_sc
 use model::OpenID4Vp25Params;
 use one_crypto::utilities;
 use serde_json::Value;
-use time::OffsetDateTime;
 use url::Url;
 use utils::{interaction_data_from_openid4vp_25_query, validate_interaction_data};
 use uuid::Uuid;
@@ -577,7 +576,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             .params
             .verifier
             .interaction_expires_in
-            .map(|interaction_expires_in| OffsetDateTime::now_utc() + interaction_expires_in);
+            .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
 
         Ok(ShareResponse {
             url: format!(
@@ -680,7 +679,7 @@ async fn handle_proof_invitation(
     validate_interaction_data(&holder_interaction_data)?;
     let data = serialize_interaction_data(&holder_interaction_data)?;
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let interaction = create_and_store_interaction(storage_access, data, organisation).await?;
 
     let interaction_id = interaction.id.to_owned();
@@ -708,7 +707,7 @@ async fn create_and_store_interaction(
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, VerificationProtocolError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 

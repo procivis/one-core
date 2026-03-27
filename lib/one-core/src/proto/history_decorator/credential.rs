@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use shared_types::{ClaimId, CredentialId, InteractionId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential::{
@@ -101,7 +100,7 @@ impl CredentialHistoryDecorator {
 
         let entry = History {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
             action,
             name: credential_schema.name.to_owned(),
             source: HistorySource::Core,

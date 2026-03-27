@@ -8,7 +8,6 @@ use one_core::repository::notification_repository::NotificationRepository;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::NotificationId;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use time::macros::datetime;
 use uuid::Uuid;
 
@@ -33,7 +32,7 @@ async fn setup() -> TestSetup {
         .await
         .unwrap();
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let organisation = dummy_organisation(Some(organisation_id));
 
     let notification_id = Uuid::new_v4().into();
@@ -71,7 +70,7 @@ async fn test_create_notification_success() {
         ..
     } = setup().await;
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let id = Uuid::new_v4().into();
     let result = provider

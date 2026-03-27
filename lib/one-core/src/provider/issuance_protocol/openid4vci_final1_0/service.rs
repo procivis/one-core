@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use one_crypto::utilities;
 use secrecy::SecretString;
 use shared_types::InteractionId;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::mapper::credentials_supported_mdoc;
@@ -355,7 +355,7 @@ pub(crate) fn oidc_issuer_create_token(
         ))
     };
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     Ok(match request {
         OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } => {
             throw_if_interaction_created_date(pre_authorization_expires_in, interaction)?;

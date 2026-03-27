@@ -1,4 +1,3 @@
-use time::OffsetDateTime;
 use x509_parser::error::X509Error;
 use x509_parser::oid_registry::OID_X509_EXT_CRL_DISTRIBUTION_POINTS;
 use x509_parser::prelude::{
@@ -68,12 +67,12 @@ impl CertificateValidatorImpl {
         }
 
         // check CRL validity
-        if crl.last_update().to_datetime() > OffsetDateTime::now_utc() {
+        if crl.last_update().to_datetime() > crate::clock::now_utc() {
             return Err(Error::CRLOutdated);
         }
         if crl
             .next_update()
-            .is_some_and(|next_update| next_update.to_datetime() < OffsetDateTime::now_utc())
+            .is_some_and(|next_update| next_update.to_datetime() < crate::clock::now_utc())
         {
             return Err(Error::CRLOutdated);
         }

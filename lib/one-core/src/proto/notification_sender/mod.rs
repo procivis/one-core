@@ -189,7 +189,7 @@ impl NotificationSenderImpl {
             self.history_repository
                 .create_history(History {
                     id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
                     action,
                     name: "".to_string(),
                     target: notification.history_target,
@@ -258,7 +258,7 @@ mod tests {
             exponential_factor: 2.0,
         };
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         assert_time_equal(
             calculate_next_try_date(now, 0, &params),

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidService;
@@ -62,8 +61,8 @@ async fn test_get_did_exists() {
 
     let did = Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
         organisation: Some(dummy_organisation(None)),
         did: "did:key:abc".parse().unwrap(),
@@ -73,8 +72,8 @@ async fn test_get_did_exists() {
             role: KeyRole::Authentication,
             key: Key {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
@@ -148,8 +147,8 @@ async fn test_get_did_list() {
     let organisation_id = Uuid::new_v4().into();
     let did = Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
         organisation: Some(dummy_organisation(Some(organisation_id))),
         did: "did:key:abc".parse().unwrap(),
@@ -255,8 +254,8 @@ async fn test_create_did_success() {
 async fn test_update_did() {
     let did = Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
         organisation: Some(dummy_organisation(None)),
         did: "did:web:abc".parse().unwrap(),
@@ -324,8 +323,8 @@ async fn test_update_did() {
 async fn test_update_did_fail_reactivation() {
     let did = Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
         organisation: Some(dummy_organisation(None)),
         did: "did:web:abc".parse().unwrap(),
@@ -403,8 +402,8 @@ async fn test_list_did_fail_session_org_mismatch() {
 async fn test_did_ops_session_org_mismatch() {
     let did = Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
         organisation: Some(dummy_organisation(None)),
         did: "did:web:abc".parse().unwrap(),

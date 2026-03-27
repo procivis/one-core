@@ -10,7 +10,7 @@ use model::VcClaim;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::error::FormatterError;
@@ -83,7 +83,7 @@ impl CredentialFormatter for JWTFormatter {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let mut vcdm = credential_data.vcdm;
         let invalid_before = vcdm.valid_from.or(vcdm.issuance_date);
@@ -301,7 +301,7 @@ impl CredentialFormatter for JWTFormatter {
         credential: &str,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, Some(&verification), None)
             .await

@@ -254,7 +254,7 @@ pub(super) fn create_claims_from_credential_definition(
     credential_id: CredentialId,
     claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
 ) -> Result<(Vec<ClaimSchema>, Vec<Claim>), IssuanceProtocolError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let mut claim_schemas: Vec<ClaimSchema> = vec![];
     let mut claims: Vec<Claim> = vec![];
     let mut object_claim_schemas: Vec<&str> = vec![];
@@ -457,7 +457,7 @@ fn from_create_request_with_id(
         ));
     }
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 
@@ -539,7 +539,7 @@ pub(crate) fn extract_offered_claims(
                 "Missing claim schemas for existing credential schema".to_string(),
             ))?;
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let nested_schema_claim_view: CredentialSchemaClaimsNestedView = claim_schemas
         .clone()
@@ -839,7 +839,7 @@ pub(crate) fn create_credential(
     issuer_identifier: Option<Identifier>,
     issuer_certificate: Option<Certificate>,
 ) -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     Credential {
         id: credential_id,

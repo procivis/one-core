@@ -307,7 +307,7 @@ impl AzureClient {
         } else {
             // todo: should this be atomic? (here multiple requests are all going to acquire a new token and set the new token)
             let response = self.acquire_new_token().await?;
-            let valid_until = OffsetDateTime::now_utc().add(Duration::seconds(response.expires_in));
+            let valid_until = crate::clock::now_utc().add(Duration::seconds(response.expires_in));
             let mut storage = self.access_token.lock().await;
             *storage = Some(AzureAccessToken {
                 token: response.access_token.clone(),
@@ -324,7 +324,7 @@ impl AzureClient {
             None => false,
             Some(token) => {
                 // Adding 5 seconds tolerance for network requests delay
-                token.valid_until > OffsetDateTime::now_utc().add(Duration::seconds(5))
+                token.valid_until > crate::clock::now_utc().add(Duration::seconds(5))
             }
         }
     }

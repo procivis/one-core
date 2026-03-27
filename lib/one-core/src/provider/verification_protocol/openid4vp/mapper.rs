@@ -402,7 +402,7 @@ pub(crate) async fn encrypted_params(
             ))?;
     let payload = JwePayload {
         aud: Some(aud),
-        exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
+        exp: Some(crate::clock::now_utc() + Duration::minutes(10)),
         submission_data,
         state: interaction_data.state.clone(),
     };
@@ -483,7 +483,7 @@ pub(crate) fn extracted_credential_to_model(
     profile: &Option<String>,
     issuance_date: Option<OffsetDateTime>,
 ) -> Result<ProvedCredential, OpenID4VCError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let credential_id = Uuid::new_v4().into();
 
     let mut model_claims = vec![];
@@ -656,7 +656,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
             }
         };
 
-    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+    let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
 
     let request_jwt = Jwt {
         header: JWTHeader {
@@ -737,7 +737,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
 
     let key_id = verifier_did.verification_method_id(key);
 
-    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+    let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
 
     let custom = OpenID4VCVerifierAttestationPayload {
         redirect_uris: vec![response_uri],
@@ -833,7 +833,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
 
     let key_id = verifier_did.verification_method_id(key);
 
-    let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+    let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
 
     let request_jwt = Jwt {
         header: JWTHeader {

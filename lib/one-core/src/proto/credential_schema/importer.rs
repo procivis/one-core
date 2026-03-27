@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use shared_types::OrganisationId;
-use time::OffsetDateTime;
 use time::format_description::well_known::Iso8601;
 use time::format_description::well_known::iso8601::{
     Config, EncodedConfig, FormattedComponents, TimePrecision,
@@ -144,7 +143,7 @@ impl CredentialSchemaImporterProto {
         &self,
         credential_schema: &CredentialSchema,
     ) -> Result<String, Error> {
-        let formated_now = OffsetDateTime::now_utc()
+        let formated_now = crate::clock::now_utc()
             .format(&Iso8601::<DATE_TIME_NO_MILLIS>)
             .map_err(|e| Error::MappingError(format!("Failed to format date: {e}")))?;
         Ok(format!("{}_{}", credential_schema.name, formated_now))

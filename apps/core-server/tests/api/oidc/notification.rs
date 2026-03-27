@@ -8,7 +8,6 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use time::macros::format_description;
 use uuid::Uuid;
 
@@ -147,7 +146,7 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
     let data = serde_json::to_vec(&json!({
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "notification_id": "notification"
     })).unwrap();
 

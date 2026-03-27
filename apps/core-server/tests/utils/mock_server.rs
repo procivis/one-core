@@ -4,7 +4,6 @@ use std::time::Duration;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 use serde_json::json;
-use time::OffsetDateTime;
 use wiremock::http::Method;
 use wiremock::matchers::{body_partial_json, body_string_contains, header, method, path};
 use wiremock::{Mock, MockBuilder, ResponseTemplate};
@@ -43,9 +42,9 @@ impl MockServer {
                 {
                    "access_token": "321",
                    "token_type": "bearer",
-                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                   "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                    "refresh_token": "321",
-                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                   "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                 }
             )))
             .mount(&self.mock)
@@ -58,9 +57,9 @@ impl MockServer {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "access_token": test_token,
-                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                     "refresh_token": test_token,
-                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                     "token_type": "bearer"
                 }
             )))
@@ -74,9 +73,9 @@ impl MockServer {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "access_token": test_token,
-                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                     "refresh_token": test_token,
-                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                     "token_type": "bearer"
                 }
             )))
@@ -96,9 +95,9 @@ impl MockServer {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "access_token": test_token,
-                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                     "refresh_token": test_token,
-                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                     "token_type": "bearer"
                 }
             )))

@@ -38,7 +38,7 @@ use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{dummy_did, dummy_identifier};
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
-    let issuance_date: OffsetDateTime = OffsetDateTime::now_utc();
+    let issuance_date: OffsetDateTime = crate::clock::now_utc();
     let valid_for = time::Duration::days(365 * 2);
 
     let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())
@@ -120,7 +120,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         metadata: None,
     };
 
-    let issuance_date = OffsetDateTime::now_utc();
+    let issuance_date = crate::clock::now_utc();
     let valid_for = time::Duration::days(365 * 2);
 
     let holder_did: DidValue = "did:example:123".parse().unwrap();

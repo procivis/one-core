@@ -1,6 +1,5 @@
 use one_core::model::revocation_list::StatusListCredentialFormat;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
@@ -51,7 +50,7 @@ async fn test_get_crl_success() {
                 formatted_list: Some(crl_content.to_vec()),
                 format: Some(StatusListCredentialFormat::X509Crl),
                 r#type: Some("CRL".into()),
-                last_modified: Some(OffsetDateTime::now_utc()),
+                last_modified: Some(one_core::clock::now_utc()),
                 issuer_certificate: Some(certificate),
                 ..Default::default()
             }),

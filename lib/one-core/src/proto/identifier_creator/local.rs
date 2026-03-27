@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
 use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::Error;
@@ -44,7 +43,7 @@ impl IdentifierCreatorProto {
             .create_did_without_identifier(request, organisation.to_owned())
             .await?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let identifier = Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -87,7 +86,7 @@ impl IdentifierCreatorProto {
             return Err(Error::MappingError("Organisation ID mismatch".to_string()));
         }
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let identifier = Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -127,7 +126,7 @@ impl IdentifierCreatorProto {
             certificates.push(cert);
         }
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let identifier = Identifier {
             id,
             created_date: now,
@@ -177,7 +176,7 @@ impl IdentifierCreatorProto {
             certificates.push(cert);
         }
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let identifier = Identifier {
             id,
             created_date: now,
@@ -317,7 +316,7 @@ impl IdentifierCreatorProto {
             key_reference_mapping.insert(key.id, reference);
         }
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let did = did_from_did_request(
             new_did_id,
             request,
@@ -486,8 +485,8 @@ impl IdentifierCreatorProto {
             id: Uuid::new_v4().into(),
             identifier_id,
             organisation_id: Some(organisation_id),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             expiry_date: attributes.not_after,
             name,
             chain,
@@ -584,8 +583,8 @@ impl IdentifierCreatorProto {
             id: Uuid::new_v4().into(),
             identifier_id,
             organisation_id: Some(organisation_id),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             expiry_date: attributes.not_after,
             name,
             chain,

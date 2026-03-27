@@ -117,7 +117,7 @@ async fn resolve_unsupported_identifier_type() {
 async fn validate_subscription_expired() {
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(OffsetDateTime::now_utc(), &reference);
+    let subscriber = setup_subscriber(crate::clock::now_utc(), &reference);
 
     let result = subscriber
         .validate_subscription(&reference, None)
@@ -135,7 +135,7 @@ async fn resolve_untrusted_identifier() {
     let subscriber = setup_subscriber(time, &reference);
 
     let identifier_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let identifier = Identifier {
         id: identifier_id,
         created_date: now,
@@ -178,7 +178,7 @@ async fn resolve_trusted_identifier() {
     let subscriber = setup_subscriber(time, &reference);
 
     let identifier_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let identifier = Identifier {
         id: identifier_id,
         created_date: now,

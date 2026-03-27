@@ -292,7 +292,7 @@ async fn wallet_reject(rejection_topic: &mut dyn MqttTopic, shared_key: &PeerEnc
         };
 
         if let Ok(timestamp_date) = OffsetDateTime::from_unix_timestamp(timestamp) {
-            let now = OffsetDateTime::now_utc();
+            let now = crate::clock::now_utc();
 
             let diff = now - timestamp_date;
             if diff < Duration::minutes(5) {

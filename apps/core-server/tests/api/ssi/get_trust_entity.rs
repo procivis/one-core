@@ -214,7 +214,7 @@ pub(crate) struct BearerTokenPayload {
 impl Default for BearerTokenPayload {
     fn default() -> Self {
         Self {
-            timestamp: OffsetDateTime::now_utc(),
+            timestamp: one_core::clock::now_utc(),
         }
     }
 }

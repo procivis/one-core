@@ -4,7 +4,6 @@ use std::sync::Arc;
 use secrecy::SecretString;
 use similar_asserts::assert_eq;
 use tempfile::NamedTempFile;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::BackupService;
@@ -44,9 +43,9 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
     UnexportableEntities {
         credentials: vec![Credential {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
             issuance_date: None,
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             protocol: "foo".into(),
             redirect_uri: None,
@@ -57,8 +56,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             claims: Some(vec![Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("value".to_string()),
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -66,8 +65,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     id: claim_schema_id,
                     key: "key".into(),
                     data_type: "STRING".into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     array: false,
                     metadata: false,
                     required: false,
@@ -80,8 +79,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 id: Uuid::new_v4().into(),
                 deleted_at: None,
                 imported_source_url: "CORE_URL".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 name: "name".into(),
                 format: "format".into(),
@@ -90,8 +89,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     id: claim_schema_id,
                     key: "key".into(),
                     data_type: "STRING".into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     array: false,
                     metadata: false,
                     required: false,

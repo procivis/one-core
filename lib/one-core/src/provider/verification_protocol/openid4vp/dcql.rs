@@ -10,7 +10,6 @@ use itertools::Itertools;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use shared_types::{CredentialId, OrganisationId};
 use standardized_types::x509::AuthorityKeyIdentifier;
-use time::OffsetDateTime;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
@@ -557,7 +556,7 @@ fn first_applicable_claim_set(
                             .map(|metadata| {
                                 claim_schema_from_metadata_claim_schema(
                                     metadata,
-                                    OffsetDateTime::now_utc(),
+                                    crate::clock::now_utc(),
                                 )
                             })
                             .collect::<Vec<_>>(),

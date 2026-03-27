@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::error::FormatterError;
@@ -85,7 +85,7 @@ impl CredentialFormatter for SDJWTFormatter {
         const HASH_ALG: &str = "sha-256";
         let mut vcdm = credential_data.vcdm;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         if vcdm.valid_from.is_none() {
             vcdm.valid_from = Some(now);
         }
@@ -251,7 +251,7 @@ impl CredentialFormatter for SDJWTFormatter {
         credential: &str,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let (parsed_credential, issuer, _): (Jwt<VcClaim>, _, _) =
             Jwt::build_from_token_with_disclosures(

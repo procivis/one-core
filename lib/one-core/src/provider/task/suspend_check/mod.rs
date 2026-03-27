@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use serde_json::Value;
-use time::OffsetDateTime;
 
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
@@ -45,7 +44,7 @@ impl Task for SuspendCheckProvider {
                         & CredentialFilterValue::Roles(vec![CredentialRole::Issuer])
                         & CredentialFilterValue::SuspendEndDate(ValueComparison {
                             comparison: ComparisonType::LessThan,
-                            value: OffsetDateTime::now_utc(),
+                            value: crate::clock::now_utc(),
                         }),
                 ),
                 ..Default::default()

@@ -165,7 +165,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(
     let credential_interaction_data = json!({
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(format!("{}.test",interaction_id).as_bytes()).unwrap(),
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     });
 
     let credential_interaction = server_context

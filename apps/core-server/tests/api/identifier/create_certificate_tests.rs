@@ -4,7 +4,7 @@ use rcgen::{
 };
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use validator::ValidateLength;
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, create_crl, ecdsa, eddsa};
@@ -450,10 +450,10 @@ async fn test_create_certificate_identifier_with_crl() {
 
     let mut ca_params = CertificateParams::default();
     let crl_params = CertificateRevocationListParams {
-        this_update: OffsetDateTime::now_utc()
+        this_update: one_core::clock::now_utc()
             .checked_sub(Duration::hours(1))
             .unwrap(),
-        next_update: OffsetDateTime::now_utc()
+        next_update: one_core::clock::now_utc()
             .checked_add(Duration::hours(24))
             .unwrap(),
         crl_number: vec![0].into(),
@@ -543,12 +543,12 @@ async fn test_create_certificate_identifier_with_crl_revoked() {
     params.serial_number = Some(serial_number.clone());
     let cert = create_cert(&mut params, ecdsa::Key, &ca_issuer, &ca_params);
 
-    let one_hour_before = OffsetDateTime::now_utc()
+    let one_hour_before = one_core::clock::now_utc()
         .checked_sub(Duration::hours(1))
         .unwrap();
     let crl_params = CertificateRevocationListParams {
         this_update: one_hour_before,
-        next_update: OffsetDateTime::now_utc()
+        next_update: one_core::clock::now_utc()
             .checked_add(Duration::hours(24))
             .unwrap(),
         crl_number: vec![0].into(),

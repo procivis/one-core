@@ -9,7 +9,7 @@ use similar_asserts::assert_eq;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{ClientMetadata, MdocAlgs, PresentationFormat, ResponseMode};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -123,8 +123,8 @@ fn test_credential_schema(format: CredentialFormat) -> CredentialSchema {
 fn test_key(key_type: &str) -> Key {
     Key {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: vec![],
         name: "test_key".to_string(),
         key_reference: None,
@@ -142,8 +142,8 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
 
     Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
@@ -153,8 +153,8 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "test-share-proof".into(),
             expire_duration: 123,
@@ -177,8 +177,8 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -242,8 +242,8 @@ fn test_holder_proof(
 ) -> Proof {
     let interaction = Interaction {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: Some(serialize_interaction_data(&interaction_data).unwrap()),
         organisation: None,
         nonce_id: None,
@@ -253,8 +253,8 @@ fn test_holder_proof(
 
     Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
@@ -264,8 +264,8 @@ fn test_holder_proof(
         completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "test-holder-proof".into(),
             expire_duration: 300,
@@ -489,8 +489,8 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
         role: KeyRole::KeyAgreement,
         key: Key {
             id: key_id.into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key: vec![],
             name: "key".to_string(),
             key_reference: None,
@@ -570,8 +570,8 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
         role: KeyRole::KeyAgreement,
         key: Key {
             id: key_id.into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key: vec![],
             name: "key".to_string(),
             key_reference: None,

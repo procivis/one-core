@@ -63,7 +63,7 @@ impl Resolver for JsonLdResolver {
         } else if response.status.is_redirection() {
             let result = response.header_get("Last-Modified");
             let last_modified = match result {
-                None => OffsetDateTime::now_utc(),
+                None => crate::clock::now_utc(),
                 Some(value) => OffsetDateTime::parse(value, &Rfc2822)?,
             };
             Ok(ResolveResult::LastModificationDateUpdate(last_modified))
@@ -244,7 +244,7 @@ mod test {
 
         let mut storage = MockRemoteEntityStorage::default();
         storage.expect_get_by_key().return_once(|_| {
-            let now = OffsetDateTime::now_utc();
+            let now = crate::clock::now_utc();
             Ok(Some(RemoteEntity {
                 last_modified: now,
                 entity_type: RemoteEntityType::JsonLdContext,
@@ -402,7 +402,7 @@ mod test {
                 value: old_response_content.to_string().into_bytes(),
                 last_used: get_dummy_date(),
                 media_type: None,
-                expiration_date: Some(OffsetDateTime::now_utc()),
+                expiration_date: Some(crate::clock::now_utc()),
             }))
         });
         storage.expect_insert().times(1).return_once(|request| {
@@ -443,7 +443,7 @@ mod test {
                 last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
-                expiration_date: Some(OffsetDateTime::now_utc()),
+                expiration_date: Some(crate::clock::now_utc()),
             }))
         });
         storage.expect_insert().times(1).return_once(|request| {
@@ -482,10 +482,10 @@ mod test {
                 last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
-                expiration_date: Some(OffsetDateTime::now_utc()),
+                expiration_date: Some(crate::clock::now_utc()),
             }))
         });
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         storage
             .expect_insert()
             .times(1)
@@ -521,7 +521,7 @@ mod test {
                 last_used: get_dummy_date(),
                 entity_type: RemoteEntityType::JsonLdContext,
                 media_type: None,
-                expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+                expiration_date: Some(crate::clock::now_utc() + Duration::days(1)),
             }))
         });
         storage.expect_insert().times(1).return_once(|request| {
@@ -533,8 +533,7 @@ mod test {
             .times(1)
             .return_once(|_, _| Ok(()));
 
-        let refresh_timeout =
-            OffsetDateTime::now_utc() - get_dummy_date() + Duration::seconds(99999);
+        let refresh_timeout = crate::clock::now_utc() - get_dummy_date() + Duration::seconds(99999);
         let loader = create_loader(storage, 1, refresh_timeout, Duration::seconds(300));
         let client = Client::builder()
             .timeout(core::time::Duration::from_millis(10))
@@ -596,7 +595,7 @@ mod test {
         // The force_refresh flag indicates that the remote source should be used even if the cached content is fresh.
         // The cache still needs to be consulted to make sure the bypassed entry is _not_ persistent.
         let key = url.to_string();
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         storage.expect_get_by_key().return_once(move |_| {
             Ok(Some(RemoteEntity {
                 last_modified: now, // fresh copy
@@ -642,7 +641,7 @@ mod test {
         // The cache still needs to be consulted to make sure the bypassed entry is _not_ persistent.
         let key = url.to_string();
         let value = old_response_content.to_string().into_bytes();
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         storage.expect_get_by_key().return_once(move |_| {
             Ok(Some(RemoteEntity {
                 last_modified: now,

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -74,7 +74,7 @@ impl CredentialFormatter for JsonLdClassic {
     ) -> Result<String, FormatterError> {
         let mut vcdm = credential_data.vcdm;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         if vcdm.valid_from.is_none() {
             vcdm.valid_from = Some(now);
         }
@@ -148,7 +148,7 @@ impl CredentialFormatter for JsonLdClassic {
         let credential = VcdmCredential::new_v2(issuer, credential_subject)
             .with_id(credential_id)
             .add_type("BitstringStatusListCredential".to_string())
-            .with_valid_from(OffsetDateTime::now_utc());
+            .with_valid_from(crate::clock::now_utc());
 
         let credential = self.add_proof(credential, algorithm, auth_fn).await?;
 
@@ -247,7 +247,7 @@ impl CredentialFormatter for JsonLdClassic {
         credential: &str,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let vcdm: VcdmCredential = serde_json::from_str(credential)?;
 
@@ -489,7 +489,7 @@ impl JsonLdClassic {
 
         let mut proof = VcdmProof::builder()
             .context(vcdm.context.clone())
-            .created(OffsetDateTime::now_utc())
+            .created(crate::clock::now_utc())
             .proof_purpose("assertionMethod")
             .cryptosuite(cryptosuite)
             .verification_method(key_id)

@@ -13,8 +13,8 @@ use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
+use time::Duration;
 use time::macros::format_description;
-use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
@@ -405,7 +405,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     assert!(result.is_some());
 
     // using cached information
-    let before_test = OffsetDateTime::now_utc();
+    let before_test = one_core::clock::now_utc();
     context
         .api
         .credentials
@@ -420,7 +420,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
         .unwrap();
 
     assert!(statuslist_credential_entry.last_used >= before_test);
-    assert!(statuslist_credential_entry.last_used <= OffsetDateTime::now_utc());
+    assert!(statuslist_credential_entry.last_used <= one_core::clock::now_utc());
 
     // bypassing the cache
     context
@@ -437,7 +437,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
         .unwrap();
 
     assert!(statuslist_credential_entry2.last_used >= before_test);
-    assert!(statuslist_credential_entry2.last_used <= OffsetDateTime::now_utc());
+    assert!(statuslist_credential_entry2.last_used <= one_core::clock::now_utc());
 
     assert!(statuslist_credential_entry.created_date < statuslist_credential_entry2.created_date);
 }
@@ -675,7 +675,7 @@ async fn test_revoke_check_mdoc_update() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up to date
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -839,7 +839,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up to date
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1003,7 +1003,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up to date
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1083,7 +1083,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
 
     // WHEN
     for _ in 0..2 {
-        let before_refresh = OffsetDateTime::now_utc();
+        let before_refresh = one_core::clock::now_utc();
         let resp = context
             .api
             .credentials
@@ -1167,10 +1167,10 @@ async fn test_revoke_check_token_update() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up outdated
-    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1320,7 +1320,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is outdated
-    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1471,7 +1471,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up outdated
-    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1617,10 +1617,10 @@ async fn test_suspended_to_valid_mdoc() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up outdated
-    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1813,10 +1813,10 @@ async fn test_suspended_to_suspended_update_failed() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up outdated
-    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
-    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -1981,7 +1981,7 @@ async fn test_revoke_check_failed_deleted_credential() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                deleted_at: Some(one_core::clock::now_utc()),
                 ..Default::default()
             },
         )
@@ -2051,8 +2051,8 @@ async fn minimal_mdoc_credential(params: Params) -> String {
         claims: vec![],
         holder_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             name: "holder".to_string(),
             r#type: IdentifierType::Did,
             is_remote: true,
@@ -2061,8 +2061,8 @@ async fn minimal_mdoc_credential(params: Params) -> String {
             organisation: None,
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: one_core::clock::now_utc(),
+                last_modified: one_core::clock::now_utc(),
                 name: "holder".to_string(),
                 did: "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                     .parse()

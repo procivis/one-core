@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use shared_types::{KeyId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
@@ -192,7 +191,7 @@ impl KeyService {
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 action: HistoryAction::CsrGenerated,
                 name: key.name,
                 source: HistorySource::Core,

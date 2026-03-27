@@ -520,8 +520,8 @@ mod test {
     fn make_key(id: KeyId, public_key: Vec<u8>, key_type: KeyAlgorithmType) -> Key {
         Key {
             id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key,
             name: "test-key".to_string(),
             key_reference: None,

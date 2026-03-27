@@ -6,7 +6,7 @@ use dcql::DcqlQuery;
 use futures::future::{BoxFuture, Shared};
 use one_crypto::utilities;
 use shared_types::{DidValue, InteractionId, ProofId};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -347,7 +347,7 @@ pub(super) async fn request_as_signed_jwt(
         },
         payload: JWTPayload {
             issued_at: None,
-            expires_at: Some(OffsetDateTime::now_utc().add(Duration::hours(1))),
+            expires_at: Some(crate::clock::now_utc().add(Duration::hours(1))),
             invalid_before: None,
             issuer: Some(did.to_string()),
             subject: None,

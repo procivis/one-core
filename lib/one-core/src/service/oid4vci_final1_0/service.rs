@@ -7,7 +7,6 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, InteractionId};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -681,7 +680,7 @@ impl OID4VCIFinal1_0Service {
                     .update_credential(
                         credential.id,
                         UpdateCredentialRequest {
-                            issuance_date: Some(OffsetDateTime::now_utc()),
+                            issuance_date: Some(crate::clock::now_utc()),
                             holder_identifier_id: Some(holder_identifier_id),
                             wallet_unit_attestation_blob_id: wua_blob_id,
                             ..Default::default()
@@ -987,7 +986,7 @@ impl OID4VCIFinal1_0Service {
                 refresh_token_expires_in,
             )?;
 
-            let now = OffsetDateTime::now_utc();
+            let now = crate::clock::now_utc();
 
             for credential in &credentials {
                 // If a wallet instance attestation token is provided, we create a new blob and update the credential

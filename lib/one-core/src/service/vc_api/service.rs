@@ -146,9 +146,9 @@ impl VCAPIService {
             let revocation_list_id = get_or_create_revocation_list_id(
                 &[Credential {
                     id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
                     issuance_date: None,
-                    last_modified: OffsetDateTime::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     deleted_at: None,
                     protocol: "OPENID4VCI_DRAFT13".to_owned(),
                     redirect_uri: None,

@@ -3,7 +3,6 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
 use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
-use time::OffsetDateTime;
 
 use crate::entity::identifier::ActiveModel;
 use crate::entity::{self, certificate, did, identifier, key, key_did};
@@ -48,8 +47,8 @@ impl From<identifier::Model> for Identifier {
             organisation: value.organisation_id.map(|id| Organisation {
                 id,
                 name: "".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: one_core::clock::now_utc(),
+                last_modified: one_core::clock::now_utc(),
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,

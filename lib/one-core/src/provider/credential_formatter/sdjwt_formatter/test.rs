@@ -10,7 +10,7 @@ use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -1000,7 +1000,7 @@ fn test_get_capabilities() {
 }
 
 fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str) -> CredentialData {
-    let issuance_date = OffsetDateTime::now_utc();
+    let issuance_date = crate::clock::now_utc();
     let valid_for = time::Duration::days(365 * 2);
 
     let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())

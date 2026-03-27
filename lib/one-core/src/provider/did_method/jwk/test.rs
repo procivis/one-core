@@ -3,7 +3,6 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -211,8 +210,8 @@ async fn test_create_did_jwk_success() {
 
     let keys = vec![Key {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: b"public".into(),
         name: "name".to_owned(),
         key_reference: None,

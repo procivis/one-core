@@ -394,7 +394,7 @@ fn validate_array(_value: &str, _params: ArrayParams) -> Result<(), DatatypeVali
 
 pub fn parse_min_max_date(value: &str) -> Result<Date, DatatypeValidationError> {
     if value == "NOW" {
-        return Ok(OffsetDateTime::now_utc().date());
+        return Ok(crate::clock::now_utc().date());
     }
 
     Ok(Date::parse(value, DATE_FORMAT)?)
@@ -404,7 +404,7 @@ pub(crate) fn parse_min_max_datetime(
     value: &str,
 ) -> Result<OffsetDateTime, DatatypeValidationError> {
     if value == "NOW" {
-        return Ok(OffsetDateTime::now_utc());
+        return Ok(crate::clock::now_utc());
     }
 
     if let Ok(date) = Date::parse(value, DATE_FORMAT) {

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::RevocationType;
@@ -37,8 +36,8 @@ async fn test_get_revocation_list() {
     {
         let revocation = RevocationList {
             id: revocation_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             formatted_list: b"revocation-list-credential".to_vec(),
             purpose: RevocationListPurpose::Revocation,
             issuer_identifier: None,

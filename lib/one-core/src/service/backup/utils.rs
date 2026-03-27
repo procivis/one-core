@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 use one_crypto::hasher::sha256::SHA256;
 use shared_types::OrganisationId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
@@ -33,7 +32,7 @@ pub(super) fn build_metadata_file_content<T: Read + Seek>(
     Ok(MetadataDTO {
         db_version,
         db_hash: hash_reader(db_file)?,
-        created_at: OffsetDateTime::now_utc(),
+        created_at: crate::clock::now_utc(),
     })
 }
 
@@ -102,7 +101,7 @@ pub(super) fn create_backup_history_event(
 ) -> History {
     History {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         action,
         name,
         source: HistorySource::Core,

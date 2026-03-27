@@ -6,7 +6,6 @@ use one_core::model::proof::{ProofRole, ProofStateEnum};
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::presentation::dummy_presentations;
@@ -454,7 +453,7 @@ async fn test_direct_post_dcql_json_ld_classic_no_holder_binding() {
     // Pre-populate the JSON-LD context cache with the custom context document
     let context_url = "http://localhost:3000/ssi/context/v1/7aec760d-81ee-4027-9192-6ba407ac7e33";
     let context_document = r#"{"@context":{"@version":1.1,"@protected":true,"id":"@id","type":"@type","SchemaJsonLdClassicNoneBasic3Ad6Ca79":{"@id":"http://localhost:3000/ssi/context/v1/7aec760d-81ee-4027-9192-6ba407ac7e33#SchemaJsonLdClassicNoneBasic3Ad6Ca79"},"ProcivisOneSchema2024":{"@context":{"@protected":true,"id":"@id","type":"@type","metadata":{"@id":"http://localhost:3000/ssi/context/v1/7aec760d-81ee-4027-9192-6ba407ac7e33#metadata","@type":"@json"}},"@id":"http://localhost:3000/ssi/context/v1/7aec760d-81ee-4027-9192-6ba407ac7e33#ProcivisOneSchema2024"},"Full name":{"@id":"http://localhost:3000/ssi/context/v1/7aec760d-81ee-4027-9192-6ba407ac7e33#Full%20name"}}}"#;
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     context
         .db
         .remote_entities

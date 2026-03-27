@@ -4,7 +4,6 @@ use std::sync::Arc;
 use assert2::let_assert;
 use one_crypto::hasher::sha256::SHA256;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
@@ -134,8 +133,8 @@ fn auth_fn() -> impl SignatureProvider {
     SignatureProviderImpl {
         key: Key {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key,
             name: "test".to_string(),
             key_reference: None,

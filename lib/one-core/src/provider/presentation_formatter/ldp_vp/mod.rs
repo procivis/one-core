@@ -5,7 +5,6 @@ use indexmap::indexset;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use shared_types::DidValue;
-use time::OffsetDateTime;
 use url::Url;
 
 pub mod model;
@@ -138,7 +137,7 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         let mut proof = VcdmProof::builder()
             .context(json_ld_context)
             .maybe_nonce(context.nonce)
-            .created(OffsetDateTime::now_utc())
+            .created(crate::clock::now_utc())
             .proof_purpose("authentication")
             .cryptosuite(cryptosuite)
             .verification_method(key_id)

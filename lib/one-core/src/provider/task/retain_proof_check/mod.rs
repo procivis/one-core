@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 use shared_types::CredentialId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::Task;
@@ -71,7 +70,7 @@ impl Task for RetainProofCheck {
             .map(|event_id| Uuid::from(event_id).into())
             .collect();
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let mut page = 0;
 
         loop {

@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use itertools::Itertools;
-use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 use super::{RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType};
@@ -27,7 +26,7 @@ impl RemoteEntityStorage for InMemoryStorage {
         entity_type: RemoteEntityType,
         target_max_size: usize,
     ) -> Result<(), RemoteEntityStorageError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let mut hash_map_handle = self.storage.lock().await;
 
         // remove expired first

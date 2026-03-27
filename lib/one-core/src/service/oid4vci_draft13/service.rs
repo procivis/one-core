@@ -8,7 +8,6 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, InteractionId};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
-use time::OffsetDateTime;
 use tokio_util::either::Either;
 use url::Url;
 use uuid::Uuid;
@@ -538,7 +537,7 @@ impl OID4VCIDraft13Service {
             .update_credential(
                 credential.id,
                 UpdateCredentialRequest {
-                    issuance_date: Some(OffsetDateTime::now_utc()),
+                    issuance_date: Some(crate::clock::now_utc()),
                     holder_identifier_id: Some(holder_identifier.id),
                     ..Default::default()
                 },
@@ -836,7 +835,7 @@ impl OID4VCIDraft13Service {
                 refresh_token_expires_in,
             )?;
 
-            let now = OffsetDateTime::now_utc();
+            let now = crate::clock::now_utc();
             if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {
                 for credential in &credentials {
                     self.credential_repository

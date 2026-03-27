@@ -10,7 +10,6 @@ use one_core::model::proof_schema::{
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use shared_types::{ClaimSchemaId, ProofSchemaId};
 use sql_data_provider::test_utilities::get_dummy_date;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct ProofSchemasDB {
@@ -111,7 +110,7 @@ impl ProofSchemasDB {
     }
 
     pub async fn delete(&self, id: &ProofSchemaId) {
-        let deleted_at = OffsetDateTime::now_utc();
+        let deleted_at = one_core::clock::now_utc();
         self.repository
             .delete_proof_schema(id, deleted_at)
             .await

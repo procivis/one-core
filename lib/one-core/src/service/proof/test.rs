@@ -9,7 +9,6 @@ use secrecy::SecretSlice;
 use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
@@ -167,12 +166,12 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         | ProofStateEnum::Requested
         | ProofStateEnum::Accepted
         | ProofStateEnum::Rejected
-        | ProofStateEnum::Error => Some(OffsetDateTime::now_utc()),
+        | ProofStateEnum::Error => Some(crate::clock::now_utc()),
         _ => None,
     };
 
     let completed_date = match state {
-        ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(OffsetDateTime::now_utc()),
+        ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(crate::clock::now_utc()),
         _ => None,
     };
 
@@ -190,8 +189,8 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
 
     Proof {
         id: proof_id.to_owned(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
@@ -201,8 +200,8 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         completed_date,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "".to_string(),
             expire_duration: 0,
@@ -214,8 +213,8 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 organisation: Some(dummy_organisation(None)),
                 did: "did:example:123".parse().unwrap(),
@@ -242,7 +241,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
 }
 
 fn generic_proof_input_schema() -> ProofInputSchema {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     ProofInputSchema {
         claim_schemas: None,
@@ -274,20 +273,20 @@ async fn test_get_presentation_definition_proof_role_verifier() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Pending,
         redirect_uri: None,
-        requested_date: Some(OffsetDateTime::now_utc()),
+        requested_date: Some(crate::clock::now_utc()),
         completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
             imported_source_url: Some("CORE_URL".to_string()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             name: "proof schema".to_string(),
             expire_duration: 0,
             organisation: Some(dummy_organisation(None)),
@@ -297,8 +296,8 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                         id: Uuid::new_v4().into(),
                         key: "key_123".to_string(),
                         data_type: "STRING".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         array: false,
                         metadata: false,
                         required: true,
@@ -310,9 +309,9 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     id: Uuid::new_v4().into(),
                     imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
-                    created_date: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
                     key_storage_security: Some(KeyStorageSecurity::Basic),
-                    last_modified: OffsetDateTime::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".into(),
                     revocation_method: None,
@@ -331,8 +330,8 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -389,8 +388,8 @@ async fn test_get_proof_exists() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -400,8 +399,8 @@ async fn test_get_proof_exists() {
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
@@ -412,8 +411,8 @@ async fn test_get_proof_exists() {
                         id: Uuid::new_v4().into(),
                         key: "key".to_string(),
                         data_type: "STRING".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         array: false,
                         metadata: false,
                         required: true,
@@ -424,10 +423,10 @@ async fn test_get_proof_exists() {
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
-                    created_date: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
                     key_storage_security: Some(KeyStorageSecurity::Basic),
                     imported_source_url: "CORE_URL".to_string(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".into(),
                     revocation_method: None,
@@ -435,8 +434,8 @@ async fn test_get_proof_exists() {
                         id: Uuid::new_v4().into(),
                         key: "ClaimKey".to_owned(),
                         data_type: "STRING".to_owned(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         array: false,
                         metadata: false,
                         required: true,
@@ -455,8 +454,8 @@ async fn test_get_proof_exists() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -566,8 +565,8 @@ async fn test_get_proof_with_array_holder() {
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: true,
         metadata: false,
         required: true,
@@ -577,9 +576,9 @@ async fn test_get_proof_with_array_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         key_storage_security: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
@@ -595,9 +594,9 @@ async fn test_get_proof_with_array_holder() {
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "".into(),
         redirect_uri: None,
@@ -608,8 +607,8 @@ async fn test_get_proof_with_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -618,8 +617,8 @@ async fn test_get_proof_with_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0".into(),
                 selectively_disclosable: false,
@@ -628,8 +627,8 @@ async fn test_get_proof_with_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1".into(),
                 selectively_disclosable: false,
@@ -651,8 +650,8 @@ async fn test_get_proof_with_array_holder() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -674,8 +673,8 @@ async fn test_get_proof_with_array_holder() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -810,8 +809,8 @@ async fn test_get_proof_with_array_in_object_holder() {
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -820,8 +819,8 @@ async fn test_get_proof_with_array_in_object_holder() {
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: true,
             metadata: false,
             required: true,
@@ -832,9 +831,9 @@ async fn test_get_proof_with_array_in_object_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         key_storage_security: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
@@ -850,9 +849,9 @@ async fn test_get_proof_with_array_in_object_holder() {
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "".into(),
         redirect_uri: None,
@@ -863,8 +862,8 @@ async fn test_get_proof_with_array_in_object_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -873,8 +872,8 @@ async fn test_get_proof_with_array_in_object_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key/address".into(),
                 selectively_disclosable: false,
@@ -883,8 +882,8 @@ async fn test_get_proof_with_array_in_object_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
                 selectively_disclosable: false,
@@ -893,8 +892,8 @@ async fn test_get_proof_with_array_in_object_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/address/1".into(),
                 selectively_disclosable: false,
@@ -916,8 +915,8 @@ async fn test_get_proof_with_array_in_object_holder() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -939,8 +938,8 @@ async fn test_get_proof_with_array_in_object_holder() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -1080,8 +1079,8 @@ async fn test_get_proof_with_object_array_holder() {
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: true,
             metadata: false,
             required: true,
@@ -1090,8 +1089,8 @@ async fn test_get_proof_with_object_array_holder() {
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -1101,10 +1100,10 @@ async fn test_get_proof_with_object_array_holder() {
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
@@ -1120,9 +1119,9 @@ async fn test_get_proof_with_object_array_holder() {
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "".into(),
         redirect_uri: None,
@@ -1133,8 +1132,8 @@ async fn test_get_proof_with_object_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -1143,8 +1142,8 @@ async fn test_get_proof_with_object_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key/0".into(),
                 selectively_disclosable: false,
@@ -1153,8 +1152,8 @@ async fn test_get_proof_with_object_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key/1".into(),
                 selectively_disclosable: false,
@@ -1163,8 +1162,8 @@ async fn test_get_proof_with_object_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0/address".into(),
                 selectively_disclosable: false,
@@ -1173,8 +1172,8 @@ async fn test_get_proof_with_object_array_holder() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1/address".into(),
                 selectively_disclosable: false,
@@ -1196,8 +1195,8 @@ async fn test_get_proof_with_object_array_holder() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -1219,8 +1218,8 @@ async fn test_get_proof_with_object_array_holder() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -1237,8 +1236,8 @@ async fn test_get_proof_with_object_array_holder() {
         verifier_certificate: None,
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             data: None,
             organisation: Some(dummy_organisation(None)),
             nonce_id: None,
@@ -1367,8 +1366,8 @@ async fn test_get_proof_with_array() {
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: true,
         metadata: false,
         required: true,
@@ -1377,10 +1376,10 @@ async fn test_get_proof_with_array() {
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
@@ -1396,9 +1395,9 @@ async fn test_get_proof_with_array() {
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "".into(),
         redirect_uri: None,
@@ -1409,8 +1408,8 @@ async fn test_get_proof_with_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -1419,8 +1418,8 @@ async fn test_get_proof_with_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0".into(),
                 selectively_disclosable: false,
@@ -1429,8 +1428,8 @@ async fn test_get_proof_with_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1".into(),
                 selectively_disclosable: false,
@@ -1452,8 +1451,8 @@ async fn test_get_proof_with_array() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -1463,8 +1462,8 @@ async fn test_get_proof_with_array() {
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
@@ -1492,8 +1491,8 @@ async fn test_get_proof_with_array() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -1618,8 +1617,8 @@ async fn test_get_proof_with_array_in_object() {
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -1628,8 +1627,8 @@ async fn test_get_proof_with_array_in_object() {
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: true,
             metadata: false,
             required: true,
@@ -1640,9 +1639,9 @@ async fn test_get_proof_with_array_in_object() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         key_storage_security: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
@@ -1658,9 +1657,9 @@ async fn test_get_proof_with_array_in_object() {
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "".into(),
         redirect_uri: None,
@@ -1671,8 +1670,8 @@ async fn test_get_proof_with_array_in_object() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -1681,8 +1680,8 @@ async fn test_get_proof_with_array_in_object() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key/address".into(),
                 selectively_disclosable: false,
@@ -1691,8 +1690,8 @@ async fn test_get_proof_with_array_in_object() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
                 selectively_disclosable: false,
@@ -1701,8 +1700,8 @@ async fn test_get_proof_with_array_in_object() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/address/1".into(),
                 selectively_disclosable: false,
@@ -1724,8 +1723,8 @@ async fn test_get_proof_with_array_in_object() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -1735,8 +1734,8 @@ async fn test_get_proof_with_array_in_object() {
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
@@ -1764,8 +1763,8 @@ async fn test_get_proof_with_array_in_object() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -1896,8 +1895,8 @@ async fn test_get_proof_with_object_array() {
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: true,
             metadata: false,
             required: true,
@@ -1906,8 +1905,8 @@ async fn test_get_proof_with_object_array() {
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -1917,10 +1916,10 @@ async fn test_get_proof_with_object_array() {
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
@@ -1936,9 +1935,9 @@ async fn test_get_proof_with_object_array() {
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "".into(),
         redirect_uri: None,
@@ -1949,8 +1948,8 @@ async fn test_get_proof_with_object_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key".into(),
                 selectively_disclosable: false,
@@ -1959,8 +1958,8 @@ async fn test_get_proof_with_object_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key/0".into(),
                 selectively_disclosable: false,
@@ -1969,8 +1968,8 @@ async fn test_get_proof_with_object_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: None,
                 path: "key/1".into(),
                 selectively_disclosable: false,
@@ -1979,8 +1978,8 @@ async fn test_get_proof_with_object_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0/address".into(),
                 selectively_disclosable: false,
@@ -1989,8 +1988,8 @@ async fn test_get_proof_with_object_array() {
             Claim {
                 id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1/address".into(),
                 selectively_disclosable: false,
@@ -2012,8 +2011,8 @@ async fn test_get_proof_with_object_array() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
@@ -2023,8 +2022,8 @@ async fn test_get_proof_with_object_array() {
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
@@ -2052,8 +2051,8 @@ async fn test_get_proof_with_object_array() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -2205,8 +2204,8 @@ async fn test_get_proof_list_success() {
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
@@ -2217,8 +2216,8 @@ async fn test_get_proof_list_success() {
         schema: Some(ProofSchema {
             imported_source_url: Some("CORE_URL".to_string()),
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
@@ -2229,8 +2228,8 @@ async fn test_get_proof_list_success() {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -2333,8 +2332,8 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -2426,8 +2425,8 @@ async fn test_create_proof_using_invalid_did_method() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -2441,8 +2440,8 @@ async fn test_create_proof_using_invalid_did_method() {
     let request_clone = request.clone();
     let verifier_did = Did {
         id: request_clone.verifier_did_id.unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -2551,8 +2550,8 @@ async fn test_create_proof_using_identifier() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -2563,8 +2562,8 @@ async fn test_create_proof_using_identifier() {
 
     let verifier_did = Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -2683,8 +2682,8 @@ async fn test_create_proof_without_related_key() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -2699,8 +2698,8 @@ async fn test_create_proof_without_related_key() {
 
     let verifier_did = Did {
         id: request_clone.verifier_did_id.unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -2820,8 +2819,8 @@ async fn test_create_proof_with_related_key() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -2833,8 +2832,8 @@ async fn test_create_proof_with_related_key() {
     let request_clone = request.clone();
     let verifier_did = Did {
         id: request_clone.verifier_did_id.unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -2960,8 +2959,8 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -2972,8 +2971,8 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
 
     let verifier_did = Did {
         id: request.verifier_did_id.to_owned().unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -3083,8 +3082,8 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -3096,8 +3095,8 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     let request_clone = request.clone();
     let verifier_did = Did {
         id: request_clone.verifier_did_id.unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -3189,8 +3188,8 @@ async fn test_create_proof_failed_incompatible_exchange() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -3251,8 +3250,8 @@ async fn test_create_proof_did_deactivated_error() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -3264,8 +3263,8 @@ async fn test_create_proof_did_deactivated_error() {
     let request_clone = request.clone();
     let verifier_did = Did {
         id: request_clone.verifier_did_id.unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -3340,9 +3339,9 @@ async fn test_create_proof_schema_deleted() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: Some(crate::clock::now_utc()),
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 organisation: Some(dummy_organisation(None)),
@@ -3404,8 +3403,8 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
@@ -3419,8 +3418,8 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
     let request_clone = request.clone();
     let verifier_did = Did {
         id: request_clone.verifier_did_id.unwrap(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -3609,7 +3608,7 @@ async fn test_share_proof_created_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4().into();
-    let expires_at = OffsetDateTime::now_utc();
+    let expires_at = crate::clock::now_utc();
     protocol
         .expect_verifier_share_proof()
         .once()
@@ -3715,7 +3714,7 @@ async fn test_share_proof_pending_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4().into();
-    let expires_at = OffsetDateTime::now_utc();
+    let expires_at = crate::clock::now_utc();
     protocol
         .expect_verifier_share_proof()
         .once()
@@ -3827,7 +3826,7 @@ async fn test_share_proof_interaction_expired_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4().into();
-    let expires_at = OffsetDateTime::now_utc();
+    let expires_at = crate::clock::now_utc();
     protocol
         .expect_verifier_share_proof()
         .once()
@@ -3982,8 +3981,8 @@ async fn test_delete_proof_ok_for_allowed_state(
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: Some(vec![]),
         organisation: None,
         nonce_id: None,
@@ -4061,8 +4060,8 @@ async fn test_delete_proof_ok_for_requested_state() {
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: Some(vec![]),
         organisation: None,
         nonce_id: None,
@@ -4143,8 +4142,8 @@ async fn test_delete_proof_fails_for_invalid_state(
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: None,
         organisation: None,
         nonce_id: None,
@@ -4202,8 +4201,8 @@ async fn test_retract_proof_with_bluetooth_ok() {
     proof.transport = "BLE".to_string();
     proof.interaction = Some(Interaction {
         id: interaction_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         organisation: Some(dummy_organisation(None)),
         data: Some({
             let data = BLEOpenID4VPInteractionDataVerifier {
@@ -4331,8 +4330,8 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     proof.role = ProofRole::Holder;
     proof.interaction = Some(Interaction {
         id: interaction_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: None,
         organisation: Some(dummy_organisation(None)),
         nonce_id: None,
@@ -4408,9 +4407,9 @@ async fn test_create_proof_session_org_mismatch() {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: Some(crate::clock::now_utc()),
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 organisation: Some(dummy_organisation(None)),

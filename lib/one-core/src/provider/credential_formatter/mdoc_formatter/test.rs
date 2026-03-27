@@ -258,9 +258,9 @@ async fn test_credential_formatting_ok_for_ecdsa() {
             id: Uuid::new_v4().into(),
             identifier_id: Uuid::new_v4().into(),
             organisation_id: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            expiry_date: OffsetDateTime::now_utc().add(Duration::days(7)),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            expiry_date: crate::clock::now_utc().add(Duration::days(7)),
             name: "test".to_string(),
             chain: r#"-----BEGIN CERTIFICATE-----
 MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
@@ -473,9 +473,9 @@ async fn test_unverified_credential_extraction() {
             id: Uuid::new_v4().into(),
             identifier_id: Uuid::new_v4().into(),
             organisation_id: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            expiry_date: OffsetDateTime::now_utc().add(Duration::days(7)),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            expiry_date: crate::clock::now_utc().add(Duration::days(7)),
             name: "test".to_string(),
             chain: r#"-----BEGIN CERTIFICATE-----
 MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
@@ -551,7 +551,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     };
 
     let mut certificate_validator = MockCertificateValidator::new();
-    let expiry = OffsetDateTime::now_utc() + Duration::days(1);
+    let expiry = crate::clock::now_utc() + Duration::days(1);
     certificate_validator
         .expect_parse_pem_chain()
         .once()
@@ -563,7 +563,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             Ok(ParsedCertificate {
                 attributes: CertificateX509AttributesDTO {
                     serial_number: "".to_string(),
-                    not_before: OffsetDateTime::now_utc() - Duration::days(1),
+                    not_before: crate::clock::now_utc() - Duration::days(1),
                     not_after: expiry,
                     issuer: "Some issuer".to_string(),
                     subject: "Some subject".to_string(),
@@ -743,7 +743,7 @@ async fn format_and_extract_ecdsa() -> DetailCredential {
             organisation_id: Some(Uuid::new_v4().into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            expiry_date: OffsetDateTime::now_utc().add(Duration::minutes(10)),
+            expiry_date: crate::clock::now_utc().add(Duration::minutes(10)),
             name: "test cert".to_string(),
             chain: r#"-----BEGIN CERTIFICATE-----
 MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
@@ -830,8 +830,8 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             Ok(ParsedCertificate {
                 attributes: CertificateX509AttributesDTO {
                     serial_number: "".to_string(),
-                    not_before: OffsetDateTime::now_utc() - Duration::days(1),
-                    not_after: OffsetDateTime::now_utc() + Duration::days(1),
+                    not_before: crate::clock::now_utc() - Duration::days(1),
+                    not_after: crate::clock::now_utc() + Duration::days(1),
                     issuer: "Some issuer".to_string(),
                     subject: "Some subject".to_string(),
                     fingerprint: "fingerprint".to_string(),
@@ -942,8 +942,8 @@ async fn test_parse_credential() {
             Ok(ParsedCertificate {
                 attributes: CertificateX509AttributesDTO {
                     serial_number: "".to_string(),
-                    not_before: OffsetDateTime::now_utc() - Duration::days(1),
-                    not_after: OffsetDateTime::now_utc() + Duration::days(1),
+                    not_before: crate::clock::now_utc() - Duration::days(1),
+                    not_after: crate::clock::now_utc() + Duration::days(1),
                     issuer: "Some issuer".to_string(),
                     subject: "Some subject".to_string(),
                     fingerprint: "fingerprint".to_string(),

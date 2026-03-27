@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::Deserialize;
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::config::core_config::FormatType;
@@ -83,7 +83,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
 
         let vp: VP = format_payload(&credentials, context.nonce)?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let valid_for = Duration::minutes(5);
 
         let holder_did = holder_did.as_ref().map(|did| did.to_string());

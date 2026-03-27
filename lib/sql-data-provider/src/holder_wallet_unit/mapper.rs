@@ -1,7 +1,6 @@
 use one_core::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnit};
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use sea_orm::Set;
-use time::OffsetDateTime;
 
 use crate::entity::holder_wallet_unit::{ActiveModel, Model};
 
@@ -25,7 +24,7 @@ impl From<Model> for HolderWalletUnit {
 
 impl From<CreateHolderWalletUnitRequest> for ActiveModel {
     fn from(value: CreateHolderWalletUnitRequest) -> Self {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         Self {
             id: Set(value.id),
             created_date: Set(now),

@@ -43,9 +43,9 @@ fn dummy_certificate(pem: String) -> Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: Uuid::new_v4().into(),
         organisation_id: None,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        expiry_date: OffsetDateTime::now_utc() + time::Duration::days(365),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        expiry_date: crate::clock::now_utc() + time::Duration::days(365),
         name: "test-cert".into(),
         chain: pem,
         fingerprint: "test".into(),
@@ -195,7 +195,7 @@ fn mock_publication_repo(
             content_log.lock().unwrap().push(bytes.clone());
             publication.content = bytes.to_owned();
         }
-        publication.last_modified = OffsetDateTime::now_utc();
+        publication.last_modified = crate::clock::now_utc();
         Ok(())
     });
 

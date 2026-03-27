@@ -13,7 +13,7 @@ pub struct Blob {
 
 impl Blob {
     pub fn new(value: impl Into<Vec<u8>>, r#type: BlobType) -> Self {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         Self {
             id: Uuid::new_v4().into(),
             created_date: now,

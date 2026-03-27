@@ -1,6 +1,5 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use time::OffsetDateTime;
 
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -79,7 +78,7 @@ pub(crate) fn throw_if_interaction_created_date(
     pre_authorization_expires_in: time::Duration,
     interaction: &Interaction,
 ) -> Result<(), OpenIDIssuanceError> {
-    if interaction.created_date + pre_authorization_expires_in < OffsetDateTime::now_utc() {
+    if interaction.created_date + pre_authorization_expires_in < crate::clock::now_utc() {
         return Err(OpenIDIssuanceError::OpenID4VCI(
             OpenID4VCIError::InvalidGrant,
         ));
@@ -137,7 +136,7 @@ pub(super) fn validate_refresh_token(
         ));
     };
 
-    if &OffsetDateTime::now_utc() > expires_at {
+    if &crate::clock::now_utc() > expires_at {
         return Err(OpenIDIssuanceError::OpenID4VCI(
             OpenID4VCIError::InvalidToken,
         ));

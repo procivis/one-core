@@ -5,7 +5,7 @@ use mockall::predicate::{always, eq};
 use shared_types::{RevocationListId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use standardized_types::x509::CertificateSerial;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::{CRLRevocation, Params};
@@ -106,14 +106,14 @@ async fn test_add_signature_new_list() {
         Params { refresh_interval },
     );
 
-    let before_adding = OffsetDateTime::now_utc().replace_millisecond(0).unwrap();
+    let before_adding = crate::clock::now_utc().replace_millisecond(0).unwrap();
 
     let (_, info) = revocation_method
         .add_signature("signature_type".to_string(), &issuer, Some(&certificate))
         .await
         .unwrap();
 
-    let after_adding = OffsetDateTime::now_utc().replace_millisecond(999).unwrap();
+    let after_adding = crate::clock::now_utc().replace_millisecond(999).unwrap();
 
     let list_id = list_id.lock().unwrap().unwrap();
     let serial = serial.lock().unwrap().take().unwrap();
@@ -161,8 +161,8 @@ async fn test_revoke_signature() {
         .return_once(move |_, _| {
             Ok(Some(RevocationList {
                 id: list_id,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 formatted_list: empty_crl(),
                 format: StatusListCredentialFormat::X509Crl,
                 r#type: "CRL".into(),
@@ -173,7 +173,7 @@ async fn test_revoke_signature() {
         });
 
     let serial = CertificateSerial::new_random();
-    let revocation_time = OffsetDateTime::now_utc().replace_millisecond(0).unwrap();
+    let revocation_time = crate::clock::now_utc().replace_millisecond(0).unwrap();
     revocation_list_repository
         .expect_get_entries()
         .with(eq(list_id))
@@ -235,14 +235,14 @@ async fn test_revoke_signature() {
         Params { refresh_interval },
     );
 
-    let before_revocation = OffsetDateTime::now_utc().replace_millisecond(0).unwrap();
+    let before_revocation = crate::clock::now_utc().replace_millisecond(0).unwrap();
 
     revocation_method
         .revoke_signature(signature_id)
         .await
         .unwrap();
 
-    let after_revocation = OffsetDateTime::now_utc().replace_millisecond(999).unwrap();
+    let after_revocation = crate::clock::now_utc().replace_millisecond(999).unwrap();
 
     let formatted_list = formatted_list.lock().unwrap().take().unwrap();
 
@@ -281,8 +281,8 @@ async fn test_get_updated_list_no_update() {
             move |_, _| {
                 Ok(Some(RevocationList {
                     id: list_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     formatted_list,
                     format: StatusListCredentialFormat::X509Crl,
                     r#type: "CRL".into(),
@@ -322,7 +322,7 @@ async fn test_get_updated_list_with_update() {
         .return_once({
             let formatted_list = old_list.clone();
             move |_, _| {
-                let one_hour_ago = OffsetDateTime::now_utc() - Duration::hours(1);
+                let one_hour_ago = crate::clock::now_utc() - Duration::hours(1);
                 Ok(Some(RevocationList {
                     id: list_id,
                     created_date: one_hour_ago,
@@ -386,9 +386,9 @@ fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: issuer.id,
         organisation_id: None,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        expiry_date: OffsetDateTime::now_utc().add(Duration::minutes(10)),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        expiry_date: crate::clock::now_utc().add(Duration::minutes(10)),
         name: "test cert".to_string(),
         chain: r#"-----BEGIN CERTIFICATE-----
 MIIC6jCCApCgAwIBAgIULOnT9JtSjwzSk5XUCy4lzAXgzsMwCgYIKoZIzj0EAwQw

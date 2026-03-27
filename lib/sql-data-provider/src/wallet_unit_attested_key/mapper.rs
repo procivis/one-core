@@ -3,7 +3,6 @@ use one_core::model::wallet_unit_attested_key::{
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
-use time::OffsetDateTime;
 
 use crate::entity::wallet_unit_attested_key::{ActiveModel, Model};
 
@@ -45,7 +44,7 @@ impl TryFrom<WalletUnitAttestedKeyUpsertRequest> for ActiveModel {
     type Error = DataLayerError;
 
     fn try_from(value: WalletUnitAttestedKeyUpsertRequest) -> Result<Self, DataLayerError> {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         Ok(Self {
             id: Set(value.id),
             created_date: Set(now),

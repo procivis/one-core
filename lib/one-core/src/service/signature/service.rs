@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::SignatureService;
@@ -93,7 +92,7 @@ impl SignatureService {
             .history
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 source: HistorySource::Core,
                 action: HistoryAction::Created,
                 entity_id: Some(result.id.into()),
@@ -167,7 +166,7 @@ impl SignatureService {
             .history
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 source: HistorySource::Core,
                 action: HistoryAction::Revoked,
                 entity_id: Some(id.into()),

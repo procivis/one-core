@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use shared_types::{CredentialId, DidId, HolderWalletUnitId, IdentifierId, InteractionId, KeyId};
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -500,7 +499,7 @@ impl SSIHolderService {
                 .ok_or(HolderServiceError::MappingError(
                     "missing clam_schemas".to_string(),
                 ))?;
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         for (key, value) in credential.claims.claims {
             let claim_schema = claim_schemas
@@ -771,7 +770,7 @@ impl SSIHolderService {
         let data = serialize_interaction_data(&interaction_data)
             .error_while("storing interaction data")?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         self.interaction_repository
             .create_interaction(Interaction {
                 id: interaction_id,

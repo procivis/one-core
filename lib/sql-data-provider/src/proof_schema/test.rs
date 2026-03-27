@@ -28,7 +28,6 @@ use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::{OrganisationId, ProofSchemaId};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaProvider;
@@ -870,7 +869,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     )
     .await;
 
-    let date_now = OffsetDateTime::now_utc();
+    let date_now = one_core::clock::now_utc();
     let schema1_id = crate::entity::proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
@@ -1092,7 +1091,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     )
     .await;
 
-    let date_now = OffsetDateTime::now_utc();
+    let date_now = one_core::clock::now_utc();
     let cred_schema_jwt_id = crate::entity::credential_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),

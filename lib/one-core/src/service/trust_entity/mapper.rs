@@ -1,6 +1,5 @@
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use shared_types::{DidValue, TrustEntityKey};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
@@ -80,7 +79,7 @@ pub(super) fn trust_entity_from_request(
     trust_anchor: TrustAnchor,
 ) -> TrustEntity {
     let id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     TrustEntity {
         id,
@@ -108,7 +107,7 @@ pub(super) fn trust_entity_from_did_request(
     did: DidValue,
 ) -> TrustEntity {
     let id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     TrustEntity {
         id,

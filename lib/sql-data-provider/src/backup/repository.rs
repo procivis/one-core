@@ -409,7 +409,7 @@ impl BackupRepository for BackupProvider {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn delete_unexportable(&self, path: &Path) -> Result<(), DataLayerError> {
         let db = open_sqlite_on_path(path).await?;
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let update_credentials = credential::Entity::update_many()
             .col_expr(credential::Column::DeletedAt, now.into())

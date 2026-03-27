@@ -9,7 +9,6 @@ use sea_orm::{
     QuerySelect, QueryTrait,
 };
 use shared_types::RemoteEntityCacheEntryId;
-use time::OffsetDateTime;
 
 use crate::entity::remote_entity_cache;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -38,7 +37,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
 
         // first delete all expired
         remote_entity_cache::Entity::delete_many()
-            .filter(remote_entity_cache::Column::ExpirationDate.lt(OffsetDateTime::now_utc()))
+            .filter(remote_entity_cache::Column::ExpirationDate.lt(one_core::clock::now_utc()))
             .filter(remote_entity_cache::Column::Type.eq(cache_type))
             .exec(&self.db)
             .await

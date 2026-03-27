@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use serde_json::Value;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use self::dto::InteractionExpirationCheckResultDTO;
@@ -51,7 +50,7 @@ impl InteractionExpirationCheckProvider {
 #[async_trait::async_trait]
 impl Task for InteractionExpirationCheckProvider {
     async fn run(&self, _params: Option<Value>) -> Result<Value, ServiceError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let updated_credentials = self
             .interaction_repository
             .update_expired_credentials()

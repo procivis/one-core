@@ -5,7 +5,6 @@ use serde_json::json;
 use shared_types::ProofSchemaId;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
-use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
@@ -14,7 +13,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
 async fn test_import_proof_schema_ok() {
-    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+    let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let (context, source_organisation) = TestContext::new_with_organisation(None).await;
     let original_credential_schema_id = Uuid::new_v4().into();
@@ -160,7 +159,7 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
     let mut claim_schemas = credential_schema.claim_schemas.clone().unwrap();
     let requested_claim_schema = claim_schemas.swap_remove(0);
 
-    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+    let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
     let proof_schema = json!({
         "id": Uuid::new_v4(),
         "createdDate": now,
@@ -212,7 +211,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+    let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let original_credential_schema = context
         .db
@@ -312,7 +311,7 @@ async fn test_import_proof_schema_nested_array() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+    let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let root_object_array_claim = ClaimSchema {
         id: Uuid::new_v4().into(),

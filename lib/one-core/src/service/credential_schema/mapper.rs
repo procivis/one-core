@@ -1,6 +1,5 @@
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialSchemaId, OrganisationId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
@@ -96,7 +95,7 @@ pub(super) fn from_create_request_with_id(
         return Err(CredentialSchemaServiceError::MissingClaimSchemas);
     }
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 

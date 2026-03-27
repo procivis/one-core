@@ -109,7 +109,7 @@ pub(crate) async fn prepare_bearer_token(
     let payload = JWTPayload {
         issuer,
         custom: BearerTokenPayload {
-            timestamp: OffsetDateTime::now_utc(),
+            timestamp: crate::clock::now_utc(),
         },
         ..Default::default()
     };

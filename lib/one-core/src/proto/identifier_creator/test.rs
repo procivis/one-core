@@ -5,7 +5,7 @@ use assert2::let_assert;
 use mockall::Sequence;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::creator::IdentifierCreatorProto;
@@ -89,7 +89,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
         .once()
         .returning(move |_| Ok(Uuid::new_v4().into()));
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let mut certificate_validator = MockCertificateValidator::new();
     certificate_validator
@@ -151,7 +151,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
     let organisation = dummy_organisation(None);
     let certificate_id = Uuid::new_v4().into();
     let identifier_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let certificate = Certificate {
         id: certificate_id,
         identifier_id,
@@ -176,7 +176,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
         }
     });
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository

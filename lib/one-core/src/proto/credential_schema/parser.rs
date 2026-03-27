@@ -47,7 +47,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         &self,
         dto: ImportCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchema, Error> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&dto.schema.format)
@@ -538,7 +538,6 @@ mod test {
 
     use assert2::{assert, let_assert};
     use similar_asserts::assert_eq;
-    use time::OffsetDateTime;
     use uuid::Uuid;
 
     use super::Error;
@@ -852,7 +851,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
@@ -920,7 +919,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
@@ -1129,7 +1128,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "code_claim".to_string(),
@@ -1354,7 +1353,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claims = vec![
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1394,7 +1393,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claims = vec![
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1442,7 +1441,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claims = vec![ImportCredentialSchemaClaimSchemaDTO {
             id: Uuid::new_v4(),
             created_date: now,
@@ -1482,7 +1481,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claims = vec![ImportCredentialSchemaClaimSchemaDTO {
             id: Uuid::new_v4(),
             created_date: now,
@@ -1523,7 +1522,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         // when
         let result = parser.parse_all_claim_schemas(now, &FormatType::Jwt, vec![], &formatter);
@@ -1549,7 +1548,7 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let claims = vec![ImportCredentialSchemaClaimSchemaDTO {
             id: Uuid::new_v4(),
             created_date: now,

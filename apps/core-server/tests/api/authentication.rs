@@ -12,7 +12,6 @@ use one_crypto::signer::eddsa::EDDSASigner;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
-use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -104,7 +103,7 @@ async fn test_static_token_authentication_fails_invalid_token() {
 #[tokio::test]
 async fn test_sts_authentication_success() {
     // given
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let payload = JWTPayload {
         issued_at: Some(now),
         expires_at: Some(now + Duration::from_secs(3600)),
@@ -145,7 +144,7 @@ async fn test_sts_authentication_success() {
 #[tokio::test]
 async fn test_sts_authentication_act_success() {
     // given
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let payload = JWTPayload {
         issued_at: Some(now),
         expires_at: Some(now + Duration::from_secs(3600)),
@@ -189,7 +188,7 @@ async fn test_sts_authentication_fails_invalid_aud() {
     let key = Eddsa.generate_key().unwrap();
     let jwk = to_jwk_with_kid(&key, Default::default());
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),
@@ -215,7 +214,7 @@ async fn test_sts_authentication_fails_invalid_iss() {
     let key = Eddsa.generate_key().unwrap();
     let jwk = to_jwk_with_kid(&key, Default::default());
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),
@@ -242,7 +241,7 @@ async fn test_sts_authentication_fails_expired_token() {
     let key = Eddsa.generate_key().unwrap();
     let jwk = to_jwk_with_kid(&key, Default::default());
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),
@@ -268,7 +267,7 @@ async fn test_sts_authentication_fails_invalid_nbf() {
     let key = Eddsa.generate_key().unwrap();
     let jwk = to_jwk_with_kid(&key, Default::default());
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),
@@ -295,7 +294,7 @@ async fn test_sts_authentication_fails_invalid_signature() {
     let key_signer = Eddsa.generate_key().unwrap();
 
     let jwk = to_jwk_with_kid(&key_signer, kid);
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),
@@ -324,7 +323,7 @@ async fn test_sts_authentication_fails_signed_with_different_kid() {
     let key = Eddsa.generate_key().unwrap();
 
     let jwk = to_jwk_with_kid(&key, Uuid::new_v4());
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
         "EdDSA".to_string(),

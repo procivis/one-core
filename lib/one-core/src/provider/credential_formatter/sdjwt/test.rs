@@ -7,7 +7,6 @@ use one_crypto::{Hasher, MockHasher};
 use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -645,7 +644,7 @@ fn test_select_disclosures_returns_empty_when_disclosed_key_not_found_in_disclos
 }
 
 pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
-    let issuance_date = OffsetDateTime::now_utc();
+    let issuance_date = crate::clock::now_utc();
     let valid_for = time::Duration::days(365 * 2);
 
     let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())

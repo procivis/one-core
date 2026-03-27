@@ -6,7 +6,6 @@ use model::{MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys};
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use serde_json::Value;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -242,7 +241,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             interaction_data.session_keys.nonce,
         );
 
-        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let now = crate::clock::now_utc().unix_timestamp();
         let encrypted = encryption
             .encrypt(&now)
             .map_err(VerificationProtocolError::Other)?;

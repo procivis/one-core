@@ -1,5 +1,4 @@
 use serde_json::json;
-use time::OffsetDateTime;
 use url::Url;
 
 use super::JWTFormatter;
@@ -71,7 +70,7 @@ impl JWTFormatter {
             issuer: Some(issuer_did.did.to_string()),
             subject: Some(credential_subject_id.to_string()),
             custom: vc_claim,
-            issued_at: Some(OffsetDateTime::now_utc()),
+            issued_at: Some(crate::clock::now_utc()),
             ..Default::default()
         };
 
@@ -173,7 +172,7 @@ impl JWTFormatter {
             issuer,
             subject: Some(revocation_list_url),
             custom: content,
-            issued_at: Some(OffsetDateTime::now_utc()),
+            issued_at: Some(crate::clock::now_utc()),
             ..Default::default()
         };
 

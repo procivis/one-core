@@ -8,7 +8,7 @@ use regex::Regex;
 use serde_json::json;
 use shared_types::{InteractionId, OrganisationId};
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -95,8 +95,8 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     data: None,
                     organisation: None,
                     nonce_id: None,
@@ -163,8 +163,8 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                     state,
                     interaction: Some(Interaction {
                         id: interaction_id,
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         data: None,
                         organisation: None,
                         nonce_id: None,
@@ -213,8 +213,8 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     data: None,
                     organisation: None,
                     nonce_id: None,
@@ -307,8 +307,8 @@ async fn test_submit_proof_succeeds() {
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
@@ -507,8 +507,8 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
@@ -721,8 +721,8 @@ async fn test_submit_proof_repeating_claims() {
                 state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
@@ -742,8 +742,8 @@ async fn test_submit_proof_repeating_claims() {
                 claims: Some(vec![Claim {
                     id: claim_id.into(),
                     credential_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     value: Some("claim value".to_string()),
                     path: "claim1".to_string(),
                     selectively_disclosable: false,
@@ -751,8 +751,8 @@ async fn test_submit_proof_repeating_claims() {
                         id: claim_id.into(),
                         key: "claim1".to_string(),
                         data_type: "STRING".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         array: false,
                         metadata: false,
                         required: true,
@@ -990,10 +990,10 @@ async fn test_accept_credential() {
             Ok(DetailCredential {
                 id: None,
                 issuance_date: None,
-                valid_from: Some(OffsetDateTime::now_utc()),
-                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(crate::clock::now_utc()),
+                valid_until: Some(crate::clock::now_utc() + Duration::days(10)),
                 update_at: None,
-                invalid_before: Some(OffsetDateTime::now_utc()),
+                invalid_before: Some(crate::clock::now_utc()),
                 issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
@@ -1141,10 +1141,10 @@ async fn test_accept_credential_with_did() {
             Ok(DetailCredential {
                 id: None,
                 issuance_date: None,
-                valid_from: Some(OffsetDateTime::now_utc()),
-                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(crate::clock::now_utc()),
+                valid_until: Some(crate::clock::now_utc() + Duration::days(10)),
                 update_at: None,
-                invalid_before: Some(OffsetDateTime::now_utc()),
+                invalid_before: Some(crate::clock::now_utc()),
                 issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
@@ -1626,9 +1626,9 @@ fn mock_ssi_holder_service() -> SSIHolderService {
 fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
     Credential {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
@@ -1639,8 +1639,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         profile: None,
         issuer_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             name: "identifier".to_string(),
             r#type: IdentifierType::Did,
             is_remote: true,
@@ -1649,8 +1649,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             organisation: None,
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "issuer_did".to_string(),
                 did: "did:key:123".parse().unwrap(),
                 did_type: DidType::Remote,
@@ -1667,8 +1667,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         holder_identifier: None,
         schema: Some(crate::model::credential_schema::CredentialSchema {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -1678,8 +1678,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 id: Uuid::new_v4().into(),
                 key: "key1".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 array: false,
                 metadata: false,
                 required: true,
@@ -1695,8 +1695,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             data: Some(b"interaction data".to_vec()),
             organisation: Some(dummy_organisation(organisation_id)),
             nonce_id: None,

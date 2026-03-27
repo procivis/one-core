@@ -1,4 +1,3 @@
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::identifier::Identifier;
@@ -9,7 +8,7 @@ use crate::service::organisation::dto::{
 
 impl From<CreateOrganisationRequestDTO> for Organisation {
     fn from(request: CreateOrganisationRequestDTO) -> Self {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let id = request.id.unwrap_or(Uuid::new_v4().into());
         Organisation {
             name: request.name.unwrap_or(id.to_string()),

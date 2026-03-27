@@ -1,5 +1,4 @@
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Creates a cache entry for the W3C Verifiable Credentials v2 context
@@ -9,7 +8,7 @@ use uuid::Uuid;
 pub fn credentials_v2_cache_entry() -> RemoteEntityCacheEntry {
     let context = include_str!("../../../../lib/one-core/src/util/context_vc2_0.jsonld");
     let value = context.as_bytes().to_vec();
-    let now = OffsetDateTime::now_utc().replace_nanosecond(0).unwrap();
+    let now = one_core::clock::now_utc().replace_nanosecond(0).unwrap();
     RemoteEntityCacheEntry {
         id: Uuid::new_v4().into(),
         created_date: now,

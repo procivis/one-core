@@ -567,8 +567,8 @@ mod test {
             // dummy key, only public key needs to match
             key: Key {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key,
                 name: "test".to_string(),
                 key_reference: None,

@@ -3,7 +3,6 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::RemoteSecureElementKeyProvider;
@@ -68,8 +67,8 @@ async fn test_sign_success() {
         .key_handle(&Key {
             id: Uuid::new_v4().into(),
             key_reference: Some(b"key_reference".to_vec()),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key: b"public_key".to_vec(),
             name: "".to_string(),
             storage_type: "REMOTE_SECURE_ELEMENT".to_string(),

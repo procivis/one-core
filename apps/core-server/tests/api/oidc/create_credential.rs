@@ -18,8 +18,8 @@ use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use shared_types::{CredentialFormat, CredentialId, DidValue, InteractionId};
 use similar_asserts::assert_eq;
+use time::Duration;
 use time::macros::format_description;
-use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::api_oidc_tests::common::{proof_jwt, proof_jwt_for};
@@ -127,7 +127,7 @@ async fn test_post_issuer_credential_in_parallel() {
     let interaction_data = json!({
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     });
 
     let interaction = context
@@ -266,7 +266,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         let interaction_data = json!({
             "pre_authorized_code_used": true,
             "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-            "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+            "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         });
 
         let interaction = context
@@ -375,7 +375,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         let interaction_data = json!({
             "pre_authorized_code_used": true,
             "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-            "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+            "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         });
 
         let interaction = context
@@ -671,7 +671,7 @@ async fn test_post_issuer_credential_with(
     let mut interaction_data = json!({
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     });
 
     if let Some(interaction_nonce) = interaction_nonce {
@@ -761,7 +761,7 @@ async fn test_post_issuer_credential_mdoc() {
         .await;
 
     let identifier_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let certificate_model = Certificate {
         id: Uuid::new_v4().into(),
@@ -852,7 +852,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let data = serde_json::to_vec(&json!({
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     })).unwrap();
 
     let interaction = context

@@ -5,7 +5,7 @@ use one_core::proto::jwt::model::JWTPayload;
 use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::model::GeneratedKey;
 use serde::Serialize;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 pub(crate) async fn signed_jwt<T: Serialize>(
     key: &GeneratedKey,
@@ -16,7 +16,7 @@ pub(crate) async fn signed_jwt<T: Serialize>(
     custom: T,
     jwt_id: Option<String>,
 ) -> String {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let jwt = Jwt::new(
         "JWT".to_string(),
         alg.to_string(),

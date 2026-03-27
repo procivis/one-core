@@ -434,7 +434,7 @@ mod tests {
     use mockall::predicate;
     use shared_types::TrustListPublisherId;
     use similar_asserts::assert_eq;
-    use time::{Duration, OffsetDateTime};
+    use time::Duration;
     use uuid::Uuid;
 
     use super::*;
@@ -465,7 +465,7 @@ mod tests {
         let identifier_id = Uuid::new_v4().into();
         let publisher_id: TrustListPublisherId = "LOTE".into();
         let trust_list_publication_id = Uuid::new_v4().into();
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let identifier = Identifier {
             id: identifier_id,
             created_date: now,
@@ -922,7 +922,7 @@ mod tests {
     }
 
     fn create_test_trust_entry(trust_list_publication_id: TrustListPublicationId) -> TrustEntry {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         TrustEntry {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -937,7 +937,7 @@ mod tests {
     }
 
     fn create_test_key_identifier(key_type: &str) -> Identifier {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -955,7 +955,7 @@ mod tests {
     }
 
     fn create_test_did_identifier() -> Identifier {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         Identifier {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -973,7 +973,7 @@ mod tests {
     }
 
     fn create_test_key(key_type: &str) -> Key {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         Key {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -988,7 +988,7 @@ mod tests {
     }
 
     fn create_test_certificate_identifier(key_type: &str) -> Identifier {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let key = create_test_key(key_type);
         let identifier_id = Uuid::new_v4().into();
         let certificate = crate::model::certificate::Certificate {

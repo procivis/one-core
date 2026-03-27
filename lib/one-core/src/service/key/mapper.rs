@@ -1,6 +1,5 @@
 use one_dto_mapper::convert_inner;
 use shared_types::KeyId;
-use time::OffsetDateTime;
 
 use super::dto::{GetKeyListResponseDTO, KeyRequestDTO};
 use crate::model::key::{GetKeyList, Key};
@@ -15,7 +14,7 @@ pub(super) fn from_create_request(
     organisation: Organisation,
     generated_key: StorageGeneratedKey,
 ) -> Key {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     Key {
         id: key_id,

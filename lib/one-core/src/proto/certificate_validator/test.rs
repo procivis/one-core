@@ -7,7 +7,7 @@ use rcgen::{
     KeyPair, KeyUsagePurpose, SigningKey,
 };
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use x509_parser::pem::Pem;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -137,10 +137,10 @@ fn create_ca_cert(path_len_constraint: Option<u8>) -> (Certificate, KeyPair, Cer
     distinguished_name.push(DnType::CommonName, "CA cert");
     params.distinguished_name = distinguished_name;
 
-    params.not_before = OffsetDateTime::now_utc()
+    params.not_before = crate::clock::now_utc()
         .checked_sub(Duration::weeks(100))
         .unwrap(); // ~2year before now
-    params.not_after = OffsetDateTime::now_utc()
+    params.not_after = crate::clock::now_utc()
         .checked_add(Duration::weeks(500))
         .unwrap(); // ~10years from now
 

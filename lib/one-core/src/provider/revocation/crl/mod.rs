@@ -301,7 +301,7 @@ impl RevocationMethod for CRLRevocation {
                 "Missing revocation list".to_string(),
             ))?;
 
-        if list.last_modified + self.params.refresh_interval > OffsetDateTime::now_utc() {
+        if list.last_modified + self.params.refresh_interval > crate::clock::now_utc() {
             return Ok(list.formatted_list);
         }
 
@@ -324,7 +324,7 @@ impl CRLRevocation {
     ) -> Result<RevocationListId, RevocationError> {
         let formatted_list = self.format_list(0, certificate, vec![]).await?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         Ok(self
             .revocation_list_repository
             .create_revocation_list(RevocationList {
@@ -444,7 +444,7 @@ impl CRLRevocation {
             pem::EncodeConfig::new().set_line_ending(pem::LineEnding::LF),
         );
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let crl_params = rcgen::CertificateRevocationListParams {
             this_update: now,
             next_update: now + self.params.refresh_interval,

@@ -4,7 +4,6 @@ use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
@@ -239,9 +238,9 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
 
     let interaction_id = Uuid::new_v4().into();
 
-    let refresh_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(60);
+    let refresh_token_expires_at = one_core::clock::now_utc() + time::Duration::seconds(60);
 
-    let access_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(20);
+    let access_token_expires_at = one_core::clock::now_utc() + time::Duration::seconds(20);
 
     let data = json!({
         "pre_authorized_code_used": false,

@@ -219,7 +219,7 @@ impl OpenID4VCI13 {
                 let can_be_updated_at = mdoc_validity_credential.created_date
                     + self.mso_minimum_refresh_time(format)?;
 
-                if can_be_updated_at > OffsetDateTime::now_utc() {
+                if can_be_updated_at > crate::clock::now_utc() {
                     return Err(IssuanceProtocolError::RefreshTooSoon);
                 }
             }
@@ -361,7 +361,7 @@ impl OpenID4VCI13 {
         interaction_data: &mut HolderInteractionData,
         storage_access: &StorageAccess,
     ) -> Result<SecretString, IssuanceProtocolError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         if let Some(encrypted_token) = &interaction_data.access_token {
             let token_valid = interaction_data
                 .access_token_expires_at
@@ -1111,8 +1111,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             },
         )?);
 
-        let expires_at =
-            Some(OffsetDateTime::now_utc() + self.params.pre_authorized_code_expires_in);
+        let expires_at = Some(crate::clock::now_utc() + self.params.pre_authorized_code_expires_in);
 
         Ok(ShareResponse {
             url,
@@ -1306,7 +1305,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .insert(
                         Mdoc {
                             id: Uuid::new_v4(),
-                            created_date: OffsetDateTime::now_utc(),
+                            created_date: crate::clock::now_utc(),
                             credential: token.as_bytes().to_vec(),
                             linked_credential_id: *credential_id,
                         }
@@ -1330,7 +1329,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .insert(
                         Mdoc {
                             id: Uuid::new_v4(),
-                            created_date: OffsetDateTime::now_utc(),
+                            created_date: crate::clock::now_utc(),
                             credential: token.as_bytes().to_vec(),
                             linked_credential_id: *credential_id,
                         }
@@ -2030,7 +2029,7 @@ async fn create_and_store_interaction(
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, IssuanceProtocolError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 

@@ -10,7 +10,6 @@ use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::prelude::Expr;
 use sea_orm::{ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
 use shared_types::TrustListPublicationId;
-use time::OffsetDateTime;
 
 use super::TrustListPublicationProvider;
 use crate::common::list_query_with_base_model;
@@ -128,7 +127,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
     ) -> Result<(), DataLayerError> {
         trust_list_publication::Entity::update(trust_list_publication::ActiveModel {
             id: Unchanged(id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             content: request.content.map(Set).unwrap_or_default(),
             sequence_number: request.sequence_number.map(Set).unwrap_or_default(),
             ..Default::default()
@@ -157,7 +156,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
                 trust_list_publication::Entity::update_many()
                     .col_expr(
                         trust_list_publication::Column::DeletedAt,
-                        Expr::value(OffsetDateTime::now_utc()),
+                        Expr::value(one_core::clock::now_utc()),
                     )
                     .filter(
                         Condition::all()

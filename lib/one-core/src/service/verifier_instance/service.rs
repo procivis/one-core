@@ -3,7 +3,6 @@ use std::str::FromStr;
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use shared_types::VerifierInstanceId;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -82,7 +81,7 @@ impl VerifierInstanceService {
             .await
             .error_while("getting verifier provider metadata")?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let verifier_instance_id = Uuid::new_v4().into();
         let success_log = format!(

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
 use shared_types::{KeyId, OrganisationId, TrustCollectionId};
-use time::OffsetDateTime;
 
 use super::dto::{HolderWalletUnitResponseDTO, TrustCollectionInfoDTO};
 use super::error::HolderWalletUnitError;
@@ -30,7 +29,7 @@ pub(super) fn key_from_generated_key(
     organisation: Organisation,
     generated_key: StorageGeneratedKey,
 ) -> Key {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     Key {
         id: key_id,

@@ -3,7 +3,6 @@ use std::sync::Arc;
 use dto::{CertificateCheckFailureDTO, CertificateCheckResultDTO};
 use serde_json::Value;
 use shared_types::{CertificateId, IdentifierId};
-use time::OffsetDateTime;
 
 use super::Task;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
@@ -139,7 +138,7 @@ impl CertificateCheck {
                     CertificateFilterValue::State(CertificateState::Active).condition()
                         & CertificateFilterValue::ExpiryDate(ValueComparison {
                             comparison: ComparisonType::LessThan,
-                            value: OffsetDateTime::now_utc(),
+                            value: crate::clock::now_utc(),
                         }),
                 ),
                 ..Default::default()

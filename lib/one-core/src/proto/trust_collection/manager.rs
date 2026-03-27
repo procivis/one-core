@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use futures::FutureExt;
 use shared_types::{OrganisationId, TrustCollectionId};
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -42,7 +41,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
         organisation_id: OrganisationId,
     ) -> Result<Vec<TrustCollectionId>, Error> {
         let provider_url = Url::parse(provider_metadata_url)?;
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let mut result = vec![];
         self.tx_manager

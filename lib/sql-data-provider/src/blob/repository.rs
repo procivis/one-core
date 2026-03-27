@@ -5,7 +5,6 @@ use one_core::repository::blob_repository::BlobRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::BlobId;
-use time::OffsetDateTime;
 
 use crate::blob::BlobProvider;
 use crate::entity::blob;
@@ -35,7 +34,7 @@ impl BlobRepository for BlobProvider {
     async fn update(&self, id: &BlobId, update: UpdateBlobRequest) -> Result<(), DataLayerError> {
         let update_model = blob::ActiveModel {
             id: Unchanged(*id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             value: update.value.map(Set).unwrap_or_default(),
             ..Default::default()
         };

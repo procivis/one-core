@@ -46,7 +46,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .iter()
             .enumerate()
             .map(|(order, schema)| {
-                let now = OffsetDateTime::now_utc();
+                let now = one_core::clock::now_utc();
                 let credential_schema = schema
                     .credential_schema
                     .as_ref()

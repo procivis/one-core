@@ -565,16 +565,16 @@ mod test {
     fn test_shared_schema_deserializes_into_import_schema() {
         let shared = CredentialSchemaResponseRestDTO {
             id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             name: "name".to_string(),
             format: "format".into(),
             revocation_method: Some("method".into()),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaResponseRestDTO {
                 id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: one_core::clock::now_utc(),
+                last_modified: one_core::clock::now_utc(),
                 key: "key".to_string(),
                 datatype: "datatype".to_string(),
                 required: true,

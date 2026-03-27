@@ -6,7 +6,6 @@ use json_syntax::json;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use shared_types::DidValue;
-use time::OffsetDateTime;
 
 use super::common::{DidLogParameters, canonicalized_hash, multihash_b58_encode};
 use crate::model::did::KeyRole;
@@ -47,7 +46,7 @@ pub async fn verify_did_log(
     let mut active_parameters = first_entry.parameters.clone();
     let mut scid_or_version_id = &scid.clone();
     let mut last_entry_time = None;
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     for (index, (entry, raw_line)) in log_iter.enumerate() {
         // did log uses 1-based indices

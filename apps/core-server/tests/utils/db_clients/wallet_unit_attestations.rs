@@ -49,7 +49,7 @@ impl WalletUnitAttestationsDB {
         holder_wallet_unit_id: HolderWalletUnitId,
         attested_key: Key,
     ) -> WalletUnitAttestation {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         let attestation = WalletUnitAttestation {
             id: test_wallet_unit_attestation
                 .id

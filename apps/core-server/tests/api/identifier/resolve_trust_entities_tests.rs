@@ -6,7 +6,7 @@ use one_core::model::organisation::Organisation;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use rcgen::CertificateParams;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::TestingIdentifierParams;
@@ -182,7 +182,7 @@ async fn test_identifier_resolve_trust_entity_certificate_expired_unlisted_succe
 
     let mut ca_cert_params = CertificateParams::default();
     // Make CA cert expired
-    ca_cert_params.not_after = OffsetDateTime::now_utc() - Duration::days(1);
+    ca_cert_params.not_after = one_core::clock::now_utc() - Duration::days(1);
     let (identifier, certificate, ca_cert) =
         prepare_certificate_identifier(&context, &organisation, Some(ca_cert_params)).await;
     let trust_anchor_id = Uuid::new_v4();
@@ -330,7 +330,7 @@ async fn prepare_certificate_identifier(
     );
 
     let identifier_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,

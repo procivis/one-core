@@ -1,5 +1,4 @@
 use shared_types::ProofId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
@@ -63,7 +62,7 @@ impl ProofService {
         let verifier_session = setup_verifier_session(device_engagement, &schema, handover)
             .error_while("setting up verifier session")?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let proof = Proof {
             id: Uuid::new_v4().into(),
             created_date: now,

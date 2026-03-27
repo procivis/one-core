@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use serde_json::Value;
 use shared_types::TrustListSubscriptionId;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -80,7 +79,7 @@ impl TrustListSubscriptionUpdateTask {
                 .history_repository
                 .create_history(History {
                     id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
                     action: state.action(),
                     name: subscription.name.clone(),
                     target: None,

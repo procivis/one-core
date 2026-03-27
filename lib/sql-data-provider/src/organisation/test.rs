@@ -7,7 +7,6 @@ use one_core::model::organisation::{
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OrganisationProvider;
@@ -35,7 +34,7 @@ async fn test_create_organisation() {
     let TestSetup { db, repository } = setup().await;
 
     let org_id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let organisation = Organisation {
         id: org_id,

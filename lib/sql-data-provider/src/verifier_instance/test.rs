@@ -3,7 +3,6 @@ use one_core::model::verifier_instance::VerifierInstance;
 use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
 use shared_types::VerifierInstanceId;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::VerifierInstanceProvider;
@@ -81,7 +80,7 @@ async fn get_by_org_id_success() {
 }
 
 fn test_verifier_instance(id: VerifierInstanceId, organisation: Organisation) -> VerifierInstance {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     VerifierInstance {
         id,
         created_date: now,

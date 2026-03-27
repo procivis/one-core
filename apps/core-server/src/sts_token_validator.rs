@@ -179,7 +179,6 @@ mod fetcher {
     use one_core::provider::key_algorithm::error::KeyAlgorithmError;
     use standardized_types::jwk::PublicJwk;
     use thiserror::Error;
-    use time::OffsetDateTime;
 
     use crate::StsTokenValidation;
     use crate::sts_token_validator::model::Jwks;
@@ -228,7 +227,7 @@ mod fetcher {
                             .map(|(kid, v)| Eddsa.parse_jwk(v).map(|kh| (kid, kh)))
                             .collect::<Result<HashMap<_, _>, _>>()
                             .map_err(StsJwksFetcherError::FailedToParseJWK)?;
-                        let now = OffsetDateTime::now_utc();
+                        let now = one_core::clock::now_utc();
                         return Ok(Jwks {
                             ttl: now + Duration::from_secs(self.config.ttl_jwks),
                             keys,
@@ -280,7 +279,7 @@ mod model {
         }
 
         pub(crate) fn has_expired(&self) -> bool {
-            self.ttl < OffsetDateTime::now_utc()
+            self.ttl < one_core::clock::now_utc()
         }
     }
 }

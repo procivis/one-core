@@ -34,7 +34,7 @@ use one_dto_mapper::convert_inner;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::CredentialProvider;
@@ -516,9 +516,9 @@ async fn test_delete_credential_failed_not_found() {
     let result = provider
         .delete_credential(&Credential {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
             issuance_date: None,
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             deleted_at: None,
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             redirect_uri: None,
@@ -584,7 +584,7 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         identifier.id,
-        Some(OffsetDateTime::now_utc()),
+        Some(one_core::clock::now_utc()),
         None,
         Uuid::new_v4().into(),
         credential::CredentialRole::Issuer,
@@ -710,8 +710,8 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
         db, credential_id, ..
     } = setup_with_credential().await;
 
-    let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
-    let much_later = OffsetDateTime::now_utc().add(Duration::days(1));
+    let later = one_core::clock::now_utc().add(Duration::seconds(1));
+    let much_later = one_core::clock::now_utc().add(Duration::days(1));
     update_credential_state(
         &db,
         credential_id,

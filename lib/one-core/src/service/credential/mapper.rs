@@ -369,7 +369,7 @@ pub(super) fn from_create_request(
     schema: CredentialSchema,
     key: Key,
 ) -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     Credential {
         id: credential_id,
@@ -402,7 +402,7 @@ pub(super) fn claims_from_create_request(
     claims: Vec<CredentialRequestClaimDTO>,
     claim_schemas: &[ClaimSchema],
 ) -> Result<Vec<Claim>, CredentialServiceError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let mut claims_map = HashMap::<String, Claim>::new();
 
     for claim_dto in claims {

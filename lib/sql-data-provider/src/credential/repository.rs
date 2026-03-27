@@ -23,7 +23,6 @@ use sea_orm::{
     QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{ClaimId, CredentialId, CredentialSchemaId, IdentifierId, InteractionId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialProvider;
@@ -421,7 +420,7 @@ impl CredentialRepository for CredentialProvider {
     }
 
     async fn delete_credential(&self, credential: &Credential) -> Result<(), DataLayerError> {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let credential = credential::ActiveModel {
             id: Unchanged(credential.id),
@@ -566,7 +565,7 @@ impl CredentialRepository for CredentialProvider {
 
         let update_model = credential::ActiveModel {
             id: Unchanged(credential_id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             issuance_date,
             holder_identifier_id,
             issuer_identifier_id,

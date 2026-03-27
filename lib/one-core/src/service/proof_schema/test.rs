@@ -5,7 +5,6 @@ use mockall::predicate::*;
 use serde_json::json;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
@@ -125,7 +124,7 @@ async fn test_get_proof_schema_deleted() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
     let proof_schema = ProofSchema {
-        deleted_at: Some(OffsetDateTime::now_utc()),
+        deleted_at: Some(crate::clock::now_utc()),
         ..generic_proof_schema()
     };
     {
@@ -168,8 +167,8 @@ async fn test_get_proof_schema_list_success() {
 
     let proof_schema = ProofSchema {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         imported_source_url: Some("CORE_URL".to_string()),
         deleted_at: None,
         name: "name".to_string(),
@@ -254,8 +253,8 @@ async fn test_delete_proof_schema_success() {
             Ok(Some(ProofSchema {
                 id: Uuid::new_v4().into(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
@@ -271,8 +270,7 @@ async fn test_delete_proof_schema_success() {
         .with(
             eq(proof_schema_id.to_owned()),
             // deletion will happen shortly after
-            ge(OffsetDateTime::now_utc())
-                .and(lt(OffsetDateTime::now_utc() + time::Duration::SECOND)),
+            ge(crate::clock::now_utc()).and(lt(crate::clock::now_utc() + time::Duration::SECOND)),
         )
         .returning(|_, _| Ok(()));
 
@@ -294,9 +292,9 @@ async fn test_delete_proof_schema_failure() {
         .returning(|_, _| {
             Ok(Some(ProofSchema {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 imported_source_url: Some("CORE_URL".to_string()),
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
@@ -326,8 +324,8 @@ async fn test_create_proof_schema_success() {
         id: claim_schema_id,
         key: "key".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -362,8 +360,8 @@ async fn test_create_proof_schema_success() {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".into(),
@@ -469,8 +467,8 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         id: claim_schema_software_id,
         key: "key".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -492,8 +490,8 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
             let schema_software = CredentialSchema {
                 id: credential_schema_software_id,
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "software".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".into(),
@@ -599,8 +597,8 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         id: claim_schema_id,
         key: "key".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -623,8 +621,8 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".into(),
@@ -690,8 +688,8 @@ async fn test_create_proof_schema_array_object_fail() {
         id: Uuid::new_v4().into(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -701,8 +699,8 @@ async fn test_create_proof_schema_array_object_fail() {
         id: Uuid::new_v4().into(),
         key: "root/nested_array".to_string(),
         data_type: "OBJECT".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: true,
         metadata: false,
         required: false,
@@ -712,8 +710,8 @@ async fn test_create_proof_schema_array_object_fail() {
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0".to_string(),
         data_type: "OBJECT".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -723,8 +721,8 @@ async fn test_create_proof_schema_array_object_fail() {
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0/item".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -765,8 +763,8 @@ async fn test_create_proof_schema_array_object_fail() {
                 id: credential_schema_id,
                 imported_source_url: "CORE_URL".to_string(),
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 format: "SD_JWT".into(),
                 revocation_method: None,
@@ -841,8 +839,8 @@ async fn test_create_proof_schema_array_success() {
         id: Uuid::new_v4().into(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -852,8 +850,8 @@ async fn test_create_proof_schema_array_success() {
         id: Uuid::new_v4().into(),
         key: "root/nested_array".to_string(),
         data_type: "OBJECT".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: true,
         metadata: false,
         required: false,
@@ -863,8 +861,8 @@ async fn test_create_proof_schema_array_success() {
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0".to_string(),
         data_type: "OBJECT".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -874,8 +872,8 @@ async fn test_create_proof_schema_array_success() {
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0/item".to_string(),
         data_type: "STRING".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         array: false,
         metadata: false,
         required: false,
@@ -916,9 +914,9 @@ async fn test_create_proof_schema_array_success() {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 imported_source_url: "CORE_URL".to_string(),
-                last_modified: OffsetDateTime::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 format: "SD_JWT".into(),
                 revocation_method: None,
@@ -1066,8 +1064,8 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 id: credential_schema_id,
                 imported_source_url: "CORE_URL".to_string(),
                 deleted_at: None,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 format: "JWT".into(),
                 revocation_method: None,
@@ -1076,8 +1074,8 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     id: Uuid::new_v4().into(),
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     array: false,
                     metadata: false,
                     required: false,
@@ -1224,7 +1222,7 @@ async fn test_create_proof_schema_duplicit_claims() {
 
 #[tokio::test]
 async fn test_import_proof_schema_ok_for_new_credential_schema() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
     let mut organisation_repository = MockOrganisationRepository::new();
@@ -1416,7 +1414,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
 
 #[tokio::test]
 async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
     let mut organisation_repository = MockOrganisationRepository::new();
@@ -1613,7 +1611,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
 
 #[tokio::test]
 async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
     let mut organisation_repository = MockOrganisationRepository::new();
@@ -1778,7 +1776,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
 
 #[tokio::test]
 async fn test_import_proof_failed_existing_proof_schema() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
     let mut organisation_repository = MockOrganisationRepository::new();
@@ -1862,7 +1860,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
 
 #[tokio::test]
 async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -1928,7 +1926,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
 
 #[tokio::test]
 async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -1992,9 +1990,9 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
 fn generic_proof_schema() -> ProofSchema {
     ProofSchema {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         imported_source_url: Some("CORE_URL".to_string()),
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
@@ -2005,7 +2003,7 @@ fn generic_proof_schema() -> ProofSchema {
 
 #[tokio::test]
 async fn test_get_proof_schema_success_nested_claims() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let location_claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
@@ -2061,7 +2059,7 @@ async fn test_get_proof_schema_success_nested_claims() {
 
 #[tokio::test]
 async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let location_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
@@ -2128,7 +2126,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
 
 #[tokio::test]
 async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let bar_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
         key: "bar".to_string(),
@@ -2221,7 +2219,7 @@ fn proof_schema_repo_expecting_get(proof_schema: ProofSchema) -> MockProofSchema
 }
 
 fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
@@ -2420,8 +2418,8 @@ async fn test_create_proof_schema_verify_nested_generic(
             id: Uuid::new_v4().into(),
             key: key.to_string(),
             data_type: "OBJECT".to_string(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
             required: true,
@@ -2462,8 +2460,8 @@ async fn test_create_proof_schema_verify_nested_generic(
                 id: credential_schema_id,
                 deleted_at: None,
                 imported_source_url: "CORE_URL".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 format: "JWT".into(),
                 revocation_method: None,

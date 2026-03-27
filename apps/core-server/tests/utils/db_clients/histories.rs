@@ -40,7 +40,7 @@ impl HistoriesDB {
         organisation: &Organisation,
         params: TestingHistoryParams,
     ) -> History {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let history_id = params.id.unwrap_or(HistoryId::from(Uuid::new_v4()));
         let history = History {
@@ -66,7 +66,7 @@ impl HistoriesDB {
     }
 
     pub async fn create_without_organisation(&self, params: TestingHistoryParams) -> History {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let history_id = params.id.unwrap_or(HistoryId::from(Uuid::new_v4()));
         let history = History {

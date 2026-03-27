@@ -46,7 +46,7 @@ async fn setup_with_context() -> TestSetupWithContext {
     let context = vec![1, 2, 3];
     let url = "http://www.host.co";
 
-    let id = insert_json_ld_context(&setup.db, &context, url, OffsetDateTime::now_utc(), None)
+    let id = insert_json_ld_context(&setup.db, &context, url, one_core::clock::now_utc(), None)
         .await
         .unwrap();
 
@@ -98,12 +98,12 @@ async fn test_create_context() {
     let setup = setup().await;
 
     let id = Uuid::new_v4();
-    let timestamp = OffsetDateTime::now_utc();
+    let timestamp = one_core::clock::now_utc();
     let context = RemoteEntityCacheEntry {
         id: id.into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+        expiration_date: Some(one_core::clock::now_utc() + Duration::days(1)),
         value: vec![0, 1, 2, 3],
         key: "http://www.host.co".parse().unwrap(),
         last_used: timestamp,
@@ -155,14 +155,14 @@ async fn test_get_context_failed_wrong_id() {
 async fn test_update_context_success() {
     let setup = setup_with_context().await;
 
-    let last_used = OffsetDateTime::now_utc() + Duration::days(2);
+    let last_used = one_core::clock::now_utc() + Duration::days(2);
     setup
         .provider
         .update(RemoteEntityCacheEntry {
             id: setup.id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            expiration_date: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+            expiration_date: Some(one_core::clock::now_utc() + Duration::days(1)),
             value: vec![1, 2, 3, 4, 5, 6],
             key: "http://127.0.0.1".parse().unwrap(),
             last_used,
@@ -197,7 +197,7 @@ async fn test_get_context_by_url_success() {
 async fn test_delete_oldest_context_success() {
     let setup = setup().await;
 
-    let days_ago = OffsetDateTime::now_utc() - Duration::days(2);
+    let days_ago = one_core::clock::now_utc() - Duration::days(2);
 
     let persistent = insert_json_ld_context(
         &setup.db,
@@ -224,7 +224,7 @@ async fn test_delete_oldest_context_success() {
         &[0, 1, 2, 3],
         "http://127.0.0.1/2",
         days_ago,
-        Some(OffsetDateTime::now_utc() + Duration::days(1)),
+        Some(one_core::clock::now_utc() + Duration::days(1)),
     )
     .await
     .unwrap();
@@ -233,8 +233,8 @@ async fn test_delete_oldest_context_success() {
         &setup.db,
         &[0, 1, 2, 3],
         "http://127.0.0.1/3",
-        OffsetDateTime::now_utc(),
-        Some(OffsetDateTime::now_utc() + Duration::days(1)),
+        one_core::clock::now_utc(),
+        Some(one_core::clock::now_utc() + Duration::days(1)),
     )
     .await
     .unwrap();

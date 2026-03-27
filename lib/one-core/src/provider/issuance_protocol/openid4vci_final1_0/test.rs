@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -143,7 +143,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
 }
 
 fn generic_credential_did() -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let issuer_did = Did {
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
@@ -179,7 +179,7 @@ fn generic_credential_did() -> Credential {
 }
 
 fn generic_credential_key() -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let issuer_key = Key {
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
@@ -216,7 +216,7 @@ fn generic_credential_key() -> Credential {
 }
 
 fn generic_credential(issuer_identifier: Identifier) -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -455,9 +455,9 @@ async fn test_holder_accept_credential_success() {
             {
                 "access_token": "321",
                 "token_type": "bearer",
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
                 "refresh_token": "321",
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token_expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -675,9 +675,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             {
                 "access_token": "321",
                 "token_type": "bearer",
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
                 "refresh_token": "321",
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token_expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -903,9 +903,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
             {
                 "access_token": "321",
                 "token_type": "bearer",
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
                 "refresh_token": "321",
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token_expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -1171,9 +1171,9 @@ async fn test_holder_reject_credential() {
             {
                 "access_token": "321",
                 "token_type": "bearer",
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
                 "refresh_token": "321",
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token_expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -1872,9 +1872,9 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             {
                 "access_token": "321",
                 "token_type": "bearer",
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
                 "refresh_token": "321",
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token_expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)

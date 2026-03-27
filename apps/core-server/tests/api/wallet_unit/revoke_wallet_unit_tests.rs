@@ -12,7 +12,7 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::TestingIdentifierParams;
@@ -79,9 +79,9 @@ async fn test_revoke_wallet_unit_success() {
                 attested_keys: Some(vec![WalletUnitAttestedKey {
                     id: wallet_unit_attested_key_id,
                     wallet_unit_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    expiration_date: OffsetDateTime::now_utc() + Duration::days(1),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    expiration_date: one_core::clock::now_utc() + Duration::days(1),
                     public_key_jwk: public_key_jwk(),
                     revocation: Some(WalletUnitAttestedKeyRevocationInfo {
                         revocation_list: revocation_list.clone(),

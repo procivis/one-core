@@ -4,7 +4,6 @@ use assert2::{assert, let_assert};
 use mockall::predicate::*;
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
@@ -155,16 +154,16 @@ fn test_parse_import_with_nested_claims_success() {
             organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 key: "address".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
                 array: Some(false),
                 claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                     id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     key: "street".to_string(),
                     datatype: "STRING".to_string(),
                     required: true,

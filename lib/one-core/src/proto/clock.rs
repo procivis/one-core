@@ -9,6 +9,6 @@ pub struct DefaultClock;
 
 impl Clock for DefaultClock {
     fn now_utc(&self) -> OffsetDateTime {
-        OffsetDateTime::now_utc()
+        crate::clock::now_utc()
     }
 }

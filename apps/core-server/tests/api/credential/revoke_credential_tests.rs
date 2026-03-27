@@ -7,7 +7,6 @@ use one_core::model::identifier::IdentifierType;
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{
@@ -283,7 +282,7 @@ async fn test_revoke_credential_deleted() {
             TestingCredentialParams {
                 holder_identifier: Some(holder_identifier),
                 key: Some(key),
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                deleted_at: Some(one_core::clock::now_utc()),
                 ..Default::default()
             },
         )

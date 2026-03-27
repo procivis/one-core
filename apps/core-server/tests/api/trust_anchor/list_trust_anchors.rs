@@ -1,6 +1,6 @@
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState, TrustEntityType};
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 use crate::fixtures::TestingDidParams;
 use crate::utils::api_clients::trust_anchors::ListFilters;
@@ -178,9 +178,9 @@ async fn test_filter_trust_anchor_by_date() {
     // GIVEN
     let context = TestContext::new(None).await;
 
-    let time_1 = OffsetDateTime::now_utc() - Duration::hours(2);
-    let time_2 = OffsetDateTime::now_utc() - Duration::hours(1);
-    let time_3 = OffsetDateTime::now_utc();
+    let time_1 = one_core::clock::now_utc() - Duration::hours(2);
+    let time_2 = one_core::clock::now_utc() - Duration::hours(1);
+    let time_3 = one_core::clock::now_utc();
 
     let anchor_time_1 = context
         .db

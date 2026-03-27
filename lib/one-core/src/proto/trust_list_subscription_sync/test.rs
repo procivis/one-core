@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -80,7 +79,7 @@ async fn test_sync_subscriptions() {
     let local_collection_id = trust_collection.id;
     let mut repository = MockTrustListSubscriptionRepository::new();
     repository.expect_list().once().returning(move |_| {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         Ok(GetTrustListSubscriptionList {
             values: vec![
                 TrustListSubscription {
@@ -135,7 +134,7 @@ async fn test_sync_subscriptions() {
 }
 
 fn test_collection(is_remote: bool) -> TrustCollection {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     TrustCollection {
         id: uuid::Uuid::new_v4().into(),
         name: "test".into(),

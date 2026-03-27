@@ -131,13 +131,13 @@ mod test {
         let issuer_key = KeyPair::generate().unwrap();
         let mut ca_params = CertificateParams::default();
         ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
-        let next_update = OffsetDateTime::now_utc()
+        let next_update = crate::clock::now_utc()
             .checked_add(Duration::hours(24))
             .unwrap()
             .replace_millisecond(0)
             .unwrap();
         let crl_params = CertificateRevocationListParams {
-            this_update: OffsetDateTime::now_utc()
+            this_update: crate::clock::now_utc()
                 .checked_sub(Duration::hours(1))
                 .unwrap(),
             next_update,

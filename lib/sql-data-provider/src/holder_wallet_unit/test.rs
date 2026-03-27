@@ -10,7 +10,6 @@ use one_core::model::wallet_unit_attestation::{
 use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use shared_types::HolderWalletUnitId;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::holder_wallet_unit::HolderWalletUnitProvider;
@@ -91,7 +90,7 @@ async fn update_holder_wallet_unit_success() {
         .await
         .unwrap();
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let update_request = UpdateHolderWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         wallet_unit_attestations: Some(vec![WalletUnitAttestation {
@@ -137,7 +136,7 @@ fn test_wallet_unit(
     organisation: Organisation,
     key: Key,
 ) -> HolderWalletUnit {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     HolderWalletUnit {
         id,
         created_date: now,

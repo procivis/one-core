@@ -5,7 +5,6 @@ use assert2::let_assert;
 use mockall::predicate::*;
 use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialSchemaService;
@@ -87,7 +86,7 @@ fn setup_service(
 }
 
 fn generic_credential_schema() -> CredentialSchema {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
@@ -158,7 +157,7 @@ async fn test_get_credential_schema_deleted() {
     let mut repository = MockCredentialSchemaRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let schema = CredentialSchema {
-        deleted_at: Some(OffsetDateTime::now_utc()),
+        deleted_at: Some(crate::clock::now_utc()),
         ..generic_credential_schema()
     };
     {
@@ -1731,7 +1730,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
 
 #[test]
 fn test_renest_claim_schemas_single_layer_of_nested_claims() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let uuid_location = Uuid::new_v4().into();
     let uuid_location_x = Uuid::new_v4().into();
@@ -1807,7 +1806,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
 
 #[test]
 fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let uuid_address = Uuid::new_v4().into();
     let uuid_address_location = Uuid::new_v4().into();
@@ -1969,7 +1968,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
 
 #[test]
 fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let uuid_location_x = Uuid::new_v4().into();
 
@@ -2473,7 +2472,7 @@ async fn test_import_credential_schema_success() {
     let mut formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let own_organisation_id = Uuid::new_v4();
     let organisation = dummy_organisation(Some(own_organisation_id.into()));
     organisation_repository

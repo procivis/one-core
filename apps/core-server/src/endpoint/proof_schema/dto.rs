@@ -335,8 +335,8 @@ mod test {
     fn test_shared_schema_deserializes_into_import_schema() {
         let shared = GetProofSchemaResponseRestDTO {
             id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             name: "name".to_string(),
             expire_duration: 42,
             imported_source_url: Some("imported_source_url".to_string()),
@@ -353,9 +353,9 @@ mod test {
                 }],
                 credential_schema: CredentialSchemaListItemResponseRestDTO {
                     id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    deleted_at: Some(OffsetDateTime::now_utc()),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    deleted_at: Some(one_core::clock::now_utc()),
                     name: "name".to_string(),
                     format: "format".into(),
                     revocation_method: Some("method".into()),

@@ -15,7 +15,7 @@ pub(crate) async fn add_new_interaction(
     interaction_type: InteractionType,
     expires_at: Option<OffsetDateTime>,
 ) -> Result<Interaction, ServiceError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let new_interaction = Interaction {
         id: interaction_id,

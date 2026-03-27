@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 use super::model::{
     AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
@@ -135,7 +135,7 @@ pub(crate) async fn format_credential<T: Serialize>(
         .map(|did| did.to_string());
 
     let payload = JWTPayload {
-        issued_at: Some(OffsetDateTime::now_utc()),
+        issued_at: Some(crate::clock::now_utc()),
         expires_at,
         invalid_before,
         subject,
@@ -251,7 +251,7 @@ pub(crate) async fn append_key_binding_token(
         ))?;
     let sd_hash = hasher.hash_base64_url(token.as_bytes())?;
     let payload = JWTPayload {
-        issued_at: Some(OffsetDateTime::now_utc()),
+        issued_at: Some(crate::clock::now_utc()),
         audience: Some(vec![holder_binding_ctx.audience]),
         custom: KeyBindingPayload {
             nonce: holder_binding_ctx.nonce,
@@ -502,7 +502,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 "Missing iat claim in key binding token".to_string(),
             ));
         };
-        if (iat - params.leeway) > OffsetDateTime::now_utc() {
+        if (iat - params.leeway) > crate::clock::now_utc() {
             // kb token is supposedly issued in the future
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid iat claim in key binding token, token is issued in the future".to_string(),

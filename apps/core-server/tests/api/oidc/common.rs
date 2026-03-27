@@ -9,7 +9,6 @@ use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
 use serde_json::json;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
@@ -56,8 +55,8 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let params = holder_key.params.clone();
     let key = Key {
         id: params.id.unwrap_or(Uuid::new_v4().into()),
-        created_date: params.created_date.unwrap_or(OffsetDateTime::now_utc()),
-        last_modified: params.last_modified.unwrap_or(OffsetDateTime::now_utc()),
+        created_date: params.created_date.unwrap_or(one_core::clock::now_utc()),
+        last_modified: params.last_modified.unwrap_or(one_core::clock::now_utc()),
         public_key: params.public_key.unwrap_or_default(),
         name: "test-key".to_string(),
         key_reference: params.key_reference,

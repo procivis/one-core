@@ -8,7 +8,7 @@ use serde_json::json;
 use shared_types::{DidValue, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::config::core_config::VerificationProtocolType;
@@ -463,8 +463,8 @@ fn test_data(
         id: Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
             .unwrap()
             .into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         data: Some(interaction_data_serialized),
         organisation: None,
         nonce_id: None,
@@ -521,10 +521,10 @@ fn test_data(
     let extracted_credential = DetailCredential {
         id: None,
         issuance_date: None,
-        valid_from: Some(OffsetDateTime::now_utc()),
-        valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+        valid_from: Some(crate::clock::now_utc()),
+        valid_until: Some(crate::clock::now_utc() + Duration::days(10)),
         update_at: None,
-        invalid_before: Some(OffsetDateTime::now_utc()),
+        invalid_before: Some(crate::clock::now_utc()),
         issuer: IdentifierDetails::Did(issuer_did.to_owned()),
         subject: Some(IdentifierDetails::Did(holder_did.to_owned())),
         claims: CredentialSubject {
@@ -546,8 +546,8 @@ fn test_data(
 
     let extracted_presentation = ExtractedPresentation {
         id: Some("presentation id".to_string()),
-        issued_at: Some(OffsetDateTime::now_utc()),
-        expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+        issued_at: Some(crate::clock::now_utc()),
+        expires_at: Some(crate::clock::now_utc() + Duration::days(10)),
         issuer: Some(IdentifierDetails::Did(holder_did)),
         nonce: Some(nonce),
         credentials: vec!["credential".to_string()],

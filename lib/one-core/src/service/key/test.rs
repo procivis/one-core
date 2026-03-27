@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
@@ -52,7 +51,7 @@ fn setup_service(
 }
 
 fn generic_key(name: &str, organisation_id: Uuid) -> Key {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     Key {
         id: Uuid::new_v4().into(),
         created_date: now,

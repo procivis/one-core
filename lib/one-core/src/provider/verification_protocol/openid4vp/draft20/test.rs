@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use shared_types::{CredentialFormat, DidValue};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -331,8 +331,8 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
 fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
     Proof {
         id: proof_id.into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_DRAFT20".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
@@ -342,8 +342,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
         completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             deleted_at: None,
             name: "test-share-proof".into(),
             expire_duration: 123,
@@ -354,8 +354,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     name: "test-credential-schema".to_string(),
                     format: credential_format,
                     revocation_method: None,
@@ -376,8 +376,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
         verifier_identifier: Some(Identifier {
             did: Some(Did {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
@@ -387,8 +387,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     role: KeyRole::Authentication,
                     key: Key {
                         id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         public_key: vec![],
                         name: "".to_string(),
                         key_reference: None,
@@ -405,8 +405,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
         }),
         verifier_key: Some(Key {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             public_key: vec![],
             name: "verifier_key".to_string(),
             key_reference: None,

@@ -54,7 +54,7 @@ impl CertificatesDB {
         identifier_id: IdentifierId,
         params: TestingCertificateParams,
     ) -> Certificate {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let certificate = Certificate {
             id: params.id.unwrap_or(Uuid::new_v4().into()),

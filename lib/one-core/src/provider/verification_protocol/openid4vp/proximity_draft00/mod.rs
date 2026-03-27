@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{InteractionId, KeyId, ProofId};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -423,7 +423,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let expires_at = self.params.verifier.as_ref().and_then(|verifier| {
             verifier
                 .interaction_expires_in
-                .map(|interaction_expires_in| OffsetDateTime::now_utc() + interaction_expires_in)
+                .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in)
         });
 
         match transport.as_slice() {
@@ -683,7 +683,7 @@ pub(super) async fn create_interaction_and_proof(
     transport_type: TransportType,
     storage_access: &StorageAccess,
 ) -> Result<(InteractionId, Proof), VerificationProtocolError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let interaction = Interaction {
         id: Uuid::new_v4().into(),
         created_date: now,

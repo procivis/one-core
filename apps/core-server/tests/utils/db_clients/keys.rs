@@ -5,7 +5,6 @@ use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::key_repository::KeyRepository;
 use shared_types::KeyId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingKeyParams, unwrap_or_random};
@@ -20,7 +19,7 @@ impl KeysDB {
     }
 
     pub async fn create(&self, organisation: &Organisation, params: TestingKeyParams) -> Key {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let key = Key {
             id: params.id.unwrap_or(Uuid::new_v4().into()),

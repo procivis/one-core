@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidService;
@@ -385,8 +384,8 @@ pub(crate) async fn generate_update_key(
         .error_while("generating key")?;
     let key = Key {
         id: key_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: key.public_key,
         name: format!("{did_name}-{did_id}"),
         key_reference: key.key_reference,

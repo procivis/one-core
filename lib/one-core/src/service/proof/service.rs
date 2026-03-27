@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use shared_types::{CredentialFormat, CredentialId, OrganisationId, ProofId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
@@ -333,7 +332,7 @@ impl ProofService {
             self.notification_scheduler.as_ref(),
         )?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let proof_schema_id = request.proof_schema_id;
         let proof_schema = self
             .proof_schema_repository
@@ -823,7 +822,7 @@ impl ProofService {
             .as_ref()
             .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         let ble_server = start_mdl_server(ble)
             .await
             .error_while("starting mDL server")?;

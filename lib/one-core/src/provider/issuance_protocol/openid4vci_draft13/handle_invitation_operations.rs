@@ -4,7 +4,6 @@ use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
 use regex::Regex;
 use shared_types::CredentialId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::mapper::{
@@ -213,7 +212,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         ));
                     }
 
-                    let now = OffsetDateTime::now_utc();
+                    let now = crate::clock::now_utc();
                     let import_credential_schema_request_dto =
                         map_to_import_credential_schema_request(
                             now,
@@ -294,7 +293,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             .to_owned(),
                     };
 
-                    let now = OffsetDateTime::now_utc();
+                    let now = crate::clock::now_utc();
                     let id = Uuid::new_v4();
                     let credential_schema = CredentialSchema {
                         id: id.into(),

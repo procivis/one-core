@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::DidValue;
 use standardized_types::openid4vp::ResponseMode;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 
 use crate::error::ContextWithErrorCode;
@@ -133,7 +133,7 @@ impl OpenID4VP20AuthorizationRequest {
             },
             payload: JWTPayload {
                 issued_at: None,
-                expires_at: Some(OffsetDateTime::now_utc().add(Duration::hours(1))),
+                expires_at: Some(crate::clock::now_utc().add(Duration::hours(1))),
                 invalid_before: None,
                 issuer: Some(did.to_string()),
                 subject: None,

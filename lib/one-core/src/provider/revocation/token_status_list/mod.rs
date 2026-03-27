@@ -11,7 +11,6 @@ use rcgen::KeyUsagePurpose;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
@@ -774,8 +773,8 @@ impl TokenStatusList {
         self.revocation_list_repository
             .create_revocation_list(RevocationList {
                 id: revocation_list_id,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 formatted_list: list_credential.into_bytes(),
                 format: self.params.format,
                 r#type: self.config_id.to_owned(),

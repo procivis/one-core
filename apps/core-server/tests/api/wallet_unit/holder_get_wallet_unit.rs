@@ -1,6 +1,5 @@
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
@@ -12,7 +11,7 @@ use crate::utils::field_match::FieldHelpers;
 async fn test_get_wallet_unit_holder_details_successfully() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let key = context
         .db
         .keys

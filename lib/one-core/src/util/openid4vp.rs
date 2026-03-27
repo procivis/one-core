@@ -1,7 +1,6 @@
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use shared_types::BlobId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
@@ -72,7 +71,7 @@ pub(crate) async fn persist_accepted_proof(
                             .insert(
                                 Mdoc {
                                     id: Uuid::new_v4(),
-                                    created_date: OffsetDateTime::now_utc(),
+                                    created_date: crate::clock::now_utc(),
                                     credential: mso_cbor.into_bytes(),
                                     linked_credential_id: credential_id,
                                 }

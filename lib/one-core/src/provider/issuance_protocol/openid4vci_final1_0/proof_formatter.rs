@@ -3,7 +3,6 @@ use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
-use time::OffsetDateTime;
 
 use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
@@ -165,7 +164,7 @@ impl OpenID4VCIProofJWTFormatter {
             issuer: client_id,
             audience: Some(vec![issuer_url]),
             custom,
-            issued_at: Some(OffsetDateTime::now_utc()),
+            issued_at: Some(crate::clock::now_utc()),
             ..Default::default()
         };
 
@@ -329,8 +328,8 @@ mod test {
         let provider = SignatureProviderImpl {
             key: Key {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key: key_handle.public_key_as_raw(),
                 name: "test".to_string(),
                 key_reference: None,

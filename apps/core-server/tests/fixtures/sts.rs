@@ -10,7 +10,6 @@ use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
 use serde::Serialize;
 use serde_json::json;
-use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -83,7 +82,7 @@ pub async fn setup_sts_with_payload<T: Serialize>(payload: JWTPayload<T>) -> Sts
 }
 
 pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     setup_sts_with_payload(JWTPayload {
         issued_at: Some(now),
         expires_at: Some(now + Duration::from_secs(3600)),

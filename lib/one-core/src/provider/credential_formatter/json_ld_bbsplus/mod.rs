@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_with::DurationSeconds;
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 use verify_proof::extract_mandatory_pointers;
@@ -115,7 +115,7 @@ impl CredentialFormatter for JsonLdBbsplus {
 
         let mut vcdm = credential_data.vcdm;
 
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
         if vcdm.valid_from.is_none() {
             vcdm.valid_from = Some(now);
         }
@@ -191,7 +191,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
             .with_id(credential_id)
             .add_type("BitstringStatusListCredential".to_string())
-            .with_valid_from(OffsetDateTime::now_utc());
+            .with_valid_from(crate::clock::now_utc());
 
         let verification_method = auth_fn
             .get_key_id()
@@ -395,7 +395,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential: &str,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
-        let now = OffsetDateTime::now_utc();
+        let now = crate::clock::now_utc();
 
         let mut vcdm: VcdmCredential = serde_json::from_str(credential)?;
 

@@ -1,6 +1,5 @@
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
@@ -31,7 +30,7 @@ async fn test_holder_wallet_unit_status_not_found() {
 async fn test_holder_wallet_unit_status_already_revoked() {
     // GIVEN - Wallet unit that's already revoked should return success without checking
     let (context, org) = TestContext::new_with_organisation(None).await;
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let authentication_key = context
         .db

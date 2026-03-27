@@ -8,7 +8,6 @@ use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestat
 use sea_orm::sea_query::IntoCondition;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::{HolderWalletUnitId, KeyId, WalletUnitAttestationId};
-use time::OffsetDateTime;
 
 use crate::entity::wallet_unit_attestation;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -104,7 +103,7 @@ impl WalletUnitAttestationRepository for WalletUnitAttestationProvider {
     ) -> Result<(), DataLayerError> {
         let update_model = wallet_unit_attestation::ActiveModel {
             id: Unchanged(*id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             expiration_date: request.expiration_date.map(Set).unwrap_or_default(),
             attestation: request
                 .attestation

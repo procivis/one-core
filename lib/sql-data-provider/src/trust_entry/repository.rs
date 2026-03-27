@@ -12,7 +12,6 @@ use sea_orm::{
     QuerySelect, RelationTrait,
 };
 use shared_types::{TrustEntryId, TrustListPublicationId};
-use time::OffsetDateTime;
 
 use super::TrustEntryProvider;
 use crate::common::calculate_pages_count;
@@ -150,7 +149,7 @@ impl TrustEntryRepository for TrustEntryProvider {
 
         trust_entry::ActiveModel {
             id: Unchanged(id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             status,
             metadata,
             ..Default::default()

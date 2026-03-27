@@ -1,5 +1,4 @@
 use shared_types::DidValue;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{CreateTrustAnchorRequestDTO, GetTrustAnchorEntityListResponseDTO};
@@ -14,7 +13,7 @@ pub(super) fn trust_anchor_from_request(
     core_base_url: Option<&String>,
 ) -> Result<TrustAnchor, TrustAnchorServiceError> {
     let id = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let publisher_reference = if let Some(publisher_reference) = request.publisher_reference {
         publisher_reference
     } else {

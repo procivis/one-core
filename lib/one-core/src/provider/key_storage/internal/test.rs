@@ -5,7 +5,6 @@ use mockall::predicate::{always, eq};
 use secrecy::{ExposeSecret, SecretSlice};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{InternalKeyProvider, decrypt_data};
@@ -132,8 +131,8 @@ async fn test_internal_sign_with_encryption() {
 
     let key = Key {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: generated_key.public_key,
         name: "".to_string(),
         key_reference: generated_key.key_reference,

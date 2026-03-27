@@ -6,7 +6,6 @@ use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{
@@ -353,7 +352,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                deleted_at: Some(OffsetDateTime::now_utc()),
+                deleted_at: Some(one_core::clock::now_utc()),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },

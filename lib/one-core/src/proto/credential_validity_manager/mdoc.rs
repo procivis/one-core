@@ -304,7 +304,7 @@ async fn check_access_token(
     client: &dyn HttpClient,
     token_encryption_key: &SecretSlice<u8>,
 ) -> Result<TokenCheckResult, Error> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let access_token_expires_at =
         interaction_data
             .access_token_expires_at
@@ -395,7 +395,7 @@ async fn check_access_token(
 }
 
 fn is_mso_expired(detail_credential: &DetailCredential) -> bool {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     if let Some(valid_until) = detail_credential.valid_until {
         return valid_until < now;
@@ -405,7 +405,7 @@ fn is_mso_expired(detail_credential: &DetailCredential) -> bool {
 }
 
 fn mso_requires_update(detail_credential: &DetailCredential) -> bool {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     if let Some(update_at) = detail_credential.update_at {
         return update_at < now;

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use shared_types::{InteractionId, OrganisationId, ProofId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::claim::Claim;
@@ -83,7 +82,7 @@ impl ProofHistoryDecorator {
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 action,
                 name,
                 source: HistorySource::Core,

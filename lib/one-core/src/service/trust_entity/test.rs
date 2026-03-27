@@ -4,7 +4,6 @@ use std::sync::Arc;
 use mockall::predicate::{always, eq};
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::TrustEntityService;
@@ -151,8 +150,8 @@ async fn test_create_trust_entity_success() {
             Ok(Some(Organisation {
                 id: organisation_id,
                 name: "test".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
@@ -224,8 +223,8 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
             Ok(Some(Organisation {
                 id: organisation_id,
                 name: "test".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,

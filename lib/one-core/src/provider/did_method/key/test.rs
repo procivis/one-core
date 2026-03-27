@@ -6,7 +6,6 @@ use serde_json::json;
 use shared_types::DidId;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyDidMethod;
@@ -330,8 +329,8 @@ async fn test_create_did_success() {
 
     let key = Key {
         id: key_id.into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: vec![],
         name: "".to_string(),
         key_reference: None,

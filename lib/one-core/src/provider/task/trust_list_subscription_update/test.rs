@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::trust_collection::TrustCollection;
@@ -26,7 +25,7 @@ async fn test_trust_list_subscription_update_active() {
     let validation_result = TrustListValidationSuccess {
         role: TrustListRoleEnum::PidProvider,
     };
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let collection = TrustCollection {
         id: Uuid::new_v4().into(),
         name: "test collection".to_string(),
@@ -78,7 +77,7 @@ async fn test_trust_list_subscription_update_active() {
 
 #[tokio::test]
 async fn test_trust_list_subscription_update_error() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let collection = TrustCollection {
         id: Uuid::new_v4().into(),
         name: "test collection".to_string(),
@@ -130,7 +129,7 @@ async fn test_trust_list_subscription_update_error() {
 
 #[tokio::test]
 async fn test_trust_list_subscription_update_active_to_error() {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let collection = TrustCollection {
         id: Uuid::new_v4().into(),
         name: "test collection".to_string(),
@@ -193,7 +192,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
     let validation_result = TrustListValidationSuccess {
         role: TrustListRoleEnum::PidProvider,
     };
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let collection = TrustCollection {
         id: Uuid::new_v4().into(),
         name: "test collection".to_string(),

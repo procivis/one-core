@@ -224,7 +224,7 @@ impl InteractionRepository for InteractionProvider {
 ///
 /// necessary for SQL equals comparison
 fn now_truncated_to_milliseconds() -> Result<OffsetDateTime, DataLayerError> {
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     now.replace_millisecond(now.millisecond())
         .map_err(|_| DataLayerError::MappingError)
 }

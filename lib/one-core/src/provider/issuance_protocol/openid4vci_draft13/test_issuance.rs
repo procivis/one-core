@@ -6,7 +6,7 @@ use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::{CredentialFormat, CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, Params};
@@ -53,8 +53,8 @@ async fn test_issuer_submit_succeeds() {
 
     let key = Key {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: b"public_key".to_vec(),
         name: "key name".to_string(),
         key_reference: Some(b"private_key".to_vec()),
@@ -406,7 +406,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .return_once(move |_, _| {
             Ok(Some(ValidityCredential {
                 id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc() - Duration::days(5),
+                created_date: crate::clock::now_utc() - Duration::days(5),
                 credential: vec![1, 2, 3],
                 linked_credential_id: credential_id,
                 r#type: ValidityCredentialType::Mdoc,
@@ -516,7 +516,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         .return_once(move |_, _| {
             Ok(Some(ValidityCredential {
                 id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc() - Duration::days(1),
+                created_date: crate::clock::now_utc() - Duration::days(1),
                 credential: vec![1, 2, 3],
                 linked_credential_id: credential_id,
                 r#type: ValidityCredentialType::Mdoc,
@@ -628,9 +628,9 @@ fn dummy_credential() -> Credential {
     let credential_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
-        created_date: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
         issuance_date: None,
-        last_modified: OffsetDateTime::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deleted_at: None,
         protocol: "protocol".to_string(),
         redirect_uri: None,
@@ -640,8 +640,8 @@ fn dummy_credential() -> Credential {
         claims: Some(vec![Claim {
             id: Uuid::new_v4().into(),
             credential_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             value: Some("claim value".to_string()),
             path: "key".to_string(),
             selectively_disclosable: false,
@@ -649,8 +649,8 @@ fn dummy_credential() -> Credential {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 array: false,
                 metadata: false,
                 required: true,
@@ -663,8 +663,8 @@ fn dummy_credential() -> Credential {
             id: Uuid::new_v4().into(),
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
             format: "JWT".into(),
@@ -673,8 +673,8 @@ fn dummy_credential() -> Credential {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 array: false,
                 metadata: false,
                 required: true,
@@ -689,9 +689,9 @@ fn dummy_credential() -> Credential {
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
+            created_date: crate::clock::now_utc(),
             data: Some(b"interaction data".to_vec()),
-            last_modified: OffsetDateTime::now_utc(),
+            last_modified: crate::clock::now_utc(),
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
@@ -709,8 +709,8 @@ fn dummy_credential() -> Credential {
 fn dummy_did() -> Did {
     Did {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "John".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
@@ -725,8 +725,8 @@ fn dummy_did() -> Did {
 fn dummy_key() -> Key {
     Key {
         id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         public_key: b"public_key".to_vec(),
         name: "key name".to_string(),
         key_reference: Some(b"private_key".to_vec()),

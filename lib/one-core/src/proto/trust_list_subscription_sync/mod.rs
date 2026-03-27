@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use futures::FutureExt;
 use shared_types::TrustCollectionId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
@@ -127,7 +126,7 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                     .cloned();
 
                 for list in to_add {
-                    let now = OffsetDateTime::now_utc();
+                    let now = crate::clock::now_utc();
                     self.subscription_repository
                         .create(TrustListSubscription {
                             id: Uuid::new_v4().into(),

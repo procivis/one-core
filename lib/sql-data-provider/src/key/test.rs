@@ -10,7 +10,6 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::KeyId;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyProvider;
@@ -34,7 +33,7 @@ async fn setup() -> TestSetup {
         .await
         .unwrap();
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let organisation = dummy_organisation(Some(organisation_id));
 
     let key_id = Uuid::new_v4().into();
@@ -74,7 +73,7 @@ async fn setup_list() -> TestListSetup {
         organisation,
     } = setup().await;
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let key2_id = Uuid::new_v4().into();
     key::ActiveModel {
         id: Set(key2_id),
@@ -112,7 +111,7 @@ async fn test_create_key_success() {
         organisation_repository: Arc::new(organisation_repository),
     };
 
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
 
     let id = Uuid::new_v4().into();
     let result = provider

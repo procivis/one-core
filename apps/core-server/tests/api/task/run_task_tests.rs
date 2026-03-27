@@ -19,7 +19,7 @@ use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -65,7 +65,7 @@ async fn test_run_task_suspend_check_with_update() {
         )
         .await;
 
-    let a_while_ago = OffsetDateTime::now_utc().sub(Duration::seconds(1));
+    let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
 
     let credential = context
         .db
@@ -420,7 +420,7 @@ async fn test_run_task_certificate_check_with_update() {
             TestingCertificateParams {
                 state: Some(CertificateState::Active),
                 expiry_date: Some(
-                    OffsetDateTime::now_utc()
+                    one_core::clock::now_utc()
                         .checked_add(Duration::hours(1))
                         .unwrap(),
                 ),
@@ -450,7 +450,7 @@ async fn test_run_task_certificate_check_with_update() {
             identifier.id,
             TestingCertificateParams {
                 state: Some(CertificateState::Active),
-                expiry_date: Some(OffsetDateTime::now_utc().sub(Duration::hours(1))),
+                expiry_date: Some(one_core::clock::now_utc().sub(Duration::hours(1))),
                 key: Some(key),
                 ..Default::default()
             },
@@ -811,7 +811,7 @@ async fn test_run_interaction_expiration_check_with_update() {
             &[],
             &organisation,
             InteractionType::Verification,
-            Some(OffsetDateTime::now_utc()),
+            Some(one_core::clock::now_utc()),
         )
         .await;
     let proof = context
@@ -838,7 +838,7 @@ async fn test_run_interaction_expiration_check_with_update() {
             &[],
             &organisation,
             InteractionType::Issuance,
-            Some(OffsetDateTime::now_utc()),
+            Some(one_core::clock::now_utc()),
         )
         .await;
     let credential = context
@@ -924,7 +924,7 @@ async fn test_run_webhook_notify_delivery_rescheduled() {
                 // not responding URL will reschedule the notification
                 url: Some("https://invalid.endpoint/notify".to_string()),
                 r#type: Some("WEBHOOK_NOTIFY".into()),
-                next_try_date: Some(OffsetDateTime::now_utc()),
+                next_try_date: Some(one_core::clock::now_utc()),
                 ..Default::default()
             },
         )
@@ -962,7 +962,7 @@ async fn test_run_webhook_notify_last_retry() {
                 // maximum retries reached
                 tries_count: Some(4),
                 r#type: Some("WEBHOOK_NOTIFY".into()),
-                next_try_date: Some(OffsetDateTime::now_utc()),
+                next_try_date: Some(one_core::clock::now_utc()),
                 history_target: Some("history-target".to_string()),
                 ..Default::default()
             },
@@ -1021,7 +1021,7 @@ async fn test_run_webhook_notify_delivered() {
                 r#type: Some("WEBHOOK_NOTIFY".into()),
                 url: Some(url),
                 payload: Some(payload.to_string().as_bytes().to_vec()),
-                next_try_date: Some(OffsetDateTime::now_utc()),
+                next_try_date: Some(one_core::clock::now_utc()),
                 history_target: Some("history-target".to_string()),
                 ..Default::default()
             },
@@ -1088,7 +1088,7 @@ async fn test_run_webhook_notify_failed() {
                 r#type: Some("WEBHOOK_NOTIFY".into()),
                 url: Some(url),
                 payload: Some(payload.to_string().as_bytes().to_vec()),
-                next_try_date: Some(OffsetDateTime::now_utc()),
+                next_try_date: Some(one_core::clock::now_utc()),
                 history_target: Some("history-target".to_string()),
                 ..Default::default()
             },

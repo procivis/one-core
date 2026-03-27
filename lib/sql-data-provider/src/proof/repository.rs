@@ -14,7 +14,6 @@ use sea_orm::{
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{ClaimId, InteractionId, ProofId};
-use time::OffsetDateTime;
 
 use super::ProofProvider;
 use super::mapper::{
@@ -184,7 +183,7 @@ impl ProofRepository for ProofProvider {
             Some(engagement) => Set(engagement),
         };
 
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         let mut update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
             last_modified: Set(now),

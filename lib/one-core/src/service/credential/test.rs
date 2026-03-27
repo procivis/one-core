@@ -6,7 +6,7 @@ use mockall::predicate::*;
 use serde_json::json;
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::CredentialService;
@@ -87,7 +87,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
 }
 
 fn generic_credential() -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
         array: false,
@@ -115,8 +115,8 @@ fn generic_credential() -> Credential {
             role: KeyRole::AssertionMethod,
             key: Key {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
@@ -197,7 +197,7 @@ fn generic_credential() -> Credential {
 }
 
 fn generic_credential_list_entity() -> Credential {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     Credential {
         id: Uuid::new_v4().into(),
@@ -422,7 +422,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential();
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
     credential.state = CredentialStateEnum::Suspended;
     credential.suspend_end_date = Some(suspend_end_date);
@@ -457,7 +457,7 @@ async fn test_get_credential_deleted() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let credential = Credential {
-        deleted_at: Some(OffsetDateTime::now_utc()),
+        deleted_at: Some(crate::clock::now_utc()),
         ..generic_credential()
     };
     {
@@ -545,7 +545,7 @@ async fn test_share_credential_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4().into();
-    let expires_at = OffsetDateTime::now_utc();
+    let expires_at = crate::clock::now_utc();
     protocol
         .expect_issuer_share_credential()
         .times(1)
@@ -1143,8 +1143,8 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
     let did_id = Uuid::new_v4();
     let issuer_did = Did {
         id: did_id.into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         name: "did1".to_string(),
         organisation: None,
         did: "did:example:1".parse().unwrap(),
@@ -1235,8 +1235,8 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 id: Uuid::new_v4().into(),
                 key: "required".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: true,
             },
@@ -1245,8 +1245,8 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 id: Uuid::new_v4().into(),
                 key: "optional".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: false,
             },
@@ -1371,8 +1371,8 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 id: Uuid::new_v4().into(),
                 key: "required".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: true,
             },
@@ -1381,8 +1381,8 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 id: Uuid::new_v4().into(),
                 key: "optional".to_string(),
                 data_type: "STRING".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: false,
             },
@@ -1497,7 +1497,7 @@ async fn test_create_credential_schema_deleted() {
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
-        deleted_at: Some(OffsetDateTime::now_utc()),
+        deleted_at: Some(crate::clock::now_utc()),
         ..credential.schema.clone().unwrap()
     };
 
@@ -1723,8 +1723,8 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                 role: KeyRole::KeyAgreement,
                 key: Key {
                     id: key_id.into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     public_key: vec![],
                     name: "key_name".to_string(),
                     key_reference: None,
@@ -1738,8 +1738,8 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                 role: KeyRole::AssertionMethod,
                 key: Key {
                     id: key_id.into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
                     public_key: vec![],
                     name: "key_name".to_string(),
                     key_reference: None,
@@ -1860,8 +1860,8 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             role: KeyRole::KeyAgreement,
             key: Key {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
@@ -2076,8 +2076,8 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             role: KeyRole::KeyAgreement,
             key: Key {
                 id: key_id.into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
@@ -2189,8 +2189,8 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             role: KeyRole::AssertionMethod,
             key: Key {
                 id: key_id.into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
@@ -2579,7 +2579,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
 fn generate_credential_schema_with_claim_schemas(
     claim_schemas: Vec<ClaimSchema>,
 ) -> CredentialSchema {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
@@ -2608,7 +2608,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
     let location_x_claim_id = Uuid::new_v4().into();
     let location_y_claim_id = Uuid::new_v4().into();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
         ClaimSchema {
             array: false,
@@ -2692,7 +2692,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     let location_x_claim_id = Uuid::new_v4().into();
     let location_y_claim_id = Uuid::new_v4().into();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
         ClaimSchema {
             array: false,
@@ -2805,7 +2805,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     let location_x_claim_id = Uuid::new_v4().into();
     let location_y_claim_id = Uuid::new_v4().into();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
         ClaimSchema {
             array: false,
@@ -2915,7 +2915,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 async fn test_get_credential_success_with_non_required_nested_object() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let location_claim_schema = ClaimSchema {
         array: false,
@@ -3110,8 +3110,8 @@ async fn test_get_credential_success_array_complex_nested_all() {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         public_key: vec![],
                         name: "key_name".to_string(),
                         key_reference: None,
@@ -3672,8 +3672,8 @@ async fn test_get_credential_success_array_index_sorting() {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         public_key: vec![],
                         name: "key_name".to_string(),
                         key_reference: None,
@@ -3983,8 +3983,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         public_key: vec![],
                         name: "key_name".to_string(),
                         key_reference: None,
@@ -4197,8 +4197,8 @@ async fn test_get_credential_success_array_single_element() {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
                         public_key: vec![],
                         name: "key_name".to_string(),
                         key_reference: None,
@@ -4338,8 +4338,8 @@ async fn test_create_credential_array(
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
         format: "JWT".into(),

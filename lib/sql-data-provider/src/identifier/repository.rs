@@ -10,7 +10,6 @@ use sea_orm::{
     Unchanged,
 };
 use shared_types::{CertificateId, DidId, IdentifierId};
-use time::OffsetDateTime;
 
 use super::IdentifierProvider;
 use crate::common::list_query_with_base_model;
@@ -155,7 +154,7 @@ impl IdentifierRepository for IdentifierProvider {
     ) -> Result<(), DataLayerError> {
         let update_model = identifier::ActiveModel {
             id: Unchanged(*id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             name: request.name.map(Set).unwrap_or_default(),
             state: request
                 .state
@@ -173,7 +172,7 @@ impl IdentifierRepository for IdentifierProvider {
     }
 
     async fn delete(&self, id: &IdentifierId) -> Result<(), DataLayerError> {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let identifier = identifier::ActiveModel {
             id: Unchanged(*id),

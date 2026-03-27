@@ -3,7 +3,7 @@ use std::str::FromStr;
 use one_crypto::utilities;
 use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::error::OID4VCIFinal1_0ServiceError;
@@ -37,7 +37,7 @@ pub(super) async fn generate_nonce(
     base_url: Option<String>,
 ) -> Result<String, OID4VCIFinal1_0ServiceError> {
     let expiration = params.expiration.unwrap_or(300);
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let payload = JWTPayload::<NonceJwtPayload> {
         jwt_id: Some(Uuid::new_v4().to_string()),

@@ -9,7 +9,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::TrustListSubscriptionId;
-use time::OffsetDateTime;
 
 use super::TrustListSubscriptionProvider;
 use crate::common::list_query_with_base_model;
@@ -37,7 +36,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     ) -> Result<(), DataLayerError> {
         trust_list_subscription::Entity::update(trust_list_subscription::ActiveModel {
             id: Unchanged(id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(one_core::clock::now_utc()),
             state: Set(state.into()),
             ..Default::default()
         })
@@ -93,7 +92,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     }
 
     async fn delete(&self, id: TrustListSubscriptionId) -> Result<(), DataLayerError> {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         trust_list_subscription::Entity::update(trust_list_subscription::ActiveModel {
             id: Unchanged(id),
@@ -109,7 +108,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     }
 
     async fn delete_many(&self, ids: Vec<TrustListSubscriptionId>) -> Result<(), DataLayerError> {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         trust_list_subscription::Entity::update_many()
             .filter(trust_list_subscription::Column::Id.is_in(ids))

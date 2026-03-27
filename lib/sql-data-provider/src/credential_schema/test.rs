@@ -15,7 +15,6 @@ use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
@@ -433,8 +432,8 @@ async fn test_delete_credential_schema_not_found() {
         .delete_credential_schema(&CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
             name: "Test".to_string(),
             format: "MDOC".into(),
             revocation_method: None,

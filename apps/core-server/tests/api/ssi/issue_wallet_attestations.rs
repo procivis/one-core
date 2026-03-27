@@ -11,7 +11,7 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::assert_history_count;
@@ -307,7 +307,7 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
             },
         )
         .await;
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     context
         .db
         .wallet_units

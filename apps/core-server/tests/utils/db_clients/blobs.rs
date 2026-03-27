@@ -37,7 +37,7 @@ impl BlobsDB {
     }
 
     pub async fn create(&self, params: TestingBlobParams) -> Blob {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
 
         let blob = Blob {
             id: params.id.unwrap_or(Uuid::new_v4().into()),

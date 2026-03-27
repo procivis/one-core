@@ -1,7 +1,6 @@
 use one_core::model::verifier_instance::VerifierInstance;
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
-use time::OffsetDateTime;
 
 use crate::entity::verifier_instance::{ActiveModel, Model};
 
@@ -23,7 +22,7 @@ impl TryFrom<VerifierInstance> for ActiveModel {
     type Error = DataLayerError;
 
     fn try_from(value: VerifierInstance) -> Result<Self, Self::Error> {
-        let now = OffsetDateTime::now_utc();
+        let now = one_core::clock::now_utc();
         Ok(Self {
             id: Set(value.id),
             created_date: Set(now),

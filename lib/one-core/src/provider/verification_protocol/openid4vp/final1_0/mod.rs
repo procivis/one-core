@@ -11,7 +11,7 @@ use serde_json::Value;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::ResponseMode;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
 use uuid::Uuid;
@@ -608,7 +608,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .params
             .verifier
             .interaction_expires_in
-            .map(|interaction_expires_in| OffsetDateTime::now_utc() + interaction_expires_in);
+            .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
 
         Ok(ShareResponse {
             url: format!(
@@ -728,7 +728,7 @@ async fn encrypted_params(
         ))?;
     let payload = JwePayload {
         aud: Some(aud),
-        exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
+        exp: Some(crate::clock::now_utc() + Duration::minutes(10)),
         submission_data,
         state: interaction_data.state,
     };
@@ -800,7 +800,7 @@ async fn handle_proof_invitation(
         ));
     };
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let interaction = create_and_store_interaction(storage_access, data, organisation).await?;
 
     let interaction_id = interaction.id.to_owned();
@@ -828,7 +828,7 @@ async fn create_and_store_interaction(
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, VerificationProtocolError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
 
     let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 

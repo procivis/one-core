@@ -23,7 +23,7 @@ async fn test_system_stats_empty() {
     let resp = context
         .api
         .statistics
-        .system_stats(None, OffsetDateTime::now_utc(), None)
+        .system_stats(None, one_core::clock::now_utc(), None)
         .await;
 
     // THEN
@@ -122,7 +122,7 @@ async fn test_system_interaction_stats() {
 async fn test_system_management_stats() {
     // GIVEN
     let (context, org, ..) = TestContext::new_with_certificate_identifier(None).await;
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let credential_schema =
         fixtures::create_credential_schema(&context.db.db_conn, &org, None).await;
     let claim_schema = credential_schema
@@ -265,7 +265,7 @@ async fn add_test_entities(
             None,
         )
         .await;
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     context
         .db
         .histories

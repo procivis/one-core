@@ -39,7 +39,7 @@ impl WalletUnitsDB {
         organisation: Organisation,
         test_wallet_unit: TestWalletUnit,
     ) -> WalletUnit {
-        let six_hours_ago = OffsetDateTime::now_utc().sub(Duration::days(1));
+        let six_hours_ago = one_core::clock::now_utc().sub(Duration::days(1));
 
         let wallet_unit = WalletUnit {
             id: test_wallet_unit.id.unwrap_or_else(|| Uuid::new_v4().into()),

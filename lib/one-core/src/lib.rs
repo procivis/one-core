@@ -99,6 +99,7 @@ use crate::service::verifier_provider::VerifierProviderService;
 use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_unit::WalletUnitService;
 
+pub mod clock;
 pub mod config;
 pub mod error;
 pub mod mapper;

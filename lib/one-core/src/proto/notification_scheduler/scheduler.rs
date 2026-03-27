@@ -34,10 +34,10 @@ impl NotificationScheduler for NotificationSchedulerImpl {
             .notification_repository
             .create(Notification {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
+                created_date: crate::clock::now_utc(),
                 url: url.to_string(),
                 payload: serde_json::to_vec(&payload)?,
-                next_try_date: OffsetDateTime::now_utc(),
+                next_try_date: crate::clock::now_utc(),
                 tries_count: 0,
                 r#type,
                 history_target,
@@ -111,14 +111,14 @@ impl From<NotificationPayload> for Payload {
                 credential_state: Some(credential_state.into()),
                 proof_id: None,
                 proof_state: None,
-                event_timestamp: OffsetDateTime::now_utc(),
+                event_timestamp: crate::clock::now_utc(),
             },
             NotificationPayload::Proof(proof_id, proof_state) => Self {
                 credential_id: None,
                 credential_state: None,
                 proof_id: Some(proof_id),
                 proof_state: Some(proof_state),
-                event_timestamp: OffsetDateTime::now_utc(),
+                event_timestamp: crate::clock::now_utc(),
             },
         }
     }

@@ -36,7 +36,7 @@ pub(crate) fn validate_issuance_time(
         return Ok(());
     }
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let issued = issued_at.ok_or(OpenID4VCError::ValidationError(
         "Missing issuance date".to_owned(),
     ))?;
@@ -58,7 +58,7 @@ pub(crate) fn validate_expiration_time(
         return Ok(());
     }
 
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let expires = expires_at.ok_or(OpenID4VCError::ValidationError(
         "Missing expiration date".to_owned(),
     ))?;

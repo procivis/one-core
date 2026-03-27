@@ -6,7 +6,7 @@ use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use standardized_types::jwk::PublicJwk;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 
 pub mod get_wallet_unit_tests;
 pub mod holder_edit_wallet_unit;
@@ -19,7 +19,7 @@ pub mod revoke_wallet_unit_tests;
 
 async fn create_wallet_unit_attestation(wallet_key: PublicJwk, base_url: String) -> String {
     let provider_key = Ecdsa.generate_key().unwrap();
-    let now = OffsetDateTime::now_utc();
+    let now = one_core::clock::now_utc();
     let jwt = Jwt::<()>::new(
         "oauth-client-attestation+jwt".to_string(),
         "ES256".to_string(),

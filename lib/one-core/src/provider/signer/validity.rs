@@ -11,7 +11,7 @@ pub(super) fn calculate_signature_validity(
     max_validity: Duration,
     request: &CreateSignatureRequest,
 ) -> Result<SignatureValidity, SignerError> {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     let start = match request.validity_start {
         None => now,
         Some(start) => {

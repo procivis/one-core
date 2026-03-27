@@ -10,7 +10,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::TrustCollectionId;
-use time::OffsetDateTime;
 
 use super::TrustCollectionProvider;
 use crate::common::list_query_with_base_model;
@@ -76,7 +75,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
         self.db
             .tx(async {
                 // First soft delete all subscriptions
-                let now = OffsetDateTime::now_utc();
+                let now = one_core::clock::now_utc();
                 trust_list_subscription::Entity::update_many()
                     .col_expr(
                         trust_list_subscription::Column::DeactivatedAt,

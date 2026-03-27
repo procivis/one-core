@@ -3,7 +3,6 @@ use std::sync::Arc;
 use mockall::Sequence;
 use serde_json::json;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::holder_wallet_unit::HolderWalletUnit;
@@ -212,8 +211,8 @@ fn dummy_collection(name: String) -> TrustCollection {
     TrustCollection {
         id: Uuid::new_v4().into(),
         name,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
         deactivated_at: None,
         remote_trust_collection_url: None,
         organisation_id: Uuid::new_v4().into(),
@@ -222,7 +221,7 @@ fn dummy_collection(name: String) -> TrustCollection {
 }
 
 fn dummy_wallet_unit() -> HolderWalletUnit {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     HolderWalletUnit {
         id: Uuid::new_v4().into(),
         created_date: now,
@@ -239,7 +238,7 @@ fn dummy_wallet_unit() -> HolderWalletUnit {
 }
 
 fn dummy_verifier_instance() -> VerifierInstance {
-    let now = OffsetDateTime::now_utc();
+    let now = crate::clock::now_utc();
     VerifierInstance {
         id: Uuid::new_v4().into(),
         created_date: now,

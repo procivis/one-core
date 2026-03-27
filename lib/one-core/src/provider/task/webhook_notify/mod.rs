@@ -3,7 +3,6 @@ use std::sync::Arc;
 use model::WebhookNotifyParams;
 use serde_json::Value;
 use shared_types::TaskId;
-use time::OffsetDateTime;
 
 use self::dto::WebhookNotificationResultDTO;
 use super::Task;
@@ -54,7 +53,7 @@ impl Task for WebhookNotify {
                     NotificationFilterValue::Types(vec![self.id.to_owned()]).condition()
                         & NotificationFilterValue::NextTryDate(ValueComparison {
                             comparison: ComparisonType::LessThanOrEqual,
-                            value: OffsetDateTime::now_utc(),
+                            value: crate::clock::now_utc(),
                         }),
                 ),
                 sorting: Some(ListSorting {
