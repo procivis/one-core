@@ -47,7 +47,7 @@ impl VerifierProviderService {
                 .list(TrustCollectionListQuery {
                     filtering: Some(
                         TrustCollectionFilterValue::Ids(
-                            verifier.trust_collections.iter().map(|c| c.id).collect(),
+                            verifier.trust_collections.keys().cloned().collect(),
                         )
                         .condition(),
                     ),
@@ -60,20 +60,20 @@ impl VerifierProviderService {
             verifier
                 .trust_collections
                 .into_iter()
-                .map(|collection| {
-                    let model = models.iter().find(|m| m.id == collection.id).ok_or(
+                .map(|(collection_id, params)| {
+                    let model = models.iter().find(|m| m.id == collection_id).ok_or(
                         VerifierProviderError::MappingError(format!(
                             "Missing collection {}",
-                            collection.id
+                            collection_id
                         )),
                     )?;
 
                     Ok(ProviderTrustCollectionDTO {
-                        id: collection.id,
+                        id: collection_id,
                         name: model.name.to_owned(),
-                        logo: collection.logo,
-                        display_name: params_into_display_names(collection.display_name),
-                        description: params_into_display_names(collection.description),
+                        logo: params.logo,
+                        display_name: params_into_display_names(params.display_name),
+                        description: params_into_display_names(params.description),
                     })
                 })
                 .collect::<Result<_, VerifierProviderError>>()?

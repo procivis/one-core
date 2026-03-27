@@ -58,7 +58,7 @@ async fn test_get_verifier_provider_with_trust_collection() {
           params:
             public:
               trustCollections:
-                - id: {collection_id}
+                {collection_id}:
                   logo: Logo
                   displayName:
                     en: Name

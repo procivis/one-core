@@ -9,7 +9,7 @@ pub struct Verifier {
     pub verifier_name: String,
     pub app_version: Option<VerifierAppVersion>,
     #[serde(default)]
-    pub trust_collections: Vec<TrustCollectionParams>,
+    pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>, // FIX ME: This is a temporary solution, should be changed to a proper structure ONE-9309
     pub feature_flags: FeatureFlags,
 }
 
@@ -37,7 +37,6 @@ pub struct FeatureFlags {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustCollectionParams {
-    pub id: TrustCollectionId,
     pub logo: String,
     pub display_name: HashMap<String, String>,
     pub description: HashMap<String, String>,
