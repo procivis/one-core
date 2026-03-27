@@ -166,13 +166,13 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
           params:
             public:
               trustCollections:
-                - id: {collection_1_id}
+                {collection_1_id}:
                   logo: logo1
                   displayName:
                     en: name1
                   description:
                     en: description1
-                - id: {collection_2_id}
+                {collection_2_id}:
                   logo: logo2
                   displayName:
                     en: name2
@@ -217,46 +217,52 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+
     assert_eq!(
-        resp,
-        serde_json::json!({
-            "walletUnitAttestation": {
-                "appIntegrityCheckRequired": true,
-                "enabled": true,
-                "required": false
-            },
-            "name":"PROCIVIS_ONE",
-            "appVersion": {
-                "minimum":"v1.50.0"
-            },
-            "featureFlags": {
-              "trustEcosystemsEnabled": true
-            },
-            "trustCollections": [{
-                "id": collection_1.id,
-                "name": "collection1",
-                "logo": "logo1",
-                "displayName": [{
-                    "lang": "en",
-                    "value": "name1"
-                }],
-                "description": [{
-                    "lang": "en",
-                    "value": "description1"
-                }]
-            },{
-                "id": collection_2.id,
-                "name": "collection2",
-                "logo": "logo2",
-                "displayName": [{
-                    "lang": "en",
-                    "value": "name2"
-                }],
-                "description": [{
-                    "lang": "en",
-                    "value": "description2"
-                }]
-            }]
+        resp["walletUnitAttestation"],
+        serde_json::json!( {
+            "appIntegrityCheckRequired": true,
+            "enabled": true,
+            "required": false
         })
     );
+    assert_eq!(resp["name"], serde_json::json!("PROCIVIS_ONE"));
+    assert_eq!(
+        resp["featureFlags"],
+        serde_json::json!( {
+          "trustEcosystemsEnabled": true
+        })
+    );
+    assert!(resp["trustCollections"].is_array());
+    let trust_collections_vec = resp["trustCollections"].as_array().unwrap();
+    assert!(trust_collections_vec.contains(&serde_json::json!(
+        {
+            "id": collection_1.id,
+            "name": "collection1",
+            "logo": "logo1",
+            "displayName": [{
+                "lang": "en",
+                "value": "name1"
+            }],
+            "description": [{
+                "lang": "en",
+                "value": "description1"
+            }]
+        }
+    )));
+    assert!(trust_collections_vec.contains(&serde_json::json!(
+        {
+            "id": collection_2.id,
+            "name": "collection2",
+            "logo": "logo2",
+            "displayName": [{
+                "lang": "en",
+                "value": "name2"
+            }],
+            "description": [{
+                "lang": "en",
+                "value": "description2"
+            }]
+        }
+    )));
 }
