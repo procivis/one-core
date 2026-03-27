@@ -7,6 +7,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::model::common::GetListResponse;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_collection::{
     TrustCollection, TrustCollectionListQuery, TrustCollectionRelations,
@@ -173,6 +174,7 @@ async fn test_create_trust_collection_already_exists() {
 async fn test_delete_trust_collection_success() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
+    let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
     let clock = MockClock::new();
 
     let session_provider = StaticSessionProvider::new_random();
@@ -194,10 +196,21 @@ async fn test_delete_trust_collection_success() {
         .with(eq(trust_collection_id))
         .returning(|_| Ok(()));
 
+    trust_list_subscription_repository
+        .expect_list()
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
     let service = mock_service(Mocks {
         trust_collection_repository,
         session_provider,
         clock,
+        trust_list_subscription_repository,
         ..Default::default()
     });
 

@@ -139,7 +139,7 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                             role: list.role.into(),
                             state: TrustListSubscriptionState::Active,
                             trust_collection_id: trust_collection.id,
-                            trust_collection: None,
+                            trust_collection: Some(trust_collection.clone()),
                         })
                         .await
                         .error_while("creating trust list subscription")?;

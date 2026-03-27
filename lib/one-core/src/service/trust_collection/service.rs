@@ -57,6 +57,9 @@ impl TrustCollectionService {
         )
         .error_while("validating organisation")?;
 
+        self.delete_trust_list_subscriptions(trust_collection_id)
+            .await?;
+
         self.trust_collection_repository
             .delete(trust_collection_id)
             .await
@@ -221,6 +224,37 @@ impl TrustCollectionService {
                 }
             })?;
         Ok(trust_collection_id)
+    }
+
+    async fn delete_trust_list_subscriptions(
+        &self,
+        trust_collection_id: TrustCollectionId,
+    ) -> Result<(), TrustCollectionServiceError> {
+        let trust_list_subscriptions = self
+            .trust_list_subscription_repository
+            .list(TrustListSubscriptionListQuery {
+                filtering: Some(
+                    TrustListSubscriptionFilterValue::TrustCollectionId(trust_collection_id)
+                        .condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("listing subscriptions")?
+            .values
+            .into_iter()
+            .map(|s| s.id)
+            .collect::<Vec<_>>();
+
+        if trust_list_subscriptions.is_empty() {
+            return Ok(());
+        }
+
+        self.trust_list_subscription_repository
+            .delete_many(trust_list_subscriptions)
+            .await
+            .error_while("deleting subscriptions")?;
+        Ok(())
     }
 
     async fn insert_trust_list_subscription(

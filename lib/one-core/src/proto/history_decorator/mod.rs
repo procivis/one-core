@@ -8,6 +8,7 @@ mod key;
 mod organisation;
 mod proof;
 mod proof_schema;
-pub mod trust_collection;
+mod trust_collection;
 mod trust_entity;
 mod trust_list_publication;
+mod trust_list_subscription;

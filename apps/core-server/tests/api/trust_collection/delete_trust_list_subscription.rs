@@ -45,6 +45,17 @@ async fn test_delete_trust_list_subscription() {
     assert_eq!(list_resp.status(), 200);
     let list_body = list_resp.json_value().await;
     assert_eq!(list_body["totalItems"], 0);
+
+    let history_entries = context
+        .db
+        .histories
+        .get_by_entity_id(&subscription.id.into())
+        .await;
+    let contains_history_entry = history_entries.values.iter().any(|entry| {
+        entry.entity_type == one_core::model::history::HistoryEntityType::TrustListSubscription
+            && entry.action == one_core::model::history::HistoryAction::Deleted
+    });
+    assert!(contains_history_entry);
 }
 
 #[tokio::test]

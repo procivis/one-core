@@ -70,6 +70,17 @@ async fn test_post_trust_list_subscription() {
         .await
         .unwrap();
     assert_eq!(trust_list_subscription.role, TrustListRoleEnum::PidProvider);
+
+    let history_entries = context
+        .db
+        .histories
+        .get_by_entity_id(&trust_list_subscription_id.into())
+        .await;
+    let contains_history_entry = history_entries.values.iter().any(|entry| {
+        entry.entity_type == one_core::model::history::HistoryEntityType::TrustListSubscription
+            && entry.action == one_core::model::history::HistoryAction::Created
+    });
+    assert!(contains_history_entry);
 }
 
 #[tokio::test]
