@@ -6,11 +6,11 @@ use crate::datatype::uuid_char;
 use crate::m20240110_000001_initial::Organisation;
 use crate::soft_delete_unique_idx::{Params, add_soft_delete_unique_idx};
 
-const UNIQUE_TRUST_COLLECTION_NAME_DEACTIVATED_AT_INDEX: &str =
+pub(crate) const UNIQUE_TRUST_COLLECTION_NAME_DEACTIVATED_AT_INDEX: &str =
     "index-TrustCollection-Name-DeactivatedAt-Unique";
-const UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_DEACTIVATED_AT_INDEX: &str =
+pub(crate) const UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_DEACTIVATED_AT_INDEX: &str =
     "index-TrustListSubscription-Name-DeactivatedAt-Unique";
-const UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_DEACTIVATED_AT_INDEX: &str =
+pub(crate) const UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_DEACTIVATED_AT_INDEX: &str =
     "index-TrustListSubscription-Reference-DeactivatedAt-Unique";
 
 #[derive(DeriveMigrationName)]
@@ -57,7 +57,7 @@ impl MigrationTrait for Migration {
         add_soft_delete_unique_idx(
             Params {
                 table: TrustCollection::Table.to_string(),
-                column: TrustCollection::Name.to_string(),
+                columns: vec![TrustCollection::Name.to_string()],
                 soft_delete_column: TrustCollection::DeactivatedAt.to_string(),
                 index_name: UNIQUE_TRUST_COLLECTION_NAME_DEACTIVATED_AT_INDEX.to_owned(),
             },
@@ -103,7 +103,7 @@ impl MigrationTrait for Migration {
         add_soft_delete_unique_idx(
             Params {
                 table: TrustListSubscription::Table.to_string(),
-                column: TrustListSubscription::Name.to_string(),
+                columns: vec![TrustListSubscription::Name.to_string()],
                 soft_delete_column: TrustListSubscription::DeactivatedAt.to_string(),
                 index_name: UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_DEACTIVATED_AT_INDEX.to_owned(),
             },
@@ -113,7 +113,7 @@ impl MigrationTrait for Migration {
         add_soft_delete_unique_idx(
             Params {
                 table: TrustListSubscription::Table.to_string(),
-                column: TrustListSubscription::Reference.to_string(),
+                columns: vec![TrustListSubscription::Reference.to_string()],
                 soft_delete_column: TrustListSubscription::DeactivatedAt.to_string(),
                 index_name: UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_DEACTIVATED_AT_INDEX
                     .to_owned(),

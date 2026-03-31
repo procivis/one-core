@@ -29,6 +29,7 @@ struct TestSetup {
     pub trust_list_publication_id: shared_types::TrustListPublicationId,
     pub org_id: shared_types::OrganisationId,
     pub identifier_id: shared_types::IdentifierId,
+    identifier_id2: shared_types::IdentifierId,
 }
 
 async fn setup() -> TestSetup {
@@ -43,6 +44,16 @@ async fn setup() -> TestSetup {
         insert_identifier(&db, "test identifier", Uuid::new_v4(), None, org_id, false)
             .await
             .unwrap();
+    let identifier_id2: shared_types::IdentifierId = insert_identifier(
+        &db,
+        "test identifier 2",
+        Uuid::new_v4(),
+        None,
+        org_id,
+        false,
+    )
+    .await
+    .unwrap();
 
     let trust_list_publication_id: shared_types::TrustListPublicationId = Uuid::new_v4().into();
     trust_list_publication::ActiveModel {
@@ -77,6 +88,7 @@ async fn setup() -> TestSetup {
         trust_list_publication_id,
         org_id,
         identifier_id,
+        identifier_id2,
     }
 }
 
@@ -166,7 +178,7 @@ async fn test_list_trust_entries() {
     let setup = setup().await;
 
     let entry1 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id);
-    let entry2 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id);
+    let entry2 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id2);
     setup.provider.create(entry1).await.unwrap();
     setup.provider.create(entry2).await.unwrap();
 
@@ -254,7 +266,7 @@ async fn test_list_trust_entries_filter_by_status() {
     let setup = setup().await;
 
     let entry1 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id);
-    let mut entry2 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id);
+    let mut entry2 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id2);
     entry2.status = TrustEntryStatusEnum::Suspended;
     setup.provider.create(entry1).await.unwrap();
     setup.provider.create(entry2).await.unwrap();
@@ -387,7 +399,7 @@ async fn test_list_trust_entries_filter_by_created_date() {
     let setup = setup().await;
 
     let entry1 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id);
-    let entry2 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id);
+    let entry2 = dummy_trust_entry(setup.trust_list_publication_id, setup.identifier_id2);
     setup.provider.create(entry1).await.unwrap();
     setup.provider.create(entry2).await.unwrap();
 

@@ -8,13 +8,14 @@ pub(crate) mod signature;
 pub(crate) mod sts;
 pub(crate) mod wallet_provider;
 
+use std::ops::Add;
 use std::str::FromStr;
 
 use core_server::{AuthMode, ServerConfig};
 use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::model::blob::Blob;
-use one_core::model::certificate::Certificate;
+use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
@@ -41,6 +42,7 @@ use one_core::model::proof_schema::{
 use one_core::repository::DataRepository;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
+use rcgen::CertificateParams;
 use sea_orm::sqlx::{Executor, raw_sql};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
@@ -51,11 +53,14 @@ use shared_types::{
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
+use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub fn unwrap_or_random(op: Option<String>) -> String {
@@ -485,6 +490,58 @@ pub async fn create_identifier(
         .await
         .unwrap();
 
+    identifier
+}
+
+pub async fn create_cert_identifier(
+    context: &TestContext,
+    organisation: &Organisation,
+) -> Identifier {
+    let key = context
+        .db
+        .keys
+        .create(organisation, eddsa_testing_params())
+        .await;
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, ecdsa::Key);
+    let cert = create_cert(
+        &mut CertificateParams::default(),
+        eddsa::Key,
+        &ca_issuer,
+        &ca_params,
+    );
+    let identifier_id = Uuid::new_v4().into();
+    let now = one_core::clock::now_utc();
+    let certificate = Certificate {
+        id: Uuid::new_v4().into(),
+        identifier_id,
+        organisation_id: Some(organisation.id),
+        created_date: now,
+        last_modified: now,
+        expiry_date: now.add(Duration::minutes(10)),
+        name: "test cert 2".to_string(),
+        chain: format!("{}{}", cert.pem(), ca_cert.pem()),
+        fingerprint: "ffffaaaa22".to_string(),
+        state: CertificateState::Active,
+        key: Some(key.clone()),
+    };
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                certificates: Some(vec![certificate.clone()]),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .certificates
+        .create(identifier.id, TestingCertificateParams::from(certificate))
+        .await;
     identifier
 }
 

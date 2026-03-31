@@ -9,7 +9,7 @@ use one_core::model::trust_list_role::TrustListRoleEnum;
 use time::Duration;
 use uuid::Uuid;
 
-use crate::fixtures::TestingIdentifierParams;
+use crate::fixtures::{TestingIdentifierParams, create_cert_identifier};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 
@@ -18,6 +18,7 @@ async fn test_get_trust_list_publication_entries() {
     // given
     let (context, organisation, identifier, certificate, key) =
         TestContext::new_with_certificate_identifier(None).await;
+    let identifier2 = create_cert_identifier(&context, &organisation).await;
     let trust_list_publication = context
         .db
         .trust_list_publications
@@ -51,7 +52,7 @@ async fn test_get_trust_list_publication_entries() {
             TrustEntryStatusEnum::Suspended,
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             trust_list_publication.clone(),
-            identifier.clone(),
+            identifier2.clone(),
         )
         .await;
 

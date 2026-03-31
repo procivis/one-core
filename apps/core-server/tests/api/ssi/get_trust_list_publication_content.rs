@@ -5,6 +5,7 @@ use one_core::proto::jwt::Jwt;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::fixtures::create_cert_identifier;
 use crate::utils::api_clients::trust_list_publication::CreateTrustListPublicationTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
@@ -76,6 +77,7 @@ async fn test_get_trust_list_publication_with_entries() {
     // GIVEN
     let (context, organisation, identifier, ..) =
         TestContext::new_with_certificate_identifier(None).await;
+    let identifier2 = create_cert_identifier(&context, &organisation).await;
 
     let create_resp = context
         .api
@@ -114,7 +116,7 @@ async fn test_get_trust_list_publication_with_entries() {
         .trust_list_publication
         .create_trust_entry(
             trust_list_publication_id,
-            identifier.id,
+            identifier2.id,
             Some(serde_json::json!({
                 "entity": {
                     "name": [{ "lang": "en", "value": "Test Entity #2"}]
@@ -168,6 +170,7 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
     // GIVEN
     let (context, organisation, identifier, ..) =
         TestContext::new_with_certificate_identifier(None).await;
+    let identifier2 = create_cert_identifier(&context, &organisation).await;
 
     let create_resp = context
         .api
@@ -206,7 +209,7 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
         .trust_list_publication
         .create_trust_entry(
             trust_list_publication_id,
-            identifier.id,
+            identifier2.id,
             Some(serde_json::json!({
                  "entity": {
                     "name": [{ "lang": "en", "value": "Suspended Test Entity"}]

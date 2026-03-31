@@ -181,7 +181,7 @@ async fn test_db_schema_trust_entity() {
 async fn test_db_schema_trust_list_publication() {
     let schema = get_schema().await;
 
-    let trust_list_publication = schema.table("trust_list_publication").columns(&[
+    let mut columns = vec![
         "id",
         "created_date",
         "last_modified",
@@ -196,7 +196,18 @@ async fn test_db_schema_trust_list_publication() {
         "identifier_id",
         "key_id",
         "certificate_id",
-    ]);
+    ];
+    if schema.backend() == DbBackend::MySql {
+        columns.extend(["deactivated_at_materialized"]);
+    }
+    let trust_list_publication = schema
+        .table("trust_list_publication")
+        .columns(&columns)
+        .index(
+            "index-TrustPublication-Name-Org-DeactivatedAt-Unique",
+            true,
+            &["name", "organisation_id", "deactivated_at_materialized"],
+        );
     trust_list_publication
         .column("id")
         .r#type(ColumnType::Uuid)
@@ -279,15 +290,22 @@ async fn test_db_schema_trust_list_publication() {
 async fn test_db_schema_trust_entry() {
     let schema = get_schema().await;
 
-    let trust_entry = schema.table("trust_entry").columns(&[
-        "id",
-        "created_date",
-        "last_modified",
-        "status",
-        "metadata",
-        "trust_list_publication_id",
-        "identifier_id",
-    ]);
+    let trust_entry = schema
+        .table("trust_entry")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "status",
+            "metadata",
+            "trust_list_publication_id",
+            "identifier_id",
+        ])
+        .index(
+            "index-TrustEntry-IdentifierId-Publication-Unique",
+            true,
+            &["identifier_id", "trust_list_publication_id"],
+        );
     trust_entry
         .column("id")
         .r#type(ColumnType::Uuid)
@@ -349,9 +367,9 @@ async fn test_db_schema_trust_collection() {
         columns.push("deactivated_at_materialized");
     }
     let trust_entry = schema.table("trust_collection").columns(&columns).index(
-        "index-TrustCollection-Name-DeactivatedAt-Unique",
+        "index-TrustCol-Name-Org-DeactivatedAt-Unique",
         true,
-        &["name", "deactivated_at_materialized"],
+        &["name", "organisation_id", "deactivated_at_materialized"],
     );
     trust_entry
         .column("id")
@@ -413,14 +431,18 @@ async fn test_db_schema_trust_subscription() {
         .table("trust_list_subscription")
         .columns(&columns)
         .index(
-            "index-TrustListSubscription-Name-DeactivatedAt-Unique",
+            "index-TrustListSubscription-Name-Col-DeactivatedAt-Unique",
             true,
-            &["name", "deactivated_at_materialized"],
+            &["name", "trust_collection_id", "deactivated_at_materialized"],
         )
         .index(
-            "index-TrustListSubscription-Reference-DeactivatedAt-Unique",
+            "index-TrustListSubscription-Reference-Col-DeactivatedAt-Unique",
             true,
-            &["reference", "deactivated_at_materialized"],
+            &[
+                "reference",
+                "trust_collection_id",
+                "deactivated_at_materialized",
+            ],
         );
     trust_entry
         .column("id")
