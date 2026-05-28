@@ -260,8 +260,9 @@ pub struct CredentialSchemaFormatRequestDTO {
     pub schema_id: Option<String>,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Deserialize, Into)]
 #[into(crate::proto::credential_schema::dto::ImportCredentialSchemaV2FormatDTO)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaV2FormatDTO {
     pub format: CredentialFormat,
     pub schema_id: String,
@@ -499,11 +500,14 @@ pub struct ImportCredentialSchemaV2RequestDTO {
     pub schema: ImportCredentialSchemaV2RequestSchemaDTO,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Deserialize, Into)]
 #[into(crate::proto::credential_schema::dto::ImportCredentialSchemaV2RequestSchemaDTO)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     #[into(with_fn = convert_inner)]
@@ -511,17 +515,26 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub organisation_id: Uuid,
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+    #[serde(default)]
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub imported_source_url: String,
+    #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub layout_type: Option<LayoutType>,
+    #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
+    #[serde(default)]
     pub allow_suspension: Option<bool>,
+    #[serde(default)]
     pub requires_wallet_instance_attestation: Option<bool>,
+    #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
+    #[serde(default)]
     pub allow_revocation: Option<bool>,
+    #[serde(default)]
     pub batch_size: Option<i32>,
+    #[serde(default)]
     pub translations: Option<CredentialSchemaTranslationsDTO>,
 }

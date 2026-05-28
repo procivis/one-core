@@ -11,3 +11,4 @@ pub mod m20260512_062412_localized_text;
 pub mod m20260512_090000_remove_legacy_trust;
 pub mod m20260522_120000_credential_schema_layout_properties_to_jsonb;
 pub mod m20260526_095002_credential_grouping;
+pub mod m20260528_120000_bump_credential_schema_import_url_to_v2;

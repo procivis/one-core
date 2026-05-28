@@ -30,11 +30,14 @@ use crate::model::proof_schema::{
     ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
     ProofSchemaRelations, SortableProofSchemaColumn,
 };
-use crate::proto::credential_schema::dto::ImportCredentialSchemaRequestDTO;
+use crate::proto::credential_schema::dto::{
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaV2RequestDTO,
+};
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
+    ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
@@ -375,24 +378,30 @@ impl ProofSchemaService {
         request_input_schema: &ImportProofSchemaInputSchemaDTO,
         organisation: &Organisation,
     ) -> Result<CredentialSchema, ProofSchemaServiceError> {
-        let credential_schema_import_request: ImportCredentialSchemaRequestSchemaDTO = async {
-            self.client
-                .get(&request_input_schema.credential_schema.imported_source_url)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-        }
-        .await
-        .error_while("fetching credential schema")?;
+        let url = &request_input_schema.credential_schema.imported_source_url;
+        let response = async { self.client.get(url).send().await?.error_for_status() }
+            .await
+            .error_while("fetching credential schema")?;
 
-        let credential_schema = self
-            .credential_schema_import_parser
-            .parse_import_credential_schema(ImportCredentialSchemaRequestDTO {
-                organisation: organisation.to_owned(),
-                schema: credential_schema_import_request.into(),
-            })
-            .error_while("parsing credential schema")?;
+        let credential_schema = if is_v2_credential_schema_url(url) {
+            let import_request: ImportCredentialSchemaV2RequestSchemaDTO =
+                response.json().error_while("fetching credential schema")?;
+            self.credential_schema_import_parser
+                .parse_import_credential_schema_v2(ImportCredentialSchemaV2RequestDTO {
+                    organisation: organisation.to_owned(),
+                    schema: import_request.into(),
+                })
+                .error_while("parsing credential schema")?
+        } else {
+            let import_request: ImportCredentialSchemaRequestSchemaDTO =
+                response.json().error_while("fetching credential schema")?;
+            self.credential_schema_import_parser
+                .parse_import_credential_schema(ImportCredentialSchemaRequestDTO {
+                    organisation: organisation.to_owned(),
+                    schema: import_request.into(),
+                })
+                .error_while("parsing credential schema")?
+        };
 
         let credential_schema = self
             .credential_schema_importer
@@ -401,5 +410,27 @@ impl ProofSchemaService {
             .error_while("importing credential schema")?;
 
         Ok(credential_schema)
+    }
+}
+
+fn is_v2_credential_schema_url(url: &str) -> bool {
+    url::Url::parse(url)
+        .ok()
+        .is_some_and(|u| u.path().contains("/ssi/schema/v2/"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_v2_credential_schema_url;
+
+    #[test]
+    fn v2_credential_schema_url_detection() {
+        assert!(is_v2_credential_schema_url(
+            "https://example.com/ssi/schema/v2/abcd"
+        ));
+        assert!(!is_v2_credential_schema_url(
+            "https://example.com/ssi/schema/v1/abcd"
+        ));
+        assert!(!is_v2_credential_schema_url("not a url"));
     }
 }

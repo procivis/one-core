@@ -1522,6 +1522,200 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
 }
 
 #[tokio::test]
+async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
+    let now = crate::clock::now_utc();
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let credential_schema_id = Uuid::new_v4();
+    let v2_url = format!("http://import.credential.schema/ssi/schema/v2/{credential_schema_id}");
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
+
+    let mut proof_schema_repository = MockProofSchemaRepository::new();
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .returning(|_| {
+            Ok(GetProofSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+    proof_schema_repository
+        .expect_create_proof_schema()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .withf(move |schema_id, org| schema_id == "iso-org-test123" && org == &organisation_id)
+        .once()
+        .returning(|_, _| Ok(None));
+    credential_schema_repository
+        .expect_create_credential_schema()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .returning(|_| {
+            Ok(GetCredentialSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        imported_source_url: "CORE_URL".to_string(),
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                requested: true,
+                required: true,
+                key: "field".to_string(),
+                data_type: "STRING".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: credential_schema_id.into(),
+                created_date: now,
+                imported_source_url: v2_url.clone(),
+                last_modified: now,
+                deleted_at: None,
+                name: "test-credential-schema".to_string(),
+                format: "JWT".into(),
+                revocation_method: None,
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
+                schema_id: "iso-org-test123".to_string(),
+                layout_type: None,
+                layout_properties: None,
+                allow_suspension: None,
+                requires_wallet_instance_attestation: None,
+            },
+        }],
+    };
+
+    let mut http_client = MockHttpClient::new();
+    let v2_url_for_match = v2_url.clone();
+    let v2_url_for_response = v2_url.clone();
+    http_client
+        .expect_get()
+        .once()
+        .withf(move |url| url == v2_url_for_match)
+        .returning(move |url| {
+            let url_for_response = v2_url_for_response.clone();
+            let mut inner_client = MockHttpClient::new();
+            inner_client
+                .expect_send()
+                .once()
+                .returning(move |_, _, _, _, _| {
+                    Ok(Response {
+                        body: json!({
+                            "id": Uuid::new_v4(),
+                            "createdDate": "2023-06-09T14:19:57.000Z",
+                            "lastModified": "2023-06-09T14:19:57.000Z",
+                            "name": "test-credential-schema",
+                            "formats": [{
+                                "format": "JWT",
+                                "schemaId": "iso-org-test123"
+                            }],
+                            "organisationId": Uuid::new_v4(),
+                            "claims": [{
+                                "id": Uuid::new_v4(),
+                                "createdDate": "2023-06-09T14:19:57.000Z",
+                                "lastModified": "2023-06-09T14:19:57.000Z",
+                                "key": "field",
+                                "datatype": "STRING",
+                                "required": true,
+                                "array": false,
+                                "translations": {"name": {"en": "field"}}
+                            }],
+                            "importedSourceUrl": url_for_response,
+                            "allowSuspension": false,
+                            "requiresWalletInstanceAttestation": false,
+                            "translations": {"name": {"en": "test-credential-schema"}}
+                        })
+                        .to_string()
+                        .as_bytes()
+                        .to_vec(),
+                        headers: Default::default(),
+                        status: StatusCode(200),
+                        request: Request {
+                            body: None,
+                            headers: Default::default(),
+                            method: Method::Get,
+                            url: url_for_response.clone(),
+                            timeout: None,
+                        },
+                    })
+                });
+
+            RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
+        });
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec![],
+            datatypes: vec!["STRING".into(), "OBJECT".into()],
+            ..Default::default()
+        });
+    formatter.expect_get_metadata_claims().returning(Vec::new);
+
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq(CredentialFormat::from("JWT")))
+        .returning(move |_| Some(formatter.clone()));
+
+    let formatter_provider = Arc::new(formatter_provider);
+    let credential_schema_repository = Arc::new(credential_schema_repository);
+    let config = Arc::new(generic_config().core);
+
+    let service = ProofSchemaService {
+        proof_schema_repository: Arc::new(proof_schema_repository),
+        credential_schema_repository: credential_schema_repository.clone(),
+        organisation_repository: Arc::new(organisation_repository),
+        formatter_provider: formatter_provider.clone(),
+        config: Arc::new(generic_config().core),
+        base_url: None,
+        client: Arc::new(http_client),
+        session_provider: Arc::new(NoSessionProvider),
+        credential_schema_import_parser: Arc::new(CredentialSchemaImportParserImpl::new(
+            config.clone(),
+            formatter_provider.clone(),
+            Arc::new(MockRevocationMethodProvider::default()),
+        )),
+        credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
+            credential_schema_repository,
+            "en".to_string(),
+        )),
+    };
+
+    service
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
+            organisation_id,
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let now = crate::clock::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
