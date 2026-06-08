@@ -129,7 +129,7 @@ impl IdentifierCreatorProto {
             .error_while("getting certificates")?;
 
         if let Some(certificate) = list.values.into_iter().next() {
-            let identifier = self
+            let mut identifier = self
                 .identifier_repository
                 .get(certificate.identifier_id, &Default::default())
                 .await
@@ -137,6 +137,8 @@ impl IdentifierCreatorProto {
                 .ok_or(Error::MappingError(
                     "Certificate identifier not found".to_string(),
                 ))?;
+            // Back-fill the certificates relation, consistent with the did/key paths.
+            identifier.certificates = Some(vec![certificate.clone()]);
 
             return Ok((certificate, identifier));
         }
@@ -161,7 +163,7 @@ impl IdentifierCreatorProto {
         let identifier_id = Uuid::new_v4().into();
         let display_name = name.for_id(identifier_id);
 
-        let identifier = Identifier {
+        let mut identifier = Identifier {
             id: identifier_id,
             created_date: now,
             last_modified: now,
@@ -200,6 +202,9 @@ impl IdentifierCreatorProto {
             .create(certificate.clone())
             .await
             .error_while("creating certificate")?;
+
+        // Back-fill the certificates relation, consistent with the did/key paths.
+        identifier.certificates = Some(vec![certificate.clone()]);
 
         Ok((certificate, identifier))
     }
@@ -361,7 +366,7 @@ impl IdentifierCreatorProto {
                     return Ok(None);
                 };
 
-                let Some(identifier) = self
+                let Some(mut identifier) = self
                     .identifier_repository
                     .get(certificate.identifier_id, &Default::default())
                     .await
@@ -369,6 +374,8 @@ impl IdentifierCreatorProto {
                 else {
                     return Ok(None);
                 };
+                // Back-fill the certificates relation, consistent with the did path.
+                identifier.certificates = Some(vec![certificate.clone()]);
 
                 Ok(Some((
                     identifier,

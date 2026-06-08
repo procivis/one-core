@@ -366,21 +366,14 @@ fn comparable_issuer(
             Ok(ComparableIssuer::Did { did: &did.did })
         }
         IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
-            let certificates =
-                issuer
-                    .certificates
+            // Compare via `issuer_certificate`, which holds the exact leaf certificate that signed this credential.
+            let certificate =
+                credential
+                    .issuer_certificate
                     .as_ref()
                     .ok_or(IssuanceProtocolError::Failed(
-                        "missing parsed credential issuer certificates".to_string(),
+                        "missing parsed credential issuer certificate".to_string(),
                     ))?;
-            if certificates.len() != 1 {
-                return Err(IssuanceProtocolError::Failed(
-                    "Invalid parsed schema: multiple credential issuer certificates".to_string(),
-                ));
-            }
-            let certificate = certificates.first().ok_or(IssuanceProtocolError::Failed(
-                "missing parsed credential issuer certificates".to_string(),
-            ))?;
             Ok(ComparableIssuer::Certificate {
                 fingerprint: &certificate.fingerprint,
             })
