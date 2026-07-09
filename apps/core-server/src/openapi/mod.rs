@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use one_core::config::core_config::CoreConfig;
 use proc_macros::modify_schema_autodetect;
+use url::Url;
 use utoipa::openapi::extensions::Extensions;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{Contact, ExternalDocs, Object, Server, Tag};
@@ -131,16 +132,22 @@ pub(crate) fn gen_openapi_documentation(
             .url(Some("https://www.procivis.ch/en/procivis-one#signup"))
             .build(),
     );
-    docs.servers = Some(vec![
+    docs.servers = Some(vec![{
+        let mut url = "".to_string();
+        if let Ok(base_url) = Url::try_from(server_config.core_base_url.as_str()) {
+            match base_url.path() {
+                "/" => {}
+                path => {
+                    url = path.to_string();
+                }
+            }
+        }
+
         Server::builder()
-            .url("")
+            .url(url)
             .description(Some("Local server url"))
-            .build(),
-        Server::builder()
-            .url("https://www.procivis-one.com")
-            .description(Some("Generated server url"))
-            .build(),
-    ]);
+            .build()
+    }]);
     docs.tags = Some(get_tags(server_config));
     docs.external_docs = Some(
         ExternalDocs::builder()
