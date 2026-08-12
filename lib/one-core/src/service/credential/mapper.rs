@@ -500,7 +500,7 @@ pub(super) fn from_create_request(
     let expires_at = schema.expiration.map(|e| now + e);
 
     Credential {
-        ecosystem: None,
+        ecosystem: request.ecosystem,
         id: credential_id,
         created_date: now,
         issuance_date: None,

@@ -437,6 +437,7 @@ impl ProofService {
                     engagement_type,
                     request.profile,
                     verifier,
+                    request.ecosystem,
                 )
                 .await;
         }
@@ -565,18 +566,29 @@ impl ProofService {
             proof_schema.name, proof_schema.id, request.protocol, transport
         );
 
+        let ecosystem = request.ecosystem.clone();
+        let proof = proof_from_create_request(
+            request,
+            now,
+            proof_schema,
+            transport,
+            verifier_identifier,
+            verifier_key,
+            verifier_certificate,
+            maybe_interaction,
+        );
+
+        if let Some(ecosystem) = &ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem)?;
+            ecosystem
+                .validate_proof(&proof)
+                .await
+                .error_while("validating ecosystem")?;
+        }
+
         let proof_id = self
             .proof_repository
-            .create_proof(proof_from_create_request(
-                request,
-                now,
-                proof_schema,
-                transport,
-                verifier_identifier,
-                verifier_key,
-                verifier_certificate,
-                maybe_interaction,
-            ))
+            .create_proof(proof)
             .await
             .error_while("creating proof")?;
 

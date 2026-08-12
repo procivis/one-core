@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use standardized_types::etsi_119_475;
@@ -15,18 +16,13 @@ use crate::proto::wrp_validator::model::AccessCertificateResult;
 use crate::provider::ecosystem::model::IssuerMetadataRepresentation;
 use crate::provider::issuance_protocol::serialize_interaction_data;
 
-#[derive(Debug, PartialEq)]
-struct ConfigurationTrustInfo {
-    pub registration_certificate: Option<String>,
-    pub national_registry_data: Option<String>,
-    pub relying_party_name: String,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) struct MetadataInteractionData {
-    pub registration_certificate: Option<String>,
-    pub national_registry_data: Option<String>,
+pub(super) struct MetadataEcosystemData {
+    pub registration_certificates: IndexMap<String, String>,
+    pub credential_configurations_supported: IndexMap<String, CredentialConfiguration>,
     pub relying_party_name: String,
+    pub relying_party_id: String,
+    pub registry_url: Url,
     pub access_certificate: String,
 }
 
@@ -64,7 +60,7 @@ impl HolderIssuanceResolver {
             .await
             .error_while("validating access certificate")?;
 
-        let mut configurations_info = None;
+        let mut interaction_data: Option<MetadataEcosystemData> = None;
         for configuration_id in credential_configuration_ids {
             let configuration = metadata
                 .credential_configurations_supported
@@ -80,24 +76,21 @@ impl HolderIssuanceResolver {
                 )
                 .await?;
 
-            if let Some(current_info) = &configurations_info {
-                if current_info != &info {
-                    return Err(HolderIssuanceError::InconsistentTrustInfo);
-                }
+            if let Some(current_data) = interaction_data.as_mut() {
+                current_data.update(configuration_id, info)?;
             } else {
-                configurations_info = Some(info);
+                interaction_data = Some(MetadataEcosystemData::create(
+                    configuration_id,
+                    info,
+                    &access_certificate.relying_party_id,
+                    &access_certificate_pem_chain,
+                    metadata.credential_configurations_supported.to_owned(),
+                ));
             };
         }
 
-        let Some(configurations_info) = configurations_info else {
+        let Some(interaction_data) = interaction_data else {
             return Err(HolderIssuanceError::NoCredentialConfiguration);
-        };
-
-        let interaction_data = MetadataInteractionData {
-            registration_certificate: configurations_info.registration_certificate,
-            national_registry_data: configurations_info.national_registry_data,
-            relying_party_name: configurations_info.relying_party_name,
-            access_certificate: access_certificate_pem_chain,
         };
 
         let ecosystem_data = serialize_interaction_data(&interaction_data)
@@ -125,25 +118,27 @@ impl HolderIssuanceResolver {
         access_certificate: &AccessCertificateResult,
     ) -> Result<ConfigurationTrustInfo, HolderIssuanceError> {
         Ok(if metadata.issuer_info.is_empty() {
-            let (national_registry_data, relying_party_name) = self
+            let registry_url = access_certificate
+                .registry_url
+                .as_ref()
+                .ok_or(HolderIssuanceError::MissingRegistryUrl)?
+                .to_owned();
+            let (_national_registry_data, relying_party_name) = self
                 .validate_credential_config_trust_against_registry(
                     configuration,
                     &access_certificate.relying_party_id,
-                    access_certificate
-                        .registry_url
-                        .as_ref()
-                        .ok_or(HolderIssuanceError::MissingRegistryUrl)?,
+                    &registry_url,
                     organisation_id,
                 )
                 .await?;
 
             ConfigurationTrustInfo {
                 registration_certificate: None,
-                national_registry_data: Some(national_registry_data),
                 relying_party_name,
+                registry_url,
             }
         } else {
-            let (registration_certificate, relying_party_name) = self
+            let (registration_certificate, relying_party) = self
                 .validate_credential_config_trust_with_registration_certificate(
                     configuration,
                     &metadata.issuer_info,
@@ -154,13 +149,13 @@ impl HolderIssuanceResolver {
 
             ConfigurationTrustInfo {
                 registration_certificate: Some(registration_certificate),
-                national_registry_data: None,
-                relying_party_name,
+                relying_party_name: relying_party.name,
+                registry_url: relying_party.registry_uri,
             }
         })
     }
 
-    async fn validate_credential_config_trust_against_registry(
+    pub(super) async fn validate_credential_config_trust_against_registry(
         &self,
         credential_config: &CredentialConfiguration,
         relying_party_id: &str,
@@ -203,9 +198,10 @@ impl HolderIssuanceResolver {
         issuer_info: &[IssuerInfoAttestation],
         expected_relying_party_id: &str,
         organisation_id: OrganisationId,
-    ) -> Result<(String, String), HolderIssuanceError> {
+    ) -> Result<(String, etsi_119_475::registration_certificate::Payload), HolderIssuanceError>
+    {
         for reg_cert in issuer_info {
-            if let Some(relying_party_name) = self
+            if let Some(relying_party) = self
                 .credential_config_matches_reg_cert(
                     credential_config,
                     reg_cert,
@@ -214,7 +210,7 @@ impl HolderIssuanceResolver {
                 )
                 .await
             {
-                return Ok((reg_cert.data.to_owned(), relying_party_name));
+                return Ok((reg_cert.data.to_owned(), relying_party));
             }
         }
 
@@ -227,7 +223,7 @@ impl HolderIssuanceResolver {
         issuer_info: &IssuerInfoAttestation,
         expected_relying_party_id: &str,
         organisation_id: OrganisationId,
-    ) -> Option<String> {
+    ) -> Option<etsi_119_475::registration_certificate::Payload> {
         let Ok(reg_cert) = self
             .wrp_validator
             .validate_registration_certificate(
@@ -241,12 +237,12 @@ impl HolderIssuanceResolver {
             return None;
         };
 
-        let provides_attestations = reg_cert.payload.custom.provides_attestations?;
+        let provides_attestations = reg_cert.payload.custom.provides_attestations.as_ref()?;
 
         if provides_attestations.iter().any(|attestation| {
             credential_config_matches_reg_cert_attestation(credential_config, attestation)
         }) {
-            Some(reg_cert.payload.custom.name)
+            Some(reg_cert.payload.custom)
         } else {
             None
         }
@@ -284,5 +280,59 @@ fn credential_config_matches_reg_cert_attestation(
                         .all(|r#type| types.contains(r#type))
                 })
             }),
+    }
+}
+
+#[derive(Debug)]
+struct ConfigurationTrustInfo {
+    pub registration_certificate: Option<String>,
+    pub relying_party_name: String,
+    pub registry_url: Url,
+}
+
+impl MetadataEcosystemData {
+    fn create(
+        credential_configuration_id: &str,
+        info: ConfigurationTrustInfo,
+        relying_party_id: &str,
+        access_certificate_pem_chain: &str,
+        credential_configurations_supported: IndexMap<String, CredentialConfiguration>,
+    ) -> Self {
+        let mut registration_certificates = IndexMap::new();
+        if let Some(registration_certificate) = info.registration_certificate {
+            registration_certificates.insert(
+                credential_configuration_id.to_string(),
+                registration_certificate,
+            );
+        };
+        Self {
+            registration_certificates,
+            credential_configurations_supported,
+            relying_party_name: info.relying_party_name,
+            relying_party_id: relying_party_id.to_string(),
+            registry_url: info.registry_url,
+            access_certificate: access_certificate_pem_chain.to_string(),
+        }
+    }
+
+    fn update(
+        &mut self,
+        credential_configuration_id: &str,
+        info: ConfigurationTrustInfo,
+    ) -> Result<(), HolderIssuanceError> {
+        if self.relying_party_name != info.relying_party_name
+            || self.registry_url != info.registry_url
+        {
+            return Err(HolderIssuanceError::InconsistentTrustInfo);
+        }
+
+        if let Some(registration_certificate) = info.registration_certificate {
+            self.registration_certificates.insert(
+                credential_configuration_id.to_string(),
+                registration_certificate,
+            );
+        }
+
+        Ok(())
     }
 }

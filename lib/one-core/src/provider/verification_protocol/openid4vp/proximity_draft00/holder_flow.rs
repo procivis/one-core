@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use async_trait::async_trait;
 use shared_types::DidValue;
 use standardized_types::openid4vp::dcql::DcqlQuery;
@@ -58,14 +60,14 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
     ) -> Result<(), VerificationProtocolError>;
 }
 
-pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
+pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'static>(
     url: Url,
     organisation: Organisation,
     interaction_repository: &dyn InteractionRepository,
     identifier_creator: &dyn IdentifierCreator,
     transport: &dyn ProximityHolderTransport<Context = T>,
     verification_fn: VerificationFn,
-) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
     let (interaction_id, mut proof) = create_interaction_and_proof(
         None,
         organisation.clone(),
@@ -110,7 +112,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     proof.verifier_identifier = Some(verifier_identifier);
 
     let ecosystem_artifact = ProtocolArtifact::HolderProof {
-        verifier_details: Some(verifier_details),
+        verifier_details: Cow::Owned(Some(verifier_details)),
         dcql_query: presentation_request.payload.custom.dcql_query.clone(),
         verifier_info: presentation_request.payload.custom.verifier_info.clone(),
         proof_id: proof.id,

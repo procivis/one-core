@@ -44,10 +44,10 @@ pub enum PresentationDefinitionVersion {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct InvitationResponseDTO {
+pub(crate) struct InvitationResponseDTO<'a> {
     pub interaction_id: InteractionId,
     pub proof: Proof,
-    pub ecosystem_artifact: ProtocolArtifact,
+    pub ecosystem_artifact: ProtocolArtifact<'a>,
 }
 
 #[derive(Clone, Debug)]

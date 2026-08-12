@@ -10,6 +10,7 @@ use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::get_protocol_base_url;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -52,6 +53,7 @@ pub struct OID4VCIFinal1_0Service {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     wrp_validator: Arc<dyn WRPValidator>,
     history_repository: Arc<dyn HistoryRepository>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -76,6 +78,7 @@ impl OID4VCIFinal1_0Service {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -100,6 +103,7 @@ impl OID4VCIFinal1_0Service {
             formatter_provider,
             wrp_validator,
             history_repository,
+            ecosystem_provider,
         }
     }
 
@@ -125,6 +129,7 @@ impl OID4VCIFinal1_0Service {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
             protocol_base_url,
@@ -148,6 +153,7 @@ impl OID4VCIFinal1_0Service {
             formatter_provider,
             wrp_validator,
             history_repository,
+            ecosystem_provider,
         }
     }
 }

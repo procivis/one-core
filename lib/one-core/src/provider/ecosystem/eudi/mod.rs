@@ -34,6 +34,7 @@ use crate::repository::interaction_repository::InteractionRepository;
 mod holder_issuance;
 mod holder_proof;
 mod mapper;
+mod verifier_submission;
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
@@ -65,6 +66,8 @@ pub struct EudiEcosystem {
 
     holder_proof_resolver: HolderProofResolver,
     holder_issuance_resolver: HolderIssuanceResolver,
+    wrp_validator: Arc<dyn WRPValidator>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
 }
 
 impl EudiEcosystem {
@@ -98,12 +101,14 @@ impl EudiEcosystem {
             holder_issuance_resolver: HolderIssuanceResolver::new(
                 history_repository,
                 interaction_repository,
-                wrp_validator,
+                wrp_validator.clone(),
                 blob_storage_provider,
                 session_provider,
-                formatter_provider,
+                formatter_provider.clone(),
                 params.leeway_seconds,
             ),
+            wrp_validator,
+            formatter_provider,
             params,
         })
     }
@@ -129,9 +134,9 @@ impl Ecosystem for EudiEcosystem {
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
-    async fn validate_interaction(
+    async fn validate_interaction<'a>(
         &self,
-        interaction_artifact: &ProtocolArtifact,
+        interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
     ) -> Result<(), EcosystemError> {
         match interaction_artifact {
@@ -148,7 +153,21 @@ impl Ecosystem for EudiEcosystem {
                     .await
                     .error_while("resolving holder issuance trust")?;
             }
-            ProtocolArtifact::HolderIssuanceCredential { .. } => todo!(),
+            ProtocolArtifact::HolderIssuanceCredential {
+                credential,
+                serialized,
+                credential_configuration_id,
+            } => {
+                self.holder_issuance_resolver
+                    .resolve_credential_issuer_trust(
+                        credential,
+                        serialized,
+                        credential_configuration_id,
+                        interaction,
+                    )
+                    .await
+                    .error_while("resolving holder issuance trust")?;
+            }
             ProtocolArtifact::HolderProof {
                 verifier_details,
                 dcql_query,
@@ -157,7 +176,7 @@ impl Ecosystem for EudiEcosystem {
             } => {
                 self.holder_proof_resolver
                     .resolve_trust(
-                        verifier_details.as_ref(),
+                        verifier_details.as_ref().as_ref(),
                         *proof_id,
                         interaction.organisation.id(),
                         dcql_query,
@@ -167,8 +186,26 @@ impl Ecosystem for EudiEcosystem {
                     .await
                     .error_while("resolving holder proof trust")?;
             }
-            ProtocolArtifact::IssuerIssuance { .. } => todo!(),
-            ProtocolArtifact::VerifierSubmission { .. } => todo!(),
+            ProtocolArtifact::IssuerIssuance { wallet_provider } => {
+                self.wrp_validator
+                    .validate_wallet_provider(
+                        wallet_provider.to_owned(),
+                        interaction.organisation.id(),
+                    )
+                    .await
+                    .error_while("validating wallet provider")?;
+            }
+            ProtocolArtifact::VerifierSubmission {
+                credential,
+                issuer_details,
+            } => {
+                self.resolve_verifier_submission(
+                    credential,
+                    issuer_details,
+                    interaction.organisation.id(),
+                )
+                .await?;
+            }
         };
 
         Ok(())

@@ -525,22 +525,6 @@ impl OneCore {
             config.clone(),
         ));
 
-        let credential_service = CredentialService::new(
-            data_provider.get_credential_repository(),
-            data_provider.get_credential_schema_repository(),
-            data_provider.get_identifier_repository(),
-            data_provider.get_interaction_repository(),
-            credential_formatter_provider.clone(),
-            issuance_provider.clone(),
-            config.clone(),
-            blob_storage_provider.clone(),
-            session_provider.clone(),
-            credential_validity_manager.clone(),
-            notification_scheduler.clone(),
-            trust_information_provider.clone(),
-            data_provider.get_tx_manager(),
-        );
-
         let remote_trust_collection_cache = Arc::new(remote_trust_collection_cache_from_config(
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
@@ -566,7 +550,7 @@ impl OneCore {
             data_provider.get_trust_list_subscription_repository(),
             data_provider.get_instance_repository(),
             data_provider.get_trust_collection_repository(),
-            credential_validity_manager,
+            credential_validity_manager.clone(),
             certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
@@ -615,7 +599,22 @@ impl OneCore {
                 data_provider.get_trust_list_subscription_repository(),
                 config.clone(),
             ),
-            credential_service,
+            credential_service: CredentialService::new(
+                data_provider.get_credential_repository(),
+                data_provider.get_credential_schema_repository(),
+                data_provider.get_identifier_repository(),
+                data_provider.get_interaction_repository(),
+                credential_formatter_provider.clone(),
+                issuance_provider.clone(),
+                config.clone(),
+                blob_storage_provider.clone(),
+                session_provider.clone(),
+                credential_validity_manager,
+                notification_scheduler.clone(),
+                trust_information_provider.clone(),
+                data_provider.get_tx_manager(),
+                ecosystem_provider.clone(),
+            ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
                 data_provider.get_identifier_repository(),
@@ -655,6 +654,7 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
+                ecosystem_provider.clone(),
             ),
             oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService::new(
                 core_base_url.clone(),
@@ -676,6 +676,7 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
+                ecosystem_provider.clone(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),
@@ -691,6 +692,7 @@ impl OneCore {
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
+                ecosystem_provider.clone(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
@@ -706,6 +708,7 @@ impl OneCore {
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
+                ecosystem_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

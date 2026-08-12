@@ -188,12 +188,12 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         url.scheme() == "swiyu"
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         redirect_uri: Option<String>,
-    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
+    ) -> Result<InvitationResponseEnum<'a>, IssuanceProtocolError> {
         self.inner
             .holder_handle_invitation(url, organisation, redirect_uri)
             .await
@@ -236,11 +236,11 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
             .await
     }
 
-    async fn holder_continue_issuance(
+    async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+    ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         self.inner
             .holder_continue_issuance(continue_issuance_dto, organisation)
             .await

@@ -13,6 +13,7 @@ use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::issuance_protocol::openid4vci_final1_0_swiyu::OID4VCI_FINAL1_0_SWIYU_VERSION;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -53,6 +54,7 @@ impl OID4VCIFinal1_0SwiyuService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         let protocol_base_url = core_base_url
             .as_ref()
@@ -80,6 +82,7 @@ impl OID4VCIFinal1_0SwiyuService {
                 formatter_provider,
                 wrp_validator,
                 history_repository,
+                ecosystem_provider,
             ),
             protocol_provider,
         }

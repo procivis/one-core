@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ use crate::mapper::{ValidatedProofClaim, extracted_credential_to_model};
 use crate::model::claim::Claim;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::KeyRole;
+use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::certificate_validator::CertificateValidator;
@@ -18,6 +20,8 @@ use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
@@ -269,10 +273,12 @@ fn extract_matching_requested_claim(
 /// proof processing on verifier's side
 pub(crate) async fn accept_proof(
     proof: Proof,
+    interaction: &Interaction,
     proved_credentials: Vec<ValidatedProofCredential>,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), ServiceError> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof schema is None".to_string(),
@@ -324,7 +330,7 @@ pub(crate) async fn accept_proof(
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
         let mappings_map = mappings.iter().map(|m| (m.claim_schema_id, m)).collect();
 
-        let credential = extracted_credential_to_model(
+        let mut model_credential = extracted_credential_to_model(
             &claim_schemas,
             &mappings_map,
             credential_schema.to_owned(),
@@ -336,11 +342,28 @@ pub(crate) async fn accept_proof(
             credential.issuance_date,
         )?;
 
-        let mut claims = credential.claims.as_ref().await?.to_owned();
+        if let Some(ecosystem_id) = &interaction.ecosystem {
+            let ecosystem = ecosystem_provider.get(ecosystem_id)?;
+
+            ecosystem
+                .validate_interaction(
+                    &ProtocolArtifact::VerifierSubmission {
+                        credential: Cow::Borrowed(&model_credential),
+                        issuer_details: Cow::Borrowed(&credential.issuer),
+                    },
+                    interaction,
+                )
+                .await
+                .error_while("validating ecosystem")?;
+
+            model_credential.ecosystem = Some(ecosystem_id.to_owned());
+        }
+
+        let mut claims = model_credential.claims.as_ref().await?.to_owned();
         proof_claims.append(&mut claims);
 
         credential_repository
-            .create_credential(credential)
+            .create_credential(model_credential)
             .await
             .error_while("creating credential")?;
     }

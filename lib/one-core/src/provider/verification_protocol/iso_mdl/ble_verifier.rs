@@ -21,6 +21,7 @@ use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::certificate::Certificate;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -41,6 +42,7 @@ use crate::provider::credential_formatter::mdoc_formatter::{
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::{
     DeviceResponse, ReaderAuthentication,
@@ -136,6 +138,7 @@ pub(crate) async fn start_client(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: Proof,
+    interaction: Interaction,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -144,6 +147,7 @@ pub(crate) async fn start_client(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), VerificationProtocolError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
 
@@ -157,6 +161,7 @@ pub(crate) async fn start_client(
                     ble_options,
                     verifier_session,
                     &proof,
+                    &interaction,
                     &central,
                     sender,
                     credential_formatter_provider.clone(),
@@ -167,6 +172,7 @@ pub(crate) async fn start_client(
                     proof_repository.clone(),
                     certificate_validator.clone(),
                     identifier_creator.clone(),
+                    ecosystem_provider.clone(),
                 )
                 .await;
 
@@ -222,6 +228,7 @@ async fn verifier_flow(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: &Proof,
+    interaction: &Interaction,
     central: &TrackingBleCentral,
     sender: oneshot::Sender<PeripheralDiscoveryData>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -232,6 +239,7 @@ async fn verifier_flow(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
@@ -246,6 +254,7 @@ async fn verifier_flow(
         ble_options,
         verifier_session,
         proof,
+        interaction,
         central,
         &device,
         mtu_size,
@@ -257,6 +266,7 @@ async fn verifier_flow(
         proof_repository,
         certificate_validator,
         identifier_creator,
+        ecosystem_provider,
     )
     .await;
     if let Err(_error) = &result {
@@ -276,6 +286,7 @@ async fn process_proof(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: &Proof,
+    interaction: &Interaction,
     central: &TrackingBleCentral,
     device: &PeripheralDiscoveryData,
     mtu_size: usize,
@@ -287,6 +298,7 @@ async fn process_proof(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), anyhow::Error> {
     send_session_establishment(
         central,
@@ -383,6 +395,7 @@ async fn process_proof(
     if let Err(error) = fill_proof_claims_and_credentials(
         device_response,
         proof,
+        interaction,
         verifier_session.session_transcript,
         &*credential_formatter_provider,
         &*presentation_formatter_provider,
@@ -392,6 +405,7 @@ async fn process_proof(
         &*proof_repository,
         certificate_validator,
         identifier_creator,
+        ecosystem_provider,
     )
     .await
     {
@@ -448,6 +462,7 @@ async fn send_end(
 async fn fill_proof_claims_and_credentials(
     device_response: DeviceResponse,
     proof: &Proof,
+    interaction: &Interaction,
     session_transcript: SessionTranscript,
     credential_formatter_provider: &dyn CredentialFormatterProvider,
     presentation_formatter_provider: &dyn PresentationFormatterProvider,
@@ -457,6 +472,7 @@ async fn fill_proof_claims_and_credentials(
     proof_repository: &dyn ProofRepository,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), anyhow::Error> {
     let proof_schema = proof
         .schema
@@ -479,10 +495,12 @@ async fn fill_proof_claims_and_credentials(
 
     super::verify_proof::accept_proof(
         proof.clone(),
+        interaction,
         proved_credentials,
         &*credential_repository,
         proof_repository,
         identifier_creator,
+        ecosystem_provider,
     )
     .await?;
 

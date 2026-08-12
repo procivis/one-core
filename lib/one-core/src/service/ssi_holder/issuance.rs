@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use futures_util::FutureExt;
@@ -27,6 +28,7 @@ use crate::model::organisation::Organisation;
 use crate::proto::oauth_client::OAuthClientProvider;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::blob_storage::BlobStorage;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
 use crate::provider::issuance_protocol::model::{CredentialWithBlob, InvitationResponseEnum};
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::interaction_data_to_accepted_key_storage_security;
@@ -185,10 +187,43 @@ impl SSIHolderService {
             .issuance_protocol_provider
             .get_protocol(&data.protocol)?;
 
-        let issuer_response = protocol
-            .holder_accept_credential(interaction, holder_binding, tx_code)
+        let mut issuer_response = protocol
+            .holder_accept_credential(interaction.clone(), holder_binding, tx_code)
             .await
             .error_while("accepting credential")?;
+
+        if let Some(ecosystem_id) = &interaction.ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+
+            // either the main credential blob or a batch item
+            let serialized = issuer_response
+                .main_credential
+                .serialized
+                .as_ref()
+                .or(issuer_response
+                    .batch_items
+                    .first()
+                    .and_then(|item| item.serialized.as_ref()))
+                .ok_or(HolderServiceError::MappingError(
+                    "missing serialized credential".to_string(),
+                ))?
+                .to_owned();
+
+            ecosystem
+                .validate_interaction(
+                    &ProtocolArtifact::HolderIssuanceCredential {
+                        credential: Cow::Borrowed(&issuer_response.main_credential.credential),
+                        serialized,
+                        credential_configuration_id: data.credential_configuration_id,
+                    },
+                    &interaction,
+                )
+                .await
+                .error_while("validating ecosystem")?;
+
+            issuer_response.main_credential.credential.ecosystem = interaction.ecosystem;
+        }
+
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
@@ -302,6 +337,62 @@ impl SSIHolderService {
             .holder_refresh_credential(&interaction, None)
             .await
             .error_while("refreshing credential batch")?;
+
+        if let Some(ecosystem_id) = &interaction.ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+
+            let main_credential = self
+                .credential_repository
+                .get_credentials_by_interaction_id(&interaction_id)
+                .await
+                .error_while("getting credential")?
+                .into_iter()
+                .next()
+                .ok_or(HolderServiceError::MappingError(
+                    "Missing main credential".to_string(),
+                ))?;
+
+            // pick one issued credential to check issuer (the protocol makes sure the individual items have consistent issuer)
+            let new_batch_item = self
+                .credential_repository
+                .get_credential(
+                    credential_ids
+                        .first()
+                        .ok_or(HolderServiceError::MappingError("empty batch".to_string()))?,
+                )
+                .await
+                .error_while("getting batch credential")?;
+
+            let db_blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)?;
+
+            let blob = db_blob_storage
+                .get(
+                    &new_batch_item
+                        .credential_blob_id
+                        .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?,
+                )
+                .await
+                .error_while("getting batch credential blob")?
+                .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?;
+
+            let serialized = String::from_utf8(blob.value)
+                .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
+                .into();
+
+            ecosystem
+                .validate_interaction(
+                    &ProtocolArtifact::HolderIssuanceCredential {
+                        credential: Cow::Owned(main_credential),
+                        serialized,
+                        credential_configuration_id: data.credential_configuration_id,
+                    },
+                    &interaction,
+                )
+                .await
+                .error_while("validating ecosystem")?;
+        }
 
         tracing::info!(
             "Batch issued, new credentials {credential_ids:?} for interaction {interaction_id}"

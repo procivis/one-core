@@ -62,12 +62,12 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
 
     /// For handling credential issuance, this method
     /// saves the offer information coming in.
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         redirect_uri: Option<String>,
-    ) -> Result<InvitationResponseEnum, IssuanceProtocolError>;
+    ) -> Result<InvitationResponseEnum<'a>, IssuanceProtocolError>;
 
     /// Accepts an offered credential.
     async fn holder_accept_credential(
@@ -83,11 +83,11 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError>;
 
-    async fn holder_continue_issuance(
+    async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError>;
+    ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError>;
 
     /// Refreshes a credential or requests new batch.
     async fn holder_refresh_credential(

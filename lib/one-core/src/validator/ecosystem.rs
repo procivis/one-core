@@ -103,7 +103,7 @@ pub(crate) fn validate_ecosystem_selection_final(
 /// on success, the final selection is written into the interaction as well as returned
 pub(crate) async fn ecosystem_autodetection(
     interaction_id: InteractionId,
-    artifact: &ProtocolArtifact,
+    artifact: &ProtocolArtifact<'_>,
     user_selection: Option<EcosystemId>,
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
@@ -173,7 +173,7 @@ pub(crate) async fn ecosystem_autodetection(
 
 async fn find_validating(
     permitted_ecosystems: &[EcosystemId],
-    artifact: &ProtocolArtifact,
+    artifact: &ProtocolArtifact<'_>,
     interaction: &Interaction,
     ecosystem_provider: &dyn EcosystemDirectory,
 ) -> Option<Arc<dyn Ecosystem>> {

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use coset::iana;
 use shared_types::{EcosystemId, ProofId};
 use standardized_types::jwk::PublicJwk;
@@ -67,7 +69,7 @@ pub(super) async fn resolve_verifier_and_trust(
     let ecosystem = ecosystem_autodetection(
         interaction.id,
         &ProtocolArtifact::HolderProof {
-            verifier_details: verifier_details.clone(),
+            verifier_details: Cow::Borrowed(&verifier_details),
             dcql_query,
             verifier_info,
             proof_id,

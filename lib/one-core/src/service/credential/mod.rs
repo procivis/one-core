@@ -8,6 +8,7 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -36,6 +37,7 @@ pub struct CredentialService {
     notification_scheduler: Arc<dyn NotificationScheduler>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
     tx_manager: Arc<dyn TransactionManager>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
 impl CredentialService {
@@ -54,6 +56,7 @@ impl CredentialService {
         notification_scheduler: Arc<dyn NotificationScheduler>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
         tx_manager: Arc<dyn TransactionManager>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -69,6 +72,7 @@ impl CredentialService {
             notification_scheduler,
             trust_information_provider,
             tx_manager,
+            ecosystem_provider,
         }
     }
 }

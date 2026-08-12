@@ -34,9 +34,9 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         self.inner().get_capabilities()
     }
 
-    async fn validate_interaction(
+    async fn validate_interaction<'a>(
         &self,
-        _interaction_artifact: &ProtocolArtifact,
+        _interaction_artifact: &ProtocolArtifact<'a>,
         _interaction: &Interaction,
     ) -> Result<(), EcosystemError> {
         self.disabled_error()

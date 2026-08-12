@@ -50,6 +50,7 @@ use crate::provider::credential_formatter::model::{FormatterCapabilities, Public
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
@@ -96,6 +97,7 @@ struct Mocks {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,
+    pub ecosystem_provider: MockEcosystemDirectory,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
@@ -119,6 +121,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.wrp_validator),
         Arc::new(mocks.history_repository),
+        Arc::new(mocks.ecosystem_provider),
     )
 }
 

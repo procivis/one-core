@@ -1,10 +1,11 @@
-use shared_types::ProofId;
+use shared_types::{EcosystemId, ProofId};
 use uuid::Uuid;
 
 use super::ProofService;
 use super::error::ProofServiceError;
 use crate::config::core_config::{TransportType, VerificationEngagement};
 use crate::error::ContextWithErrorCode;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
@@ -16,6 +17,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 };
 
 impl ProofService {
+    #[expect(clippy::too_many_arguments)]
     pub(super) async fn handle_iso_mdl_verifier(
         &self,
         schema: ProofSchema,
@@ -24,6 +26,7 @@ impl ProofService {
         engagement_type: VerificationEngagement,
         profile: Option<String>,
         verifier: Option<IsoMdlVerifier>,
+        ecosystem: Option<EcosystemId>,
     ) -> Result<ProofId, ProofServiceError> {
         let (device_engagement, handover, device_retrieval_method) = match engagement_type {
             VerificationEngagement::QrCode => {
@@ -66,8 +69,25 @@ impl ProofService {
                 .error_while("setting up verifier session")?;
 
         let now = crate::clock::now_utc();
+        let interaction = Interaction {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            data: None,
+            organisation: schema.organisation.to_owned(),
+            nonce_id: None,
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: ecosystem.clone(),
+            ecosystem_data: None,
+        };
+        self.interaction_repository
+            .create_interaction(interaction.clone())
+            .await
+            .error_while("creating interaction")?;
+
         let proof = Proof {
-            ecosystem: None,
+            ecosystem,
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -86,10 +106,18 @@ impl ProofService {
             verifier_identifier: verifier.as_ref().map(|v| v.identifier.to_owned()),
             verifier_key: verifier.as_ref().map(|v| v.key.to_owned()),
             verifier_certificate: verifier.map(|v| v.certificate),
-            interaction: None,
+            interaction: Some(interaction.clone()),
             webhook_url: None,
             subscriber_information: None,
         };
+
+        if let Some(ecosystem) = &proof.ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem)?;
+            ecosystem
+                .validate_proof(&proof)
+                .await
+                .error_while("validating ecosystem")?;
+        }
 
         let proof_id = self
             .proof_repository
@@ -104,6 +132,7 @@ impl ProofService {
             ble_options,
             verifier_session,
             proof,
+            interaction,
             self.credential_formatter_provider.clone(),
             self.presentation_formatter_provider.clone(),
             self.did_method_provider.clone(),
@@ -112,6 +141,7 @@ impl ProofService {
             self.proof_repository.clone(),
             self.certificate_validator.clone(),
             self.identifier_creator.clone(),
+            self.ecosystem_provider.clone(),
         )
         .await
         .error_while("starting client")?;

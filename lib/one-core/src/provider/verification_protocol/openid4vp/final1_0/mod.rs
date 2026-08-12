@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -366,11 +367,11 @@ impl OpenID4VPFinal1_0 {
         ))
     }
 
-    async fn handle_proof_invitation(
+    async fn handle_proof_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         let query = url
             .query()
             .ok_or(VerificationProtocolError::InvalidRequest(
@@ -425,7 +426,7 @@ impl OpenID4VPFinal1_0 {
             interaction_id,
             proof,
             ecosystem_artifact: ProtocolArtifact::HolderProof {
-                verifier_details: holder_interaction_data.verifier_details,
+                verifier_details: Cow::Owned(holder_interaction_data.verifier_details),
                 dcql_query: holder_interaction_data.dcql_query,
                 verifier_info: holder_interaction_data.verifier_info,
                 proof_id,
@@ -537,12 +538,12 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         }
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         _transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         if !self.holder_can_handle(&url) {
             return Err(VerificationProtocolError::Failed(
                 "No OpenID4VC query params detected".to_string(),

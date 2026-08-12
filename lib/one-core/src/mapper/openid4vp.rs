@@ -42,7 +42,7 @@ pub(crate) async fn credential_from_proved(
 
     Ok(Credential {
         expires_at: None,
-        ecosystem: None,
+        ecosystem: proved_credential.credential.ecosystem,
         id: proved_credential.credential.id,
         created_date: proved_credential.credential.created_date,
         issuance_date: proved_credential.credential.issuance_date,

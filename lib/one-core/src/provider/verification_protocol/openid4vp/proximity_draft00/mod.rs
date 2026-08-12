@@ -199,12 +199,12 @@ impl OpenID4VPProximityDraft00 {
         })
     }
 
-    async fn holder_handle_invitation_inner<T: Send + Sync + 'static>(
+    async fn holder_handle_invitation_inner<'a, T: Send + Sync + 'static>(
         &self,
         url: Url,
         organisation: Organisation,
         holder_transport: &dyn ProximityHolderTransport<Context = T>,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         if !holder_transport.can_handle(&url) {
             return Err(VerificationProtocolError::Failed(
                 "No OpenID4VC query params detected".to_string(),
@@ -266,12 +266,12 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 .is_some_and(|mqtt| mqtt.can_handle(url))
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         let transport = TransportType::try_from(transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;

@@ -26,14 +26,14 @@ pub(crate) struct CommonParams {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum InvitationResponseEnum {
+pub(crate) enum InvitationResponseEnum<'a> {
     Credential {
         interaction_id: InteractionId,
         tx_code: Option<TxCode>,
         key_storage_security: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
         requires_wallet_instance_attestation: bool,
-        ecosystem_artifact: ProtocolArtifact,
+        ecosystem_artifact: ProtocolArtifact<'a>,
     },
     AuthorizationFlow {
         organisation_id: OrganisationId,
@@ -44,7 +44,7 @@ pub(crate) enum InvitationResponseEnum {
         issuer_state: Option<String>,
         scope: Option<Vec<String>>,
         authorization_server: Option<String>,
-        ecosystem_artifact: ProtocolArtifact,
+        ecosystem_artifact: ProtocolArtifact<'a>,
     },
 }
 
@@ -78,11 +78,11 @@ pub(crate) struct ShareResponse {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ContinueIssuanceResponseDTO {
+pub(crate) struct ContinueIssuanceResponseDTO<'a> {
     pub interaction_id: InteractionId,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
     pub requires_wallet_instance_attestation: bool,
     pub protocol: String,
-    pub ecosystem_artifact: ProtocolArtifact,
+    pub ecosystem_artifact: ProtocolArtifact<'a>,
 }

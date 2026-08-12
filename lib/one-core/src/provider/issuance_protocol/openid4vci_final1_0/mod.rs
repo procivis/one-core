@@ -1571,12 +1571,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         true
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         redirect_uri: Option<String>,
-    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
+    ) -> Result<InvitationResponseEnum<'a>, IssuanceProtocolError> {
         let credential_offer = resolve_credential_offer(self.client.as_ref(), url).await?;
 
         let (issuer_metadata, trust_mode) = self
@@ -2077,11 +2077,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         Ok(token)
     }
 
-    async fn holder_continue_issuance(
+    async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+    ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         let (issuer_metadata, trust_mode) = self
             .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, organisation.id)
             .await?;

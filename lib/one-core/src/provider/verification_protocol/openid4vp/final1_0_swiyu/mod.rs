@@ -148,12 +148,12 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         }
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         if !self.holder_can_handle(&url) {
             return Err(VerificationProtocolError::Failed(
                 "No OpenID4VC query params detected".to_string(),

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::str::FromStr;
 
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
@@ -24,6 +25,7 @@ use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::key::KeyRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
@@ -346,7 +348,7 @@ impl OID4VPFinal1_0Service {
             (ValidatedProofResult, DirectPostResponse),
             OID4VPFinal1_0ServiceError,
         > = async {
-            let (proof_result, response) = self
+            let (mut proof_result, response) = self
                 .proof_validator
                 .validate_submission(
                     unpacked_request,
@@ -358,6 +360,25 @@ impl OID4VPFinal1_0Service {
                 .map_err(Into::<OID4VPFinal1_0ServiceError>::into)?;
 
             self.verify_trust(&proof, &proof_result).await?;
+
+            if let Some(ecosystem_id) = &interaction.ecosystem {
+                let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+
+                for proved_credential in proof_result.proved_credentials.iter_mut() {
+                    ecosystem
+                        .validate_interaction(
+                            &ProtocolArtifact::VerifierSubmission {
+                                credential: Cow::Borrowed(&proved_credential.credential),
+                                issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
+                            },
+                            interaction,
+                        )
+                        .await
+                        .error_while("validating ecosystem")?;
+
+                    proved_credential.credential.ecosystem = Some(ecosystem_id.to_owned());
+                }
+            }
 
             Ok((proof_result, response))
         }

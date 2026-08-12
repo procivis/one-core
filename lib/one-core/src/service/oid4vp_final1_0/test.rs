@@ -37,6 +37,7 @@ use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, MockPublicKeyAgreementHandle, MockSignaturePublicKeyHandle,
@@ -67,6 +68,7 @@ struct Mocks {
     pub proof_validator: MockOpenId4VpProofValidator,
     pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,
+    pub ecosystem_provider: MockEcosystemDirectory,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
@@ -84,6 +86,7 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.wrp_validator),
         Arc::new(mocks.history_repository),
         Arc::new(NoSessionProvider),
+        Arc::new(mocks.ecosystem_provider),
     )
 }
 

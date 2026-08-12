@@ -11,6 +11,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
+mod credential;
 mod metadata;
 
 #[derive(Debug, Error)]
@@ -25,7 +26,11 @@ pub(crate) enum HolderIssuanceError {
     InconsistentTrustInfo,
     #[error("No credential configuration")]
     NoCredentialConfiguration,
+    #[error("Invalid credential configuration: `{0}`")]
+    InvalidCredentialConfiguration(String),
 
+    #[error("Mapping error: `{0}`")]
+    MappingError(String),
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -36,8 +41,10 @@ impl ErrorCodeMixin for HolderIssuanceError {
             Self::MissingRegistryUrl
             | Self::MissingIdentifier
             | Self::InconsistentTrustInfo
-            | Self::NoCredentialConfiguration => ErrorCode::BR_0477,
+            | Self::NoCredentialConfiguration
+            | Self::InvalidCredentialConfiguration(_) => ErrorCode::BR_0477,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0411,
+            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

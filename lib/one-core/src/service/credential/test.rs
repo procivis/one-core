@@ -44,6 +44,7 @@ use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
 use crate::provider::issuance_protocol::model::ShareResponse;
@@ -73,6 +74,7 @@ struct Repositories {
     pub notification_scheduler: MockNotificationScheduler,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
     pub trust_information_provider: MockTrustInformationProvider,
+    pub ecosystem_provider: MockEcosystemDirectory,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -92,6 +94,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.notification_scheduler),
         Arc::new(repositories.trust_information_provider),
         Arc::new(NoTransactionManager),
+        Arc::new(repositories.ecosystem_provider),
     )
 }
 

@@ -8,8 +8,8 @@ use one_crypto::utilities::{self, generate_alphanumeric};
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{
-    BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId,
-    InteractionId, NonceId,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId, InteractionId,
+    NonceId,
 };
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
@@ -52,7 +52,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::Identifier;
-use crate::model::interaction::UpdateInteractionRequest;
+use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::relation::Related;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
@@ -60,6 +60,7 @@ use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -369,8 +370,8 @@ impl OID4VCIFinal1_0Service {
                     jwt,
                     &schema,
                     &params,
-                    credential.wallet_instance_attestation_blob_id.as_ref(),
-                    credential.id,
+                    credential,
+                    &interaction,
                 )
                 .await?;
 
@@ -450,8 +451,8 @@ impl OID4VCIFinal1_0Service {
         proof: &str,
         schema: &CredentialSchema,
         params: &OpenID4VCIFinal1Params,
-        wallet_instance_attestation_blob_id: Option<&BlobId>,
-        credential_id: CredentialId,
+        credential: &Credential,
+        interaction: &Interaction,
     ) -> Result<(PreparedIdentifier, NonceId), OID4VCIFinal1_0ServiceError> {
         let token_verifier = KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -512,7 +513,8 @@ impl OID4VCIFinal1_0Service {
             }
 
             if schema.requires_wallet_instance_attestation {
-                let Some(wallet_instance_attestation_blob_id) = wallet_instance_attestation_blob_id
+                let Some(wallet_instance_attestation_blob_id) =
+                    credential.wallet_instance_attestation_blob_id.as_ref()
                 else {
                     tracing::debug!(
                         "app attestation required but no wallet app attestation blob ID found"
@@ -553,12 +555,13 @@ impl OID4VCIFinal1_0Service {
             let key_source = wua
                 .public_key_source(None)
                 .error_while("extracting WUA public key")?;
+
             let organisation = schema.organisation.as_ref().await?;
             let trust = self
                 .resolve_wallet_provider_trust(
-                    key_source,
+                    key_source.clone(),
                     &organisation,
-                    credential_id,
+                    credential.id,
                     &schema.name,
                 )
                 .await?;
@@ -566,6 +569,19 @@ impl OID4VCIFinal1_0Service {
                 && trust != TrustResolutionResult::Trusted
             {
                 return Err(OpenID4VCIError::CredentialRequestDenied.into());
+            }
+
+            if let Some(ecosystem_id) = &interaction.ecosystem {
+                let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+                ecosystem
+                    .validate_interaction(
+                        &ProtocolArtifact::IssuerIssuance {
+                            wallet_provider: key_source,
+                        },
+                        interaction,
+                    )
+                    .await
+                    .error_while("validating ecosystem")?;
             }
 
             let proof_signing_key = match &holder_binding {
@@ -988,10 +1004,10 @@ impl OID4VCIFinal1_0Service {
                 oauth_client_attestation,
                 oauth_client_attestation_pop,
                 &credential_schema,
-                &credential.protocol,
+                credential,
+                interaction_id,
                 issuer_identifier_id,
                 params.oauth_attestation_leeway_seconds,
-                credential.id,
             )
             .await?;
 
@@ -1160,10 +1176,10 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
         credential_schema: &CredentialSchema,
-        protocol_id: &str,
+        credential: &Credential,
+        interaction_id: InteractionId,
         issuer_identifier_id: Option<IdentifierId>,
         leeway: Duration,
-        credential_id: CredentialId,
     ) -> Result<Option<WalletInstanceAttestationDTO>, OID4VCIFinal1_0ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
         if !credential_schema.requires_wallet_instance_attestation {
@@ -1191,19 +1207,17 @@ impl OID4VCIFinal1_0Service {
         validate_timestamps(&proof_of_key_possession, leeway)?;
 
         // Validate proof of possession audience
-        let base_url =
-            self.protocol_base_url
-                .as_ref()
-                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                    "missing protocol_base_url".to_string(),
-                ))?;
-        let expected_audience = if let Some(issuer_identifier_id) = issuer_identifier_id {
-            format!(
-                "{base_url}/{protocol_id}/{issuer_identifier_id}/{}",
-                credential_schema.id
-            )
-        } else {
-            format!("{base_url}/{protocol_id}/{}", credential_schema.id)
+        let expected_audience = {
+            let base_url = self.protocol_base_url.as_ref().ok_or(
+                OID4VCIFinal1_0ServiceError::MappingError("missing protocol_base_url".to_string()),
+            )?;
+            let protocol_id = &credential.protocol;
+            let credential_schema_id = credential_schema.id;
+            if let Some(issuer_identifier_id) = issuer_identifier_id {
+                format!("{base_url}/{protocol_id}/{issuer_identifier_id}/{credential_schema_id}")
+            } else {
+                format!("{base_url}/{protocol_id}/{credential_schema_id}")
+            }
         };
         validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
 
@@ -1227,9 +1241,9 @@ impl OID4VCIFinal1_0Service {
         let organisation = credential_schema.organisation.as_ref().await?;
         let trust = self
             .resolve_wallet_provider_trust(
-                key_source,
+                key_source.clone(),
                 &organisation,
-                credential_id,
+                credential.id,
                 &credential_schema.name,
             )
             .await?;
@@ -1237,6 +1251,24 @@ impl OID4VCIFinal1_0Service {
             && trust != TrustResolutionResult::Trusted
         {
             return Err(OpenID4VCIError::InvalidClient.into());
+        }
+
+        let interaction = self
+            .interaction_repository
+            .get_interaction(&interaction_id, None)
+            .await
+            .error_while("getting interaction")?;
+        if let Some(ecosystem_id) = &interaction.ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+            ecosystem
+                .validate_interaction(
+                    &ProtocolArtifact::IssuerIssuance {
+                        wallet_provider: key_source,
+                    },
+                    &interaction,
+                )
+                .await
+                .error_while("validating ecosystem")?;
         }
 
         // Extract wallet metadata

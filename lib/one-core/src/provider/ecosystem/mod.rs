@@ -32,9 +32,9 @@ pub trait Ecosystem: Provider + Send + Sync {
 
     fn get_capabilities(&self) -> EcosystemCapabilities;
 
-    async fn validate_interaction(
+    async fn validate_interaction<'a>(
         &self,
-        interaction_artifact: &ProtocolArtifact,
+        interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
     ) -> Result<(), EcosystemError>;
 

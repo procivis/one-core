@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::Serialize;
 use shared_types::{CredentialSchemaId, EcosystemId, ProofId, ProofSchemaId, SerializedCredential};
 use standardized_types::openid4vci::CredentialIssuerMetadata;
@@ -6,9 +8,8 @@ use standardized_types::openid4vp::dcql::DcqlQuery;
 use strum::Display;
 
 use crate::model::credential::Credential;
-use crate::model::proof::Proof;
 use crate::proto::jwt::model::DecomposedJwt;
-use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
+use crate::provider::credential_formatter::model::{IdentifierDetails, PublicKeySource};
 use crate::service::common_dto::EudiTrustInformationResponseDTO;
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -34,35 +35,33 @@ pub enum IssuerMetadataRepresentation {
     Unsigned(Box<CredentialIssuerMetadata>),
 }
 
-#[expect(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Display)]
-pub enum ProtocolArtifact {
+pub enum ProtocolArtifact<'a> {
     /// As holder, protocol artifacts about the issuance & issuer
     HolderIssuanceInvitation {
         issuer_metadata: IssuerMetadataRepresentation,
         credential_configuration_ids: Vec<String>,
     },
     HolderIssuanceCredential {
-        credential: Credential,
+        credential: Cow<'a, Credential>,
         serialized: SerializedCredential,
+        credential_configuration_id: String,
     },
     /// As holder, protocol artifacts about the proof-request & verifier
     HolderProof {
-        verifier_details: Option<IdentifierDetails>,
+        verifier_details: Cow<'a, Option<IdentifierDetails>>,
         dcql_query: DcqlQuery,
         verifier_info: Vec<VerifierInfoAttestation>,
         proof_id: ProofId,
     },
     /// As issuer, issuance protocol artifacts
     IssuerIssuance {
-        wallet_provider: IdentifierDetails,
-        /// issued credential (role=Issuer)
-        credential: Credential,
+        wallet_provider: PublicKeySource<'a>,
     },
     /// As verifier, protocol artifacts of a proof-request (after submission)
     VerifierSubmission {
-        proof: Proof,
-        credentials: Vec<DetailCredential>,
+        credential: Cow<'a, Credential>,
+        issuer_details: Cow<'a, IdentifierDetails>,
     },
 }
 

@@ -163,6 +163,8 @@ impl CredentialService {
             issuer_identifier.id,
             request.protocol
         );
+
+        let ecosystem = request.ecosystem.clone();
         let credential = from_create_request(
             request,
             credential_id,
@@ -172,6 +174,14 @@ impl CredentialService {
             schema,
             issuer_key,
         );
+
+        if let Some(ecosystem) = &ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem)?;
+            ecosystem
+                .validate_credential(&credential)
+                .await
+                .error_while("validating ecosystem")?;
+        }
 
         let result = self
             .credential_repository

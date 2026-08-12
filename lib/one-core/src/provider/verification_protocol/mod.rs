@@ -57,12 +57,12 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
 
     /// For handling credential issuance and verification, this method
     /// saves the offer information coming in.
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError>;
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError>;
 
     /// Rejects a verifier's request for credential presentation.
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError>;

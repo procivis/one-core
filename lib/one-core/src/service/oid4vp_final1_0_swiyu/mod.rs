@@ -9,6 +9,7 @@ use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -41,6 +42,7 @@ impl OID4VPFinal1_0SwiyuService {
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         let inner = OID4VPFinal1_0Service::new(
             credential_repository,
@@ -56,6 +58,7 @@ impl OID4VPFinal1_0SwiyuService {
             wrp_validator,
             history_repository,
             session_provider,
+            ecosystem_provider,
         );
         Self {
             inner,

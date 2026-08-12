@@ -33,12 +33,12 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         false
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         _url: Url,
         _organisation: Organisation,
         _redirect_uri: Option<String>,
-    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
+    ) -> Result<InvitationResponseEnum<'a>, IssuanceProtocolError> {
         self.disabled_error()
     }
 
@@ -58,11 +58,11 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         self.inner().holder_reject_credential(credential).await
     }
 
-    async fn holder_continue_issuance(
+    async fn holder_continue_issuance<'a>(
         &self,
         _continue_issuance_dto: ContinueIssuanceDTO,
         _organisation: Organisation,
-    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+    ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         self.disabled_error()
     }
 
@@ -128,12 +128,12 @@ impl IssuanceProtocol for CapabilityChecked {
         self.0.holder_can_handle(url)
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         redirect_uri: Option<String>,
-    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
+    ) -> Result<InvitationResponseEnum<'a>, IssuanceProtocolError> {
         self.0
             .holder_handle_invitation(url, organisation, redirect_uri)
             .await
@@ -166,11 +166,11 @@ impl IssuanceProtocol for CapabilityChecked {
         self.0.holder_reject_credential(credential).await
     }
 
-    async fn holder_continue_issuance(
+    async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+    ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         self.0
             .holder_continue_issuance(continue_issuance_dto, organisation)
             .await

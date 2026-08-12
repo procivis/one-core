@@ -34,12 +34,12 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         false
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         _url: Url,
         _organisation: Organisation,
         _transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         self.disabled_error()
     }
 
@@ -104,12 +104,12 @@ impl VerificationProtocol for CapabilityChecked {
         self.inner.holder_can_handle(url)
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         url: Url,
         organisation: Organisation,
         transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         self.inner
             .holder_handle_invitation(url, organisation, transport)
             .await

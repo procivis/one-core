@@ -117,12 +117,12 @@ impl VerificationProtocol for IsoMdl {
         false
     }
 
-    async fn holder_handle_invitation(
+    async fn holder_handle_invitation<'a>(
         &self,
         _url: Url,
         _organisation: Organisation,
         _transport: String,
-    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         unimplemented!()
     }
 
