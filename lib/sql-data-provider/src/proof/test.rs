@@ -3,21 +3,14 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
-    GetCredentialList,
-};
+use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{Did, DidType};
-use one_core::model::identifier::{
-    Identifier, IdentifierData, IdentifierRelations, IdentifierState,
-};
+use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::key::Key;
-use one_core::model::list_filter::{ListFilterCondition, ListFilterValue};
+use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
-use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofListQuery, ProofRelations, ProofRole, ProofStateEnum,
-};
+use one_core::model::proof::{Proof, ProofListQuery, ProofRelations, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
@@ -38,7 +31,6 @@ use one_core::repository::proof_schema_repository::{
     MockProofSchemaRepository, ProofSchemaRepository,
 };
 use one_core::service::proof::dto::ProofFilterValue;
-use one_core::service::test_utilities::dummy_credential_schema;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{
     ClaimId, ClaimSchemaId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId,
@@ -584,55 +576,6 @@ async fn test_get_proof_with_relations() {
             }])
         });
 
-    let mut credential_repository = MockCredentialRepository::default();
-    credential_repository
-        .expect_get_credential_list()
-        .once()
-        .withf(move |query| {
-            matches!(
-                &query.filtering,
-                Some(ListFilterCondition::Value(CredentialFilterValue::CredentialIds(ids)))
-                    if *ids == vec![credential_id]
-            )
-        })
-        .returning(move |_| {
-            Ok(GetCredentialList {
-                total_pages: 1,
-                total_items: 1,
-                values: vec![Credential {
-                    expires_at: None,
-                    ecosystem: None,
-                    id: credential_id,
-                    created_date: get_dummy_date(),
-                    issuance_date: None,
-                    last_modified: get_dummy_date(),
-                    deleted_at: None,
-                    consumed_at: None,
-                    protocol: "protocol".to_string(),
-                    redirect_uri: None,
-                    role: CredentialRole::Verifier,
-                    r#type: CredentialType::Single,
-                    state: CredentialStateEnum::Accepted,
-                    suspend_end_date: None,
-                    claims: Default::default(),
-                    issuer_identifier: None,
-                    issuer_certificate: None,
-                    holder_identifier: None,
-                    schema: dummy_credential_schema().into(),
-                    interaction: None,
-                    key: None,
-                    profile: None,
-                    credential_blob_id: Some(Uuid::new_v4().into()),
-                    wallet_unit_attestation_blob_id: None,
-                    wallet_instance_attestation_blob_id: None,
-                    webhook_url: None,
-                    embedded_disclosure_policy: None,
-                    subscriber_information: None,
-                    parent: None,
-                }],
-            })
-        });
-
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_key().once().returning(|key_id| {
         Ok(Key {
@@ -659,7 +602,7 @@ async fn test_get_proof_with_relations() {
         key_id,
         ..
     } = setup_with_proof(
-        Arc::from(credential_repository),
+        get_credential_repository_mock(),
         Arc::from(proof_schema_repository),
         Arc::from(claim_repository),
         Arc::from(identifier_repository),
@@ -742,12 +685,9 @@ async fn test_get_proof_with_relations() {
         .get_proof(
             &proof_id,
             &ProofRelations {
-                claims: Some(ProofClaimRelations {
-                    claim: Default::default(),
-                    credential: Some(Default::default()),
-                }),
+                claims: Some(Default::default()),
                 schema: Some(Default::default()),
-                verifier_identifier: Some(IdentifierRelations {}),
+                verifier_identifier: Some(Default::default()),
                 verifier_key: Some(Default::default()),
                 interaction: Some(Default::default()),
                 ..Default::default()
@@ -765,7 +705,7 @@ async fn test_get_proof_with_relations() {
     let claims = proof.claims.unwrap();
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].claim.id, claim_id);
-    assert_eq!(claims[0].credential.to_owned().unwrap().id, credential_id);
+    assert_eq!(claims[0].credential.id(), credential_id);
 }
 
 #[tokio::test]

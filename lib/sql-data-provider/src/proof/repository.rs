@@ -1,16 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim::Claim;
 use one_core::model::common::LockType;
-use one_core::model::credential::{Credential, CredentialFilterValue, CredentialListQuery};
+use one_core::model::credential::Credential;
 use one_core::model::history::HistoryErrorMetadata;
-use one_core::model::list_filter::ListFilterValue;
 use one_core::model::proof::{
-    GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofListQuery, ProofRelations,
-    ProofStateEnum, UpdateProofRequest,
+    GetProofList, Proof, ProofClaim, ProofListQuery, ProofRelations, ProofStateEnum,
+    UpdateProofRequest,
 };
+use one_core::model::relation::Related;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
@@ -352,8 +351,8 @@ impl ProofProvider {
             );
         }
 
-        if let Some(claim_relations) = &relations.claims {
-            proof.claims = Some(self.resolve_claims(&proof_model, claim_relations).await?);
+        if let Some(_claim_relations) = &relations.claims {
+            proof.claims = Some(self.resolve_claims(&proof_model).await?);
         }
 
         if relations.verifier_identifier.is_some()
@@ -403,7 +402,6 @@ impl ProofProvider {
     async fn resolve_claims(
         &self,
         proof_model: &proof::Model,
-        relations: &ProofClaimRelations,
     ) -> Result<Vec<ProofClaim>, DataLayerError> {
         let proof_claims = crate::entity::proof_claim::Entity::find()
             .filter(proof_claim::Column::ProofId.eq(proof_model.id))
@@ -412,53 +410,24 @@ impl ProofProvider {
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let claim_ids: Vec<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
+        if claim_ids.is_empty() {
+            return Ok(vec![]);
+        }
 
-        Ok(if claim_ids.is_empty() {
-            vec![]
-        } else {
-            let claims = self.claim_repository.get_claim_list(claim_ids).await?;
-
-            let mut claims: Vec<_> = claims
-                .into_iter()
-                .map(|claim| ProofClaim {
-                    claim,
-                    credential: None,
-                })
-                .collect();
-
-            if relations.credential.is_some() {
-                let credential_ids: HashSet<CredentialId> = claims
-                    .iter()
-                    .map(|claim| claim.claim.credential_id)
-                    .collect();
-
-                let credentials: HashMap<CredentialId, Credential> = self
-                    .credential_repository
-                    .get_credential_list(CredentialListQuery {
-                        filtering: Some(
-                            CredentialFilterValue::CredentialIds(
-                                credential_ids.into_iter().collect(),
-                            )
-                            .condition(),
-                        ),
-                        ..Default::default()
+        let claims = self.claim_repository.get_claim_list(claim_ids).await?;
+        let mut credential_relations: HashMap<CredentialId, Related<Credential>> = HashMap::new();
+        Ok(claims
+            .into_iter()
+            .map(|claim| {
+                let credential = credential_relations
+                    .entry(claim.credential_id)
+                    .or_insert_with(|| {
+                        Related::new(claim.credential_id, self.credential_repository.clone())
                     })
-                    .await?
-                    .values
-                    .into_iter()
-                    .map(|credential| (credential.id, credential))
-                    .collect();
+                    .to_owned();
 
-                for claim in claims.iter_mut() {
-                    let credential = credentials
-                        .get(&claim.claim.credential_id)
-                        .ok_or_else(|| DataLayerError::Db(anyhow!("Credential not found")))?
-                        .clone();
-                    claim.credential = Some(credential);
-                }
-            }
-
-            claims
-        })
+                ProofClaim { claim, credential }
+            })
+            .collect())
     }
 }

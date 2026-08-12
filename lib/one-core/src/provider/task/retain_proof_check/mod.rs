@@ -3,18 +3,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::{Value, json};
-use shared_types::CredentialId;
 use uuid::Uuid;
 
 use super::Task;
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
-use crate::model::claim::ClaimRelations;
-use crate::model::credential::{CredentialFilterValue, CredentialListQuery, CredentialRelations};
+use crate::model::credential::{CredentialFilterValue, CredentialListQuery};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
-use crate::model::proof::{ProofClaimRelations, ProofRelations, ProofStateEnum};
+use crate::model::proof::{ProofRelations, ProofStateEnum};
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -114,10 +112,7 @@ impl Task for RetainProofCheck {
                     .get_proof(
                         &proof.id,
                         &ProofRelations {
-                            claims: Some(ProofClaimRelations {
-                                claim: ClaimRelations::default(),
-                                credential: Some(CredentialRelations::default()),
-                            }),
+                            claims: Some(Default::default()),
                             ..Default::default()
                         },
                         None,
@@ -127,17 +122,8 @@ impl Task for RetainProofCheck {
                     .claims
                     .ok_or(ServiceError::MappingError("claims are None".to_string()))?
                     .into_iter()
-                    .map(|proof_claim| {
-                        Ok::<CredentialId, ServiceError>(
-                            proof_claim
-                                .credential
-                                .ok_or(ServiceError::MappingError(
-                                    "credential is None".to_string(),
-                                ))?
-                                .id,
-                        )
-                    })
-                    .collect::<Result<HashSet<_>, _>>()?;
+                    .map(|proof_claim| proof_claim.credential.id())
+                    .collect::<HashSet<_>>();
 
                 self.proof_repository
                     .delete_proof_claims(&proof.id)

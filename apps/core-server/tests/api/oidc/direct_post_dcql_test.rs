@@ -152,6 +152,7 @@ async fn test_direct_post_dcql_with_claim_sets() {
             .unwrap()
             .credential
             .as_ref()
+            .await
             .unwrap()
             .issuance_date
             .is_some()

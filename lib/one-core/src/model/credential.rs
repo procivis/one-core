@@ -54,9 +54,6 @@ pub struct Credential {
     pub parent: Option<Related<Credential>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct CredentialRelations {}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Display)]
 pub enum CredentialStateEnum {
     Created,

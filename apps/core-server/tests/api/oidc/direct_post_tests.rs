@@ -1064,13 +1064,12 @@ async fn test_direct_post_with_profile_verification() {
     );
 
     assert_eq!(proof.profile, Some(test_profile.to_string()));
-    assert_eq!(
-        claims
-            .iter()
-            .all(|claim| claim.credential.as_ref().unwrap().profile
-                == Some(test_profile.to_string())),
-        true
-    );
+    for claim in claims {
+        assert_eq!(
+            claim.credential.as_ref().await.unwrap().profile,
+            Some(test_profile.to_string())
+        );
+    }
 }
 
 #[tokio::test]

@@ -16,10 +16,10 @@ use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::model::blob::Blob;
 use one_core::model::certificate::{Certificate, CertificateRole, CertificateState};
-use one_core::model::claim::{Claim, ClaimRelations};
+use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
+    Credential, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, LayoutProperties, LayoutType,
@@ -28,15 +28,11 @@ use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
-use one_core::model::identifier::{
-    Identifier, IdentifierData, IdentifierRelations, IdentifierState, IdentifierType,
-};
+use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionType};
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
-};
+use one_core::model::proof::{Proof, ProofRelations, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::DataRepository;
@@ -1079,13 +1075,10 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
         .get_proof(
             proof_id,
             &ProofRelations {
-                claims: Some(ProofClaimRelations {
-                    claim: ClaimRelations {},
-                    credential: Some(CredentialRelations::default()),
-                }),
+                claims: Some(Default::default()),
                 schema: Some(Default::default()),
-                verifier_identifier: Some(IdentifierRelations {}),
-                verifier_key: Some(KeyRelations::default()),
+                verifier_identifier: Some(Default::default()),
+                verifier_key: Some(Default::default()),
                 verifier_certificate: Some(Default::default()),
                 interaction: Some(Default::default()),
             },

@@ -4,15 +4,16 @@ use strum::Display;
 use time::OffsetDateTime;
 
 use super::certificate::{Certificate, CertificateRelations};
-use super::claim::{Claim, ClaimRelations};
+use super::claim::Claim;
 use super::common::GetListResponse;
-use super::credential::{Credential, CredentialRelations};
+use super::credential::Credential;
 use super::identifier::{Identifier, IdentifierRelations};
 use super::interaction::{Interaction, InteractionRelations};
 use super::key::Key;
 use super::list_query::ListQuery;
 use super::proof_schema::{ProofSchema, ProofSchemaRelations};
 use crate::model::key::KeyRelations;
+use crate::model::relation::Related;
 use crate::service::proof::dto::ProofFilterValue;
 
 #[derive(Clone, Debug)]
@@ -69,7 +70,7 @@ pub struct ProofClaim {
     pub claim: Claim,
 
     // Relations
-    pub credential: Option<Credential>,
+    pub credential: Related<Credential>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -99,10 +100,7 @@ pub struct ProofRelations {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct ProofClaimRelations {
-    pub claim: ClaimRelations,
-    pub credential: Option<CredentialRelations>,
-}
+pub struct ProofClaimRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateProofRequest {

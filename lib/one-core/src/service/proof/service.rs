@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{CredentialFormat, CredentialId, ProofId, TransactionDataId};
+use shared_types::{CredentialFormat, ProofId, TransactionDataId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use uuid::Uuid;
 
@@ -36,7 +36,6 @@ use crate::config::validator::transport::{
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRole;
-use crate::model::claim::ClaimRelations;
 use crate::model::credential::{CredentialFilterValue, CredentialListQuery};
 use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
@@ -45,8 +44,7 @@ use crate::model::interaction::InteractionType;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum, SortableProofColumn,
-    UpdateProofRequest,
+    Proof, ProofRelations, ProofRole, ProofStateEnum, SortableProofColumn, UpdateProofRequest,
 };
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
@@ -98,11 +96,8 @@ impl ProofService {
                 id,
                 &ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
                     verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
@@ -696,10 +691,7 @@ impl ProofService {
             .get_proof(
                 &proof_id,
                 &ProofRelations {
-                    claims: Some(ProofClaimRelations {
-                        claim: Default::default(),
-                        credential: Some(Default::default()),
-                    }),
+                    claims: Some(Default::default()),
                     schema: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
@@ -716,17 +708,8 @@ impl ProofService {
                 "claims are None".to_string(),
             ))?
             .into_iter()
-            .map(|proof_claim| {
-                Ok::<CredentialId, ProofServiceError>(
-                    proof_claim
-                        .credential
-                        .ok_or(ProofServiceError::MappingError(
-                            "credential is None".to_string(),
-                        ))?
-                        .id,
-                )
-            })
-            .collect::<Result<HashSet<_>, _>>()?;
+            .map(|proof_claim| proof_claim.credential.id())
+            .collect::<HashSet<_>>();
 
         self.proof_repository
             .delete_proof_claims(&proof.id)
@@ -1113,10 +1096,7 @@ impl ProofService {
                 &ProofRelations {
                     schema: Some(Default::default()),
                     interaction: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        ..Default::default()
-                    }),
+                    claims: Some(Default::default()),
                     verifier_key: Some(Default::default()),
                     verifier_identifier: Some(IdentifierRelations {}),
                     verifier_certificate: Some(Default::default()),

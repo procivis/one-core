@@ -24,19 +24,18 @@ use crate::config::core_config::{
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
-use crate::model::certificate::CertificateRelations;
-use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
-use crate::model::identifier::{Identifier, IdentifierData, IdentifierRelations};
+use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::proof::{
-    GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
+    GetProofList, Proof, ProofClaim, ProofRelations, ProofRole, ProofStateEnum,
 };
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
@@ -430,12 +429,9 @@ async fn test_get_proof_exists() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),
@@ -609,7 +605,7 @@ async fn test_get_proof_with_array_holder() {
                 .iter()
                 .map(|claim| ProofClaim {
                     claim: claim.clone(),
-                    credential: Some(credential.clone()),
+                    credential: credential.clone().into(),
                 })
                 .collect(),
         ),
@@ -663,12 +659,9 @@ async fn test_get_proof_with_array_holder() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),
@@ -879,7 +872,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 .iter()
                 .map(|claim| ProofClaim {
                     claim: claim.clone(),
-                    credential: Some(credential.clone()),
+                    credential: credential.clone().into(),
                 })
                 .collect(),
         ),
@@ -933,12 +926,9 @@ async fn test_get_proof_with_array_in_object_holder() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),
@@ -1164,7 +1154,7 @@ async fn test_get_proof_with_object_array_holder() {
                 .iter()
                 .map(|claim| ProofClaim {
                     claim: claim.clone(),
-                    credential: Some(credential.clone()),
+                    credential: credential.clone().into(),
                 })
                 .collect(),
         ),
@@ -1218,12 +1208,9 @@ async fn test_get_proof_with_object_array_holder() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),
@@ -1444,7 +1431,7 @@ async fn test_get_proof_with_array() {
                 .iter()
                 .map(|claim| ProofClaim {
                     claim: claim.clone(),
-                    credential: Some(credential.clone()),
+                    credential: credential.clone().into(),
                 })
                 .collect(),
         ),
@@ -1486,12 +1473,9 @@ async fn test_get_proof_with_array() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),
@@ -1722,7 +1706,7 @@ async fn test_get_proof_with_array_in_object() {
                 .iter()
                 .map(|claim| ProofClaim {
                     claim: claim.clone(),
-                    credential: Some(credential.clone()),
+                    credential: credential.clone().into(),
                 })
                 .collect(),
         ),
@@ -1764,12 +1748,9 @@ async fn test_get_proof_with_array_in_object() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),
@@ -2016,7 +1997,7 @@ async fn test_get_proof_with_object_array() {
                 .iter()
                 .map(|claim| ProofClaim {
                     claim: claim.clone(),
-                    credential: Some(credential.clone()),
+                    credential: credential.clone().into(),
                 })
                 .collect(),
         ),
@@ -2058,12 +2039,9 @@ async fn test_get_proof_with_object_array() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(Default::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        credential: Some(Default::default()),
-                    }),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    claims: Some(Default::default()),
+                    verifier_identifier: Some(Default::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 }),

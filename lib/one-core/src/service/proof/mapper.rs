@@ -210,16 +210,7 @@ pub(super) async fn get_verifier_proof_detail(
 
     let mut credential_for_schema_model: HashMap<CredentialSchemaId, Credential> = HashMap::new();
     for proof_claim in claims.iter() {
-        let credential = match proof_claim.credential.clone() {
-            Some(cred) => cred,
-            None => {
-                return Err(ProofServiceError::MappingError(format!(
-                    "Missing credential for proof claim {}",
-                    proof_claim.claim.id
-                )));
-            }
-        };
-
+        let credential = proof_claim.credential.as_ref().await?.to_owned();
         credential_for_schema_model.insert(credential.schema.id(), credential);
     }
 
@@ -597,14 +588,7 @@ pub(super) async fn get_holder_proof_detail(
     > = HashMap::new();
 
     for proof_claim in proof.claims.iter().flatten() {
-        let credential = proof_claim
-            .credential
-            .as_ref()
-            .ok_or(ProofServiceError::MappingError(format!(
-                "Missing credential for claim: {}",
-                proof_claim.claim.id
-            )))?;
-
+        let credential = proof_claim.credential.as_ref().await?;
         let credential_schema = credential.schema.as_ref().await?.to_owned();
 
         match submitted_credentials.entry(credential.id) {

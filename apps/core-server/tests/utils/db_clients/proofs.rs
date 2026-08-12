@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use one_core::model::claim::{Claim, ClaimRelations};
-use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::identifier::{Identifier, IdentifierData, IdentifierRelations};
+use one_core::model::claim::Claim;
+use one_core::model::identifier::{Identifier, IdentifierData};
 use one_core::model::interaction::Interaction;
-use one_core::model::key::{Key, KeyRelations};
-use one_core::model::proof::{
-    Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum,
-};
+use one_core::model::key::Key;
+use one_core::model::proof::{Proof, ProofRelations, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::proof_repository::ProofRepository;
 use shared_types::{BlobId, ProofId};
@@ -97,30 +94,7 @@ impl ProofsDB {
             role,
             requested_date,
             completed_date,
-            claims: Some(vec![ProofClaim {
-                claim: Claim {
-                    id: Uuid::default().into(),
-                    credential_id: Uuid::default().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    value: Some("test".to_string()),
-                    path: "test".to_string(),
-                    selectively_disclosable: false,
-                    schema: ClaimSchema {
-                        id: Uuid::default().into(),
-                        key: "test".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        array: false,
-                        metadata: false,
-                        required: true,
-                        translations: Default::default(),
-                    }
-                    .into(),
-                },
-                credential: None,
-            }]),
+            claims: None,
             schema: proof_schema.cloned(),
             verifier_identifier: Some(verifier_identifier.to_owned()),
             verifier_key: Some(verifier_key),
@@ -153,14 +127,11 @@ impl ProofsDB {
             .get_proof(
                 proof_id,
                 &ProofRelations {
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {},
-                        ..Default::default()
-                    }),
+                    claims: Some(Default::default()),
                     schema: Some(Default::default()),
-                    verifier_identifier: Some(IdentifierRelations {}),
+                    verifier_identifier: Some(Default::default()),
                     interaction: Some(Default::default()),
-                    verifier_key: Some(KeyRelations::default()),
+                    verifier_key: Some(Default::default()),
                     ..Default::default()
                 },
                 None,

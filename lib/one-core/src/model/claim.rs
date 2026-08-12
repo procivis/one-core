@@ -18,6 +18,3 @@ pub struct Claim {
     // Relations
     pub schema: Related<ClaimSchema>,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct ClaimRelations {}
