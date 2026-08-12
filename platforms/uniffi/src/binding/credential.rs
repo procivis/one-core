@@ -103,6 +103,7 @@ pub struct CredentialDetailBindingDTO {
     pub issuance_date: Option<String>,
     pub last_modified: String,
     pub revocation_date: Option<String>,
+    pub expires_at: Option<String>,
     /// Credential issuer metadata.
     pub issuer: Option<GetIdentifierListItemBindingDTO>,
     /// Credential holder metadata.
@@ -347,6 +348,7 @@ pub struct CredentialListItemBindingDTO {
     pub issuance_date: Option<String>,
     pub last_modified: String,
     pub revocation_date: Option<String>,
+    pub expires_at: Option<String>,
     /// Credential issuer metadata.
     pub issuer: Option<String>,
     /// State representation of the credential in the system.

@@ -35,6 +35,10 @@ fn duration_from_seconds(value: Option<i64>) -> Option<time::Duration> {
     value.map(time::Duration::seconds)
 }
 
+fn seconds_from_duration(value: Option<time::Duration>) -> Option<i64> {
+    value.map(time::Duration::whole_seconds)
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
     /// Returns detailed information about a credential schema.
@@ -418,6 +422,8 @@ pub struct CredentialSchemaDetailV2BindingDTO {
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
     pub translations: CredentialSchemaTranslationsBindingDTO,
+    #[from(with_fn = seconds_from_duration)]
+    pub expiration: Option<i64>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -444,6 +450,8 @@ pub struct CredentialSchemaListItemV2BindingDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
+    #[from(with_fn = seconds_from_duration)]
+    pub expiration: Option<i64>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
