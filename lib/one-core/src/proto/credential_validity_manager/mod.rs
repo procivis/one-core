@@ -24,7 +24,6 @@ use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::mapper::revocation_state_from_credential_state;
@@ -462,12 +461,22 @@ pub(crate) fn is_batch_parent_expired(
     batch_refresh_token_expired(interaction)
 }
 
+/// Only the `refresh_token_expires_at` field is relevant here, so we deserialize into this
+/// minimal shape instead of the full `HolderInteractionData` - that struct requires fields
+/// (e.g. `issuer_url`) that aren't present on every interaction (e.g. issuer-role ones),
+/// which would otherwise make this fail for interactions it isn't meant to model.
+#[derive(serde::Deserialize)]
+struct RefreshTokenInteractionData {
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    refresh_token_expires_at: Option<OffsetDateTime>,
+}
+
 fn batch_refresh_token_expired(interaction: Option<&Interaction>) -> Result<bool, Error> {
     let Some(interaction) = interaction else {
         return Ok(false);
     };
-    let data: HolderInteractionData = deserialize_interaction_data(interaction.data.as_ref())
-        .error_while("parsing holder interaction data")?;
+    let data: RefreshTokenInteractionData = deserialize_interaction_data(interaction.data.as_ref())
+        .error_while("parsing interaction data")?;
 
     Ok(data
         .refresh_token_expires_at
