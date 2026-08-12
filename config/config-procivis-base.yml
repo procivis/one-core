@@ -794,6 +794,8 @@ transactionDataProvider:
               display: "transactionData.paymentConfirmation.payee.name"
             - path: "$.payee.id"
               display: "transactionData.paymentConfirmation.payee.id"
+            - path: "$.payee.website"
+              display: "transactionData.paymentConfirmation.payee.website"
             - path: "$.amount"
               display: "transactionData.paymentConfirmation.amount"
             - path: "$.currency"
