@@ -206,7 +206,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         )?;
 
         Ok(Credential {
-            expires_at: None,
+            expires_at: parsed_credential.payload.expires_at,
             ecosystem: None,
             id: credential_id,
             created_date: now,

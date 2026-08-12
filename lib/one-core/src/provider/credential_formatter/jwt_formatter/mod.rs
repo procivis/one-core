@@ -457,7 +457,7 @@ impl CredentialFormatter for JWTFormatter {
             .transpose()?;
 
         Ok(Credential {
-            expires_at: None,
+            expires_at: jwt.payload.expires_at,
             ecosystem: None,
             id: credential_id,
             created_date: now,

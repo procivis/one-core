@@ -389,7 +389,7 @@ impl CredentialFormatter for JsonLdClassic {
             .transpose()?;
 
         Ok(Credential {
-            expires_at: None,
+            expires_at: vcdm.valid_until.or(vcdm.expiration_date),
             ecosystem: None,
             id: credential_id,
             created_date: now,

@@ -1122,6 +1122,10 @@ async fn test_parse_credential() {
         credential.issuance_date.unwrap(),
         datetime!(2025-10-15 08:58:13 UTC)
     );
+    assert_eq!(
+        credential.expires_at.unwrap(),
+        datetime!(2025-10-18 08:58:13 UTC)
+    );
     let claims = credential.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 7);
 

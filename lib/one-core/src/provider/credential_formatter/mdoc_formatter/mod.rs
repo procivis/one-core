@@ -596,7 +596,7 @@ impl CredentialFormatter for MdocFormatter {
         )?;
 
         Ok(Credential {
-            expires_at: None,
+            expires_at: Some(mso.validity_info.valid_until.into()),
             ecosystem: None,
             id: credential_id,
             created_date: crate::clock::now_utc(),

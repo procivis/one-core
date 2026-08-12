@@ -13,6 +13,7 @@ use serde_json::json;
 use shared_types::{DidMethodId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
+use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -2102,6 +2103,11 @@ async fn test_parse_credential() {
     let claims = result.claims.as_ref().await.unwrap();
 
     assert_eq!(claims.len(), 10);
+
+    assert_eq!(
+        result.expires_at.unwrap(),
+        datetime!(2029-09-01 23:33:20 UTC)
+    );
 
     // Verify vct metadata claim
     let vct_claim = claims.iter().find(|c| c.path == "vct").unwrap();

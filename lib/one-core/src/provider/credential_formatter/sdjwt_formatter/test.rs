@@ -11,6 +11,7 @@ use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::Duration;
+use time::macros::datetime;
 use url::Url;
 use uuid::Uuid;
 
@@ -1204,6 +1205,11 @@ async fn test_parse_credential() {
 
     // Should have parsed claims including disclosed ones and metadata
     assert!(!claims.is_empty());
+
+    assert_eq!(
+        result.expires_at.unwrap(),
+        datetime!(2027-10-15 15:14:37 UTC)
+    );
 
     // Verify issuer identifier
     let_assert!(

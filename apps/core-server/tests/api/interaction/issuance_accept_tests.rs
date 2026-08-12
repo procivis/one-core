@@ -16,6 +16,7 @@ use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::macros::datetime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
@@ -231,6 +232,161 @@ async fn test_issuance_accept_openid4vc() {
             HistoryAction::TrustResolved
         ])
     );
+}
+
+#[tokio::test]
+async fn test_issuance_accept_extracts_expires_at_from_issued_credential() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams::default(),
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    // `w3c_jwt_vc` (via the shared `signed_jwt` fixture helper) always signs the issued
+    // credential with `exp` set to `now + 10 hours` - this is the value the wallet must
+    // extract into `Credential.expires_at` when accepting the credential.
+    let before = one_core::clock::now_utc();
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"string"}),
+    )
+    .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 1)
+        .await;
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
+        .await;
+    let after = one_core::clock::now_utc();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let credential_id = resp["id"].parse();
+
+    let credential = context.db.credentials.get(&credential_id).await;
+    let expires_at = credential.expires_at.unwrap();
+    // the JWT `exp` claim only has whole-second precision, so the round-tripped value can be
+    // up to a second below the precise `before + 10h` bound
+    assert!(expires_at >= before + Duration::hours(10) - Duration::seconds(1));
+    assert!(expires_at <= after + Duration::hours(10));
+
+    // verify it round-trips through the REST API as well
+    let resp = context.api.credentials.get(&credential_id).await;
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let returned_expires_at = OffsetDateTime::parse(
+        resp["expiresAt"].as_str().unwrap(),
+        &time::format_description::well_known::Rfc3339,
+    )
+    .unwrap();
+    assert_eq!(returned_expires_at, expires_at);
 }
 
 #[tokio::test]

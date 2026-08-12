@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::Duration;
+use time::macros::datetime;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -358,6 +359,10 @@ async fn test_parse_credential() {
 
     assert_eq!(credential.role, CredentialRole::Holder);
     assert!(credential.issuance_date.is_none());
+    assert_eq!(
+        credential.expires_at.unwrap(),
+        datetime!(2028-02-19 09:18:33.007487222 UTC)
+    );
 
     let_assert!(
         Identifier {

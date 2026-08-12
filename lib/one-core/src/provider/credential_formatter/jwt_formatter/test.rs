@@ -858,6 +858,10 @@ async fn test_parse_credential() {
         credential.issuance_date.unwrap(),
         datetime!(2025-10-17 03:36:49 UTC)
     );
+    assert_eq!(
+        credential.expires_at.unwrap(),
+        datetime!(2027-10-17 03:36:49 UTC)
+    );
 
     let_assert!(
         Identifier {
