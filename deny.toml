@@ -38,6 +38,7 @@ ignore = [
     { id = "RUSTSEC-2026-0247", reason = "`bitmaps` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0248", reason = "`im` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0251", reason = "`sized-chunks` crate unmaintained, dependency of json-ld" },
+    { id = "RUSTSEC-2026-0255", reason = "`sized-chunks` crate bug, no safe upgrade available, dependency of json-ld" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
