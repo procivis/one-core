@@ -475,6 +475,7 @@ pub(crate) enum SortableCredentialColumnRestEnum {
     SchemaName,
     Issuer,
     State,
+    ExpiresAt,
 }
 
 #[options_not_nullable]

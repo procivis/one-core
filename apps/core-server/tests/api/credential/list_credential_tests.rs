@@ -1208,6 +1208,109 @@ async fn test_get_list_credential_filter_by_expires_at() {
 }
 
 #[tokio::test]
+async fn test_get_list_credential_sort_by_expires_at() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let pivot_date = get_dummy_date();
+
+    let mut credential_ids = vec![];
+    for offset in [Duration::days(2), Duration::days(0), Duration::days(1)] {
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    expires_at: Some(pivot_date + offset),
+                    ..Default::default()
+                },
+            )
+            .await;
+        credential_ids.push(credential.id);
+    }
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            Filters {
+                sort: Some("expiresAt"),
+                sort_direction: Some("ASC"),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+    assert_eq!(credentials["totalItems"], 3);
+    let returned_ids: Vec<String> = credentials["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value["id"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        returned_ids,
+        vec![
+            credential_ids[1].to_string(),
+            credential_ids[2].to_string(),
+            credential_ids[0].to_string(),
+        ]
+    );
+
+    // WHEN sorting descending
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            Filters {
+                sort: Some("expiresAt"),
+                sort_direction: Some("DESC"),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+    let returned_ids: Vec<String> = credentials["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value["id"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        returned_ids,
+        vec![
+            credential_ids[0].to_string(),
+            credential_ids[2].to_string(),
+            credential_ids[1].to_string(),
+        ]
+    );
+}
+
+#[tokio::test]
 async fn test_get_list_credential_filter_by_schema_ids() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;

@@ -90,6 +90,7 @@ pub enum SortableCredentialColumn {
     SchemaName,
     Issuer,
     State,
+    ExpiresAt,
 }
 
 pub type GetCredentialList = GetListResponse<Credential>;

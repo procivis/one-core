@@ -161,6 +161,7 @@ pub enum SortableCredentialColumnBindingEnum {
     SchemaName,
     Issuer,
     State,
+    ExpiresAt,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]

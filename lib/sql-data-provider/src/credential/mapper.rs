@@ -55,6 +55,7 @@ impl IntoSortingColumn for SortableCredentialColumn {
             Self::SchemaName => credential_schema::Column::Name.into_simple_expr(),
             Self::Issuer => identifier::Column::Name.into_simple_expr(),
             Self::State => credential::Column::State.into_simple_expr(),
+            Self::ExpiresAt => credential::Column::ExpiresAt.into_simple_expr(),
         }
     }
 }

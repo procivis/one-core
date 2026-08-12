@@ -36,6 +36,9 @@ pub struct Filters<'a> {
     pub revocation_date_before: Option<OffsetDateTime>,
     pub expires_at_after: Option<OffsetDateTime>,
     pub expires_at_before: Option<OffsetDateTime>,
+
+    pub sort: Option<&'a str>,
+    pub sort_direction: Option<&'a str>,
 }
 
 impl<'a> Filters<'a> {
@@ -211,6 +214,12 @@ impl CredentialsApi {
         }
         if let Some(date) = filters.expires_at_before {
             url += &format!("&{}", query_time_urlencoded("expiresAtBefore", date));
+        }
+        if let Some(sort) = filters.sort {
+            url += &format!("&sort={sort}")
+        }
+        if let Some(sort_direction) = filters.sort_direction {
+            url += &format!("&sortDirection={sort_direction}")
         }
 
         if let Some(include) = include {
