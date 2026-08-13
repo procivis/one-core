@@ -529,6 +529,7 @@ async fn test_get_credential_list_success() {
                 expires_at_before: None,
                 parent_id: None,
                 types: None,
+                ecosystems: None,
             },
             include: None,
         })
@@ -5989,6 +5990,7 @@ async fn test_list_credential_session_org_mismatch() {
                 expires_at_before: None,
                 parent_id: None,
                 types: None,
+                ecosystems: None,
             },
             include: None,
         })

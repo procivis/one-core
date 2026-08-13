@@ -199,6 +199,7 @@ pub(crate) async fn credential_detail_response_from_model(
         remaining_batch_item_count,
         parent_id: value.parent.map(|parent| parent.id()),
         subscriber_information: value.subscriber_information,
+        ecosystem: value.ecosystem,
     })
 }
 
@@ -468,6 +469,7 @@ pub(super) async fn to_credential_list_response(
         webhook_destination_url: credential.webhook_url,
         parent_id: credential.parent.map(|parent| parent.id()),
         redirect_uri: credential.redirect_uri,
+        ecosystem: credential.ecosystem,
     })
 }
 
@@ -789,6 +791,8 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
             .credential_schema_ids
             .map(CredentialFilterValue::CredentialSchemaIds);
 
+        let ecosystems = value.ecosystems.map(CredentialFilterValue::Ecosystems);
+
         let issuers = value.issuers.map(CredentialFilterValue::IssuerIds);
 
         let states = value.states.map(|values| {
@@ -880,6 +884,7 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
             & credential_ids
             & parent_credential
             & credential_schema_ids
+            & ecosystems
             & issuers
             & states
             & types

@@ -261,6 +261,7 @@ pub(crate) async fn schema_to_detail_v1_response_dto(
         transaction_code: convert_inner(value.transaction_code),
         dcql,
         expiration: value.expiration,
+        ecosystem: value.ecosystem,
     })
 }
 
@@ -363,6 +364,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         transaction_code: convert_inner(value.transaction_code),
         embedded_disclosure_policy,
         expiration: value.expiration,
+        ecosystem: value.ecosystem,
     })
 }
 
@@ -704,6 +706,7 @@ pub(crate) async fn to_credential_schema_list_response(
         deleted_at: credential_schema.deleted_at,
         name: credential_schema.name,
         format,
+        ecosystem: credential_schema.ecosystem,
         revocation_method,
         key_storage_security: credential_schema.key_storage_security,
         schema_id,
@@ -735,6 +738,7 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         last_modified: credential_schema.last_modified,
         name: credential_schema.name,
         formats: format_responses,
+        ecosystem: credential_schema.ecosystem,
         key_storage_security: credential_schema.key_storage_security,
         imported_source_url: credential_schema.imported_source_url,
         layout_type: Some(credential_schema.layout_type),
@@ -988,6 +992,10 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
 
         let formats = value.formats.map(CredentialSchemaFilterValue::Formats);
 
+        let ecosystems = value
+            .ecosystems
+            .map(CredentialSchemaFilterValue::Ecosystems);
+
         let key_storage_security = value
             .key_storage_security
             .map(CredentialSchemaFilterValue::KeyStorageSecurity);
@@ -1041,6 +1049,7 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
             & schema_id
             & schema_ids
             & formats
+            & ecosystems
             & key_storage_security
             & requires_wia
             & credential_schema_ids
@@ -1075,6 +1084,10 @@ impl From<CredentialSchemaV2FilterParamsDTO> for ListFilterCondition<CredentialS
         });
 
         let formats = value.formats.map(CredentialSchemaFilterValue::Formats);
+
+        let ecosystems = value
+            .ecosystems
+            .map(CredentialSchemaFilterValue::Ecosystems);
 
         let key_storage_security = value
             .key_storage_security
@@ -1141,6 +1154,7 @@ impl From<CredentialSchemaV2FilterParamsDTO> for ListFilterCondition<CredentialS
             & name
             & schema_ids
             & formats
+            & ecosystems
             & key_storage_security
             & requires_wia
             & credential_schema_ids

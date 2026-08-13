@@ -12,8 +12,10 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::ecosystem::Ecosystem;
 use crate::provider::ecosystem::eudi::EudiEcosystem;
 use crate::provider::provider_directory::ProviderDirectory;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait EcosystemDirectory: Send + Sync {
@@ -28,6 +30,7 @@ impl EcosystemDirectory
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn ecosystem_directory_from_config(
     config: &mut CoreConfig,
     history_repository: Arc<dyn HistoryRepository>,
@@ -36,6 +39,8 @@ pub(crate) fn ecosystem_directory_from_config(
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
 ) -> Result<Arc<dyn EcosystemDirectory>, ConfigValidationError> {
     let config_clone = config.clone();
     let directory = ProviderDirectory::initialize(
@@ -52,6 +57,8 @@ pub(crate) fn ecosystem_directory_from_config(
                     blob_storage_provider.clone(),
                     session_provider.clone(),
                     formatter_provider.clone(),
+                    credential_schema_repository.clone(),
+                    proof_schema_repository.clone(),
                 )?),
             };
 
@@ -76,8 +83,10 @@ mod test {
     use crate::provider::blob_storage::provider::MockBlobStorageProvider;
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
     use crate::provider::ecosystem::model::EcosystemRole;
+    use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
     use crate::repository::history_repository::MockHistoryRepository;
     use crate::repository::interaction_repository::MockInteractionRepository;
+    use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 
     fn fields() -> Fields<EcosystemProviderType> {
         Fields {
@@ -112,6 +121,8 @@ mod test {
             Arc::new(MockBlobStorageProvider::new()),
             Arc::new(NoSessionProvider),
             Arc::new(MockCredentialFormatterProvider::new()),
+            Arc::new(MockCredentialSchemaRepository::new()),
+            Arc::new(MockProofSchemaRepository::new()),
         )
         .unwrap();
 

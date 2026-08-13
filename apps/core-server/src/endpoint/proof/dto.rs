@@ -25,8 +25,8 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::i18n::I18nString;
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId,
-    ProofSchemaId, TransactionDataId,
+    CertificateId, CredentialSchemaId, DidId, EcosystemId, IdentifierId, KeyId, OrganisationId,
+    ProofId, ProofSchemaId, TransactionDataId,
 };
 use standardized_types::openid4vp::ClientIdPrefix;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
@@ -228,6 +228,12 @@ pub(crate) struct ProofsFilterQueryParamsRest {
     #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
+
+    /// Return only proofs conforming to one of the specified ecosystems.
+    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystems: Option<Vec<EcosystemId>>,
+
     /// Return only proof requests created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
@@ -329,6 +335,7 @@ pub(crate) struct ProofListItemResponseRestDTO {
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
     pub redirect_uri: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 // detail endpoint
@@ -417,6 +424,8 @@ pub(crate) struct ProofDetailResponseRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[try_from(with_fn = convert_inner, infallible)]
     pub transaction_data: Vec<TransactionDataResponseRestDTO>,
+    #[try_from(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 /// Transaction data attached to this proof request.

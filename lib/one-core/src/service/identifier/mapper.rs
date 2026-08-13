@@ -1,5 +1,5 @@
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
+use shared_types::{CredentialSchemaId, EcosystemId, OrganisationId, ProofSchemaId};
 use standardized_types::etsi_119_475::Credential;
 use standardized_types::openid4vp::dcql;
 
@@ -29,6 +29,8 @@ use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::RelatedVec;
 use crate::model::trust_list_subscription::TrustListSubscription;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
+use crate::provider::ecosystem::model::{EcosystemRole, SchemaFilter};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -214,12 +216,14 @@ pub(super) async fn params_to_query(
     filter_params: ListQueryDTO<SortableIdentifierColumn, IdentifierFilterParamsDTO>,
     credential_schema_repository: &dyn CredentialSchemaRepository,
     proof_schema_repository: &dyn ProofSchemaRepository,
+    ecosystem_provider: &dyn EcosystemDirectory,
     config: &CoreConfig,
 ) -> Result<IdentifierListQuery, IdentifierServiceError> {
     let condition = params_to_condition(
         filter_params.filter,
         credential_schema_repository,
         proof_schema_repository,
+        ecosystem_provider,
         config,
     )
     .await?;
@@ -237,10 +241,11 @@ pub(super) async fn params_to_query(
     })
 }
 
-pub(super) async fn params_to_condition(
+async fn params_to_condition(
     value: IdentifierFilterParamsDTO,
     credential_schema_repository: &dyn CredentialSchemaRepository,
     proof_schema_repository: &dyn ProofSchemaRepository,
+    ecosystem_provider: &dyn EcosystemDirectory,
     config: &CoreConfig,
 ) -> Result<ListFilterCondition<IdentifierFilterValue>, IdentifierServiceError> {
     let exact = value.exact.unwrap_or_default();
@@ -334,6 +339,15 @@ pub(super) async fn params_to_condition(
         None
     };
 
+    let ecosystem_filter = ecosystem_filter(
+        value.ecosystem,
+        value.ecosystem_roles,
+        value.ecosystem_credential_schema_id,
+        value.ecosystem_proof_schema_id,
+        ecosystem_provider,
+    )
+    .await?;
+
     Ok(organisation_id
         & name
         & ids
@@ -347,6 +361,7 @@ pub(super) async fn params_to_condition(
         & certificate_roles
         & trust_issuance_types
         & trust_verification_types
+        & ecosystem_filter
         & created_date_after
         & created_date_before
         & last_modified_after
@@ -460,4 +475,53 @@ fn credential_to_schema_formats(
             schema_id: c,
         })
         .collect())
+}
+
+async fn ecosystem_filter(
+    ecosystem: Option<EcosystemId>,
+    roles: Option<Vec<EcosystemRole>>,
+    credential_schema_id: Option<CredentialSchemaId>,
+    proof_schema_id: Option<ProofSchemaId>,
+    provider: &dyn EcosystemDirectory,
+) -> Result<Option<ListFilterCondition<IdentifierFilterValue>>, IdentifierServiceError> {
+    let schema_filter = match (credential_schema_id, proof_schema_id) {
+        (None, None) => None,
+        (Some(_), Some(_)) => {
+            return Err(IdentifierServiceError::InvalidEcosystemQuery(
+                "only one schema allowed".to_string(),
+            ));
+        }
+        (Some(credential_schema_id), None) => {
+            Some(SchemaFilter::CredentialSchema(credential_schema_id))
+        }
+        (None, Some(proof_schema_id)) => Some(SchemaFilter::ProofSchema(proof_schema_id)),
+    };
+
+    match (&ecosystem, roles, schema_filter) {
+        (None, None, None) => Ok(None),
+        (None, _, _) => Err(IdentifierServiceError::InvalidEcosystemQuery(
+            "no ecosystem specified".to_string(),
+        )),
+        (Some(_), None, _) => Err(IdentifierServiceError::InvalidEcosystemQuery(
+            "no roles specified".to_string(),
+        )),
+        (Some(_), Some(roles), _) if roles.is_empty() => Err(
+            IdentifierServiceError::InvalidEcosystemQuery("no roles specified".to_string()),
+        ),
+        (Some(ecosystem_id), Some(roles), schema_filter) => {
+            let ecosystem = provider.get(ecosystem_id)?;
+
+            let mut conditions = vec![];
+            for role in roles {
+                conditions.push(
+                    ecosystem
+                        .identifier_filter(role, schema_filter.as_ref())
+                        .await
+                        .error_while("creating ecosystem filter")?,
+                );
+            }
+
+            Ok(Some(ListFilterCondition::Or(conditions)))
+        }
+    }
 }

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    CredentialSchemaId, DidMethodId, DidValue, IdentifierId, KeyId, OrganisationId, ProofSchemaId,
-    SignerId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    CredentialSchemaId, DidMethodId, DidValue, EcosystemId, IdentifierId, KeyId, OrganisationId,
+    ProofSchemaId, SignerId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
@@ -13,6 +13,7 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{ExactIdentifierFilterColumn, IdentifierState, IdentifierType};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::TrustListSubscriptionState;
+use crate::provider::ecosystem::model::EcosystemRole;
 use crate::provider::trust_list_subscriber::TrustEntityMetadata;
 use crate::service::certificate::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
@@ -64,6 +65,10 @@ pub struct IdentifierFilterParamsDTO {
     pub certificate_roles_match_mode: CertificateRolesMatchMode,
     pub trust_issuance_schema_id: Option<CredentialSchemaId>,
     pub trust_verification_schema_id: Option<ProofSchemaId>,
+    pub ecosystem: Option<EcosystemId>,
+    pub ecosystem_roles: Option<Vec<EcosystemRole>>,
+    pub ecosystem_credential_schema_id: Option<CredentialSchemaId>,
+    pub ecosystem_proof_schema_id: Option<ProofSchemaId>,
     pub exact: Option<Vec<ExactIdentifierFilterColumn>>,
     pub organisation_id: OrganisationId,
     pub created_date_after: Option<OffsetDateTime>,

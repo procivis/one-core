@@ -56,6 +56,9 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             Self::Formats(formats) => credential_schema_format::Column::Format
                 .is_in(&formats)
                 .into_condition(),
+            Self::Ecosystems(ecosystems) => credential_schema::Column::Ecosystem
+                .is_in(ecosystems.iter())
+                .into_condition(),
             Self::OrganisationId(organisation_id) => get_equals_condition(
                 credential_schema::Column::OrganisationId,
                 organisation_id.to_string(),

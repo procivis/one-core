@@ -151,6 +151,7 @@ pub enum CredentialFilterValue {
     ParentCredentials(Vec<CredentialId>),
     Consumed(bool),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
+    Ecosystems(Vec<EcosystemId>),
     SchemaId(String),
     IssuerIds(Vec<IdentifierId>),
     States(Vec<CredentialStateEnum>),

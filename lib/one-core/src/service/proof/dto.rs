@@ -98,6 +98,7 @@ pub struct ProofDetailResponseDTO {
     pub subscriber_information: Option<String>,
     /// Transaction data attached to this proof request (verifier proofs only).
     pub transaction_data: Vec<TransactionDataResponseDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 /// Transaction data as attached to a proof request at creation time. Mirrors
@@ -127,6 +128,7 @@ pub struct ProofListItemResponseDTO {
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
     pub redirect_uri: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]
@@ -162,6 +164,7 @@ pub enum ProofFilterValue {
     ProofSchemaIds(Vec<ProofSchemaId>),
     VerifierIds(Vec<IdentifierId>),
     Profiles(Vec<String>),
+    Ecosystems(Vec<EcosystemId>),
     ValidForDeletion,
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
@@ -184,6 +187,7 @@ pub struct ProofFilterParamsDTO {
     pub verifier_ids: Option<Vec<IdentifierId>>,
     pub profiles: Option<Vec<String>>,
     pub organisation_id: OrganisationId,
+    pub ecosystems: Option<Vec<EcosystemId>>,
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,

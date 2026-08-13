@@ -42,6 +42,7 @@ pub struct CredentialListItemResponseDTO {
     pub webhook_destination_url: Option<String>,
     pub parent_id: Option<CredentialId>,
     pub redirect_uri: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[skip_serializing_none]
@@ -83,6 +84,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub trust_information: Option<TrustInformation>,
     pub parent_id: Option<CredentialId>,
     pub subscriber_information: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -221,6 +223,7 @@ pub struct CredentialFilterParamsDTO {
     pub ids: Option<Vec<CredentialId>>,
     pub parent_id: Option<CredentialId>,
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
+    pub ecosystems: Option<Vec<EcosystemId>>,
     pub issuers: Option<Vec<IdentifierId>>,
     pub states: Option<Vec<CredentialStateEnum>>,
     pub profiles: Option<Vec<String>>,

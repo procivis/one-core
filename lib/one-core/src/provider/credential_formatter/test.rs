@@ -81,6 +81,7 @@ fn generate_credential_detail_response(
         remaining_batch_item_count: None,
         parent_id: None,
         subscriber_information: None,
+        ecosystem: None,
     }
 }
 

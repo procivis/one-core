@@ -33,6 +33,7 @@ use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCe
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::signer::registration_certificate::model::WRPRegistrationCertificatePayload;
 use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
 use crate::provider::trust_list_subscriber::{
@@ -81,6 +82,7 @@ struct Mocks {
     identifier_trust_information_repository: MockIdentifierTrustInformationRepository,
     blob_storage_provider: MockBlobStorageProvider,
     wrp_validator: MockWRPValidator,
+    ecosystem_provider: MockEcosystemDirectory,
 }
 
 fn setup_service(mocks: Mocks) -> IdentifierService {
@@ -104,6 +106,7 @@ fn setup_service(mocks: Mocks) -> IdentifierService {
         trust_list_subscriber_provider: Arc::new(mocks.trust_list_subscriber_provider),
         transaction_manager: Arc::new(NoTransactionManager),
         wrp_validator: Arc::new(mocks.wrp_validator),
+        ecosystem_provider: Arc::new(mocks.ecosystem_provider),
     }
 }
 
@@ -180,6 +183,10 @@ async fn test_get_identifier_list_session_org_mismatch() {
                 certificate_roles_match_mode: CertificateRolesMatchMode::default(),
                 trust_issuance_schema_id: None,
                 trust_verification_schema_id: None,
+                ecosystem: None,
+                ecosystem_roles: None,
+                ecosystem_credential_schema_id: None,
+                ecosystem_proof_schema_id: None,
                 exact: None,
                 organisation_id: Uuid::new_v4().into(),
                 created_date_after: None,

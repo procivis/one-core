@@ -94,6 +94,9 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::CredentialSchemaIds(ids) => credential::Column::CredentialSchemaId
                 .is_in(ids.iter())
                 .into_condition(),
+            Self::Ecosystems(ecosystems) => credential::Column::Ecosystem
+                .is_in(ecosystems.iter())
+                .into_condition(),
             Self::SchemaId(schema_id) => credential_schema::Column::Id
                 .in_subquery(
                     Query::select()

@@ -28,11 +28,14 @@ use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::provider_directory::InitializationError;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 mod holder_issuance;
 mod holder_proof;
+mod identifier_filter;
 mod mapper;
 mod verifier_submission;
 
@@ -68,6 +71,8 @@ pub struct EudiEcosystem {
     holder_issuance_resolver: HolderIssuanceResolver,
     wrp_validator: Arc<dyn WRPValidator>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
 }
 
 impl EudiEcosystem {
@@ -82,6 +87,8 @@ impl EudiEcosystem {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     ) -> Result<Self, InitializationError> {
         let params: Params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -109,6 +116,8 @@ impl EudiEcosystem {
             ),
             wrp_validator,
             formatter_provider,
+            credential_schema_repository,
+            proof_schema_repository,
             params,
         })
     }
@@ -281,12 +290,12 @@ impl Ecosystem for EudiEcosystem {
         Ok(())
     }
 
-    fn identifier_filter(
+    async fn identifier_filter<'a>(
         &self,
-        _role: EcosystemRole,
-        _schema: Option<SchemaFilter>,
+        role: EcosystemRole,
+        schema: Option<&'a SchemaFilter>,
     ) -> Result<ListFilterCondition<IdentifierFilterValue>, EcosystemError> {
-        todo!()
+        self.get_filter(role, schema).await
     }
 
     fn issuer_trust_details(

@@ -43,10 +43,10 @@ pub trait Ecosystem: Provider + Send + Sync {
     /// validate proof before request (verifier)
     async fn validate_proof(&self, proof: &Proof) -> Result<(), EcosystemError>;
 
-    fn identifier_filter(
+    async fn identifier_filter<'a>(
         &self,
         role: EcosystemRole,
-        schema: Option<SchemaFilter>,
+        schema: Option<&'a SchemaFilter>,
     ) -> Result<ListFilterCondition<IdentifierFilterValue>, EcosystemError>;
 
     fn issuer_trust_details(

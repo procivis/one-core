@@ -128,6 +128,8 @@ pub struct GetProofSchemaListItemBindingDTO {
     /// the system. If 0, proofs received when using this schema will not be
     /// deleted.
     pub expire_duration: u32,
+    #[from(with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Debug, TryInto, uniffi::Record)]
@@ -192,6 +194,8 @@ pub struct GetProofSchemaBindingDTO {
     /// Source URL for imported schema.
     #[from(with_fn = convert_inner)]
     pub imported_source_url: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -336,6 +340,7 @@ pub struct ListProofSchemasFiltersBindingDTO {
     pub exact: Option<Vec<ProofSchemaListQueryExactColumnBinding>>,
     pub ids: Option<Vec<String>>,
     pub formats: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<String>>,
 
     pub created_date_after: Option<String>,
     pub created_date_before: Option<String>,

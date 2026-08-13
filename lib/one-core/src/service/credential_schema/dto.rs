@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::i18n::I18nString;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId,
+    RevocationMethodId,
 };
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::openid4vp::dcql;
@@ -47,6 +48,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
     pub translations: Option<CredentialSchemaTranslationsDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -101,6 +103,7 @@ pub struct CredentialSchemaDetailV2ResponseDTO {
     pub embedded_disclosure_policy: Option<DisclosurePolicy>,
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[serde_as]
@@ -129,6 +132,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub translations: CredentialSchemaTranslationsDTO,
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -191,6 +195,7 @@ pub enum CredentialSchemaFilterValue {
     SchemaId(StringMatch),
     SchemaIds(Vec<String>),
     Formats(Vec<String>),
+    Ecosystems(Vec<EcosystemId>),
     RequiresWalletInstanceAttestation(bool),
     KeyStorageSecurity(Vec<KeyStorageSecurity>),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
@@ -210,6 +215,7 @@ pub struct CredentialSchemaFilterParamsDTO {
     pub organisation_id: OrganisationId,
     pub schema_id: Option<String>,
     pub formats: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<EcosystemId>>,
     pub requires_wallet_instance_attestation: Option<bool>,
     pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
@@ -228,6 +234,7 @@ pub struct CredentialSchemaV2FilterParamsDTO {
     pub exact: Option<Vec<CredentialSchemaExactColumn>>,
     pub organisation_id: OrganisationId,
     pub formats: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<EcosystemId>>,
     pub requires_wallet_instance_attestation: Option<bool>,
     pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
@@ -267,6 +274,7 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub requires_wallet_instance_attestation: bool,
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]

@@ -49,10 +49,10 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         self.disabled_error()
     }
 
-    fn identifier_filter(
+    async fn identifier_filter<'a>(
         &self,
         _role: EcosystemRole,
-        _schema: Option<SchemaFilter>,
+        _schema: Option<&'a SchemaFilter>,
     ) -> Result<ListFilterCondition<IdentifierFilterValue>, EcosystemError> {
         self.disabled_error()
     }

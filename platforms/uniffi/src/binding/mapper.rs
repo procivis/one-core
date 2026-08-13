@@ -131,6 +131,7 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             trust_information: convert_inner(value.trust_information),
             remaining_batch_item_count: value.remaining_batch_item_count,
             parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
+            ecosystem: value.ecosystem.map(|ecosystem| ecosystem.to_string()),
         }
     }
 }
@@ -167,6 +168,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             profile: value.profile,
             parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
             redirect_uri: value.redirect_uri,
+            ecosystem: value.ecosystem.map(|ecosystem| ecosystem.to_string()),
         }
     }
 }
@@ -191,6 +193,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             claims_removed_at: value.claims_removed_at.map(|date| date.format_timestamp()),
             role: value.role.into(),
             profile: value.profile,
+            ecosystem: convert_inner(value.ecosystem),
             trust_information: convert_inner(value.trust_information),
             transaction_data: if value.transaction_data.is_empty() {
                 None
@@ -494,6 +497,7 @@ impl TryFrom<ProofListQueryBindingDTO> for ListQueryDTO<SortableProofColumn, Pro
                 exact: convert_inner_of_inner(value.exact),
                 states: convert_inner_of_inner(value.proof_states),
                 roles: convert_inner_of_inner(value.proof_roles),
+                ecosystems: convert_inner_of_inner(value.ecosystems),
                 ids: into_id_opt_vec(&value.ids)?,
                 proof_schema_ids: into_id_opt_vec(&value.proof_schema_ids)?,
                 verifier_ids: None,
@@ -831,6 +835,10 @@ impl TryFrom<IdentifierListQueryBindingDTO>
                     .unwrap_or_default(),
                 trust_issuance_schema_id: into_id_opt(value.trust_issuance_schema_id)?,
                 trust_verification_schema_id: into_id_opt(value.trust_verification_schema_id)?,
+                ecosystem: convert_inner(value.ecosystem),
+                ecosystem_roles: convert_inner_of_inner(value.ecosystem_roles),
+                ecosystem_credential_schema_id: into_id_opt(value.ecosystem_proof_schema_id)?,
+                ecosystem_proof_schema_id: into_id_opt(value.ecosystem_credential_schema_id)?,
                 exact: convert_inner_of_inner(value.exact),
                 organisation_id: into_id(&value.organisation_id)?,
                 created_date_after: into_timestamp_opt(value.created_date_after)?,
@@ -895,6 +903,7 @@ impl TryFrom<CredentialListQueryBindingDTO>
                 ids: into_id_opt_vec(&value.ids)?,
                 parent_id: into_id_opt(value.parent_id)?,
                 credential_schema_ids: into_id_opt_vec(&value.credential_schema_ids)?,
+                ecosystems: convert_inner_of_inner(value.ecosystems),
                 issuers: None,
                 states: convert_inner_of_inner(value.states),
                 types: convert_inner_of_inner(value.types),
@@ -932,6 +941,7 @@ impl TryFrom<ListProofSchemasFiltersBindingDTO>
                 organisation_id: into_id(value.organisation_id)?,
                 ids: into_id_opt_vec(&value.ids)?,
                 formats: value.formats,
+                ecosystems: convert_inner_of_inner(value.ecosystems),
                 created_date_after: into_timestamp_opt(value.created_date_after)?,
                 created_date_before: into_timestamp_opt(value.created_date_before)?,
                 last_modified_after: into_timestamp_opt(value.last_modified_after)?,
@@ -963,6 +973,7 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
                 organisation_id: into_id(value.organisation_id)?,
                 schema_ids: value.schema_ids,
                 formats: value.formats,
+                ecosystems: convert_inner_of_inner(value.ecosystems),
                 requires_wallet_instance_attestation: None,
                 key_storage_security: None,
                 credential_schema_ids: into_id_opt_vec(&value.ids)?,

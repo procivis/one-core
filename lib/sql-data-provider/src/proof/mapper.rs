@@ -93,6 +93,9 @@ impl IntoFilterCondition for ProofFilterValue {
             Self::Profiles(profiles) => proof::Column::Profile
                 .is_in(profiles.iter())
                 .into_condition(),
+            Self::Ecosystems(ecosystems) => proof::Column::Ecosystem
+                .is_in(ecosystems.iter())
+                .into_condition(),
             Self::CreatedDate(value) => get_comparison_condition(proof::Column::CreatedDate, value),
             Self::LastModified(value) => {
                 get_comparison_condition(proof::Column::LastModified, value)

@@ -50,6 +50,7 @@ async fn test_unpack_real_backup_1_62_1() {
             revocation_date_before: None,
             parent_id: None,
             types: None,
+            ecosystems: None,
         })
         .await
         .unwrap();

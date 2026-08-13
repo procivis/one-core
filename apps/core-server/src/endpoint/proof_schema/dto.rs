@@ -12,7 +12,7 @@ use one_dto_mapper::{
 };
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::{OrganisationId, ProofSchemaId};
+use shared_types::{EcosystemId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -238,6 +238,10 @@ pub(crate) struct ProofSchemasFilterQueryParamsRest {
     #[try_into(infallible)]
     pub formats: Option<Vec<String>>,
 
+    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystems: Option<Vec<EcosystemId>>,
+
     /// Return only proof schemas created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
@@ -283,6 +287,7 @@ pub(crate) struct GetProofSchemaListItemResponseRestDTO {
     /// The duration of storage of received proofs, in seconds. After the defined duration, the received proof and its data are deleted from the system.
     /// If 0, the proofs received when using this proof schema will not be deleted.
     pub expire_duration: u32,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 // detail endpoint
@@ -304,6 +309,7 @@ pub(crate) struct GetProofSchemaResponseRestDTO {
     pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub proof_input_schemas: Vec<ProofInputSchemaResponseRestDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 /// The set of attributes being requested when using this proof schema.
@@ -364,6 +370,7 @@ mod test {
             expire_duration: 42,
             imported_source_url: Some("imported_source_url".to_string()),
             organisation_id: Uuid::new_v4().into(),
+            ecosystem: None,
             proof_input_schemas: vec![ProofInputSchemaResponseRestDTO {
                 claim_schemas: vec![ProofClaimSchemaResponseRestDTO {
                     id: Uuid::new_v4(),
@@ -407,6 +414,7 @@ mod test {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: true,
                     translations: None,
+                    ecosystem: None,
                 },
             }],
         };

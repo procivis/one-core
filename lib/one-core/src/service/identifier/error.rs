@@ -25,17 +25,19 @@ pub enum IdentifierServiceError {
     #[error("Invalid trust information: {0}")]
     InvalidTrustInformation(String),
 
-    #[error("Mapping error: `{0}`")]
-    MappingError(String),
-
-    #[error(transparent)]
-    Nested(#[from] NestedError),
     #[error("Missing trust list subscriber `{0}`")]
     MissingTrustListSubscriber(TrustListSubscriberId),
     #[error("Credential schema `{0}` not found")]
     CredentialSchemaNotFound(CredentialSchemaId),
     #[error("Proof schema `{0}` not found")]
     ProofSchemaNotFound(ProofSchemaId),
+    #[error("Invalid ecosystem query: {0}")]
+    InvalidEcosystemQuery(String),
+
+    #[error("Mapping error: `{0}`")]
+    MappingError(String),
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for IdentifierServiceError {
@@ -46,13 +48,14 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::InvalidCreationInput => ErrorCode::BR_0206,
             Self::RemoteIdentifierAlreadyExists(_) => ErrorCode::BR_0240,
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
-            Self::MappingError(_) => ErrorCode::BR_0047,
             Self::CredentialSchemaNotFound(_) => ErrorCode::BR_0413,
             Self::ProofSchemaNotFound(_) => ErrorCode::BR_0414,
-            Self::Nested(nested) => nested.error_code(),
             Self::MissingTrustListSubscriber(_) => ErrorCode::BR_0388,
             Self::MissingTrustInformationBlob(_) => ErrorCode::BR_0415,
             Self::InvalidTrustInformation(_) => ErrorCode::BR_0416,
+            Self::InvalidEcosystemQuery(_) => ErrorCode::BR_0479,
+            Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::Nested(nested) => nested.error_code(),
         }
     }
 }

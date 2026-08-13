@@ -22,7 +22,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::i18n::I18nString;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId,
+    RevocationMethodId,
 };
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::openid4vp::dcql;
@@ -72,6 +73,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -109,6 +111,7 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     #[schema(value_type = Option<i64>)]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -155,6 +158,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     #[schema(value_type = Option<i64>)]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -237,6 +241,10 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     #[param(rename = "formats[]", inline, nullable = false)]
     #[try_into(infallible)]
     pub formats: Option<Vec<String>>,
+
+    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only credential schemas with matching wallet instance attestation requirement.
     #[try_into(with_fn = convert_inner, infallible)]
@@ -739,6 +747,10 @@ pub(crate) struct CredentialSchemasV2FilterQueryParamsRest {
     #[try_into(infallible)]
     pub formats: Option<Vec<String>>,
 
+    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystems: Option<Vec<EcosystemId>>,
+
     /// Return only credential schemas with matching wallet instance attestation requirement.
     #[try_into(with_fn = convert_inner, infallible)]
     #[param(inline, nullable = false)]
@@ -988,6 +1000,7 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     #[schema(value_type = Option<i64>)]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -1174,6 +1187,7 @@ mod test {
                 description: None,
             },
             expiration: Some(Duration::seconds(63072000)),
+            ecosystem: None,
         };
 
         let serialized = serde_json::to_value(shared).unwrap();

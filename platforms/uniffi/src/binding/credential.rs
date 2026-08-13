@@ -134,6 +134,7 @@ pub struct CredentialDetailBindingDTO {
     pub r#type: CredentialTypeBindingEnum,
     pub remaining_batch_item_count: Option<u32>,
     pub parent_id: Option<String>,
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -213,6 +214,7 @@ pub struct CredentialListQueryBindingDTO {
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
     /// Return only credentials with the specified credential schema(s).
     pub credential_schema_ids: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<String>>,
 
     /// Return only credentials created after this time. Timestamp in
     /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
@@ -372,4 +374,5 @@ pub struct CredentialListItemBindingDTO {
     pub r#type: CredentialTypeBindingEnum,
     pub parent_id: Option<String>,
     pub redirect_uri: Option<String>,
+    pub ecosystem: Option<String>,
 }

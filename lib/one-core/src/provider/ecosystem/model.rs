@@ -18,7 +18,7 @@ pub struct EcosystemCapabilities {
     pub ecosystem_roles: Vec<EcosystemRole>,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EcosystemRole {
     Holder,
@@ -65,6 +65,7 @@ pub enum ProtocolArtifact<'a> {
     },
 }
 
+#[derive(Clone, Debug, Display)]
 pub enum SchemaFilter {
     CredentialSchema(CredentialSchemaId),
     ProofSchema(ProofSchemaId),

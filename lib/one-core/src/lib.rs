@@ -440,6 +440,8 @@ impl OneCore {
             blob_storage_provider.clone(),
             session_provider.clone(),
             credential_formatter_provider.clone(),
+            data_provider.get_credential_schema_repository(),
+            data_provider.get_proof_schema_repository(),
         )?;
 
         let holder_trust_resolver = Arc::new(HolderTrustResolverProto::new(
@@ -815,7 +817,7 @@ impl OneCore {
                 session_provider.clone(),
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
-                ecosystem_provider,
+                ecosystem_provider.clone(),
             ),
             wallet_provider_service: ManagedInstanceService::new(
                 data_provider.get_organisation_repository(),
@@ -867,6 +869,7 @@ impl OneCore {
                 trust_list_subscriber_provider.clone(),
                 data_provider.get_tx_manager(),
                 wrp_validator,
+                ecosystem_provider,
             ),
             instance_service: InstanceService::new(
                 data_provider.get_organisation_repository(),

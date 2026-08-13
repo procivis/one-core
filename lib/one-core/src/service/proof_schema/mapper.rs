@@ -53,6 +53,7 @@ pub(super) async fn convert_proof_schema_to_response(
         organisation_id: value.organisation.id(),
         expire_duration: value.expire_duration,
         proof_input_schemas,
+        ecosystem: value.ecosystem,
     })
 }
 
@@ -415,6 +416,8 @@ impl From<ProofSchemaFilterParamsDTO> for ListFilterCondition<ProofSchemaFilterV
 
         let formats = value.formats.map(ProofSchemaFilterValue::Formats);
 
+        let ecosystems = value.ecosystems.map(ProofSchemaFilterValue::Ecosystems);
+
         let created_date_after = value.created_date_after.map(|date| {
             ProofSchemaFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::GreaterThanOrEqual,
@@ -447,6 +450,7 @@ impl From<ProofSchemaFilterParamsDTO> for ListFilterCondition<ProofSchemaFilterV
             & name
             & proof_schema_ids
             & formats
+            & ecosystems
             & created_date_after
             & created_date_before
             & last_modified_after

@@ -4,6 +4,7 @@ use one_core::model::certificate::{CertificateRole, CertificateState};
 use one_core::model::identifier::{
     ExactIdentifierFilterColumn, IdentifierState, IdentifierType, SortableIdentifierColumn,
 };
+use one_core::provider::ecosystem::model::EcosystemRole;
 use one_core::service::certificate::dto::{
     CertificateResponseDTO, CertificateX509AttributesDTO, CertificateX509ExtensionDTO,
     CreateCertificateRequestDTO,
@@ -299,8 +300,16 @@ pub struct IdentifierListQueryBindingDTO {
     pub key_storages: Option<Vec<String>>,
     pub certificate_roles: Option<Vec<CertificateRoleBindingEnum>>,
     pub certificate_roles_match_mode: Option<CertificateRolesMatchModeBindingEnum>,
+
+    /// Deprecated, use `ecosystemCredentialSchemaId`
     pub trust_issuance_schema_id: Option<String>,
+    /// Deprecated, use `ecosystemProofSchemaId`
     pub trust_verification_schema_id: Option<String>,
+
+    pub ecosystem: Option<String>,
+    pub ecosystem_roles: Option<Vec<EcosystemRoleBindingEnum>>,
+    pub ecosystem_credential_schema_id: Option<String>,
+    pub ecosystem_proof_schema_id: Option<String>,
 
     pub created_date_after: Option<String>,
     pub created_date_before: Option<String>,
@@ -316,6 +325,18 @@ pub enum SortableIdentifierColumnBindingEnum {
     CreatedDate,
     Type,
     State,
+}
+
+#[derive(Clone, Debug, Into, uniffi::Enum)]
+#[into(EcosystemRole)]
+#[uniffi(name = "EcosystemRole")]
+pub enum EcosystemRoleBindingEnum {
+    Holder,
+    Issuer,
+    Verifier,
+    PidProvider,
+    NationalRegistryRegistrar,
+    WalletProvider,
 }
 
 #[derive(Clone, Debug, PartialEq, uniffi::Enum, Into)]

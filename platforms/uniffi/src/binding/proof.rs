@@ -295,6 +295,7 @@ pub struct ProofListQueryBindingDTO {
     pub name: Option<String>,
     /// Filter by one or more country profiles.
     pub profiles: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<String>>,
     /// Filter by one or more UUIDs.
     pub ids: Option<Vec<String>>,
     /// Filter by one or more proof request states.
@@ -369,6 +370,8 @@ pub struct ProofListItemBindingDTO {
     pub retain_until_date: Option<String>,
     /// Country profile associated with this request.
     pub profile: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
     pub redirect_uri: Option<String>,
 }
 
@@ -412,6 +415,7 @@ pub struct ProofResponseBindingDTO {
     pub trust_information: Option<TrustInformationBindingDTO>,
     /// Transaction data attached to this proof request. Present only if the proof role is `VERIFIER`.
     pub transaction_data: Option<Vec<TransactionDataResponseBindingDTO>>,
+    pub ecosystem: Option<String>,
 }
 
 /// Transaction data attached to a proof request.

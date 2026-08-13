@@ -16,7 +16,7 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
-    IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
+    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -75,6 +75,7 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     pub webhook_destination_url: Option<String>,
     /// URI holder is redirected to after credential issuance.
     pub redirect_uri: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -190,6 +191,7 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     pub trust_information: Option<TrustInformationRestDTO>,
     /// Optional subscriber information associated with this credential.
     pub subscriber_information: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
@@ -382,6 +384,11 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(rename = "credentialSchemaIds[]", inline, nullable = false)]
     #[try_into(infallible)]
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
+
+    /// Return only credentials conforming to one of the specified ecosystems.
+    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only credentials created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').

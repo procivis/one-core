@@ -103,6 +103,7 @@ impl IdentifierService {
             filter_params,
             &*self.credential_schema_repository,
             &*self.proof_schema_repository,
+            &*self.ecosystem_provider,
             &self.config,
         )
         .await?;

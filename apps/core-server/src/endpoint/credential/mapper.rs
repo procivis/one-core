@@ -41,6 +41,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             trust_information: value.trust_information.map(Into::into),
             parent_id: value.parent_id,
             subscriber_information: value.subscriber_information,
+            ecosystem: value.ecosystem,
         })
     }
 }

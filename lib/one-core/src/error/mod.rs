@@ -1020,6 +1020,9 @@ pub enum ErrorCode {
 
     #[strum(message = "No suitable provider")]
     BR_0478,
+
+    #[strum(message = "Invalid query")]
+    BR_0479,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

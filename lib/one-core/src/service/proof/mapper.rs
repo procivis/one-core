@@ -177,6 +177,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             profile: value.profile,
             webhook_destination_url: value.webhook_url,
             redirect_uri: value.redirect_uri,
+            ecosystem: value.ecosystem,
         })
     }
 }
@@ -439,6 +440,7 @@ pub(super) async fn get_verifier_proof_detail(
         trust_information: None,
         subscriber_information,
         transaction_data,
+        ecosystem: list_item_response.ecosystem,
     })
 }
 
@@ -669,6 +671,7 @@ pub(super) async fn get_holder_proof_detail(
         trust_information: trust_information.into_iter().next(),
         subscriber_information,
         transaction_data: vec![],
+        ecosystem: list_item_response.ecosystem,
     })
 }
 
@@ -803,6 +806,7 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
         let proof_schema_ids = value.proof_schema_ids.map(ProofFilterValue::ProofSchemaIds);
         let verifier_ids = value.verifier_ids.map(ProofFilterValue::VerifierIds);
         let profiles = value.profiles.map(ProofFilterValue::Profiles);
+        let ecosystems = value.ecosystems.map(ProofFilterValue::Ecosystems);
 
         let created_date_after = value.created_date_after.map(|date| {
             ProofFilterValue::CreatedDate(ValueComparison {
@@ -864,6 +868,7 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
             & verifier_ids
             & proof_ids
             & profiles
+            & ecosystems
             & created_date_after
             & created_date_before
             & last_modified_after

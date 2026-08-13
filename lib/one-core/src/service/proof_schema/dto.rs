@@ -1,8 +1,8 @@
 use one_dto_mapper::From;
 use serde::Deserialize;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId,
-    RevocationMethodId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId,
+    ProofSchemaId, RevocationMethodId,
 };
 use time::OffsetDateTime;
 
@@ -22,6 +22,7 @@ pub enum ProofSchemaFilterValue {
     OrganisationId(OrganisationId),
     ProofSchemaIds(Vec<ProofSchemaId>),
     Formats(Vec<String>),
+    Ecosystems(Vec<EcosystemId>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
 }
@@ -35,6 +36,7 @@ pub struct ProofSchemaFilterParamsDTO {
     pub organisation_id: OrganisationId,
     pub ids: Option<Vec<ProofSchemaId>>,
     pub formats: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<EcosystemId>>,
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
@@ -64,6 +66,7 @@ pub struct GetProofSchemaResponseDTO {
     pub organisation_id: OrganisationId,
     pub expire_duration: u32,
     pub proof_input_schemas: Vec<ProofInputSchemaResponseDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]
@@ -81,6 +84,7 @@ pub struct GetProofSchemaListItemDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub expire_duration: u32,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]

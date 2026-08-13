@@ -163,6 +163,7 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
     pub schema_ids: Option<Vec<String>>,
     pub formats: Option<Vec<String>>,
+    pub ecosystems: Option<Vec<String>>,
     pub uses_batch_issuance: Option<bool>,
     pub is_multiformat_schema: Option<bool>,
 
@@ -424,6 +425,8 @@ pub struct CredentialSchemaDetailV2BindingDTO {
     pub translations: CredentialSchemaTranslationsBindingDTO,
     #[from(with_fn = seconds_from_duration)]
     pub expiration: Option<i64>,
+    #[from(with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -452,6 +455,8 @@ pub struct CredentialSchemaListItemV2BindingDTO {
     pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = seconds_from_duration)]
     pub expiration: Option<i64>,
+    #[from(with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

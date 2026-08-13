@@ -1,6 +1,9 @@
+#![expect(deprecated)]
+
 use one_core::model::identifier::{
     ExactIdentifierFilterColumn, IdentifierState, IdentifierType, SortableIdentifierColumn,
 };
+use one_core::provider::ecosystem::model::EcosystemRole;
 use one_core::provider::trust_list_subscriber::{TrustEntityMetadata, TslServiceEntry};
 use one_core::service::certificate::dto::{
     CreateCertificateCaDTO, CreateCertificateContentDTO, CreateCertificateRequestDTO,
@@ -26,8 +29,9 @@ use one_dto_mapper::{
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidMethodId, DidValue, IdentifierId, KeyId, OrganisationId,
-    ProofSchemaId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    CertificateId, CredentialSchemaId, DidMethodId, DidValue, EcosystemId, IdentifierId, KeyId,
+    OrganisationId, ProofSchemaId, TrustCollectionId, TrustListSubscriberId,
+    TrustListSubscriptionId,
 };
 use standardized_types::etsi_119_602::TrustedEntityInformation;
 use standardized_types::jwk::PublicJwk;
@@ -379,6 +383,18 @@ pub(crate) enum SortableIdentifierColumnRest {
     State,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into(EcosystemRole)]
+pub(crate) enum EcosystemRoleRest {
+    Holder,
+    Issuer,
+    Verifier,
+    PidProvider,
+    NationalRegistryRegistrar,
+    WalletProvider,
+}
+
 #[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[from(IdentifierTrustInformationResponseDTO)]
@@ -438,6 +454,7 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     #[param(rename = "keyStorages[]", nullable = false)]
     #[try_into(infallible)]
     pub key_storages: Option<Vec<String>>,
+
     /// Filter by certificate role. Returns identifiers containing at least
     /// one certificate that matches the specified roles, evaluated according
     /// to `certificateRolesMatchMode`.
@@ -452,16 +469,34 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     #[try_into(infallible)]
     #[serde(default)]
     pub certificate_roles_match_mode: CertificateRolesMatchModeRestEnum,
+
     /// Return only identifiers suitable for issuing with the provided
     /// credential schema.
+    /// Deprecated: use `ecosystemCredentialSchemaId`
     #[param(nullable = false)]
     #[try_into(infallible)]
+    #[deprecated]
     pub trust_issuance_schema_id: Option<CredentialSchemaId>,
     /// Return only identifiers suitable for requesting a proof with the
     /// provided proof schema.
+    /// Deprecated: use `ecosystemProofSchemaId`
     #[param(nullable = false)]
     #[try_into(infallible)]
+    #[deprecated]
     pub trust_verification_schema_id: Option<ProofSchemaId>,
+
+    #[param(nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
+    #[param(rename = "ecosystemRoles[]", inline, nullable = false)]
+    #[try_into(infallible, with_fn = convert_inner_of_inner)]
+    pub ecosystem_roles: Option<Vec<EcosystemRoleRest>>,
+    #[param(nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystem_credential_schema_id: Option<CredentialSchemaId>,
+    #[param(nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystem_proof_schema_id: Option<ProofSchemaId>,
 
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]

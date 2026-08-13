@@ -69,6 +69,9 @@ impl IntoFilterCondition for ProofSchemaFilterValue {
                 get_equals_condition(proof_schema::Column::OrganisationId, organisation_id)
             }
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
+            Self::Ecosystems(ecosystems) => proof_schema::Column::Ecosystem
+                .is_in(ecosystems.iter())
+                .into_condition(),
             Self::Formats(formats) => proof_schema::Column::Id
                 .not_in_subquery(
                     Query::select()
