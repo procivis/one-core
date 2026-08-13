@@ -13,6 +13,8 @@ pub enum EcosystemError {
     InvalidIdentifier(IdentifierId),
     #[error("Disallowed schema: {0:?}")]
     DisallowedSchemaFormat(SchemaFormat),
+    #[error("Unsupported role: `{0}`")]
+    UnsupportedRole(EcosystemRole),
     #[error("Invalid ecosystem query: role `{role}` combined with `{filter}`")]
     InvalidRoleFilter {
         role: EcosystemRole,
@@ -31,7 +33,7 @@ impl ErrorCodeMixin for EcosystemError {
             Self::MissingIdentifier
             | Self::InvalidIdentifier(_)
             | Self::DisallowedSchemaFormat(_) => ErrorCode::BR_0477,
-            Self::InvalidRoleFilter { .. } => ErrorCode::BR_0479,
+            Self::UnsupportedRole(_) | Self::InvalidRoleFilter { .. } => ErrorCode::BR_0479,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

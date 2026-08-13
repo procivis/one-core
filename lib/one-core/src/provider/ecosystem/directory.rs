@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use shared_types::EcosystemId;
 
+use super::decorators::CapabilityChecked;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, EcosystemProviderType, Fields};
 use crate::error::{ContextWithErrorCode, NestedError};
@@ -62,6 +63,7 @@ pub(crate) fn ecosystem_directory_from_config(
                 )?),
             };
 
+            let ecosystem: Arc<dyn Ecosystem> = Arc::new(CapabilityChecked(ecosystem));
             Ok(ecosystem)
         },
     )
