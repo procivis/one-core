@@ -148,6 +148,7 @@ pub enum CredentialFilterValue {
     Roles(Vec<CredentialRole>),
     CredentialIds(Vec<CredentialId>),
     ParentCredential(CredentialId),
+    ParentCredentials(Vec<CredentialId>),
     Consumed(bool),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
     SchemaId(String),

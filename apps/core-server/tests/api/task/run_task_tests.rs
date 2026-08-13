@@ -561,6 +561,85 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_own_expires_at_
     assert_eq!(updated_expired_item.state, CredentialStateEnum::Expired);
 }
 
+/// A batch parent with no items at all (e.g. all items were deleted, or it was never populated)
+/// must still be able to expire based on its own `expires_at`/refresh token - "all items expired"
+/// is vacuously true when there are no items to block it.
+#[tokio::test]
+async fn test_run_task_lifecycle_check_batch_parent_expires_with_no_items() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            refresh_token_expired: false,
+            ..Default::default()
+        },
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchParent),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(a_while_ago),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    // deliberately no batch items created for this parent
+
+    // WHEN
+    let resp = context.api.tasks.run("LIFECYCLE_CHECK").await;
+
+    // THEN - the parent still expires based on its own `expires_at`
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let expired_ids: Vec<String> = resp["expiredCredentialIds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(expired_ids.contains(&parent_credential.id.to_string()));
+
+    let updated_parent = context.db.credentials.get(&parent_credential.id).await;
+    assert_eq!(updated_parent.state, CredentialStateEnum::Expired);
+}
+
 /// The shared refresh token can expire the parent sooner than its own `expires_at`, as long as
 /// every item has also individually expired: a batch is dead the moment it can no longer be
 /// renewed, even if the business expiry hasn't been reached.
@@ -781,6 +860,294 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_not_all_ite
     assert_eq!(updated_parent.state, CredentialStateEnum::Accepted);
     let updated_valid_item = context.db.credentials.get(&valid_item.id).await;
     assert_eq!(updated_valid_item.state, CredentialStateEnum::Accepted);
+}
+
+/// Batch items for all batch parents are fetched together in one query and grouped locally by
+/// parent id - this exercises that grouping across multiple parents in the same task run, making
+/// sure items never get attributed to the wrong parent.
+#[tokio::test]
+async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attributed() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
+    let far_in_the_future = one_core::clock::now_utc() + Duration::days(365);
+
+    let expiring_interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            refresh_token_expired: false,
+            ..Default::default()
+        },
+    );
+    let expiring_interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &expiring_interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    // parent A: own `expires_at` has passed, its only item has too -> both expire
+    let parent_a = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchParent),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(a_while_ago),
+                interaction: Some(expiring_interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let parent_a_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchItem),
+                parent_id: Some(parent_a.id),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(a_while_ago),
+                interaction: Some(expiring_interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let valid_interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            refresh_token_expired: false,
+            ..Default::default()
+        },
+    );
+    let valid_interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &valid_interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    // parent B: own `expires_at` is in the future and its item hasn't expired -> stays valid
+    let parent_b = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchParent),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(far_in_the_future),
+                interaction: Some(valid_interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let parent_b_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchItem),
+                parent_id: Some(parent_b.id),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(far_in_the_future),
+                interaction: Some(valid_interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("LIFECYCLE_CHECK").await;
+
+    // THEN - parent A and its item expire, parent B and its item are untouched
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let expired_ids: Vec<String> = resp["expiredCredentialIds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(expired_ids.contains(&parent_a.id.to_string()));
+    assert!(expired_ids.contains(&parent_a_item.id.to_string()));
+    assert!(!expired_ids.contains(&parent_b.id.to_string()));
+    assert!(!expired_ids.contains(&parent_b_item.id.to_string()));
+
+    let updated_parent_a = context.db.credentials.get(&parent_a.id).await;
+    assert_eq!(updated_parent_a.state, CredentialStateEnum::Expired);
+    let updated_parent_a_item = context.db.credentials.get(&parent_a_item.id).await;
+    assert_eq!(updated_parent_a_item.state, CredentialStateEnum::Expired);
+
+    let updated_parent_b = context.db.credentials.get(&parent_b.id).await;
+    assert_eq!(updated_parent_b.state, CredentialStateEnum::Accepted);
+    let updated_parent_b_item = context.db.credentials.get(&parent_b_item.id).await;
+    assert_eq!(updated_parent_b_item.state, CredentialStateEnum::Accepted);
+}
+
+/// A batch item that's already in any terminal state (e.g. `Revoked`) is just as "done" as one
+/// that's `Expired` - it must not permanently block the parent from expiring once every other
+/// item has also finished (expired or otherwise terminated).
+#[tokio::test]
+async fn test_run_task_lifecycle_check_batch_parent_expires_when_item_revoked_not_just_expired() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            refresh_token_expired: false,
+            ..Default::default()
+        },
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchParent),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(a_while_ago),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // already revoked - never going to become `Expired`, but is just as "done"
+    let revoked_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Revoked,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                role: Some(CredentialRole::Holder),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let expired_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                role: Some(CredentialRole::Holder),
+                expires_at: Some(a_while_ago),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("LIFECYCLE_CHECK").await;
+
+    // THEN - the parent expires: the revoked item doesn't count as "still remaining"
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let expired_ids: Vec<String> = resp["expiredCredentialIds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(expired_ids.contains(&parent_credential.id.to_string()));
+    assert!(expired_ids.contains(&expired_item.id.to_string()));
+    assert!(!expired_ids.contains(&revoked_item.id.to_string()));
+
+    let updated_parent = context.db.credentials.get(&parent_credential.id).await;
+    assert_eq!(updated_parent.state, CredentialStateEnum::Expired);
+    let updated_expired_item = context.db.credentials.get(&expired_item.id).await;
+    assert_eq!(updated_expired_item.state, CredentialStateEnum::Expired);
+    // untouched - still `Revoked`, not overwritten with `Expired`
+    let updated_revoked_item = context.db.credentials.get(&revoked_item.id).await;
+    assert_eq!(updated_revoked_item.state, CredentialStateEnum::Revoked);
 }
 
 #[tokio::test]

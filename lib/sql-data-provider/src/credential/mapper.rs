@@ -88,6 +88,9 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::ParentCredential(parent_id) => {
                 get_equals_condition(credential::Column::ParentId, parent_id.to_string())
             }
+            Self::ParentCredentials(parent_ids) => credential::Column::ParentId
+                .is_in(parent_ids.iter().map(ToString::to_string))
+                .into_condition(),
             Self::CredentialSchemaIds(ids) => credential::Column::CredentialSchemaId
                 .is_in(ids.iter())
                 .into_condition(),

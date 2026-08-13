@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use serde_json::Value;
@@ -85,109 +86,145 @@ impl LifecycleCheckProvider {
         &self,
         now: OffsetDateTime,
     ) -> Result<(Vec<shared_types::CredentialId>, u64), ServiceError> {
-        let credential_list = self
+        let base_filter =
+            CredentialFilterValue::States(CredentialStateEnum::non_terminal_states().to_vec())
+                .condition()
+                & CredentialFilterValue::Roles(vec![
+                    CredentialRole::Holder,
+                    CredentialRole::Issuer,
+                ])
+                & CredentialFilterValue::Deleted(false);
+
+        // `Single` credentials and batch items can only ever need expiring once their own
+        // `expires_at` has passed, so - exactly like `Single` was already handled - that's
+        // pushed down into the query and both are expired here in one shared pass. This avoids
+        // loading (and loading the schema/format relation of) every still-valid credential on
+        // each task run, and avoids a separate per-parent pass over batch items entirely.
+        let stale_credentials = self
             .credential_repository
             .get_credential_list(CredentialListQuery {
                 filtering: Some(
-                    CredentialFilterValue::States(
-                        CredentialStateEnum::non_terminal_states().to_vec(),
-                    )
-                    .condition()
-                        & CredentialFilterValue::Roles(vec![
-                            CredentialRole::Holder,
-                            CredentialRole::Issuer,
-                        ])
+                    base_filter.clone()
                         & CredentialFilterValue::Types(vec![
                             CredentialType::Single,
-                            CredentialType::BatchParent,
+                            CredentialType::BatchItem,
                         ])
-                        & CredentialFilterValue::Deleted(false),
+                        & CredentialFilterValue::ExpiresAt(ValueComparison {
+                            comparison: ComparisonType::LessThan,
+                            value: now,
+                        }),
                 ),
                 ..Default::default()
             })
             .await
-            .error_while("getting credentials")?;
+            .error_while("getting single credentials and batch items")?;
 
-        let total_checks = credential_list.total_items;
+        // a batch parent can also expire purely because its shared OAuth refresh token expired,
+        // independent of its own `expires_at` - that can't be expressed as a DB-level filter, so
+        // all non-terminal batch parents still need to be fetched and evaluated individually
+        let batch_parents = self
+            .credential_repository
+            .get_credential_list(CredentialListQuery {
+                filtering: Some(
+                    base_filter & CredentialFilterValue::Types(vec![CredentialType::BatchParent]),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting batch parent credentials")?;
+
+        let total_checks = stale_credentials.total_items + batch_parents.total_items;
 
         let mut expired_ids = vec![];
-        for credential in credential_list.values {
-            let credential_schema = credential.schema.as_ref().await?;
-            let format = credential_schema.format().await?;
-            let format_type = self
-                .config
-                .format
-                .get_fields(&format)
-                .error_while("getting format config")?
-                .r#type;
 
-            // mdoc validity is handled entirely through the MSO refresh cycle, not here
-            if format_type == FormatType::Mdoc {
+        for credential in stale_credentials.values {
+            if self.is_mdoc(&credential).await? {
                 continue;
             }
+            if self.expire_if_stale(&credential, now).await? {
+                expired_ids.push(credential.id);
+            }
+        }
 
-            match credential.r#type {
-                CredentialType::Single => {
-                    if self.expire_if_stale(&credential, now).await? {
+        if !batch_parents.values.is_empty() {
+            let parent_ids = batch_parents.values.iter().map(|c| c.id).collect();
+
+            // any item already in a terminal state - `Expired` (just now or in a previous run),
+            // but also e.g. `Revoked`/`Rejected` - is done and can't block the parent, so it's
+            // excluded here by construction; a parent id that doesn't show up among these "still
+            // remaining" (non-terminal) items has had every item expire or otherwise terminate
+            let remaining_items = self
+                .credential_repository
+                .get_credential_list(CredentialListQuery {
+                    filtering: Some(
+                        CredentialFilterValue::ParentCredentials(parent_ids).condition()
+                            & CredentialFilterValue::Deleted(false)
+                            & CredentialFilterValue::States(
+                                CredentialStateEnum::non_terminal_states().to_vec(),
+                            ),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("getting remaining batch items")?
+                .values;
+
+            let parents_with_remaining_items: HashSet<_> = remaining_items
+                .iter()
+                .filter_map(|item| item.parent.as_ref().map(|parent| parent.id()))
+                .collect();
+
+            for credential in batch_parents.values {
+                if self.is_mdoc(&credential).await? {
+                    continue;
+                }
+
+                let all_items_expired = !parents_with_remaining_items.contains(&credential.id);
+
+                // the parent is only expired once every item has individually expired, and
+                // its own business-level `expires_at` has passed or the shared OAuth refresh
+                // token has already expired - a still-valid refresh token past `expires_at`
+                // does not keep the batch alive, but a single still-valid item does
+                if all_items_expired && !credential.state.is_terminal() {
+                    let interaction = match credential.interaction.as_ref() {
+                        Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
+                        None => None,
+                    };
+
+                    if is_batch_parent_expired(&credential, interaction.as_ref(), now)
+                        .error_while("checking batch parent expiry")?
+                    {
+                        self.credential_repository
+                            .update_credential(
+                                credential.id,
+                                UpdateCredentialRequest {
+                                    state: Some(CredentialStateEnum::Expired),
+                                    ..Default::default()
+                                },
+                            )
+                            .await
+                            .error_while("updating batch parent credential")?;
                         expired_ids.push(credential.id);
                     }
                 }
-                CredentialType::BatchParent => {
-                    let batch_items = self
-                        .credential_repository
-                        .get_credential_list(CredentialListQuery {
-                            filtering: Some(
-                                CredentialFilterValue::ParentCredential(credential.id).condition()
-                                    & CredentialFilterValue::Deleted(false),
-                            ),
-                            ..Default::default()
-                        })
-                        .await
-                        .error_while("getting batch items")?
-                        .values;
-
-                    let mut all_items_expired = true;
-                    for item in batch_items {
-                        let item_now_expired = self.expire_if_stale(&item, now).await?;
-                        if item_now_expired {
-                            expired_ids.push(item.id);
-                        }
-                        all_items_expired &=
-                            item_now_expired || item.state == CredentialStateEnum::Expired;
-                    }
-
-                    // the parent is only expired once every item has individually expired, and
-                    // its own business-level `expires_at` has passed or the shared OAuth refresh
-                    // token has already expired - a still-valid refresh token past `expires_at`
-                    // does not keep the batch alive, but a single still-valid item does
-                    if all_items_expired && !credential.state.is_terminal() {
-                        let interaction = match credential.interaction.as_ref() {
-                            Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
-                            None => None,
-                        };
-
-                        if is_batch_parent_expired(&credential, interaction.as_ref(), now)
-                            .error_while("checking batch parent expiry")?
-                        {
-                            self.credential_repository
-                                .update_credential(
-                                    credential.id,
-                                    UpdateCredentialRequest {
-                                        state: Some(CredentialStateEnum::Expired),
-                                        ..Default::default()
-                                    },
-                                )
-                                .await
-                                .error_while("updating batch parent credential")?;
-                            expired_ids.push(credential.id);
-                        }
-                    }
-                }
-                CredentialType::BatchItem => {}
             }
         }
 
         Ok((expired_ids, total_checks))
+    }
+
+    async fn is_mdoc(&self, credential: &Credential) -> Result<bool, ServiceError> {
+        let credential_schema = credential.schema.as_ref().await?;
+        let format = credential_schema.format().await?;
+        let format_type = self
+            .config
+            .format
+            .get_fields(&format)
+            .error_while("getting format config")?
+            .r#type;
+
+        // mdoc validity is handled entirely through the MSO refresh cycle, not here
+        Ok(format_type == FormatType::Mdoc)
     }
 
     async fn expire_if_stale(
