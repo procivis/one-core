@@ -11,7 +11,9 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::IdentifierData;
-use crate::model::instance::{InstanceFilterValue, InstanceListQuery, InstanceStatus};
+use crate::model::instance::{
+    InstanceFilterValue, InstanceListQuery, InstanceRole, InstanceStatus,
+};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::provider::issuance_protocol::error::{
@@ -213,6 +215,7 @@ pub(super) async fn validate_has_active_wallet_instance(
         .list(InstanceListQuery {
             filtering: Some(
                 InstanceFilterValue::OrganisationIds(vec![organisation_id]).condition()
+                    & InstanceFilterValue::Role(InstanceRole::Wallet)
                     & InstanceFilterValue::Status(InstanceStatus::Active),
             ),
             ..Default::default()

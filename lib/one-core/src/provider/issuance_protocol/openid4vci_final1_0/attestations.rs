@@ -10,10 +10,8 @@ use super::{
     HolderInteractionData, IssuanceProtocolError, OpenID4VCIFinal1_0, WalletAttestationResult,
 };
 use crate::error::ContextWithErrorCode;
-use crate::model::instance::{Instance, InstanceFilterValue, InstanceStatus};
+use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::key::Key;
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::wallet_instance::{
@@ -38,7 +36,11 @@ impl OpenID4VCIFinal1_0 {
         organisation_id: OrganisationId,
         attestation_types: &[AttestationType],
     ) -> Result<WalletAttestationResult, IssuanceProtocolError> {
-        let holder_wallet_unit = self.get_current_wallet_unit(organisation_id).await?;
+        let holder_wallet_unit = self
+            .holder_wallet_unit_repository
+            .get_by_role(InstanceRole::Wallet, organisation_id)
+            .await
+            .error_while("getting holder wallet instance")?;
         let wallet_unit_provided = holder_wallet_unit
             .as_ref()
             .is_some_and(|unit| unit.status == InstanceStatus::Active);
@@ -235,23 +237,6 @@ impl OpenID4VCIFinal1_0 {
         Err(IssuanceProtocolError::InvalidRequest(format!(
             "No suitable alg found in client_attestation_pop_signing_alg_values_supported: {alg_values_supported:?}"
         )))
-    }
-
-    async fn get_current_wallet_unit(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<Instance>, IssuanceProtocolError> {
-        let list = self
-            .holder_wallet_unit_repository
-            .list(ListQuery {
-                filtering: Some(
-                    InstanceFilterValue::OrganisationIds(vec![organisation_id]).condition(),
-                ),
-                ..Default::default()
-            })
-            .await
-            .error_while("getting holder wallet instance")?;
-        Ok(list.values.into_iter().next())
     }
 }
 
