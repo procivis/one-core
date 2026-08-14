@@ -394,7 +394,6 @@ impl OneCore {
             xades_proto.clone(),
             data_provider.get_trust_list_publication_repository(),
             data_provider.get_trust_entry_repository(),
-            data_provider.get_identifier_repository(),
             data_provider.get_organisation_repository(),
         )?;
 

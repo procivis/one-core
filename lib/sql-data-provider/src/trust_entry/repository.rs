@@ -1,7 +1,6 @@
 use autometrics::autometrics;
 use one_core::model::trust_entry::{
-    GetTrustEntryList, TrustEntry, TrustEntryListQuery, TrustEntryRelations,
-    UpdateTrustEntryRequest,
+    GetTrustEntryList, TrustEntry, TrustEntryListQuery, UpdateTrustEntryRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
@@ -13,11 +12,12 @@ use sea_orm::{
 use shared_types::{TrustEntryId, TrustListPublicationId};
 
 use super::TrustEntryProvider;
+use super::entities::{TrustEntryWithIdentifier, trust_entry_from_model_with_identifier};
+use super::mapper::trust_entry_from_model;
 use crate::common::calculate_pages_count;
 use crate::entity::{identifier, trust_entry};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
-use crate::trust_entry::entities::{TrustEntryWithIdentifier, trust_entry_from_model};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -29,11 +29,7 @@ impl TrustEntryRepository for TrustEntryProvider {
         Ok(id)
     }
 
-    async fn get(
-        &self,
-        id: TrustEntryId,
-        relations: &TrustEntryRelations,
-    ) -> Result<TrustEntry, DataLayerError> {
+    async fn get(&self, id: TrustEntryId) -> Result<TrustEntry, DataLayerError> {
         let entity_model = trust_entry::Entity::find_by_id(id)
             .one(&self.db)
             .await
@@ -43,24 +39,11 @@ impl TrustEntryRepository for TrustEntryProvider {
                 id: id.into(),
             })?;
 
-        let trust_list_publication_id = entity_model.trust_list_publication_id;
-        let identifier_id = entity_model.identifier_id;
-
-        let mut result = TrustEntry::from(entity_model);
-
-        if let Some(_publication_relations) = &relations.trust_list_publication {
-            result.trust_list_publication = Some(
-                self.trust_list_publication_repository
-                    .get(trust_list_publication_id)
-                    .await?,
-            );
-        }
-
-        if relations.identifier.is_some() {
-            result.identifier = Some(self.identifier_repository.get(identifier_id).await?);
-        }
-
-        Ok(result)
+        Ok(trust_entry_from_model(
+            entity_model,
+            &self.identifier_repository,
+            &self.trust_list_publication_repository,
+        ))
     }
 
     async fn list(
@@ -118,12 +101,13 @@ impl TrustEntryRepository for TrustEntryProvider {
             values: trust_entries
                 .into_iter()
                 .map(|trust_entry| {
-                    trust_entry_from_model(
+                    trust_entry_from_model_with_identifier(
                         trust_entry,
                         &self.organisation_repository,
                         &self.did_repository,
                         &self.key_repository,
                         &self.certificate_repository,
+                        &self.trust_list_publication_repository,
                         &self.trust_information_repository,
                     )
                 })

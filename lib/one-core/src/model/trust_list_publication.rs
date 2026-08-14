@@ -34,9 +34,6 @@ pub struct TrustListPublication {
     pub certificate: Option<Related<Certificate>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct TrustListPublicationRelations {}
-
 #[derive(Clone, Debug, Default)]
 pub struct UpdateTrustListPublicationRequest {
     pub content: Option<Vec<u8>>,

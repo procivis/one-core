@@ -1,5 +1,10 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::Related;
 use one_core::model::trust_entry::{SortableTrustEntryColumn, TrustEntry, TrustEntryFilterValue};
+use one_core::repository::identifier_repository::IdentifierRepository;
+use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{Alias, ColumnRef, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
@@ -10,19 +15,22 @@ use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
 };
 
-impl From<trust_entry::Model> for TrustEntry {
-    fn from(value: trust_entry::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            state: value.state.into(),
-            metadata: value.metadata,
-            trust_list_publication_id: value.trust_list_publication_id,
-            identifier_id: value.identifier_id,
-            trust_list_publication: None,
-            identifier: None,
-        }
+pub(crate) fn trust_entry_from_model(
+    value: trust_entry::Model,
+    identifier_repository: &Arc<dyn IdentifierRepository>,
+    trust_list_publication_repository: &Arc<dyn TrustListPublicationRepository>,
+) -> TrustEntry {
+    TrustEntry {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        state: value.state.into(),
+        metadata: value.metadata,
+        trust_list_publication: Related::new(
+            value.trust_list_publication_id,
+            trust_list_publication_repository.clone(),
+        ),
+        identifier: Related::new(value.identifier_id, identifier_repository.clone()),
     }
 }
 
@@ -34,8 +42,8 @@ impl From<TrustEntry> for trust_entry::ActiveModel {
             last_modified: Set(value.last_modified),
             state: Set(value.state.into()),
             metadata: Set(value.metadata),
-            trust_list_publication_id: Set(value.trust_list_publication_id),
-            identifier_id: Set(value.identifier_id),
+            trust_list_publication_id: Set(value.trust_list_publication.id()),
+            identifier_id: Set(value.identifier.id()),
         }
     }
 }

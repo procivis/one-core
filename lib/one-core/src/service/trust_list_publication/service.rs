@@ -6,10 +6,18 @@ use shared_types::{
 };
 use tracing::info;
 
+use super::TrustListPublicationService;
+use super::dto::{
+    CreateTrustEntryRequestDTO, CreateTrustListPublicationRequestDTO, GetTrustEntryListResponseDTO,
+    GetTrustListPublicationListResponseDTO, GetTrustListPublicationResponseDTO,
+    TrustEntryFilterParamsDTO, TrustEntryListItemResponseDTO, TrustListContentTypeDTO,
+    TrustListPublicationFilterParamsDTO, UpdateTrustEntryRequestDTO,
+};
+use super::error::TrustListPublicationServiceError;
 use crate::error::ContextWithErrorCode;
-use crate::mapper::{list_response_into, list_response_try_into};
+use crate::mapper::list_response_into;
 use crate::model::identifier::Identifier;
-use crate::model::trust_entry::{SortableTrustEntryColumn, TrustEntry, TrustEntryRelations};
+use crate::model::trust_entry::{SortableTrustEntryColumn, TrustEntry};
 use crate::model::trust_list_publication::{
     SortableTrustListPublicationColumn, TrustListPublication,
 };
@@ -19,14 +27,6 @@ use crate::provider::trust_list_publisher::{
     CreateTrustListRequest, TrustListContent, TrustListPublisher, TrustListPublisherCapabilities,
 };
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::trust_list_publication::TrustListPublicationService;
-use crate::service::trust_list_publication::dto::{
-    CreateTrustEntryRequestDTO, CreateTrustListPublicationRequestDTO, GetTrustEntryListResponseDTO,
-    GetTrustListPublicationListResponseDTO, GetTrustListPublicationResponseDTO,
-    TrustEntryFilterParamsDTO, TrustListContentTypeDTO, TrustListPublicationFilterParamsDTO,
-    UpdateTrustEntryRequestDTO,
-};
-use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -141,7 +141,7 @@ impl TrustListPublicationService {
         let trust_entry = self.fetch_trust_entry(entry_id).await?;
         validate_trust_entry_belongs_to_list(&trust_entry, list_id)?;
 
-        let trust_list_publication = trust_entry.trust_list_publication()?;
+        let trust_list_publication = trust_entry.trust_list_publication.as_ref().await?;
         throw_if_org_id_not_matching_session(
             trust_list_publication.organisation.id_ref(),
             &*self.session_provider,
@@ -159,7 +159,7 @@ impl TrustListPublicationService {
         info!(
             "Updated trust list publication entry ({}): identifier `{}` : trust list publication `{}` ({})",
             trust_entry.id,
-            trust_entry.identifier_id,
+            trust_entry.identifier.id(),
             trust_list_publication.name,
             trust_list_publication.id
         );
@@ -174,7 +174,7 @@ impl TrustListPublicationService {
         let trust_entry = self.fetch_trust_entry(entry_id).await?;
         validate_trust_entry_belongs_to_list(&trust_entry, list_id)?;
 
-        let trust_list_publication = trust_entry.trust_list_publication()?;
+        let trust_list_publication = trust_entry.trust_list_publication.as_ref().await?;
         throw_if_org_id_not_matching_session(
             trust_list_publication.organisation.id_ref(),
             &*self.session_provider,
@@ -192,7 +192,7 @@ impl TrustListPublicationService {
         info!(
             "Removed trust list publication entry ({}): identifier `{}` : trust list publication `{}` ({})",
             trust_entry.id,
-            trust_entry.identifier_id,
+            trust_entry.identifier.id(),
             trust_list_publication.name,
             trust_list_publication.id
         );
@@ -277,7 +277,16 @@ impl TrustListPublicationService {
             .list(trust_list_publication_id, query.into())
             .await
             .error_while("getting trust entries")?;
-        list_response_try_into(result)
+
+        let mut response_dtos = Vec::with_capacity(result.values.len());
+        for value in result.values {
+            response_dtos.push(TrustEntryListItemResponseDTO::try_from(value).await?);
+        }
+        Ok(GetTrustEntryListResponseDTO {
+            values: response_dtos,
+            total_pages: result.total_pages,
+            total_items: result.total_items,
+        })
     }
 
     async fn fetch_trust_list_publication(
@@ -296,13 +305,7 @@ impl TrustListPublicationService {
         entry_id: TrustEntryId,
     ) -> Result<TrustEntry, TrustListPublicationServiceError> {
         self.trust_entry_repository
-            .get(
-                entry_id,
-                &TrustEntryRelations {
-                    trust_list_publication: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
+            .get(entry_id)
             .await
             .error_while("fetching trust entry")
             .map_err(Into::into)
@@ -353,7 +356,7 @@ fn validate_trust_entry_belongs_to_list(
     trust_entry: &TrustEntry,
     trust_list_id: TrustListPublicationId,
 ) -> Result<(), TrustListPublicationServiceError> {
-    if trust_entry.trust_list_publication_id != trust_list_id {
+    if trust_entry.trust_list_publication.id() != trust_list_id {
         return Err(TrustListPublicationServiceError::TrustEntryNotInList(
             trust_entry.id,
             trust_list_id,
@@ -446,24 +449,6 @@ fn validate_entry_identifier_capabilities(
     Ok(())
 }
 
-trait TrustEntryExt {
-    fn trust_list_publication(
-        &self,
-    ) -> Result<&TrustListPublication, TrustListPublicationServiceError>;
-}
-
-impl TrustEntryExt for TrustEntry {
-    fn trust_list_publication(
-        &self,
-    ) -> Result<&TrustListPublication, TrustListPublicationServiceError> {
-        self.trust_list_publication.as_ref().ok_or_else(|| {
-            TrustListPublicationServiceError::MappingError(
-                "trust_list_publication is None".to_string(),
-            )
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -492,7 +477,9 @@ mod tests {
     use crate::repository::identifier_repository::MockIdentifierRepository;
     use crate::repository::trust_entry_repository::MockTrustEntryRepository;
     use crate::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
-    use crate::service::test_utilities::{dummy_did, dummy_organisation};
+    use crate::service::test_utilities::{
+        dummy_did, dummy_identifier, dummy_organisation, dummy_trust_list_publication,
+    };
 
     #[tokio::test]
     async fn test_create_trust_list_publication_identifier_matches_capabilities() {
@@ -936,12 +923,14 @@ mod tests {
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
-            trust_list_publication_id,
-            identifier_id: Uuid::new_v4().into(),
             state: TrustEntryStateEnum::Active,
             metadata: Default::default(),
-            trust_list_publication: None,
-            identifier: None,
+            trust_list_publication: TrustListPublication {
+                id: trust_list_publication_id,
+                ..dummy_trust_list_publication()
+            }
+            .into(),
+            identifier: dummy_identifier().into(),
         }
     }
 

@@ -1,4 +1,4 @@
-use one_dto_mapper::{Into, TryFrom};
+use one_dto_mapper::Into;
 use shared_types::{
     CertificateId, IdentifierId, KeyId, OrganisationId, TrustEntryId, TrustListPublicationId,
     TrustListPublisherId,
@@ -6,12 +6,10 @@ use shared_types::{
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::identifier::Identifier;
-use crate::model::trust_entry::{TrustEntry, TrustEntryStateEnum};
+use crate::model::trust_entry::TrustEntryStateEnum;
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::provider::trust_list_publisher::etsi_lote::LoteContentType;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
-use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
 
 #[derive(Clone, Debug, PartialEq, Into)]
 #[into(LoteContentType)]
@@ -75,20 +73,13 @@ pub struct TrustListPublicationListItemResponseDTO {
 pub type GetTrustListPublicationListResponseDTO =
     GetListResponse<TrustListPublicationListItemResponseDTO>;
 
-#[derive(Debug, Clone, TryFrom)]
-#[try_from(T = TrustEntry, Error = TrustListPublicationServiceError)]
+#[derive(Debug, Clone)]
 pub struct TrustEntryListItemResponseDTO {
-    #[try_from(infallible)]
     pub id: TrustEntryId,
-    #[try_from(infallible)]
     pub created_date: OffsetDateTime,
-    #[try_from(infallible)]
     pub last_modified: OffsetDateTime,
-    #[try_from(infallible)]
     pub state: TrustEntryStateEnum,
-    #[try_from(with_fn = "map_identifier")]
     pub identifier: GetIdentifierListItemResponseDTO,
-    #[try_from(rename = "metadata", infallible)]
     pub params: Vec<u8>,
 }
 
@@ -122,15 +113,4 @@ pub struct TrustEntryFilterParamsDTO {
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
     pub last_modified_before: Option<OffsetDateTime>,
-}
-
-fn map_identifier(
-    identifier: Option<Identifier>,
-) -> Result<GetIdentifierListItemResponseDTO, TrustListPublicationServiceError> {
-    match identifier {
-        None => Err(TrustListPublicationServiceError::MappingError(
-            "identifier is None".to_string(),
-        )),
-        Some(identifier) => Ok(GetIdentifierListItemResponseDTO::from(identifier)),
-    }
 }

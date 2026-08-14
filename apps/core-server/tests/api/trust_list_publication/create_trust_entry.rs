@@ -50,9 +50,9 @@ async fn test_create_trust_enty() {
     let resp_json = resp.json_value().await;
     let entry_id = resp_json["id"].parse::<Uuid>().into();
     let existing_trust_entry = context.db.trust_entries.get(entry_id).await.unwrap();
-    similar_asserts::assert_eq!(existing_trust_entry.identifier_id, identifier.id);
+    similar_asserts::assert_eq!(existing_trust_entry.identifier.id(), identifier.id);
     similar_asserts::assert_eq!(
-        existing_trust_entry.trust_list_publication_id,
+        existing_trust_entry.trust_list_publication.id(),
         publication_id
     );
 
@@ -100,9 +100,9 @@ async fn test_create_trust_entry_certificate_authority() {
     let resp_json = resp.json_value().await;
     let entry_id = resp_json["id"].parse::<Uuid>().into();
     let existing_trust_entry = context.db.trust_entries.get(entry_id).await.unwrap();
-    similar_asserts::assert_eq!(existing_trust_entry.identifier_id, identifier.id);
+    similar_asserts::assert_eq!(existing_trust_entry.identifier.id(), identifier.id);
     similar_asserts::assert_eq!(
-        existing_trust_entry.trust_list_publication_id,
+        existing_trust_entry.trust_list_publication.id(),
         trust_list_publication.id
     );
 }

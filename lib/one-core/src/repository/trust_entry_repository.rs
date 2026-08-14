@@ -1,8 +1,7 @@
 use shared_types::{TrustEntryId, TrustListPublicationId};
 
 use crate::model::trust_entry::{
-    GetTrustEntryList, TrustEntry, TrustEntryListQuery, TrustEntryRelations,
-    UpdateTrustEntryRequest,
+    GetTrustEntryList, TrustEntry, TrustEntryListQuery, UpdateTrustEntryRequest,
 };
 use crate::repository::error::DataLayerError;
 
@@ -11,11 +10,7 @@ use crate::repository::error::DataLayerError;
 pub trait TrustEntryRepository: Send + Sync {
     async fn create(&self, entity: TrustEntry) -> Result<TrustEntryId, DataLayerError>;
 
-    async fn get(
-        &self,
-        id: TrustEntryId,
-        relations: &TrustEntryRelations,
-    ) -> Result<TrustEntry, DataLayerError>;
+    async fn get(&self, id: TrustEntryId) -> Result<TrustEntry, DataLayerError>;
 
     async fn list(
         &self,

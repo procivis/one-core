@@ -350,6 +350,6 @@ async fn test_remote_certificate_identifier_can_be_added_to_trust_list_entry() {
     assert_eq!(entry.status(), 201);
     let entry_id = entry.json_value().await["id"].parse::<Uuid>().into();
     let stored = context.db.trust_entries.get(entry_id).await.unwrap();
-    assert_eq!(stored.identifier_id, remote_id);
-    assert_eq!(stored.trust_list_publication_id, publication_id);
+    assert_eq!(stored.identifier.id(), remote_id);
+    assert_eq!(stored.trust_list_publication.id(), publication_id);
 }

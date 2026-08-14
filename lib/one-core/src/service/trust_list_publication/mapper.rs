@@ -1,13 +1,14 @@
 use super::dto::{
     ExactTrustListFilterColumn, GetTrustListPublicationResponseDTO, TrustEntryFilterParamsDTO,
-    TrustListPublicationFilterParamsDTO, TrustListPublicationListItemResponseDTO,
+    TrustEntryListItemResponseDTO, TrustListPublicationFilterParamsDTO,
+    TrustListPublicationListItemResponseDTO,
 };
 use super::error::TrustListPublicationServiceError;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
-use crate::model::trust_entry::TrustEntryFilterValue;
+use crate::model::trust_entry::{TrustEntry, TrustEntryFilterValue};
 use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationFilterValue};
 
 impl From<TrustListPublicationFilterParamsDTO>
@@ -118,6 +119,21 @@ impl From<TrustEntryFilterParamsDTO> for ListFilterCondition<TrustEntryFilterVal
             & created_date_before
             & last_modified_after
             & last_modified_before
+    }
+}
+
+impl TrustEntryListItemResponseDTO {
+    pub(super) async fn try_from(
+        value: TrustEntry,
+    ) -> Result<Self, TrustListPublicationServiceError> {
+        Ok(Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            state: value.state,
+            identifier: value.identifier.as_ref().await?.to_owned().into(),
+            params: value.metadata,
+        })
     }
 }
 

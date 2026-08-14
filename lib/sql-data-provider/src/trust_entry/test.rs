@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
+use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::trust_entry::{
-    TrustEntry, TrustEntryFilterValue, TrustEntryListQuery, TrustEntryRelations,
-    TrustEntryStateEnum, UpdateTrustEntryRequest,
+    TrustEntry, TrustEntryFilterValue, TrustEntryListQuery, TrustEntryStateEnum,
+    UpdateTrustEntryRequest,
 };
-use one_core::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations,
-};
+use one_core::model::trust_list_publication::TrustListPublication;
 use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::did_repository::MockDidRepository;
@@ -19,7 +18,7 @@ use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
-use one_core::service::test_utilities::dummy_identifier;
+use one_core::service::test_utilities::{dummy_identifier, dummy_trust_list_publication};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -140,10 +139,16 @@ fn dummy_trust_entry(
         last_modified: get_dummy_date(),
         state: TrustEntryStateEnum::Active,
         metadata: vec![],
-        trust_list_publication_id,
-        identifier_id,
-        trust_list_publication: None,
-        identifier: None,
+        trust_list_publication: TrustListPublication {
+            id: trust_list_publication_id,
+            ..dummy_trust_list_publication()
+        }
+        .into(),
+        identifier: Identifier {
+            id: identifier_id,
+            ..dummy_identifier()
+        }
+        .into(),
     }
 }
 
@@ -163,10 +168,7 @@ async fn test_create_trust_entry() {
 async fn test_get_trust_entry_missing() {
     let setup = setup().await;
 
-    let result = setup
-        .provider
-        .get(Uuid::new_v4().into(), &TrustEntryRelations::default())
-        .await;
+    let result = setup.provider.get(Uuid::new_v4().into()).await;
     assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
 }
 
@@ -178,17 +180,14 @@ async fn test_get_trust_entry_success() {
     let id = entry.id;
     setup.provider.create(entry).await.unwrap();
 
-    let result = setup
-        .provider
-        .get(id, &TrustEntryRelations::default())
-        .await;
+    let result = setup.provider.get(id).await;
 
     assert!(result.is_ok());
     let found = result.unwrap();
     assert_eq!(found.id, id);
     assert_eq!(found.state, TrustEntryStateEnum::Active);
     assert_eq!(
-        found.trust_list_publication_id,
+        found.trust_list_publication.id(),
         setup.trust_list_publication_id
     );
 }
@@ -204,10 +203,7 @@ async fn test_delete_trust_entry() {
     let result = setup.provider.delete(id).await;
     assert!(result.is_ok());
 
-    let get_result = setup
-        .provider
-        .get(id, &TrustEntryRelations::default())
-        .await;
+    let get_result = setup.provider.get(id).await;
     assert!(matches!(
         get_result,
         Err(DataLayerError::EntityNotFound { .. })
@@ -297,7 +293,7 @@ async fn test_list_trust_entries_filter_by_publication_id() {
     let list = result.unwrap();
     assert_eq!(list.total_items, 1);
     assert_eq!(
-        list.values[0].trust_list_publication_id,
+        list.values[0].trust_list_publication.id(),
         setup.trust_list_publication_id
     );
 }
@@ -355,11 +351,7 @@ async fn test_update_trust_entry_status() {
         .await;
     assert!(result.is_ok());
 
-    let found = setup
-        .provider
-        .get(id, &TrustEntryRelations::default())
-        .await
-        .unwrap();
+    let found = setup.provider.get(id).await.unwrap();
     assert_eq!(found.state, TrustEntryStateEnum::Suspended);
 }
 
@@ -384,11 +376,7 @@ async fn test_update_trust_entry_metadata() {
         .await;
     assert!(result.is_ok());
 
-    let found = setup
-        .provider
-        .get(id, &TrustEntryRelations::default())
-        .await
-        .unwrap();
+    let found = setup.provider.get(id).await.unwrap();
     assert_eq!(found.metadata, new_metadata);
     assert_eq!(found.state, TrustEntryStateEnum::Active);
 }
@@ -595,21 +583,12 @@ async fn test_get_trust_entry_with_publication_relation() {
     let id = entry.id;
     provider.create(entry).await.unwrap();
 
-    let result = provider
-        .get(
-            id,
-            &TrustEntryRelations {
-                trust_list_publication: Some(TrustListPublicationRelations::default()),
-                ..Default::default()
-            },
-        )
-        .await;
+    let result = provider.get(id).await;
 
     assert!(result.is_ok());
     let found = result.unwrap();
-    assert!(found.trust_list_publication.is_some());
     assert_eq!(
-        found.trust_list_publication.unwrap().name,
+        found.trust_list_publication.as_ref().await.unwrap().name,
         "test-publication"
     );
 }
@@ -646,11 +625,7 @@ async fn test_update_trust_entry_noop() {
         .await;
     assert!(result.is_ok());
 
-    let found = setup
-        .provider
-        .get(id, &TrustEntryRelations::default())
-        .await
-        .unwrap();
+    let found = setup.provider.get(id).await.unwrap();
     assert_eq!(found.state, TrustEntryStateEnum::Active);
     assert_eq!(found.metadata, Vec::<u8>::new());
 }

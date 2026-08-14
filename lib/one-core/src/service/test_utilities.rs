@@ -32,6 +32,8 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::model::trust_collection::TrustCollection;
+use crate::model::trust_list_publication::TrustListPublication;
+use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 
@@ -691,5 +693,24 @@ pub fn dummy_trust_collection() -> TrustCollection {
         deactivated_at: None,
         remote_trust_collection_url: Some(Url::parse("https://example.com").unwrap()),
         ecosystem: "EUDI".into(),
+    }
+}
+
+pub fn dummy_trust_list_publication() -> TrustListPublication {
+    TrustListPublication {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test-publication".to_string(),
+        role: TrustListRoleEnum::Issuer,
+        r#type: "LOTE".into(),
+        metadata: vec![],
+        deleted_at: None,
+        content: Vec::new(),
+        sequence_number: 0,
+        organisation: dummy_organisation(None).into(),
+        identifier: dummy_identifier().into(),
+        key: None,
+        certificate: None,
     }
 }

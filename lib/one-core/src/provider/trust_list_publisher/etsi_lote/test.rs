@@ -26,11 +26,12 @@ use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::repository::error::{DataLayerError, EntityKind};
-use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_entry_repository::MockTrustEntryRepository;
 use crate::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
-use crate::service::test_utilities::{dummy_identifier, dummy_key, dummy_organisation};
+use crate::service::test_utilities::{
+    dummy_identifier, dummy_key, dummy_organisation, dummy_trust_list_publication,
+};
 
 fn sample_list_params() -> dto::CreateTrustListParams {
     dto::CreateTrustListParams {
@@ -86,10 +87,8 @@ fn dummy_entry(metadata: Vec<u8>) -> TrustEntry {
         last_modified: datetime!(2025-01-01 0:00 UTC),
         state: TrustEntryStateEnum::Active,
         metadata,
-        trust_list_publication_id: Uuid::new_v4().into(),
-        identifier_id: Uuid::new_v4().into(),
-        trust_list_publication: None,
-        identifier: None,
+        trust_list_publication: dummy_trust_list_publication().into(),
+        identifier: dummy_identifier().into(),
     }
 }
 
@@ -222,7 +221,7 @@ fn mock_entry_repo() -> MockTrustEntryRepository {
     });
 
     let store = entries.clone();
-    repo.expect_get().returning(move |id, _relations| {
+    repo.expect_get().returning(move |id| {
         let entries = store.lock().unwrap();
         entries
             .iter()
@@ -300,7 +299,6 @@ fn make_publisher(
     key_algorithm_provider: MockKeyAlgorithmProvider,
     pub_repo: MockTrustListPublicationRepository,
     entry_repo: MockTrustEntryRepository,
-    identifier_repo: MockIdentifierRepository,
     xades_proto: MockXAdESProto,
 ) -> EtsiLotePublisher {
     EtsiLotePublisher {
@@ -315,7 +313,6 @@ fn make_publisher(
         xades_proto: Arc::new(xades_proto),
         trust_list_publication_repository: Arc::new(pub_repo),
         trust_entry_repository: Arc::new(entry_repo),
-        identifier_repository: Arc::new(identifier_repo),
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
     }
 }
@@ -458,7 +455,6 @@ async fn test_format_trust_list_empty_list() {
         key_algorithm_provider,
         MockTrustListPublicationRepository::new(),
         MockTrustEntryRepository::new(),
-        MockIdentifierRepository::new(),
         MockXAdESProto::new(),
     );
 
@@ -498,7 +494,6 @@ async fn test_format_trust_list_with_entry() {
         key_algorithm_provider,
         MockTrustListPublicationRepository::new(),
         MockTrustEntryRepository::new(),
-        MockIdentifierRepository::new(),
         MockXAdESProto::new(),
     );
 
@@ -537,18 +532,12 @@ async fn test_format_trust_list_with_entry() {
 #[tokio::test]
 async fn test_create_trust_list_rejects_identifier_without_certificate() {
     let identifier = dummy_identifier(); // Did type, no certificates
-    let identifier_clone = identifier.clone();
-    let mut identifier_repo = MockIdentifierRepository::new();
-    identifier_repo
-        .expect_get()
-        .returning(move |_id| Ok(identifier_clone.clone()));
 
     let publisher = make_publisher(
         MockKeyProvider::new(),
         MockKeyAlgorithmProvider::new(),
         MockTrustListPublicationRepository::new(),
         MockTrustEntryRepository::new(),
-        MockIdentifierRepository::new(),
         MockXAdESProto::new(),
     );
 
@@ -585,11 +574,6 @@ async fn test_lifecycle_create_add_update_remove() {
     let identifier_for_create = identifier.clone();
     let identifier_for_add_entry = identifier.clone();
 
-    let mut identifier_repo = MockIdentifierRepository::new();
-    identifier_repo
-        .expect_get()
-        .returning(move |_id| Ok(identifier.clone()));
-
     let repos = make_stateful_repos(key.clone(), certificate.clone());
     let xades_proto = MockXAdESProto::new();
 
@@ -598,7 +582,6 @@ async fn test_lifecycle_create_add_update_remove() {
         key_algorithm_provider,
         repos.pub_repo,
         repos.entry_repo,
-        identifier_repo,
         xades_proto,
     );
 
@@ -642,15 +625,20 @@ async fn test_lifecycle_create_add_update_remove() {
         );
     }
 
+    let trust_list_publication_id = repos
+        .stored_publication
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .id;
     let entry = TrustEntry {
         id: entry_id,
-        trust_list_publication_id: repos
-            .stored_publication
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .id,
+        trust_list_publication: TrustListPublication {
+            id: trust_list_publication_id,
+            ..dummy_trust_list_publication()
+        }
+        .into(),
         ..dummy_entry(vec![])
     };
     publisher
@@ -663,15 +651,20 @@ async fn test_lifecycle_create_add_update_remove() {
         assert_eq!(pub_entity.sequence_number, 3);
     }
 
+    let trust_list_publication_id = repos
+        .stored_publication
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .id;
     let entry = TrustEntry {
         id: entry_id,
-        trust_list_publication_id: repos
-            .stored_publication
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .id,
+        trust_list_publication: TrustListPublication {
+            id: trust_list_publication_id,
+            ..dummy_trust_list_publication()
+        }
+        .into(),
         ..dummy_entry(vec![])
     };
     publisher.remove_entry(&entry).await.unwrap();
@@ -738,10 +731,6 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
         .expect_list()
         .returning(move |_, _| Ok(GetListResponse::one_page_of(se.lock().unwrap().clone())));
 
-    let mut identifier_repo = MockIdentifierRepository::new();
-    identifier_repo
-        .expect_get()
-        .returning(move |_id| Ok(identifier.clone()));
     let xades_proto = MockXAdESProto::new();
 
     let publisher = make_publisher(
@@ -749,7 +738,6 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
         key_algorithm_provider,
         pub_repo,
         entry_repo,
-        identifier_repo,
         xades_proto,
     );
 
@@ -760,7 +748,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
 
     let entries = stored_entries.lock().unwrap();
     assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].identifier_id, identifier_id);
+    assert_eq!(entries[0].identifier.id(), identifier_id);
 
     let stored_params: AddEntryParams = serde_json::from_slice(&entries[0].metadata).unwrap();
     assert!(stored_params.entity.name.is_none());
@@ -869,11 +857,6 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
 
     let identifier_for_create = identifier.clone();
 
-    let mut identifier_repo = MockIdentifierRepository::new();
-    identifier_repo
-        .expect_get()
-        .returning(move |_id| Ok(identifier.clone()));
-
     let repos = make_stateful_repos(key.clone(), certificate.clone());
     let xades_proto = MockXAdESProto::new();
 
@@ -882,7 +865,6 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
         key_algorithm_provider,
         repos.pub_repo,
         repos.entry_repo,
-        identifier_repo,
         xades_proto,
     );
 
@@ -954,11 +936,6 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
 
     let identifier_for_create = identifier.clone();
 
-    let mut identifier_repo = MockIdentifierRepository::new();
-    identifier_repo
-        .expect_get()
-        .returning(move |_id| Ok(identifier.clone()));
-
     let repos = make_stateful_repos(key.clone(), certificate.clone());
 
     let xades_proto = MockXAdESProto::new();
@@ -968,7 +945,6 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
         key_algorithm_provider,
         repos.pub_repo,
         repos.entry_repo,
-        identifier_repo,
         xades_proto,
     );
 
@@ -1026,11 +1002,6 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
     };
     let identifier_for_create = identifier.clone();
 
-    let mut identifier_repo = MockIdentifierRepository::new();
-    identifier_repo
-        .expect_get()
-        .returning(move |_id| Ok(identifier.clone()));
-
     let repos = make_stateful_repos(key.clone(), certificate.clone());
     let xades_proto = MockXAdESProto::new();
 
@@ -1039,7 +1010,6 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
         key_algorithm_provider,
         repos.pub_repo,
         repos.entry_repo,
-        identifier_repo,
         xades_proto,
     );
 
@@ -1125,7 +1095,6 @@ async fn test_format_trust_list_xml_empty_list() {
         },
         trust_list_publication_repository: Arc::new(MockTrustListPublicationRepository::new()),
         trust_entry_repository: Arc::new(MockTrustEntryRepository::new()),
-        identifier_repository: Arc::new(MockIdentifierRepository::new()),
         organisation_repository: Arc::new(MockOrganisationRepository::new()),
     };
 
@@ -1184,7 +1153,6 @@ async fn test_format_trust_list_xml_with_entry() {
         },
         trust_list_publication_repository: Arc::new(MockTrustListPublicationRepository::new()),
         trust_entry_repository: Arc::new(MockTrustEntryRepository::new()),
-        identifier_repository: Arc::new(MockIdentifierRepository::new()),
         organisation_repository: Arc::new(MockOrganisationRepository::new()),
     };
 

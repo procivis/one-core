@@ -40,7 +40,6 @@ use crate::provider::trust_list_publisher::error::TrustListPublisherError;
 use crate::provider::trust_list_publisher::{
     CreateTrustListRequest, TrustListContent, TrustListPublisher, TrustListPublisherCapabilities,
 };
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
@@ -55,7 +54,6 @@ pub(crate) struct EtsiLotePublisher {
     pub xades_proto: Arc<dyn XAdESProto>,
     pub trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
     pub trust_entry_repository: Arc<dyn TrustEntryRepository>,
-    pub identifier_repository: Arc<dyn IdentifierRepository>,
     pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
@@ -182,10 +180,8 @@ impl TrustListPublisher for EtsiLotePublisher {
             last_modified: self.clock.now_utc(),
             state: TrustEntryStateEnum::Active,
             metadata,
-            trust_list_publication_id: publication.id,
-            identifier_id: identifier.id,
-            trust_list_publication: None,
-            identifier: None,
+            trust_list_publication: publication.to_owned().into(),
+            identifier: identifier.to_owned().into(),
         };
 
         self.trust_entry_repository
@@ -219,7 +215,7 @@ impl TrustListPublisher for EtsiLotePublisher {
             .await
             .error_while("updating trust entry")?;
 
-        self.sign_trust_list(entry.trust_list_publication_id)
+        self.sign_trust_list(entry.trust_list_publication.id())
             .await?;
         Ok(())
     }
@@ -230,7 +226,7 @@ impl TrustListPublisher for EtsiLotePublisher {
             .await
             .error_while("deleting trust entry")?;
 
-        self.sign_trust_list(entry.trust_list_publication_id)
+        self.sign_trust_list(entry.trust_list_publication.id())
             .await?;
         Ok(())
     }
@@ -346,12 +342,7 @@ impl EtsiLotePublisher {
 
         let mut entries_with_identifiers = Vec::new();
         for entry in entry_list.values {
-            let identifier = self
-                .identifier_repository
-                .get(entry.identifier_id)
-                .await
-                .error_while("fetching entry identifier")?;
-
+            let identifier = entry.identifier.as_ref().await?.to_owned();
             entries_with_identifiers.push((entry, identifier));
         }
 

@@ -9,6 +9,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
+use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use sea_orm::FromQueryResult;
 use shared_types::{
     DidId, IdentifierId, KeyId, OrganisationId, TrustEntryId, TrustListPublicationId,
@@ -41,12 +42,13 @@ pub struct TrustEntryWithIdentifier {
     pub identifier_key_id: Option<KeyId>,
 }
 
-pub(crate) fn trust_entry_from_model(
+pub(crate) fn trust_entry_from_model_with_identifier(
     value: TrustEntryWithIdentifier,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     did_repository: &Arc<dyn DidRepository>,
     key_repository: &Arc<dyn KeyRepository>,
     certificate_repository: &Arc<dyn CertificateRepository>,
+    trust_list_publication_repository: &Arc<dyn TrustListPublicationRepository>,
     trust_information_repository: &Arc<dyn IdentifierTrustInformationRepository>,
 ) -> Result<TrustEntry, DataLayerError> {
     Ok(TrustEntry {
@@ -55,10 +57,11 @@ pub(crate) fn trust_entry_from_model(
         last_modified: value.last_modified,
         state: value.state.into(),
         metadata: value.metadata,
-        trust_list_publication_id: value.trust_list_publication_id,
-        identifier_id: value.identifier_id,
-        trust_list_publication: None,
-        identifier: Some(Identifier {
+        trust_list_publication: Related::new(
+            value.trust_list_publication_id,
+            trust_list_publication_repository.clone(),
+        ),
+        identifier: Identifier {
             id: value.identifier_id,
             created_date: value.identifier_created_date,
             last_modified: value.identifier_last_modified,
@@ -83,6 +86,7 @@ pub(crate) fn trust_entry_from_model(
                 value.identifier_id,
                 trust_information_repository,
             ),
-        }),
+        }
+        .into(),
     })
 }

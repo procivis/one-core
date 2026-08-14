@@ -12,7 +12,6 @@ use crate::proto::clock::Clock;
 use crate::proto::xades::XAdESProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
@@ -41,7 +40,6 @@ pub(crate) fn trust_list_publisher_provider_from_config(
     xades_proto: Arc<dyn XAdESProto>,
     trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
     trust_entry_repository: Arc<dyn TrustEntryRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
 ) -> Result<Arc<dyn TrustListPublisherProvider>, ConfigValidationError> {
     let mut publishers: HashMap<TrustListPublisherId, Arc<dyn TrustListPublisher>> = HashMap::new();
@@ -63,7 +61,6 @@ pub(crate) fn trust_list_publisher_provider_from_config(
                     xades_proto: xades_proto.clone(),
                     trust_list_publication_repository: trust_list_publication_repository.clone(),
                     trust_entry_repository: trust_entry_repository.clone(),
-                    identifier_repository: identifier_repository.clone(),
                     organisation_repository: organisation_repository.clone(),
                 }) as _
             }

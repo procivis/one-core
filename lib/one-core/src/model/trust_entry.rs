@@ -3,10 +3,11 @@ use shared_types::{IdentifierId, TrustEntryId, TrustListPublicationId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::identifier::Identifier;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
-use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationRelations};
+use crate::model::relation::Related;
+use crate::model::trust_list_publication::TrustListPublication;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -16,12 +17,10 @@ pub struct TrustEntry {
     pub last_modified: OffsetDateTime,
     pub state: TrustEntryStateEnum,
     pub metadata: Vec<u8>,
-    pub trust_list_publication_id: TrustListPublicationId,
-    pub identifier_id: IdentifierId,
 
     // Relations
-    pub trust_list_publication: Option<TrustListPublication>,
-    pub identifier: Option<Identifier>,
+    pub trust_list_publication: Related<TrustListPublication>,
+    pub identifier: Related<Identifier>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -30,12 +29,6 @@ pub enum TrustEntryStateEnum {
     Active,
     Suspended,
     Removed,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct TrustEntryRelations {
-    pub trust_list_publication: Option<TrustListPublicationRelations>,
-    pub identifier: Option<IdentifierRelations>,
 }
 
 #[derive(Clone, Debug, Default)]
