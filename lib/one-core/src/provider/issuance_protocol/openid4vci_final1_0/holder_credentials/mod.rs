@@ -101,6 +101,11 @@ impl OpenID4VCIFinal1_0 {
             let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
             ))?;
+            let expires_at = if interaction_data.refresh_token.is_some() {
+                None
+            } else {
+                batch_item.credential.expires_at
+            };
             let mut credential = Credential {
                 id: Uuid::new_v4().into(),
                 r#type: CredentialType::BatchParent,
@@ -119,6 +124,7 @@ impl OpenID4VCIFinal1_0 {
                     .await?
                     .to_owned()
                     .into(),
+                expires_at,
                 ..batch_item.credential.clone()
             };
             remap_claim_credential_ids(&mut credential).await?;

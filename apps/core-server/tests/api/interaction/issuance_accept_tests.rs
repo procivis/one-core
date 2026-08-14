@@ -3,12 +3,13 @@ use std::str::FromStr;
 
 use assert2::let_assert;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialFilterValue, CredentialStateEnum, CredentialType};
 use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{IdentifierData, IdentifierType};
 use one_core::model::interaction::InteractionType;
+use one_core::model::list_filter::ListFilterValue;
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -387,6 +388,246 @@ async fn test_issuance_accept_extracts_expires_at_from_issued_credential() {
     )
     .unwrap();
     assert_eq!(returned_expires_at, expires_at);
+}
+
+/// Builds a batch offer (`batch_size: 2`) whose holder-binding proofs are auto-generated
+/// `did:key` identifiers, since only auto-generated bindings can produce more than one
+/// credential per accept call. The mocked issuer dynamically signs one credential per proof
+/// it receives (see `ssi_credential_endpoint_dynamic`), so this exercises the real
+/// `credentials.len() > 1` branch in `holder_process_accepted_credentials` that builds a
+/// `BatchParent`.
+async fn accept_batch_issuance(
+    context: &TestContext,
+    organisation: &one_core::model::organisation::Organisation,
+    credential_schema: &one_core::model::credential_schema::CredentialSchema,
+    issuer_key: &one_core::provider::key_algorithm::model::GeneratedKey,
+    issuer_did: &DidValue,
+) -> serde_json::Value {
+    let mut interaction_data: serde_json::Value = serde_json::from_slice(&dummy_interaction_data(
+        context,
+        credential_schema,
+        InteractionDataParams {
+            batch_size: Some(2),
+            ..Default::default()
+        },
+    ))
+    .unwrap();
+    // only issuers that don't support jwk/cose_key binding force the wallet to auto-generate a
+    // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
+    // (bound via `sub`) need
+    interaction_data["cryptographic_binding_methods_supported"] = json!(["did:key"]);
+    let interaction_data = serde_json::to_vec(&interaction_data).unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint_dynamic(
+            credential_schema.id,
+            "123",
+            issuer_key.to_owned(),
+            issuer_did.to_owned(),
+        )
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 1)
+        .await;
+
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, None, None, None, None)
+        .await;
+    assert_eq!(resp.status(), 200);
+    resp.json_value().await
+}
+
+#[tokio::test]
+async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expires_at() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did: DidValue = format!("did:key:{multibase}").parse().unwrap();
+    context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // `token_endpoint` mock always returns a `refresh_token`, matching an issuer that supports
+    // OAuth refresh for the batch
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let resp = accept_batch_issuance(
+        &context,
+        &organisation,
+        &credential_schema,
+        &issuer_key,
+        &issuer_did,
+    )
+    .await;
+
+    // THEN
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(CredentialType::BatchParent, credential.r#type);
+    // the batch is refreshable via the OAuth refresh token, so the batch_parent's own
+    // `expires_at` (which is not a real per-holder expiration) must not be set
+    assert_eq!(None, credential.expires_at);
+
+    // each individual batch item still carries its own real expiration (parsed from its
+    // signed credential's `exp`), regardless of the parent's refresh-token-governed state
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    assert_eq!(2, batch_items.len());
+    for item in batch_items {
+        assert_eq!(CredentialType::BatchItem, item.r#type);
+        assert!(item.expires_at.is_some());
+    }
+}
+
+#[tokio::test]
+async fn test_issuance_accept_batch_without_refresh_token_keeps_batch_parent_expires_at() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did: DidValue = format!("did:key:{multibase}").parse().unwrap();
+    context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // no `refresh_token` in the token response: the issuer does not support refreshing this
+    // batch, so the batch_parent must fall back to a real per-item expiration
+    context
+        .server_mock
+        .token_endpoint_without_refresh_token(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let before = one_core::clock::now_utc();
+    let resp = accept_batch_issuance(
+        &context,
+        &organisation,
+        &credential_schema,
+        &issuer_key,
+        &issuer_did,
+    )
+    .await;
+    let after = one_core::clock::now_utc();
+
+    // THEN
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(CredentialType::BatchParent, credential.r#type);
+    // `w3c_jwt_vc` always signs the issued credentials with `exp` set to `now + 10 hours`;
+    // the batch_parent should inherit that real value from its first batch item
+    let expires_at = credential.expires_at.unwrap();
+    assert!(expires_at >= before + Duration::hours(10) - Duration::seconds(1));
+    assert!(expires_at <= after + Duration::hours(10));
+
+    // every batch item is individually signed (so their `exp` values can differ by a hair), but
+    // the parent's `expires_at` is a literal copy of one specific item's own real value, not
+    // just something in the same ballpark - confirm it's an exact match, and that every item
+    // still carries its own real expiration regardless of what the parent stores
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    assert_eq!(2, batch_items.len());
+    for item in &batch_items {
+        assert_eq!(CredentialType::BatchItem, item.r#type);
+        assert!(item.expires_at.is_some());
+    }
+    assert!(
+        batch_items
+            .iter()
+            .any(|item| item.expires_at == credential.expires_at)
+    );
 }
 
 #[tokio::test]

@@ -1,12 +1,17 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use one_core::proto::jwt::Jwt;
+use one_core::provider::key_algorithm::model::GeneratedKey;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 use serde_json::json;
+use shared_types::DidValue;
 use wiremock::http::Method;
 use wiremock::matchers::{body_partial_json, body_string_contains, header, method, path};
-use wiremock::{Mock, MockBuilder, ResponseTemplate};
+use wiremock::{Mock, MockBuilder, Request, ResponseTemplate};
+
+use crate::fixtures::presentation::w3c_jwt_vc;
 
 pub struct MockServer {
     mock: wiremock::MockServer,
@@ -68,6 +73,24 @@ impl MockServer {
             .await;
     }
 
+    pub async fn token_endpoint_without_refresh_token(
+        &self,
+        schema_id: impl Display,
+        test_token: impl Serialize,
+    ) {
+        Mock::given(method(Method::POST))
+            .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+                {
+                    "access_token": test_token,
+                    "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
+                    "token_type": "Bearer"
+                }
+            )))
+            .mount(&self.mock)
+            .await;
+    }
+
     pub async fn token_endpoint_tx_code(
         &self,
         schema_id: impl Display,
@@ -112,6 +135,71 @@ impl MockServer {
                 "notification_id": notification_id
             })))
             .expect(expected_calls)
+            .mount(&self.mock)
+            .await;
+    }
+
+    /// Like [`Self::ssi_credential_endpoint`], but for batch requests where the wallet
+    /// auto-generates one holder-binding key per proof: since those keys/DIDs only exist once
+    /// the server creates them, they can't be known up front to pre-sign matching credentials.
+    /// Instead this mock inspects each incoming request's `proofs.jwt`, recovers the holder DID
+    /// each proof was bound to (from its `kid` header), and signs one matching credential per
+    /// proof on the fly, so the response always has as many credentials as proofs were sent.
+    pub async fn ssi_credential_endpoint_dynamic(
+        &self,
+        schema_id: impl Display,
+        bearer_auth: impl Display,
+        issuer_key: GeneratedKey,
+        issuer_did: DidValue,
+    ) {
+        Mock::given(method(Method::POST))
+            .and(path(format!(
+                "/ssi/openid4vci/final-1.0/{schema_id}/credential"
+            )))
+            .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
+            .respond_with(move |request: &Request| {
+                let body: serde_json::Value = request
+                    .body_json()
+                    .expect("credential request body must be JSON");
+                let proofs = body["proofs"]["jwt"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+
+                let credentials: Vec<_> = proofs
+                    .iter()
+                    .map(|proof| {
+                        let proof = proof.as_str().expect("proof must be a JWT string");
+                        let decomposed = Jwt::<serde_json::Value>::decompose_token(proof)
+                            .expect("failed to decompose proof JWT");
+                        let kid = decomposed
+                            .header
+                            .key_id
+                            .expect("proof JWT header must have a kid");
+                        let holder_did: DidValue = kid
+                            .split('#')
+                            .next()
+                            .expect("kid must not be empty")
+                            .parse()
+                            .expect("kid prefix must be a valid DID");
+
+                        let credential = futures::executor::block_on(w3c_jwt_vc(
+                            &issuer_key,
+                            "ES256",
+                            issuer_did.clone(),
+                            holder_did,
+                            json!({"string":"string"}),
+                        ));
+                        json!({"credential": credential})
+                    })
+                    .collect();
+
+                ResponseTemplate::new(200).set_body_json(json!({
+                    "credentials": credentials,
+                    "notification_id": null,
+                }))
+            })
+            .expect(1)
             .mount(&self.mock)
             .await;
     }
