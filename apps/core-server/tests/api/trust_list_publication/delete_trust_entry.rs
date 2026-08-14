@@ -85,8 +85,8 @@ async fn test_fail_to_delete_trust_entry_entry_does_not_belong_to_list() {
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
             identifier.clone(),
-            Some(key.id),
-            Some(certificate.id),
+            Some(key),
+            Some(certificate),
         )
         .await;
 
@@ -128,8 +128,8 @@ async fn test_fail_to_delete_trust_entry_not_found() {
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
             identifier.clone(),
-            Some(key.id),
-            Some(certificate.id),
+            Some(key),
+            Some(certificate),
         )
         .await;
     let non_existent_id = Uuid::new_v4().into();

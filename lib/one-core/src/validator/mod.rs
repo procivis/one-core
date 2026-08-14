@@ -8,7 +8,6 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
@@ -32,16 +31,6 @@ pub(crate) fn throw_if_org_id_not_matching_session(
         return Err(ValidationError::Forbidden.into());
     }
     Ok(())
-}
-
-pub(crate) fn throw_if_org_not_matching_session(
-    organisation: Option<&Organisation>,
-    session_provider: &dyn SessionProvider,
-) -> Result<(), ServiceError> {
-    let organisation = organisation.ok_or(ServiceError::MappingError(
-        "organisation is None".to_string(),
-    ))?;
-    throw_if_org_id_not_matching_session(&organisation.id, session_provider)
 }
 
 /// Whether the specified organisation is allowed to be the parent of the session organisation.

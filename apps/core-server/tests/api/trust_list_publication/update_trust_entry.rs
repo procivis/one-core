@@ -94,8 +94,8 @@ async fn test_fail_to_update_trust_entry_not_found() {
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
             identifier.clone(),
-            Some(key.id),
-            Some(certificate.id),
+            Some(key),
+            Some(certificate),
         )
         .await;
     let non_existent_id = Uuid::new_v4().into();

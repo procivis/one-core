@@ -83,8 +83,8 @@ async fn test_create_trust_entry_certificate_authority() {
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
             identifier.clone(),
-            Some(key.id),
-            Some(certificate.id),
+            Some(key),
+            Some(certificate),
         )
         .await;
 
@@ -123,8 +123,8 @@ async fn test_fail_to_create_trust_entry_organisation_mismatch() {
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             other_organisation.clone(),
             identifier.clone(),
-            Some(key.id),
-            Some(certificate.id),
+            Some(key),
+            Some(certificate),
         )
         .await;
 
@@ -169,8 +169,8 @@ async fn test_fail_to_create_trust_entry_missing_entry_identifier_capabilities()
             serde_json::to_vec(&serde_json::Value::Object(serde_json::Map::new())).unwrap(),
             organisation.clone(),
             identifier.clone(),
-            Some(key.id),
-            Some(certificate.id),
+            Some(key),
+            Some(certificate),
         )
         .await;
 

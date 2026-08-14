@@ -1,7 +1,14 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::Related;
 use one_core::model::trust_list_publication::{
     SortableTrustListPublicationColumn, TrustListPublication, TrustListPublicationFilterValue,
 };
+use one_core::repository::certificate_repository::CertificateRepository;
+use one_core::repository::identifier_repository::IdentifierRepository;
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
@@ -13,28 +20,32 @@ use crate::list_query_generic::{
     get_string_match_condition,
 };
 
-impl From<trust_list_publication::Model> for TrustListPublication {
-    fn from(value: trust_list_publication::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            role: value.role.into(),
-            r#type: value.r#type,
-            metadata: value.metadata,
-            deleted_at: value.deleted_at,
-            content: value.content,
-            sequence_number: value.sequence_number as u32,
-            organisation_id: value.organisation_id,
-            identifier_id: value.identifier_id,
-            key_id: value.key_id,
-            certificate_id: value.certificate_id,
-            organisation: None,
-            identifier: None,
-            key: None,
-            certificate: None,
-        }
+pub(crate) fn trust_list_publication_from_model(
+    value: trust_list_publication::Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+    identifier_repository: &Arc<dyn IdentifierRepository>,
+    key_repository: &Arc<dyn KeyRepository>,
+    certificate_repository: &Arc<dyn CertificateRepository>,
+) -> TrustListPublication {
+    TrustListPublication {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        role: value.role.into(),
+        r#type: value.r#type,
+        metadata: value.metadata,
+        deleted_at: value.deleted_at,
+        content: value.content,
+        sequence_number: value.sequence_number as u32,
+        organisation: Related::new(value.organisation_id, organisation_repository.clone()),
+        identifier: Related::new(value.identifier_id, identifier_repository.clone()),
+        key: value
+            .key_id
+            .map(|key_id| Related::new(key_id, key_repository.clone())),
+        certificate: value
+            .certificate_id
+            .map(|certificate_id| Related::new(certificate_id, certificate_repository.clone())),
     }
 }
 
@@ -51,10 +62,10 @@ impl From<TrustListPublication> for trust_list_publication::ActiveModel {
             deleted_at: Set(value.deleted_at),
             content: Set(value.content),
             sequence_number: Set(value.sequence_number as i32),
-            organisation_id: Set(value.organisation_id),
-            identifier_id: Set(value.identifier_id),
-            key_id: Set(value.key_id),
-            certificate_id: Set(value.certificate_id),
+            organisation_id: Set(value.organisation.id()),
+            identifier_id: Set(value.identifier.id()),
+            key_id: Set(value.key.map(|key| key.id())),
+            certificate_id: Set(value.certificate.map(|certificate| certificate.id())),
         }
     }
 }

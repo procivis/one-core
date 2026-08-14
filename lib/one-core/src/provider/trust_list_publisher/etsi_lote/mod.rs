@@ -20,16 +20,15 @@ use time::OffsetDateTime;
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::model::certificate::CertificateRelations;
-use crate::model::identifier::{Identifier, IdentifierData, IdentifierRelations};
-use crate::model::key::KeyRelations;
+use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::list_filter::ListFilterValue;
+use crate::model::relation::Related;
 use crate::model::trust_entry::{
     TrustEntry, TrustEntryFilterValue, TrustEntryListQuery, TrustEntryStateEnum,
     UpdateTrustEntryRequest,
 };
 use crate::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations, UpdateTrustListPublicationRequest,
+    TrustListPublication, UpdateTrustListPublicationRequest,
 };
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
@@ -42,6 +41,7 @@ use crate::provider::trust_list_publisher::{
     CreateTrustListRequest, TrustListContent, TrustListPublisher, TrustListPublisherCapabilities,
 };
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
@@ -56,6 +56,7 @@ pub(crate) struct EtsiLotePublisher {
     pub trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
     pub trust_entry_repository: Arc<dyn TrustEntryRepository>,
     pub identifier_repository: Arc<dyn IdentifierRepository>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 #[serde_with::serde_as]
@@ -131,6 +132,7 @@ impl TrustListPublisher for EtsiLotePublisher {
         };
 
         let publication_id = TrustListPublicationId::from(uuid::Uuid::new_v4());
+
         let publication = TrustListPublication {
             id: publication_id,
             created_date: self.clock.now_utc(),
@@ -142,14 +144,13 @@ impl TrustListPublisher for EtsiLotePublisher {
             deleted_at: None,
             content: Vec::new(),
             sequence_number: 0,
-            organisation_id: request.organisation_id,
-            identifier_id: request.identifier.id,
-            key_id: Some(key.id),
-            certificate_id: Some(certificate.id),
-            organisation: None,
-            identifier: None,
-            key: None,
-            certificate: None,
+            organisation: Related::new(
+                request.organisation_id,
+                self.organisation_repository.clone(),
+            ),
+            identifier: request.identifier.into(),
+            key: Some(key.as_ref().to_owned().into()),
+            certificate: Some(certificate.as_ref().to_owned().into()),
         };
 
         self.trust_list_publication_repository
@@ -270,18 +271,30 @@ impl EtsiLotePublisher {
         )
         .await?;
 
-        let key = publication.key.as_ref().ok_or_else(|| {
-            TrustListPublisherError::MissingRelation("publication missing key".to_string())
-        })?;
+        let key = publication
+            .key
+            .as_ref()
+            .ok_or_else(|| {
+                TrustListPublisherError::MissingRelation("publication missing key".to_string())
+            })?
+            .as_ref()
+            .await?;
 
-        let certificate = publication.certificate.as_ref().ok_or_else(|| {
-            TrustListPublisherError::MissingRelation("publication missing certificate".to_string())
-        })?;
+        let certificate = publication
+            .certificate
+            .as_ref()
+            .ok_or_else(|| {
+                TrustListPublisherError::MissingRelation(
+                    "publication missing certificate".to_string(),
+                )
+            })?
+            .as_ref()
+            .await?;
 
         let x5c = pem_chain_into_x5c(&certificate.chain)?;
 
         let signer = self.key_provider.get_signature_provider(
-            key,
+            &key,
             None,
             self.key_algorithm_provider.clone(),
         )?;
@@ -309,29 +322,13 @@ impl EtsiLotePublisher {
         &self,
         publication_id: TrustListPublicationId,
     ) -> Result<Vec<u8>, TrustListPublisherError> {
-        let relations = TrustListPublicationRelations {
-            key: Some(KeyRelations::default()),
-            certificate: Some(CertificateRelations::default()),
-            identifier: Some(IdentifierRelations::default()),
-            ..Default::default()
-        };
-
         let publication = self
             .trust_list_publication_repository
-            .get(publication_id, &relations)
+            .get(publication_id)
             .await
             .error_while("fetching trust list publication")?;
 
-        let identifier_name = publication
-            .identifier
-            .as_ref()
-            .ok_or_else(|| {
-                TrustListPublisherError::MissingRelation(
-                    "publication missing identifier".to_string(),
-                )
-            })?
-            .name
-            .clone();
+        let identifier_name = publication.identifier.as_ref().await?.name.clone();
 
         let entry_list = self
             .trust_entry_repository

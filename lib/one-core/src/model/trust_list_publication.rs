@@ -1,21 +1,21 @@
-use shared_types::{
-    CertificateId, IdentifierId, KeyId, OrganisationId, TrustListPublicationId,
-    TrustListPublisherId,
-};
+use proc_macros::Model;
+use shared_types::{OrganisationId, TrustListPublicationId, TrustListPublisherId};
 use time::OffsetDateTime;
 
-use crate::model::certificate::{Certificate, CertificateRelations};
+use crate::model::certificate::Certificate;
 use crate::model::common::GetListResponse;
-use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::key::{Key, KeyRelations};
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::model::trust_list_role::TrustListRoleEnum;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustListPublication {
+    #[model(id)]
     pub id: TrustListPublicationId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -27,25 +27,15 @@ pub struct TrustListPublication {
     pub content: Vec<u8>,
     pub sequence_number: u32,
 
-    pub organisation_id: OrganisationId,
-    pub identifier_id: IdentifierId,
-    pub key_id: Option<KeyId>,
-    pub certificate_id: Option<CertificateId>,
-
     // Relations
-    pub organisation: Option<Organisation>,
-    pub identifier: Option<Identifier>,
-    pub key: Option<Key>,
-    pub certificate: Option<Certificate>,
+    pub organisation: Related<Organisation>,
+    pub identifier: Related<Identifier>,
+    pub key: Option<Related<Key>>,
+    pub certificate: Option<Related<Certificate>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct TrustListPublicationRelations {
-    pub organisation: Option<OrganisationRelations>,
-    pub identifier: Option<IdentifierRelations>,
-    pub key: Option<KeyRelations>,
-    pub certificate: Option<CertificateRelations>,
-}
+pub struct TrustListPublicationRelations {}
 
 #[derive(Clone, Debug, Default)]
 pub struct UpdateTrustListPublicationRequest {

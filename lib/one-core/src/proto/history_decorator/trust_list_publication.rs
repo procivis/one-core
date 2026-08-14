@@ -4,10 +4,9 @@ use shared_types::{OrganisationId, TrustListPublicationId};
 use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_list_publication::{
     GetTrustListPublicationList, TrustListPublication, TrustListPublicationListQuery,
-    TrustListPublicationRelations, UpdateTrustListPublicationRequest,
+    UpdateTrustListPublicationRequest,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -32,7 +31,7 @@ impl TrustListPublicationRepository for TrustListPublicationHistoryDecorator {
             trust_list_publication_id,
             entity.name,
             HistoryAction::Created,
-            entity.organisation_id,
+            entity.organisation.id(),
         )
         .await;
 
@@ -44,7 +43,7 @@ impl TrustListPublicationRepository for TrustListPublicationHistoryDecorator {
         id: TrustListPublicationId,
         request: UpdateTrustListPublicationRequest,
     ) -> Result<(), DataLayerError> {
-        let old_publication = self.get_trust_list_publication_by_id(id).await?;
+        let old_publication = self.inner.get(id).await?;
 
         let updated = request.content.is_some() || request.sequence_number.is_some();
 
@@ -57,7 +56,7 @@ impl TrustListPublicationRepository for TrustListPublicationHistoryDecorator {
                 id,
                 old_publication.name.to_owned(),
                 HistoryAction::Updated,
-                old_publication.organisation_id,
+                old_publication.organisation.id(),
             )
             .await;
         }
@@ -73,13 +72,13 @@ impl TrustListPublicationRepository for TrustListPublicationHistoryDecorator {
     }
 
     async fn delete(&self, id: TrustListPublicationId) -> Result<(), DataLayerError> {
-        let trust_list_publication = self.get_trust_list_publication_by_id(id).await?;
+        let trust_list_publication = self.inner.get(id).await?;
         self.inner.delete(id).await?;
         self.write_history(
             id,
             trust_list_publication.name,
             HistoryAction::Deleted,
-            trust_list_publication.organisation_id,
+            trust_list_publication.organisation.id(),
         )
         .await;
         Ok(())
@@ -88,28 +87,12 @@ impl TrustListPublicationRepository for TrustListPublicationHistoryDecorator {
     async fn get(
         &self,
         id: TrustListPublicationId,
-        relations: &TrustListPublicationRelations,
     ) -> Result<TrustListPublication, DataLayerError> {
-        self.inner.get(id, relations).await
+        self.inner.get(id).await
     }
 }
 
 impl TrustListPublicationHistoryDecorator {
-    async fn get_trust_list_publication_by_id(
-        &self,
-        id: TrustListPublicationId,
-    ) -> Result<TrustListPublication, DataLayerError> {
-        self.inner
-            .get(
-                id,
-                &TrustListPublicationRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-    }
-
     async fn write_history(
         &self,
         id: TrustListPublicationId,

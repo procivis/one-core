@@ -1,4 +1,4 @@
-use one_dto_mapper::{From, Into, TryFrom};
+use one_dto_mapper::{Into, TryFrom};
 use shared_types::{
     CertificateId, IdentifierId, KeyId, OrganisationId, TrustEntryId, TrustListPublicationId,
     TrustListPublisherId,
@@ -8,7 +8,6 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::identifier::Identifier;
 use crate::model::trust_entry::{TrustEntry, TrustEntryStateEnum};
-use crate::model::trust_list_publication::TrustListPublication;
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::provider::trust_list_publisher::etsi_lote::LoteContentType;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
@@ -45,37 +44,23 @@ pub struct UpdateTrustEntryRequestDTO {
     pub params: Option<serde_json::Value>,
 }
 
-#[derive(Debug, TryFrom)]
-#[try_from(T = TrustListPublication, Error = TrustListPublicationServiceError)]
+#[derive(Debug)]
 pub struct GetTrustListPublicationResponseDTO {
-    #[try_from(infallible)]
     pub id: TrustListPublicationId,
-    #[try_from(infallible)]
     pub created_date: OffsetDateTime,
-    #[try_from(infallible)]
     pub last_modified: OffsetDateTime,
-    #[try_from(infallible)]
     pub deleted_at: Option<OffsetDateTime>,
-    #[try_from(infallible)]
     pub name: String,
-    #[try_from(with_fn = "map_identifier")]
     pub identifier: GetIdentifierListItemResponseDTO,
-    #[try_from(infallible)]
     pub r#type: TrustListPublisherId,
-    #[try_from(infallible)]
     pub role: TrustListRoleEnum,
-    #[try_from(infallible)]
     pub content: Option<Vec<u8>>,
-    #[try_from(infallible)]
     pub sequence_number: u32,
-    #[try_from(infallible)]
     pub metadata: Vec<u8>,
-    #[try_from(infallible)]
     pub organisation_id: OrganisationId,
 }
 
-#[derive(Debug, Clone, From)]
-#[from(TrustListPublication)]
+#[derive(Debug, Clone)]
 pub struct TrustListPublicationListItemResponseDTO {
     pub id: TrustListPublicationId,
     pub name: String,

@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
+use one_core::model::certificate::Certificate;
 use one_core::model::identifier::Identifier;
+use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::model::trust_list_publication::{
-    TrustListPublication, TrustListPublicationRelations,
-};
+use one_core::model::trust_list_publication::TrustListPublication;
 use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
-use shared_types::{CertificateId, KeyId, TrustListPublicationId, TrustListPublisherId};
+use one_dto_mapper::convert_inner;
+use shared_types::{TrustListPublicationId, TrustListPublisherId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -30,8 +31,8 @@ impl TrustListPublicationDB {
         metadata: Vec<u8>,
         organisation: Organisation,
         identifier: Identifier,
-        key_id: Option<KeyId>,
-        certificate_id: Option<CertificateId>,
+        key: Option<Key>,
+        certificate: Option<Certificate>,
     ) -> TrustListPublication {
         let trust_list_publication = TrustListPublication {
             id: TrustListPublicationId::from(Uuid::new_v4()),
@@ -44,14 +45,10 @@ impl TrustListPublicationDB {
             deleted_at: None,
             content: Vec::new(),
             sequence_number: 0,
-            organisation_id: organisation.id,
-            identifier_id: identifier.id,
-            key_id,
-            certificate_id,
-            organisation: Some(organisation),
-            identifier: Some(identifier),
-            key: None,
-            certificate: None,
+            organisation: organisation.into(),
+            identifier: identifier.into(),
+            key: convert_inner(key),
+            certificate: convert_inner(certificate),
         };
 
         self.repository
@@ -63,19 +60,7 @@ impl TrustListPublicationDB {
     }
 
     pub async fn get(&self, id: TrustListPublicationId) -> Option<TrustListPublication> {
-        match self
-            .repository
-            .get(
-                id,
-                &TrustListPublicationRelations {
-                    organisation: Some(Default::default()),
-                    identifier: Some(Default::default()),
-                    key: Some(Default::default()),
-                    certificate: Some(Default::default()),
-                },
-            )
-            .await
-        {
+        match self.repository.get(id).await {
             Ok(publication) => Some(publication),
             Err(DataLayerError::EntityNotFound { .. }) => None,
             Err(err) => panic!("get trust list publication: {err}"),

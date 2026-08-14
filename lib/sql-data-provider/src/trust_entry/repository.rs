@@ -48,10 +48,10 @@ impl TrustEntryRepository for TrustEntryProvider {
 
         let mut result = TrustEntry::from(entity_model);
 
-        if let Some(publication_relations) = &relations.trust_list_publication {
+        if let Some(_publication_relations) = &relations.trust_list_publication {
             result.trust_list_publication = Some(
                 self.trust_list_publication_repository
-                    .get(trust_list_publication_id, publication_relations)
+                    .get(trust_list_publication_id)
                     .await?,
             );
         }

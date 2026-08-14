@@ -8,11 +8,10 @@ use tracing::info;
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{list_response_into, list_response_try_into};
-use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::organisation::OrganisationRelations;
+use crate::model::identifier::Identifier;
 use crate::model::trust_entry::{SortableTrustEntryColumn, TrustEntry, TrustEntryRelations};
 use crate::model::trust_list_publication::{
-    SortableTrustListPublicationColumn, TrustListPublication, TrustListPublicationRelations,
+    SortableTrustListPublicationColumn, TrustListPublication,
 };
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::provider::trust_list_publisher::etsi_lote::LoteContentType;
@@ -29,7 +28,7 @@ use crate::service::trust_list_publication::dto::{
 };
 use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
-use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl TrustListPublicationService {
     pub async fn create_trust_list_publication(
@@ -79,8 +78,8 @@ impl TrustListPublicationService {
         id: TrustListPublicationId,
     ) -> Result<(), TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
-        throw_if_org_not_matching_session(
-            trust_list.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            trust_list.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -103,7 +102,7 @@ impl TrustListPublicationService {
     ) -> Result<TrustEntryId, TrustListPublicationServiceError> {
         let trust_list_publication = self.fetch_trust_list_publication(list_id).await?;
         throw_if_org_id_not_matching_session(
-            &trust_list_publication.organisation_id,
+            trust_list_publication.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -116,7 +115,7 @@ impl TrustListPublicationService {
             &identifier,
             trust_list_publisher.get_capabilities(),
         )?;
-        validate_organisation_matches(&identifier, trust_list_publication.organisation_id)?;
+        validate_organisation_matches(&identifier, trust_list_publication.organisation.id())?;
 
         let trust_entry_id = trust_list_publisher
             .add_entry(&trust_list_publication, &identifier, request.params)
@@ -144,7 +143,7 @@ impl TrustListPublicationService {
 
         let trust_list_publication = trust_entry.trust_list_publication()?;
         throw_if_org_id_not_matching_session(
-            &trust_list_publication.organisation_id,
+            trust_list_publication.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -176,8 +175,8 @@ impl TrustListPublicationService {
         validate_trust_entry_belongs_to_list(&trust_entry, list_id)?;
 
         let trust_list_publication = trust_entry.trust_list_publication()?;
-        throw_if_org_not_matching_session(
-            trust_list_publication.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            trust_list_publication.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -205,12 +204,12 @@ impl TrustListPublicationService {
         id: TrustListPublicationId,
     ) -> Result<GetTrustListPublicationResponseDTO, TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
-        throw_if_org_not_matching_session(
-            trust_list.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            trust_list.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
-        trust_list.try_into()
+        GetTrustListPublicationResponseDTO::try_from(trust_list).await
     }
 
     pub async fn get_trust_list_publication_content(
@@ -219,8 +218,8 @@ impl TrustListPublicationService {
         content_type: Option<TrustListContentTypeDTO>,
     ) -> Result<TrustListContent, TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
-        throw_if_org_not_matching_session(
-            trust_list.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            trust_list.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -268,7 +267,7 @@ impl TrustListPublicationService {
             .fetch_trust_list_publication(trust_list_publication_id)
             .await?;
         throw_if_org_id_not_matching_session(
-            &trust_list_publication.organisation_id,
+            trust_list_publication.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -286,14 +285,7 @@ impl TrustListPublicationService {
         list_id: TrustListPublicationId,
     ) -> Result<TrustListPublication, TrustListPublicationServiceError> {
         self.trust_list_publication_repository
-            .get(
-                list_id,
-                &TrustListPublicationRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    identifier: Some(IdentifierRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get(list_id)
             .await
             .error_while("fetching trust list publication")
             .map_err(Into::into)
@@ -307,10 +299,7 @@ impl TrustListPublicationService {
             .get(
                 entry_id,
                 &TrustEntryRelations {
-                    trust_list_publication: Some(TrustListPublicationRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    trust_list_publication: Some(Default::default()),
                     ..Default::default()
                 },
             )

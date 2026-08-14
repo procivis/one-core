@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use shared_types::TrustListPublicationId;
 
+use crate::model::relation::AsyncModelLoader;
 use crate::model::trust_list_publication::{
     GetTrustListPublicationList, TrustListPublication, TrustListPublicationListQuery,
-    TrustListPublicationRelations, UpdateTrustListPublicationRequest,
+    UpdateTrustListPublicationRequest,
 };
 use crate::repository::error::DataLayerError;
 
@@ -14,11 +17,8 @@ pub trait TrustListPublicationRepository: Send + Sync {
         entity: TrustListPublication,
     ) -> Result<TrustListPublicationId, DataLayerError>;
 
-    async fn get(
-        &self,
-        id: TrustListPublicationId,
-        relations: &TrustListPublicationRelations,
-    ) -> Result<TrustListPublication, DataLayerError>;
+    async fn get(&self, id: TrustListPublicationId)
+    -> Result<TrustListPublication, DataLayerError>;
 
     async fn list(
         &self,
@@ -32,4 +32,14 @@ pub trait TrustListPublicationRepository: Send + Sync {
     ) -> Result<(), DataLayerError>;
 
     async fn delete(&self, id: TrustListPublicationId) -> Result<(), DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<TrustListPublication> for Arc<dyn TrustListPublicationRepository> {
+    async fn load(
+        &self,
+        id: &TrustListPublicationId,
+    ) -> Result<TrustListPublication, DataLayerError> {
+        self.get(*id).await
+    }
 }

@@ -19,6 +19,7 @@ use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
+use one_core::service::test_utilities::dummy_identifier;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -560,7 +561,7 @@ async fn test_get_trust_entry_with_publication_relation() {
     .unwrap();
 
     let mut mock_pub_repo = MockTrustListPublicationRepository::default();
-    mock_pub_repo.expect_get().returning(move |id, _relations| {
+    mock_pub_repo.expect_get().returning(move |id| {
         Ok(TrustListPublication {
             id,
             created_date: get_dummy_date(),
@@ -572,12 +573,8 @@ async fn test_get_trust_entry_with_publication_relation() {
             deleted_at: None,
             content: Vec::new(),
             sequence_number: 0,
-            organisation_id: org_id,
-            identifier_id,
-            key_id: None,
-            certificate_id: None,
-            organisation: None,
-            identifier: None,
+            organisation: dummy_organisation(Some(org_id)).into(),
+            identifier: dummy_identifier().into(),
             key: None,
             certificate: None,
         })

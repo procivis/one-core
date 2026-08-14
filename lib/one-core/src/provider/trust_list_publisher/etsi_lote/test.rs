@@ -27,6 +27,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::repository::error::{DataLayerError, EntityKind};
 use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_entry_repository::MockTrustEntryRepository;
 use crate::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_key, dummy_organisation};
@@ -71,12 +72,8 @@ fn dummy_publication(role: TrustListRoleEnum, metadata: Vec<u8>) -> TrustListPub
         deleted_at: None,
         content: Vec::new(),
         sequence_number: 42,
-        organisation_id: Uuid::new_v4().into(),
-        identifier_id: Uuid::new_v4().into(),
-        key_id: None,
-        certificate_id: None,
-        organisation: None,
-        identifier: None,
+        organisation: dummy_organisation(None).into(),
+        identifier: dummy_identifier().into(),
         key: None,
         certificate: None,
     }
@@ -181,17 +178,18 @@ fn mock_publication_repo(
 
     let store = publications.clone();
     let store_for_update = publications;
-    repo.expect_get().returning(move |_id, _relations| {
+    repo.expect_get().returning(move |_id| {
         let mut publication = store.lock().unwrap().clone().unwrap();
-        publication.key = Some(key.clone());
-        publication.certificate = Some(certificate.clone());
-        publication.organisation = Some(dummy_organisation(Some(publication.organisation_id)));
-        publication.identifier = Some(Identifier {
-            id: publication.identifier_id,
+        publication.key = Some(key.clone().into());
+        publication.certificate = Some(certificate.clone().into());
+        publication.organisation = dummy_organisation(Some(publication.organisation.id())).into();
+        publication.identifier = Identifier {
+            id: publication.identifier.id(),
             name: "Test Entity".into(),
             data: IdentifierData::Certificate(RelatedVec::from(vec![certificate.clone()])),
             ..dummy_identifier()
-        });
+        }
+        .into();
         Ok(publication)
     });
 
@@ -318,6 +316,7 @@ fn make_publisher(
         trust_list_publication_repository: Arc::new(pub_repo),
         trust_entry_repository: Arc::new(entry_repo),
         identifier_repository: Arc::new(identifier_repo),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
     }
 }
 
@@ -449,8 +448,8 @@ async fn test_format_trust_list_empty_list() {
 
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
     let publication = TrustListPublication {
-        key: Some(key),
-        certificate: Some(certificate),
+        key: Some(key.into()),
+        certificate: Some(certificate.into()),
         ..dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata)
     };
 
@@ -478,8 +477,8 @@ async fn test_format_trust_list_with_entry() {
 
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
     let mut publication = TrustListPublication {
-        key: Some(key),
-        certificate: Some(certificate),
+        key: Some(key.into()),
+        certificate: Some(certificate.into()),
         ..dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata)
     };
     publication.sequence_number = 2;
@@ -713,16 +712,15 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
     let key_for_get = key;
     let cert_for_get = signing_cert;
     let ident_clone = identifier.clone();
-    pub_repo.expect_get().returning(move |id, _relations| {
+    pub_repo.expect_get().returning(move |id| {
         Ok(TrustListPublication {
             id,
             metadata: serde_json::to_vec(&sample_list_params()).unwrap(),
             role: TrustListRoleEnum::PidProvider,
-            organisation_id: org_id,
-            key: Some(key_for_get.clone()),
-            certificate: Some(cert_for_get.clone()),
-            organisation: Some(dummy_organisation(Some(org_id))),
-            identifier: Some(ident_clone.clone()),
+            organisation: dummy_organisation(Some(org_id)).into(),
+            key: Some(key_for_get.clone().into()),
+            certificate: Some(cert_for_get.clone().into()),
+            identifier: ident_clone.clone().into(),
             ..dummy_publication(TrustListRoleEnum::PidProvider, vec![])
         })
     });
@@ -1101,8 +1099,8 @@ async fn test_format_trust_list_xml_empty_list() {
 
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
     let publication = TrustListPublication {
-        key: Some(key),
-        certificate: Some(certificate),
+        key: Some(key.into()),
+        certificate: Some(certificate.into()),
         ..dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata)
     };
 
@@ -1128,6 +1126,7 @@ async fn test_format_trust_list_xml_empty_list() {
         trust_list_publication_repository: Arc::new(MockTrustListPublicationRepository::new()),
         trust_entry_repository: Arc::new(MockTrustEntryRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        organisation_repository: Arc::new(MockOrganisationRepository::new()),
     };
 
     let xml = publisher
@@ -1149,8 +1148,8 @@ async fn test_format_trust_list_xml_with_entry() {
 
     let pub_metadata = serde_json::to_vec(&sample_list_params()).unwrap();
     let publication = TrustListPublication {
-        key: Some(key),
-        certificate: Some(certificate),
+        key: Some(key.into()),
+        certificate: Some(certificate.into()),
         ..dummy_publication(TrustListRoleEnum::PidProvider, pub_metadata)
     };
 
@@ -1186,6 +1185,7 @@ async fn test_format_trust_list_xml_with_entry() {
         trust_list_publication_repository: Arc::new(MockTrustListPublicationRepository::new()),
         trust_entry_repository: Arc::new(MockTrustEntryRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        organisation_repository: Arc::new(MockOrganisationRepository::new()),
     };
 
     let xml = publisher

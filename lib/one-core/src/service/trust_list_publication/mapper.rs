@@ -1,11 +1,14 @@
-use super::dto::{TrustEntryFilterParamsDTO, TrustListPublicationFilterParamsDTO};
+use super::dto::{
+    ExactTrustListFilterColumn, GetTrustListPublicationResponseDTO, TrustEntryFilterParamsDTO,
+    TrustListPublicationFilterParamsDTO, TrustListPublicationListItemResponseDTO,
+};
+use super::error::TrustListPublicationServiceError;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
 use crate::model::trust_entry::TrustEntryFilterValue;
-use crate::model::trust_list_publication::TrustListPublicationFilterValue;
-use crate::service::trust_list_publication::dto::ExactTrustListFilterColumn;
+use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationFilterValue};
 
 impl From<TrustListPublicationFilterParamsDTO>
     for ListFilterCondition<TrustListPublicationFilterValue>
@@ -115,5 +118,41 @@ impl From<TrustEntryFilterParamsDTO> for ListFilterCondition<TrustEntryFilterVal
             & created_date_before
             & last_modified_after
             & last_modified_before
+    }
+}
+
+impl GetTrustListPublicationResponseDTO {
+    pub(super) async fn try_from(
+        value: TrustListPublication,
+    ) -> Result<Self, TrustListPublicationServiceError> {
+        Ok(Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            deleted_at: value.deleted_at,
+            name: value.name,
+            identifier: value.identifier.as_ref().await?.to_owned().into(),
+            r#type: value.r#type,
+            role: value.role,
+            content: Some(value.content),
+            sequence_number: value.sequence_number,
+            metadata: value.metadata,
+            organisation_id: value.organisation.id(),
+        })
+    }
+}
+
+impl From<TrustListPublication> for TrustListPublicationListItemResponseDTO {
+    fn from(value: TrustListPublication) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            organisation_id: value.organisation.id(),
+            r#type: value.r#type,
+            role: value.role,
+            deleted_at: value.deleted_at,
+        }
     }
 }

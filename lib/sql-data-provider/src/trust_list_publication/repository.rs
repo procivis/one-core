@@ -2,7 +2,7 @@ use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::trust_list_publication::{
     GetTrustListPublicationList, TrustListPublication, TrustListPublicationListQuery,
-    TrustListPublicationRelations, UpdateTrustListPublicationRequest,
+    UpdateTrustListPublicationRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
@@ -12,7 +12,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter
 use shared_types::TrustListPublicationId;
 
 use super::TrustListPublicationProvider;
-use crate::common::list_query_with_base_model;
+use super::mapper::trust_list_publication_from_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::{trust_entry, trust_list_publication};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -33,7 +34,6 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
     async fn get(
         &self,
         id: TrustListPublicationId,
-        relations: &TrustListPublicationRelations,
     ) -> Result<TrustListPublication, DataLayerError> {
         let entity_model = trust_list_publication::Entity::find_by_id(id)
             .filter(trust_list_publication::Column::DeletedAt.is_null())
@@ -45,38 +45,13 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
                 id: id.into(),
             })?;
 
-        let organisation_id = entity_model.organisation_id;
-        let identifier_id = entity_model.identifier_id;
-        let key_id = entity_model.key_id;
-        let certificate_id = entity_model.certificate_id;
-
-        let mut result = TrustListPublication::from(entity_model);
-
-        if let Some(_organisation_relations) = &relations.organisation {
-            result.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(&organisation_id)
-                    .await?,
-            );
-        }
-
-        if relations.identifier.is_some() {
-            result.identifier = Some(self.identifier_repository.get(identifier_id).await?);
-        }
-
-        if let Some(key_id) = key_id
-            && let Some(_key_relations) = &relations.key
-        {
-            result.key = Some(self.key_repository.get_key(&key_id).await?);
-        }
-
-        if let Some(certificate_id) = certificate_id
-            && let Some(_certificate_relations) = &relations.certificate
-        {
-            result.certificate = Some(self.certificate_repository.get(certificate_id).await?);
-        }
-
-        Ok(result)
+        Ok(trust_list_publication_from_model(
+            entity_model,
+            &self.organisation_repository,
+            &self.identifier_repository,
+            &self.key_repository,
+            &self.certificate_repository,
+        ))
     }
 
     async fn list(
@@ -89,7 +64,16 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
             .order_by_desc(trust_list_publication::Column::CreatedDate)
             .order_by_desc(trust_list_publication::Column::Id);
 
-        list_query_with_base_model(db_query, query, &self.db).await
+        list_query_with_custom_model(db_query, query, &self.db, |model| {
+            Ok(trust_list_publication_from_model(
+                model,
+                &self.organisation_repository,
+                &self.identifier_repository,
+                &self.key_repository,
+                &self.certificate_repository,
+            ))
+        })
+        .await
     }
 
     async fn update(

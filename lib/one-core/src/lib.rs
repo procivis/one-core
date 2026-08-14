@@ -395,6 +395,7 @@ impl OneCore {
             data_provider.get_trust_list_publication_repository(),
             data_provider.get_trust_entry_repository(),
             data_provider.get_identifier_repository(),
+            data_provider.get_organisation_repository(),
         )?;
 
         let trust_list_subscriber_provider = trust_list_subscriber_provider_from_config(
