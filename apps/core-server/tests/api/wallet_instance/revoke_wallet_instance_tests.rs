@@ -40,16 +40,13 @@ async fn test_revoke_wallet_instance_success() {
     context
         .db
         .organisations
-        .update(UpdateOrganisationRequest {
-            id: org.id,
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: Some(Some(identifier.id)),
-            parent_organisation: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: None,
-        })
+        .update(
+            &org.id,
+            UpdateOrganisationRequest {
+                wallet_provider_issuer: Some(Some(identifier.id)),
+                ..Default::default()
+            },
+        )
         .await;
 
     let wallet_unit_id = Uuid::new_v4().into();

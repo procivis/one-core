@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::proto::clock::Clock;
 use crate::proto::session_provider::SessionProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -21,7 +21,7 @@ pub struct TrustCollectionService {
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
     session_provider: Arc<dyn SessionProvider>,
-    clock: Arc<dyn Clock>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
 impl TrustCollectionService {
@@ -31,7 +31,7 @@ impl TrustCollectionService {
         trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
         trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
         session_provider: Arc<dyn SessionProvider>,
-        clock: Arc<dyn Clock>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
             organisation_repository,
@@ -39,7 +39,7 @@ impl TrustCollectionService {
             trust_list_subscription_repository,
             trust_list_subscriber_provider,
             session_provider,
-            clock,
+            ecosystem_provider,
         }
     }
 }

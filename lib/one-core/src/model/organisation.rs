@@ -31,9 +31,8 @@ pub struct OrganisationConfiguration {
     pub enforce_ecosystem_as_verifier: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateOrganisationRequest {
-    pub id: OrganisationId,
     pub deactivate: Option<bool>,
     pub wallet_provider: Option<Option<String>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,

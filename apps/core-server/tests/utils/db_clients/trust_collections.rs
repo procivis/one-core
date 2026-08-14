@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_collection::{TrustCollection, TrustCollectionRelations};
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
-use shared_types::TrustCollectionId;
+use shared_types::{EcosystemId, TrustCollectionId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use url::Url;
@@ -19,6 +19,7 @@ pub struct TestTrustCollectionParams {
     pub name: Option<String>,
     pub deactivated_at: Option<OffsetDateTime>,
     pub remote_trust_collection_url: Option<Url>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 impl TrustCollectionDB {
@@ -32,7 +33,7 @@ impl TrustCollectionDB {
         params: TestTrustCollectionParams,
     ) -> TrustCollection {
         let trust_collection = TrustCollection {
-            ecosystem: "EUDI".into(),
+            ecosystem: params.ecosystem.unwrap_or("EUDI".into()),
             id: params.id.unwrap_or(Uuid::new_v4().into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

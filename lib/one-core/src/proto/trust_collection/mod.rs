@@ -8,11 +8,12 @@ pub(crate) mod manager;
 #[cfg(test)]
 mod test;
 
-pub(crate) const EUDI_ECOSYSTEM: &str = "EUDI";
+/// TODO (ONE-9981): temporary constant for backwards compatability, to be removed
+pub const EUDI_ECOSYSTEM: &str = "EUDI";
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait TrustCollectionManager: Send + Sync {
+pub(crate) trait TrustCollectionManager: Send + Sync {
     async fn create_empty_trust_collections(
         &self,
         provider_metadata_url: &str,

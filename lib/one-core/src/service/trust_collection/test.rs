@@ -9,13 +9,15 @@ use uuid::Uuid;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
 use crate::model::identifier::IdentifierType;
+use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::trust_collection::{TrustCollection, TrustCollectionRelations};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionRelations, TrustListSubscriptionState,
 };
-use crate::proto::clock::MockClock;
 use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::provider::ecosystem::MockEcosystem;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
 use crate::provider::trust_list_subscriber::{
     Feature, MockTrustListSubscriber, TrustListSubscriberCapabilities, TrustListValidationSuccess,
@@ -40,7 +42,7 @@ struct Mocks {
     trust_list_subscription_repository: MockTrustListSubscriptionRepository,
     trust_list_subscriber_provider: MockTrustListSubscriberProvider,
     session_provider: StaticSessionProvider,
-    clock: MockClock,
+    ecosystem_provider: MockEcosystemDirectory,
 }
 
 fn mock_service(mocks: Mocks) -> TrustCollectionService {
@@ -50,7 +52,7 @@ fn mock_service(mocks: Mocks) -> TrustCollectionService {
         Arc::new(mocks.trust_list_subscription_repository),
         Arc::new(mocks.trust_list_subscriber_provider),
         Arc::new(mocks.session_provider),
-        Arc::new(mocks.clock),
+        Arc::new(mocks.ecosystem_provider),
     )
 }
 
@@ -72,35 +74,47 @@ fn dummy_trust_collection(organisation_id: OrganisationId) -> TrustCollection {
 #[tokio::test]
 async fn test_create_trust_collection_success() {
     // given
-    let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    let mut organisation_repository = MockOrganisationRepository::new();
-    let mut clock = MockClock::new();
-
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
 
     let request = CreateTrustCollectionRequestDTO {
         name: "new collection".to_string(),
         organisation_id,
+        ecosystem: "EUDI".into(),
     };
 
-    let now = get_dummy_date();
-    clock.expect_now_utc().returning(move || now);
-
+    let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
         .with(eq(organisation_id))
-        .returning(move |id| Ok(dummy_organisation(Some(*id))));
+        .returning(move |id| {
+            Ok(Organisation {
+                configuration: OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                },
+                ..dummy_organisation(Some(*id))
+            })
+        });
 
+    let mut trust_collection_repository = MockTrustCollectionRepository::new();
     trust_collection_repository
         .expect_create()
         .withf(move |tc| tc.name == "new collection" && tc.organisation_id == organisation_id)
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider.expect_get().return_once(|_| {
+        let mut ecosystem = MockEcosystem::new();
+        ecosystem.expect_enabled().returning(|| true);
+        Ok(Arc::new(ecosystem))
+    });
+
     let service = mock_service(Mocks {
         trust_collection_repository,
         session_provider,
-        clock,
+        organisation_repository,
+        ecosystem_provider,
         ..Default::default()
     });
 
@@ -118,6 +132,7 @@ async fn test_create_trust_collection_org_mismatch() {
     let request = CreateTrustCollectionRequestDTO {
         name: "new collection".to_string(),
         organisation_id: other_organisation_id,
+        ecosystem: "EUDI".into(),
     };
     let service = mock_service(Default::default());
 
@@ -131,34 +146,46 @@ async fn test_create_trust_collection_org_mismatch() {
 #[tokio::test]
 async fn test_create_trust_collection_already_exists() {
     // given
-    let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    let mut organisation_repository = MockOrganisationRepository::new();
-    let mut clock = MockClock::new();
-
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
 
     let request = CreateTrustCollectionRequestDTO {
         name: "new collection".to_string(),
         organisation_id,
+        ecosystem: "EUDI".into(),
     };
 
-    let now = get_dummy_date();
-    clock.expect_now_utc().returning(move || now);
-
+    let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
         .with(eq(organisation_id))
-        .returning(move |id| Ok(dummy_organisation(Some(*id))));
+        .returning(move |id| {
+            Ok(Organisation {
+                configuration: OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                },
+                ..dummy_organisation(Some(*id))
+            })
+        });
 
+    let mut trust_collection_repository = MockTrustCollectionRepository::new();
     trust_collection_repository
         .expect_create()
         .returning(|_| Err(DataLayerError::AlreadyExists));
 
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider.expect_get().return_once(|_| {
+        let mut ecosystem = MockEcosystem::new();
+        ecosystem.expect_enabled().returning(|| true);
+        Ok(Arc::new(ecosystem))
+    });
+
     let service = mock_service(Mocks {
         trust_collection_repository,
         session_provider,
-        clock,
+        organisation_repository,
+        ecosystem_provider,
         ..Default::default()
     });
 
@@ -177,7 +204,6 @@ async fn test_delete_trust_collection_success() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
     let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
-    let clock = MockClock::new();
 
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
@@ -211,7 +237,6 @@ async fn test_delete_trust_collection_success() {
     let service = mock_service(Mocks {
         trust_collection_repository,
         session_provider,
-        clock,
         trust_list_subscription_repository,
         ..Default::default()
     });
@@ -380,6 +405,7 @@ async fn test_get_trust_collection_list_success() {
             last_modified_after: None,
             last_modified_before: None,
             include_parent_organisation_collections: false,
+            ecosystems: None,
         },
         include: None,
     };
@@ -424,6 +450,7 @@ async fn test_get_trust_collection_list_org_mismatch() {
             last_modified_after: None,
             last_modified_before: None,
             include_parent_organisation_collections: false,
+            ecosystems: None,
         },
         include: None,
     };
@@ -443,7 +470,6 @@ async fn test_create_trust_list_subscription_success() {
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
     let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
     let mut trust_list_subscriber_provider = MockTrustListSubscriberProvider::new();
-    let mut clock = MockClock::new();
 
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
@@ -457,9 +483,6 @@ async fn test_create_trust_list_subscription_success() {
         reference: Url::parse("http://test.com").unwrap(),
         r#type: "test".into(),
     };
-
-    let now = get_dummy_date();
-    clock.expect_now_utc().returning(move || now);
 
     trust_collection_repository
         .expect_get()
@@ -502,7 +525,6 @@ async fn test_create_trust_list_subscription_success() {
         trust_list_subscription_repository,
         trust_list_subscriber_provider,
         session_provider,
-        clock,
         ..Default::default()
     });
 

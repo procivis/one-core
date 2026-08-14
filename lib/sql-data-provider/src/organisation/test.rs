@@ -127,17 +127,11 @@ async fn test_update_organisation() {
         .unwrap();
 
     let request = UpdateOrganisationRequest {
-        id: org_id,
-        deactivate: None,
         wallet_provider: Some(Some("TEST".to_string())),
-        wallet_provider_issuer: None,
-        parent_organisation: None,
-        verifier_provider: None,
-        verifier_provider_issuer: None,
-        configuration: None,
+        ..Default::default()
     };
 
-    let result = repository.update_organisation(request).await;
+    let result = repository.update_organisation(&org_id, request).await;
     assert!(result.is_ok());
 
     let organisations = crate::entity::organisation::Entity::find()

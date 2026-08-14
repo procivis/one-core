@@ -251,16 +251,13 @@ async fn test_list_trust_collection_with_parent_organisation_filter() {
 
     let parent_org = insert_organisation_to_database(&db, None).await.unwrap();
     organisation_repository
-        .update_organisation(UpdateOrganisationRequest {
-            id: org_id,
-            parent_organisation: Some(Some(parent_org)),
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: None,
-        })
+        .update_organisation(
+            &org_id,
+            UpdateOrganisationRequest {
+                parent_organisation: Some(Some(parent_org)),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
 
@@ -309,31 +306,25 @@ async fn test_list_trust_collection_with_organisation_filter_no_duplicates_with_
     // must not cause org_id's own collection to be duplicated once per child
     let child1 = insert_organisation_to_database(&db, None).await.unwrap();
     organisation_repository
-        .update_organisation(UpdateOrganisationRequest {
-            id: child1,
-            parent_organisation: Some(Some(org_id)),
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: None,
-        })
+        .update_organisation(
+            &child1,
+            UpdateOrganisationRequest {
+                parent_organisation: Some(Some(org_id)),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
 
     let child2 = insert_organisation_to_database(&db, None).await.unwrap();
     organisation_repository
-        .update_organisation(UpdateOrganisationRequest {
-            id: child2,
-            parent_organisation: Some(Some(org_id)),
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: None,
-        })
+        .update_organisation(
+            &child2,
+            UpdateOrganisationRequest {
+                parent_organisation: Some(Some(org_id)),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
 

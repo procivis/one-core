@@ -12,7 +12,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
-use super::mapper::organisation_from_model;
+use super::mapper::{organisation_from_model, update_request_to_active_model};
 use crate::common::list_query_with_custom_model;
 use crate::entity::organisation;
 use crate::list_query_generic::SelectWithListQuery;
@@ -48,9 +48,10 @@ impl OrganisationRepository for OrganisationProvider {
 
     async fn update_organisation(
         &self,
+        id: &OrganisationId,
         request: UpdateOrganisationRequest,
     ) -> Result<(), DataLayerError> {
-        organisation::Entity::update(organisation::ActiveModel::from(request))
+        organisation::Entity::update(update_request_to_active_model(*id, request))
             .exec(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;

@@ -46,21 +46,21 @@ impl OrganisationsDB {
 
     pub async fn deactivate(&self, id: &OrganisationId) {
         self.repository
-            .update_organisation(UpdateOrganisationRequest {
-                id: *id,
-                deactivate: Some(true),
-                wallet_provider: None,
-                wallet_provider_issuer: None,
-                parent_organisation: None,
-                verifier_provider: None,
-                verifier_provider_issuer: None,
-                configuration: None,
-            })
+            .update_organisation(
+                id,
+                UpdateOrganisationRequest {
+                    deactivate: Some(true),
+                    ..Default::default()
+                },
+            )
             .await
             .unwrap();
     }
 
-    pub async fn update(&self, request: UpdateOrganisationRequest) {
-        self.repository.update_organisation(request).await.unwrap();
+    pub async fn update(&self, id: &OrganisationId, request: UpdateOrganisationRequest) {
+        self.repository
+            .update_organisation(id, request)
+            .await
+            .unwrap();
     }
 }

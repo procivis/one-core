@@ -313,7 +313,7 @@ impl OrganisationService {
         update_request.configuration = configuration;
         let result = self
             .organisation_repository
-            .update_organisation(update_request)
+            .update_organisation(&request.id, update_request)
             .await;
 
         match result {

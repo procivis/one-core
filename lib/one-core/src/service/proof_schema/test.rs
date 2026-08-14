@@ -44,6 +44,7 @@ use crate::provider::credential_formatter::model::{
     Features, FormatterCapabilities, SelectiveDisclosure,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::{DataLayerError, EntityKind};
@@ -66,6 +67,7 @@ struct Repositories {
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub config: Option<CoreConfig>,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
+    pub ecosystem_provider: MockEcosystemDirectory,
 }
 
 fn setup_service(repositories: Repositories) -> ProofSchemaService {
@@ -96,6 +98,7 @@ fn setup_service(repositories: Repositories) -> ProofSchemaService {
             credential_schema_repository,
             "en".to_string(),
         )),
+        ecosystem_provider: Arc::new(repositories.ecosystem_provider),
     }
 }
 
@@ -439,6 +442,7 @@ async fn test_create_proof_schema_success() {
             }],
             credential_schema_id,
         }],
+        ecosystem: None,
     };
 
     let create_request_clone = create_request.clone();
@@ -611,6 +615,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 credential_schema_id: credential_schema_hardware_id,
             },
         ],
+        ecosystem: None,
     };
 
     let mut capabilities = generic_formatter_capabilities();
@@ -721,6 +726,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
             }],
             credential_schema_id,
         }],
+        ecosystem: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -885,6 +891,7 @@ async fn test_create_proof_schema_array_object_fail() {
             }],
             credential_schema_id,
         }],
+        ecosystem: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -1055,6 +1062,7 @@ async fn test_create_proof_schema_array_success() {
             }],
             credential_schema_id,
         }],
+        ecosystem: None,
     };
 
     let create_request_clone = create_request.clone();
@@ -1112,6 +1120,7 @@ async fn test_create_proof_schema_unique_name_error() {
                 required: true,
             }],
         }],
+        ecosystem: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -1248,6 +1257,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     required: true,
                 }],
             }],
+            ecosystem: None,
         })
         .await;
 
@@ -1271,6 +1281,7 @@ async fn test_create_proof_schema_no_claims() {
 
                 claim_schemas: vec![],
             }],
+            ecosystem: None,
         })
         .await;
     assert!(matches!(
@@ -1296,6 +1307,7 @@ async fn test_create_proof_schema_no_required_claims() {
                     required: false,
                 }],
             }],
+            ecosystem: None,
         })
         .await;
     assert!(matches!(
@@ -1322,6 +1334,7 @@ async fn test_create_proof_schema_duplicit_claims() {
 
                 claim_schemas: vec![claim_schema.clone(), claim_schema],
             }],
+            ecosystem: None,
         })
         .await;
     assert!(matches!(
@@ -1508,6 +1521,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             credential_schema_repository,
             "en".to_string(),
         )),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
 
     service
@@ -1703,6 +1717,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
             credential_schema_repository,
             "en".to_string(),
         )),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
 
     service
@@ -1897,6 +1912,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
             credential_schema_repository,
             "en".to_string(),
         )),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
 
     service
@@ -2072,6 +2088,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         session_provider: Arc::new(NoSessionProvider),
         credential_schema_import_parser: Arc::new(import_parser),
         credential_schema_importer: Arc::new(importer),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
 
     service
@@ -2259,6 +2276,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         session_provider: Arc::new(NoSessionProvider),
         credential_schema_import_parser: Arc::new(import_parser),
         credential_schema_importer: Arc::new(importer),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
 
     service
@@ -2340,6 +2358,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         session_provider: Arc::new(NoSessionProvider),
         credential_schema_import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
         credential_schema_importer: Arc::new(MockCredentialSchemaImporter::default()),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
 
     let result = service
@@ -2856,6 +2875,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
             organisation_id: Uuid::new_v4().into(),
             expire_duration: None,
             proof_input_schemas: vec![],
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
@@ -3038,6 +3058,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 .collect(),
             credential_schema_id,
         }],
+        ecosystem: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();

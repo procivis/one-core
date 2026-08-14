@@ -441,7 +441,7 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
         .returning(move |_| Ok(org_clone.clone()));
     organisation_repository
         .expect_update_organisation()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut instance_repository = MockInstanceRepository::new();
     instance_repository

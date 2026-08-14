@@ -68,7 +68,6 @@ impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
 impl From<UpsertOrganisationRequestDTO> for UpdateOrganisationRequest {
     fn from(request: UpsertOrganisationRequestDTO) -> Self {
         Self {
-            id: request.id,
             parent_organisation: request.parent_organisation,
             deactivate: request.deactivate,
             wallet_provider: request.wallet_provider,

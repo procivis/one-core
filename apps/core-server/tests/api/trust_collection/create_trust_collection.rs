@@ -1,3 +1,4 @@
+use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
 use shared_types::TrustCollectionId;
 use similar_asserts::assert_eq;
 
@@ -9,6 +10,21 @@ use crate::utils::field_match::FieldHelpers;
 async fn test_post_trust_collection() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    context
+        .db
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
 
     // WHEN
     let resp = context
@@ -37,6 +53,22 @@ async fn test_post_trust_collection() {
 async fn test_post_trust_collection_already_exists() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    context
+        .db
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
     context
         .db
         .trust_collections

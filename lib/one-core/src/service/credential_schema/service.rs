@@ -40,6 +40,7 @@ use crate::provider::revocation::model::Operation;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::util::logging::quoted_opt_provider;
+use crate::validator::ecosystem::validate_ecosystem_selection_allow_not_set;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 impl CredentialSchemaService {
@@ -120,6 +121,7 @@ impl CredentialSchemaService {
             translations: None,
             embedded_disclosure_policy: None,
             expiration: None,
+            ecosystem: request.ecosystem,
         };
 
         let id = self
@@ -172,6 +174,12 @@ impl CredentialSchemaService {
         .await?;
 
         let organisation = self.get_organisation(request.organisation_id).await?;
+        validate_ecosystem_selection_allow_not_set(
+            request.ecosystem.as_ref(),
+            &organisation,
+            self.ecosystem_provider.as_ref(),
+        )
+        .error_while("validating ecosystem")?;
 
         let credential_schema_id = CredentialSchemaId::from(Uuid::new_v4());
         let now = crate::clock::now_utc();

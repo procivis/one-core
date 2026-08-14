@@ -2305,20 +2305,17 @@ async fn test_handle_invitation_trust_mandatory_without_identifier_returns_error
     context
         .db
         .organisations
-        .update(UpdateOrganisationRequest {
-            id: organisation.id,
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            parent_organisation: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: Some(OrganisationConfiguration {
-                enforce_ecosystem_as_holder: true,
-                selected_ecosystems: vec!["EUDI".into()],
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    enforce_ecosystem_as_holder: true,
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-        })
+            },
+        )
         .await;
 
     Mock::given(method(Method::GET))
@@ -2447,20 +2444,17 @@ async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_tru
     context
         .db
         .organisations
-        .update(UpdateOrganisationRequest {
-            id: organisation.id,
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            parent_organisation: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: Some(OrganisationConfiguration {
-                enforce_ecosystem_as_holder: true,
-                selected_ecosystems: vec!["EUDI".into()],
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    enforce_ecosystem_as_holder: true,
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-        })
+            },
+        )
         .await;
 
     Mock::given(method(Method::GET))

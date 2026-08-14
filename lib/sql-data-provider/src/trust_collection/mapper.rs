@@ -99,6 +99,9 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
                 get_comparison_condition(trust_collection::Column::LastModified, value)
             }
             Self::Ids(ids) => trust_collection::Column::Id.is_in(ids).into_condition(),
+            Self::Ecosystems(ecosystems) => trust_collection::Column::Ecosystem
+                .is_in(ecosystems.iter())
+                .into_condition(),
             Self::Remote(true) => trust_collection::Column::RemoteTrustCollectionUrl
                 .is_not_null()
                 .into_condition(),

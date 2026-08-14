@@ -403,6 +403,10 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
+    #[modify_schema(field = ecosystem)]
+    #[schema(nullable = false)]
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
@@ -822,7 +826,7 @@ pub(crate) type GetCredentialSchemaV2Query = ListQueryParamsRest<
 
 #[options_not_nullable]
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto, ModifySchema)]
 #[try_into(T = CreateCredentialSchemaV2RequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
@@ -892,6 +896,10 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[schema(value_type = Option<i64>, minimum = 1)]
     #[try_into(infallible)]
     pub expiration: Option<Duration>,
+    #[modify_schema(field = ecosystem)]
+    #[schema(nullable = false)]
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[options_not_nullable]

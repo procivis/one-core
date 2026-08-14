@@ -79,16 +79,14 @@ pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(
     context
         .db
         .organisations
-        .update(UpdateOrganisationRequest {
-            id: org.id,
-            deactivate: None,
-            wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
-            wallet_provider_issuer: Some(Some(identifier_id)),
-            parent_organisation: None,
-            verifier_provider: None,
-            verifier_provider_issuer: None,
-            configuration: None,
-        })
+        .update(
+            &org.id,
+            UpdateOrganisationRequest {
+                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                wallet_provider_issuer: Some(Some(identifier_id)),
+                ..Default::default()
+            },
+        )
         .await;
 }
 
@@ -100,15 +98,13 @@ pub(crate) async fn create_verifier_provider_issuer_identifier(
     context
         .db
         .organisations
-        .update(UpdateOrganisationRequest {
-            id: org.id,
-            deactivate: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            parent_organisation: None,
-            verifier_provider: Some(Some("PROCIVIS_ONE".to_string())),
-            verifier_provider_issuer: Some(Some(identifier_id)),
-            configuration: None,
-        })
+        .update(
+            &org.id,
+            UpdateOrganisationRequest {
+                verifier_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                verifier_provider_issuer: Some(Some(identifier_id)),
+                ..Default::default()
+            },
+        )
         .await;
 }

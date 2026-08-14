@@ -75,7 +75,7 @@ use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
-use crate::validator::ecosystem::validate_ecosystem_selection_possible_autodetect;
+use crate::validator::ecosystem::validate_ecosystem_selection_allow_not_set;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
@@ -807,8 +807,8 @@ impl ProofService {
             .await
             .error_while("getting organisation")?;
 
-        validate_ecosystem_selection_possible_autodetect(
-            &request.ecosystem,
+        validate_ecosystem_selection_allow_not_set(
+            request.ecosystem.as_ref(),
             &organisation,
             self.ecosystem_provider.as_ref(),
         )

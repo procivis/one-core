@@ -38,7 +38,7 @@ use crate::provider::issuance_protocol::{
 };
 use crate::service::error::MissingProviderError;
 use crate::validator::ecosystem::{
-    SelectionRole, ecosystem_autodetection, validate_ecosystem_selection_possible_autodetect,
+    SelectionRole, ecosystem_autodetection, validate_ecosystem_selection_allow_not_set,
 };
 use crate::validator::key_security::match_key_security_level;
 use crate::validator::{throw_if_credential_state_not_eq, throw_if_org_id_not_matching_session};
@@ -616,14 +616,14 @@ impl SSIHolderService {
             .await
             .error_while("initiating authorization code flow")?;
 
-        let ecosystem = request.ecosystem.clone();
-        validate_ecosystem_selection_possible_autodetect(
-            &ecosystem,
+        validate_ecosystem_selection_allow_not_set(
+            request.ecosystem.as_ref(),
             &organisation,
             self.ecosystem_provider.as_ref(),
         )
         .error_while("validating ecosystem")?;
 
+        let ecosystem = request.ecosystem.clone();
         let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
             request,
             code_verifier: authorization_response.code_verifier,

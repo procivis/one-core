@@ -297,6 +297,8 @@ pub struct CreateProofSchemaRequestDTO {
     /// Set of all claims to request.
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

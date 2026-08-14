@@ -44,6 +44,7 @@ use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::{DataLayerError, EntityKind};
@@ -84,6 +85,7 @@ fn setup_service(
         Arc::new(NoSessionProvider),
         Arc::new(import_parser),
         Arc::new(importer),
+        Arc::new(MockEcosystemDirectory::new()),
     )
 }
 
@@ -409,6 +411,7 @@ async fn test_create_credential_schema_success() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(schema_id, result.unwrap());
@@ -508,6 +511,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await
         .unwrap();
@@ -617,6 +621,7 @@ async fn test_create_credential_schema_success_nested_claims() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await
         .unwrap();
@@ -660,6 +665,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0108);
@@ -721,6 +727,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0107);
@@ -763,6 +770,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0106);
@@ -822,6 +830,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await
         .unwrap_err();
@@ -896,6 +905,7 @@ async fn test_create_credential_schema_unique_name_error() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0007);
@@ -949,6 +959,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0133);
@@ -994,6 +1005,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0133);
@@ -1040,6 +1052,7 @@ async fn test_create_credential_schema_fail_validation() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(
@@ -1069,6 +1082,7 @@ async fn test_create_credential_schema_fail_validation() {
             allow_suspension: Some(true),
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(
@@ -1098,6 +1112,7 @@ async fn test_create_credential_schema_fail_validation() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(wrong_datatype.unwrap_err().error_code(), ErrorCode::BR_0089);
@@ -1116,6 +1131,7 @@ async fn test_create_credential_schema_fail_validation() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(no_claims.unwrap_err().error_code(), ErrorCode::BR_0008);
@@ -1172,6 +1188,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
 
@@ -1254,6 +1271,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
 
@@ -1307,6 +1325,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
             allow_suspension: Some(true),
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
 
@@ -1372,6 +1391,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
 
@@ -1454,6 +1474,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
 
@@ -1496,6 +1517,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(
@@ -1533,6 +1555,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(nested_fail.unwrap_err().error_code(), ErrorCode::BR_0126);
@@ -1559,6 +1582,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(
@@ -2647,6 +2671,7 @@ fn dummy_request() -> CreateCredentialSchemaRequestDTO {
         allow_suspension: Some(true),
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        ecosystem: None,
     }
 }
 
@@ -2991,6 +3016,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
 
@@ -3009,6 +3035,7 @@ async fn test_create_credential_schema_fail_session_org_mismatch() {
         session_provider: Arc::new(StaticSessionProvider::new_random()),
         import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
         importer_proto: Arc::new(MockCredentialSchemaImporter::default()),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::default()),
     };
 
     let result = service
@@ -3025,6 +3052,7 @@ async fn test_create_credential_schema_fail_session_org_mismatch() {
             allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            ecosystem: None,
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
@@ -3081,6 +3109,7 @@ async fn test_create_credential_schema_fail_tx_code_not_supported() {
                 length: 4.try_into().unwrap(),
                 description: None,
             }),
+            ecosystem: None,
         })
         .await;
 
@@ -3139,6 +3168,7 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
                 length: 4.try_into().unwrap(),
                 description: Some(['a'; 301].iter().collect()),
             }),
+            ecosystem: None,
         })
         .await;
 
@@ -3157,6 +3187,7 @@ async fn test_list_credential_schema_fail_session_org_mismatch() {
         session_provider: Arc::new(StaticSessionProvider::new_random()),
         import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
         importer_proto: Arc::new(MockCredentialSchemaImporter::default()),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::default()),
     };
 
     let result = service
@@ -3205,6 +3236,7 @@ async fn test_credential_schema_ops_session_org_mismatch() {
         session_provider: Arc::new(StaticSessionProvider::new_random()),
         import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
         importer_proto: Arc::new(MockCredentialSchemaImporter::default()),
+        ecosystem_provider: Arc::new(MockEcosystemDirectory::default()),
     };
 
     let result = service.get_credential_schema(&Uuid::new_v4().into()).await;

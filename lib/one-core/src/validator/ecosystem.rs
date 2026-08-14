@@ -34,9 +34,9 @@ impl ErrorCodeMixin for EcosystemValidationError {
     }
 }
 
-/// check user selection of ecosystem, always allows no selection (for later possible autodetection)
-pub(crate) fn validate_ecosystem_selection_possible_autodetect(
-    user_selection: &Option<EcosystemId>,
+/// check user selection of ecosystem, always allows no selection (e.g. for later possible autodetection)
+pub(crate) fn validate_ecosystem_selection_allow_not_set(
+    user_selection: Option<&EcosystemId>,
     organisation: &Organisation,
     ecosystem_provider: &dyn EcosystemDirectory,
 ) -> Result<(), EcosystemValidationError> {
@@ -67,13 +67,13 @@ pub(crate) enum SelectionRole {
 #[expect(unused)]
 /// checks ecosystem selection, enforcing selection based on organisation config
 pub(crate) fn validate_ecosystem_selection_final(
+    user_selection: Option<&EcosystemId>,
     organisation: &Organisation,
-    user_selection: &Option<EcosystemId>,
     ecosystem_provider: &dyn EcosystemDirectory,
     role: SelectionRole,
 ) -> Result<(), EcosystemValidationError> {
     if user_selection.is_some() {
-        return validate_ecosystem_selection_possible_autodetect(
+        return validate_ecosystem_selection_allow_not_set(
             user_selection,
             organisation,
             ecosystem_provider,

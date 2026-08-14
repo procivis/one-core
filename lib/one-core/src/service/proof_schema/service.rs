@@ -44,6 +44,7 @@ use crate::service::credential_schema::dto::{
 };
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::proof_schema::dto::ImportProofSchemaDTO;
+use crate::validator::ecosystem::validate_ecosystem_selection_allow_not_set;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 impl ProofSchemaService {
@@ -126,6 +127,13 @@ impl ProofSchemaService {
                 request.organisation_id,
             ));
         }
+
+        validate_ecosystem_selection_allow_not_set(
+            request.ecosystem.as_ref(),
+            &organisation,
+            self.ecosystem_provider.as_ref(),
+        )
+        .error_while("validating ecosystem")?;
 
         let credential_schema_ids: Vec<CredentialSchemaId> = request
             .proof_input_schemas

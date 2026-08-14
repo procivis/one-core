@@ -1,6 +1,6 @@
 use one_dto_mapper::From;
 use shared_types::{
-    OrganisationId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    EcosystemId, OrganisationId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use time::OffsetDateTime;
 use url::Url;
@@ -14,6 +14,7 @@ use crate::model::trust_list_subscription::{TrustListSubscription, TrustListSubs
 pub struct CreateTrustCollectionRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
+    pub ecosystem: EcosystemId,
 }
 
 #[derive(Clone, Debug)]
@@ -33,6 +34,7 @@ pub struct GetTrustCollectionResponseDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
     pub remote_trust_collection_url: Option<Url>,
+    pub ecosystem: EcosystemId,
 }
 
 pub type GetTrustCollectionListResponseDTO = GetListResponse<TrustCollectionListItemResponseDTO>;
@@ -46,6 +48,7 @@ pub struct TrustCollectionListItemResponseDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
     pub remote_trust_collection_url: Option<Url>,
+    pub ecosystem: EcosystemId,
 }
 
 #[derive(Clone, Debug)]
@@ -86,6 +89,7 @@ pub struct TrustCollectionFilterParamsDTO {
     pub ids: Option<Vec<TrustCollectionId>>,
     pub exact: Option<Vec<ExactTrustCollectionFilterColumn>>,
     pub organisation_id: OrganisationId,
+    pub ecosystems: Option<Vec<EcosystemId>>,
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,

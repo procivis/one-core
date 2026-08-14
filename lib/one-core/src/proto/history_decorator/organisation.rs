@@ -60,11 +60,12 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
 
     async fn update_organisation(
         &self,
+        id: &OrganisationId,
         request: UpdateOrganisationRequest,
     ) -> Result<(), DataLayerError> {
-        self.inner.update_organisation(request.clone()).await?;
+        self.inner.update_organisation(id, request.clone()).await?;
 
-        let updated_entry = self.inner.get_organisation(&request.id).await?;
+        let updated_entry = self.inner.get_organisation(id).await?;
 
         if request.wallet_provider_issuer.is_some()
             || request.wallet_provider.is_some()

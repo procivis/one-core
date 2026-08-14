@@ -722,6 +722,7 @@ impl OneCore {
                 session_provider.clone(),
                 credential_schema_import_parser.clone(),
                 credential_schema_importer.clone(),
+                ecosystem_provider.clone(),
             ),
             history_service: HistoryService::new(
                 data_provider.get_history_repository(),
@@ -747,6 +748,7 @@ impl OneCore {
                 session_provider.clone(),
                 credential_schema_import_parser.clone(),
                 credential_schema_importer.clone(),
+                ecosystem_provider.clone(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),
@@ -843,7 +845,7 @@ impl OneCore {
                 document_signer_provider,
                 data_provider.get_history_repository(),
                 session_provider.clone(),
-                clock.clone(),
+                clock,
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
@@ -869,7 +871,7 @@ impl OneCore {
                 trust_list_subscriber_provider.clone(),
                 data_provider.get_tx_manager(),
                 wrp_validator,
-                ecosystem_provider,
+                ecosystem_provider.clone(),
             ),
             instance_service: InstanceService::new(
                 data_provider.get_organisation_repository(),
@@ -927,7 +929,7 @@ impl OneCore {
                 data_provider.get_trust_list_subscription_repository(),
                 trust_list_subscriber_provider,
                 session_provider,
-                clock,
+                ecosystem_provider,
             ),
         })
     }

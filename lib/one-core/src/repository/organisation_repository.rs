@@ -18,6 +18,7 @@ pub trait OrganisationRepository: Send + Sync {
 
     async fn update_organisation(
         &self,
+        id: &OrganisationId,
         request: UpdateOrganisationRequest,
     ) -> Result<(), DataLayerError>;
 

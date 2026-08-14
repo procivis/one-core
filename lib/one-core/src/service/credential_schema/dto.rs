@@ -294,6 +294,7 @@ pub struct CreateCredentialSchemaV2RequestDTO {
     pub translations: Option<CredentialSchemaTranslationsDTO>,
     pub embedded_disclosure_policy: Option<DisclosurePolicyCreateRequest>,
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]
@@ -331,6 +332,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub allow_suspension: Option<bool>,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Into)]

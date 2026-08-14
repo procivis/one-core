@@ -9,6 +9,7 @@ use one_core::model::relation::Related;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set, Unchanged};
+use shared_types::OrganisationId;
 
 use crate::entity::organisation::{self, Configuration};
 use crate::list_query_generic::{
@@ -54,47 +55,48 @@ impl From<Organisation> for organisation::ActiveModel {
     }
 }
 
-impl From<UpdateOrganisationRequest> for organisation::ActiveModel {
-    fn from(value: UpdateOrganisationRequest) -> Self {
-        Self {
-            id: Set(value.id),
-            last_modified: Set(one_core::clock::now_utc()),
-            deactivated_at: match value.deactivate {
-                Some(true) => Set(Some(one_core::clock::now_utc())),
-                Some(false) => Set(None),
-                _ => Unchanged(Default::default()),
-            },
-            wallet_provider: match value.wallet_provider {
-                None => Unchanged(Default::default()),
-                Some(None) => Set(None),
-                Some(Some(value)) => Set(Some(value)),
-            },
-            wallet_provider_issuer: match value.wallet_provider_issuer {
-                None => Unchanged(Default::default()),
-                Some(None) => Set(None),
-                Some(Some(value)) => Set(Some(value)),
-            },
-            parent_organisation: match value.parent_organisation {
-                None => Unchanged(Default::default()),
-                Some(None) => Set(None),
-                Some(Some(value)) => Set(Some(value)),
-            },
-            configuration: match value.configuration {
-                None => Unchanged(Default::default()),
-                Some(value) => Set(Some(value.into())),
-            },
-            verifier_provider: match value.verifier_provider {
-                None => Unchanged(Default::default()),
-                Some(None) => Set(None),
-                Some(Some(value)) => Set(Some(value)),
-            },
-            verifier_provider_issuer: match value.verifier_provider_issuer {
-                None => Unchanged(Default::default()),
-                Some(None) => Set(None),
-                Some(Some(value)) => Set(Some(value)),
-            },
-            ..Default::default()
-        }
+pub(super) fn update_request_to_active_model(
+    id: OrganisationId,
+    value: UpdateOrganisationRequest,
+) -> organisation::ActiveModel {
+    organisation::ActiveModel {
+        id: Set(id),
+        last_modified: Set(one_core::clock::now_utc()),
+        deactivated_at: match value.deactivate {
+            Some(true) => Set(Some(one_core::clock::now_utc())),
+            Some(false) => Set(None),
+            _ => Unchanged(Default::default()),
+        },
+        wallet_provider: match value.wallet_provider {
+            None => Unchanged(Default::default()),
+            Some(None) => Set(None),
+            Some(Some(value)) => Set(Some(value)),
+        },
+        wallet_provider_issuer: match value.wallet_provider_issuer {
+            None => Unchanged(Default::default()),
+            Some(None) => Set(None),
+            Some(Some(value)) => Set(Some(value)),
+        },
+        parent_organisation: match value.parent_organisation {
+            None => Unchanged(Default::default()),
+            Some(None) => Set(None),
+            Some(Some(value)) => Set(Some(value)),
+        },
+        configuration: match value.configuration {
+            None => Unchanged(Default::default()),
+            Some(value) => Set(Some(value.into())),
+        },
+        verifier_provider: match value.verifier_provider {
+            None => Unchanged(Default::default()),
+            Some(None) => Set(None),
+            Some(Some(value)) => Set(Some(value)),
+        },
+        verifier_provider_issuer: match value.verifier_provider_issuer {
+            None => Unchanged(Default::default()),
+            Some(None) => Set(None),
+            Some(Some(value)) => Set(Some(value)),
+        },
+        ..Default::default()
     }
 }
 

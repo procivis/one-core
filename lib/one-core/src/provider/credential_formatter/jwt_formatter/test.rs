@@ -777,6 +777,7 @@ fn test_schema_id() {
         allow_suspension: None,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        ecosystem: None,
     };
 
     let id = CredentialSchemaId::from(Uuid::new_v4());

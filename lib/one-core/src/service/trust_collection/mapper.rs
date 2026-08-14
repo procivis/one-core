@@ -17,17 +17,13 @@ use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionFilterValue, TrustListSubscriptionState,
 };
-use crate::proto::clock::Clock;
-use crate::proto::trust_collection::EUDI_ECOSYSTEM;
 use crate::service::trust_collection::error::TrustCollectionServiceError;
 
 pub(super) fn map_create_trust_collection_request(
-    clock: &dyn Clock,
     request: CreateTrustCollectionRequestDTO,
 ) -> TrustCollection {
-    let now = clock.now_utc();
+    let now = crate::clock::now_utc();
     TrustCollection {
-        ecosystem: EUDI_ECOSYSTEM.into(),
         id: Uuid::new_v4().into(),
         name: request.name,
         created_date: now,
@@ -36,16 +32,16 @@ pub(super) fn map_create_trust_collection_request(
         remote_trust_collection_url: None,
         organisation_id: request.organisation_id,
         organisation: None,
+        ecosystem: request.ecosystem,
     }
 }
 
 pub(super) fn map_create_trust_list_subscription_request(
-    clock: &dyn Clock,
     request: CreateTrustListSubscriptionRequestDTO,
     trust_collection: TrustCollection,
     role: Option<TrustListRoleEnum>,
 ) -> Result<TrustListSubscription, TrustCollectionServiceError> {
-    let now = clock.now_utc();
+    let now = crate::clock::now_utc();
     Ok(TrustListSubscription {
         id: Uuid::new_v4().into(),
         created_date: now,
@@ -97,6 +93,8 @@ impl From<TrustCollectionFilterParamsDTO> for ListFilterCondition<TrustCollectio
 
         let ids = value.ids.map(TrustCollectionFilterValue::Ids);
 
+        let ecosystems = value.ecosystems.map(TrustCollectionFilterValue::Ecosystems);
+
         let created_date_after = value.created_date_after.map(|date| {
             TrustCollectionFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::GreaterThanOrEqual,
@@ -126,6 +124,7 @@ impl From<TrustCollectionFilterParamsDTO> for ListFilterCondition<TrustCollectio
         organisation_id
             & name
             & ids
+            & ecosystems
             & created_date_after
             & created_date_before
             & last_modified_after

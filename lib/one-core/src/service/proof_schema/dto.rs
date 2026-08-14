@@ -99,6 +99,7 @@ pub struct CreateProofSchemaRequestDTO {
     pub organisation_id: OrganisationId,
     pub expire_duration: Option<u32>,
     pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]

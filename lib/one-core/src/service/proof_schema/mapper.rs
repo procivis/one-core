@@ -378,7 +378,6 @@ pub fn proof_schema_from_create_request(
         .collect::<Result<Vec<_>, _>>()?;
     let id = Uuid::new_v4().into();
     Ok(ProofSchema {
-        ecosystem: None,
         id,
         created_date: now,
         last_modified: now,
@@ -388,6 +387,7 @@ pub fn proof_schema_from_create_request(
         organisation: organisation.into(),
         deleted_at: None,
         input_schemas: input_schemas.into(),
+        ecosystem: request.ecosystem,
     })
 }
 

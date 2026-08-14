@@ -5,6 +5,7 @@ use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::model::trust_list_subscription::{
     SortableTrustListSubscriptionColumn, TrustListSubscriptionState,
 };
+use one_core::proto::trust_collection::EUDI_ECOSYSTEM;
 use one_core::service::error::ServiceError;
 use one_core::service::trust_collection::dto::{
     CreateTrustCollectionRequestDTO, CreateTrustListSubscriptionRequestDTO,
@@ -16,7 +17,7 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner}
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    OrganisationId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    EcosystemId, OrganisationId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use time::OffsetDateTime;
 use url::Url;
@@ -28,7 +29,7 @@ use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
-#[derive(Debug, Deserialize, ToSchema, TryInto)]
+#[derive(Debug, Deserialize, ToSchema, TryInto, ModifySchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = CreateTrustCollectionRequestDTO, Error = ServiceError)]
 pub struct CreateTrustCollectionRestDTO {
@@ -40,6 +41,16 @@ pub struct CreateTrustCollectionRestDTO {
     /// Provide a name for this collection.
     #[try_into(infallible)]
     pub name: String,
+
+    #[modify_schema(field = ecosystem)]
+    #[try_into(infallible)]
+    // TODO (ONE-9981): temporarily auto-fill EUDI if missing in the request
+    #[serde(default = "eudi_ecosystem")]
+    pub ecosystem: String,
+}
+
+fn eudi_ecosystem() -> String {
+    EUDI_ECOSYSTEM.to_string()
 }
 
 pub(crate) type GetTrustCollectionListResponseRestDTO =
@@ -60,6 +71,7 @@ pub(crate) struct TrustCollectionListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
     pub remote_trust_collection_url: Option<Url>,
+    pub ecosystem: EcosystemId,
 }
 
 #[options_not_nullable]
@@ -77,6 +89,7 @@ pub(crate) struct GetTrustCollectionResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub organisation_id: OrganisationId,
     pub remote_trust_collection_url: Option<Url>,
+    pub ecosystem: EcosystemId,
 }
 
 pub(crate) type ListTrustCollectionEntitiesQuery = ListQueryParamsRest<
@@ -114,6 +127,11 @@ pub(crate) struct TrustCollectionFilterQueryParamsRestDTO {
     #[param(rename = "exact[]", inline, nullable = false)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub exact: Option<Vec<ExactTrustCollectionFilterColumnRestEnum>>,
+
+    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub ecosystems: Option<Vec<EcosystemId>>,
+
     /// Return only trust lists created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]

@@ -11,6 +11,7 @@ use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -25,6 +26,7 @@ pub struct CredentialSchemaService {
     session_provider: Arc<dyn SessionProvider>,
     import_parser: Arc<dyn CredentialSchemaImportParser>,
     importer_proto: Arc<dyn CredentialSchemaImporter>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
 impl CredentialSchemaService {
@@ -39,6 +41,7 @@ impl CredentialSchemaService {
         session_provider: Arc<dyn SessionProvider>,
         credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
             credential_schema_repository: repository,
@@ -50,6 +53,7 @@ impl CredentialSchemaService {
             session_provider,
             import_parser: credential_schema_import_parser,
             importer_proto: credential_schema_importer,
+            ecosystem_provider,
         }
     }
 }

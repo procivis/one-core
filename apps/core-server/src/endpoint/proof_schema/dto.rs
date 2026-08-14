@@ -10,7 +10,7 @@ use one_core::service::proof_schema::dto::{
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
 };
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{EcosystemId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -28,7 +28,7 @@ use crate::endpoint::credential_schema::dto::{
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, ToSchema, TryInto)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, TryInto, ModifySchema)]
 #[try_into(T = CreateProofSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateProofSchemaRequestRestDTO {
@@ -50,6 +50,10 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     #[schema(min_items = 1)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
+    #[modify_schema(field = ecosystem)]
+    #[schema(nullable = false)]
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[options_not_nullable]

@@ -1013,6 +1013,7 @@ fn test_credential_schema_id() {
         allow_suspension: None,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        ecosystem: None,
     };
 
     let result = formatter.credential_schema_id(

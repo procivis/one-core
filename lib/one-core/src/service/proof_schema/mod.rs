@@ -6,6 +6,7 @@ use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -28,6 +29,7 @@ pub struct ProofSchemaService {
     session_provider: Arc<dyn SessionProvider>,
     credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
 impl ProofSchemaService {
@@ -43,6 +45,7 @@ impl ProofSchemaService {
         session_provider: Arc<dyn SessionProvider>,
         credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
             proof_schema_repository,
@@ -55,6 +58,7 @@ impl ProofSchemaService {
             session_provider,
             credential_schema_import_parser,
             credential_schema_importer,
+            ecosystem_provider,
         }
     }
 }

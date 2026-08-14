@@ -40,6 +40,7 @@ pub enum TrustCollectionFilterValue {
     Ids(Vec<TrustCollectionId>),
     Remote(bool),
     Empty(bool),
+    Ecosystems(Vec<EcosystemId>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -30,6 +30,7 @@ use crate::provider::trust_list_subscriber::{
 };
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
+use crate::validator::ecosystem::validate_ecosystem_selection_allow_not_set;
 use crate::validator::{
     ParentOrg, throw_if_org_id_not_matching_session,
     throw_if_org_id_not_matching_session_with_parent_check,
@@ -42,11 +43,35 @@ impl TrustCollectionService {
     ) -> Result<TrustCollectionId, TrustCollectionServiceError> {
         throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
-        let trust_collection_id = self.insert_trust_collection(&request).await?;
-        info!(
-            "Created trust collection `{}` ({})",
-            request.name, trust_collection_id
-        );
+
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id)
+            .await
+            .error_while("getting organisation")?;
+        validate_ecosystem_selection_allow_not_set(
+            Some(&request.ecosystem),
+            &organisation,
+            self.ecosystem_provider.as_ref(),
+        )
+        .error_while("validating ecosystem")?;
+
+        let name = request.name.to_owned();
+
+        let trust_collection = map_create_trust_collection_request(request);
+        let trust_collection_id = self
+            .trust_collection_repository
+            .create(trust_collection)
+            .await
+            .map_err(|e| {
+                if matches!(e, DataLayerError::AlreadyExists) {
+                    TrustCollectionServiceError::TrustCollectionAlreadyExists
+                } else {
+                    e.error_while("creating trust collection").into()
+                }
+            })?;
+
+        info!("Created trust collection `{name}` ({trust_collection_id})");
         Ok(trust_collection_id)
     }
 
@@ -228,26 +253,6 @@ impl TrustCollectionService {
         Ok(list_response_into(trust_list_subscription_list))
     }
 
-    async fn insert_trust_collection(
-        &self,
-        request: &CreateTrustCollectionRequestDTO,
-    ) -> Result<TrustCollectionId, TrustCollectionServiceError> {
-        let trust_collection =
-            map_create_trust_collection_request(self.clock.as_ref(), request.clone());
-        let trust_collection_id = self
-            .trust_collection_repository
-            .create(trust_collection)
-            .await
-            .map_err(|e| {
-                if matches!(e, DataLayerError::AlreadyExists) {
-                    TrustCollectionServiceError::TrustCollectionAlreadyExists
-                } else {
-                    e.error_while("creating trust collection").into()
-                }
-            })?;
-        Ok(trust_collection_id)
-    }
-
     async fn delete_trust_list_subscriptions(
         &self,
         trust_collection_id: TrustCollectionId,
@@ -285,12 +290,8 @@ impl TrustCollectionService {
         trust_collection: TrustCollection,
         role: Option<TrustListRoleEnum>,
     ) -> Result<TrustListSubscriptionId, TrustCollectionServiceError> {
-        let trust_list_subscription = map_create_trust_list_subscription_request(
-            self.clock.as_ref(),
-            request,
-            trust_collection,
-            role,
-        )?;
+        let trust_list_subscription =
+            map_create_trust_list_subscription_request(request, trust_collection, role)?;
         let trust_list_subscription_id = self
             .trust_list_subscription_repository
             .create(trust_list_subscription)
