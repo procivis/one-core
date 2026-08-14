@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use one_core::model::organisation::Organisation;
-use one_core::model::trust_collection::{TrustCollection, TrustCollectionRelations};
+use one_core::model::trust_collection::TrustCollection;
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use shared_types::{EcosystemId, TrustCollectionId};
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -40,8 +40,7 @@ impl TrustCollectionDB {
             name: params.name.unwrap_or("collection".to_string()),
             deactivated_at: params.deactivated_at,
             remote_trust_collection_url: params.remote_trust_collection_url,
-            organisation_id: organisation.id,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
         };
 
         self.repository
@@ -54,14 +53,6 @@ impl TrustCollectionDB {
 
     #[expect(unused)]
     pub async fn get(&self, id: TrustCollectionId) -> TrustCollection {
-        self.repository
-            .get(
-                &id,
-                &TrustCollectionRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
-            .await
-            .unwrap()
+        self.repository.get(&id).await.unwrap()
     }
 }

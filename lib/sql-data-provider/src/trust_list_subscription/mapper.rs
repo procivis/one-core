@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::Related;
 use one_core::model::trust_list_subscription::{
     SortableTrustListSubscriptionColumn, TrustListSubscription, TrustListSubscriptionFilterValue,
 };
+use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
@@ -14,21 +18,24 @@ use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
 };
 
-impl From<trust_list_subscription::Model> for TrustListSubscription {
-    fn from(value: trust_list_subscription::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            deactivated_at: value.deactivated_at,
-            r#type: value.r#type,
-            reference: value.reference,
-            role: value.role.map(Into::into),
-            state: value.state.into(),
-            trust_collection_id: value.trust_collection_id,
-            trust_collection: None,
-        }
+pub(crate) fn trust_list_subscription_from_model(
+    value: trust_list_subscription::Model,
+    trust_collection_repository: &Arc<dyn TrustCollectionRepository>,
+) -> TrustListSubscription {
+    TrustListSubscription {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        deactivated_at: value.deactivated_at,
+        r#type: value.r#type,
+        reference: value.reference,
+        role: convert_inner(value.role),
+        state: value.state.into(),
+        trust_collection: Related::new(
+            value.trust_collection_id,
+            trust_collection_repository.clone(),
+        ),
     }
 }
 
@@ -44,7 +51,7 @@ impl From<TrustListSubscription> for trust_list_subscription::ActiveModel {
             reference: Set(value.reference),
             role: Set(value.role.map(Into::into)),
             state: Set(value.state.into()),
-            trust_collection_id: Set(value.trust_collection_id),
+            trust_collection_id: Set(value.trust_collection.id()),
         }
     }
 }

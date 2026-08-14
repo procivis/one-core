@@ -1,8 +1,12 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::Related;
 use one_core::model::trust_collection::{
     SortableTrustCollectionColumn, TrustCollection, TrustCollectionFilterValue,
 };
 use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
@@ -14,25 +18,24 @@ use crate::list_query_generic::{
     get_string_match_condition,
 };
 
-impl TryFrom<trust_collection::Model> for TrustCollection {
-    type Error = DataLayerError;
-    fn try_from(value: trust_collection::Model) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: value.id,
-            ecosystem: value.ecosystem,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            deactivated_at: value.deactivated_at,
-            remote_trust_collection_url: value
-                .remote_trust_collection_url
-                .map(|url| Url::parse(&url))
-                .transpose()
-                .map_err(|_| DataLayerError::MappingError)?,
-            organisation_id: value.organisation_id,
-            organisation: None,
-        })
-    }
+pub(crate) fn trust_collection_from_model(
+    value: trust_collection::Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> Result<TrustCollection, DataLayerError> {
+    Ok(TrustCollection {
+        id: value.id,
+        ecosystem: value.ecosystem,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        deactivated_at: value.deactivated_at,
+        remote_trust_collection_url: value
+            .remote_trust_collection_url
+            .map(|url| Url::parse(&url))
+            .transpose()
+            .map_err(|_| DataLayerError::MappingError)?,
+        organisation: Related::new(value.organisation_id, organisation_repository.clone()),
+    })
 }
 
 impl From<TrustCollection> for trust_collection::ActiveModel {
@@ -44,7 +47,7 @@ impl From<TrustCollection> for trust_collection::ActiveModel {
             last_modified: Set(value.last_modified),
             name: Set(value.name),
             deactivated_at: Set(value.deactivated_at),
-            organisation_id: Set(value.organisation_id),
+            organisation_id: Set(value.organisation.id()),
             remote_trust_collection_url: Set(value
                 .remote_trust_collection_url
                 .map(|url| url.to_string())),

@@ -2,16 +2,12 @@ use std::sync::Arc;
 
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::{
-    Organisation, OrganisationRelations, UpdateOrganisationRequest,
-};
+use one_core::model::organisation::UpdateOrganisationRequest;
 use one_core::model::trust_collection::{
-    TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery, TrustCollectionRelations,
+    TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
 };
 use one_core::repository::error::DataLayerError;
-use one_core::repository::organisation_repository::{
-    MockOrganisationRepository, OrganisationRepository,
-};
+use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use one_core::service::test_utilities::dummy_organisation;
 use sea_orm::DatabaseConnection;
@@ -55,8 +51,7 @@ fn dummy_trust_collection(org_id: OrganisationId) -> TrustCollection {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "test-collection".to_string(),
-        organisation_id: org_id,
-        organisation: None,
+        organisation: dummy_organisation(Some(org_id)).into(),
         deactivated_at: None,
         remote_trust_collection_url: Some(Url::parse("https://example.com").unwrap()),
     }
@@ -80,9 +75,7 @@ async fn test_create_trust_collection() {
 async fn test_get_trust_collection_missing() {
     let TestSetup { provider, .. } = setup().await;
 
-    let result = provider
-        .get(&Uuid::new_v4().into(), &TrustCollectionRelations::default())
-        .await;
+    let result = provider.get(&Uuid::new_v4().into()).await;
     assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
 }
 
@@ -96,9 +89,7 @@ async fn test_get_trust_collection_success() {
     let id = collection.id;
     provider.create(collection).await.unwrap();
 
-    let result = provider
-        .get(&id, &TrustCollectionRelations::default())
-        .await;
+    let result = provider.get(&id).await;
 
     assert!(result.is_ok());
     let found = result.unwrap();
@@ -119,9 +110,7 @@ async fn test_delete_trust_collection() {
     let result = provider.delete(id).await;
     assert!(result.is_ok());
 
-    let get_result = provider
-        .get(&id, &TrustCollectionRelations::default())
-        .await;
+    let get_result = provider.get(&id).await;
     assert!(matches!(
         get_result,
         Err(DataLayerError::EntityNotFound { .. })
@@ -237,7 +226,7 @@ async fn test_list_trust_collection_with_organisation_filter() {
     assert!(result.is_ok());
     let list = result.unwrap();
     assert_eq!(list.total_items, 1);
-    assert_eq!(list.values[0].organisation_id, org_id);
+    assert_eq!(list.values[0].organisation.id(), org_id);
 }
 
 #[tokio::test]
@@ -415,45 +404,4 @@ async fn test_list_trust_collection_pagination() {
     assert_eq!(list.total_items, 5);
     assert_eq!(list.total_pages, 3);
     assert_eq!(list.values.len(), 2);
-}
-#[tokio::test]
-async fn test_get_trust_collection_with_organisation_relation() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let db = data_layer.db;
-
-    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
-
-    let mut mock_org_repo = MockOrganisationRepository::default();
-    mock_org_repo
-        .expect_get_organisation()
-        .returning(move |id| {
-            Ok(Organisation {
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                ..dummy_organisation(Some(*id))
-            })
-        });
-
-    let provider = TrustCollectionProvider {
-        db: TransactionManagerImpl::new(db.clone()),
-        organisation_repository: Arc::new(mock_org_repo),
-    };
-
-    let collection = dummy_trust_collection(org_id);
-    let id = collection.id;
-    provider.create(collection).await.unwrap();
-
-    let result = provider
-        .get(
-            &id,
-            &TrustCollectionRelations {
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
-        .await;
-
-    assert!(result.is_ok());
-    let found = result.unwrap();
-    assert!(found.organisation.is_some());
-    assert_eq!(found.organisation.unwrap().id, org_id);
 }

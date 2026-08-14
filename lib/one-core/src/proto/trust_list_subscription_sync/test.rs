@@ -19,6 +19,7 @@ use crate::proto::trust_list_subscription_sync::{
 };
 use crate::provider::caching_loader::remote_trust_collection::MockRemoteTrustCollectionCache;
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
+use crate::service::test_utilities::{dummy_organisation, dummy_trust_collection};
 
 const DUMMY_URL: &str = "https://example.com/trust-list";
 
@@ -67,6 +68,10 @@ async fn test_sync_subscriptions() {
     let mut repository = MockTrustListSubscriptionRepository::new();
     repository.expect_list().once().returning(move |_| {
         let now = crate::clock::now_utc();
+        let trust_collection = TrustCollection {
+            id: local_collection_id,
+            ..dummy_trust_collection()
+        };
         Ok(GetTrustListSubscriptionList {
             values: vec![
                 TrustListSubscription {
@@ -79,8 +84,7 @@ async fn test_sync_subscriptions() {
                     reference: "https://existing.com".to_string(),
                     role: Some(TrustListRoleEnum::PidProvider),
                     state: TrustListSubscriptionState::Active,
-                    trust_collection_id: local_collection_id,
-                    trust_collection: None,
+                    trust_collection: trust_collection.clone().into(),
                 },
                 TrustListSubscription {
                     id: to_be_deleted,
@@ -92,8 +96,7 @@ async fn test_sync_subscriptions() {
                     reference: "https://outdated.com".to_string(),
                     role: Some(TrustListRoleEnum::PidProvider),
                     state: TrustListSubscriptionState::Active,
-                    trust_collection_id: local_collection_id,
-                    trust_collection: None,
+                    trust_collection: trust_collection.into(),
                 },
             ],
             total_pages: 1,
@@ -130,7 +133,6 @@ fn test_collection(is_remote: bool) -> TrustCollection {
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: is_remote.then(|| Url::parse(DUMMY_URL).unwrap()),
-        organisation_id: uuid::Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     }
 }

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::trust_collection::{
-    GetTrustCollectionList, TrustCollection, TrustCollectionListQuery, TrustCollectionRelations,
+    GetTrustCollectionList, TrustCollection, TrustCollectionListQuery,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -27,19 +27,15 @@ impl TrustCollectionRepository for TrustCollectionHistoryDecorator {
             trust_list_publication_id,
             entity.name,
             HistoryAction::Created,
-            entity.organisation_id,
+            entity.organisation.id(),
         )
         .await;
 
         Ok(trust_list_publication_id)
     }
 
-    async fn get(
-        &self,
-        id: &TrustCollectionId,
-        relations: &TrustCollectionRelations,
-    ) -> Result<TrustCollection, DataLayerError> {
-        self.inner.get(id, relations).await
+    async fn get(&self, id: &TrustCollectionId) -> Result<TrustCollection, DataLayerError> {
+        self.inner.get(id).await
     }
 
     async fn list(
@@ -50,7 +46,7 @@ impl TrustCollectionRepository for TrustCollectionHistoryDecorator {
     }
 
     async fn delete(&self, id: TrustCollectionId) -> Result<(), DataLayerError> {
-        let trust_collection = self.inner.get(&id, &Default::default()).await;
+        let trust_collection = self.inner.get(&id).await;
         self.inner.delete(id).await?;
 
         let trust_collection = trust_collection?;
@@ -58,7 +54,7 @@ impl TrustCollectionRepository for TrustCollectionHistoryDecorator {
             id,
             trust_collection.name,
             HistoryAction::Deleted,
-            trust_collection.organisation_id,
+            trust_collection.organisation.id(),
         )
         .await;
         Ok(())

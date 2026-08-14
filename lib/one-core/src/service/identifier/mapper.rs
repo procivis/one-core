@@ -192,11 +192,11 @@ pub(super) fn to_create_did_request(
     }
 }
 
-impl TryFrom<TrustListSubscription> for ResolvedTrustEntrySourceResponseDTO {
-    type Error = IdentifierServiceError;
-
-    fn try_from(value: TrustListSubscription) -> Result<Self, Self::Error> {
-        Ok(Self {
+impl ResolvedTrustEntrySourceResponseDTO {
+    pub(super) async fn try_from(
+        value: TrustListSubscription,
+    ) -> Result<ResolvedTrustEntrySourceResponseDTO, IdentifierServiceError> {
+        Ok(ResolvedTrustEntrySourceResponseDTO {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
@@ -205,9 +205,7 @@ impl TryFrom<TrustListSubscription> for ResolvedTrustEntrySourceResponseDTO {
             reference: value.reference,
             r#type: value.r#type,
             state: value.state,
-            trust_collection: value.trust_collection.map(Into::into).ok_or(
-                IdentifierServiceError::MappingError("missing trust collection".to_string()),
-            )?,
+            trust_collection: value.trust_collection.as_ref().await?.to_owned().into(),
         })
     }
 }

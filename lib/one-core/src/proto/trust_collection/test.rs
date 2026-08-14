@@ -12,7 +12,9 @@ use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
 use crate::repository::error::DataLayerError;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
+use crate::service::test_utilities::dummy_organisation;
 
 const DUMMY_URL: &str = "https://example.com/trust-collection";
 #[tokio::test]
@@ -48,8 +50,11 @@ async fn test_collection_sync() {
         .withf(|c| c.name == "to_add" && c.remote_trust_collection_url.is_some())
         .returning(|c| Ok(c.id));
 
-    let provider =
-        TrustCollectionManagerImpl::new(Arc::new(repository), Arc::new(NoTransactionManager));
+    let provider = TrustCollectionManagerImpl::new(
+        Arc::new(repository),
+        Arc::new(MockOrganisationRepository::default()),
+        Arc::new(NoTransactionManager),
+    );
 
     let to_add = remote_test_collection("to_add");
     let remote_collections = vec![
@@ -78,8 +83,11 @@ async fn test_skip_already_existing() {
         .withf(|c| c.name == "already_exists" && c.remote_trust_collection_url.is_some())
         .returning(|_| Err(DataLayerError::AlreadyExists));
 
-    let provider =
-        TrustCollectionManagerImpl::new(Arc::new(repository), Arc::new(NoTransactionManager));
+    let provider = TrustCollectionManagerImpl::new(
+        Arc::new(repository),
+        Arc::new(MockOrganisationRepository::default()),
+        Arc::new(NoTransactionManager),
+    );
 
     let remote_collections = vec![remote_test_collection("already_exists")];
     let result = provider
@@ -110,7 +118,6 @@ fn test_collection(
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: is_remote.then(|| Url::parse(DUMMY_URL).unwrap()),
-        organisation_id,
-        organisation: None,
+        organisation: dummy_organisation(Some(organisation_id)).into(),
     }
 }

@@ -8,7 +8,7 @@ use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySo
 use crate::model::list_filter::ListFilterValue;
 use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionFilterValue,
-    TrustListSubscriptionListQuery, TrustListSubscriptionRelations, TrustListSubscriptionState,
+    TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -35,8 +35,10 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
             HistoryAction::Created,
             trust_list_subscription
                 .trust_collection
-                .ok_or(DataLayerError::MappingError)?
-                .organisation_id,
+                .as_ref()
+                .await?
+                .organisation
+                .id(),
         )
         .await;
 
@@ -59,8 +61,10 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
             HistoryAction::Updated,
             existing_subscription
                 .trust_collection
-                .ok_or(DataLayerError::MappingError)?
-                .organisation_id,
+                .as_ref()
+                .await?
+                .organisation
+                .id(),
         )
         .await;
 
@@ -70,9 +74,8 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
     async fn get(
         &self,
         id: &TrustListSubscriptionId,
-        relations: &TrustListSubscriptionRelations,
     ) -> Result<TrustListSubscription, DataLayerError> {
-        self.inner.get(id, relations).await
+        self.inner.get(id).await
     }
 
     async fn list(
@@ -93,8 +96,10 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
             HistoryAction::Deleted,
             existing_subscription
                 .trust_collection
-                .ok_or(DataLayerError::MappingError)?
-                .organisation_id,
+                .as_ref()
+                .await?
+                .organisation
+                .id(),
         )
         .await;
         Ok(())
@@ -105,16 +110,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
             self.inner.delete_many(ids).await?;
             return Ok(());
         };
-        let first_subscription = self
-            .inner
-            .get(
-                first_subscription_id,
-                &TrustListSubscriptionRelations {
-                    // SAFETY: all trust list subscriptions should be in the same organisation
-                    trust_collection: Some(Default::default()),
-                },
-            )
-            .await;
+        let first_subscription = self.inner.get(first_subscription_id).await;
         let existing_subscriptions = self
             .inner
             .list(TrustListSubscriptionListQuery {
@@ -125,18 +121,19 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
 
         self.inner.delete_many(ids).await?;
 
-        let first_subscription = first_subscription?;
+        let organisation_id = first_subscription?
+            .trust_collection
+            .as_ref()
+            .await?
+            .organisation
+            .id();
         let existing_subscriptions = existing_subscriptions?.values;
         for existing_subscription in existing_subscriptions {
             self.write_history(
                 existing_subscription.id,
                 existing_subscription.name.to_owned(),
                 HistoryAction::Deleted,
-                first_subscription
-                    .trust_collection
-                    .as_ref()
-                    .ok_or(DataLayerError::MappingError)?
-                    .organisation_id,
+                organisation_id,
             )
             .await;
         }
@@ -179,12 +176,6 @@ impl TrustListSubscriptionHistoryDecorator {
         &self,
         id: &TrustListSubscriptionId,
     ) -> Result<TrustListSubscription, DataLayerError> {
-        self.get(
-            id,
-            &TrustListSubscriptionRelations {
-                trust_collection: Some(Default::default()),
-            },
-        )
-        .await
+        self.get(id).await
     }
 }

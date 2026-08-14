@@ -10,11 +10,9 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
 use crate::model::identifier::IdentifierType;
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
-use crate::model::trust_collection::{TrustCollection, TrustCollectionRelations};
+use crate::model::trust_collection::TrustCollection;
 use crate::model::trust_list_role::TrustListRoleEnum;
-use crate::model::trust_list_subscription::{
-    TrustListSubscription, TrustListSubscriptionRelations, TrustListSubscriptionState,
-};
+use crate::model::trust_list_subscription::{TrustListSubscription, TrustListSubscriptionState};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
@@ -66,8 +64,7 @@ fn dummy_trust_collection(organisation_id: OrganisationId) -> TrustCollection {
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id,
-        organisation: None,
+        organisation: dummy_organisation(Some(organisation_id)).into(),
     }
 }
 
@@ -100,7 +97,7 @@ async fn test_create_trust_collection_success() {
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
     trust_collection_repository
         .expect_create()
-        .withf(move |tc| tc.name == "new collection" && tc.organisation_id == organisation_id)
+        .withf(move |tc| tc.name == "new collection" && tc.organisation.id() == organisation_id)
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut ecosystem_provider = MockEcosystemDirectory::new();
@@ -213,11 +210,8 @@ async fn test_delete_trust_collection_success() {
 
     trust_collection_repository
         .expect_get()
-        .with(
-            eq(trust_collection_id),
-            eq(TrustCollectionRelations::default()),
-        )
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .with(eq(trust_collection_id))
+        .returning(move |_| Ok(trust_collection.clone()));
 
     trust_collection_repository
         .expect_delete()
@@ -256,7 +250,7 @@ async fn test_delete_trust_collection_not_found() {
 
     trust_collection_repository
         .expect_get()
-        .returning(move |_, _| {
+        .returning(move |_| {
             Err(DataLayerError::EntityNotFound {
                 kind: crate::repository::error::EntityKind::TrustCollection,
                 id: trust_collection_id.into(),
@@ -286,11 +280,8 @@ async fn test_delete_trust_collection_org_mismatch() {
 
     trust_collection_repository
         .expect_get()
-        .with(
-            eq(trust_collection_id),
-            eq(TrustCollectionRelations::default()),
-        )
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .with(eq(trust_collection_id))
+        .returning(move |_| Ok(trust_collection.clone()));
 
     let service = mock_service(Mocks {
         trust_collection_repository,
@@ -317,11 +308,8 @@ async fn test_get_trust_collection_success() {
 
     trust_collection_repository
         .expect_get()
-        .with(
-            eq(trust_collection_id),
-            eq(TrustCollectionRelations::default()),
-        )
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .with(eq(trust_collection_id))
+        .returning(move |_| Ok(trust_collection.clone()));
 
     let service = mock_service(Mocks {
         trust_collection_repository,
@@ -361,11 +349,8 @@ async fn test_get_trust_collection_parent_org_success() {
 
     trust_collection_repository
         .expect_get()
-        .with(
-            eq(trust_collection_id),
-            eq(TrustCollectionRelations::default()),
-        )
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .with(eq(trust_collection_id))
+        .returning(move |_| Ok(trust_collection.clone()));
 
     let service = mock_service(Mocks {
         organisation_repository,
@@ -486,11 +471,8 @@ async fn test_create_trust_list_subscription_success() {
 
     trust_collection_repository
         .expect_get()
-        .with(
-            eq(trust_collection_id),
-            eq(TrustCollectionRelations::default()),
-        )
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .with(eq(trust_collection_id))
+        .returning(move |_| Ok(trust_collection.clone()));
 
     let mut trust_list_subscriber = MockTrustListSubscriber::new();
     trust_list_subscriber
@@ -547,7 +529,7 @@ async fn test_create_trust_list_subscription_org_mismatch() {
 
     trust_collection_repository
         .expect_get()
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .returning(move |_| Ok(trust_collection.clone()));
 
     let request = CreateTrustListSubscriptionRequestDTO {
         name: "test subscription".to_string(),
@@ -591,7 +573,7 @@ async fn test_create_trust_list_subscription_validation_fails() {
 
     trust_collection_repository
         .expect_get()
-        .returning(move |_, _| Ok(trust_collection.clone()));
+        .returning(move |_| Ok(trust_collection.clone()));
 
     let mut trust_list_subscriber = MockTrustListSubscriber::new();
     trust_list_subscriber
@@ -631,7 +613,7 @@ async fn test_create_trust_list_subscription_not_found() {
 
     trust_collection_repository
         .expect_get()
-        .returning(move |_, _| {
+        .returning(move |_| {
             Err(DataLayerError::EntityNotFound {
                 kind: crate::repository::error::EntityKind::TrustCollection,
                 id: trust_collection_id.into(),
@@ -682,19 +664,13 @@ async fn test_delete_trust_list_subscription_success() {
         reference: "http://test.com".to_string(),
         role: Some(TrustListRoleEnum::Verifier),
         state: TrustListSubscriptionState::Active,
-        trust_collection_id: trust_collection.id,
-        trust_collection: Some(trust_collection),
+        trust_collection: trust_collection.into(),
     };
 
     trust_list_subscription_repository
         .expect_get()
-        .with(
-            eq(trust_list_subscription_id),
-            eq(TrustListSubscriptionRelations {
-                trust_collection: Some(Default::default()),
-            }),
-        )
-        .returning(move |_, _| Ok(trust_list_subscription.clone()));
+        .with(eq(trust_list_subscription_id))
+        .returning(move |_| Ok(trust_list_subscription.clone()));
 
     trust_list_subscription_repository
         .expect_delete()
@@ -725,7 +701,7 @@ async fn test_delete_trust_list_subscription_not_found() {
 
     trust_list_subscription_repository
         .expect_get()
-        .returning(move |_, _| {
+        .returning(move |_| {
             Err(DataLayerError::EntityNotFound {
                 kind: crate::repository::error::EntityKind::TrustListSubscription,
                 id: trust_list_subscription_id.into(),
@@ -754,7 +730,7 @@ async fn test_get_trust_list_subscription_list_success() {
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
     trust_collection_repository
         .expect_get()
-        .returning(move |_, _| Ok(dummy_trust_collection(org_id)));
+        .returning(move |_| Ok(dummy_trust_collection(org_id)));
     let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
 
     let trust_collection_id: TrustCollectionId = Uuid::new_v4().into();

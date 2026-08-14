@@ -732,7 +732,9 @@ mod tests {
     use crate::repository::organisation_repository::MockOrganisationRepository;
     use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
     use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
-    use crate::service::test_utilities::dummy_credential_schema;
+    use crate::service::test_utilities::{
+        dummy_credential_schema, dummy_organisation, dummy_trust_collection,
+    };
 
     fn make_validator() -> WRPValidatorImpl {
         WRPValidatorImpl::new(
@@ -785,8 +787,7 @@ mod tests {
                     last_modified: OffsetDateTime::now_utc(),
                     deactivated_at: None,
                     remote_trust_collection_url: None,
-                    organisation_id: OrganisationId::from(uuid::Uuid::new_v4()),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                 }],
                 total_pages: 1,
                 total_items: 1,
@@ -841,8 +842,7 @@ mod tests {
             reference: "https://example.com/lotl".to_string(),
             role,
             state: TrustListSubscriptionState::Active,
-            trust_collection_id: TrustCollectionId::from(uuid::Uuid::new_v4()),
-            trust_collection: None,
+            trust_collection: dummy_trust_collection().into(),
         }
     }
 

@@ -1,15 +1,18 @@
+use proc_macros::Model;
 use shared_types::{EcosystemId, OrganisationId, TrustCollectionId};
 use time::OffsetDateTime;
 use url::Url;
 
 use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
-use super::organisation::{Organisation, OrganisationRelations};
+use super::organisation::Organisation;
 use crate::model::common::GetListResponse;
+use crate::model::relation::Related;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustCollection {
+    #[model(id)]
     pub id: TrustCollectionId,
     pub name: String,
     pub created_date: OffsetDateTime,
@@ -17,15 +20,9 @@ pub struct TrustCollection {
     pub deactivated_at: Option<OffsetDateTime>,
     pub remote_trust_collection_url: Option<Url>,
     pub ecosystem: EcosystemId,
-    pub organisation_id: OrganisationId,
 
     // Relations
-    pub organisation: Option<Organisation>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct TrustCollectionRelations {
-    pub organisation: Option<OrganisationRelations>,
+    pub organisation: Related<Organisation>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

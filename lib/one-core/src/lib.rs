@@ -426,6 +426,7 @@ impl OneCore {
 
         let trust_collection_manager = Arc::new(TrustCollectionManagerImpl::new(
             data_provider.get_trust_collection_repository(),
+            data_provider.get_organisation_repository(),
             data_provider.get_tx_manager(),
         ));
 

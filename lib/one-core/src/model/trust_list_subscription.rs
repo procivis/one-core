@@ -5,6 +5,7 @@ use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
 use super::trust_collection::TrustCollection;
 use crate::model::common::GetListResponse;
+use crate::model::relation::Related;
 use crate::model::trust_list_role::TrustListRoleEnum;
 
 #[derive(Clone, Debug)]
@@ -19,15 +20,9 @@ pub struct TrustListSubscription {
     pub reference: String,
     pub role: Option<TrustListRoleEnum>,
     pub state: TrustListSubscriptionState,
-    pub trust_collection_id: TrustCollectionId,
 
     // Relations:
-    pub trust_collection: Option<TrustCollection>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct TrustListSubscriptionRelations {
-    pub trust_collection: Option<super::trust_collection::TrustCollectionRelations>,
+    pub trust_collection: Related<TrustCollection>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

@@ -50,7 +50,9 @@ use crate::provider::trust_list_subscriber::{
 };
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::identifier::dto::CreateRemoteIdentifierRequestDTO;
+use crate::service::identifier::dto::{
+    CreateRemoteIdentifierRequestDTO, ResolvedTrustEntrySourceResponseDTO,
+};
 use crate::validator::throw_if_org_id_not_matching_session;
 
 impl IdentifierService {
@@ -629,7 +631,7 @@ impl IdentifierService {
             )
             .await?;
 
-        let identifier_id_to_entries = group_entries_by_identifier_id(all_resolved_entries)?;
+        let identifier_id_to_entries = group_entries_by_identifier_id(all_resolved_entries).await?;
         Ok(assign_identifiers_to_entries(
             identifiers,
             identifier_id_to_entries,
@@ -762,7 +764,7 @@ impl IdentifierService {
 
         let trust_collection_ids = trust_list_subscriptions
             .iter()
-            .map(|tls| tls.trust_collection_id)
+            .map(|tls| tls.trust_collection.id())
             .unique()
             .collect();
 
@@ -772,9 +774,11 @@ impl IdentifierService {
             .error_while("getting trust list subscriptions")?;
 
         for trust_list_subscription in &mut trust_list_subscriptions {
-            trust_list_subscription.trust_collection = trust_list_collections
-                .get(&trust_list_subscription.trust_collection_id)
-                .cloned();
+            if let Some(trust_collection) =
+                trust_list_collections.get(trust_list_subscription.trust_collection.id_ref())
+            {
+                trust_list_subscription.trust_collection = trust_collection.to_owned().into();
+            }
         }
         Ok(trust_list_subscriptions)
     }
@@ -832,7 +836,7 @@ fn entry_matches_requested_roles(
         .is_some_and(|role| requested_roles.contains(&role))
 }
 
-fn group_entries_by_identifier_id(
+async fn group_entries_by_identifier_id(
     all_resolved_entries: Vec<Vec<(IdentifierId, TrustEntityResponse, TrustListSubscription)>>,
 ) -> Result<HashMap<IdentifierId, Vec<ResolvedTrustEntryResponseDTO>>, IdentifierServiceError> {
     let mut identifier_to_entries = HashMap::new();
@@ -843,7 +847,8 @@ fn group_entries_by_identifier_id(
                 .or_insert(Vec::new())
                 .push(ResolvedTrustEntryResponseDTO {
                     metadata: Some(trust_entity.metadata),
-                    source: trust_list_subscription.try_into()?,
+                    source: ResolvedTrustEntrySourceResponseDTO::try_from(trust_list_subscription)
+                        .await?,
                 });
         }
     }

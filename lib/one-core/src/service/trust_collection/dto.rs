@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use url::Url;
 
 use crate::model::common::GetListResponse;
-use crate::model::trust_collection::{ExactTrustCollectionFilterColumn, TrustCollection};
+use crate::model::trust_collection::ExactTrustCollectionFilterColumn;
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{TrustListSubscription, TrustListSubscriptionState};
 
@@ -25,8 +25,7 @@ pub struct CreateTrustListSubscriptionRequestDTO {
     pub r#type: TrustListSubscriberId,
 }
 
-#[derive(Clone, Debug, From)]
-#[from(TrustCollection)]
+#[derive(Clone, Debug)]
 pub struct GetTrustCollectionResponseDTO {
     pub id: TrustCollectionId,
     pub created_date: OffsetDateTime,
@@ -39,8 +38,7 @@ pub struct GetTrustCollectionResponseDTO {
 
 pub type GetTrustCollectionListResponseDTO = GetListResponse<TrustCollectionListItemResponseDTO>;
 
-#[derive(Debug, Clone, From)]
-#[from(TrustCollection)]
+#[derive(Debug, Clone)]
 pub struct TrustCollectionListItemResponseDTO {
     pub id: TrustCollectionId,
     pub created_date: OffsetDateTime,

@@ -9,25 +9,30 @@ use super::dto::RemoteTrustCollectionInfoDTO;
 use super::{EUDI_ECOSYSTEM, Error, TrustCollectionManager};
 use crate::error::ContextWithErrorCode;
 use crate::model::list_filter::ListFilterValue;
+use crate::model::relation::Related;
 use crate::model::trust_collection::{
     GetTrustCollectionList, TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
 };
 use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::error::DataLayerError;
+use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 
 pub(crate) struct TrustCollectionManagerImpl {
     repository: Arc<dyn TrustCollectionRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
     tx_manager: Arc<dyn TransactionManager>,
 }
 
 impl TrustCollectionManagerImpl {
     pub(crate) fn new(
         repository: Arc<dyn TrustCollectionRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
         tx_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
             repository,
+            organisation_repository,
             tx_manager,
         }
     }
@@ -60,8 +65,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                             last_modified: now,
                             deactivated_at: None,
                             remote_trust_collection_url: Some(trust_collection_url),
-                            organisation_id,
-                            organisation: None,
+                            organisation: Related::new(organisation_id, self.organisation_repository.clone()),
                         })
                         .await;
                     match result {

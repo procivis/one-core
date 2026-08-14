@@ -19,6 +19,7 @@ use crate::provider::trust_list_subscriber::provider::{
 use crate::provider::trust_list_subscriber::{MockTrustListSubscriber, TrustListValidationSuccess};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
+use crate::service::test_utilities::dummy_organisation;
 
 #[tokio::test]
 async fn test_trust_list_subscription_update_active() {
@@ -34,8 +35,7 @@ async fn test_trust_list_subscription_update_active() {
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
     let subscription_id = Uuid::new_v4().into();
     let subscription = TrustListSubscription {
@@ -48,8 +48,7 @@ async fn test_trust_list_subscription_update_active() {
         reference: "https://example.com".to_string(),
         role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Active,
-        trust_collection_id: collection.id,
-        trust_collection: Some(collection.clone()),
+        trust_collection: collection.into(),
     };
     let subscriptions = vec![subscription.clone()];
     let mut repository = MockTrustListSubscriptionRepository::new();
@@ -62,7 +61,7 @@ async fn test_trust_list_subscription_update_active() {
     });
     repository
         .expect_get()
-        .returning(move |_, _| Ok(subscription.clone()));
+        .returning(move |_| Ok(subscription.clone()));
 
     let task = TrustListSubscriptionUpdateTask::new(
         test_subscriber_provider(Some(validation_result)),
@@ -87,8 +86,7 @@ async fn test_trust_list_subscription_update_error() {
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
     let subscription_id = Uuid::new_v4().into();
     let subscription = TrustListSubscription {
@@ -101,8 +99,7 @@ async fn test_trust_list_subscription_update_error() {
         reference: "https://example.com".to_string(),
         role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Error,
-        trust_collection_id: collection.id,
-        trust_collection: Some(collection.clone()),
+        trust_collection: collection.into(),
     };
     let subscriptions = vec![subscription.clone()];
     let mut repository = MockTrustListSubscriptionRepository::new();
@@ -115,7 +112,7 @@ async fn test_trust_list_subscription_update_error() {
     });
     repository
         .expect_get()
-        .returning(move |_, _| Ok(subscription.clone()));
+        .returning(move |_| Ok(subscription.clone()));
 
     let task = TrustListSubscriptionUpdateTask::new(
         test_subscriber_provider(None),
@@ -140,8 +137,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
     let subscription_id = Uuid::new_v4().into();
     let subscription = TrustListSubscription {
@@ -154,8 +150,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
         reference: "https://example.com".to_string(),
         role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Active,
-        trust_collection_id: collection.id,
-        trust_collection: Some(collection.clone()),
+        trust_collection: collection.into(),
     };
     let subscriptions = vec![subscription.clone()];
     let mut repository = MockTrustListSubscriptionRepository::new();
@@ -168,7 +163,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
     });
     repository
         .expect_get()
-        .returning(move |_, _| Ok(subscription.clone()));
+        .returning(move |_| Ok(subscription.clone()));
     repository
         .expect_update_state()
         .once()
@@ -204,8 +199,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
     let subscription_id = Uuid::new_v4().into();
     let subscription = TrustListSubscription {
@@ -218,8 +212,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
         reference: "https://example.com".to_string(),
         role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Error,
-        trust_collection_id: collection.id,
-        trust_collection: Some(collection.clone()),
+        trust_collection: collection.clone().into(),
     };
     let subscriptions = vec![subscription.clone()];
     let mut repository = MockTrustListSubscriptionRepository::new();
@@ -232,7 +225,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
     });
     repository
         .expect_get()
-        .returning(move |_, _| Ok(subscription.clone()));
+        .returning(move |_| Ok(subscription.clone()));
     repository
         .expect_update_state()
         .once()

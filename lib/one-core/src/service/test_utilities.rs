@@ -10,6 +10,7 @@ use standardized_types::openid4vp::dcql::{
 };
 use time::OffsetDateTime;
 use time::macros::datetime;
+use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::{
@@ -30,6 +31,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
+use crate::model::trust_collection::TrustCollection;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 
@@ -676,5 +678,18 @@ pub fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery
             require_cryptographic_holder_binding,
         }],
         credential_sets: None,
+    }
+}
+
+pub fn dummy_trust_collection() -> TrustCollection {
+    TrustCollection {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test-collection".to_string(),
+        organisation: dummy_organisation(None).into(),
+        deactivated_at: None,
+        remote_trust_collection_url: Some(Url::parse("https://example.com").unwrap()),
+        ecosystem: "EUDI".into(),
     }
 }

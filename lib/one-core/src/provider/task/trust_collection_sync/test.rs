@@ -16,6 +16,7 @@ use crate::proto::wallet_provider_client::MockWalletProviderClient;
 use crate::provider::task::Task;
 use crate::provider::task::trust_collection_sync::TrustCollectionSyncTask;
 use crate::repository::instance_repository::MockInstanceRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 use crate::service::managed_instance::dto::{
     FeatureFlags, ProviderTrustCollectionDTO, WalletProviderMetadataResponseDTO,
@@ -70,6 +71,7 @@ async fn test_sync_trust_collections_wallet() {
     let collection_repository = Arc::new(collection_repository);
     let collection_sync = TrustCollectionManagerImpl::new(
         collection_repository.clone(),
+        Arc::new(MockOrganisationRepository::default()),
         Arc::new(NoTransactionManager),
     );
     let task = TrustCollectionSyncTask::new(
@@ -129,6 +131,7 @@ async fn test_sync_trust_collections_verifier() {
     let collection_repository = Arc::new(collection_repository);
     let collection_sync = TrustCollectionManagerImpl::new(
         collection_repository.clone(),
+        Arc::new(MockOrganisationRepository::default()),
         Arc::new(NoTransactionManager),
     );
     let task = TrustCollectionSyncTask::new(
@@ -220,8 +223,7 @@ fn dummy_collection(name: String) -> TrustCollection {
         last_modified: crate::clock::now_utc(),
         deactivated_at: None,
         remote_trust_collection_url: Some(Url::parse("https://remote.collection").unwrap()),
-        organisation_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     }
 }
 

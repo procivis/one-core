@@ -1,7 +1,7 @@
 use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::trust_collection::{
-    GetTrustCollectionList, TrustCollection, TrustCollectionListQuery, TrustCollectionRelations,
+    GetTrustCollectionList, TrustCollection, TrustCollectionListQuery,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
@@ -12,7 +12,8 @@ use sea_orm::{
 use shared_types::TrustCollectionId;
 
 use super::TrustCollectionProvider;
-use crate::common::list_query_with_base_model;
+use super::mapper::trust_collection_from_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::{trust_collection, trust_list_subscription};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -27,11 +28,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
         Ok(id)
     }
 
-    async fn get(
-        &self,
-        id: &TrustCollectionId,
-        relations: &TrustCollectionRelations,
-    ) -> Result<TrustCollection, DataLayerError> {
+    async fn get(&self, id: &TrustCollectionId) -> Result<TrustCollection, DataLayerError> {
         let trust_collection = trust_collection::Entity::find_by_id(*id)
             .filter(trust_collection::Column::DeactivatedAt.is_null())
             .one(&self.db)
@@ -42,16 +39,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
                 id: (*id).into(),
             })?;
 
-        let organisation_id = trust_collection.organisation_id;
-        let mut result = TrustCollection::try_from(trust_collection)?;
-        if let Some(_organisation_relations) = &relations.organisation {
-            result.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(&organisation_id)
-                    .await?,
-            );
-        }
-        Ok(result)
+        trust_collection_from_model(trust_collection, &self.organisation_repository)
     }
 
     async fn list(
@@ -64,7 +52,10 @@ impl TrustCollectionRepository for TrustCollectionProvider {
             .order_by_desc(trust_collection::Column::CreatedDate)
             .order_by_desc(trust_collection::Column::Id);
 
-        list_query_with_base_model(db_query, query, &self.db).await
+        list_query_with_custom_model(db_query, query, &self.db, |model| {
+            trust_collection_from_model(model, &self.organisation_repository)
+        })
+        .await
     }
 
     async fn delete(&self, id: TrustCollectionId) -> Result<(), DataLayerError> {

@@ -1,15 +1,21 @@
+use std::sync::Arc;
+
 use one_dto_mapper::convert_inner;
 use uuid::Uuid;
 
+use super::OrganisationRepository;
 use super::dto::{
     CreateTrustCollectionRequestDTO, CreateTrustListSubscriptionRequestDTO,
-    TrustCollectionFilterParamsDTO, TrustCollectionPublicResponseDTO,
+    GetTrustCollectionResponseDTO, TrustCollectionFilterParamsDTO,
+    TrustCollectionListItemResponseDTO, TrustCollectionPublicResponseDTO,
     TrustListSubscriptionExactColumn, TrustListSubscriptionFilterParamsDTO,
 };
+use super::error::TrustCollectionServiceError;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
+use crate::model::relation::Related;
 use crate::model::trust_collection::{
     ExactTrustCollectionFilterColumn, TrustCollection, TrustCollectionFilterValue,
 };
@@ -17,10 +23,38 @@ use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionFilterValue, TrustListSubscriptionState,
 };
-use crate::service::trust_collection::error::TrustCollectionServiceError;
+
+impl From<TrustCollection> for GetTrustCollectionResponseDTO {
+    fn from(value: TrustCollection) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            organisation_id: value.organisation.id(),
+            remote_trust_collection_url: value.remote_trust_collection_url,
+            ecosystem: value.ecosystem,
+        }
+    }
+}
+
+impl From<TrustCollection> for TrustCollectionListItemResponseDTO {
+    fn from(value: TrustCollection) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            organisation_id: value.organisation.id(),
+            remote_trust_collection_url: value.remote_trust_collection_url,
+            ecosystem: value.ecosystem,
+        }
+    }
+}
 
 pub(super) fn map_create_trust_collection_request(
     request: CreateTrustCollectionRequestDTO,
+    organisation_repository: Arc<dyn OrganisationRepository>,
 ) -> TrustCollection {
     let now = crate::clock::now_utc();
     TrustCollection {
@@ -30,8 +64,7 @@ pub(super) fn map_create_trust_collection_request(
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id: request.organisation_id,
-        organisation: None,
+        organisation: Related::new(request.organisation_id, organisation_repository),
         ecosystem: request.ecosystem,
     }
 }
@@ -51,9 +84,8 @@ pub(super) fn map_create_trust_list_subscription_request(
         reference: request.reference.into(),
         role,
         state: TrustListSubscriptionState::Active,
-        trust_collection_id: trust_collection.id,
         name: request.name,
-        trust_collection: Some(trust_collection),
+        trust_collection: trust_collection.into(),
     })
 }
 

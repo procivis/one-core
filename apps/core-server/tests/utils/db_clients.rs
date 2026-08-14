@@ -107,6 +107,7 @@ impl DbClient {
             ),
             trust_list_subscriptions: TrustListSubscriptionDB::new(
                 layer.get_trust_list_subscription_repository(),
+                layer.get_trust_collection_repository(),
             ),
             trust_entries: TrustEntryDB::new(layer.get_trust_entry_repository()),
             trust_collections: TrustCollectionDB::new(layer.get_trust_collection_repository()),

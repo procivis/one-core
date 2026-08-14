@@ -129,7 +129,6 @@ fn dummy_trust_list_subscription(
     trust_collection_id: TrustCollectionId,
 ) -> (TrustListSubscription, TrustCollection) {
     let now = get_dummy_date();
-    let organisation_id = Uuid::new_v4().into();
     let trust_collection = TrustCollection {
         ecosystem: "EUDI".into(),
         id: trust_collection_id,
@@ -138,8 +137,7 @@ fn dummy_trust_list_subscription(
         last_modified: now,
         deactivated_at: None,
         remote_trust_collection_url: None,
-        organisation_id,
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
     (
         TrustListSubscription {
@@ -152,8 +150,7 @@ fn dummy_trust_list_subscription(
             reference: "http://test.com".to_string(),
             role: Some(TrustListRoleEnum::Issuer),
             state: TrustListSubscriptionState::Active,
-            trust_collection_id,
-            trust_collection: Some(trust_collection.clone()),
+            trust_collection: trust_collection.clone().into(),
         },
         trust_collection,
     )

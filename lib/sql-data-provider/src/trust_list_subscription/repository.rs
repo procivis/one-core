@@ -1,7 +1,7 @@
 use autometrics::autometrics;
 use one_core::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionListQuery,
-    TrustListSubscriptionRelations, TrustListSubscriptionState,
+    TrustListSubscriptionState,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
@@ -11,7 +11,8 @@ use sea_orm::{
 use shared_types::TrustListSubscriptionId;
 
 use super::TrustListSubscriptionProvider;
-use crate::common::list_query_with_base_model;
+use super::mapper::trust_list_subscription_from_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::trust_list_subscription;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -49,7 +50,6 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     async fn get(
         &self,
         id: &TrustListSubscriptionId,
-        relations: &TrustListSubscriptionRelations,
     ) -> Result<TrustListSubscription, DataLayerError> {
         let subscription = trust_list_subscription::Entity::find_by_id(*id)
             .filter(trust_list_subscription::Column::DeactivatedAt.is_null())
@@ -61,17 +61,10 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
                 id: (*id).into(),
             })?;
 
-        let trust_collection_id = subscription.trust_collection_id;
-        let mut result = TrustListSubscription::from(subscription);
-
-        if let Some(trust_collection_relations) = &relations.trust_collection {
-            result.trust_collection = Some(
-                self.trust_collection_repository
-                    .get(&trust_collection_id, trust_collection_relations)
-                    .await?,
-            );
-        }
-        Ok(result)
+        Ok(trust_list_subscription_from_model(
+            subscription,
+            &self.trust_collection_repository,
+        ))
     }
 
     async fn list(
@@ -84,7 +77,13 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
             .order_by_desc(trust_list_subscription::Column::CreatedDate)
             .order_by_desc(trust_list_subscription::Column::Id);
 
-        list_query_with_base_model(db_query, query, &self.db).await
+        list_query_with_custom_model(db_query, query, &self.db, |model| {
+            Ok(trust_list_subscription_from_model(
+                model,
+                &self.trust_collection_repository,
+            ))
+        })
+        .await
     }
 
     async fn delete(&self, id: TrustListSubscriptionId) -> Result<(), DataLayerError> {

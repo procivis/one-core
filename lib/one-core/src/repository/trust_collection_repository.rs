@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use shared_types::TrustCollectionId;
 
+use crate::model::relation::AsyncModelLoader;
 use crate::model::trust_collection::{
-    GetTrustCollectionList, TrustCollection, TrustCollectionListQuery, TrustCollectionRelations,
+    GetTrustCollectionList, TrustCollection, TrustCollectionListQuery,
 };
 use crate::repository::error::DataLayerError;
 
@@ -10,11 +13,7 @@ use crate::repository::error::DataLayerError;
 pub trait TrustCollectionRepository: Send + Sync {
     async fn create(&self, entity: TrustCollection) -> Result<TrustCollectionId, DataLayerError>;
 
-    async fn get(
-        &self,
-        id: &TrustCollectionId,
-        relations: &TrustCollectionRelations,
-    ) -> Result<TrustCollection, DataLayerError>;
+    async fn get(&self, id: &TrustCollectionId) -> Result<TrustCollection, DataLayerError>;
 
     async fn list(
         &self,
@@ -22,4 +21,11 @@ pub trait TrustCollectionRepository: Send + Sync {
     ) -> Result<GetTrustCollectionList, DataLayerError>;
 
     async fn delete(&self, id: TrustCollectionId) -> Result<(), DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<TrustCollection> for Arc<dyn TrustCollectionRepository> {
+    async fn load(&self, id: &TrustCollectionId) -> Result<TrustCollection, DataLayerError> {
+        self.get(id).await
+    }
 }

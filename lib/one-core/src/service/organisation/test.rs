@@ -306,8 +306,7 @@ fn local_trust_collection(
         last_modified: crate::clock::now_utc(),
         deactivated_at: None,
         remote_trust_collection_url: Some("https://remote.example/collection".parse().unwrap()),
-        organisation_id,
-        organisation: None,
+        organisation: dummy_organisation(Some(organisation_id)).into(),
     }
 }
 

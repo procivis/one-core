@@ -17,13 +17,11 @@ use super::mapper::{
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::model::list_filter::ListFilterValue;
-use crate::model::trust_collection::{
-    SortableTrustCollectionColumn, TrustCollection, TrustCollectionRelations,
-};
+use crate::model::trust_collection::{SortableTrustCollectionColumn, TrustCollection};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     SortableTrustListSubscriptionColumn, TrustListSubscription, TrustListSubscriptionFilterValue,
-    TrustListSubscriptionListQuery, TrustListSubscriptionRelations, TrustListSubscriptionState,
+    TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
 use crate::provider::trust_list_subscriber::{
     TrustListSubscriber, TrustListSubscriberCapabilities, TrustListValidationSuccess,
@@ -58,7 +56,8 @@ impl TrustCollectionService {
 
         let name = request.name.to_owned();
 
-        let trust_collection = map_create_trust_collection_request(request);
+        let trust_collection =
+            map_create_trust_collection_request(request, self.organisation_repository.clone());
         let trust_collection_id = self
             .trust_collection_repository
             .create(trust_collection)
@@ -81,7 +80,7 @@ impl TrustCollectionService {
     ) -> Result<(), TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
         throw_if_org_id_not_matching_session(
-            &trust_collection.organisation_id,
+            trust_collection.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -106,7 +105,7 @@ impl TrustCollectionService {
     ) -> Result<GetTrustCollectionResponseDTO, TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
         throw_if_org_id_not_matching_session_with_parent_check(
-            trust_collection.organisation_id,
+            trust_collection.organisation.id(),
             ParentOrg::Allow(self.organisation_repository.clone()),
             &*self.session_provider,
         )
@@ -165,7 +164,7 @@ impl TrustCollectionService {
     ) -> Result<TrustListSubscriptionId, TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
         throw_if_org_id_not_matching_session(
-            &trust_collection.organisation_id,
+            trust_collection.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -195,11 +194,9 @@ impl TrustCollectionService {
         let trust_list_subscription = self
             .fetch_trust_list_subscription(&trust_list_subscription_id)
             .await?;
-        let trust_collection = trust_list_subscription.trust_collection.ok_or(
-            TrustCollectionServiceError::MappingError("missing trust collection".to_string()),
-        )?;
+        let trust_collection = trust_list_subscription.trust_collection.as_ref().await?;
         throw_if_org_id_not_matching_session(
-            &trust_collection.organisation_id,
+            trust_collection.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
@@ -228,7 +225,7 @@ impl TrustCollectionService {
     ) -> Result<GetTrustListSubscriptionListResponseDTO, TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
         throw_if_org_id_not_matching_session_with_parent_check(
-            trust_collection.organisation_id,
+            trust_collection.organisation.id(),
             ParentOrg::Allow(self.organisation_repository.clone()),
             &*self.session_provider,
         )
@@ -324,7 +321,7 @@ impl TrustCollectionService {
         trust_collection_id: &TrustCollectionId,
     ) -> Result<TrustCollection, TrustCollectionServiceError> {
         self.trust_collection_repository
-            .get(trust_collection_id, &TrustCollectionRelations::default())
+            .get(trust_collection_id)
             .await
             .error_while("getting trust collection")
             .map_err(Into::into)
@@ -335,12 +332,7 @@ impl TrustCollectionService {
         trust_list_subscription_id: &TrustListSubscriptionId,
     ) -> Result<TrustListSubscription, TrustCollectionServiceError> {
         self.trust_list_subscription_repository
-            .get(
-                trust_list_subscription_id,
-                &TrustListSubscriptionRelations {
-                    trust_collection: Some(Default::default()),
-                },
-            )
+            .get(trust_list_subscription_id)
             .await
             .error_while("getting trust list subscription")
             .map_err(Into::into)

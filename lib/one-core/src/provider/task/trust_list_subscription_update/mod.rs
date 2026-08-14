@@ -17,7 +17,7 @@ use crate::model::history::{History, HistoryEntityType, HistorySource};
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, SortableTrustListSubscriptionColumn, TrustListSubscription,
-    TrustListSubscriptionListQuery, TrustListSubscriptionRelations,
+    TrustListSubscriptionListQuery,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::provider::task::Task;
@@ -71,8 +71,9 @@ impl TrustListSubscriptionUpdateTask {
             let org_id = subscription
                 .trust_collection
                 .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("trust collection missing".to_string()))?
-                .organisation_id;
+                .await?
+                .organisation
+                .id();
 
             updated_ids.push(subscription.id);
             let result = self
@@ -138,12 +139,7 @@ impl Task for TrustListSubscriptionUpdateTask {
                 // reload with relation
                 let subscription = self
                     .subscription_repository
-                    .get(
-                        &subscription.id,
-                        &TrustListSubscriptionRelations {
-                            trust_collection: Some(Default::default()),
-                        },
-                    )
+                    .get(&subscription.id)
                     .await
                     .error_while("getting trust list subscription")?;
                 let provider = match self.subscriber_provider.get(&subscription.r#type) {
