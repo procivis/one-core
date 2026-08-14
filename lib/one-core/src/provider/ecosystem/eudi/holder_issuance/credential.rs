@@ -8,15 +8,13 @@ use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::Credential;
-use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
     WalletRelyingPartyMetadata,
 };
 use crate::model::interaction::Interaction;
 use crate::proto::session_provider::SessionExt;
-use crate::proto::wrp_validator::{QUALIFIED_EAA_CATEGORY, credential_category};
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::{IdentifierDetails, X5References};
 use crate::provider::ecosystem::eudi::mapper::formatter_requires_namespaces;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
@@ -35,36 +33,35 @@ impl HolderIssuanceResolver {
         let formatter = self.formatter_provider.get_credential_formatter(&format)?;
         let organisation_id = interaction.organisation.id();
 
-        let namespaced = formatter_requires_namespaces(formatter.as_ref());
-        let claims = credential.claims.as_ref().await?;
-        let is_qeaa = credential_category(&claims, namespaced) == Some(QUALIFIED_EAA_CATEGORY);
+        let issuer = formatter
+            .extract_credentials_unverified(serialized, Some(&schema))
+            .await
+            .error_while("parsing credential")?
+            .issuer;
 
-        if is_qeaa {
-            self.resolve_qeaa_issuer_trust(
-                serialized,
+        let claims = credential.claims.as_ref().await?;
+        let credential_category = {
+            let namespaced = formatter_requires_namespaces(formatter.as_ref());
+            credential_category(&claims, namespaced)
+        };
+
+        let (chain, x5_references) = match &issuer {
+            IdentifierDetails::Certificate(certificate) => {
+                (Some(certificate.chain.as_str()), certificate.x5_references)
+            }
+            _ => (None, X5References::default()),
+        };
+
+        self.wrp_validator
+            .validate_credential_issuer(
+                chain,
                 &schema,
-                formatter.as_ref(),
+                credential_category,
+                x5_references,
                 organisation_id,
             )
-            .await?;
-        } else {
-            let Some(issuer_certificate) = &credential.issuer_certificate else {
-                return Err(HolderIssuanceError::MissingIdentifier);
-            };
-
-            let certificate = issuer_certificate.as_ref().await?;
-
-            self.wrp_validator
-                .validate_credential_issuer(
-                    Some(certificate.chain.as_str()),
-                    &schema,
-                    None,
-                    X5References::default(),
-                    organisation_id,
-                )
-                .await
-                .error_while("validating issuer")?;
-        }
+            .await
+            .error_while("validating issuer")?;
 
         let Some(ecosystem_data) = interaction.ecosystem_data.as_ref() else {
             return Err(HolderIssuanceError::MappingError(
@@ -154,40 +151,6 @@ impl HolderIssuanceResolver {
             )
             .await?;
         }
-
-        Ok(())
-    }
-
-    async fn resolve_qeaa_issuer_trust(
-        &self,
-        serialized: &SerializedCredential,
-        schema: &CredentialSchema,
-        formatter: &dyn CredentialFormatter,
-        organisation_id: OrganisationId,
-    ) -> Result<(), HolderIssuanceError> {
-        let issuer = formatter
-            .extract_credentials_unverified(serialized, Some(schema))
-            .await
-            .error_while("parsing credential")?
-            .issuer;
-
-        let (chain, x5_references) = match &issuer {
-            IdentifierDetails::Certificate(certificate) => {
-                (Some(certificate.chain.as_str()), certificate.x5_references)
-            }
-            _ => (None, X5References::default()),
-        };
-
-        self.wrp_validator
-            .validate_credential_issuer(
-                chain,
-                schema,
-                Some(QUALIFIED_EAA_CATEGORY),
-                x5_references,
-                organisation_id,
-            )
-            .await
-            .error_while("validating QEAA issuer")?;
 
         Ok(())
     }
