@@ -11,7 +11,7 @@ use one_core::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::verification_protocol::dto::{
     ApplicableCredential, ApplicableCredentialOrFailureHintEnum,
 };
-use one_core::service::common_dto::ListQueryDTO;
+use one_core::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseEnum};
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
@@ -93,6 +93,7 @@ use super::proof::{
 use super::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
 };
+use super::trust_information::TrustInformationDetailResponseBindingEnum;
 use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{
     TimestampFormat, into_id, into_id_opt, into_id_opt_vec, into_id_vec, into_timestamp,
@@ -1145,5 +1146,13 @@ impl TryFrom<HandleInvitationRequestBindingDTO> for HandleInvitationRequestDTO {
             redirect_uri: value.redirect_uri,
             ecosystem: convert_inner(value.ecosystem),
         })
+    }
+}
+
+impl From<TrustInformationDetailResponseEnum> for TrustInformationDetailResponseBindingEnum {
+    fn from(value: TrustInformationDetailResponseEnum) -> Self {
+        match value {
+            TrustInformationDetailResponseEnum::Eudi(data) => Self::Eudi(data.into()),
+        }
     }
 }

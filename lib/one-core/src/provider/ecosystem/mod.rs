@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use proc_macros::provider_mock;
-use shared_types::EcosystemId;
+use shared_types::{CredentialId, EcosystemId, ProofId};
 
 use crate::model::credential::Credential;
 use crate::model::identifier::IdentifierFilterValue;
@@ -14,8 +14,7 @@ use crate::model::proof::Proof;
 use crate::provider::Provider;
 use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::{
-    EcosystemCapabilities, EcosystemRole, IssuerTrustDetails, ProtocolArtifact, SchemaFilter,
-    VerifierTrustDetails,
+    EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
 };
 
 pub(crate) mod decorators;
@@ -49,15 +48,15 @@ pub trait Ecosystem: Provider + Send + Sync {
         schema: Option<&'a SchemaFilter>,
     ) -> Result<ListFilterCondition<IdentifierFilterValue>, EcosystemError>;
 
-    fn issuer_trust_details(
+    async fn issuer_trust_details(
         &self,
-        credential: &Credential,
-    ) -> Result<IssuerTrustDetails, EcosystemError>;
+        credential_id: &CredentialId,
+    ) -> Result<TrustDetail, EcosystemError>;
 
-    fn verifier_trust_details(
+    async fn verifier_trust_details(
         &self,
-        credential: &Credential,
-    ) -> Result<VerifierTrustDetails, EcosystemError>;
+        proof_id: &ProofId,
+    ) -> Result<TrustDetail, EcosystemError>;
 
     fn lifecycle_hook(&self) -> Result<(), EcosystemError>;
 }

@@ -2,7 +2,7 @@ use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, Ident
 
 use crate::config::ConfigValidationError;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::credential::{CredentialStateEnum, CredentialType};
+use crate::model::credential::{CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::identifier::IdentifierType;
 
 #[derive(thiserror::Error, Debug)]
@@ -13,6 +13,8 @@ pub enum CredentialServiceError {
     InvalidState(CredentialStateEnum),
     #[error("Invalid Credential type: {0}")]
     InvalidType(CredentialType),
+    #[error("Invalid Credential role: {0}")]
+    InvalidRole(CredentialRole),
 
     #[error("No issuer specified")]
     NoIssuer,
@@ -65,6 +67,7 @@ impl ErrorCodeMixin for CredentialServiceError {
             Self::NotFound(_) => ErrorCode::BR_0001,
             Self::InvalidState(_) => ErrorCode::BR_0002,
             Self::InvalidType(_) => ErrorCode::BR_0442,
+            Self::InvalidRole(_) => ErrorCode::BR_0197,
             Self::MissingClaimSchema(_) => ErrorCode::BR_0003,
             Self::MissingDid(_) => ErrorCode::BR_0024,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,

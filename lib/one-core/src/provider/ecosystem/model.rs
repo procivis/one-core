@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use serde::Serialize;
-use shared_types::{CredentialSchemaId, EcosystemId, ProofId, ProofSchemaId, SerializedCredential};
+use shared_types::{CredentialSchemaId, ProofId, ProofSchemaId, SerializedCredential};
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use standardized_types::openid4vp::VerifierInfoAttestation;
 use standardized_types::openid4vp::dcql::DcqlQuery;
@@ -71,16 +71,6 @@ pub enum SchemaFilter {
     ProofSchema(ProofSchemaId),
 }
 
-pub struct IssuerTrustDetails {
-    pub ecosystem: EcosystemId,
-    pub issuer: EcosystemTrustDetail,
-}
-
-pub struct VerifierTrustDetails {
-    pub ecosystem: EcosystemId,
-    pub verifier: EcosystemTrustDetail,
-}
-
-pub enum EcosystemTrustDetail {
+pub enum TrustDetail {
     Eudi(EudiTrustInformationResponseDTO),
 }

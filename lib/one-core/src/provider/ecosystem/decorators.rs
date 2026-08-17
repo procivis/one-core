@@ -2,13 +2,12 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::EcosystemId;
+use shared_types::{CredentialId, EcosystemId, ProofId};
 
 use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
-    EcosystemCapabilities, EcosystemRole, IssuerTrustDetails, ProtocolArtifact, SchemaFilter,
-    VerifierTrustDetails,
+    EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
 };
 use crate::model::credential::Credential;
 use crate::model::identifier::IdentifierFilterValue;
@@ -58,17 +57,17 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         self.disabled_error()
     }
 
-    fn issuer_trust_details(
+    async fn issuer_trust_details(
         &self,
-        _credential: &Credential,
-    ) -> Result<IssuerTrustDetails, EcosystemError> {
+        _credential_id: &CredentialId,
+    ) -> Result<TrustDetail, EcosystemError> {
         self.disabled_error()
     }
 
-    fn verifier_trust_details(
+    async fn verifier_trust_details(
         &self,
-        _credential: &Credential,
-    ) -> Result<VerifierTrustDetails, EcosystemError> {
+        _proof_id: &ProofId,
+    ) -> Result<TrustDetail, EcosystemError> {
         self.disabled_error()
     }
 
@@ -125,18 +124,18 @@ impl Ecosystem for CapabilityChecked {
         self.0.identifier_filter(role, schema).await
     }
 
-    fn issuer_trust_details(
+    async fn issuer_trust_details(
         &self,
-        credential: &Credential,
-    ) -> Result<IssuerTrustDetails, EcosystemError> {
-        self.0.issuer_trust_details(credential)
+        credential_id: &CredentialId,
+    ) -> Result<TrustDetail, EcosystemError> {
+        self.0.issuer_trust_details(credential_id).await
     }
 
-    fn verifier_trust_details(
+    async fn verifier_trust_details(
         &self,
-        credential: &Credential,
-    ) -> Result<VerifierTrustDetails, EcosystemError> {
-        self.0.verifier_trust_details(credential)
+        proof_id: &ProofId,
+    ) -> Result<TrustDetail, EcosystemError> {
+        self.0.verifier_trust_details(proof_id).await
     }
 
     fn lifecycle_hook(&self) -> Result<(), EcosystemError> {

@@ -1053,6 +1053,10 @@ impl ProofService {
             .error_while("getting credential")?;
 
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        if proof.role != ProofRole::Holder {
+            return Err(ProofServiceError::InvalidRole(proof.role));
+        }
+
         let Some(trust_details) = self
             .trust_information_provider
             .get_trust_detail(&id.into())
@@ -1060,13 +1064,31 @@ impl ProofService {
             .error_while("getting trust details")?
         else {
             return Ok(TrustInformationDetailResponseDTO {
-                eudi_ecosystem: None,
+                ..Default::default()
             });
         };
-        trust_details
+
+        let eudi_ecosystem = trust_details
             .try_into()
-            .error_while("mapping trust information")
-            .map_err(Into::into)
+            .error_while("mapping trust information")?;
+
+        let mut result = TrustInformationDetailResponseDTO {
+            eudi_ecosystem: Some(eudi_ecosystem),
+            ..Default::default()
+        };
+
+        if let Some(ecosystem_id) = proof.ecosystem {
+            let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
+            let verifier = ecosystem
+                .verifier_trust_details(&id)
+                .await
+                .error_while("getting ecosystem trust detail")?;
+
+            result.ecosystem = Some(ecosystem_id);
+            result.verifier = Some(verifier.into());
+        }
+
+        Ok(result)
     }
 
     // ============ Private methods

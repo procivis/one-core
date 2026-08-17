@@ -592,6 +592,9 @@ impl CredentialService {
         if credential.r#type == CredentialType::BatchItem {
             return Err(CredentialServiceError::InvalidType(credential.r#type));
         }
+        if credential.role != CredentialRole::Holder {
+            return Err(CredentialServiceError::InvalidRole(credential.role));
+        }
 
         let Some(trust_details) = self
             .trust_information_provider
@@ -600,13 +603,31 @@ impl CredentialService {
             .error_while("getting trust details")?
         else {
             return Ok(TrustInformationDetailResponseDTO {
-                eudi_ecosystem: None,
+                ..Default::default()
             });
         };
-        trust_details
+
+        let eudi_ecosystem = trust_details
             .try_into()
-            .error_while("mapping trust information")
-            .map_err(Into::into)
+            .error_while("mapping trust information")?;
+
+        let mut result = TrustInformationDetailResponseDTO {
+            eudi_ecosystem: Some(eudi_ecosystem),
+            ..Default::default()
+        };
+
+        if let Some(ecosystem_id) = credential.ecosystem {
+            let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
+            let issuer = ecosystem
+                .issuer_trust_details(&id)
+                .await
+                .error_while("getting ecosystem trust detail")?;
+
+            result.ecosystem = Some(ecosystem_id);
+            result.issuer = Some(issuer.into());
+        }
+
+        Ok(result)
     }
 
     // ============ Private methods

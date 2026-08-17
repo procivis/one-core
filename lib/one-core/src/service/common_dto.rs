@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use shared_types::EcosystemId;
 use standardized_types::etsi_119_475::registration_certificate::SupervisoryAuthority;
 use url::Url;
 
@@ -25,9 +26,18 @@ pub struct ListQueryDTO<SortColumn, Filter, Include = NoInclude> {
     pub include: Option<Vec<Include>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct TrustInformationDetailResponseDTO {
     pub eudi_ecosystem: Option<EudiTrustInformationResponseDTO>,
+
+    pub ecosystem: Option<EcosystemId>,
+    pub issuer: Option<TrustInformationDetailResponseEnum>,
+    pub verifier: Option<TrustInformationDetailResponseEnum>,
+}
+
+#[derive(Clone, Debug)]
+pub enum TrustInformationDetailResponseEnum {
+    Eudi(EudiTrustInformationResponseDTO),
 }
 
 #[derive(Clone, Debug)]

@@ -10,10 +10,18 @@ use standardized_types::etsi_119_475::registration_certificate::SupervisoryAutho
 #[from(TrustInformationDetailResponseDTO)]
 #[uniffi(name = "TrustInformationDetail")]
 pub struct TrustInformationDetailResponseBindingDTO {
-    /// EUDI trust information received from Access Certificates, Registration
-    /// Certificates, or National Registry public APIs.
     #[from(with_fn = convert_inner)]
-    pub eudi_ecosystem: Option<EudiTrustInformationResponseBindingDTO>,
+    pub ecosystem: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub issuer: Option<TrustInformationDetailResponseBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub verifier: Option<TrustInformationDetailResponseBindingEnum>,
+}
+
+#[derive(Clone, Debug, uniffi::Enum)]
+#[uniffi(name = "TrustInformationDetail")]
+pub enum TrustInformationDetailResponseBindingEnum {
+    Eudi(EudiTrustInformationResponseBindingDTO),
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

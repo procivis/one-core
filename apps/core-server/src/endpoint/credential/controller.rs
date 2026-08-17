@@ -348,7 +348,6 @@ pub(crate) async fn get_credential_trust_detail(
         .credential_service
         .get_trust_details(id)
         .await
-        .error_while("getting credential trust information")
-        .map_err(ServiceError::from);
+        .error_while("getting credential trust information");
     OkOrErrorResponse::from_result(result, state, "getting credential trust information")
 }

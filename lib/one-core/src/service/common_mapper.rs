@@ -6,9 +6,10 @@ use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::trust_information::dto::{TrustDetails, WalletRelyingPartyDetails};
 use crate::proto::wrp_validator::model::WRPPayload;
+use crate::provider::ecosystem::model::TrustDetail;
 use crate::service::common_dto::{
     BoundedB64Image, EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, ListQueryDTO,
-    TrustInformationDetailResponseDTO,
+    TrustInformationDetailResponseEnum,
 };
 use crate::service::error::{ServiceError, ValidationError};
 use crate::util::access_cert_parser::EtsiParsedAccessCert;
@@ -71,7 +72,7 @@ where
     }
 }
 
-impl TryFrom<TrustDetails> for TrustInformationDetailResponseDTO {
+impl TryFrom<TrustDetails> for EudiTrustInformationResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: TrustDetails) -> Result<Self, Self::Error> {
@@ -90,13 +91,11 @@ impl TryFrom<TrustDetails> for TrustInformationDetailResponseDTO {
                 };
                 let (intermediary, email, phone) =
                     map_access_cert(access_certificate, has_intermediary);
-                TrustInformationDetailResponseDTO {
-                    eudi_ecosystem: Some(EudiTrustInformationResponseDTO {
-                        intermediary,
-                        email,
-                        phone,
-                        ..eudi_ecosystem
-                    }),
+                EudiTrustInformationResponseDTO {
+                    intermediary,
+                    email,
+                    phone,
+                    ..eudi_ecosystem
                 }
             }
         };
@@ -104,12 +103,17 @@ impl TryFrom<TrustDetails> for TrustInformationDetailResponseDTO {
     }
 }
 
+impl From<TrustDetail> for TrustInformationDetailResponseEnum {
+    fn from(value: TrustDetail) -> Self {
+        match value {
+            TrustDetail::Eudi(detail) => Self::Eudi(detail),
+        }
+    }
+}
+
 fn map_reg_cert(
     reg_cert: JWTPayload<Payload>,
-) -> Result<
-    (EudiTrustInformationResponseDTO, bool),
-    <TrustInformationDetailResponseDTO as TryFrom<TrustDetails>>::Error,
-> {
+) -> Result<(EudiTrustInformationResponseDTO, bool), ServiceError> {
     Ok((
         EudiTrustInformationResponseDTO {
             name: reg_cert.custom.name,
@@ -141,10 +145,7 @@ fn map_reg_cert(
 
 fn map_national_registry_info(
     national_registry_info: JWTPayload<WRPPayload>,
-) -> Result<
-    (EudiTrustInformationResponseDTO, bool),
-    <TrustInformationDetailResponseDTO as TryFrom<TrustDetails>>::Error,
-> {
+) -> Result<(EudiTrustInformationResponseDTO, bool), ServiceError> {
     let data = national_registry_info.custom.data;
     Ok((
         EudiTrustInformationResponseDTO {

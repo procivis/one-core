@@ -1,5 +1,6 @@
 use one_core::model::blob::BlobType;
 use one_core::model::history::HistoryAction;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -7,7 +8,6 @@ use similar_asserts::assert_eq;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
-use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 const ACCESS_CERT: &str = r#"-----BEGIN CERTIFICATE-----
 MIIC+jCCAp+gAwIBAgIRAQrC1dwJkUxlszrpRjXZv+QwCgYIKoZIzj0EAwIwEjEQ
@@ -34,31 +34,16 @@ async fn test_get_proof_trust_detail_success() {
     // GIVEN
     let (context, organisation, identifier, _, key) =
         TestContext::new_with_certificate_identifier(None).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create_with_nested_claims("test", &organisation, Default::default())
-        .await;
 
-    // Select a root claim.
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
-    let proof_schema = context
+    let interaction = context
         .db
-        .proof_schemas
+        .interactions
         .create(
-            "test",
+            None,
+            &[],
             &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
+            InteractionType::Verification,
+            None,
         )
         .await;
 
@@ -68,13 +53,13 @@ async fn test_get_proof_trust_detail_success() {
         .create(
             None,
             &identifier,
-            Some(&proof_schema),
-            ProofStateEnum::Created,
-            "OPENID4VP_DRAFT20",
             None,
+            ProofStateEnum::Requested,
+            "OPENID4VP_FINAL1",
+            Some(&interaction),
             key,
             None,
-            Some("NFC".to_string()),
+            None,
         )
         .await;
 

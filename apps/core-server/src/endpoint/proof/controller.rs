@@ -317,7 +317,6 @@ pub(crate) async fn get_proof_trust_detail(
         .proof_service
         .get_trust_details(id)
         .await
-        .error_while("getting proof trust information")
-        .map_err(ServiceError::from);
+        .error_while("getting proof trust information");
     OkOrErrorResponse::from_result(result, state, "getting proof trust information")
 }

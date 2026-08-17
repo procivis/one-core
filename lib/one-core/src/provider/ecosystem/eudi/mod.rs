@@ -7,14 +7,13 @@ use mapper::credential_schema_to_schema_format;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialFormat, EcosystemId};
+use shared_types::{CredentialFormat, CredentialId, EcosystemId, ProofId};
 use time::Duration;
 
 use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
-    EcosystemCapabilities, EcosystemRole, IssuerTrustDetails, ProtocolArtifact, SchemaFilter,
-    VerifierTrustDetails,
+    EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
 };
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
@@ -37,6 +36,7 @@ mod holder_issuance;
 mod holder_proof;
 mod identifier_filter;
 mod mapper;
+mod trust_detail;
 mod verifier_submission;
 
 #[serde_as]
@@ -73,6 +73,8 @@ pub struct EudiEcosystem {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
 impl EudiEcosystem {
@@ -106,10 +108,10 @@ impl EudiEcosystem {
                 session_provider.clone(),
             ),
             holder_issuance_resolver: HolderIssuanceResolver::new(
-                history_repository,
+                history_repository.clone(),
                 interaction_repository,
                 wrp_validator.clone(),
-                blob_storage_provider,
+                blob_storage_provider.clone(),
                 session_provider,
                 formatter_provider.clone(),
                 params.leeway_seconds,
@@ -118,6 +120,8 @@ impl EudiEcosystem {
             formatter_provider,
             credential_schema_repository,
             proof_schema_repository,
+            history_repository,
+            blob_storage_provider,
             params,
         })
     }
@@ -298,18 +302,18 @@ impl Ecosystem for EudiEcosystem {
         self.get_filter(role, schema).await
     }
 
-    fn issuer_trust_details(
+    async fn issuer_trust_details(
         &self,
-        _credential: &Credential,
-    ) -> Result<IssuerTrustDetails, EcosystemError> {
-        todo!()
+        credential_id: &CredentialId,
+    ) -> Result<TrustDetail, EcosystemError> {
+        self.get_trust_detail((*credential_id).into()).await
     }
 
-    fn verifier_trust_details(
+    async fn verifier_trust_details(
         &self,
-        _credential: &Credential,
-    ) -> Result<VerifierTrustDetails, EcosystemError> {
-        todo!()
+        proof_id: &ProofId,
+    ) -> Result<TrustDetail, EcosystemError> {
+        self.get_trust_detail((*proof_id).into()).await
     }
 
     fn lifecycle_hook(&self) -> Result<(), EcosystemError> {

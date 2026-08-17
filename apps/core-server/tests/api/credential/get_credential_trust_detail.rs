@@ -1,5 +1,5 @@
 use one_core::model::blob::BlobType;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::history::HistoryAction;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -65,8 +65,11 @@ async fn test_get_credential_trust_detail_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams::default(),
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
         )
         .await;
 
