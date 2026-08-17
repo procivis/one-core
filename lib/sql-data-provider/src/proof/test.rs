@@ -6,11 +6,10 @@ use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{Did, DidType};
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
-use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::key::Key;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
-use one_core::model::proof::{Proof, ProofListQuery, ProofRelations, ProofRole, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofListQuery, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
@@ -325,59 +324,68 @@ async fn test_create_proof_success() {
         role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: proof_schema_id,
-            imported_source_url: Some("CORE_URL".to_string()),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            deleted_at: None,
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: dummy_organisation(None).into(),
-            input_schemas: Default::default(),
-        }),
-        claims: None,
-        verifier_key: Some(Key {
-            id: key_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            public_key: vec![],
-            name: "".to_string(),
-            key_reference: None,
-            storage_type: "".to_string(),
-            key_type: "".to_string(),
-            organisation: dummy_organisation(None).into(),
-        }),
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: proof_schema_id,
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: dummy_organisation(None).into(),
+                input_schemas: Default::default(),
+            }
+            .into(),
+        ),
+        claims: Default::default(),
+        verifier_key: Some(
+            Key {
+                id: key_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                public_key: vec![],
+                name: "".to_string(),
+                key_reference: None,
+                storage_type: "".to_string(),
+                key_type: "".to_string(),
+                organisation: dummy_organisation(None).into(),
+            }
+            .into(),
+        ),
         verifier_certificate: None,
-        verifier_identifier: Some(Identifier {
-            id: identifier_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "verifier".to_string(),
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: did_id,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    name: "verifier".to_string(),
-                    did: "did:key:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            is_remote: false,
-            state: IdentifierState::Active,
-            deleted_at: None,
-            organisation: dummy_organisation(None).into(),
-            trust_information: Default::default(),
-        }),
+        verifier_identifier: Some(
+            Identifier {
+                id: identifier_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "verifier".to_string(),
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: did_id,
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        name: "verifier".to_string(),
+                        did: "did:key:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                is_remote: false,
+                state: IdentifierState::Active,
+                deleted_at: None,
+                organisation: dummy_organisation(None).into(),
+                trust_information: Default::default(),
+            }
+            .into(),
+        ),
         interaction: None,
         profile: None,
         proof_blob_id: None,
@@ -453,9 +461,7 @@ async fn test_get_proof_missing() {
     )
     .await;
 
-    let result = repository
-        .get_proof(&Uuid::new_v4().into(), &ProofRelations::default(), None)
-        .await;
+    let result = repository.get_proof(&Uuid::new_v4().into(), None).await;
     assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
 }
 
@@ -476,86 +482,13 @@ async fn test_get_proof_no_relations() {
     )
     .await;
 
-    let proof = repository
-        .get_proof(&proof_id, &ProofRelations::default(), None)
-        .await
-        .unwrap();
+    let proof = repository.get_proof(&proof_id, None).await.unwrap();
 
     assert_eq!(proof.id, proof_id);
 }
 
 #[tokio::test]
 async fn test_get_proof_with_relations() {
-    let mut proof_schema_repository = MockProofSchemaRepository::default();
-    proof_schema_repository
-        .expect_get_proof_schema()
-        .times(1)
-        .returning(|id| {
-            Ok(ProofSchema {
-                ecosystem: None,
-                id: id.to_owned(),
-                imported_source_url: Some("CORE_URL".to_string()),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                deleted_at: None,
-                name: "proof schema".to_string(),
-                expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
-                input_schemas: Default::default(),
-            })
-        });
-
-    let mut interaction_repository = MockInteractionRepository::default();
-    interaction_repository
-        .expect_get_interaction()
-        .times(1)
-        .returning(|id, _| {
-            Ok(Interaction {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                data: Some(vec![1, 2, 3]),
-                organisation: dummy_organisation(None).into(),
-                nonce_id: None,
-                interaction_type: InteractionType::Verification,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: None,
-            })
-        });
-
-    let mut identifier_repository = MockIdentifierRepository::default();
-    identifier_repository.expect_get().times(1).returning(|id| {
-        Ok(Identifier {
-            id: id.to_owned(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "identifier".to_string(),
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    name: "verifier".to_string(),
-                    did: "did:key:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            is_remote: false,
-            state: IdentifierState::Active,
-            deleted_at: None,
-            organisation: dummy_organisation(None).into(),
-            trust_information: Default::default(),
-        })
-    });
-
     let credential_id = Uuid::new_v4().into();
     let claim_id: ClaimId = Uuid::new_v4().into();
     let mut claim_repository = MockClaimRepository::default();
@@ -576,21 +509,6 @@ async fn test_get_proof_with_relations() {
             }])
         });
 
-    let mut key_repository = MockKeyRepository::default();
-    key_repository.expect_get_key().once().returning(|key_id| {
-        Ok(Key {
-            id: key_id.to_owned(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            public_key: vec![],
-            name: "".to_string(),
-            key_reference: None,
-            storage_type: "".to_string(),
-            key_type: "".to_string(),
-            organisation: dummy_organisation(None).into(),
-        })
-    });
-
     let TestSetupWithProof {
         repository,
         proof_id,
@@ -603,11 +521,11 @@ async fn test_get_proof_with_relations() {
         ..
     } = setup_with_proof(
         get_credential_repository_mock(),
-        Arc::from(proof_schema_repository),
+        get_proof_schema_repository_mock(),
         Arc::from(claim_repository),
-        Arc::from(identifier_repository),
-        Arc::from(interaction_repository),
-        Arc::from(key_repository),
+        get_identifier_repository_mock(),
+        get_interaction_repository_mock(),
+        get_key_repository_mock(),
         get_certificate_repository_mock(),
     )
     .await;
@@ -681,28 +599,14 @@ async fn test_get_proof_with_relations() {
     .await
     .unwrap();
 
-    let proof = repository
-        .get_proof(
-            &proof_id,
-            &ProofRelations {
-                claims: Some(Default::default()),
-                schema: Some(Default::default()),
-                verifier_identifier: Some(Default::default()),
-                verifier_key: Some(Default::default()),
-                interaction: Some(Default::default()),
-                ..Default::default()
-            },
-            None,
-        )
-        .await
-        .unwrap();
+    let proof = repository.get_proof(&proof_id, None).await.unwrap();
 
     assert_eq!(proof.id, proof_id);
-    assert_eq!(proof.schema.unwrap().id, proof_schema_id);
-    assert_eq!(proof.interaction.unwrap().id, interaction_id);
-    assert_eq!(proof.verifier_key.unwrap().id, key_id);
+    assert_eq!(proof.schema.unwrap().id(), proof_schema_id);
+    assert_eq!(proof.interaction.unwrap().id(), interaction_id);
+    assert_eq!(proof.verifier_key.unwrap().id(), key_id);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].claim.id, claim_id);
     assert_eq!(claims[0].credential.id(), credential_id);
@@ -722,66 +626,13 @@ async fn test_get_proof_by_interaction_id_missing() {
     .await;
 
     let result = repository
-        .get_proof_by_interaction_id(&Uuid::new_v4().into(), &ProofRelations::default())
+        .get_proof_by_interaction_id(&Uuid::new_v4().into())
         .await;
     assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
 }
 
 #[tokio::test]
 async fn test_get_proof_by_interaction_id_success() {
-    let mut proof_schema_repository = MockProofSchemaRepository::default();
-    proof_schema_repository
-        .expect_get_proof_schema()
-        .times(1)
-        .returning(|id| {
-            Ok(ProofSchema {
-                ecosystem: None,
-                id: id.to_owned(),
-                imported_source_url: Some("CORE_URL".to_string()),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                deleted_at: None,
-                name: "proof schema".to_string(),
-                expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
-                input_schemas: Default::default(),
-            })
-        });
-
-    let mut interaction_repository = MockInteractionRepository::default();
-    interaction_repository
-        .expect_get_interaction()
-        .times(1)
-        .returning(|id, _| {
-            Ok(Interaction {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                data: Some(vec![1, 2, 3]),
-                organisation: dummy_organisation(None).into(),
-                nonce_id: None,
-                interaction_type: InteractionType::Verification,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: None,
-            })
-        });
-
-    let mut key_repository = MockKeyRepository::default();
-    key_repository.expect_get_key().once().returning(|key_id| {
-        Ok(Key {
-            id: key_id.to_owned(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            public_key: vec![],
-            name: "".to_string(),
-            key_reference: None,
-            storage_type: "".to_string(),
-            key_type: "".to_string(),
-            organisation: dummy_organisation(None).into(),
-        })
-    });
-
     let TestSetupWithProof {
         repository,
         proof_id,
@@ -789,31 +640,22 @@ async fn test_get_proof_by_interaction_id_success() {
         ..
     } = setup_with_proof(
         get_credential_repository_mock(),
-        Arc::from(proof_schema_repository),
+        get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_identifier_repository_mock(),
-        Arc::from(interaction_repository),
-        Arc::from(key_repository),
+        get_interaction_repository_mock(),
+        get_key_repository_mock(),
         get_certificate_repository_mock(),
     )
     .await;
 
     let proof = repository
-        .get_proof_by_interaction_id(
-            &interaction_id,
-            &ProofRelations {
-                claims: Some(Default::default()),
-                schema: Some(Default::default()),
-                verifier_key: Some(Default::default()),
-                interaction: Some(Default::default()),
-                ..Default::default()
-            },
-        )
+        .get_proof_by_interaction_id(&interaction_id)
         .await
         .unwrap();
 
     assert_eq!(proof.id, proof_id);
-    assert_eq!(proof.interaction.unwrap().id, interaction_id);
+    assert_eq!(proof.interaction.unwrap().id(), interaction_id);
 }
 
 #[tokio::test]

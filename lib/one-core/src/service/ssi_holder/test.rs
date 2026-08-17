@@ -81,23 +81,26 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
     proof_repository
         .expect_get_proof_by_interaction_id()
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
                 protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
-                interaction: Some(Interaction {
-                    id: interaction_id,
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    data: None,
-                    organisation: dummy_organisation(None).into(),
-                    nonce_id: None,
-                    interaction_type: InteractionType::Verification,
-                    expires_at: None,
-                    ecosystem: None,
-                    ecosystem_data: None,
-                }),
+                interaction: Some(
+                    Interaction {
+                        id: interaction_id,
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        data: None,
+                        organisation: dummy_organisation(None).into(),
+                        nonce_id: None,
+                        interaction_type: InteractionType::Verification,
+                        expires_at: None,
+                        ecosystem: None,
+                        ecosystem_data: None,
+                    }
+                    .into(),
+                ),
                 ..dummy_proof()
             })
         });
@@ -151,23 +154,26 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
         proof_repository
             .expect_get_proof_by_interaction_id()
             .once()
-            .return_once(move |_, _| {
+            .return_once(move |_| {
                 Ok(Proof {
                     id: proof_id,
                     protocol: protocol.to_string(),
                     state,
-                    interaction: Some(Interaction {
-                        id: interaction_id,
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        data: None,
-                        organisation: dummy_organisation(None).into(),
-                        nonce_id: None,
-                        interaction_type: InteractionType::Verification,
-                        expires_at: None,
-                        ecosystem: None,
-                        ecosystem_data: None,
-                    }),
+                    interaction: Some(
+                        Interaction {
+                            id: interaction_id,
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            data: None,
+                            organisation: dummy_organisation(None).into(),
+                            nonce_id: None,
+                            interaction_type: InteractionType::Verification,
+                            expires_at: None,
+                            ecosystem: None,
+                            ecosystem_data: None,
+                        }
+                        .into(),
+                    ),
                     ..dummy_proof()
                 })
             });
@@ -203,23 +209,26 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
     proof_repository
         .expect_get_proof_by_interaction_id()
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
                 protocol: protocol.to_string(),
                 state: ProofStateEnum::Requested,
-                interaction: Some(Interaction {
-                    id: interaction_id,
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    data: None,
-                    organisation: dummy_organisation(None).into(),
-                    nonce_id: None,
-                    interaction_type: InteractionType::Verification,
-                    expires_at: None,
-                    ecosystem: None,
-                    ecosystem_data: None,
-                }),
+                interaction: Some(
+                    Interaction {
+                        id: interaction_id,
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        data: None,
+                        organisation: dummy_organisation(None).into(),
+                        nonce_id: None,
+                        interaction_type: InteractionType::Verification,
+                        expires_at: None,
+                        ecosystem: None,
+                        ecosystem_data: None,
+                    }
+                    .into(),
+                ),
                 ..dummy_proof()
             })
         });

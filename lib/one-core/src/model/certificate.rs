@@ -48,9 +48,6 @@ pub enum CertificateState {
     Expired,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct CertificateRelations {}
-
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateCertificateRequest {
     pub name: Option<String>,

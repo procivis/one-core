@@ -6,7 +6,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::openid4vp::credential_from_proved;
 use crate::model::common::LockType;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
@@ -31,11 +31,7 @@ pub(crate) async fn persist_accepted_proof(
             async {
                 // Lock proof to avoid concurrent updates
                 let proof = proof_repository
-                    .get_proof(
-                        &proof.id,
-                        &ProofRelations::default(),
-                        Some(LockType::Update),
-                    )
+                    .get_proof(&proof.id, Some(LockType::Update))
                     .await
                     .error_while("getting proof")?;
                 // Double-check that proof is in the expected state

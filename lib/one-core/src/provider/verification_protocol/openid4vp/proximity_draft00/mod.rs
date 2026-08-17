@@ -321,7 +321,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        let interaction_data = interaction_data_from_proof(proof)?;
+        let interaction_data = interaction_data_from_proof(proof).await?;
         match transport {
             TransportType::Ble => {
                 let ble = self.ble_holder_transport.as_ref().ok_or_else(|| {
@@ -350,7 +350,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        let interaction_data = interaction_data_from_proof(proof)?;
+        let interaction_data = interaction_data_from_proof(proof).await?;
 
         let params = CreatePresentationParams {
             credential_presentations,
@@ -389,10 +389,10 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
-        let transport = get_transport(proof)?;
+        let transport = get_transport(proof).await?;
         let on_submission_callback = on_submission_callback.map(|fut| fut.shared());
 
-        let key_id = proof.verifier_key.as_ref().map(|key| key.id).ok_or(
+        let key_id = proof.verifier_key.as_ref().map(|key| key.id()).ok_or(
             VerificationProtocolError::Failed("Missing verifier key".to_string()),
         )?;
 
@@ -551,7 +551,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        for transport in get_transport(proof)? {
+        for transport in get_transport(proof).await? {
             match transport {
                 TransportType::Http => {}
                 TransportType::Ble => {
@@ -628,35 +628,43 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 }
 
-fn interaction_data_from_proof(proof: &Proof) -> Result<Value, VerificationProtocolError> {
-    let interaction_data_bytes = proof
+async fn interaction_data_from_proof(proof: &Proof) -> Result<Value, VerificationProtocolError> {
+    let interaction = proof
         .interaction
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "missing interaction".to_string(),
         ))?
-        .data
         .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "missing interaction data".to_string(),
-        ))?;
+        .await?;
+    let interaction_data_bytes =
+        interaction
+            .data
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "missing interaction data".to_string(),
+            ))?;
     let interaction_data = serde_json::from_slice(interaction_data_bytes)?;
     Ok(interaction_data)
 }
 
-fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {
+async fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {
     let transport = if proof.transport.is_empty() {
-        let interaction_data = proof
+        let interaction = proof
             .interaction
             .as_ref()
             .ok_or(VerificationProtocolError::Failed(
                 "missing interaction".to_string(),
             ))?
-            .data
             .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "Missing interaction data".to_string(),
-            ))?;
+            .await?;
+        let interaction_data =
+            interaction
+                .data
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "Missing interaction data".to_string(),
+                ))?;
 
         let data: CreateProofInteractionData = serde_json::from_slice(interaction_data)?;
 
@@ -825,10 +833,12 @@ pub(super) async fn prepare_proof_share(
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "missing proof schema".to_string(),
-        ))?;
+        ))?
+        .as_ref()
+        .await?;
 
     let dcql_query = create_dcql_query(
-        proof_schema,
+        &proof_schema,
         &params.format_to_type_mapper,
         params.formatter_provider,
     )
@@ -837,20 +847,30 @@ pub(super) async fn prepare_proof_share(
     // only used when a legacy wallet negotiates proximity protocol version 1
     let presentation_definition = create_open_id_for_vp_presentation_definition(
         params.interaction_id,
-        proof_schema.clone(),
+        proof_schema.to_owned(),
         params.format_to_type_mapper,
         params.formatter_provider,
     )
     .await?;
 
-    let Some(Identifier {
+    let verifier_identifier = params
+        .proof
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::InvalidRequest(
+            "Missing verifier identifier".to_string(),
+        ))?
+        .as_ref()
+        .await?;
+
+    let Identifier {
         data: IdentifierData::Did(verifier_did),
         ..
-    }) = params.proof.verifier_identifier.as_ref()
+    } = verifier_identifier.as_ref()
     else {
         return Err(VerificationProtocolError::InvalidRequest(format!(
-            "Verifier DID missing for proof {}",
-            { params.proof.id }
+            "Verifier not a DID for proof {}",
+            params.proof.id
         )));
     };
     let verifier_did = verifier_did.as_ref().await?;

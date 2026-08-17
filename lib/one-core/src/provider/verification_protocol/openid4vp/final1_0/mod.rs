@@ -569,7 +569,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .ok_or(VerificationProtocolError::Failed(
                 "interaction is None".to_string(),
             ))?
-            .to_owned();
+            .as_ref()
+            .await?;
 
         let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
@@ -645,18 +646,19 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let response_uri = format!("{base_url}/ssi/openid4vp/final-1.0/response");
         let nonce = utilities::generate_alphanumeric(32);
 
-        let verifier_identifier =
-            proof
-                .clone()
-                .verifier_identifier
-                .ok_or(VerificationProtocolError::Failed(
-                    "Missing verifier identifier".to_string(),
-                ))?;
+        let verifier_identifier = proof
+            .verifier_identifier
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "Missing verifier identifier".to_string(),
+            ))?
+            .as_ref()
+            .await?;
 
         let client_id_scheme = get_client_id_scheme(
             params,
             &self.params.verifier.supported_client_id_schemes,
-            verifier_identifier,
+            &verifier_identifier,
         )?;
 
         if !self
@@ -686,9 +688,14 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                     .to_string()
             }
             ClientIdPrefix::X509Hash => {
-                let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
-                    VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
-                )?;
+                let verifier_certificate = proof
+                    .verifier_certificate
+                    .as_ref()
+                    .ok_or(VerificationProtocolError::Failed(
+                        "verifier_certificate is None".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?;
 
                 let fingerprint = hex::decode(&verifier_certificate.fingerprint)
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -696,10 +703,19 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 Base64UrlSafeNoPadding::encode_to_string(fingerprint)?
             }
             ClientIdPrefix::DecentralizedIdentifier => {
-                let Some(Identifier {
+                let verifier_identifier = proof
+                    .verifier_identifier
+                    .as_ref()
+                    .ok_or(VerificationProtocolError::Failed(
+                        "verifier_identifier is None".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?;
+
+                let Identifier {
                     data: IdentifierData::Did(verifier_did),
                     ..
-                }) = proof.verifier_identifier.as_ref()
+                } = verifier_identifier.as_ref()
                 else {
                     return Err(VerificationProtocolError::Failed(
                         "proof is missing verifier DID, required for did client_id_scheme"
@@ -716,7 +732,9 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .as_ref()
             .ok_or(VerificationProtocolError::Failed(
                 "Proof schema not found".to_string(),
-            ))?;
+            ))?
+            .as_ref()
+            .await?;
 
         let key_agreement_key =
             select_key_agreement_key_from_proof(proof, &*self.key_algorithm_provider, &self.config)
@@ -732,7 +750,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
             create_dcql_query(
-                proof_schema,
+                &proof_schema,
                 &format_to_type_mapper,
                 &*self.credential_formatter_provider,
             )
@@ -749,7 +767,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             vec![],
         )?;
 
-        let transaction_data = transaction_data_from_interaction(proof)?;
+        let transaction_data = transaction_data_from_interaction(proof).await?;
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce,
             client_id: authorization_request.client_id.clone(),

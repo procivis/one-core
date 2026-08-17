@@ -368,38 +368,44 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
 
     let proof = Proof {
         id: proof_id,
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    did: verifier_did,
-                    ..dummy_did()
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
-        state: ProofStateEnum::Pending,
-        schema: Some(ProofSchema {
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: vec![
-                    ProofInputClaimSchema {
-                        schema: claim_schema_required,
-                        required: true,
-                        order: 0,
-                    },
-                    ProofInputClaimSchema {
-                        schema: claim_schema_optional,
-                        required: false,
-                        order: 1,
-                    },
-                ]
-                .into(),
-                credential_schema: credential_schema.into(),
-            }]
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        did: verifier_did,
+                        ..dummy_did()
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
             .into(),
-            ..dummy_proof_schema()
-        }),
-        interaction: Some(interaction),
+        ),
+        state: ProofStateEnum::Pending,
+        schema: Some(
+            ProofSchema {
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: vec![
+                        ProofInputClaimSchema {
+                            schema: claim_schema_required,
+                            required: true,
+                            order: 0,
+                        },
+                        ProofInputClaimSchema {
+                            schema: claim_schema_optional,
+                            required: false,
+                            order: 1,
+                        },
+                    ]
+                    .into(),
+                    credential_schema: credential_schema.into(),
+                }]
+                .into(),
+                ..dummy_proof_schema()
+            }
+            .into(),
+        ),
+        interaction: Some(interaction.into()),
         ..dummy_proof_with_protocol("OPENID4VP_DRAFT20")
     };
 

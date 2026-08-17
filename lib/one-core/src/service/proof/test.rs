@@ -34,9 +34,7 @@ use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
-use crate::model::proof::{
-    GetProofList, Proof, ProofClaim, ProofRelations, ProofRole, ProofStateEnum,
-};
+use crate::model::proof::{GetProofList, Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
@@ -203,45 +201,51 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         role: ProofRole::Verifier,
         requested_date,
         completed_date,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "".to_string(),
-            expire_duration: 0,
-            imported_source_url: None,
-            organisation: dummy_organisation(None).into(),
-            input_schemas: Default::default(),
-        }),
-        claims: None,
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    organisation: dummy_organisation(None).into(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    keys: vec![RelatedKey {
-                        role: KeyRole::KeyAgreement,
-                        key: key.to_owned(),
-                        reference: "1".to_string(),
-                    }]
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "".to_string(),
+                expire_duration: 0,
+                imported_source_url: None,
+                organisation: dummy_organisation(None).into(),
+                input_schemas: Default::default(),
+            }
+            .into(),
+        ),
+        claims: Default::default(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        organisation: dummy_organisation(None).into(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        keys: vec![RelatedKey {
+                            role: KeyRole::KeyAgreement,
+                            key: key.to_owned(),
+                            reference: "1".to_string(),
+                        }]
+                        .into(),
+                        deactivated: false,
+                        log: None,
+                    })
                     .into(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
-        verifier_key: Some(key),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
+        verifier_key: Some(key.into()),
         verifier_certificate: None,
         interaction: None,
         profile: None,
@@ -311,106 +315,112 @@ async fn test_get_proof_exists() {
         redirect_uri: None,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            imported_source_url: Some("CORE_URL".to_string()),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: dummy_organisation(None).into(),
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: vec![ProofInputClaimSchema {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "key".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        array: false,
-                        metadata: false,
-                        required: true,
-                        translations: Default::default(),
-                    },
-                    required: true,
-                    order: 0,
-                }]
-                .into(),
-                credential_schema: backfill_default_translations(
-                    CredentialSchema {
-                        expiration: None,
-                        ecosystem: None,
-                        batch_size: None,
-                        allow_revocation: false,
-                        id: credential_schema_id,
-                        deleted_at: None,
-                        created_date: crate::clock::now_utc(),
-                        key_storage_security: Some(KeyStorageSecurity::Basic),
-                        imported_source_url: "CORE_URL".to_string(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "credential schema".to_string(),
-                        formats: vec![CredentialSchemaFormat {
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: dummy_organisation(None).into(),
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: vec![ProofInputClaimSchema {
+                        schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
-                            created_date: crate::clock::now_utc(),
-                            last_modified: crate::clock::now_utc(),
-                            credential_schema_id,
-                            format: "JWT".into(),
-                            schema_id: "CredentialSchemaId".to_owned(),
-                            claim_mappings: Default::default(),
-                        }]
-                        .into(),
-                        claim_schemas: vec![ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "ClaimKey".to_owned(),
-                            data_type: "STRING".to_owned(),
+                            key: "key".to_string(),
+                            data_type: "STRING".to_string(),
                             created_date: crate::clock::now_utc(),
                             last_modified: crate::clock::now_utc(),
                             array: false,
                             metadata: false,
                             required: true,
                             translations: Default::default(),
-                        }]
-                        .into(),
-                        organisation: dummy_organisation(None).into(),
-                        layout_type: LayoutType::Card,
-                        layout_properties: None,
-                        allow_suspension: true,
-                        requires_wallet_instance_attestation: false,
-                        transaction_code: None,
-                        translations: Default::default(),
-                        embedded_disclosure_policy: None,
-                    },
-                    "en",
-                )
-                .await
-                .unwrap()
+                        },
+                        required: true,
+                        order: 0,
+                    }]
+                    .into(),
+                    credential_schema: backfill_default_translations(
+                        CredentialSchema {
+                            expiration: None,
+                            ecosystem: None,
+                            batch_size: None,
+                            allow_revocation: false,
+                            id: credential_schema_id,
+                            deleted_at: None,
+                            created_date: crate::clock::now_utc(),
+                            key_storage_security: Some(KeyStorageSecurity::Basic),
+                            imported_source_url: "CORE_URL".to_string(),
+                            last_modified: crate::clock::now_utc(),
+                            name: "credential schema".to_string(),
+                            formats: vec![CredentialSchemaFormat {
+                                id: Uuid::new_v4().into(),
+                                created_date: crate::clock::now_utc(),
+                                last_modified: crate::clock::now_utc(),
+                                credential_schema_id,
+                                format: "JWT".into(),
+                                schema_id: "CredentialSchemaId".to_owned(),
+                                claim_mappings: Default::default(),
+                            }]
+                            .into(),
+                            claim_schemas: vec![ClaimSchema {
+                                id: Uuid::new_v4().into(),
+                                key: "ClaimKey".to_owned(),
+                                data_type: "STRING".to_owned(),
+                                created_date: crate::clock::now_utc(),
+                                last_modified: crate::clock::now_utc(),
+                                array: false,
+                                metadata: false,
+                                required: true,
+                                translations: Default::default(),
+                            }]
+                            .into(),
+                            organisation: dummy_organisation(None).into(),
+                            layout_type: LayoutType::Card,
+                            layout_properties: None,
+                            allow_suspension: true,
+                            requires_wallet_instance_attestation: false,
+                            transaction_code: None,
+                            translations: Default::default(),
+                            embedded_disclosure_policy: None,
+                        },
+                        "en",
+                    )
+                    .await
+                    .unwrap()
+                    .into(),
+                }]
                 .into(),
-            }]
+            }
             .into(),
-        }),
-        claims: Some(vec![]),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
+        ),
+        claims: Default::default(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -425,19 +435,8 @@ async fn test_get_proof_exists() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -600,50 +599,55 @@ async fn test_get_proof_with_array_holder() {
         requested_date: None,
         completed_date: None,
         schema: None,
-        claims: Some(
-            credential_claims
-                .iter()
-                .map(|claim| ProofClaim {
-                    claim: claim.clone(),
-                    credential: credential.clone().into(),
-                })
-                .collect(),
+        claims: credential_claims
+            .iter()
+            .map(|claim| ProofClaim {
+                claim: claim.clone(),
+                credential: credential.clone().into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                organisation: organisation.clone().into(),
+                ..dummy_identifier()
+            }
+            .into(),
         ),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            organisation: organisation.clone().into(),
-            ..dummy_identifier()
-        }),
         verifier_key: None,
         verifier_certificate: None,
-        interaction: Some(Interaction {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: None,
-            organisation: organisation.into(),
-            nonce_id: None,
-            interaction_type: InteractionType::Verification,
-            expires_at: None,
-            ecosystem: None,
-            ecosystem_data: None,
-        }),
+        interaction: Some(
+            Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: None,
+                organisation: organisation.into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: None,
+            }
+            .into(),
+        ),
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
@@ -655,19 +659,8 @@ async fn test_get_proof_with_array_holder() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -867,50 +860,55 @@ async fn test_get_proof_with_array_in_object_holder() {
         requested_date: None,
         completed_date: None,
         schema: None,
-        claims: Some(
-            credential_claims
-                .iter()
-                .map(|claim| ProofClaim {
-                    claim: claim.clone(),
-                    credential: credential.clone().into(),
-                })
-                .collect(),
+        claims: credential_claims
+            .iter()
+            .map(|claim| ProofClaim {
+                claim: claim.clone(),
+                credential: credential.clone().into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                organisation: organisation.clone().into(),
+                ..dummy_identifier()
+            }
+            .into(),
         ),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            organisation: organisation.clone().into(),
-            ..dummy_identifier()
-        }),
         verifier_key: None,
         verifier_certificate: None,
-        interaction: Some(Interaction {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: None,
-            organisation: organisation.into(),
-            nonce_id: None,
-            interaction_type: InteractionType::Verification,
-            expires_at: None,
-            ecosystem: None,
-            ecosystem_data: None,
-        }),
+        interaction: Some(
+            Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: None,
+                organisation: organisation.into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: None,
+            }
+            .into(),
+        ),
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
@@ -922,19 +920,8 @@ async fn test_get_proof_with_array_in_object_holder() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1149,50 +1136,55 @@ async fn test_get_proof_with_object_array_holder() {
         requested_date: None,
         completed_date: None,
         schema: None,
-        claims: Some(
-            credential_claims
-                .iter()
-                .map(|claim| ProofClaim {
-                    claim: claim.clone(),
-                    credential: credential.clone().into(),
-                })
-                .collect(),
+        claims: credential_claims
+            .iter()
+            .map(|claim| ProofClaim {
+                claim: claim.clone(),
+                credential: credential.clone().into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                organisation: organisation.into(),
+                ..dummy_identifier()
+            }
+            .into(),
         ),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            organisation: organisation.into(),
-            ..dummy_identifier()
-        }),
         verifier_key: None,
         verifier_certificate: None,
-        interaction: Some(Interaction {
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            data: None,
-            organisation: dummy_organisation(None).into(),
-            nonce_id: None,
-            interaction_type: InteractionType::Verification,
-            expires_at: None,
-            ecosystem: None,
-            ecosystem_data: None,
-        }),
+        interaction: Some(
+            Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: None,
+                organisation: dummy_organisation(None).into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: None,
+            }
+            .into(),
+        ),
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
@@ -1204,19 +1196,8 @@ async fn test_get_proof_with_object_array_holder() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1405,56 +1386,61 @@ async fn test_get_proof_with_array() {
         redirect_uri: None,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            imported_source_url: Some("CORE_URL".to_string()),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: organisation.clone().into(),
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: vec![ProofInputClaimSchema {
-                    schema: claim_schema.clone(),
-                    required: true,
-                    order: 0,
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: organisation.clone().into(),
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: vec![ProofInputClaimSchema {
+                        schema: claim_schema.clone(),
+                        required: true,
+                        order: 0,
+                    }]
+                    .into(),
+                    credential_schema: credential_schema.clone().into(),
                 }]
                 .into(),
-                credential_schema: credential_schema.clone().into(),
-            }]
+            }
             .into(),
-        }),
-        claims: Some(
-            credential_claims
-                .iter()
-                .map(|claim| ProofClaim {
-                    claim: claim.clone(),
-                    credential: credential.clone().into(),
-                })
-                .collect(),
         ),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
+        claims: credential_claims
+            .iter()
+            .map(|claim| ProofClaim {
+                claim: claim.clone(),
+                credential: credential.clone().into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -1469,19 +1455,8 @@ async fn test_get_proof_with_array() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1680,56 +1655,61 @@ async fn test_get_proof_with_array_in_object() {
         redirect_uri: None,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            imported_source_url: Some("CORE_URL".to_string()),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: organisation.clone().into(),
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: vec![ProofInputClaimSchema {
-                    schema: claim_schemas[0].clone(),
-                    required: true,
-                    order: 0,
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: organisation.clone().into(),
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: vec![ProofInputClaimSchema {
+                        schema: claim_schemas[0].clone(),
+                        required: true,
+                        order: 0,
+                    }]
+                    .into(),
+                    credential_schema: credential_schema.clone().into(),
                 }]
                 .into(),
-                credential_schema: credential_schema.clone().into(),
-            }]
+            }
             .into(),
-        }),
-        claims: Some(
-            credential_claims
-                .iter()
-                .map(|claim| ProofClaim {
-                    claim: claim.clone(),
-                    credential: credential.clone().into(),
-                })
-                .collect(),
         ),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
+        claims: credential_claims
+            .iter()
+            .map(|claim| ProofClaim {
+                claim: claim.clone(),
+                credential: credential.clone().into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -1744,19 +1724,8 @@ async fn test_get_proof_with_array_in_object() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1971,56 +1940,61 @@ async fn test_get_proof_with_object_array() {
         redirect_uri: None,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            imported_source_url: Some("CORE_URL".to_string()),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: organisation.clone().into(),
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: vec![ProofInputClaimSchema {
-                    schema: claim_schemas[0].clone(),
-                    required: true,
-                    order: 0,
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: organisation.clone().into(),
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: vec![ProofInputClaimSchema {
+                        schema: claim_schemas[0].clone(),
+                        required: true,
+                        order: 0,
+                    }]
+                    .into(),
+                    credential_schema: credential_schema.clone().into(),
                 }]
                 .into(),
-                credential_schema: credential_schema.clone().into(),
-            }]
+            }
             .into(),
-        }),
-        claims: Some(
-            credential_claims
-                .iter()
-                .map(|claim| ProofClaim {
-                    claim: claim.clone(),
-                    credential: credential.clone().into(),
-                })
-                .collect(),
         ),
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
+        claims: credential_claims
+            .iter()
+            .map(|claim| ProofClaim {
+                claim: claim.clone(),
+                credential: credential.clone().into(),
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -2035,19 +2009,8 @@ async fn test_get_proof_with_object_array() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                }),
-                eq(None),
-            )
-            .returning(move |_, _, _| Ok(res_clone.clone()));
+            .with(eq(proof.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(res_clone.clone()));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -2109,7 +2072,7 @@ async fn test_get_proof_missing() {
     proof_repository
         .expect_get_proof()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Err(crate::repository::error::DataLayerError::EntityNotFound {
                 kind: crate::repository::error::EntityKind::Proof,
                 id: proof_id.into(),
@@ -2143,39 +2106,45 @@ async fn test_get_proof_list_success() {
         role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            imported_source_url: Some("CORE_URL".to_string()),
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: dummy_organisation(None).into(),
-            input_schemas: Default::default(),
-        }),
-        claims: None,
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                imported_source_url: Some("CORE_URL".to_string()),
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: dummy_organisation(None).into(),
+                input_schemas: Default::default(),
+            }
+            .into(),
+        ),
+        claims: Default::default(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -3807,8 +3776,8 @@ async fn test_share_proof_created_success() {
             .expect_get_proof()
             .once()
             .in_sequence(&mut seq)
-            .withf(move |id, _, _| id == &proof_id)
-            .returning(move |_, _, _| Ok(res_clone.to_owned()));
+            .withf(move |id, _| id == &proof_id)
+            .returning(move |_, _| Ok(res_clone.to_owned()));
     }
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -3911,8 +3880,8 @@ async fn test_share_proof_pending_success() {
         proof_repository
             .expect_get_proof()
             .once()
-            .withf(move |id, _, _| id == &proof_id)
-            .returning(move |_, _, _| Ok(res_clone.to_owned()));
+            .withf(move |id, _| id == &proof_id)
+            .returning(move |_, _| Ok(res_clone.to_owned()));
     }
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -4023,8 +3992,8 @@ async fn test_share_proof_interaction_expired_success() {
         proof_repository
             .expect_get_proof()
             .once()
-            .withf(move |id, _, _| id == &proof_id)
-            .returning(move |_, _, _| Ok(res_clone.to_owned()));
+            .withf(move |id, _| id == &proof_id)
+            .returning(move |_, _| Ok(res_clone.to_owned()));
     }
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -4084,7 +4053,7 @@ async fn test_share_proof_invalid_state() {
     proof_repository
         .expect_get_proof()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(construct_proof_with_state(
                 &proof_id,
                 ProofStateEnum::Rejected,
@@ -4114,8 +4083,8 @@ async fn test_share_proof_fails_when_engagement_is_present() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, _, _| id == &proof_id)
-        .returning(move |_, _, _| Ok(proof.to_owned()));
+        .withf(move |id, _| id == &proof_id)
+        .returning(move |_, _| Ok(proof.to_owned()));
 
     let service = setup_service(Repositories {
         proof_repository,
@@ -4150,18 +4119,21 @@ async fn test_delete_proof_ok_for_allowed_state(
     let mut proof = construct_proof_with_state(&proof_id, state);
     proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
-    proof.interaction = Some(Interaction {
-        id: interaction_id,
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        data: Some(vec![]),
-        organisation: dummy_organisation(None).into(),
-        nonce_id: None,
-        interaction_type: InteractionType::Verification,
-        expires_at: None,
-        ecosystem: None,
-        ecosystem_data: None,
-    });
+    proof.interaction = Some(
+        Interaction {
+            id: interaction_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            data: Some(vec![]),
+            organisation: dummy_organisation(None).into(),
+            nonce_id: None,
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: None,
+            ecosystem_data: None,
+        }
+        .into(),
+    );
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -4178,18 +4150,10 @@ async fn test_delete_proof_ok_for_allowed_state(
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations, _| {
-            id == &proof_id
-                && relations
-                    == &ProofRelations {
-                        interaction: Some(Default::default()),
-                        schema: Some(Default::default()),
-                        ..Default::default()
-                    }
-        })
+        .withf(move |id, _| id == &proof_id)
         .returning({
             let proof = proof.clone();
-            move |_, _, _| Ok(proof.clone())
+            move |_, _| Ok(proof.clone())
         });
 
     proof_repository
@@ -4226,18 +4190,21 @@ async fn test_delete_proof_ok_for_requested_state() {
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Requested);
     proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
-    proof.interaction = Some(Interaction {
-        id: interaction_id,
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        data: Some(vec![]),
-        organisation: dummy_organisation(None).into(),
-        nonce_id: None,
-        interaction_type: InteractionType::Verification,
-        expires_at: None,
-        ecosystem: None,
-        ecosystem_data: None,
-    });
+    proof.interaction = Some(
+        Interaction {
+            id: interaction_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            data: Some(vec![]),
+            organisation: dummy_organisation(None).into(),
+            nonce_id: None,
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: None,
+            ecosystem_data: None,
+        }
+        .into(),
+    );
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -4254,18 +4221,10 @@ async fn test_delete_proof_ok_for_requested_state() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations, _| {
-            id == &proof_id
-                && relations
-                    == &ProofRelations {
-                        interaction: Some(Default::default()),
-                        schema: Some(Default::default()),
-                        ..Default::default()
-                    }
-        })
+        .withf(move |id, _| id == &proof_id)
         .returning({
             let proof = proof.clone();
-            move |_, _, _| Ok(proof.clone())
+            move |_, _| Ok(proof.clone())
         });
 
     proof_repository
@@ -4305,36 +4264,31 @@ async fn test_delete_proof_fails_for_invalid_state(
     let mut proof = construct_proof_with_state(&proof_id, state);
     proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
-    proof.interaction = Some(Interaction {
-        id: interaction_id,
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        data: None,
-        organisation: dummy_organisation(None).into(),
-        nonce_id: None,
-        interaction_type: InteractionType::Verification,
-        expires_at: None,
-        ecosystem: None,
-        ecosystem_data: None,
-    });
+    proof.interaction = Some(
+        Interaction {
+            id: interaction_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            data: None,
+            organisation: dummy_organisation(None).into(),
+            nonce_id: None,
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: None,
+            ecosystem_data: None,
+        }
+        .into(),
+    );
 
     let mut proof_repository = MockProofRepository::default();
 
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations, _| {
-            id == &proof_id
-                && relations
-                    == &ProofRelations {
-                        interaction: Some(Default::default()),
-                        schema: Some(Default::default()),
-                        ..Default::default()
-                    }
-        })
+        .withf(move |id, _| id == &proof_id)
         .returning({
             let proof = proof.clone();
-            move |_, _, _| Ok(proof.clone())
+            move |_, _| Ok(proof.clone())
         });
 
     let service = setup_service(Repositories {
@@ -4361,57 +4315,60 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "BLE".to_string();
-    proof.interaction = Some(Interaction {
-        id: interaction_id,
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        organisation: dummy_organisation(None).into(),
-        data: Some({
-            let data = BLEOpenID4VPInteractionDataVerifier {
-                client_id: "did:example:123".to_string(),
-                nonce: "nonce".to_string(),
-                task_id: Uuid::new_v4(),
+    proof.interaction = Some(
+        Interaction {
+            id: interaction_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            organisation: dummy_organisation(None).into(),
+            data: Some({
+                let data = BLEOpenID4VPInteractionDataVerifier {
+                    client_id: "did:example:123".to_string(),
+                    nonce: "nonce".to_string(),
+                    task_id: Uuid::new_v4(),
 
-                peer: BLEPeer::new(
-                    DeviceInfo::new(device_address.to_owned(), 123),
-                    SecretSlice::from(vec![0; 32]),
-                    SecretSlice::from(vec![1; 32]),
-                    [2; 12],
-                ),
-                mdoc_generated_nonce: None,
-                protocol_data: BLEVerifierProtocolData::V2 {
-                    request: AuthorizationRequest {
-                        client_id: "did:example:123".to_string(),
-                        state: None,
-                        nonce: Some("nonce".to_string()),
-                        response_type: None,
-                        response_mode: None,
-                        response_uri: None,
-                        client_metadata: None,
+                    peer: BLEPeer::new(
+                        DeviceInfo::new(device_address.to_owned(), 123),
+                        SecretSlice::from(vec![0; 32]),
+                        SecretSlice::from(vec![1; 32]),
+                        [2; 12],
+                    ),
+                    mdoc_generated_nonce: None,
+                    protocol_data: BLEVerifierProtocolData::V2 {
+                        request: AuthorizationRequest {
+                            client_id: "did:example:123".to_string(),
+                            state: None,
+                            nonce: Some("nonce".to_string()),
+                            response_type: None,
+                            response_mode: None,
+                            response_uri: None,
+                            client_metadata: None,
+                            dcql_query: DcqlQuery {
+                                credentials: vec![],
+                                credential_sets: None,
+                            },
+                            redirect_uri: None,
+                            verifier_info: vec![],
+                            transaction_data: vec![],
+                        },
+                        submission: None,
                         dcql_query: DcqlQuery {
                             credentials: vec![],
                             credential_sets: None,
                         },
-                        redirect_uri: None,
-                        verifier_info: vec![],
-                        transaction_data: vec![],
                     },
-                    submission: None,
-                    dcql_query: DcqlQuery {
-                        credentials: vec![],
-                        credential_sets: None,
-                    },
-                },
-            };
+                };
 
-            serde_json::to_vec(&data).unwrap()
-        }),
-        nonce_id: None,
-        interaction_type: InteractionType::Verification,
-        expires_at: None,
-        ecosystem: None,
-        ecosystem_data: None,
-    });
+                serde_json::to_vec(&data).unwrap()
+            }),
+            nonce_id: None,
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: None,
+            ecosystem_data: None,
+        }
+        .into(),
+    );
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -4428,18 +4385,10 @@ async fn test_retract_proof_with_bluetooth_ok() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations, _| {
-            id == &proof_id
-                && relations
-                    == &ProofRelations {
-                        interaction: Some(Default::default()),
-                        schema: Some(Default::default()),
-                        ..Default::default()
-                    }
-        })
+        .withf(move |id, _| id == &proof_id)
         .returning({
             let proof = proof.clone();
-            move |_, _, _| Ok(proof.clone())
+            move |_, _| Ok(proof.clone())
         });
     proof_repository
         .expect_delete_proof()
@@ -4489,18 +4438,21 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     proof.protocol = "ISO_MDL".to_string();
     proof.schema = None;
     proof.role = ProofRole::Holder;
-    proof.interaction = Some(Interaction {
-        id: interaction_id,
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        data: None,
-        organisation: dummy_organisation(None).into(),
-        nonce_id: None,
-        interaction_type: InteractionType::Verification,
-        expires_at: None,
-        ecosystem: None,
-        ecosystem_data: None,
-    });
+    proof.interaction = Some(
+        Interaction {
+            id: interaction_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            data: None,
+            organisation: dummy_organisation(None).into(),
+            nonce_id: None,
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: None,
+            ecosystem_data: None,
+        }
+        .into(),
+    );
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -4518,18 +4470,10 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations, _| {
-            id == &proof_id
-                && relations
-                    == &ProofRelations {
-                        interaction: Some(Default::default()),
-                        schema: Some(Default::default()),
-                        ..Default::default()
-                    }
-        })
+        .withf(move |id, _| id == &proof_id)
         .returning({
             let proof = proof.clone();
-            move |_, _, _| Ok(proof.clone())
+            move |_, _| Ok(proof.clone())
         });
     proof_repository
         .expect_delete_proof()
@@ -4650,7 +4594,7 @@ async fn test_proof_ops_session_org_mismatch() {
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()
-        .returning(move |_, _, _| Ok(proof.clone()));
+        .returning(move |_, _| Ok(proof.clone()));
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()

@@ -15,7 +15,7 @@ use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, SubmissionRequestData, VpSubmissionData,
@@ -43,28 +43,21 @@ impl ProofService {
     }
 
     async fn ble_mqtt_presentation(&self, proof_id: ProofId) {
-        let Ok(proof) = self
-            .proof_repository
-            .get_proof(
-                &proof_id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
-            .await
-        else {
+        let Ok(proof) = self.proof_repository.get_proof(&proof_id, None).await else {
             tracing::error!(%proof_id, "Missing proof");
             return;
         };
 
-        let request_data_fn = || {
-            let interaction_data = proof
+        let request_data_fn = async || {
+            let interaction = proof
                 .interaction
                 .as_ref()
-                .and_then(|interaction| interaction.data.as_ref())
+                .context("Missing interaction")?
+                .as_ref()
+                .await?;
+            let interaction_data = interaction
+                .data
+                .as_ref()
                 .context("Missing interaction data")?;
 
             if proof.transport == TransportType::Ble.as_ref() {
@@ -127,7 +120,7 @@ impl ProofService {
             }
         };
 
-        let request_data = match request_data_fn() {
+        let request_data = match request_data_fn().await {
             Ok(request_data) => request_data,
             Err(error) => {
                 let message = format!("Failed parsing interaction data: {error}");
@@ -146,22 +139,24 @@ impl ProofService {
         proof: Proof,
         unpacked_request: SubmissionRequestData,
     ) -> Result<DirectPostResponse, ProofServiceError> {
-        let organisation = proof
+        let proof_schema = proof
             .schema
             .as_ref()
             .ok_or(ProofServiceError::MappingError(
                 "missing proof schema".to_string(),
             ))?
-            .organisation
             .as_ref()
             .await?;
+        let organisation = proof_schema.organisation.as_ref().await?;
 
         let interaction = proof
             .interaction
             .as_ref()
             .ok_or(ProofServiceError::MappingError(
                 "missing interaction".to_string(),
-            ))?;
+            ))?
+            .as_ref()
+            .await?;
 
         let interaction_data: OpenID4VPVerifierInteractionContent = interaction
             .data
@@ -183,7 +178,7 @@ impl ProofService {
                         "missing verifier_key".to_string(),
                     ))?;
 
-            if used_key_id != verifier_key.id {
+            if used_key_id != verifier_key.id() {
                 tracing::info!("Proof encrypted with an incorrect key");
                 return Err(OpenID4VCError::ValidationError(
                     "Proof encrypted with an incorrect key".to_string(),

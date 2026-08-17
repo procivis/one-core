@@ -187,60 +187,66 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         role: ProofRole::Verifier,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "test-share-proof".into(),
-            expire_duration: 123,
-            imported_source_url: None,
-            organisation: dummy_organisation(None).into(),
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: vec![ProofInputClaimSchema {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "required_key".to_string(),
-                        ..dummy_claim_schema()
-                    },
-                    required: true,
-                    order: 0,
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "test-share-proof".into(),
+                expire_duration: 123,
+                imported_source_url: None,
+                organisation: dummy_organisation(None).into(),
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: vec![ProofInputClaimSchema {
+                        schema: ClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            key: "required_key".to_string(),
+                            ..dummy_claim_schema()
+                        },
+                        required: true,
+                        order: 0,
+                    }]
+                    .into(),
+                    credential_schema: test_credential_schema(format).into(),
                 }]
                 .into(),
-                credential_schema: test_credential_schema(format).into(),
-            }]
+            }
             .into(),
-        }),
-        claims: None,
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "did".to_string(),
-                    did: "did:example:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    deactivated: false,
-                    keys: verifier_key
-                        .map(|k| vec![k])
-                        .unwrap_or(vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: key.clone(),
-                            reference: "1".to_string(),
-                        }])
-                        .into(),
-                    organisation: dummy_organisation(None).into(),
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
-        verifier_key: Some(key),
+        ),
+        claims: Default::default(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        name: "did".to_string(),
+                        did: "did:example:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        deactivated: false,
+                        keys: verifier_key
+                            .map(|k| vec![k])
+                            .unwrap_or(vec![RelatedKey {
+                                role: KeyRole::AssertionMethod,
+                                key: key.clone(),
+                                reference: "1".to_string(),
+                            }])
+                            .into(),
+                        organisation: dummy_organisation(None).into(),
+                        log: None,
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
+        verifier_key: Some(key.into()),
         verifier_certificate: None,
         interaction: None,
         profile: None,
@@ -310,27 +316,30 @@ fn test_holder_proof(
         role: ProofRole::Holder,
         requested_date: None,
         completed_date: None,
-        schema: Some(ProofSchema {
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            name: "test-holder-proof".into(),
-            expire_duration: 300,
-            imported_source_url: None,
-            organisation: dummy_organisation(None).into(),
-            input_schemas: vec![ProofInputSchema {
-                claim_schemas: Default::default(),
-                credential_schema: test_credential_schema(format).into(),
-            }]
+        schema: Some(
+            ProofSchema {
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "test-holder-proof".into(),
+                expire_duration: 300,
+                imported_source_url: None,
+                organisation: dummy_organisation(None).into(),
+                input_schemas: vec![ProofInputSchema {
+                    claim_schemas: Default::default(),
+                    credential_schema: test_credential_schema(format).into(),
+                }]
+                .into(),
+            }
             .into(),
-        }),
-        claims: None,
+        ),
+        claims: Default::default(),
         verifier_identifier: None,
-        verifier_key: Some(test_key("ECDSA")),
+        verifier_key: Some(test_key("ECDSA").into()),
         verifier_certificate: None,
-        interaction: Some(interaction),
+        interaction: Some(interaction.into()),
         profile: None,
         proof_blob_id: None,
         engagement: None,

@@ -3,17 +3,16 @@ use shared_types::{BlobId, EcosystemId, IdentifierId, InteractionId, ProofId};
 use strum::Display;
 use time::OffsetDateTime;
 
-use super::certificate::{Certificate, CertificateRelations};
+use super::certificate::Certificate;
 use super::claim::Claim;
 use super::common::GetListResponse;
 use super::credential::Credential;
-use super::identifier::{Identifier, IdentifierRelations};
-use super::interaction::{Interaction, InteractionRelations};
+use super::identifier::Identifier;
+use super::interaction::Interaction;
 use super::key::Key;
 use super::list_query::ListQuery;
-use super::proof_schema::{ProofSchema, ProofSchemaRelations};
-use crate::model::key::KeyRelations;
-use crate::model::relation::Related;
+use super::proof_schema::ProofSchema;
+use crate::model::relation::{Related, RelatedVec};
 use crate::service::proof::dto::ProofFilterValue;
 
 #[derive(Clone, Debug)]
@@ -37,12 +36,12 @@ pub struct Proof {
     pub ecosystem: Option<EcosystemId>,
 
     // Relations
-    pub schema: Option<ProofSchema>,
-    pub claims: Option<Vec<ProofClaim>>,
-    pub verifier_identifier: Option<Identifier>,
-    pub verifier_certificate: Option<Certificate>,
-    pub verifier_key: Option<Key>,
-    pub interaction: Option<Interaction>,
+    pub schema: Option<Related<ProofSchema>>,
+    pub claims: RelatedVec<ProofClaim>,
+    pub verifier_identifier: Option<Related<Identifier>>,
+    pub verifier_certificate: Option<Related<Certificate>>,
+    pub verifier_key: Option<Related<Key>>,
+    pub interaction: Option<Related<Interaction>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize)]
@@ -88,19 +87,6 @@ pub type ProofListQuery = ListQuery<SortableProofColumn, ProofFilterValue>;
 pub enum ExactProofFilterColumn {
     Name,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct ProofRelations {
-    pub schema: Option<ProofSchemaRelations>,
-    pub claims: Option<ProofClaimRelations>,
-    pub verifier_identifier: Option<IdentifierRelations>,
-    pub verifier_key: Option<KeyRelations>,
-    pub verifier_certificate: Option<CertificateRelations>,
-    pub interaction: Option<InteractionRelations>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct ProofClaimRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateProofRequest {

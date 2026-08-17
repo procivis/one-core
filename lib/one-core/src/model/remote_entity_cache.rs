@@ -39,6 +39,3 @@ pub enum CacheType {
     WalletProviderMetadata,
     RemoteTrustCollection,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct RemoteEntityCacheRelations {}

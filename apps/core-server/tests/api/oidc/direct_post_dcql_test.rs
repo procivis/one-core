@@ -144,7 +144,7 @@ async fn test_direct_post_dcql_with_claim_sets() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert!(
         claims
             .first()
@@ -291,7 +291,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Error);
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert!(claims.is_empty());
 
     assert!(proof.proof_blob_id.is_some());
@@ -413,7 +413,7 @@ async fn test_direct_post_dcql_sd_jwt_vc_no_holder_binding() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].claim.value, Some("Eusebio".to_string()));
 
@@ -559,7 +559,7 @@ async fn test_direct_post_dcql_json_ld_classic_no_holder_binding() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].claim.value, Some("Jedidiah".to_string()));
 

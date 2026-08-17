@@ -1126,7 +1126,19 @@ async fn test_create_proof_with_transaction_data_success() {
 
     // the create-time interaction already carries the mapped transaction data
     let proof = context.db.proofs.get(&proof_id).await;
-    let data: Value = serde_json::from_slice(&proof.interaction.unwrap().data.unwrap()).unwrap();
+    let data: Value = serde_json::from_slice(
+        proof
+            .interaction
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .data
+            .as_ref()
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(data["transaction_data"][0]["type"], json!("QES_APPROVAL"));
     assert_eq!(
         data["transaction_data"][0]["credential_ids"],
@@ -1137,7 +1149,19 @@ async fn test_create_proof_with_transaction_data_success() {
     // and it lands in the verifier interaction content when the proof is shared
     assert_eq!(201, context.api.proofs.share(proof_id, None).await.status());
     let proof = context.db.proofs.get(&proof_id).await;
-    let data: Value = serde_json::from_slice(&proof.interaction.unwrap().data.unwrap()).unwrap();
+    let data: Value = serde_json::from_slice(
+        proof
+            .interaction
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .data
+            .as_ref()
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(data["transaction_data"][0]["type"], json!("QES_APPROVAL"));
     assert_eq!(
         data["transaction_data"][0]["credential_ids"],

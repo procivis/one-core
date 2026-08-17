@@ -130,56 +130,62 @@ async fn test_submit_proof_failed_on_validator_failure() {
     let interaction_id_copy = interaction_id.to_owned();
     proof_repository
         .expect_get_proof_by_interaction_id()
-        .withf(move |_interaction_id, _| {
+        .withf(move |_interaction_id| {
             assert_eq!(*_interaction_id, interaction_id_copy);
             true
         })
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
-                verifier_identifier: Some(Identifier {
-                    data: IdentifierData::Did(
-                        (Did {
-                            did: verifier_did,
-                            ..dummy_did()
-                        })
-                        .into(),
-                    ),
-                    ..dummy_identifier()
-                }),
-                state: ProofStateEnum::Pending,
-                schema: Some(ProofSchema {
-                    input_schemas: vec![ProofInputSchema {
-                        claim_schemas: vec![
-                            ProofInputClaimSchema {
-                                schema: ClaimSchema {
-                                    id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
-                                        claim_id,
-                                    )),
-                                    key: "required_key".to_string(),
-                                    ..dummy_claim_schema()
-                                },
-                                required: true,
-                                order: 0,
-                            },
-                            ProofInputClaimSchema {
-                                schema: ClaimSchema {
-                                    key: "optional_key".to_string(),
-                                    ..dummy_claim_schema()
-                                },
-                                required: false,
-                                order: 1,
-                            },
-                        ]
-                        .into(),
-                        credential_schema: credential_schema.into(),
-                    }]
+                verifier_identifier: Some(
+                    Identifier {
+                        data: IdentifierData::Did(
+                            (Did {
+                                did: verifier_did,
+                                ..dummy_did()
+                            })
+                            .into(),
+                        ),
+                        ..dummy_identifier()
+                    }
                     .into(),
-                    organisation: dummy_organisation(None).into(),
-                    ..dummy_proof_schema()
-                }),
-                interaction: Some(interaction),
+                ),
+                state: ProofStateEnum::Pending,
+                schema: Some(
+                    ProofSchema {
+                        input_schemas: vec![ProofInputSchema {
+                            claim_schemas: vec![
+                                ProofInputClaimSchema {
+                                    schema: ClaimSchema {
+                                        id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
+                                            claim_id,
+                                        )),
+                                        key: "required_key".to_string(),
+                                        ..dummy_claim_schema()
+                                    },
+                                    required: true,
+                                    order: 0,
+                                },
+                                ProofInputClaimSchema {
+                                    schema: ClaimSchema {
+                                        key: "optional_key".to_string(),
+                                        ..dummy_claim_schema()
+                                    },
+                                    required: false,
+                                    order: 1,
+                                },
+                            ]
+                            .into(),
+                            credential_schema: credential_schema.into(),
+                        }]
+                        .into(),
+                        organisation: dummy_organisation(None).into(),
+                        ..dummy_proof_schema()
+                    }
+                    .into(),
+                ),
+                interaction: Some(interaction.into()),
                 ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
             })
         });
@@ -271,56 +277,62 @@ async fn test_submit_proof_failed_on_trust_failure() {
     let interaction_id_copy = interaction_id.to_owned();
     proof_repository
         .expect_get_proof_by_interaction_id()
-        .withf(move |interaction_id, _| {
+        .withf(move |interaction_id| {
             assert_eq!(*interaction_id, interaction_id_copy);
             true
         })
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
-                verifier_identifier: Some(Identifier {
-                    data: IdentifierData::Did(
-                        (Did {
-                            did: verifier_did,
-                            ..dummy_did()
-                        })
-                        .into(),
-                    ),
-                    ..dummy_identifier()
-                }),
-                state: ProofStateEnum::Pending,
-                schema: Some(ProofSchema {
-                    input_schemas: vec![ProofInputSchema {
-                        claim_schemas: vec![
-                            ProofInputClaimSchema {
-                                schema: ClaimSchema {
-                                    id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
-                                        claim_id,
-                                    )),
-                                    key: "required_key".to_string(),
-                                    ..dummy_claim_schema()
-                                },
-                                required: true,
-                                order: 0,
-                            },
-                            ProofInputClaimSchema {
-                                schema: ClaimSchema {
-                                    key: "optional_key".to_string(),
-                                    ..dummy_claim_schema()
-                                },
-                                required: false,
-                                order: 1,
-                            },
-                        ]
-                        .into(),
-                        credential_schema: credential_schema.into(),
-                    }]
+                verifier_identifier: Some(
+                    Identifier {
+                        data: IdentifierData::Did(
+                            (Did {
+                                did: verifier_did,
+                                ..dummy_did()
+                            })
+                            .into(),
+                        ),
+                        ..dummy_identifier()
+                    }
                     .into(),
-                    organisation: dummy_organisation(None).into(),
-                    ..dummy_proof_schema()
-                }),
-                interaction: Some(interaction),
+                ),
+                state: ProofStateEnum::Pending,
+                schema: Some(
+                    ProofSchema {
+                        input_schemas: vec![ProofInputSchema {
+                            claim_schemas: vec![
+                                ProofInputClaimSchema {
+                                    schema: ClaimSchema {
+                                        id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
+                                            claim_id,
+                                        )),
+                                        key: "required_key".to_string(),
+                                        ..dummy_claim_schema()
+                                    },
+                                    required: true,
+                                    order: 0,
+                                },
+                                ProofInputClaimSchema {
+                                    schema: ClaimSchema {
+                                        key: "optional_key".to_string(),
+                                        ..dummy_claim_schema()
+                                    },
+                                    required: false,
+                                    order: 1,
+                                },
+                            ]
+                            .into(),
+                            credential_schema: credential_schema.into(),
+                        }]
+                        .into(),
+                        organisation: dummy_organisation(None).into(),
+                        ..dummy_proof_schema()
+                    }
+                    .into(),
+                ),
+                interaction: Some(interaction.into()),
                 ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
             })
         });
@@ -451,40 +463,43 @@ async fn test_get_client_metadata_success() {
         requested_date: Some(now),
         completed_date: None,
         schema: None,
-        claims: None,
-        verifier_identifier: Some(Identifier {
-            data: IdentifierData::Did(
-                (Did {
-                    deleted_at: None,
-                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
-                        .unwrap()
-                        .into(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "did1".to_string(),
-                    organisation: dummy_organisation(Some(
-                        Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        claims: Default::default(),
+        verifier_identifier: Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
                             .unwrap()
                             .into(),
-                    ))
+                        created_date: now,
+                        last_modified: now,
+                        name: "did1".to_string(),
+                        organisation: dummy_organisation(Some(
+                            Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                                .unwrap()
+                                .into(),
+                        ))
+                        .into(),
+                        did: "did:example:1".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        keys: vec![RelatedKey {
+                            role: KeyRole::KeyAgreement,
+                            key: verifier_key.clone(),
+                            reference: "1".to_string(),
+                        }]
+                        .into(),
+                        deactivated: false,
+                        log: None,
+                    })
                     .into(),
-                    did: "did:example:1".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    keys: vec![RelatedKey {
-                        role: KeyRole::KeyAgreement,
-                        key: verifier_key.clone(),
-                        reference: "1".to_string(),
-                    }]
-                    .into(),
-                    deactivated: false,
-                    log: None,
-                })
-                .into(),
-            ),
-            ..dummy_identifier()
-        }),
-        verifier_key: Some(verifier_key),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        ),
+        verifier_key: Some(verifier_key.into()),
         verifier_certificate: None,
         interaction: None,
         profile: None,
@@ -497,7 +512,7 @@ async fn test_get_client_metadata_success() {
         proof_repository
             .expect_get_proof()
             .times(1)
-            .return_once(move |_, _, _| Ok(proof));
+            .return_once(move |_, _| Ok(proof));
 
         key_algorithm
             .expect_reconstruct_key()

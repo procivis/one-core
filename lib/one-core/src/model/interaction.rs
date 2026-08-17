@@ -32,9 +32,6 @@ pub struct UpdateInteractionRequest {
     pub ecosystem_data: Option<Option<Vec<u8>>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct InteractionRelations {}
-
 #[derive(Clone, Debug, Eq, PartialEq, EnumString, AsRefStr, Serialize, Deserialize)]
 #[strum(serialize_all = "UPPERCASE")]
 #[serde(rename_all = "UPPERCASE")]

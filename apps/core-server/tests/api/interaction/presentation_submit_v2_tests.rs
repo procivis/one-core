@@ -59,15 +59,23 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
         proof
             .claims
             .as_ref()
+            .await
             .unwrap()
             .iter()
             .any(|c| c.claim.value == Some("test".to_string()))
     );
     let_assert!(
-        Some(Identifier {
+        Identifier {
             data: IdentifierData::Did(proof_verifier_did),
             ..
-        }) = proof.verifier_identifier.as_ref()
+        } = proof
+            .verifier_identifier
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     );
     assert_eq!(
         proof_verifier_did.as_ref().await.unwrap().did,
@@ -171,15 +179,23 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential()
         proof
             .claims
             .as_ref()
+            .await
             .unwrap()
             .iter()
             .any(|c| c.claim.value == Some("test".to_string()))
     );
     let_assert!(
-        Some(Identifier {
+        Identifier {
             data: IdentifierData::Did(proof_verifier_did),
             ..
-        }) = proof.verifier_identifier.as_ref()
+        } = proof
+            .verifier_identifier
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     );
     assert_eq!(
         proof_verifier_did.as_ref().await.unwrap().did,
@@ -830,15 +846,23 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
         proof
             .claims
             .as_ref()
+            .await
             .unwrap()
             .iter()
             .any(|c| c.claim.value == Some("value2".to_string()))
     );
     let_assert!(
-        Some(Identifier {
+        Identifier {
             data: IdentifierData::Did(proof_verifier_did),
             ..
-        }) = proof.verifier_identifier.as_ref()
+        } = proof
+            .verifier_identifier
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     );
     assert_eq!(
         proof_verifier_did.as_ref().await.unwrap().did,

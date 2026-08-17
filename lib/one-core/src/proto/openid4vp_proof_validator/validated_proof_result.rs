@@ -38,9 +38,15 @@ async fn validate_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
 ) -> Result<ValidatedProofResult, OpenID4VCError> {
-    let proof_schema = proof.schema.ok_or(OpenID4VCError::MappingError(
-        "proof schema is None".to_string(),
-    ))?;
+    let proof_schema = proof
+        .schema
+        .as_ref()
+        .ok_or(OpenID4VCError::MappingError(
+            "proof schema is None".to_string(),
+        ))?
+        .as_ref()
+        .await
+        .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
     validate_proof_completeness(&proof.id, &proof_schema, &proved_claims).await?;
 
     let input_schemas = proof_schema

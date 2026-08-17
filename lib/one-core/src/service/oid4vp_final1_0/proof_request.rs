@@ -106,12 +106,14 @@ pub(crate) async fn select_key_agreement_key_from_proof(
             "verifier_identifier is None".to_string(),
         ));
     };
+    let verifier_identifier = verifier_identifier.as_ref().await?;
 
     let Some(verifier_key) = proof.verifier_key.as_ref() else {
         return Err(VerificationProtocolError::Failed(
             "verifier_key is None".to_string(),
         ));
     };
+    let verifier_key = verifier_key.as_ref().await?;
 
     let candidate_encryption_key = match &verifier_identifier.data {
         IdentifierData::Certificate(_) | IdentifierData::Key(_) => Some(verifier_key.to_owned()),

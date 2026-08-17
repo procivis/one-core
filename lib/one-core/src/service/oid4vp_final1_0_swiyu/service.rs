@@ -2,8 +2,6 @@ use serde_json::{Map, Value};
 use shared_types::ProofId;
 
 use crate::error::ContextWithErrorCode;
-use crate::model::identifier::IdentifierRelations;
-use crate::model::proof::ProofRelations;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::verification_protocol::openid4vp::mapper::format_authorization_request_client_id_scheme_did;
@@ -18,16 +16,7 @@ impl OID4VPFinal1_0SwiyuService {
         let request = self.inner.get_client_request(id).await?;
         let proof = self
             .proof_repository
-            .get_proof(
-                &id,
-                &ProofRelations {
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_key: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(&id, None)
             .await
             .error_while("getting proof")?;
 

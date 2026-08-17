@@ -15,7 +15,7 @@ use super::dto::{
 use super::error::ProofServiceError;
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, interaction_data_from_proof,
-    proof_from_create_request,
+    list_item_from_proof, proof_from_create_request,
 };
 use super::validator::{
     throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
@@ -34,17 +34,16 @@ use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRole;
 use crate::model::credential::{CredentialFilterValue, CredentialListQuery};
 use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
-use crate::model::identifier::{IdentifierRelations, IdentifierType};
+use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionType;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::proof::{
-    Proof, ProofRelations, ProofRole, ProofStateEnum, SortableProofColumn, UpdateProofRequest,
+    Proof, ProofRole, ProofStateEnum, SortableProofColumn, UpdateProofRequest,
 };
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
@@ -92,22 +91,11 @@ impl ProofService {
     ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
         let proof = self
             .proof_repository
-            .get_proof(
-                id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(id, None)
             .await
             .error_while("getting proof")?;
 
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
 
         let history_event = self
             .history_repository
@@ -169,9 +157,13 @@ impl ProofService {
             &*self.session_provider,
             &*exchange,
             &PresentationDefinitionVersion::V2,
-        )?;
+        )
+        .await?;
         Ok(exchange
-            .holder_get_presentation_definition_v2(&proof, interaction_data_from_proof(&proof)?)
+            .holder_get_presentation_definition_v2(
+                &proof,
+                interaction_data_from_proof(&proof).await?,
+            )
             .await
             .error_while("getting presentation definition V2")?)
     }
@@ -181,15 +173,7 @@ impl ProofService {
         id: &ProofId,
     ) -> Result<Proof, ProofServiceError> {
         self.proof_repository
-            .get_proof(
-                id,
-                &ProofRelations {
-                    interaction: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(id, None)
             .await
             .error_while("getting proof")
             .map_err(Into::into)
@@ -204,13 +188,21 @@ impl ProofService {
         let proof = self
             .load_proof_for_presentation_definition(proof_id)
             .await?;
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
         if proof.role != ProofRole::Holder {
             return Err(ProofServiceError::InvalidRole(proof.role));
         }
 
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(ProofServiceError::MappingError(
+                "missing interaction".to_string(),
+            ))?
+            .as_ref()
+            .await?;
         let interaction_data: OpenID4VPHolderInteractionData =
-            deserialize_interaction_data(proof.interaction.as_ref().and_then(|i| i.data.as_ref()))
+            deserialize_interaction_data(interaction.data.as_ref())
                 .error_while("reading interaction data")?;
 
         let validated = interaction_data
@@ -260,7 +252,16 @@ impl ProofService {
             .get_proof_list(filter_params.into())
             .await
             .error_while("getting proofs")?;
-        list_response_try_into(result)
+
+        let mut response_dtos = Vec::with_capacity(result.values.len());
+        for value in result.values {
+            response_dtos.push(list_item_from_proof(value).await?);
+        }
+        Ok(GetProofListResponseDTO {
+            values: response_dtos,
+            total_pages: result.total_pages,
+            total_items: result.total_items,
+        })
     }
 
     /// Creates a new proof
@@ -606,8 +607,12 @@ impl ProofService {
         id: &ProofId,
         request: ShareProofRequestDTO,
     ) -> Result<ShareProofResponseDTO, ProofServiceError> {
-        let proof = self.load_proof(id).await?;
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        let proof = self
+            .proof_repository
+            .get_proof(id, None)
+            .await
+            .error_while("getting proof")?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
 
         let previous_state = proof.state;
         if !matches!(
@@ -625,12 +630,14 @@ impl ProofService {
             return Err(ProofServiceError::InvalidEngagement);
         }
 
-        let organisation = proof
+        let proof_schema = proof
             .schema
             .as_ref()
             .ok_or_else(|| ProofServiceError::MappingError("Missing proof_schema".to_string()))?
-            .organisation
-            .to_owned();
+            .as_ref()
+            .await?;
+
+        let organisation = proof_schema.organisation.to_owned();
 
         let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
 
@@ -689,7 +696,7 @@ impl ProofService {
             .error_while("updating proof")?;
         clear_previous_interaction(
             &*self.interaction_repository,
-            proof.interaction.as_ref().map(|i| &i.id),
+            proof.interaction.as_ref().map(|i| i.id_ref()),
         )
         .await
         .error_while("clearing interaction")?;
@@ -700,25 +707,15 @@ impl ProofService {
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ProofServiceError> {
         let proof = self
             .proof_repository
-            .get_proof(
-                &proof_id,
-                &ProofRelations {
-                    claims: Some(Default::default()),
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(&proof_id, None)
             .await
             .error_while("getting proof")?;
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
 
         let credential_ids = proof
             .claims
-            .ok_or(ProofServiceError::MappingError(
-                "claims are None".to_string(),
-            ))?
+            .as_ref()
+            .await?
             .into_iter()
             .map(|proof_claim| proof_claim.credential.id())
             .collect::<HashSet<_>>();
@@ -945,11 +942,11 @@ impl ProofService {
                 profile: None,
                 schema: None,
                 transport: transport.to_owned(),
-                claims: None,
+                claims: Default::default(),
                 verifier_identifier: None,
                 verifier_key: None,
                 verifier_certificate: None,
-                interaction: Some(interaction.clone()),
+                interaction: Some(interaction.clone().into()),
                 proof_blob_id: None,
                 engagement: None,
                 webhook_url: None,
@@ -986,18 +983,10 @@ impl ProofService {
     pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ProofServiceError> {
         let proof = self
             .proof_repository
-            .get_proof(
-                &proof_id,
-                &ProofRelations {
-                    interaction: Some(Default::default()),
-                    schema: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(&proof_id, None)
             .await
             .error_while("getting proof")?;
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
 
         match proof.state {
             ProofStateEnum::Created
@@ -1040,19 +1029,11 @@ impl ProofService {
     ) -> Result<TrustInformationDetailResponseDTO, ProofServiceError> {
         let proof = self
             .proof_repository
-            .get_proof(
-                &id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(&id, None)
             .await
             .error_while("getting credential")?;
 
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
         if proof.role != ProofRole::Holder {
             return Err(ProofServiceError::InvalidRole(proof.role));
         }
@@ -1100,7 +1081,7 @@ impl ProofService {
             .error_while("deleting proof")?;
         if let Some(ref interaction) = proof.interaction {
             self.interaction_repository
-                .delete_interaction(&interaction.id)
+                .delete_interaction(interaction.id_ref())
                 .await
                 .error_while("deleting interaction")?;
         };
@@ -1119,28 +1100,6 @@ impl ProofService {
                 .error_while("retracting proof")?;
         };
         Ok(())
-    }
-
-    /// Get proof with relations
-    async fn load_proof(&self, id: &ProofId) -> Result<Proof, ProofServiceError> {
-        let proof = self
-            .proof_repository
-            .get_proof(
-                id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    claims: Some(Default::default()),
-                    verifier_key: Some(Default::default()),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_certificate: Some(Default::default()),
-                },
-                None,
-            )
-            .await
-            .error_while("getting proof")?;
-
-        Ok(proof)
     }
 
     fn verification_fn(&self) -> VerificationFn {

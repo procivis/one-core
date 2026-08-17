@@ -109,7 +109,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
         )
         .await
         .error_while("creating verifier identifier")?;
-    proof.verifier_identifier = Some(verifier_identifier);
+    proof.verifier_identifier = Some(verifier_identifier.into());
 
     let ecosystem_artifact = ProtocolArtifact::HolderProof {
         verifier_details: Cow::Owned(Some(verifier_details)),

@@ -114,9 +114,6 @@ pub enum IdentifierState {
     Deactivated,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct IdentifierRelations {}
-
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateIdentifierRequest {
     pub name: Option<String>,

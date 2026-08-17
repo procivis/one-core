@@ -4,9 +4,10 @@ use one_core::model::claim::Claim;
 use one_core::model::identifier::{Identifier, IdentifierData};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
-use one_core::model::proof::{Proof, ProofRelations, ProofRole, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::proof_repository::ProofRepository;
+use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, ProofId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -94,18 +95,18 @@ impl ProofsDB {
             role,
             requested_date,
             completed_date,
-            claims: None,
-            schema: proof_schema.cloned(),
-            verifier_identifier: Some(verifier_identifier.to_owned()),
-            verifier_key: Some(verifier_key),
+            claims: Default::default(),
+            schema: convert_inner(proof_schema.cloned()),
+            verifier_identifier: Some(verifier_identifier.to_owned().into()),
+            verifier_key: Some(verifier_key.into()),
             verifier_certificate: match &verifier_identifier.data {
                 IdentifierData::Certificate(certs)
                 | IdentifierData::CertificateAuthority(certs) => {
-                    certs.as_ref().await.unwrap().first().cloned()
+                    convert_inner(certs.as_ref().await.unwrap().first().cloned())
                 }
                 _ => None,
             },
-            interaction: interaction.cloned(),
+            interaction: convert_inner(interaction.cloned()),
             profile,
             proof_blob_id,
             engagement,
@@ -123,20 +124,6 @@ impl ProofsDB {
     }
 
     pub async fn get(&self, proof_id: &ProofId) -> Proof {
-        self.repository
-            .get_proof(
-                proof_id,
-                &ProofRelations {
-                    claims: Some(Default::default()),
-                    schema: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    verifier_key: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
-            .await
-            .unwrap()
+        self.repository.get_proof(proof_id, None).await.unwrap()
     }
 }

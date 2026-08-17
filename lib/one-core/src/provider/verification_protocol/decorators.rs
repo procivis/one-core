@@ -156,13 +156,14 @@ impl VerificationProtocol for CapabilityChecked {
     ) -> Result<ShareResponse, VerificationProtocolError> {
         let capabilities = self.inner.get_capabilities();
 
-        let verifier_identifier =
-            proof
-                .verifier_identifier
-                .as_ref()
-                .ok_or(VerificationProtocolError::Failed(
-                    "Missing verifier identifier".to_string(),
-                ))?;
+        let verifier_identifier = proof
+            .verifier_identifier
+            .as_ref()
+            .ok_or(VerificationProtocolError::Failed(
+                "Missing verifier identifier".to_string(),
+            ))?
+            .as_ref()
+            .await?;
         if !capabilities
             .verifier_identifier_types
             .contains(&verifier_identifier.data.r#type().into())

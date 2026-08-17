@@ -280,9 +280,14 @@ pub(crate) async fn accept_proof(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), ServiceError> {
-    let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
-        "proof schema is None".to_string(),
-    ))?;
+    let proof_schema = proof
+        .schema
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "proof schema is None".to_string(),
+        ))?
+        .as_ref()
+        .await?;
     let organisation = proof_schema.organisation.as_ref().await?;
 
     let mut credential_schemas = HashMap::new();

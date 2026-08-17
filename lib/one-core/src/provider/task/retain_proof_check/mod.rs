@@ -12,7 +12,7 @@ use crate::model::credential::{CredentialFilterValue, CredentialListQuery};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
-use crate::model::proof::{ProofRelations, ProofStateEnum};
+use crate::model::proof::ProofStateEnum;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -98,8 +98,10 @@ impl Task for RetainProofCheck {
             for proof in proofs.values {
                 let schema = proof
                     .schema
-                    .clone()
-                    .ok_or_else(|| ServiceError::MappingError("schema is None".into()))?;
+                    .as_ref()
+                    .ok_or_else(|| ServiceError::MappingError("schema is None".into()))?
+                    .as_ref()
+                    .await?;
 
                 if proof.completed_date.is_some_and(|value| {
                     value + Duration::from_secs(schema.expire_duration as _) > now
@@ -107,20 +109,10 @@ impl Task for RetainProofCheck {
                     continue;
                 }
 
-                let credential_ids = self
-                    .proof_repository
-                    .get_proof(
-                        &proof.id,
-                        &ProofRelations {
-                            claims: Some(Default::default()),
-                            ..Default::default()
-                        },
-                        None,
-                    )
-                    .await
-                    .error_while("getting proof")?
+                let credential_ids = proof
                     .claims
-                    .ok_or(ServiceError::MappingError("claims are None".to_string()))?
+                    .as_ref()
+                    .await?
                     .into_iter()
                     .map(|proof_claim| proof_claim.credential.id())
                     .collect::<HashSet<_>>();

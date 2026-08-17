@@ -9,8 +9,7 @@ use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::model::proof::{
-    GetProofList, Proof, ProofListQuery, ProofRelations, ProofRole, ProofStateEnum,
-    UpdateProofRequest,
+    GetProofList, Proof, ProofListQuery, ProofRole, ProofStateEnum, UpdateProofRequest,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -25,46 +24,28 @@ pub struct ProofHistoryDecorator {
 
 impl ProofHistoryDecorator {
     async fn fetch_proof(&self, proof_id: &ProofId) -> Result<Proof, DataLayerError> {
-        self.inner
-            .get_proof(
-                proof_id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    verifier_identifier: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
-            .await
+        self.inner.get_proof(proof_id, None).await
     }
 
     async fn write_history(
         &self,
-        mut proof: Proof,
+        proof: &Proof,
         action: HistoryAction,
         error_info: Option<HistoryErrorMetadata>,
     ) {
         let proof_id = proof.id;
-        let mut organisation_id = organisation_id_from_proof(&proof);
-        if organisation_id.is_none() {
-            let Ok(fetched_proof) = self.fetch_proof(&proof_id).await else {
-                tracing::warn!("failed to load proof (id: {proof_id})");
-                return;
-            };
-            let Some(org_id) = organisation_id_from_proof(&proof) else {
-                tracing::warn!("failed to get organisation of proof (id: {proof_id})");
-                return;
-            };
-            proof = fetched_proof;
-            organisation_id = Some(org_id);
-        }
+        let organisation_id = organisation_id_from_proof(proof).await.ok().flatten();
 
-        let target = target_from_proof(&proof);
-        let name = proof
-            .schema
-            .map(|s| s.name)
-            .unwrap_or_else(|| target.to_owned().unwrap_or_default());
+        let target = target_from_proof(proof);
+        let name = if let Some(schema) = proof.schema.as_ref() {
+            if let Ok(schema) = schema.as_ref().await {
+                schema.name.to_owned()
+            } else {
+                target.to_owned().unwrap_or_default()
+            }
+        } else {
+            target.to_owned().unwrap_or_default()
+        };
 
         let result = self
             .history_repository
@@ -95,7 +76,7 @@ impl ProofRepository for ProofHistoryDecorator {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
         let action = action_from_state(request.state);
         let proof_id = self.inner.create_proof(request.clone()).await?;
-        self.write_history(request, action, None).await;
+        self.write_history(&request, action, None).await;
         Ok(proof_id)
     }
 
@@ -122,7 +103,7 @@ impl ProofRepository for ProofHistoryDecorator {
             && new_state != old_state
         {
             let action = action_from_state(new_state);
-            self.write_history(proof.clone(), action, error_info).await;
+            self.write_history(&proof, action, error_info).await;
         };
 
         // updating interaction while Pending means shared
@@ -131,7 +112,8 @@ impl ProofRepository for ProofHistoryDecorator {
             && (new_state == Some(ProofStateEnum::Pending)
                 || new_state.is_none() && old_state == ProofStateEnum::Pending)
         {
-            self.write_history(proof, HistoryAction::Shared, None).await;
+            self.write_history(&proof, HistoryAction::Shared, None)
+                .await;
         }
 
         Ok(())
@@ -140,7 +122,7 @@ impl ProofRepository for ProofHistoryDecorator {
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
         let proof = self.fetch_proof(proof_id).await?;
         self.inner.delete_proof_claims(proof_id).await?;
-        self.write_history(proof, HistoryAction::ClaimsRemoved, None)
+        self.write_history(&proof, HistoryAction::ClaimsRemoved, None)
             .await;
         Ok(())
     }
@@ -163,20 +145,16 @@ impl ProofRepository for ProofHistoryDecorator {
     async fn get_proof(
         &self,
         id: &ProofId,
-        relations: &ProofRelations,
         lock: Option<LockType>,
     ) -> Result<Proof, DataLayerError> {
-        self.inner.get_proof(id, relations, lock).await
+        self.inner.get_proof(id, lock).await
     }
 
     async fn get_proof_by_interaction_id(
         &self,
         interaction_id: &InteractionId,
-        relations: &ProofRelations,
     ) -> Result<Proof, DataLayerError> {
-        self.inner
-            .get_proof_by_interaction_id(interaction_id, relations)
-            .await
+        self.inner.get_proof_by_interaction_id(interaction_id).await
     }
 
     async fn get_proof_list(
@@ -200,25 +178,23 @@ fn target_from_proof(proof: &Proof) -> Option<String> {
         ProofRole::Holder => proof
             .verifier_identifier
             .as_ref()
-            .map(|identifier| identifier.id.to_string()),
+            .map(|identifier| identifier.id_ref().to_string()),
         _ => None,
     }
 }
 
-fn organisation_id_from_proof(proof: &Proof) -> Option<OrganisationId> {
-    if let Some(organisation_id) = proof.schema.as_ref().map(|schema| schema.organisation.id()) {
-        return Some(organisation_id);
+async fn organisation_id_from_proof(
+    proof: &Proof,
+) -> Result<Option<OrganisationId>, DataLayerError> {
+    if let Some(schema) = proof.schema.as_ref() {
+        return Ok(Some(schema.as_ref().await?.organisation.id()));
     }
 
-    if let Some(organisation_id) = proof
-        .interaction
-        .as_ref()
-        .map(|interaction| interaction.organisation.id())
-    {
-        return Some(organisation_id);
+    if let Some(interaction) = proof.interaction.as_ref() {
+        return Ok(Some(interaction.as_ref().await?.organisation.id()));
     }
 
-    None
+    Ok(None)
 }
 
 fn action_from_state(state: ProofStateEnum) -> HistoryAction {

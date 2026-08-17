@@ -149,37 +149,45 @@ fn get_or_insert_proof_container_claim<'a>(
     }
 }
 
-impl TryFrom<Proof> for ProofListItemResponseDTO {
-    type Error = ProofServiceError;
+pub(super) async fn list_item_from_proof(
+    value: Proof,
+) -> Result<ProofListItemResponseDTO, ProofServiceError> {
+    let schema = match value.schema {
+        Some(schema) => Some(schema.as_ref().await?.to_owned()),
+        None => None,
+    };
 
-    fn try_from(value: Proof) -> Result<Self, Self::Error> {
-        let retain_until_date = match (value.completed_date, &value.schema) {
-            (Some(completed_date), Some(schema)) if schema.expire_duration != 0 => {
-                Some(completed_date + Duration::from_secs(schema.expire_duration as _))
-            }
-            _ => None,
-        };
+    let retain_until_date = match (value.completed_date, &schema) {
+        (Some(completed_date), Some(schema)) if schema.expire_duration != 0 => {
+            Some(completed_date + Duration::from_secs(schema.expire_duration as _))
+        }
+        _ => None,
+    };
 
-        Ok(ProofListItemResponseDTO {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            requested_date: value.requested_date,
-            retain_until_date,
-            transport: value.transport,
-            completed_date: value.completed_date,
-            engagement: value.engagement,
-            verifier: convert_inner(value.verifier_identifier),
-            protocol: value.protocol,
-            state: value.state,
-            role: value.role,
-            schema: value.schema.map(|schema| schema.into()),
-            profile: value.profile,
-            webhook_destination_url: value.webhook_url,
-            redirect_uri: value.redirect_uri,
-            ecosystem: value.ecosystem,
-        })
-    }
+    let verifier_identifier = match value.verifier_identifier {
+        Some(verifier_identifier) => Some(verifier_identifier.as_ref().await?.to_owned()),
+        None => None,
+    };
+
+    Ok(ProofListItemResponseDTO {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        requested_date: value.requested_date,
+        retain_until_date,
+        transport: value.transport,
+        completed_date: value.completed_date,
+        engagement: value.engagement,
+        verifier: convert_inner(verifier_identifier),
+        protocol: value.protocol,
+        state: value.state,
+        role: value.role,
+        schema: convert_inner(schema),
+        profile: value.profile,
+        webhook_destination_url: value.webhook_url,
+        redirect_uri: value.redirect_uri,
+        ecosystem: value.ecosystem,
+    })
 }
 
 pub(super) async fn get_verifier_proof_detail(
@@ -195,14 +203,11 @@ pub(super) async fn get_verifier_proof_detail(
         .as_ref()
         .ok_or(ProofServiceError::MappingError(
             "schema is None".to_string(),
-        ))?;
-
-    let claims = proof
-        .claims
+        ))?
         .as_ref()
-        .ok_or(ProofServiceError::MappingError(
-            "claims is None".to_string(),
-        ))?;
+        .await?;
+
+    let claims = proof.claims.as_ref().await?;
 
     let mut credential_for_credential_schema: HashMap<
         CredentialSchemaId,
@@ -210,7 +215,7 @@ pub(super) async fn get_verifier_proof_detail(
     > = HashMap::new();
 
     let mut credential_for_schema_model: HashMap<CredentialSchemaId, Credential> = HashMap::new();
-    for proof_claim in claims.iter() {
+    for proof_claim in &claims {
         let credential = proof_claim.credential.as_ref().await?.to_owned();
         credential_for_schema_model.insert(credential.schema.id(), credential);
     }
@@ -304,7 +309,7 @@ pub(super) async fn get_verifier_proof_detail(
         input_claim_schemas.extend(object_nested_claims);
 
         let mut proof_input_claims = nest_proof_claims(
-            claims,
+            &claims,
             &credential_claim_schemas,
             Some(&input_claim_schemas),
         )
@@ -393,6 +398,7 @@ pub(super) async fn get_verifier_proof_detail(
         })
     }
     drop(proof_input_schemas);
+    drop(claims);
 
     let redirect_uri = proof.redirect_uri.to_owned();
     let subscriber_information = proof.subscriber_information.to_owned();
@@ -400,21 +406,22 @@ pub(super) async fn get_verifier_proof_detail(
     let verifier_certificate = match &proof.verifier_certificate {
         None => None,
         Some(certificate) => Some(
-            certificate_to_response_dto(certificate.to_owned())
+            certificate_to_response_dto(certificate.as_ref().await?.to_owned())
                 .await
                 .error_while("converting certificate")?,
         ),
     };
 
     let transaction_data = if proof.role == ProofRole::Verifier {
-        verifier_transaction_data(&proof)?
+        verifier_transaction_data(&proof).await?
     } else {
         vec![]
     };
 
     let organisation_id = schema.organisation.id();
+    drop(schema);
 
-    let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
+    let list_item_response = list_item_from_proof(proof).await?;
 
     Ok(ProofDetailResponseDTO {
         id: list_item_response.id,
@@ -560,22 +567,18 @@ pub(super) async fn get_holder_proof_detail(
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
-    let organisation_id = [
-        proof
-            .verifier_identifier
-            .as_ref()
-            .map(|identifier| identifier.organisation.id()),
-        proof
-            .interaction
-            .as_ref()
-            .map(|interaction| interaction.organisation.id()),
-    ]
-    .into_iter()
-    .flatten()
-    .next()
-    .ok_or(ProofServiceError::MappingError(
-        "Missing organisation".to_string(),
-    ))?;
+    let organisation_id = match (
+        proof.verifier_identifier.as_ref(),
+        proof.interaction.as_ref(),
+    ) {
+        (Some(verifier_identifier), _) => verifier_identifier.as_ref().await?.organisation.id(),
+        (_, Some(interaction)) => interaction.as_ref().await?.organisation.id(),
+        (None, None) => {
+            return Err(ProofServiceError::MappingError(
+                "Missing organisation".to_string(),
+            ));
+        }
+    };
 
     let redirect_uri = proof.redirect_uri.to_owned();
     let subscriber_information = proof.subscriber_information.to_owned();
@@ -589,7 +592,8 @@ pub(super) async fn get_holder_proof_detail(
         ),
     > = HashMap::new();
 
-    for proof_claim in proof.claims.iter().flatten() {
+    let proof_claims = proof.claims.as_ref().await?;
+    for proof_claim in &proof_claims {
         let credential = proof_claim.credential.as_ref().await?;
         let credential_schema = credential.schema.as_ref().await?.to_owned();
 
@@ -616,6 +620,7 @@ pub(super) async fn get_holder_proof_detail(
             }
         }
     }
+    drop(proof_claims);
 
     let mut proof_inputs = vec![];
     for (claims, credential, credential_schema) in submitted_credentials.into_values() {
@@ -639,13 +644,13 @@ pub(super) async fn get_holder_proof_detail(
     let verifier_certificate = match &proof.verifier_certificate {
         None => None,
         Some(certificate) => Some(
-            certificate_to_response_dto(certificate.to_owned())
+            certificate_to_response_dto(certificate.as_ref().await?.to_owned())
                 .await
                 .error_while("converting certificate")?,
         ),
     };
 
-    let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
+    let list_item_response = list_item_from_proof(proof).await?;
 
     Ok(ProofDetailResponseDTO {
         id: list_item_response.id,
@@ -698,13 +703,13 @@ pub(super) fn proof_from_create_request(
         requested_date: None,
         completed_date: None,
         profile: request.profile,
-        schema: Some(schema),
+        schema: Some(schema.into()),
         transport,
-        claims: None,
-        verifier_identifier: Some(verifier_identifier),
-        verifier_key: Some(verifier_key),
-        verifier_certificate,
-        interaction,
+        claims: Default::default(),
+        verifier_identifier: Some(verifier_identifier.into()),
+        verifier_key: Some(verifier_key.into()),
+        verifier_certificate: convert_inner(verifier_certificate),
+        interaction: convert_inner(interaction),
         proof_blob_id: None,
         engagement: request.engagement,
         webhook_url: request.webhook_destination_url,
@@ -727,20 +732,20 @@ fn from_path_to_key(path: &str, original_key: &str) -> String {
         .join(NESTED_CLAIM_MARKER_STR)
 }
 
-fn verifier_transaction_data(
+async fn verifier_transaction_data(
     proof: &Proof,
 ) -> Result<Vec<TransactionDataResponseDTO>, ProofServiceError> {
-    let Some(data) = proof
-        .interaction
-        .as_ref()
-        .and_then(|interaction| interaction.data.as_ref())
-    else {
+    let Some(interaction) = proof.interaction.as_ref() else {
         return Ok(vec![]);
     };
 
-    let content =
-        serde_json::from_slice::<CommonVerifierInteractionContent>(data).map_err(|e| {
-            ProofServiceError::MappingError(format!("Failed to parse interaction data: {e}",))
+    let interaction = interaction.as_ref().await?;
+    let Some(interaction_data) = &interaction.data else {
+        return Ok(vec![]);
+    };
+    let content = serde_json::from_slice::<CommonVerifierInteractionContent>(interaction_data)
+        .map_err(|e| {
+            ProofServiceError::MappingError(format!("Failed to parse interaction data: {e}"))
         })?;
 
     content
@@ -770,13 +775,19 @@ fn transaction_data_response_from_request(
     })
 }
 
-pub(super) fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ProofServiceError> {
-    proof
+pub(super) async fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ProofServiceError> {
+    let interaction = proof
         .interaction
         .as_ref()
-        .and_then(|interaction| interaction.data.as_ref())
-        .map(|interaction| serde_json::from_slice(interaction))
         .ok_or_else(|| ProofServiceError::MappingError("proof interaction is missing".into()))?
+        .as_ref()
+        .await?;
+
+    let interaction_data = interaction.data.as_ref().ok_or_else(|| {
+        ProofServiceError::MappingError("proof interaction data is missing".into())
+    })?;
+
+    serde_json::from_slice(interaction_data)
         .map_err(|err| ProofServiceError::MappingError(err.to_string()))
 }
 

@@ -42,9 +42,6 @@ pub struct UpdateOrganisationRequest {
     pub configuration: Option<OrganisationConfiguration>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct OrganisationRelations {}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableOrganisationColumn {
     CreatedDate,

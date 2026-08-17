@@ -165,7 +165,7 @@ async fn test_delete_proof_claims_success() {
         HistoryAction::ClaimsRemoved
     );
 
-    assert_eq!(proof.claims.as_ref().unwrap().len(), 0);
+    assert_eq!(proof.claims.as_ref().await.unwrap().len(), 0);
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert!(

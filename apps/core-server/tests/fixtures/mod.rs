@@ -32,7 +32,7 @@ use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState, I
 use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::model::proof::{Proof, ProofRelations, ProofRole, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::DataRepository;
@@ -1046,12 +1046,12 @@ pub async fn create_proof(
         role,
         requested_date,
         completed_date,
-        claims: None,
-        schema: proof_schema.cloned(),
-        verifier_identifier: Some(verifier_identifier.to_owned()),
-        verifier_key: verifier_key.cloned(),
+        claims: Default::default(),
+        schema: convert_inner(proof_schema.cloned()),
+        verifier_identifier: Some(verifier_identifier.to_owned().into()),
+        verifier_key: convert_inner(verifier_key.cloned()),
         verifier_certificate: None,
-        interaction: interaction.cloned(),
+        interaction: convert_inner(interaction.cloned()),
         profile,
         proof_blob_id: None,
         engagement,
@@ -1072,18 +1072,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_proof_repository()
-        .get_proof(
-            proof_id,
-            &ProofRelations {
-                claims: Some(Default::default()),
-                schema: Some(Default::default()),
-                verifier_identifier: Some(Default::default()),
-                verifier_key: Some(Default::default()),
-                verifier_certificate: Some(Default::default()),
-                interaction: Some(Default::default()),
-            },
-            None,
-        )
+        .get_proof(proof_id, None)
         .await
         .unwrap()
 }

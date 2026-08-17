@@ -128,7 +128,7 @@ async fn test_direct_post_one_credential_correct() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert!(
         new_claim_schemas
             .iter()
@@ -256,7 +256,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
 
     assert!(
         new_claim_schemas
@@ -529,7 +529,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
 
     let proof = get_proof(&db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Error);
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert!(claims.is_empty());
 }
 
@@ -726,9 +726,11 @@ async fn test_direct_post_multiple_presentations() {
 
     let claims: BTreeSet<String> = proof
         .claims
+        .as_ref()
+        .await
         .unwrap()
         .into_iter()
-        .map(|c| c.claim.value.unwrap())
+        .map(|c| c.claim.value.clone().unwrap())
         .collect();
 
     assert_eq!(expected_claims, claims);
@@ -1032,7 +1034,10 @@ async fn test_direct_post_with_profile_verification() {
     });
     let params = [
         ("vp_token", vp_token.to_string()),
-        ("state", proof.interaction.as_ref().unwrap().id.to_string()),
+        (
+            "state",
+            proof.interaction.as_ref().unwrap().id().to_string(),
+        ),
     ];
 
     // WHEN
@@ -1050,7 +1055,7 @@ async fn test_direct_post_with_profile_verification() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let claims = proof.claims.unwrap();
+    let claims = proof.claims.as_ref().await.unwrap();
     assert!(
         new_claim_schemas
             .iter()
@@ -1064,7 +1069,7 @@ async fn test_direct_post_with_profile_verification() {
     );
 
     assert_eq!(proof.profile, Some(test_profile.to_string()));
-    for claim in claims {
+    for claim in &claims {
         assert_eq!(
             claim.credential.as_ref().await.unwrap().profile,
             Some(test_profile.to_string())

@@ -55,9 +55,6 @@ impl Key {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct KeyRelations {}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableKeyColumn {
     Name,

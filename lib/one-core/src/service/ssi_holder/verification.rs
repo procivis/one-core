@@ -32,11 +32,10 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::identifier::IdentifierRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -62,14 +61,7 @@ impl SSIHolderService {
     ) -> Result<(), HolderServiceError> {
         let proof = self
             .proof_repository
-            .get_proof_by_interaction_id(
-                interaction_id,
-                &ProofRelations {
-                    interaction: Some(Default::default()),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    ..Default::default()
-                },
-            )
+            .get_proof_by_interaction_id(interaction_id)
             .await
             .map_err(|error| match error {
                 DataLayerError::EntityNotFound { .. } => {
@@ -211,13 +203,7 @@ impl SSIHolderService {
 
         let proof = self
             .proof_repository
-            .get_proof_by_interaction_id(
-                &request.interaction_id,
-                &ProofRelations {
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
+            .get_proof_by_interaction_id(&request.interaction_id)
             .await
             .map_err(|error| match error {
                 DataLayerError::EntityNotFound { .. } => {
@@ -238,12 +224,18 @@ impl SSIHolderService {
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)
             .error_while("checking proof state")?;
 
-        let interaction_data: serde_json::Value = proof
+        let interaction = proof
             .interaction
             .as_ref()
-            .and_then(|interaction| interaction.data.as_ref())
-            .map(|interaction| serde_json::from_slice(interaction))
             .ok_or_else(|| HolderServiceError::MappingError("missing interaction".into()))?
+            .as_ref()
+            .await?;
+        let interaction_data = interaction
+            .data
+            .as_ref()
+            .ok_or_else(|| HolderServiceError::MappingError("missing interaction data".into()))?;
+
+        let interaction_data: serde_json::Value = serde_json::from_slice(interaction_data)
             .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
         let presentation_definition = verification_protocol
             .holder_get_presentation_definition_v2(&proof, interaction_data)
@@ -430,6 +422,7 @@ impl SSIHolderService {
 
     async fn fill_verifier_in_proof(&self, proof: &mut Proof) -> Result<(), HolderServiceError> {
         if let Some(interaction) = proof.interaction.as_ref() {
+            let interaction = interaction.as_ref().await?;
             let deserialized: Result<OpenID4VPHolderInteractionData, _> =
                 deserialize_interaction_data(interaction.data.as_ref());
             if let Ok(data) = deserialized
@@ -445,12 +438,12 @@ impl SSIHolderService {
                     )
                     .await
                     .error_while("creating remote verifier identifier")?;
-                proof.verifier_identifier = Some(identifier);
+                proof.verifier_identifier = Some(identifier.into());
                 match verifier_identifier_relation {
                     RemoteIdentifierRelation::Certificate(certificate) => {
-                        proof.verifier_certificate = Some(certificate)
+                        proof.verifier_certificate = Some(certificate.into())
                     }
-                    RemoteIdentifierRelation::Key(key) => proof.verifier_key = Some(key),
+                    RemoteIdentifierRelation::Key(key) => proof.verifier_key = Some(key.into()),
                     _ => {}
                 };
             }

@@ -259,6 +259,7 @@ impl Ecosystem for EudiEcosystem {
         let Some(verifier_identifier) = &proof.verifier_identifier else {
             return Err(EcosystemError::MissingIdentifier);
         };
+        let verifier_identifier = verifier_identifier.as_ref().await?;
 
         if !matches!(verifier_identifier.data, IdentifierData::Certificate(_)) {
             return Err(EcosystemError::InvalidIdentifier(verifier_identifier.id));
@@ -275,7 +276,7 @@ impl Ecosystem for EudiEcosystem {
                     "Missing proof schema".to_string(),
                 ));
             };
-
+            let proof_schema = proof_schema.as_ref().await?;
             let input_schemas = proof_schema.input_schemas.as_ref().await?;
             for input_schema in &input_schemas {
                 let credential_schema = input_schema.credential_schema.as_ref().await?;

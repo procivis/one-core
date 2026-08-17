@@ -1,26 +1,22 @@
-use std::collections::HashMap;
-
 use autometrics::autometrics;
 use one_core::model::claim::Claim;
 use one_core::model::common::LockType;
-use one_core::model::credential::Credential;
 use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::proof::{
-    GetProofList, Proof, ProofClaim, ProofListQuery, ProofRelations, ProofStateEnum,
-    UpdateProofRequest,
+    GetProofList, Proof, ProofListQuery, ProofStateEnum, UpdateProofRequest,
 };
-use one_core::model::relation::Related;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
-use shared_types::{ClaimId, CredentialId, InteractionId, ProofId};
+use shared_types::{InteractionId, ProofId};
 
 use super::ProofProvider;
 use super::mapper::{
     create_list_response, get_proof_claim_active_model, needs_interaction_table_for_filter,
+    proof_model_to_repository,
 };
 use super::model::ProofListItemModel;
 use crate::entity::{identifier, proof, proof_claim, proof_schema};
@@ -46,7 +42,6 @@ impl ProofRepository for ProofProvider {
     async fn get_proof(
         &self,
         proof_id: &ProofId,
-        relations: &ProofRelations,
         lock: Option<LockType>,
     ) -> Result<Proof, DataLayerError> {
         let select = proof::Entity::find_by_id(proof_id);
@@ -66,13 +61,22 @@ impl ProofRepository for ProofProvider {
                 id: (*proof_id).into(),
             })?;
 
-        self.resolve_proof_relations(proof_model, relations).await
+        Ok(proof_model_to_repository(
+            proof_model,
+            &self.credential_repository,
+            &self.claim_repository,
+            &self.proof_schema_repository,
+            &self.identifier_repository,
+            &self.key_repository,
+            &self.certificate_repository,
+            &self.interaction_repository,
+            &self.db,
+        ))
     }
 
     async fn get_proof_by_interaction_id(
         &self,
         interaction_id: &InteractionId,
-        relations: &ProofRelations,
     ) -> Result<Proof, DataLayerError> {
         let proof_model = crate::entity::proof::Entity::find()
             .filter(proof::Column::InteractionId.eq(interaction_id.to_string()))
@@ -91,7 +95,17 @@ impl ProofRepository for ProofProvider {
                 id: (*interaction_id).into(),
             })?;
 
-        self.resolve_proof_relations(proof_model, relations).await
+        Ok(proof_model_to_repository(
+            proof_model,
+            &self.credential_repository,
+            &self.claim_repository,
+            &self.proof_schema_repository,
+            &self.identifier_repository,
+            &self.key_repository,
+            &self.certificate_repository,
+            &self.interaction_repository,
+            &self.db,
+        ))
     }
 
     async fn get_proof_list(
@@ -122,6 +136,9 @@ impl ProofRepository for ProofProvider {
             &self.key_repository,
             &self.certificate_repository,
             &self.trust_information_repository,
+            &self.claim_repository,
+            &self.credential_repository,
+            &self.db,
         )
     }
 
@@ -331,103 +348,4 @@ fn get_proof_list_query(query_params: &ProofListQuery) -> Select<crate::entity::
     }
 
     query
-}
-
-impl ProofProvider {
-    async fn resolve_proof_relations(
-        &self,
-        proof_model: proof::Model,
-        relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError> {
-        let mut proof: Proof = proof_model.clone().into();
-
-        if let Some(_proof_schema_relations) = &relations.schema
-            && let Some(proof_schema_id) = proof_model.proof_schema_id
-        {
-            proof.schema = Some(
-                self.proof_schema_repository
-                    .get_proof_schema(&proof_schema_id)
-                    .await?,
-            );
-        }
-
-        if let Some(_claim_relations) = &relations.claims {
-            proof.claims = Some(self.resolve_claims(&proof_model).await?);
-        }
-
-        if relations.verifier_identifier.is_some()
-            && let Some(verifier_identifier_id) = &proof_model.verifier_identifier_id
-        {
-            let verifier_identifier = self
-                .identifier_repository
-                .get(*verifier_identifier_id)
-                .await?;
-            proof.verifier_identifier = Some(verifier_identifier);
-        }
-
-        if let (Some(_interaction_relations), Some(interaction_id)) =
-            (&relations.interaction, proof_model.interaction_id)
-        {
-            let interaction = self
-                .interaction_repository
-                .get_interaction(&interaction_id, None)
-                .await?;
-
-            proof.interaction = Some(interaction);
-        }
-
-        if let (Some(_verifier_key_relations), Some(verifier_key_id)) =
-            (&relations.verifier_key, proof_model.verifier_key_id)
-        {
-            let verifier_key = self.key_repository.get_key(&verifier_key_id).await?;
-
-            proof.verifier_key = Some(verifier_key);
-        }
-
-        if let (Some(_verifier_certificate_relations), Some(verifier_certificate_id)) = (
-            &relations.verifier_certificate,
-            proof_model.verifier_certificate_id,
-        ) {
-            let verifier_certificate = self
-                .certificate_repository
-                .get(verifier_certificate_id)
-                .await?;
-
-            proof.verifier_certificate = Some(verifier_certificate);
-        }
-
-        Ok(proof)
-    }
-
-    async fn resolve_claims(
-        &self,
-        proof_model: &proof::Model,
-    ) -> Result<Vec<ProofClaim>, DataLayerError> {
-        let proof_claims = crate::entity::proof_claim::Entity::find()
-            .filter(proof_claim::Column::ProofId.eq(proof_model.id))
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let claim_ids: Vec<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
-        if claim_ids.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let claims = self.claim_repository.get_claim_list(claim_ids).await?;
-        let mut credential_relations: HashMap<CredentialId, Related<Credential>> = HashMap::new();
-        Ok(claims
-            .into_iter()
-            .map(|claim| {
-                let credential = credential_relations
-                    .entry(claim.credential_id)
-                    .or_insert_with(|| {
-                        Related::new(claim.credential_id, self.credential_repository.clone())
-                    })
-                    .to_owned();
-
-                ProofClaim { claim, credential }
-            })
-            .collect())
-    }
 }

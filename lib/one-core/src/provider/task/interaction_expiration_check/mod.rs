@@ -8,7 +8,6 @@ use super::Task;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::proof::ProofRelations;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -94,25 +93,25 @@ impl Task for InteractionExpirationCheckProvider {
         for proof_id in &updated_proofs {
             let proof = self
                 .proof_repository
-                .get_proof(
-                    proof_id,
-                    &ProofRelations {
-                        schema: Some(Default::default()),
-                        interaction: Some(Default::default()),
-                        ..Default::default()
-                    },
-                    None,
-                )
+                .get_proof(proof_id, None)
                 .await
                 .error_while("getting proof")?;
+            let name = if let Some(proof_schema) = proof.schema.as_ref() {
+                proof_schema.as_ref().await?.name.to_owned()
+            } else {
+                Default::default()
+            };
 
-            let name = proof.schema.map(|schema| schema.name).unwrap_or_default();
-            let organisation = proof
+            let organisation_id = proof
                 .interaction
+                .as_ref()
                 .ok_or(ServiceError::MappingError(
                     "interaction missing".to_string(),
                 ))?
-                .organisation;
+                .as_ref()
+                .await?
+                .organisation
+                .id();
 
             self.history_repository
                 .create_history(History {
@@ -126,7 +125,7 @@ impl Task for InteractionExpirationCheckProvider {
                     entity_type: HistoryEntityType::Proof,
                     metadata: None,
                     metadata_blob_id: None,
-                    organisation_id: Some(organisation.id()),
+                    organisation_id: Some(organisation_id),
                     user: self.session_provider.session().user(),
                 })
                 .await

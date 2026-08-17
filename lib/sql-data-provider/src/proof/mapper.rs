@@ -1,21 +1,29 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_core::model::claim::Claim;
+use one_core::model::credential::Credential;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::proof::{GetProofList, Proof, SortableProofColumn};
+use one_core::model::proof::{GetProofList, Proof, ProofClaim, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
-use one_core::model::relation::Related;
+use one_core::model::relation::{AsyncVecLoader, Related, RelatedVec};
 use one_core::repository::certificate_repository::CertificateRepository;
+use one_core::repository::claim_repository::ClaimRepository;
+use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
+use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
+use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use one_core::service::proof::dto::ProofFilterValue;
+use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
-use shared_types::ProofId;
+use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, QueryFilter, Set};
+use shared_types::{ClaimId, CredentialId, ProofId};
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
@@ -25,6 +33,7 @@ use crate::identifier::mapper::{identifier_data_from_ids, identifier_trust_infor
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 impl IntoSortingColumn for SortableProofColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -110,6 +119,7 @@ impl IntoFilterCondition for ProofFilterValue {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn proof_from_list_item_model(
     value: ProofListItemModel,
     organisation_repository: &Arc<dyn OrganisationRepository>,
@@ -117,6 +127,9 @@ fn proof_from_list_item_model(
     key_repository: &Arc<dyn KeyRepository>,
     certificate_repository: &Arc<dyn CertificateRepository>,
     trust_information_repository: &Arc<dyn IdentifierTrustInformationRepository>,
+    claim_repository: &Arc<dyn ClaimRepository>,
+    credential_repository: &Arc<dyn CredentialRepository>,
+    db: &TransactionManagerImpl,
 ) -> Result<Proof, DataLayerError> {
     let verifier_identifier = match value.verifier_identifier_id {
         None => None,
@@ -203,9 +216,14 @@ fn proof_from_list_item_model(
         requested_date: value.requested_date,
         completed_date: value.completed_date,
         profile: value.profile,
-        schema,
-        claims: None,
-        verifier_identifier,
+        schema: convert_inner(schema),
+        claims: RelatedVec::new(ProofClaimsLoader {
+            db: db.clone(),
+            id: value.id,
+            claim_repository: claim_repository.clone(),
+            credential_repository: credential_repository.clone(),
+        }),
+        verifier_identifier: convert_inner(verifier_identifier),
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -217,32 +235,58 @@ fn proof_from_list_item_model(
     })
 }
 
-impl From<proof::Model> for Proof {
-    fn from(value: proof::Model) -> Self {
-        Self {
+#[expect(clippy::too_many_arguments)]
+pub(super) fn proof_model_to_repository(
+    value: proof::Model,
+    credential_repository: &Arc<dyn CredentialRepository>,
+    claim_repository: &Arc<dyn ClaimRepository>,
+    proof_schema_repository: &Arc<dyn ProofSchemaRepository>,
+    identifier_repository: &Arc<dyn IdentifierRepository>,
+    key_repository: &Arc<dyn KeyRepository>,
+    certificate_repository: &Arc<dyn CertificateRepository>,
+    interaction_repository: &Arc<dyn InteractionRepository>,
+    db: &TransactionManagerImpl,
+) -> Proof {
+    Proof {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        protocol: value.protocol,
+        transport: value.transport,
+        redirect_uri: value.redirect_uri,
+        state: value.state.into(),
+        role: value.role.into(),
+        requested_date: value.requested_date,
+        completed_date: value.completed_date,
+        profile: value.profile,
+        proof_blob_id: value.proof_blob_id,
+        engagement: value.engagement,
+        schema: value
+            .proof_schema_id
+            .map(|proof_schema_id| Related::new(proof_schema_id, proof_schema_repository.clone())),
+        claims: RelatedVec::new(ProofClaimsLoader {
+            db: db.clone(),
             id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            protocol: value.protocol,
-            transport: value.transport,
-            redirect_uri: value.redirect_uri,
-            state: value.state.into(),
-            role: value.role.into(),
-            requested_date: value.requested_date,
-            completed_date: value.completed_date,
-            profile: value.profile,
-            proof_blob_id: value.proof_blob_id,
-            engagement: value.engagement,
-            schema: None,
-            claims: None,
-            verifier_identifier: None,
-            verifier_key: None,
-            verifier_certificate: None,
-            interaction: None,
-            webhook_url: value.webhook_url,
-            subscriber_information: value.subscriber_information,
-            ecosystem: value.ecosystem,
-        }
+            claim_repository: claim_repository.clone(),
+            credential_repository: credential_repository.clone(),
+        }),
+        verifier_identifier: value.verifier_identifier_id.map(|verifier_identifier_id| {
+            Related::new(verifier_identifier_id, identifier_repository.clone())
+        }),
+        verifier_key: value
+            .verifier_key_id
+            .map(|verifier_key_id| Related::new(verifier_key_id, key_repository.clone())),
+        verifier_certificate: value
+            .verifier_certificate_id
+            .map(|verifier_certificate_id| {
+                Related::new(verifier_certificate_id, certificate_repository.clone())
+            }),
+        interaction: value
+            .interaction_id
+            .map(|interaction_id| Related::new(interaction_id, interaction_repository.clone())),
+        webhook_url: value.webhook_url,
+        subscriber_information: value.subscriber_information,
+        ecosystem: value.ecosystem,
     }
 }
 
@@ -260,13 +304,15 @@ impl TryFrom<Proof> for proof::ActiveModel {
             role: Set(value.role.into()),
             requested_date: Set(value.requested_date),
             completed_date: Set(value.completed_date),
-            verifier_identifier_id: Set(value.verifier_identifier.map(|identifier| identifier.id)),
-            proof_schema_id: Set(value.schema.map(|schema| schema.id)),
-            verifier_key_id: Set(value.verifier_key.map(|key| key.id)),
+            verifier_identifier_id: Set(value
+                .verifier_identifier
+                .map(|identifier| identifier.id())),
+            proof_schema_id: Set(value.schema.map(|schema| schema.id())),
+            verifier_key_id: Set(value.verifier_key.map(|key| key.id())),
             verifier_certificate_id: Set(value
                 .verifier_certificate
-                .map(|certificate| certificate.id)),
-            interaction_id: Set(value.interaction.map(|interaction| interaction.id)),
+                .map(|certificate| certificate.id())),
+            interaction_id: Set(value.interaction.map(|interaction| interaction.id())),
             profile: Set(value.profile),
             proof_blob_id: Set(value.proof_blob_id),
             engagement: Set(value.engagement),
@@ -277,7 +323,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn create_list_response(
     proofs: Vec<ProofListItemModel>,
     limit: u64,
@@ -287,6 +333,9 @@ pub(super) fn create_list_response(
     key_repository: &Arc<dyn KeyRepository>,
     certificate_repository: &Arc<dyn CertificateRepository>,
     trust_information_repository: &Arc<dyn IdentifierTrustInformationRepository>,
+    claim_repository: &Arc<dyn ClaimRepository>,
+    credential_repository: &Arc<dyn CredentialRepository>,
+    db: &TransactionManagerImpl,
 ) -> Result<GetProofList, DataLayerError> {
     let values = proofs
         .into_iter()
@@ -298,6 +347,9 @@ pub(super) fn create_list_response(
                 key_repository,
                 certificate_repository,
                 trust_information_repository,
+                claim_repository,
+                credential_repository,
+                db,
             )
         })
         .collect::<Result<Vec<Proof>, DataLayerError>>()?;
@@ -316,5 +368,44 @@ pub(super) fn get_proof_claim_active_model(
     proof_claim::ActiveModel {
         proof_id: Set(proof_id),
         claim_id: Set(claim.id),
+    }
+}
+
+struct ProofClaimsLoader {
+    db: TransactionManagerImpl,
+    id: ProofId,
+    claim_repository: Arc<dyn ClaimRepository>,
+    credential_repository: Arc<dyn CredentialRepository>,
+}
+
+#[async_trait::async_trait]
+impl AsyncVecLoader<ProofClaim> for ProofClaimsLoader {
+    async fn load(&self) -> Result<Vec<ProofClaim>, DataLayerError> {
+        let proof_claims = proof_claim::Entity::find()
+            .filter(proof_claim::Column::ProofId.eq(self.id))
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let claim_ids: Vec<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
+        if claim_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let claims = self.claim_repository.get_claim_list(claim_ids).await?;
+        let mut credential_relations: HashMap<CredentialId, Related<Credential>> = HashMap::new();
+        Ok(claims
+            .into_iter()
+            .map(|claim| {
+                let credential = credential_relations
+                    .entry(claim.credential_id)
+                    .or_insert_with(|| {
+                        Related::new(claim.credential_id, self.credential_repository.clone())
+                    })
+                    .to_owned();
+
+                ProofClaim { claim, credential }
+            })
+            .collect())
     }
 }

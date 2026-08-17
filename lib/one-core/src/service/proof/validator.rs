@@ -28,24 +28,18 @@ use crate::validator::{
     throw_if_proof_state_not_eq,
 };
 
-pub(super) fn throw_if_proof_not_in_session_org(
+pub(super) async fn throw_if_proof_not_in_session_org(
     proof: &Proof,
     session_provider: &dyn SessionProvider,
 ) -> Result<(), ProofServiceError> {
-    // verifier case
-    let mut organisation_id = proof.schema.as_ref().map(|schema| schema.organisation.id());
-
-    // holder case
-    if organisation_id.is_none()
-        && let Some(interaction) = proof.interaction.as_ref()
-    {
-        organisation_id = Some(interaction.organisation.id());
-    }
-
-    let Some(organisation_id) = organisation_id else {
-        return Err(ProofServiceError::MappingError(
-            "proof organisation could not be determined".to_string(),
-        ));
+    let organisation_id = match (proof.schema.as_ref(), proof.interaction.as_ref()) {
+        (Some(schema), _) => schema.as_ref().await?.organisation.id(),
+        (_, Some(interaction)) => interaction.as_ref().await?.organisation.id(),
+        (None, None) => {
+            return Err(ProofServiceError::MappingError(
+                "proof organisation could not be determined".to_string(),
+            ));
+        }
     };
 
     Ok(
@@ -330,13 +324,13 @@ pub(super) fn validate_holder_engagements(
     Ok(result)
 }
 
-pub(super) fn validate_proof_for_proof_definition(
+pub(super) async fn validate_proof_for_proof_definition(
     proof: &Proof,
     session_provider: &dyn SessionProvider,
     verification_protocol: &dyn VerificationProtocol,
     endpoint_version: &PresentationDefinitionVersion,
 ) -> Result<(), ProofServiceError> {
-    throw_if_proof_not_in_session_org(proof, session_provider)?;
+    throw_if_proof_not_in_session_org(proof, session_provider).await?;
 
     if proof.role != ProofRole::Holder {
         return Err(ProofServiceError::InvalidRole(proof.role));

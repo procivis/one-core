@@ -27,13 +27,14 @@ impl OID4VPFinal1_0Service {
         proof: &Proof,
         proof_result: &ValidatedProofResult,
     ) -> Result<(), OID4VPFinal1_0ServiceError> {
-        let proof_schema =
-            proof
-                .schema
-                .as_ref()
-                .ok_or(OID4VPFinal1_0ServiceError::MappingError(
-                    "missing proof schema".to_string(),
-                ))?;
+        let proof_schema = proof
+            .schema
+            .as_ref()
+            .ok_or(OID4VPFinal1_0ServiceError::MappingError(
+                "missing proof schema".to_string(),
+            ))?
+            .as_ref()
+            .await?;
         let organisation_id = proof_schema.organisation.id();
 
         let trust_mode = self

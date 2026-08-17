@@ -1,9 +1,7 @@
 use shared_types::RemoteEntityCacheEntryId;
 
 use super::error::DataLayerError;
-use crate::model::remote_entity_cache::{
-    CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
-};
+use crate::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -24,7 +22,6 @@ pub trait RemoteEntityCacheRepository: Send + Sync {
     async fn get_by_id(
         &self,
         id: &RemoteEntityCacheEntryId,
-        relations: &RemoteEntityCacheRelations,
     ) -> Result<RemoteEntityCacheEntry, DataLayerError>;
 
     async fn get_by_key(&self, key: &str)

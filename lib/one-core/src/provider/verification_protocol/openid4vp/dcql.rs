@@ -81,6 +81,8 @@ pub(crate) async fn get_presentation_definition_v2(
         .ok_or(VerificationProtocolError::Failed(
             "proof interaction missing".to_string(),
         ))?
+        .as_ref()
+        .await?
         .organisation
         .id();
 

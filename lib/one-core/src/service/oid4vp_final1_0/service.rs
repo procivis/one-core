@@ -20,10 +20,9 @@ use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::identifier::Identifier;
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
-use crate::model::key::KeyRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
@@ -61,18 +60,7 @@ impl OID4VPFinal1_0Service {
 
         let proof = self
             .proof_repository
-            .get_proof(
-                &id,
-                &ProofRelations {
-                    interaction: Some(Default::default()),
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_key: Some(Default::default()),
-                    verifier_certificate: Some(Default::default()),
-                    schema: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(&id, None)
             .await
             .error_while("getting proof")?;
 
@@ -91,7 +79,9 @@ impl OID4VPFinal1_0Service {
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(OID4VPFinal1_0ServiceError::MissingInteractionData)?;
+            .ok_or(OID4VPFinal1_0ServiceError::MissingInteractionData)?
+            .as_ref()
+            .await?;
 
         let interaction_data = interaction
             .data
@@ -123,10 +113,15 @@ impl OID4VPFinal1_0Service {
 
         let verifier_info = match client_id_scheme {
             ClientIdPrefix::X509SanDns | ClientIdPrefix::X509Hash => {
-                let verifier_identifier = proof.verifier_identifier.as_ref().ok_or(
-                    OID4VPFinal1_0ServiceError::MappingError("missing verifier".to_string()),
-                )?;
-                self.resolve_verifier_info(verifier_identifier)
+                let verifier_identifier = proof
+                    .verifier_identifier
+                    .as_ref()
+                    .ok_or(OID4VPFinal1_0ServiceError::MappingError(
+                        "missing verifier".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?;
+                self.resolve_verifier_info(&verifier_identifier)
                     .await
                     .error_while("generating verifier_info object")?
             }
@@ -207,15 +202,7 @@ impl OID4VPFinal1_0Service {
 
         let proof = self
             .proof_repository
-            .get_proof(
-                &id,
-                &ProofRelations {
-                    verifier_identifier: Some(IdentifierRelations {}),
-                    verifier_key: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
+            .get_proof(&id, None)
             .await
             .error_while("getting proof")?;
 
@@ -258,15 +245,7 @@ impl OID4VPFinal1_0Service {
 
         let proof = self
             .proof_repository
-            .get_proof_by_interaction_id(
-                &interaction_id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    verifier_key: Some(KeyRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_proof_by_interaction_id(&interaction_id)
             .await
             .map_err(|error| match error {
                 DataLayerError::EntityNotFound { .. } => {
@@ -286,20 +265,22 @@ impl OID4VPFinal1_0Service {
         proof: Proof,
         unpacked_request: SubmissionRequestData,
     ) -> Result<DirectPostResponse, OID4VPFinal1_0ServiceError> {
-        let organisation = proof
+        let proof_schema = proof
             .schema
             .as_ref()
             .ok_or(OID4VPFinal1_0ServiceError::MappingError(
                 "missing proof schema".to_string(),
             ))?
-            .organisation
             .as_ref()
             .await?;
+        let organisation = proof_schema.organisation.as_ref().await?;
 
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(OID4VPFinal1_0ServiceError::MissingInteractionData)?;
+            .ok_or(OID4VPFinal1_0ServiceError::MissingInteractionData)?
+            .as_ref()
+            .await?;
 
         let interaction_data = interaction
             .data
@@ -371,7 +352,7 @@ impl OID4VPFinal1_0Service {
                                 credential: Cow::Borrowed(&proved_credential.credential),
                                 issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
                             },
-                            interaction,
+                            &interaction,
                         )
                         .await
                         .error_while("validating ecosystem")?;

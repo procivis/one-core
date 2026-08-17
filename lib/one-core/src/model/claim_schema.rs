@@ -21,6 +21,3 @@ pub struct ClaimSchema {
 
     pub translations: RelatedVec<LocalizedText>,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct ClaimSchemaRelations {}

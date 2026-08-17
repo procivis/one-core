@@ -289,12 +289,13 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
     }
 }
 
-pub(super) fn transaction_data_from_interaction(
+pub(super) async fn transaction_data_from_interaction(
     proof: &Proof,
 ) -> Result<Vec<TransactionDataRequest>, VerificationProtocolError> {
     let Some(interaction) = &proof.interaction else {
         return Ok(vec![]);
     };
+    let interaction = interaction.as_ref().await?;
     let Some(data) = &interaction.data else {
         return Err(VerificationProtocolError::Failed(
             "missing interaction data".to_string(),

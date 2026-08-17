@@ -30,7 +30,7 @@ pub mod validator;
 fn get_client_id_scheme(
     params: Option<ShareProofRequestParamsDTO>,
     supported_client_id_schemes: &[ClientIdPrefix],
-    verifier_identifier: Identifier,
+    verifier_identifier: &Identifier,
 ) -> Result<ClientIdPrefix, VerificationProtocolError> {
     let param_scheme = params.unwrap_or_default().client_id_scheme;
 
@@ -69,33 +69,36 @@ fn get_supported_client_id_scheme_for_identifier(
     }
 }
 
-struct JWTSigner<'a> {
+struct JWTSigner {
     pub auth_fn: AuthenticationFn,
-    pub verifier_key: &'a Key,
+    pub verifier_key: Key,
     pub key_algorithm: Arc<dyn KeyAlgorithm>,
     pub jose_algorithm: String,
 }
 
-fn get_jwt_signer<'a>(
-    proof: &'a Proof,
+async fn get_jwt_signer(
+    proof: &Proof,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
-) -> Result<JWTSigner<'a>, VerificationProtocolError> {
+) -> Result<JWTSigner, VerificationProtocolError> {
     let verifier_key = proof
         .verifier_key
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "verifier_key is None".to_string(),
-        ))?;
+        ))?
+        .as_ref()
+        .await?
+        .to_owned();
 
     let auth_fn = key_provider.get_signature_provider(
-        verifier_key,
+        &verifier_key,
         None,
         key_algorithm_provider.to_owned(),
     )?;
 
     let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_key(verifier_key)
+        .key_algorithm_from_key(&verifier_key)
         .error_while("getting key algorithm")?;
 
     let jose_algorithm = key_algorithm.issuance_jose_alg_id();

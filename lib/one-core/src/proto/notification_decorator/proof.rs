@@ -8,7 +8,7 @@ use crate::model::claim::Claim;
 use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{
-    GetProofList, Proof, ProofListQuery, ProofRelations, ProofStateEnum, UpdateProofRequest,
+    GetProofList, Proof, ProofListQuery, ProofStateEnum, UpdateProofRequest,
 };
 use crate::proto::notification_scheduler::{NotificationPayload, NotificationScheduler};
 use crate::provider::verification_protocol::model::CommonParams;
@@ -28,24 +28,15 @@ impl ProofNotificationDecorator {
         proof_id: &ProofId,
         status: ProofStateEnum,
     ) -> Result<(), DataLayerError> {
-        let proof = self
-            .inner
-            .get_proof(
-                proof_id,
-                &ProofRelations {
-                    schema: Some(Default::default()),
-                    interaction: Some(Default::default()),
-                    ..Default::default()
-                },
-                None,
-            )
-            .await?;
+        let proof = self.inner.get_proof(proof_id, None).await?;
 
         let Some(webhook_url) = &proof.webhook_url else {
             return Ok(());
         };
 
         let organisation_id = organisation_id_from_proof(&proof)
+            .await
+            .error_while("preparing notification")?
             .ok_or(ServiceError::MappingError(
                 "missing organisation_id".to_string(),
             ))
@@ -121,20 +112,16 @@ impl ProofRepository for ProofNotificationDecorator {
     async fn get_proof(
         &self,
         id: &ProofId,
-        relations: &ProofRelations,
         lock: Option<LockType>,
     ) -> Result<Proof, DataLayerError> {
-        self.inner.get_proof(id, relations, lock).await
+        self.inner.get_proof(id, lock).await
     }
 
     async fn get_proof_by_interaction_id(
         &self,
         interaction_id: &InteractionId,
-        relations: &ProofRelations,
     ) -> Result<Proof, DataLayerError> {
-        self.inner
-            .get_proof_by_interaction_id(interaction_id, relations)
-            .await
+        self.inner.get_proof_by_interaction_id(interaction_id).await
     }
 
     async fn get_proof_list(
@@ -153,18 +140,16 @@ impl ProofRepository for ProofNotificationDecorator {
     }
 }
 
-fn organisation_id_from_proof(proof: &Proof) -> Option<OrganisationId> {
-    if let Some(organisation_id) = proof.schema.as_ref().map(|schema| schema.organisation.id()) {
-        return Some(organisation_id);
+async fn organisation_id_from_proof(
+    proof: &Proof,
+) -> Result<Option<OrganisationId>, DataLayerError> {
+    if let Some(schema) = proof.schema.as_ref() {
+        return Ok(Some(schema.as_ref().await?.organisation.id()));
     }
 
-    if let Some(organisation_id) = proof
-        .interaction
-        .as_ref()
-        .map(|interaction| interaction.organisation.id())
-    {
-        return Some(organisation_id);
+    if let Some(interaction) = proof.interaction.as_ref() {
+        return Ok(Some(interaction.as_ref().await?.organisation.id()));
     }
 
-    None
+    Ok(None)
 }

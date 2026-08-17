@@ -1,8 +1,6 @@
 use std::vec;
 
-use one_core::model::remote_entity_cache::{
-    CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
-};
+use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::RemoteEntityCacheEntryId;
@@ -130,11 +128,7 @@ async fn test_create_context() {
 async fn test_get_context_success() {
     let setup = setup_with_context().await;
 
-    let result = setup
-        .provider
-        .get_by_id(&setup.id, &RemoteEntityCacheRelations::default())
-        .await
-        .unwrap();
+    let result = setup.provider.get_by_id(&setup.id).await.unwrap();
 
     assert_eq!(setup.context, result.value);
     assert_eq!(setup.url, result.key);
@@ -144,13 +138,7 @@ async fn test_get_context_success() {
 async fn test_get_context_failed_wrong_id() {
     let setup = setup_with_context().await;
 
-    let result = setup
-        .provider
-        .get_by_id(
-            &Uuid::new_v4().into(),
-            &RemoteEntityCacheRelations::default(),
-        )
-        .await;
+    let result = setup.provider.get_by_id(&Uuid::new_v4().into()).await;
 
     assert!(matches!(
         result,

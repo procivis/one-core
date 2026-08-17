@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_dto_mapper::{convert_inner, try_convert_inner};
+use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::{ClaimSchemaId, CredentialId};
@@ -51,16 +51,6 @@ pub(crate) fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> Ge
         total_pages: input.total_pages,
         total_items: input.total_items,
     }
-}
-
-pub(crate) fn list_response_try_into<T, F: TryInto<T>>(
-    input: GetListResponse<F>,
-) -> Result<GetListResponse<T>, F::Error> {
-    Ok(GetListResponse::<T> {
-        values: try_convert_inner(input.values)?,
-        total_pages: input.total_pages,
-        total_items: input.total_items,
-    })
 }
 
 pub(crate) fn value_to_model_claims(

@@ -1,8 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
-use one_core::model::remote_entity_cache::{
-    CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
-};
+use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
@@ -124,7 +122,6 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
     async fn get_by_id(
         &self,
         id: &RemoteEntityCacheEntryId,
-        _relations: &RemoteEntityCacheRelations,
     ) -> Result<RemoteEntityCacheEntry, DataLayerError> {
         let context = remote_entity_cache::Entity::find_by_id(id)
             .one(&self.db)

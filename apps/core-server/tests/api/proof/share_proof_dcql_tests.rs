@@ -94,8 +94,8 @@ async fn share_proof_and_extract_dcql(
     assert_eq!(resp.status(), 201);
 
     let proof = context.db.proofs.get(&proof_id).await;
-    let interaction = proof.interaction.unwrap();
-    let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    let data: Value = serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 
     // presentation_definition should not be in the json value
     assert_eq!(data["presentation_definition"], serde_json::Value::Null);

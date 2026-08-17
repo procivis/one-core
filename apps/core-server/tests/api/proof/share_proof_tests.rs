@@ -322,8 +322,8 @@ async fn test_share_proof_success_with_separate_encryption_key() {
     assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
-    let interaction = proof.interaction.unwrap();
-    let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    let data: Value = serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 
     assert_eq!(data["encryption_key"]["kid"], encryption_key.id.to_string());
 }
@@ -409,8 +409,8 @@ async fn test_share_proof_success_mdoc() {
     assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
-    let interaction = proof.interaction.unwrap();
-    let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    let data: Value = serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
     let mut credential_query = data["dcql_query"]["credentials"][0].to_owned();
     credential_query["id"] = serde_json::json!("CREDENTIAL_ID");
 
@@ -522,8 +522,8 @@ async fn test_share_proof_success_jsonld() {
     assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
 
     let proof = context.db.proofs.get(&proof.id).await;
-    let interaction = proof.interaction.unwrap();
-    let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    let data: Value = serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
     let mut credential_query = data["dcql_query"]["credentials"][0].to_owned();
     credential_query["id"] = serde_json::json!("CREDENTIAL_ID");
 
@@ -703,10 +703,17 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_draft20() {
     // THEN
     let client_id = extract_client_id(resp).await;
     let_assert!(
-        Some(Identifier {
+        Identifier {
             data: IdentifierData::Did(verifier_did),
             ..
-        }) = proof.verifier_identifier.as_ref()
+        } = proof
+            .verifier_identifier
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     );
     assert_eq!(
         client_id,
@@ -763,10 +770,17 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
     let client_id = extract_client_id(resp).await;
 
     let_assert!(
-        Some(Identifier {
+        Identifier {
             data: IdentifierData::Did(verifier_identifier_did),
             ..
-        }) = proof.verifier_identifier.as_ref()
+        } = proof
+            .verifier_identifier
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     );
     let verifier_did = verifier_identifier_did
         .as_ref()

@@ -131,9 +131,14 @@ impl VerificationProtocol for IsoMdl {
             "Missing BLE waiter".to_string(),
         ))?;
 
+        let interaction = if let Some(interaction) = proof.interaction.as_ref() {
+            Some(interaction.as_ref().await?)
+        } else {
+            None
+        };
+
         let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
-            proof
-                .interaction
+            interaction
                 .as_ref()
                 .and_then(|interaction| interaction.data.as_ref()),
         )?;
@@ -176,9 +181,14 @@ impl VerificationProtocol for IsoMdl {
             VerificationProtocolError::Failed("Missing BLE central for submit proof".to_string())
         })?;
 
+        let interaction = if let Some(interaction) = proof.interaction.as_ref() {
+            Some(interaction.as_ref().await?)
+        } else {
+            None
+        };
+
         let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
-            proof
-                .interaction
+            interaction
                 .as_ref()
                 .and_then(|interaction| interaction.data.as_ref()),
         )?;
@@ -252,9 +262,14 @@ impl VerificationProtocol for IsoMdl {
 
         // explicitly stop NFC HCE if running
         if proof.role == ProofRole::Holder && proof.state == ProofStateEnum::Pending {
+            let interaction = if let Some(interaction) = proof.interaction.as_ref() {
+                Some(interaction.as_ref().await?)
+            } else {
+                None
+            };
+
             let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
-                proof
-                    .interaction
+                interaction
                     .as_ref()
                     .and_then(|interaction| interaction.data.as_ref()),
             )?;

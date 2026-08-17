@@ -477,12 +477,14 @@ async fn fill_proof_claims_and_credentials(
     let proof_schema = proof
         .schema
         .as_ref()
-        .context("proof_schema is None".to_string())?;
+        .context("proof_schema is None".to_string())?
+        .as_ref()
+        .await?;
 
     let encoded = encode_cbor_base64(&device_response)?;
 
     let proved_credentials = super::verify_proof::validate_proof(
-        proof_schema,
+        &proof_schema,
         &encoded,
         session_transcript,
         credential_formatter_provider,

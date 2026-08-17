@@ -1,5 +1,5 @@
 use futures::future::join_all;
-use one_dto_mapper::convert_inner_of_inner;
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use shared_types::{OrganisationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialSet;
 use time::OffsetDateTime;
@@ -63,9 +63,9 @@ pub(crate) fn proof_from_handle_invitation(
         completed_date: None,
         profile: None,
         schema: None,
-        claims: None,
-        verifier_identifier,
-        interaction: Some(interaction),
+        claims: Default::default(),
+        verifier_identifier: convert_inner(verifier_identifier),
+        interaction: Some(interaction.into()),
         verifier_key: None,
         verifier_certificate: None,
         proof_blob_id: None,

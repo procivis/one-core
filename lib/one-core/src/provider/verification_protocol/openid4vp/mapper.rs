@@ -425,34 +425,39 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
         auth_fn,
         jose_algorithm,
         ..
-    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
+    } = get_jwt_signer(proof, key_algorithm_provider, key_provider).await?;
 
-    let verifier_identifier =
-        proof
-            .verifier_identifier
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "verifier_identifier is None".to_string(),
-            ))?;
+    let verifier_identifier = proof
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .as_ref()
+        .await?;
 
-    let x5c =
-        match &verifier_identifier.data {
-            IdentifierData::Certificate(_) => {
-                let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
-                    VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
-                )?;
+    let x5c = match &verifier_identifier.data {
+        IdentifierData::Certificate(_) => {
+            let verifier_certificate = proof
+                .verifier_certificate
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "verifier_certificate is None".to_string(),
+                ))?
+                .as_ref()
+                .await?;
 
-                pem_chain_into_x5c(&verifier_certificate.chain).error_while("parsing PEM chain")?
-            }
-            IdentifierData::Did(_)
-            | IdentifierData::Key(_)
-            | IdentifierData::CertificateAuthority(_) => {
-                return Err(VerificationProtocolError::Failed(format!(
-                    "Invalid verifier identifier type {}",
-                    verifier_identifier.data.r#type()
-                )));
-            }
-        };
+            pem_chain_into_x5c(&verifier_certificate.chain).error_while("parsing PEM chain")?
+        }
+        IdentifierData::Did(_)
+        | IdentifierData::Key(_)
+        | IdentifierData::CertificateAuthority(_) => {
+            return Err(VerificationProtocolError::Failed(format!(
+                "Invalid verifier identifier type {}",
+                verifier_identifier.data.r#type()
+            )));
+        }
+    };
 
     let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
 
@@ -507,7 +512,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
         verifier_key,
         key_algorithm,
         jose_algorithm,
-    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
+    } = get_jwt_signer(proof, key_algorithm_provider, key_provider).await?;
 
     let jwk = key_algorithm
         .reconstruct_key(&verifier_key.public_key, None, None)
@@ -519,13 +524,22 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
         jwk: ProofOfPossessionJwk::Jwk { jwk },
     });
 
-    let Some(Identifier {
+    let verifier_identifier = proof
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .as_ref()
+        .await?;
+
+    let Identifier {
         data: IdentifierData::Did(verifier_did),
         ..
-    }) = proof.verifier_identifier.as_ref()
+    } = verifier_identifier.as_ref()
     else {
         return Err(VerificationProtocolError::Failed(
-            "verifier DID is None".to_string(),
+            "verifier not a DID".to_string(),
         ));
     };
     let verifier_did = verifier_did.as_ref().await?;
@@ -572,7 +586,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
     .error_while("creating attestation JWT")?;
 
     let auth_fn =
-        key_provider.get_signature_provider(verifier_key, None, key_algorithm_provider.clone())?;
+        key_provider.get_signature_provider(&verifier_key, None, key_algorithm_provider.clone())?;
 
     let request_jwt = Jwt {
         header: JWTHeader {
@@ -616,15 +630,24 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
         jose_algorithm,
         verifier_key,
         ..
-    } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
+    } = get_jwt_signer(proof, key_algorithm_provider, key_provider).await?;
 
-    let Some(Identifier {
+    let verifier_identifier = proof
+        .verifier_identifier
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "verifier_identifier is None".to_string(),
+        ))?
+        .as_ref()
+        .await?;
+
+    let Identifier {
         data: IdentifierData::Did(verifier_did),
         ..
-    }) = proof.verifier_identifier.as_ref()
+    } = verifier_identifier.as_ref()
     else {
         return Err(VerificationProtocolError::Failed(
-            "verifier DID is None".to_string(),
+            "verifier not a DID".to_string(),
         ));
     };
     let verifier_did = verifier_did.as_ref().await?;

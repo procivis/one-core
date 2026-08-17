@@ -1418,7 +1418,7 @@ async fn test_run_retain_proof_check_with_update() {
     assert_eq!(resp.status(), 200);
 
     let proof = context.db.proofs.get(&proof_1.id).await;
-    assert!(proof.claims.as_ref().unwrap().is_empty());
+    assert!(proof.claims.as_ref().await.unwrap().is_empty());
 
     let credential = context.db.credentials.get(&credential_1.id).await;
     assert!(
@@ -1438,7 +1438,7 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(get_proof_blob.is_none());
 
     let proof = context.db.proofs.get(&proof_2.id).await;
-    assert!(!proof.claims.as_ref().unwrap().is_empty());
+    assert!(!proof.claims.as_ref().await.unwrap().is_empty());
 
     let credential = context.db.credentials.get(&credential_2.id).await;
     assert!(

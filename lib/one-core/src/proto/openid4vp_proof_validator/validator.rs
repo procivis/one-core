@@ -160,9 +160,15 @@ impl OpenId4VpProofValidatorProto {
             ))?
             .to_owned();
 
-        let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
-            "missing proof schema".to_string(),
-        ))?;
+        let proof_schema = proof
+            .schema
+            .as_ref()
+            .ok_or(OpenID4VCError::MappingError(
+                "missing proof schema".to_string(),
+            ))?
+            .as_ref()
+            .await
+            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
         let proof_input_schemas = proof_schema
             .input_schemas
@@ -296,9 +302,15 @@ impl OpenId4VpProofValidatorProto {
         };
 
         // collect expected credentials
-        let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
-            "missing proof schema".to_string(),
-        ))?;
+        let proof_schema = proof
+            .schema
+            .as_ref()
+            .ok_or(OpenID4VCError::MappingError(
+                "missing proof schema".to_string(),
+            ))?
+            .as_ref()
+            .await
+            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
         let proof_schema_inputs = match proof_schema
             .input_schemas
