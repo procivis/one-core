@@ -98,6 +98,10 @@ async fn test_get_organisation_returns_wallet_instance() {
     let configuration = resp["configuration"].as_object().unwrap();
     assert_eq!(configuration["trustedRpRequired"], false);
     assert_eq!(configuration["trustedIssuerRequired"], false);
+    assert_eq!(configuration["trustedWalletProviderRequired"], false);
+    assert_eq!(configuration["enforceEcosystemAsIssuer"], false);
+    assert_eq!(configuration["enforceEcosystemAsHolder"], false);
+    assert_eq!(configuration["enforceEcosystemAsVerifier"], false);
 }
 
 #[tokio::test]

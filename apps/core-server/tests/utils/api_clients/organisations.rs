@@ -41,6 +41,10 @@ pub struct ProviderParams {
 pub struct UpsertOrganisationConfigurationParams {
     pub trusted_issuer_required: Option<bool>,
     pub trusted_rp_required: Option<bool>,
+    pub trusted_wallet_provider_required: Option<bool>,
+    pub enforce_ecosystem_as_issuer: Option<bool>,
+    pub enforce_ecosystem_as_holder: Option<bool>,
+    pub enforce_ecosystem_as_verifier: Option<bool>,
 }
 
 #[skip_serializing_none]

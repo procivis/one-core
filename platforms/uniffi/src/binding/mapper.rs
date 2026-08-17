@@ -695,9 +695,9 @@ impl From<UpsertOrganisationConfigurationBindingDTO> for UpsertOrganisationConfi
     fn from(value: UpsertOrganisationConfigurationBindingDTO) -> Self {
         Self {
             selected_ecosystems: convert_inner_of_inner(value.selected_ecosystems),
-            trusted_issuer_required: value.trusted_issuer_required,
-            trusted_rp_required: value.trusted_rp_required,
-            trusted_wallet_provider_required: value.trusted_wallet_provider_required,
+            enforce_ecosystem_as_issuer: value.enforce_ecosystem_as_issuer,
+            enforce_ecosystem_as_holder: value.enforce_ecosystem_as_holder,
+            enforce_ecosystem_as_verifier: value.enforce_ecosystem_as_verifier,
         }
     }
 }

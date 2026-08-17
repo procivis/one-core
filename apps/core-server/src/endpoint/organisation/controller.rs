@@ -150,10 +150,21 @@ pub(crate) async fn patch_organisation(
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
+    let request = match upsert_request_from_request(id, request) {
+        Ok(request) => request,
+        Err(error) => {
+            tracing::error!("Error while upserting organisation: {error}");
+            return EmptyOrErrorResponse::from_error(
+                &error,
+                state.config.hide_error_response_cause,
+            );
+        }
+    };
+
     let result = state
         .core
         .organisation_service
-        .upsert_organisation(upsert_request_from_request(id, request))
+        .upsert_organisation(request)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "upserting organization")
 }

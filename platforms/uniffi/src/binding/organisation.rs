@@ -103,15 +103,16 @@ pub struct UpsertOrganisationRequestBindingDTO {
 #[uniffi(name = "UpsertOrganisationConfiguration")]
 pub struct UpsertOrganisationConfigurationBindingDTO {
     pub selected_ecosystems: Option<Vec<String>>,
-    /// When true, the verifier will only validate presentations of
-    /// credentials issued by trusted issuers.
-    pub trusted_issuer_required: Option<bool>,
-    /// When true, the wallet only accepts presentation requests from
-    /// trusted relying parties.
-    pub trusted_rp_required: Option<bool>,
-    /// When true, the issuer will only issue credentials requiring wallet
-    /// attestations to wallets of trusted wallet providers.
-    pub trusted_wallet_provider_required: Option<bool>,
+    /// When true, the issuer will only issue credentials to wallet units of one of
+    /// the selected ecosystems.
+    pub enforce_ecosystem_as_issuer: Option<bool>,
+    /// When true, the wallet only accepts issuance and presentation requests
+    /// from members of one of the selected ecosystems.
+    pub enforce_ecosystem_as_holder: Option<bool>,
+    /// When true, the verifier will only accept presentations of credentials
+    /// issued by issuers of the selected ecosystems. Ecosystems must be consistent
+    /// across presentations belonging to the same proof request.
+    pub enforce_ecosystem_as_verifier: Option<bool>,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]
@@ -188,15 +189,15 @@ pub(crate) struct VerifierProviderDetailResponseBindingDTO {
 pub(crate) struct OrganisationConfigurationBindingDTO {
     #[from(with_fn = convert_inner)]
     pub selected_ecosystems: Vec<String>,
-    /// When true, the verifier will only validate presentations of
-    /// credentials issued by trusted issuers.
-    pub trusted_issuer_required: bool,
-    /// When true, the wallet only accepts presentation requests from
-    /// trusted relying parties.
-    pub trusted_rp_required: bool,
-    /// When true, the issuer will only issue credentials requiring wallet
-    /// attestations to wallets of trusted wallet providers.
-    pub trusted_wallet_provider_required: bool,
+    /// When true, the issuer will only issue credentials to holders of one of
+    /// the selected ecosystems.
+    pub enforce_ecosystem_as_issuer: bool,
+    /// When true, the wallet only accepts issuance and presentation requests
+    /// from members of one of the selected ecosystems.
+    pub enforce_ecosystem_as_holder: bool,
+    /// When true, the verifier will only validate presentations of credentials
+    /// issued within one of the selected ecosystems.
+    pub enforce_ecosystem_as_verifier: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

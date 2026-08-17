@@ -1,9 +1,8 @@
 use one_core::service::error::ServiceError;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
-    GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationConfigurationDTO,
-    OrganisationFilterParamsDTO, TrustCollectionInfoDTO, UpsertOrganisationConfigurationDTO,
-    VerifierProviderDetailResponseDTO, WalletProviderDetailResponseDTO,
+    GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
+    TrustCollectionInfoDTO, VerifierProviderDetailResponseDTO, WalletProviderDetailResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
@@ -75,20 +74,32 @@ pub(crate) struct UpsertProviderRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(UpsertOrganisationConfigurationDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct UpsertOrganisationConfigurationRestDTO {
     pub selected_ecosystems: Option<Vec<EcosystemId>>,
     /// When true, the verifier will only validate presentations of
     /// credentials issued by trusted issuers.
+    #[deprecated = "use enforceEcosystemAsVerifier instead"]
     pub trusted_issuer_required: Option<bool>,
     /// When true, the wallet only accepts presentation requests from
     /// trusted relying parties.
+    #[deprecated = "use enforceEcosystemAsHolder instead"]
     pub trusted_rp_required: Option<bool>,
     /// When true, the issuer will only issue credentials requiring wallet
     /// attestations to wallets of trusted wallet providers.
+    #[deprecated = "use enforceEcosystemAsIssuer instead"]
     pub trusted_wallet_provider_required: Option<bool>,
+    /// When true, the issuer will only issue credentials to wallet units of one of
+    /// the selected ecosystems.
+    pub enforce_ecosystem_as_issuer: Option<bool>,
+    /// When true, the wallet only accepts issuance and presentation requests
+    /// from members of one of the selected ecosystems.
+    pub enforce_ecosystem_as_holder: Option<bool>,
+    /// When true, the verifier will only accept presentations of credentials
+    /// issued by issuers of the selected ecosystems. Ecosystems must be consistent
+    /// across presentations belonging to the same proof request.
+    pub enforce_ecosystem_as_verifier: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -168,20 +179,34 @@ pub(crate) struct VerifierProviderDetailResponseRestDTO {
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+// The deprecated `trusted*` flags are kept as aliases of their
+// `enforceEcosystemAs*` replacements for backwards compatibility; both
+// generations always report the same values, see the `From` impl in `mapper`.
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(OrganisationConfigurationDTO)]
 pub(crate) struct OrganisationConfigurationRestDTO {
     pub selected_ecosystems: Vec<EcosystemId>,
     /// When true, the verifier will only validate presentations of
     /// credentials issued by trusted issuers.
+    #[deprecated = "use enforceEcosystemAsVerifier instead"]
     pub trusted_issuer_required: bool,
     /// When true, the wallet only accepts presentation requests from
     /// trusted relying parties.
+    #[deprecated = "use enforceEcosystemAsHolder instead"]
     pub trusted_rp_required: bool,
     /// When true, the issuer will only issue credentials requiring wallet
     /// attestations to wallets of trusted wallet providers.
+    #[deprecated = "use enforceEcosystemAsIssuer instead"]
     pub trusted_wallet_provider_required: bool,
+    /// When true, the issuer will only issue credentials to holders of one of
+    /// the selected ecosystems.
+    pub enforce_ecosystem_as_issuer: bool,
+    /// When true, the wallet only accepts issuance and presentation requests
+    /// from members of one of the selected ecosystems.
+    pub enforce_ecosystem_as_holder: bool,
+    /// When true, the verifier will only validate presentations of credentials
+    /// issued within one of the selected ecosystems.
+    pub enforce_ecosystem_as_verifier: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

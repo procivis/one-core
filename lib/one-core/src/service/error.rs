@@ -159,6 +159,14 @@ pub enum ValidationError {
 
     #[error("Notifications not allowed for protocol: `{protocol}`")]
     NotificationsNotAllowed { protocol: String },
+
+    #[error(
+        "Deprecated field `{deprecated}` must not be combined with replacement field `{replacement}`"
+    )]
+    MixedDeprecatedAndReplacementFields {
+        deprecated: String,
+        replacement: String,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -242,6 +250,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
             Self::NotificationsNotAllowed { .. } => ErrorCode::BR_0372,
+            Self::MixedDeprecatedAndReplacementFields { .. } => ErrorCode::BR_0480,
         }
     }
 }

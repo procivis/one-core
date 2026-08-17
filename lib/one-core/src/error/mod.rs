@@ -1023,6 +1023,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid query")]
     BR_0479,
+
+    #[strum(message = "Deprecated fields must not be mixed with their replacements")]
+    BR_0480,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

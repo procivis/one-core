@@ -288,25 +288,25 @@ impl OrganisationService {
             .as_ref()
             .map(|org| org.configuration.clone())
             .unwrap_or_default();
-        let configuration = request
-            .configuration
-            .as_ref()
-            // TODO ONE-9979: adapt to the new update params
-            .map(|update| OrganisationConfiguration {
-                selected_ecosystems: update
-                    .selected_ecosystems
-                    .clone()
-                    .unwrap_or(existing_configuration.selected_ecosystems),
-                enforce_ecosystem_as_verifier: update
-                    .trusted_issuer_required
-                    .unwrap_or(existing_configuration.enforce_ecosystem_as_verifier),
-                enforce_ecosystem_as_holder: update
-                    .trusted_rp_required
-                    .unwrap_or(existing_configuration.enforce_ecosystem_as_holder),
-                enforce_ecosystem_as_issuer: update
-                    .trusted_wallet_provider_required
-                    .unwrap_or(existing_configuration.enforce_ecosystem_as_issuer),
-            });
+        let configuration =
+            request
+                .configuration
+                .as_ref()
+                .map(|update| OrganisationConfiguration {
+                    selected_ecosystems: update
+                        .selected_ecosystems
+                        .clone()
+                        .unwrap_or(existing_configuration.selected_ecosystems),
+                    enforce_ecosystem_as_issuer: update
+                        .enforce_ecosystem_as_issuer
+                        .unwrap_or(existing_configuration.enforce_ecosystem_as_issuer),
+                    enforce_ecosystem_as_holder: update
+                        .enforce_ecosystem_as_holder
+                        .unwrap_or(existing_configuration.enforce_ecosystem_as_holder),
+                    enforce_ecosystem_as_verifier: update
+                        .enforce_ecosystem_as_verifier
+                        .unwrap_or(existing_configuration.enforce_ecosystem_as_verifier),
+                });
 
         let success_log = format!("Updated organisation {}", request.id);
         let mut update_request: UpdateOrganisationRequest = request.clone().into();

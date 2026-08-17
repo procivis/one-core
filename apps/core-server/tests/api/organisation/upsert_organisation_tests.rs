@@ -522,6 +522,7 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
                 configuration: Some(UpsertOrganisationConfigurationParams {
                     trusted_issuer_required: Some(true),
                     trusted_rp_required: Some(true),
+                    ..Default::default()
                 }),
                 ..Default::default()
             },
@@ -542,6 +543,7 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
                 configuration: Some(UpsertOrganisationConfigurationParams {
                     trusted_issuer_required: None,
                     trusted_rp_required: Some(false),
+                    ..Default::default()
                 }),
                 ..Default::default()
             },
@@ -552,6 +554,36 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
     assert_eq!(resp.status(), 204);
     let updated = context.db.organisations.get(&org.id).await;
     assert!(updated.configuration.enforce_ecosystem_as_verifier);
+    assert!(!updated.configuration.enforce_ecosystem_as_holder);
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_fail_configuration_mixed_deprecated_and_new_fields() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &org.id,
+            UpsertParams {
+                configuration: Some(UpsertOrganisationConfigurationParams {
+                    trusted_rp_required: Some(true),
+                    enforce_ecosystem_as_issuer: Some(true),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0480");
+    let updated = context.db.organisations.get(&org.id).await;
+    assert!(!updated.configuration.enforce_ecosystem_as_issuer);
     assert!(!updated.configuration.enforce_ecosystem_as_holder);
 }
 
