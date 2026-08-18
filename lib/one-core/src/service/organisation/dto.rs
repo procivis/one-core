@@ -5,12 +5,24 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::organisation::OrganisationConfiguration;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
-use crate::service::managed_instance::dto::ProviderTrustCollectionDTO;
+use crate::service::managed_instance::dto::{DisplayNameDTO, ProviderTrustCollectionDTO};
 
 #[derive(Clone, Debug)]
 pub struct TrustCollectionInfoDTO {
     pub selected: bool,
     pub collection: ProviderTrustCollectionDTO,
+}
+
+/// An ecosystem offered to an organisation by its wallet and/or verifier
+/// provider, annotated with whether the organisation currently selected it.
+#[derive(Clone, Debug)]
+pub struct EcosystemInfoDTO {
+    pub selected: bool,
+    /// Ecosystem provider name
+    pub name: EcosystemId,
+    pub display_name: Vec<DisplayNameDTO>,
+    pub description: Vec<DisplayNameDTO>,
+    pub logo: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

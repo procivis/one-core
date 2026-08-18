@@ -2,13 +2,17 @@ use std::sync::Arc;
 
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
-use shared_types::{OrganisationId, TrustCollectionId};
+use serde_json::json;
+use shared_types::{EcosystemId, OrganisationId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::OrganisationService;
 use super::dto::{CreateOrganisationRequestDTO, OrganisationFilterParamsDTO};
 use super::error::OrganisationServiceError;
+use crate::config::core_config::{
+    ConfigEntryDisplay, CoreConfig, EcosystemProviderType, Fields, Params,
+};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
 use crate::model::instance::{
@@ -27,8 +31,9 @@ use crate::repository::trust_collection_repository::MockTrustCollectionRepositor
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::managed_instance::dto::{
-    FeatureFlags as WalletProviderFeatureFlags, ProviderTrustCollectionDTO,
-    WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
+    EcosystemMetadataDTO, EcosystemTrustCollectionDTO, FeatureFlags as WalletProviderFeatureFlags,
+    ProviderTrustCollectionDTO, WalletProviderMetadataResponseDTO,
+    WalletUnitAttestationMetadataDTO,
 };
 use crate::service::organisation::dto::UpsertOrganisationRequestDTO;
 use crate::service::test_utilities::dummy_organisation;
@@ -245,6 +250,23 @@ fn dummy_instance(
     }
 }
 
+/// An ecosystem of the given name, holding one remote trust collection.
+fn named_ecosystem(name: &str, collection_name: &str) -> EcosystemMetadataDTO {
+    EcosystemMetadataDTO {
+        name: name.into(),
+        display_name: vec![],
+        description: vec![],
+        logo: "logo".to_string(),
+        default_selected: true,
+        trust_collections: vec![EcosystemTrustCollectionDTO {
+            id: Uuid::new_v4().into(),
+            name: collection_name.to_string(),
+        }],
+        credential_schemas: vec![],
+        proof_schemas: vec![],
+    }
+}
+
 fn wallet_metadata(
     trust_collections: Vec<ProviderTrustCollectionDTO>,
 ) -> WalletProviderMetadataResponseDTO {
@@ -291,6 +313,24 @@ fn verifier_metadata(
         proof_schemas: None,
         credential_schemas: None,
         ecosystems: vec![],
+    }
+}
+
+fn wallet_metadata_with_ecosystems(
+    ecosystems: Vec<EcosystemMetadataDTO>,
+) -> WalletProviderMetadataResponseDTO {
+    WalletProviderMetadataResponseDTO {
+        ecosystems,
+        ..wallet_metadata(vec![])
+    }
+}
+
+fn verifier_metadata_with_ecosystems(
+    ecosystems: Vec<EcosystemMetadataDTO>,
+) -> VerifierProviderMetadataResponseDTO {
+    VerifierProviderMetadataResponseDTO {
+        ecosystems,
+        ..verifier_metadata(vec![])
     }
 }
 
@@ -409,6 +449,211 @@ async fn test_get_trust_collections_from_verifier_provider_only() {
         TrustCollectionId::from(local_collection_id)
     );
     assert!(result[0].selected);
+}
+
+/// A core config knowing only the `EUDI` ecosystem.
+fn config_with_eudi_ecosystem() -> CoreConfig {
+    let mut config = CoreConfig::default();
+    config.ecosystem.insert(
+        "EUDI".into(),
+        Fields {
+            r#type: EcosystemProviderType::Eudi,
+            display: ConfigEntryDisplay::TranslationId("ecosystem.eudi".to_string()),
+            order: None,
+            priority: None,
+            enabled: true,
+            capabilities: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "logo": "config-logo",
+                    "description": { "en": "EUDI ecosystem" },
+                })),
+                private: None,
+            }),
+        },
+    );
+    config
+}
+
+#[tokio::test]
+async fn test_get_ecosystems_deduplicates_providers_and_filters_unknown_ecosystems() {
+    let organisation_id = Uuid::new_v4().into();
+    let wallet_instance_id = Uuid::new_v4();
+    let verifier_instance_id = Uuid::new_v4();
+
+    let mut organisation = dummy_organisation(Some(organisation_id));
+    organisation.configuration.selected_ecosystems = vec!["EUDI".into()];
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let org_clone = organisation.clone();
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(organisation_id))
+        .returning(move |_| Ok(org_clone.clone()));
+
+    let mut instance_repository = MockInstanceRepository::new();
+    let wallet_org = organisation.clone();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Wallet), eq(organisation_id))
+        .returning(move |_, _| {
+            Ok(Some(dummy_instance(
+                wallet_instance_id,
+                wallet_org.clone(),
+                InstanceRole::Wallet,
+            )))
+        });
+    let verifier_org = organisation.clone();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Verifier), eq(organisation_id))
+        .returning(move |_, _| {
+            Ok(Some(dummy_instance(
+                verifier_instance_id,
+                verifier_org.clone(),
+                InstanceRole::Verifier,
+            )))
+        });
+
+    let mut wallet_provider_client = MockWalletProviderClient::default();
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .returning(|_| {
+            Ok(wallet_metadata_with_ecosystems(vec![
+                named_ecosystem("EUDI", "Wallet Collection"),
+                // not configured locally, must be filtered out
+                named_ecosystem("UNKNOWN", "Unknown Collection"),
+            ]))
+        });
+
+    let mut verifier_provider_client = MockVerifierProviderClient::default();
+    verifier_provider_client
+        .expect_get_verifier_provider_metadata()
+        // same ecosystem as the wallet provider, must be reported only once
+        .returning(|_| {
+            Ok(verifier_metadata_with_ecosystems(vec![named_ecosystem(
+                "EUDI",
+                "Verifier Collection",
+            )]))
+        });
+
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(instance_repository),
+        wallet_provider_client: Arc::new(wallet_provider_client),
+        verifier_provider_client: Arc::new(verifier_provider_client),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        core_config: Arc::new(config_with_eudi_ecosystem()),
+    };
+
+    let result = service.get_ecosystems(&organisation_id).await.unwrap();
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].name, EcosystemId::from("EUDI"));
+    assert!(result[0].selected);
+    assert_eq!(result[0].logo, "logo");
+}
+
+#[tokio::test]
+async fn test_get_ecosystems_reports_unselected_ecosystem() {
+    let organisation_id = Uuid::new_v4().into();
+    let wallet_instance_id = Uuid::new_v4();
+
+    let organisation = dummy_organisation(Some(organisation_id));
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let org_clone = organisation.clone();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(org_clone.clone()));
+
+    let mut instance_repository = MockInstanceRepository::new();
+    let wallet_org = organisation.clone();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Wallet), eq(organisation_id))
+        .returning(move |_, _| {
+            Ok(Some(dummy_instance(
+                wallet_instance_id,
+                wallet_org.clone(),
+                InstanceRole::Wallet,
+            )))
+        });
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Verifier), always())
+        .returning(|_, _| Ok(None));
+
+    let mut wallet_provider_client = MockWalletProviderClient::default();
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .returning(|_| {
+            Ok(wallet_metadata_with_ecosystems(vec![named_ecosystem(
+                "EUDI",
+                "Wallet Collection",
+            )]))
+        });
+
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(instance_repository),
+        wallet_provider_client: Arc::new(wallet_provider_client),
+        verifier_provider_client: Arc::new(MockVerifierProviderClient::default()),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        core_config: Arc::new(config_with_eudi_ecosystem()),
+    };
+
+    let result = service.get_ecosystems(&organisation_id).await.unwrap();
+
+    assert_eq!(result.len(), 1);
+    assert!(!result[0].selected);
+}
+
+#[tokio::test]
+async fn test_get_ecosystems_without_instances_lists_configured_ecosystems() {
+    let organisation_id = Uuid::new_v4().into();
+
+    let mut organisation = dummy_organisation(Some(organisation_id));
+    organisation.configuration.selected_ecosystems = vec!["EUDI".into()];
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let org_clone = organisation.clone();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(org_clone.clone()));
+
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository
+        .expect_get_by_role()
+        .returning(|_, _| Ok(None));
+
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(instance_repository),
+        // no instance to query, so the providers must not be contacted
+        wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
+        verifier_provider_client: Arc::new(MockVerifierProviderClient::default()),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        core_config: Arc::new(config_with_eudi_ecosystem()),
+    };
+
+    let result = service.get_ecosystems(&organisation_id).await.unwrap();
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].name, EcosystemId::from("EUDI"));
+    assert!(result[0].selected);
+    assert_eq!(result[0].logo, "config-logo");
+    assert_eq!(result[0].description[0].lang, "en");
+    assert_eq!(result[0].description[0].value, "EUDI ecosystem");
 }
 
 #[tokio::test]

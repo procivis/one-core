@@ -142,4 +142,9 @@ impl OrganisationsApi {
         let url = format!("/api/organisation/v1/{id}/trust-collections");
         self.client.get(&url).await
     }
+
+    pub async fn get_ecosystems(&self, id: &impl Display) -> Response {
+        let url = format!("/api/organisation/v1/{id}/ecosystems");
+        self.client.get(&url).await
+    }
 }

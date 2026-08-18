@@ -1,6 +1,6 @@
 use one_core::service::error::ServiceError;
 use one_core::service::organisation::dto::{
-    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
+    CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
     TrustCollectionInfoDTO, VerifierProviderDetailResponseDTO, WalletProviderDetailResponseDTO,
 };
@@ -15,7 +15,9 @@ use uuid::Uuid;
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
-use crate::endpoint::ssi::wallet_provider::dto::ProviderTrustCollectionRestDTO;
+use crate::endpoint::ssi::wallet_provider::dto::{
+    DisplayNameRestDTO, ProviderTrustCollectionRestDTO,
+};
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
@@ -294,4 +296,33 @@ pub(crate) struct OrganisationTrustCollectionRestDTO {
     pub selected: bool,
     #[serde(flatten)]
     pub collection: ProviderTrustCollectionRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OrganisationEcosystemListResponseRestDTO {
+    pub ecosystems: Vec<OrganisationEcosystemRestDTO>,
+}
+
+impl From<Vec<EcosystemInfoDTO>> for OrganisationEcosystemListResponseRestDTO {
+    fn from(value: Vec<EcosystemInfoDTO>) -> Self {
+        Self {
+            ecosystems: convert_inner(value),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(EcosystemInfoDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OrganisationEcosystemRestDTO {
+    /// When true, the organization has selected this ecosystem.
+    pub selected: bool,
+    /// Ecosystem provider name.
+    pub name: EcosystemId,
+    #[from(with_fn = convert_inner)]
+    pub display_name: Vec<DisplayNameRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub description: Vec<DisplayNameRestDTO>,
+    pub logo: String,
 }

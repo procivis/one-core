@@ -1,7 +1,8 @@
 use one_core::service::managed_instance::dto::DisplayNameDTO;
 use one_core::service::organisation::dto::{
-    GetOrganisationDetailsResponseDTO, InstanceDetailResponseDTO, OrganisationConfigurationDTO,
-    VerifierProviderDetailResponseDTO, WalletProviderDetailResponseDTO,
+    EcosystemInfoDTO, GetOrganisationDetailsResponseDTO, InstanceDetailResponseDTO,
+    OrganisationConfigurationDTO, VerifierProviderDetailResponseDTO,
+    WalletProviderDetailResponseDTO,
 };
 use one_dto_mapper::{From, convert_inner};
 
@@ -53,14 +54,20 @@ impl OneCore {
         Ok(response.into())
     }
 
+    /// Returns the ecosystems offered to this organization by its wallet or
+    /// verifier provider, annotated with whether the organization currently
+    /// selected each one. Ecosystems this system is not configured for are
+    /// omitted.
+    /// If there is no wallet or verifier provider, the ecosystems
+    /// configured in the local system are returned.
     #[uniffi::method]
-    pub async fn get_organisation_trust_collections(
+    pub async fn get_organisation_ecosystems(
         &self,
         id: String,
-    ) -> Result<Vec<TrustCollectionInfoBindingDTO>, BindingError> {
+    ) -> Result<Vec<EcosystemInfoBindingDTO>, BindingError> {
         let core = self.use_core().await?;
         let id = into_id(&id)?;
-        let response = core.organisation_service.get_trust_collections(&id).await?;
+        let response = core.organisation_service.get_ecosystems(&id).await?;
         Ok(convert_inner(response))
     }
 }
@@ -200,17 +207,20 @@ pub(crate) struct OrganisationConfigurationBindingDTO {
     pub enforce_ecosystem_as_verifier: bool,
 }
 
-#[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "TrustCollectionInfo")]
-pub struct TrustCollectionInfoBindingDTO {
-    /// When true, the organization is subscribed to this trust collection.
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[uniffi(name = "EcosystemInfo")]
+#[from(EcosystemInfoDTO)]
+pub struct EcosystemInfoBindingDTO {
+    /// When true, the organization has selected this ecosystem.
     pub selected: bool,
-    pub id: String,
+    /// Ecosystem provider name.
+    #[from(with_fn_ref = "ToString::to_string")]
     pub name: String,
-    pub logo: String,
+    #[from(with_fn = convert_inner)]
     pub display_name: Vec<DisplayNameBindingDTO>,
+    #[from(with_fn = convert_inner)]
     pub description: Vec<DisplayNameBindingDTO>,
-    pub default_selected: Option<bool>,
+    pub logo: String,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

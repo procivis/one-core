@@ -34,8 +34,7 @@ use one_core::service::identifier::dto::{
 };
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::organisation::dto::{
-    CreateOrganisationRequestDTO, TrustCollectionInfoDTO, UpsertOrganisationConfigurationDTO,
-    UpsertOrganisationRequestDTO,
+    CreateOrganisationRequestDTO, UpsertOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
 };
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimValueDTO,
@@ -79,8 +78,8 @@ use super::interaction::{
 };
 use super::key::KeyRequestBindingDTO;
 use super::organisation::{
-    CreateOrganisationRequestBindingDTO, TrustCollectionInfoBindingDTO,
-    UpsertOrganisationConfigurationBindingDTO, UpsertOrganisationRequestBindingDTO,
+    CreateOrganisationRequestBindingDTO, UpsertOrganisationConfigurationBindingDTO,
+    UpsertOrganisationRequestBindingDTO,
 };
 use super::proof::{
     ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
@@ -698,20 +697,6 @@ impl From<UpsertOrganisationConfigurationBindingDTO> for UpsertOrganisationConfi
             enforce_ecosystem_as_issuer: value.enforce_ecosystem_as_issuer,
             enforce_ecosystem_as_holder: value.enforce_ecosystem_as_holder,
             enforce_ecosystem_as_verifier: value.enforce_ecosystem_as_verifier,
-        }
-    }
-}
-
-impl From<TrustCollectionInfoDTO> for TrustCollectionInfoBindingDTO {
-    fn from(value: TrustCollectionInfoDTO) -> Self {
-        Self {
-            selected: value.selected,
-            id: value.collection.id.to_string(),
-            name: value.collection.name,
-            logo: value.collection.logo,
-            display_name: convert_inner(value.collection.display_name),
-            description: convert_inner(value.collection.description),
-            default_selected: value.collection.default_selected,
         }
     }
 }

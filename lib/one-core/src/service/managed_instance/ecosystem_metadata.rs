@@ -10,7 +10,9 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use shared_types::EcosystemId;
 
-use crate::config::core_config::{ConfigEntryDisplay, ConfigExt, CoreConfig};
+use crate::config::core_config::{
+    ConfigEntryDisplay, ConfigExt, CoreConfig, EcosystemProviderType, Fields,
+};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::list_filter::ListFilterValue;
@@ -24,7 +26,7 @@ use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::error::ServiceError;
 use crate::service::managed_instance::dto::{
-    EcosystemMetadataDTO, EcosystemTrustCollectionDTO, ProviderTrustCollectionDTO,
+    DisplayNameDTO, EcosystemMetadataDTO, EcosystemTrustCollectionDTO, ProviderTrustCollectionDTO,
 };
 use crate::service::managed_instance::mapper::params_into_display_names;
 use crate::service::proof_schema::dto::ProofSchemaFilterValue;
@@ -80,27 +82,14 @@ pub(crate) async fn ecosystem_metadata(
                 organisation.id
             ))?;
 
-        let public: EcosystemPublicParams = fields
-            .params
-            .as_ref()
-            .and_then(|params| params.public.clone())
-            .map(serde_json::from_value)
-            .transpose()
-            .map_err(|e| ServiceError::MappingError(e.to_string()))
-            .error_while("deserializing ecosystem public params")?
-            .unwrap_or_default();
-
-        let display_name = match &fields.display {
-            ConfigEntryDisplay::Translated(map) => map.to_owned(),
-            ConfigEntryDisplay::TranslationId(_) => HashMap::new(),
-        };
+        let display = ecosystem_display(fields)?;
 
         result.push(EcosystemMetadataDTO {
             name: ecosystem.to_owned(),
-            display_name: params_into_display_names(display_name),
-            description: params_into_display_names(public.description),
-            logo: public.logo,
-            default_selected: public.instance_provider_default_selected,
+            display_name: display.display_name,
+            description: display.description,
+            logo: display.logo,
+            default_selected: display.default_selected,
             trust_collections: entities
                 .trust_collections
                 .iter()
@@ -126,6 +115,42 @@ pub(crate) async fn ecosystem_metadata(
     }
 
     Ok(result)
+}
+
+/// The display properties a configured ecosystem is presented with, independent of
+/// the provider advertising it.
+pub(crate) struct EcosystemDisplay {
+    pub display_name: Vec<DisplayNameDTO>,
+    pub description: Vec<DisplayNameDTO>,
+    pub logo: String,
+    pub default_selected: bool,
+}
+
+/// Reads the display properties of an ecosystem from its configuration entry.
+pub(crate) fn ecosystem_display(
+    fields: &Fields<EcosystemProviderType>,
+) -> Result<EcosystemDisplay, NestedError> {
+    let public: EcosystemPublicParams = fields
+        .params
+        .as_ref()
+        .and_then(|params| params.public.clone())
+        .map(serde_json::from_value)
+        .transpose()
+        .map_err(|e| ServiceError::MappingError(e.to_string()))
+        .error_while("deserializing ecosystem public params")?
+        .unwrap_or_default();
+
+    let display_name = match &fields.display {
+        ConfigEntryDisplay::Translated(map) => map.to_owned(),
+        ConfigEntryDisplay::TranslationId(_) => HashMap::new(),
+    };
+
+    Ok(EcosystemDisplay {
+        display_name: params_into_display_names(display_name),
+        description: params_into_display_names(public.description),
+        logo: public.logo,
+        default_selected: public.instance_provider_default_selected,
+    })
 }
 
 /// Flattens the trust collections of all ecosystems into the provider-level

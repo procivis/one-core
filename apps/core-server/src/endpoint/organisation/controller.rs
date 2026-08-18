@@ -10,7 +10,8 @@ use shared_types::{OrganisationId, Permission};
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
     GetOrganisationDetailsResponseRestDTO, GetOrganisationsQuery,
-    OrganisationTrustCollectionRestDTO, UpsertOrganisationRequestRestDTO,
+    OrganisationEcosystemListResponseRestDTO, OrganisationTrustCollectionRestDTO,
+    UpsertOrganisationRequestRestDTO,
 };
 use crate::dto::common::GetOrganisationListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -188,6 +189,7 @@ pub(crate) async fn patch_organisation(
         subscribes to each one.
     "},
 )]
+#[deprecated = "Deprecated in favor of GET /api/organisation/v1/{id}/ecosystems"]
 pub(crate) async fn get_organisation_trust_collections(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,
@@ -198,4 +200,34 @@ pub(crate) async fn get_organisation_trust_collections(
         .get_trust_collections(&id)
         .await;
     OkOrErrorResponse::from_result(result, state, "getting organization trust collections")
+}
+
+#[endpoint(
+    permissions = [Permission::StsOrganisationDetail],
+    get,
+    path = "/api/organisation/v1/{id}/ecosystems",
+    responses(OkOrErrorResponse<OrganisationEcosystemListResponseRestDTO>),
+    params(
+        ("id" = OrganisationId, Path, description = "Organization id")
+    ),
+    tag = "organisation_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve organization ecosystems",
+    description = indoc::formatdoc! {"
+        Returns the ecosystems offered to this organization by its wallet
+        or verifier provider, annotated with whether the organization
+        currently selected each one. Ecosystems this system is not
+        configured for are omitted.
+        If there is no wallet or verifier provider, the ecosystems
+        configured in the local system are returned.
+    "},
+)]
+pub(crate) async fn get_organisation_ecosystems(
+    state: State<AppState>,
+    Path(id): Path<OrganisationId>,
+) -> OkOrErrorResponse<OrganisationEcosystemListResponseRestDTO> {
+    let result = state.core.organisation_service.get_ecosystems(&id).await;
+    OkOrErrorResponse::from_result(result, state, "getting organization ecosystems")
 }

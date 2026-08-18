@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use shared_types::{IdentifierId, OrganisationId, TrustCollectionId};
+use shared_types::{EcosystemId, IdentifierId, OrganisationId, TrustCollectionId};
 
 use super::OrganisationService;
 use super::dto::{
-    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
+    CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
     TrustCollectionInfoDTO, UpsertOrganisationRequestDTO,
 };
@@ -17,6 +17,7 @@ use super::validator::{
     validate_parent_organisation, validate_verifier_provider, validate_wallet_provider,
     validate_wallet_provider_issuer,
 };
+use crate::config::core_config::ConfigExt;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::instance::{InstanceFilterValue, InstanceRole};
@@ -29,7 +30,8 @@ use crate::model::trust_collection::TrustCollectionFilterValue;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::instance::service::provider_metadata_url;
-use crate::service::managed_instance::dto::ProviderTrustCollectionDTO;
+use crate::service::managed_instance::dto::{EcosystemMetadataDTO, ProviderTrustCollectionDTO};
+use crate::service::managed_instance::ecosystem_metadata::ecosystem_display;
 
 impl OrganisationService {
     /// Returns all existing organisations
@@ -374,6 +376,142 @@ impl OrganisationService {
         )
         .await
         .error_while("preparing trust collection info")?)
+    }
+
+    /// Returns the ecosystems offered to an organisation by its wallet and/or verifier
+    /// provider, annotated with whether the organisation currently selected each one.
+    ///
+    /// An organisation without any managed instance is offered the ecosystems this core is
+    /// configured for.
+    pub async fn get_ecosystems(
+        &self,
+        id: &OrganisationId,
+    ) -> Result<Vec<EcosystemInfoDTO>, OrganisationServiceError> {
+        let organisation = self
+            .organisation_repository
+            .get_organisation(id)
+            .await
+            .error_while("getting organisation")?;
+
+        let selected_ecosystems = &organisation.configuration.selected_ecosystems;
+
+        let Some(remote_ecosystems) = self.fetch_remote_ecosystems(&organisation).await? else {
+            // Without a linked instance there is no provider advertising ecosystems, so the
+            // organisation is offered everything this core is configured for.
+            return self.configured_ecosystems(selected_ecosystems);
+        };
+
+        let mut seen = HashSet::new();
+        let mut result = vec![];
+        for (_, ecosystem) in remote_ecosystems {
+            // Both providers may offer the same ecosystem, report it only once.
+            if !seen.insert(ecosystem.name.to_owned()) {
+                continue;
+            }
+
+            // An ecosystem the local core is not configured for cannot be used, which is a
+            // misconfiguration on the side of the provider advertising it.
+            if let Err(error) = self.core_config.ecosystem.get_if_enabled(&ecosystem.name) {
+                tracing::warn!(
+                    "Provider of organisation `{}` advertises ecosystem `{}` unknown to this core: {error}",
+                    organisation.id,
+                    ecosystem.name
+                );
+                continue;
+            }
+
+            result.push(EcosystemInfoDTO {
+                selected: selected_ecosystems.contains(&ecosystem.name),
+                name: ecosystem.name,
+                display_name: ecosystem.display_name,
+                description: ecosystem.description,
+                logo: ecosystem.logo,
+            });
+        }
+
+        Ok(result)
+    }
+
+    /// Lists the ecosystems this core is configured for, as offered to an organisation that
+    /// has no managed instance to advertise them.
+    fn configured_ecosystems(
+        &self,
+        selected_ecosystems: &[EcosystemId],
+    ) -> Result<Vec<EcosystemInfoDTO>, OrganisationServiceError> {
+        self.core_config
+            .ecosystem
+            .iter_enabled()
+            .map(|(name, fields)| {
+                let display = ecosystem_display(fields)?;
+
+                Ok(EcosystemInfoDTO {
+                    selected: selected_ecosystems.contains(name),
+                    name: name.to_owned(),
+                    display_name: display.display_name,
+                    description: display.description,
+                    logo: display.logo,
+                })
+            })
+            .collect()
+    }
+
+    /// Fetches the ecosystems advertised by an organisation's linked wallet and/or verifier
+    /// managed instance, each tagged with the provider role that exposes it.
+    async fn fetch_remote_ecosystems(
+        &self,
+        organisation: &Organisation,
+    ) -> Result<Option<Vec<(InstanceRole, EcosystemMetadataDTO)>>, OrganisationServiceError> {
+        let wallet_instance = self
+            .instance_repository
+            .get_by_role(InstanceRole::Wallet, organisation.id)
+            .await
+            .error_while("getting wallet instance")?;
+        let verifier_instance = self
+            .instance_repository
+            .get_by_role(InstanceRole::Verifier, organisation.id)
+            .await
+            .error_while("getting verifier instance")?;
+
+        if wallet_instance.is_none() && verifier_instance.is_none() {
+            return Ok(None);
+        }
+
+        let mut result = vec![];
+
+        if let Some(wallet_instance) = wallet_instance {
+            let metadata = self
+                .wallet_provider_client
+                .get_wallet_provider_metadata(wallet_instance.into())
+                .await
+                .error_while("getting wallet provider metadata")?;
+            result.extend(
+                metadata
+                    .ecosystems
+                    .into_iter()
+                    .map(|ecosystem| (InstanceRole::Wallet, ecosystem)),
+            );
+        }
+
+        if let Some(verifier_instance) = verifier_instance {
+            let metadata_url = provider_metadata_url(
+                &verifier_instance.provider_url,
+                &verifier_instance.provider_name,
+                InstanceRole::Verifier,
+            );
+            let metadata = self
+                .verifier_provider_client
+                .get_verifier_provider_metadata(&metadata_url)
+                .await
+                .error_while("getting verifier provider metadata")?;
+            result.extend(
+                metadata
+                    .ecosystems
+                    .into_iter()
+                    .map(|ecosystem| (InstanceRole::Verifier, ecosystem)),
+            );
+        }
+
+        Ok(Some(result))
     }
 
     /// Fetches the trust collections advertised by an organisation's linked wallet and/or
