@@ -39,6 +39,7 @@ use crate::service::credential_schema::validator::validate_key_storage_security_
 use crate::service::error::BusinessLogicError;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
+use crate::validator::ecosystem::{SelectionRole, validate_ecosystem_selection_final};
 use crate::validator::{
     throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
 };
@@ -146,6 +147,16 @@ impl CredentialService {
             &self.config,
             self.notification_scheduler.as_ref(),
         )?;
+
+        let organisation = schema.organisation.as_ref().await?;
+        validate_ecosystem_selection_final(
+            request.ecosystem.as_ref(),
+            &organisation,
+            self.ecosystem_provider.as_ref(),
+            SelectionRole::Issuer,
+        )
+        .error_while("validating ecosystem")?;
+        drop(organisation);
 
         let credential_id = Uuid::new_v4().into();
         let claims = claims_from_create_request(

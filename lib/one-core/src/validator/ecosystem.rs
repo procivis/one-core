@@ -56,7 +56,6 @@ pub(crate) fn validate_ecosystem_selection_allow_not_set(
     Ok(())
 }
 
-#[expect(unused)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum SelectionRole {
     Issuer,
@@ -64,7 +63,6 @@ pub(crate) enum SelectionRole {
     Verifier,
 }
 
-#[expect(unused)]
 /// checks ecosystem selection, enforcing selection based on organisation config
 pub(crate) fn validate_ecosystem_selection_final(
     user_selection: Option<&EcosystemId>,
