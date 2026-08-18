@@ -13,13 +13,11 @@ use crate::config::core_config::CoreConfig;
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
 use crate::model::organisation::Organisation;
 use crate::proto::clock::DefaultClock;
-use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
-use crate::proto::credential_schema::parser::MockCredentialSchemaImportParser;
 use crate::proto::csr_creator::MockCsrCreator;
-use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
+use crate::proto::schema_import::MockSchemaImporter;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::trust_collection::MockTrustCollectionManager;
 use crate::proto::verifier_provider_client::MockVerifierProviderClient;
@@ -31,12 +29,10 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::managed_instance::dto::{
     ActivateWalletUnitResponseDTO, FeatureFlags, RegisterWalletUnitResponseDTO,
     WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
@@ -62,11 +58,13 @@ fn mock_instance_service() -> InstanceService {
         session_provider: Arc::new(NoSessionProvider),
         wallet_unit_proto: Arc::new(MockHolderWalletUnitProto::default()),
         trust_collection_manager: Arc::new(MockTrustCollectionManager::default()),
-        client: Arc::new(MockHttpClient::default()),
-        credential_schema_import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
-        credential_schema_importer: Arc::new(MockCredentialSchemaImporter::default()),
-        proof_schema_repository: Arc::new(MockProofSchemaRepository::default()),
-        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::default()),
+        schema_importer: {
+            let mut schema_importer = MockSchemaImporter::default();
+            schema_importer
+                .expect_import_schemas()
+                .returning(|_, _, _| ());
+            Arc::new(schema_importer)
+        },
         csr_creator: Arc::new(MockCsrCreator::default()),
         identifier_creator: Arc::new(MockIdentifierCreator::default()),
     }

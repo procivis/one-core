@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
-    ImportProofSchemaInputSchemaDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
-    ProofSchemaFilterParamsDTO, ProofSchemaFilterValue,
+    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
+    ProofInputSchemaResponseDTO, ProofSchemaFilterParamsDTO, ProofSchemaFilterValue,
 };
 use super::error::ProofSchemaServiceError;
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
@@ -20,11 +19,9 @@ use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
-use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{
     ExactProofSchemaFilterColumn, ProofInputClaimSchema, ProofInputSchema, ProofSchema,
-    ProofSchemaListQuery,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::service::credential_schema::mapper::to_credential_schema_list_response;
@@ -55,87 +52,6 @@ pub(super) async fn convert_proof_schema_to_response(
         proof_input_schemas,
         ecosystem: value.ecosystem,
     })
-}
-
-pub(super) async fn proof_input_from_import_request(
-    input_schema: ImportProofSchemaInputSchemaDTO,
-    credential_schema: CredentialSchema,
-) -> Result<ProofInputSchema, ProofSchemaServiceError> {
-    let proof_input_claim_schemas = {
-        let credential_schema_claims = credential_schema.claim_schemas.as_ref().await?;
-        extract_proof_input_claim_schemas(input_schema.claim_schemas, &credential_schema_claims)?
-    };
-
-    Ok(ProofInputSchema {
-        claim_schemas: proof_input_claim_schemas.into(),
-        credential_schema: credential_schema.into(),
-    })
-}
-
-fn extract_proof_input_claim_schemas(
-    proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
-    credential_schema_claims: &[ClaimSchema],
-) -> Result<Vec<ProofInputClaimSchema>, ProofSchemaServiceError> {
-    let proof_input_claim_schemas = extract_proof_input_claim_schemas_nested(
-        proof_schema_claims,
-        credential_schema_claims,
-        None,
-    )?;
-
-    let result = proof_input_claim_schemas
-        .into_iter()
-        .enumerate()
-        .map(|(i, input)| ProofInputClaimSchema {
-            order: i as u32,
-            ..input
-        })
-        .collect();
-
-    Ok(result)
-}
-
-fn extract_proof_input_claim_schemas_nested(
-    proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
-    credential_schema_claims: &[ClaimSchema],
-    parent_path_prefix: Option<String>,
-) -> Result<Vec<ProofInputClaimSchema>, ProofSchemaServiceError> {
-    let mut result: Vec<ProofInputClaimSchema> = vec![];
-
-    for proof_schema_claim in proof_schema_claims {
-        let path = if let Some(parent_path) = &parent_path_prefix {
-            format!(
-                "{parent_path}{NESTED_CLAIM_MARKER}{}",
-                proof_schema_claim.key
-            )
-        } else {
-            proof_schema_claim.key
-        };
-
-        if proof_schema_claim.requested {
-            let claim_schema = credential_schema_claims
-                .iter()
-                .find(|credential_schema_claim| credential_schema_claim.key == path)
-                .ok_or_else(|| {
-                    ProofSchemaServiceError::MappingError(format!(
-                        "claim_schema for path '{path}' missing"
-                    ))
-                })?;
-
-            result.push(ProofInputClaimSchema {
-                schema: claim_schema.to_owned(),
-                required: proof_schema_claim.required,
-                order: 0, // ordering is done once all claim schemas have been collected in `extract_proof_input_claim_schemas`
-            });
-        } else {
-            result.extend(extract_proof_input_claim_schemas_nested(
-                proof_schema_claim.claims,
-                credential_schema_claims,
-                Some(path),
-            )?);
-        }
-    }
-
-    Ok(result)
 }
 
 async fn convert_input_schema_to_response(
@@ -304,23 +220,6 @@ impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {
             array: value.schema.array,
         }
     }
-}
-
-pub fn create_unique_name_check_request(
-    name: &str,
-    organisation_id: OrganisationId,
-) -> Result<ProofSchemaListQuery, ProofSchemaServiceError> {
-    Ok(ProofSchemaListQuery {
-        pagination: Some(ListPagination {
-            page: 0,
-            page_size: 1,
-        }),
-        filtering: Some(
-            ProofSchemaFilterValue::OrganisationId(organisation_id).condition()
-                & ProofSchemaFilterValue::Name(StringMatch::equals(name.to_string())),
-        ),
-        ..Default::default()
-    })
 }
 
 pub fn proof_schema_from_create_request(

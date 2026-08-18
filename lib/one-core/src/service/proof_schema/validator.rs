@@ -1,37 +1,13 @@
 use std::collections::HashSet;
 
-use shared_types::OrganisationId;
-
-use super::dto::{
-    CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
-    ProofInputSchemaRequestDTO,
-};
+use super::dto::{CreateProofSchemaRequestDTO, ProofInputSchemaRequestDTO};
 use super::error::ProofSchemaServiceError;
-use super::mapper::create_unique_name_check_request;
-use crate::config::core_config::{ConfigExt, CoreConfig};
-use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::repository::proof_schema_repository::ProofSchemaRepository;
-
-pub async fn proof_schema_name_already_exists(
-    repository: &dyn ProofSchemaRepository,
-    name: &str,
-    organisation_id: OrganisationId,
-) -> Result<(), ProofSchemaServiceError> {
-    let proof_schemas = repository
-        .get_proof_schema_list(create_unique_name_check_request(name, organisation_id)?)
-        .await
-        .error_while("getting proof schemas")?;
-    if proof_schemas.total_items > 0 {
-        return Err(ProofSchemaServiceError::AlreadyExists);
-    }
-    Ok(())
-}
 
 pub async fn throw_if_invalid_credential_combination(
     schemas: &[CredentialSchema],
@@ -175,39 +151,5 @@ pub(super) fn validate_proof_schema_nesting(
     if !valid_disclosure_level {
         return Err(ProofSchemaServiceError::IncorrectDisclosureLevel);
     }
-    Ok(())
-}
-
-pub(super) fn validate_imported_proof_schema(
-    schema: &ImportProofSchemaDTO,
-    config: &CoreConfig,
-) -> Result<(), ProofSchemaServiceError> {
-    for schema in &schema.proof_input_schemas {
-        let format = &schema.credential_schema.format;
-        config
-            .format
-            .get_if_enabled(format)
-            .map_err(|_| ProofSchemaServiceError::UnsupportedFormat(format.to_owned()))?;
-
-        validate_imported_proof_schema_data_types(&schema.claim_schemas, config)?;
-    }
-
-    Ok(())
-}
-
-fn validate_imported_proof_schema_data_types(
-    claim_schemas: &[ImportProofSchemaClaimSchemaDTO],
-    config: &CoreConfig,
-) -> Result<(), ProofSchemaServiceError> {
-    for claim_schema in claim_schemas {
-        let datatype = &claim_schema.data_type;
-        config
-            .datatype
-            .get_if_enabled(datatype)
-            .map_err(|_| ProofSchemaServiceError::UnsupportedDatatype(datatype.to_owned()))?;
-
-        validate_imported_proof_schema_data_types(&claim_schema.claims, config)?;
-    }
-
     Ok(())
 }

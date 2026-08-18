@@ -20,6 +20,8 @@ pub(crate) mod notification_sender;
 pub(crate) mod oauth_client;
 pub(crate) mod openid4vp_proof_validator;
 pub(crate) mod os_provider;
+pub(crate) mod proof_schema;
+pub(crate) mod schema_import;
 pub mod session_provider;
 pub mod swiyu_http_client;
 pub mod transaction_manager;

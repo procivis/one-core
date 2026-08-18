@@ -2,12 +2,10 @@ use std::sync::Arc;
 
 use crate::config::core_config::CoreConfig;
 use crate::proto::clock::Clock;
-use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::proto::csr_creator::CsrCreator;
-use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::os_provider::OSInfoProvider;
+use crate::proto::schema_import::SchemaImporter;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
@@ -15,12 +13,10 @@ use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
-use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 pub mod dto;
 pub mod error;
@@ -46,11 +42,7 @@ pub struct InstanceService {
     base_url: Option<String>,
     config: Arc<CoreConfig>,
     session_provider: Arc<dyn SessionProvider>,
-    credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
-    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-    client: Arc<dyn HttpClient>,
-    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    schema_importer: Arc<dyn SchemaImporter>,
     csr_creator: Arc<dyn CsrCreator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
 }
@@ -73,11 +65,7 @@ impl InstanceService {
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         session_provider: Arc<dyn SessionProvider>,
-        credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
-        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-        client: Arc<dyn HttpClient>,
-        proof_schema_repository: Arc<dyn ProofSchemaRepository>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        schema_importer: Arc<dyn SchemaImporter>,
         csr_creator: Arc<dyn CsrCreator>,
         identifier_creator: Arc<dyn IdentifierCreator>,
     ) -> Self {
@@ -97,11 +85,7 @@ impl InstanceService {
             base_url,
             config,
             session_provider,
-            credential_schema_import_parser,
-            credential_schema_importer,
-            client,
-            proof_schema_repository,
-            credential_schema_repository,
+            schema_importer,
             csr_creator,
             identifier_creator,
         }

@@ -16,6 +16,7 @@ use crate::proto::certificate_validator::{
 use crate::proto::clock::DefaultClock;
 use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
+use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporterProto;
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
@@ -30,6 +31,8 @@ use crate::proto::notification_scheduler::NotificationSchedulerImpl;
 use crate::proto::notification_sender::NotificationSenderImpl;
 use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorProto;
 use crate::proto::os_provider::OSInfoProviderImpl;
+use crate::proto::proof_schema::importer::ProofSchemaImporterProto;
+use crate::proto::schema_import::SchemaImporterProto;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
 use crate::proto::trust_list_subscription_sync::{
@@ -501,6 +504,25 @@ impl OneCore {
 
         let config = Arc::new(config);
 
+        let credential_schema_url_importer = Arc::new(CredentialSchemaUrlImporterProto::new(
+            client.clone(),
+            credential_schema_import_parser.clone(),
+            credential_schema_importer.clone(),
+        ));
+
+        let proof_schema_importer = Arc::new(ProofSchemaImporterProto::new(
+            data_provider.get_proof_schema_repository(),
+            data_provider.get_credential_schema_repository(),
+            credential_schema_url_importer.clone(),
+            client.clone(),
+            config.clone(),
+        ));
+
+        let schema_importer = Arc::new(SchemaImporterProto::new(
+            credential_schema_url_importer,
+            proof_schema_importer.clone(),
+        ));
+
         let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(
             data_provider.get_credential_repository(),
             issuance_provider.clone(),
@@ -694,8 +716,8 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 config.clone(),
                 session_provider.clone(),
-                credential_schema_import_parser.clone(),
-                credential_schema_importer.clone(),
+                credential_schema_import_parser,
+                credential_schema_importer,
                 ecosystem_provider.clone(),
             ),
             history_service: HistoryService::new(
@@ -718,10 +740,8 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 config.clone(),
                 core_base_url.clone(),
-                client.clone(),
                 session_provider.clone(),
-                credential_schema_import_parser.clone(),
-                credential_schema_importer.clone(),
+                proof_schema_importer,
                 ecosystem_provider.clone(),
             ),
             proof_service: ProofService::new(
@@ -862,11 +882,7 @@ impl OneCore {
                 core_base_url,
                 config.clone(),
                 session_provider.clone(),
-                credential_schema_import_parser,
-                credential_schema_importer,
-                client,
-                data_provider.get_proof_schema_repository(),
-                data_provider.get_credential_schema_repository(),
+                schema_importer,
                 csr_creator,
                 identifier_creator,
             ),

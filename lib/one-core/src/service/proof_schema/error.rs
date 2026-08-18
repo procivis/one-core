@@ -1,4 +1,4 @@
-use shared_types::{ClaimSchemaId, CredentialFormat, OrganisationId, ProofSchemaId};
+use shared_types::{ClaimSchemaId, OrganisationId, ProofSchemaId};
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
@@ -6,8 +6,6 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 pub enum ProofSchemaServiceError {
     #[error("Proof schema `{0}` not found")]
     NotFound(ProofSchemaId),
-    #[error("Proof schema already exists")]
-    AlreadyExists,
 
     #[error("Missing parent claim schema for: `{0}`")]
     MissingParentClaimSchema(ClaimSchemaId),
@@ -15,10 +13,6 @@ pub enum ProofSchemaServiceError {
     MissingClaimSchema(ClaimSchemaId),
     #[error("Missing credential schema")]
     MissingCredentialSchema,
-    #[error("Unsupported datatype: {0}")]
-    UnsupportedDatatype(String),
-    #[error("Unsupported format: {0}")]
-    UnsupportedFormat(CredentialFormat),
     #[error("Organisation {0} is deactivated")]
     OrganisationIsDeactivated(OrganisationId),
 
@@ -52,7 +46,6 @@ impl ErrorCodeMixin for ProofSchemaServiceError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::NotFound(_) => ErrorCode::BR_0014,
-            Self::AlreadyExists => ErrorCode::BR_0015,
             Self::MissingParentClaimSchema(_) => ErrorCode::BR_0109,
             Self::MissingClaimSchema(_) => ErrorCode::BR_0010,
             Self::MissingCredentialSchema => ErrorCode::BR_0009,
@@ -64,7 +57,6 @@ impl ErrorCodeMixin for ProofSchemaServiceError {
             Self::NoRequiredClaim => ErrorCode::BR_0017,
             Self::DuplicitClaim => ErrorCode::BR_0018,
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
-            Self::UnsupportedDatatype(_) | Self::UnsupportedFormat(_) => ErrorCode::BR_0135,
             Self::SharingNotSupported => ErrorCode::BR_0163,
             Self::DuplicateProofInputCredentialSchema => ErrorCode::BR_0313,
             Self::MappingError(_) => ErrorCode::BR_0047,

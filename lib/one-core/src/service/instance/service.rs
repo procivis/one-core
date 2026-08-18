@@ -42,10 +42,6 @@ use crate::service::managed_instance::dto::{
     ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
     UserAuthenticationDTO, WalletUnitAttestationMetadataDTO,
 };
-use crate::service::proof_schema::dto::ImportProofSchemaDTO;
-use crate::service::proof_schema::service::{
-    create_credential_schema_from_import_url, create_imported_proof_schema,
-};
 use crate::validator::throw_if_org_id_not_matching_session;
 
 /// Provider metadata relevant for instance registration, unified over the
@@ -132,7 +128,13 @@ impl InstanceService {
             url: wallet_provider_url.clone(),
         };
 
-        self.import_schemas(&metadata, &organisation).await?;
+        self.schema_importer
+            .import_schemas(
+                &metadata.credential_schemas,
+                &metadata.proof_schemas,
+                &organisation,
+            )
+            .await;
 
         let is_web = os == ManagedInstanceOs::Web;
         let is_integrity_check_required =
@@ -1141,65 +1143,6 @@ impl InstanceService {
             .error_while("generating CSR")?;
 
         Ok((csr, key))
-    }
-
-    async fn import_schemas(
-        &self,
-        metadata: &ProviderMetadata,
-        organisation: &Organisation,
-    ) -> Result<(), HolderInstanceError> {
-        for credential_schema_url in &metadata.credential_schemas {
-            if let Err(err) = create_credential_schema_from_import_url(
-                credential_schema_url,
-                organisation.to_owned(),
-                self.client.as_ref(),
-                self.credential_schema_import_parser.as_ref(),
-                self.credential_schema_importer.as_ref(),
-            )
-            .await
-            {
-                tracing::warn!(%err, "Failed to import credential schema");
-            }
-        }
-
-        for proof_schema_url in &metadata.proof_schemas {
-            let schema_download = async {
-                self.client
-                    .get(proof_schema_url)
-                    .send()
-                    .await?
-                    .error_for_status()?
-                    .json::<ImportProofSchemaDTO>()
-            }
-            .await;
-
-            let schema = match schema_download {
-                Ok(schema) => schema,
-                Err(err) => {
-                    tracing::warn!(%err, "Failed to download proof schema");
-                    continue;
-                }
-            };
-
-            if let Err(err) = create_imported_proof_schema(
-                schema,
-                Uuid::new_v4().into(),
-                organisation,
-                proof_schema_url.to_owned(),
-                self.proof_schema_repository.as_ref(),
-                self.credential_schema_repository.as_ref(),
-                self.client.as_ref(),
-                self.credential_schema_import_parser.as_ref(),
-                self.credential_schema_importer.as_ref(),
-                &self.config,
-            )
-            .await
-            {
-                tracing::warn!(%err, "Failed to import proof schema");
-            }
-        }
-
-        Ok(())
     }
 }
 

@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
-use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
-use crate::proto::http_client::HttpClient;
+use crate::proto::proof_schema::ProofSchemaImporter;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
@@ -25,10 +23,8 @@ pub struct ProofSchemaService {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
-    client: Arc<dyn HttpClient>,
     session_provider: Arc<dyn SessionProvider>,
-    credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
-    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+    proof_schema_importer: Arc<dyn ProofSchemaImporter>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
@@ -41,10 +37,8 @@ impl ProofSchemaService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
-        client: Arc<dyn HttpClient>,
         session_provider: Arc<dyn SessionProvider>,
-        credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
-        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+        proof_schema_importer: Arc<dyn ProofSchemaImporter>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
@@ -54,10 +48,8 @@ impl ProofSchemaService {
             formatter_provider,
             config,
             base_url,
-            client,
             session_provider,
-            credential_schema_import_parser,
-            credential_schema_importer,
+            proof_schema_importer,
             ecosystem_provider,
         }
     }
