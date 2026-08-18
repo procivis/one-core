@@ -5,7 +5,7 @@ use one_core::service::organisation::dto::{
     TrustCollectionInfoDTO, VerifierProviderDetailResponseDTO, WalletProviderDetailResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId, TrustCollectionId};
 use time::OffsetDateTime;
@@ -74,10 +74,12 @@ pub(crate) struct UpsertProviderRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct UpsertOrganisationConfigurationRestDTO {
-    pub selected_ecosystems: Option<Vec<EcosystemId>>,
+    /// The ecosystems this organization participates in.
+    #[modify_schema(field = ecosystem)]
+    pub selected_ecosystems: Option<Vec<String>>,
     /// When true, the verifier will only validate presentations of
     /// credentials issued by trusted issuers.
     #[deprecated = "use enforceEcosystemAsVerifier instead"]

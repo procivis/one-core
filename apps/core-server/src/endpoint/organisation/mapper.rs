@@ -87,7 +87,8 @@ fn upsert_configuration_from_request(
     }
 
     Ok(UpsertOrganisationConfigurationDTO {
-        selected_ecosystems,
+        selected_ecosystems: selected_ecosystems
+            .map(|ecosystems| ecosystems.into_iter().map(Into::into).collect()),
         enforce_ecosystem_as_issuer: enforce_ecosystem_as_issuer
             .or(trusted_wallet_provider_required),
         enforce_ecosystem_as_holder: enforce_ecosystem_as_holder.or(trusted_rp_required),
