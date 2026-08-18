@@ -24,7 +24,7 @@ use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
-use crate::provider::task::trust_collection_sync::TrustCollectionSyncTask;
+use crate::provider::task::ecosystem_sync::EcosystemSyncTask;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
@@ -157,7 +157,7 @@ pub(crate) fn task_provider_from_config(
                     session_provider.clone(),
                 ))
             }
-            TaskType::TrustCollectionSync => Arc::new(TrustCollectionSyncTask::new(
+            TaskType::EcosystemSync => Arc::new(EcosystemSyncTask::new(
                 holder_wallet_unit_repository.clone(),
                 wallet_unit_client.clone(),
                 verifier_provider_client.clone(),

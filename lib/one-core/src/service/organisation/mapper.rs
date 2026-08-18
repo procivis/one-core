@@ -10,7 +10,6 @@ use crate::model::instance::InstanceRole;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
 };
-use crate::model::list_query::ListPagination;
 use crate::model::organisation::{
     Organisation, OrganisationFilterValue, UpdateOrganisationRequest,
 };
@@ -19,8 +18,9 @@ use crate::model::trust_collection::{
     TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
 };
 use crate::model::trust_list_subscription::{
-    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery, TrustListSubscriptionState,
+    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
 };
+use crate::proto::trust_collection::legacy_selection::legacy_deselected_collections;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -265,15 +265,14 @@ pub(super) fn group_remote_trust_collections_by_local_id(
 
 pub(super) async fn prepare_trust_collection_info(
     trust_collection_repository: &dyn TrustCollectionRepository,
-    trust_subscription_repository: &dyn TrustListSubscriptionRepository,
     provider_metadata_trust_collections: Vec<ProviderTrustCollectionDTO>,
-    organisation_id: OrganisationId,
+    organisation: &Organisation,
 ) -> Result<Vec<TrustCollectionInfoDTO>, OrganisationServiceError> {
     let local_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
             filtering: Some(
                 TrustCollectionFilterValue::OrganisationId {
-                    id: organisation_id,
+                    id: organisation.id,
                     include_inherited_collections: false,
                 }
                 .condition(),
@@ -284,8 +283,31 @@ pub(super) async fn prepare_trust_collection_info(
         .error_while("getting local trust collections")?
         .values;
 
+    let selected_ecosystems = &organisation.configuration.selected_ecosystems;
+
+    // TODO (ONE-10972): remove together with the deprecated per-collection selection API.
+    let subscribed = trust_collection_repository
+        .list(TrustCollectionListQuery {
+            filtering: Some(
+                TrustCollectionFilterValue::OrganisationId {
+                    id: organisation.id,
+                    include_inherited_collections: false,
+                }
+                .condition()
+                    & TrustCollectionFilterValue::Empty(false),
+            ),
+            ..Default::default()
+        })
+        .await
+        .error_while("getting subscribed trust collections")?
+        .values
+        .into_iter()
+        .map(|collection| collection.id)
+        .collect();
+    let legacy_deselected = legacy_deselected_collections(&local_trust_collections, &subscribed);
+
     let mut matched_local_ids = HashSet::new();
-    let mut local_id_to_metadata = HashMap::<TrustCollectionId, ProviderTrustCollectionDTO>::new();
+    let mut result = vec![];
     for metadata_collection in provider_metadata_trust_collections {
         let Some(local_collection) = match_local_trust_collection(
             &local_trust_collections,
@@ -296,51 +318,21 @@ pub(super) async fn prepare_trust_collection_info(
             continue;
         };
 
-        local_id_to_metadata.insert(local_collection.id, metadata_collection);
+        // A collection is in use when the organisation selected the ecosystem owning it,
+        // unless a selection made through the deprecated per-collection API excluded it.
+        let selected = selected_ecosystems.contains(&local_collection.ecosystem)
+            && !legacy_deselected.contains(&local_collection.id);
+
+        result.push(TrustCollectionInfoDTO {
+            selected,
+            collection: ProviderTrustCollectionDTO {
+                id: local_collection.id,
+                ..metadata_collection
+            },
+        });
     }
 
-    let mut collections_with_subscription_state = vec![];
-    for (id, metadata) in local_id_to_metadata {
-        let subscriptions = trust_subscription_repository
-            .list(TrustListSubscriptionListQuery {
-                filtering: Some(
-                    TrustListSubscriptionFilterValue::TrustCollectionId(vec![id]).condition()
-                        & TrustListSubscriptionFilterValue::State(vec![
-                            TrustListSubscriptionState::Active,
-                        ]),
-                ),
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 1,
-                }),
-                ..Default::default()
-            })
-            .await
-            .error_while("listing subscriptions")?;
-
-        collections_with_subscription_state.push((id, metadata, subscriptions.total_items > 0));
-    }
-
-    // When no collection has an active subscription yet, the user has not made a selection;
-    // in that case the provider-configured `defaultSelected` flag determines the selection.
-    let any_subscription_exists = collections_with_subscription_state
-        .iter()
-        .any(|(_, _, has_subscription)| *has_subscription);
-
-    Ok(collections_with_subscription_state
-        .into_iter()
-        .map(|(id, metadata, has_subscription)| {
-            let selected = if any_subscription_exists {
-                has_subscription
-            } else {
-                metadata.default_selected.unwrap_or(false)
-            };
-            TrustCollectionInfoDTO {
-                selected,
-                collection: ProviderTrustCollectionDTO { id, ..metadata },
-            }
-        })
-        .collect())
+    Ok(result)
 }
 
 pub(super) async fn set_active_trust_collections(

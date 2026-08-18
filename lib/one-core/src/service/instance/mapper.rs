@@ -1,4 +1,3 @@
-use one_dto_mapper::convert_inner;
 use shared_types::KeyId;
 
 use super::dto::HolderInstanceResponseDTO;
@@ -7,12 +6,10 @@ use crate::error::NestedError;
 use crate::model::instance::{Instance, InstanceStatus};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::service::key::dto::KeyListItemResponseDTO;
-use crate::service::managed_instance::dto::{
-    ProviderTrustCollectionDTO, WalletProviderMetadataResponseDTO,
-};
+use crate::service::managed_instance::dto::WalletProviderMetadataResponseDTO;
+use crate::service::managed_instance::ecosystem_metadata::remote_trust_collections;
 use crate::service::verifier_provider::dto::VerifierProviderMetadataResponseDTO;
 
 impl From<WalletProviderMetadataResponseDTO> for ProviderMetadata {
@@ -21,7 +18,7 @@ impl From<WalletProviderMetadataResponseDTO> for ProviderMetadata {
             name: value.name,
             attestation: value.wallet_unit_attestation,
             user_authentication: value.user_authentication,
-            trust_collections: convert_inner(value.trust_collections),
+            trust_collections: remote_trust_collections(&value.ecosystems),
             credential_schemas: vec![],
             proof_schemas: vec![],
             access_certificate_provisioning_enabled: false,
@@ -35,7 +32,7 @@ impl From<VerifierProviderMetadataResponseDTO> for ProviderMetadata {
             name: value.name,
             attestation: value.verifier_app_attestation,
             user_authentication: value.user_authentication,
-            trust_collections: convert_inner(value.trust_collections),
+            trust_collections: remote_trust_collections(&value.ecosystems),
             credential_schemas: value.credential_schemas.unwrap_or_default(),
             proof_schemas: value.proof_schemas.unwrap_or_default(),
             access_certificate_provisioning_enabled: value
@@ -89,13 +86,4 @@ pub(super) async fn instance_to_detail_dto(
             .then_some(value.user_nonce)
             .flatten(),
     })
-}
-
-impl From<ProviderTrustCollectionDTO> for RemoteTrustCollectionInfoDTO {
-    fn from(value: ProviderTrustCollectionDTO) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-        }
-    }
 }

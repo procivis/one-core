@@ -6,7 +6,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::dto::RemoteTrustCollectionInfoDTO;
-use super::{EUDI_ECOSYSTEM, Error, TrustCollectionManager};
+use super::{Error, TrustCollectionManager};
 use crate::error::ContextWithErrorCode;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::relation::Related;
@@ -58,7 +58,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
 
                     let result = self.repository
                         .create(TrustCollection {
-                            ecosystem: EUDI_ECOSYSTEM.into(),
+                            ecosystem: collection.ecosystem.clone(),
                             id: Uuid::new_v4().into(),
                             name: collection.name.clone(),
                             created_date: now,

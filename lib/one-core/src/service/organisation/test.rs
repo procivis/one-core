@@ -18,7 +18,9 @@ use crate::model::common::GetListResponse;
 use crate::model::instance::{
     Instance, InstanceList, InstanceRole, InstanceStatus, WalletProviderType,
 };
-use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
+use crate::model::organisation::{
+    GetOrganisationList, Organisation, OrganisationConfiguration, OrganisationListQuery,
+};
 use crate::model::trust_collection::TrustCollection;
 use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::MockVerifierProviderClient;
@@ -35,7 +37,7 @@ use crate::service::managed_instance::dto::{
     ProviderTrustCollectionDTO, WalletProviderMetadataResponseDTO,
     WalletUnitAttestationMetadataDTO,
 };
-use crate::service::organisation::dto::UpsertOrganisationRequestDTO;
+use crate::service::organisation::dto::{TrustCollectionInfoDTO, UpsertOrganisationRequestDTO};
 use crate::service::test_utilities::dummy_organisation;
 use crate::service::verifier_provider::dto::{
     FeatureFlags as VerifierProviderFeatureFlags, VerifierProviderMetadataResponseDTO,
@@ -250,6 +252,17 @@ fn dummy_instance(
     }
 }
 
+/// An organisation that has selected the given ecosystems.
+fn organisation_selecting(id: OrganisationId, ecosystems: &[&str]) -> Organisation {
+    Organisation {
+        configuration: OrganisationConfiguration {
+            selected_ecosystems: ecosystems.iter().map(|e| EcosystemId::from(*e)).collect(),
+            ..Default::default()
+        },
+        ..dummy_organisation(Some(id))
+    }
+}
+
 /// An ecosystem of the given name, holding one remote trust collection.
 fn named_ecosystem(name: &str, collection_name: &str) -> EcosystemMetadataDTO {
     EcosystemMetadataDTO {
@@ -351,22 +364,43 @@ fn local_trust_collection(
     }
 }
 
-fn no_active_subscriptions()
--> GetListResponse<crate::model::trust_list_subscription::TrustListSubscription> {
-    GetListResponse {
-        values: vec![],
-        total_pages: 0,
-        total_items: 0,
-    }
-}
-
 #[tokio::test]
 async fn test_get_trust_collections_from_verifier_provider_only() {
+    let (result, local_collection_id) = verifier_provider_trust_collections(&["EUDI"]).await;
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(
+        result[0].collection.id,
+        TrustCollectionId::from(local_collection_id)
+    );
+    assert!(result[0].selected);
+}
+
+/// The deprecated endpoint reports a collection as selected exactly when the organisation
+/// selected the ecosystem owning it.
+#[tokio::test]
+async fn test_get_trust_collections_unselected_ecosystem_is_not_selected() {
+    let (result, local_collection_id) = verifier_provider_trust_collections(&["OTHER"]).await;
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(
+        result[0].collection.id,
+        TrustCollectionId::from(local_collection_id)
+    );
+    assert!(!result[0].selected);
+}
+
+/// Runs `get_trust_collections` for an organisation whose only provider is a verifier
+/// advertising a single `EUDI` collection, and that selected `selected_ecosystems`.
+/// Returns the result together with the id of the local collection it resolves to.
+async fn verifier_provider_trust_collections(
+    selected_ecosystems: &[&str],
+) -> (Vec<TrustCollectionInfoDTO>, Uuid) {
     let organisation_id = Uuid::new_v4().into();
     let verifier_instance_id = Uuid::new_v4();
     let local_collection_id = Uuid::new_v4();
 
-    let organisation = dummy_organisation(Some(organisation_id));
+    let organisation = organisation_selecting(organisation_id, selected_ecosystems);
 
     let mut organisation_repository = MockOrganisationRepository::default();
     let org_clone = organisation.clone();
@@ -396,14 +430,10 @@ async fn test_get_trust_collections_from_verifier_provider_only() {
     verifier_provider_client
         .expect_get_verifier_provider_metadata()
         .returning(move |_| {
-            Ok(verifier_metadata(vec![ProviderTrustCollectionDTO {
-                id: Uuid::new_v4().into(),
-                name: "Verifier Ecosystem".to_string(),
-                logo: "".to_string(),
-                display_name: vec![],
-                description: vec![],
-                default_selected: Some(true),
-            }]))
+            Ok(verifier_metadata_with_ecosystems(vec![named_ecosystem(
+                "EUDI",
+                "Verifier Ecosystem",
+            )]))
         });
 
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
@@ -421,10 +451,112 @@ async fn test_get_trust_collections_from_verifier_provider_only() {
             })
         });
 
-    let mut trust_subscription_repository = MockTrustListSubscriptionRepository::default();
-    trust_subscription_repository
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(instance_repository),
+        wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
+        verifier_provider_client: Arc::new(verifier_provider_client),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(trust_collection_repository),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        core_config: Arc::new(Default::default()),
+    };
+
+    let result = service
+        .get_trust_collections(&organisation_id)
+        .await
+        .unwrap();
+    (result, local_collection_id)
+}
+
+/// A per-collection selection made through the deprecated API leaves one collection of
+/// an ecosystem subscribed and another not; the deprecated endpoint keeps reporting that
+/// selection rather than flattening it to the ecosystem selection.
+/// TODO (ONE-10972): remove together with the deprecated per-collection selection API.
+#[tokio::test]
+async fn test_get_trust_collections_reports_legacy_per_collection_selection() {
+    let organisation_id = Uuid::new_v4().into();
+    let verifier_instance_id = Uuid::new_v4();
+    let selected_id = Uuid::new_v4();
+    let deselected_id = Uuid::new_v4();
+
+    let organisation = organisation_selecting(organisation_id, &["EUDI"]);
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let org_clone = organisation.clone();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(org_clone.clone()));
+
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Wallet), always())
+        .returning(|_, _| Ok(None));
+    let instance_org = organisation.clone();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Verifier), eq(organisation_id))
+        .returning(move |_, _| {
+            Ok(Some(dummy_instance(
+                verifier_instance_id,
+                instance_org.clone(),
+                InstanceRole::Verifier,
+            )))
+        });
+
+    let mut verifier_provider_client = MockVerifierProviderClient::default();
+    verifier_provider_client
+        .expect_get_verifier_provider_metadata()
+        .returning(move |_| {
+            Ok(verifier_metadata_with_ecosystems(vec![
+                EcosystemMetadataDTO {
+                    name: "EUDI".into(),
+                    display_name: vec![],
+                    description: vec![],
+                    logo: "logo".to_string(),
+                    default_selected: true,
+                    trust_collections: vec![
+                        EcosystemTrustCollectionDTO {
+                            id: Uuid::new_v4().into(),
+                            name: "Selected".to_string(),
+                        },
+                        EcosystemTrustCollectionDTO {
+                            id: Uuid::new_v4().into(),
+                            name: "Deselected".to_string(),
+                        },
+                    ],
+                    credential_schemas: vec![],
+                    proof_schemas: vec![],
+                },
+            ]))
+        });
+
+    let mut seq = Sequence::new();
+    let mut trust_collection_repository = MockTrustCollectionRepository::default();
+    trust_collection_repository
         .expect_list()
-        .returning(|_| Ok(no_active_subscriptions()));
+        .once()
+        .returning(move |_| {
+            Ok(GetListResponse::one_page_of(vec![
+                local_trust_collection(selected_id, "Selected", organisation_id),
+                local_trust_collection(deselected_id, "Deselected", organisation_id),
+            ]))
+        })
+        .in_sequence(&mut seq);
+    // only one of the two is subscribed, so a per-collection selection is in effect
+    trust_collection_repository
+        .expect_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetListResponse::one(local_trust_collection(
+                selected_id,
+                "Selected",
+                organisation_id,
+            )))
+        })
+        .in_sequence(&mut seq);
 
     let service = OrganisationService {
         organisation_repository: Arc::new(organisation_repository),
@@ -434,7 +566,7 @@ async fn test_get_trust_collections_from_verifier_provider_only() {
         verifier_provider_client: Arc::new(verifier_provider_client),
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(trust_collection_repository),
-        trust_subscription_repository: Arc::new(trust_subscription_repository),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
         core_config: Arc::new(Default::default()),
     };
 
@@ -443,12 +575,17 @@ async fn test_get_trust_collections_from_verifier_provider_only() {
         .await
         .unwrap();
 
-    assert_eq!(result.len(), 1);
+    assert_eq!(result.len(), 2);
     assert_eq!(
         result[0].collection.id,
-        TrustCollectionId::from(local_collection_id)
+        TrustCollectionId::from(selected_id)
     );
     assert!(result[0].selected);
+    assert_eq!(
+        result[1].collection.id,
+        TrustCollectionId::from(deselected_id)
+    );
+    assert!(!result[1].selected);
 }
 
 /// A core config knowing only the `EUDI` ecosystem.
@@ -713,28 +850,20 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
     wallet_provider_client
         .expect_get_wallet_provider_metadata()
         .returning(|_| {
-            Ok(wallet_metadata(vec![ProviderTrustCollectionDTO {
-                id: Uuid::new_v4().into(),
-                name: "Wallet Ecosystem".to_string(),
-                logo: "".to_string(),
-                display_name: vec![],
-                description: vec![],
-                default_selected: Some(true),
-            }]))
+            Ok(wallet_metadata_with_ecosystems(vec![named_ecosystem(
+                "EUDI",
+                "Wallet Ecosystem",
+            )]))
         });
 
     let mut verifier_provider_client = MockVerifierProviderClient::default();
     verifier_provider_client
         .expect_get_verifier_provider_metadata()
         .returning(|_| {
-            Ok(verifier_metadata(vec![ProviderTrustCollectionDTO {
-                id: Uuid::new_v4().into(),
-                name: "Verifier Ecosystem".to_string(),
-                logo: "".to_string(),
-                display_name: vec![],
-                description: vec![],
-                default_selected: Some(true),
-            }]))
+            Ok(verifier_metadata_with_ecosystems(vec![named_ecosystem(
+                "EUDI",
+                "Verifier Ecosystem",
+            )]))
         });
 
     let mut trust_collection_repository = MockTrustCollectionRepository::default();

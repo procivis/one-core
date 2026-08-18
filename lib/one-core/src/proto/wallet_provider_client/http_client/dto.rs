@@ -93,6 +93,9 @@ pub struct WalletProviderMetadataResponseRestDTO {
     name: String,
     #[into(with_fn = convert_inner)]
     app_version: Option<AppVersionRestDTO>,
+    /// Deprecated, superseded by the trust collections of `ecosystems`, which is
+    /// what this client reads.
+    #[serde(default)]
     trust_collections: Vec<ProviderTrustCollectionDTO>,
     #[serde(default)]
     document_signers: Vec<DocumentSignerMetadataDTO>,

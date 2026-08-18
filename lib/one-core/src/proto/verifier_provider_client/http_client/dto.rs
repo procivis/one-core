@@ -15,6 +15,9 @@ pub(super) struct VerifierProviderMetadataResponseRestDTO {
     pub name: String,
     #[into(with_fn = convert_inner)]
     pub app_version: Option<VerifierAppVersion>,
+    /// Deprecated, superseded by the trust collections of `ecosystems`, which is
+    /// what this client reads.
+    #[serde(default)]
     pub trust_collections: Vec<ProviderTrustCollectionDTO>,
     pub feature_flags: dto::FeatureFlags,
     pub verifier_app_attestation: WalletUnitAttestationMetadataDTO,

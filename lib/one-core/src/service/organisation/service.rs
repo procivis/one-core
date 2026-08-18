@@ -31,7 +31,9 @@ use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::instance::service::provider_metadata_url;
 use crate::service::managed_instance::dto::{EcosystemMetadataDTO, ProviderTrustCollectionDTO};
-use crate::service::managed_instance::ecosystem_metadata::ecosystem_display;
+use crate::service::managed_instance::ecosystem_metadata::{
+    ecosystem_display, provider_trust_collections,
+};
 
 impl OrganisationService {
     /// Returns all existing organisations
@@ -346,7 +348,8 @@ impl OrganisationService {
     }
 
     /// Returns the trust collections available to an organisation's wallet and/or verifier
-    /// provider, annotated with whether the organisation currently subscribes to each one.
+    /// provider, annotated with whether the organisation selected the ecosystem owning each
+    /// one.
     /// Replaces the instance-scoped `GET /api/holder-wallet-instance/v1/{id}/trust-collections`.
     pub async fn get_trust_collections(
         &self,
@@ -367,12 +370,11 @@ impl OrganisationService {
 
         Ok(prepare_trust_collection_info(
             self.trust_collection_repository.as_ref(),
-            self.trust_subscription_repository.as_ref(),
             remote_trust_collections
                 .into_iter()
                 .map(|(_, collection)| collection)
                 .collect(),
-            *id,
+            &organisation,
         )
         .await
         .error_while("preparing trust collection info")?)
@@ -534,8 +536,7 @@ impl OrganisationService {
                 .await
                 .error_while("getting wallet provider metadata")?;
             result.extend(
-                metadata
-                    .trust_collections
+                provider_trust_collections(&metadata.ecosystems)
                     .into_iter()
                     .map(|collection| (InstanceRole::Wallet, collection)),
             );
@@ -558,8 +559,7 @@ impl OrganisationService {
                 .await
                 .error_while("getting verifier provider metadata")?;
             result.extend(
-                metadata
-                    .trust_collections
+                provider_trust_collections(&metadata.ecosystems)
                     .into_iter()
                     .map(|collection| (InstanceRole::Verifier, collection)),
             );

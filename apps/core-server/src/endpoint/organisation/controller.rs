@@ -185,8 +185,8 @@ pub(crate) async fn patch_organisation(
     summary = "Retrieve organization trust collections",
     description = indoc::formatdoc! {"
         Returns the trust collections available to this organization's wallet
-        provider, annotated with whether the organization currently
-        subscribes to each one.
+        provider, annotated with whether the organization currently selected
+        the ecosystem each one belongs to.
     "},
 )]
 #[deprecated = "Deprecated in favor of GET /api/organisation/v1/{id}/ecosystems"]

@@ -101,6 +101,7 @@ fn remote_test_collection(name: &str) -> RemoteTrustCollectionInfoDTO {
     RemoteTrustCollectionInfoDTO {
         id: Uuid::new_v4().into(),
         name: name.to_string(),
+        ecosystem: "EUDI".into(),
     }
 }
 

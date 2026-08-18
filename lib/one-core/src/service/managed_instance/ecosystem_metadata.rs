@@ -20,6 +20,7 @@ use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::ProofSchema;
 use crate::model::trust_collection::{TrustCollection, TrustCollectionFilterValue};
+use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -172,6 +173,26 @@ pub(crate) fn provider_trust_collections(
                     display_name: ecosystem.display_name.to_owned(),
                     description: ecosystem.description.to_owned(),
                     default_selected: Some(ecosystem.default_selected),
+                })
+        })
+        .collect()
+}
+
+/// Flattens the trust collections of all ecosystems advertised by a remote
+/// provider, keeping track of the ecosystem each collection belongs to.
+pub(crate) fn remote_trust_collections(
+    ecosystems: &[EcosystemMetadataDTO],
+) -> Vec<RemoteTrustCollectionInfoDTO> {
+    ecosystems
+        .iter()
+        .flat_map(|ecosystem| {
+            ecosystem
+                .trust_collections
+                .iter()
+                .map(|collection| RemoteTrustCollectionInfoDTO {
+                    id: collection.id,
+                    name: collection.name.to_owned(),
+                    ecosystem: ecosystem.name.to_owned(),
                 })
         })
         .collect()

@@ -292,7 +292,8 @@ pub(crate) struct OrganisationListItemResponseRestDTO {
 #[from(TrustCollectionInfoDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OrganisationTrustCollectionRestDTO {
-    /// When true, the organization is subscribed to this trust collection.
+    /// When true, the organization has selected the ecosystem this trust
+    /// collection belongs to.
     pub selected: bool,
     #[serde(flatten)]
     pub collection: ProviderTrustCollectionRestDTO,
