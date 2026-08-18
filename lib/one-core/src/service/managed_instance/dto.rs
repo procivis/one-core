@@ -110,7 +110,6 @@ pub(super) struct WalletProviderParams {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct FeatureFlagsParams {
-    #[serde(alias = "trustEcosystemsEnabled")]
     pub ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
     #[serde(default)]
