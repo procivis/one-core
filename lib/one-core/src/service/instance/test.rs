@@ -165,13 +165,15 @@ async fn holder_register_success() {
                 name: "Wallet Provider Name".to_string(),
                 app_version: None,
                 feature_flags: FeatureFlags {
-                    trust_ecosystems_enabled: true,
+                    ecosystems_enabled: true,
                     refresh_credential_batch_enabled: true,
                     document_signing_enabled: false,
+                    ecosystems_enforcement_enabled: false,
                 },
                 trust_collections: vec![],
                 user_authentication: None,
                 document_signers: vec![],
+                ecosystems: vec![],
             })
         });
 
@@ -303,13 +305,15 @@ async fn holder_register_key_attestation_not_supported() {
                 name: "Wallet Provider Name".to_string(),
                 app_version: None,
                 feature_flags: FeatureFlags {
-                    trust_ecosystems_enabled: true,
+                    ecosystems_enabled: true,
                     refresh_credential_batch_enabled: true,
                     document_signing_enabled: false,
+                    ecosystems_enforcement_enabled: false,
                 },
                 trust_collections: vec![],
                 user_authentication: None,
                 document_signers: vec![],
+                ecosystems: vec![],
             })
         });
 

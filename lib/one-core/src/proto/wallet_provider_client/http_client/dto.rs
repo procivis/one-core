@@ -8,7 +8,7 @@ use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use crate::model::instance::InstanceRole;
 use crate::model::managed_instance::ManagedInstanceOs;
 use crate::service::managed_instance::dto::{
-    self, DocumentSignerMetadataDTO, FeatureFlags, ProviderTrustCollectionDTO,
+    self, DocumentSignerMetadataDTO, EcosystemMetadataDTO, FeatureFlags, ProviderTrustCollectionDTO,
 };
 
 #[skip_serializing_none]
@@ -99,6 +99,8 @@ pub struct WalletProviderMetadataResponseRestDTO {
     feature_flags: FeatureFlags,
     #[into(with_fn = convert_inner)]
     user_authentication: Option<UserAuthenticationRestDTO>,
+    #[serde(default)]
+    ecosystems: Vec<EcosystemMetadataDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Into)]

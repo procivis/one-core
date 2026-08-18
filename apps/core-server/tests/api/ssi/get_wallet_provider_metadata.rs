@@ -1,7 +1,8 @@
+use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
@@ -24,6 +25,7 @@ async fn test_wallet_provider_metadata_success() {
         .unwrap()
         .remove("documentSigners")
         .unwrap();
+    let ecosystems = resp.as_object_mut().unwrap().remove("ecosystems").unwrap();
     assert_eq!(
         resp,
         serde_json::json!({
@@ -37,15 +39,18 @@ async fn test_wallet_provider_metadata_success() {
                 "minimum":"v1.50.0"
             },
             "featureFlags": {
-              "trustEcosystemsEnabled": true,
+              "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
-              "documentSigningEnabled": true
+              "documentSigningEnabled": true,
+              "ecosystemsEnforcementEnabled": false
             },
             "trustCollections": []
         })
     );
     assert_eq!(document_signers.as_array().unwrap().len(), 1);
     assert_eq!(document_signers[0]["name"], serde_json::json!("SIGN8"));
+    // no organisation is assigned to the provider, so no ecosystems are advertised
+    assert_eq!(ecosystems, serde_json::json!([]));
 }
 
 #[tokio::test]
@@ -87,6 +92,7 @@ async fn test_wallet_provider_metadata_success_all_fields() {
         .unwrap()
         .remove("documentSigners")
         .unwrap();
+    let ecosystems = resp.as_object_mut().unwrap().remove("ecosystems").unwrap();
     assert_eq!(
         resp,
         serde_json::json!({
@@ -105,15 +111,18 @@ async fn test_wallet_provider_metadata_success_all_fields() {
                 }
             },
             "featureFlags": {
-              "trustEcosystemsEnabled": true,
+              "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
-              "documentSigningEnabled": true
+              "documentSigningEnabled": true,
+              "ecosystemsEnforcementEnabled": false
             },
             "trustCollections": []
         })
     );
     assert_eq!(document_signers.as_array().unwrap().len(), 1);
     assert_eq!(document_signers[0]["name"], serde_json::json!("SIGN8"));
+    // no organisation is assigned to the provider, so no ecosystems are advertised
+    assert_eq!(ecosystems, serde_json::json!([]));
 }
 
 #[tokio::test]
@@ -206,6 +215,7 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
         .unwrap()
         .remove("documentSigners")
         .unwrap();
+    let ecosystems = resp.as_object_mut().unwrap().remove("ecosystems").unwrap();
     assert_eq!(
         resp,
         serde_json::json!({
@@ -219,15 +229,18 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
                 "minimum":"v1.50.0"
             },
             "featureFlags": {
-              "trustEcosystemsEnabled": true,
+              "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
-              "documentSigningEnabled": true
+              "documentSigningEnabled": true,
+              "ecosystemsEnforcementEnabled": false
             },
             "trustCollections": []
         })
     );
     assert_eq!(document_signers.as_array().unwrap().len(), 1);
     assert_eq!(document_signers[0]["name"], serde_json::json!("SIGN8"));
+    // no organisation is assigned to the provider, so no ecosystems are advertised
+    assert_eq!(ecosystems, serde_json::json!([]));
 }
 
 #[tokio::test]
@@ -247,54 +260,155 @@ async fn test_wallet_provider_metadata_fails_unknown_wallet_provider() {
 }
 
 #[tokio::test]
-async fn test_wallet_provider_metadata_with_trust_collections() {
+async fn test_wallet_provider_metadata_with_ecosystems() {
     // GIVEN
-    let collection_1_id = Uuid::new_v4().into();
-    let collection_2_id = Uuid::new_v4().into();
-
-    let config = indoc::formatdoc! {"
+    let config = indoc::indoc! {"
       walletProvider:
         PROCIVIS_ONE:
           params:
             public:
-              trustCollections:
-                {collection_1_id}:
-                  logo: logo1
-                  displayName:
-                    en: name1
-                  description:
-                    en: description1
-                  defaultSelected: true
-                {collection_2_id}:
-                  logo: logo2
-                  displayName:
-                    en: name2
-                  description:
-                    en: description2
-    "};
+              featureFlags:
+                ecosystemsEnforcementEnabled: true
+      ecosystem:
+        EUDI:
+          params:
+            public:
+              instanceProviderDefaultSelected: true
+    "}
+    .to_string();
     let (context, organisation) = TestContext::new_with_organisation(Some(config)).await;
 
-    let collection_1 = context
+    context
         .db
-        .trust_collections
-        .create(
-            organisation.clone(),
-            TestTrustCollectionParams {
-                id: Some(collection_1_id),
-                name: Some("collection1".to_string()),
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
         )
         .await;
 
-    let collection_2 = context
+    let collection = context
         .db
         .trust_collections
         .create(
-            organisation,
+            organisation.clone(),
             TestTrustCollectionParams {
-                id: Some(collection_2_id),
-                name: Some("collection2".to_string()),
+                name: Some("EUDI collection".to_string()),
+                ecosystem: Some("EUDI".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .credential_schemas
+        .create(
+            "ecosystem schema",
+            &organisation,
+            TestingCreateSchemaParams {
+                ecosystem: Some("EUDI".into()),
+                imported_source_url: Some("https://schemas.example.com/pid".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // a schema outside of any ecosystem is not advertised
+    context
+        .db
+        .credential_schemas
+        .create(
+            "other schema",
+            &organisation,
+            TestingCreateSchemaParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_wallet_provider_metadata("PROCIVIS_ONE")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["featureFlags"]["ecosystemsEnforcementEnabled"], true);
+
+    let ecosystems = resp["ecosystems"].as_array().unwrap();
+    assert_eq!(ecosystems.len(), 1);
+
+    let ecosystem = &ecosystems[0];
+    assert_eq!(ecosystem["name"], "EUDI");
+    assert_eq!(
+        ecosystem["description"],
+        serde_json::json!([{"lang": "en", "value": "EUDI ecosystem"}])
+    );
+    assert!(ecosystem["logo"].as_str().is_some_and(|l| !l.is_empty()));
+    assert_eq!(ecosystem["defaultSelected"], true);
+    assert_eq!(
+        ecosystem["trustCollections"],
+        serde_json::json!([{"id": collection.id, "name": "EUDI collection"}])
+    );
+    assert_eq!(
+        ecosystem["credentialSchemas"],
+        serde_json::json!(["https://schemas.example.com/pid"])
+    );
+
+    // the deprecated flat list mirrors the collections of the advertised ecosystems
+    let trust_collections = resp["trustCollections"].as_array().unwrap();
+    assert_eq!(trust_collections.len(), 1);
+    assert_eq!(trust_collections[0]["id"], serde_json::json!(collection.id));
+    assert_eq!(trust_collections[0]["name"], "EUDI collection");
+    assert_eq!(trust_collections[0]["logo"], ecosystem["logo"]);
+    assert_eq!(trust_collections[0]["defaultSelected"], true);
+}
+
+#[tokio::test]
+async fn test_wallet_provider_metadata_ecosystems_include_inherited_trust_collections() {
+    // GIVEN
+    let (context, parent_organisation) = TestContext::new_with_organisation(None).await;
+    let organisation = context
+        .db
+        .organisations
+        .create_with_parent(parent_organisation.id)
+        .await;
+
+    context
+        .db
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // the collection belongs to the parent organisation
+    let collection = context
+        .db
+        .trust_collections
+        .create(
+            parent_organisation,
+            TestTrustCollectionParams {
+                name: Some("inherited collection".to_string()),
+                ecosystem: Some("EUDI".into()),
                 ..Default::default()
             },
         )
@@ -312,53 +426,7 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
     let resp = resp.json_value().await;
 
     assert_eq!(
-        resp["walletUnitAttestation"],
-        serde_json::json!( {
-            "appIntegrityCheckRequired": true,
-            "enabled": true,
-            "required": false
-        })
+        resp["ecosystems"][0]["trustCollections"],
+        serde_json::json!([{"id": collection.id, "name": "inherited collection"}])
     );
-    assert_eq!(resp["name"], serde_json::json!("PROCIVIS_ONE"));
-    assert_eq!(
-        resp["featureFlags"],
-        serde_json::json!( {
-          "trustEcosystemsEnabled": true,
-          "refreshCredentialBatchEnabled": true,
-          "documentSigningEnabled": true
-        })
-    );
-    assert!(resp["trustCollections"].is_array());
-    let trust_collections_vec = resp["trustCollections"].as_array().unwrap();
-    assert!(trust_collections_vec.contains(&serde_json::json!(
-        {
-            "id": collection_1.id,
-            "name": "collection1",
-            "logo": "logo1",
-            "displayName": [{
-                "lang": "en",
-                "value": "name1"
-            }],
-            "description": [{
-                "lang": "en",
-                "value": "description1"
-            }],
-            "defaultSelected": true
-        }
-    )));
-    assert!(trust_collections_vec.contains(&serde_json::json!(
-        {
-            "id": collection_2.id,
-            "name": "collection2",
-            "logo": "logo2",
-            "displayName": [{
-                "lang": "en",
-                "value": "name2"
-            }],
-            "description": [{
-                "lang": "en",
-                "value": "description2"
-            }]
-        }
-    )));
 }

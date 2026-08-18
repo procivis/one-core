@@ -1,10 +1,6 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{
-    CredentialSchemaId, IdentifierId, OrganisationId, ProofSchemaId, TrustCollectionId,
-};
+use shared_types::{IdentifierId, OrganisationId};
 use time::Duration;
 
 use crate::service::managed_instance::dto::{
@@ -16,15 +12,9 @@ use crate::service::managed_instance::dto::{
 #[serde(rename_all = "camelCase")]
 pub(crate) struct VerifierParams {
     pub app_version: Option<VerifierAppVersion>,
-    #[serde(default)]
-    pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>,
     pub feature_flags: ConfigFeatureFlags,
     pub verifier_instance_attestation: Option<WalletInstanceAttestationParams>,
     pub user_authentication: Option<UserAuthenticationParams>,
-    #[serde(default)]
-    pub proof_schemas: Vec<ProofSchemaId>,
-    #[serde(default)]
-    pub credential_schemas: Vec<CredentialSchemaId>,
     pub access_certificate_configuration: Option<AccessCertificateConfiguration>,
     // Defaulted so existing verifierProvider config entries without this key keep working.
     #[serde(default = "default_device_auth_leeway")]
@@ -39,7 +29,10 @@ fn default_device_auth_leeway() -> Duration {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ConfigFeatureFlags {
-    pub trust_ecosystems_enabled: bool,
+    #[serde(alias = "trustEcosystemsEnabled")]
+    pub ecosystems_enabled: bool,
+    #[serde(default)]
+    pub ecosystems_enforcement_enabled: bool,
 }
 
 #[expect(unused)]
@@ -66,13 +59,4 @@ pub struct VerifierAppVersion {
 #[serde(rename_all = "camelCase")]
 pub struct VerifierUpdateScreen {
     pub link: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct TrustCollectionParams {
-    pub logo: String,
-    pub display_name: HashMap<String, String>,
-    pub description: HashMap<String, String>,
-    pub default_selected: Option<bool>,
 }

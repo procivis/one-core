@@ -12,6 +12,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::signer::provider::SignerProvider;
 use crate::provider::verifier::provider::VerifierProvider;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
@@ -24,6 +25,7 @@ pub mod service;
 mod validator;
 
 mod app_integrity;
+pub(crate) mod ecosystem_metadata;
 mod mapper;
 #[cfg(test)]
 mod test;
@@ -35,6 +37,7 @@ pub struct ManagedInstanceService {
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     tx_manager: Arc<dyn TransactionManager>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -58,6 +61,7 @@ impl ManagedInstanceService {
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         tx_manager: Arc<dyn TransactionManager>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -78,6 +82,7 @@ impl ManagedInstanceService {
             identifier_repository,
             history_repository,
             trust_collection_repository,
+            credential_schema_repository,
             tx_manager,
             key_provider,
             key_algorithm_provider,

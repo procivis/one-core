@@ -423,7 +423,7 @@ impl OrganisationService {
                 metadata
                     .trust_collections
                     .into_iter()
-                    .map(|collection| (InstanceRole::Verifier, collection.into())),
+                    .map(|collection| (InstanceRole::Verifier, collection)),
             );
         }
 

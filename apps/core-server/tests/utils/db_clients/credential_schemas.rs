@@ -14,7 +14,7 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
-use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaId};
+use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -36,6 +36,7 @@ pub struct TestingCreateSchemaParams {
     pub claim_mappings: Option<HashMap<String, String>>,
     pub embedded_disclosure_policy: Option<String>,
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 fn claim_name_translation(id: ClaimSchemaId, key: &str) -> LocalizedText {
@@ -129,7 +130,7 @@ impl CredentialSchemasDB {
         let id = params.id.unwrap_or(Uuid::new_v4().into());
         let mut credential_schema = CredentialSchema {
             expiration: params.expiration,
-            ecosystem: None,
+            ecosystem: params.ecosystem,
             batch_size: params.batch_size,
             allow_revocation: params.allow_revocation.unwrap_or(true),
             id,

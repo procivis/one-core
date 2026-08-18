@@ -5,7 +5,7 @@ use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
-use shared_types::{ClaimSchemaId, ProofSchemaId};
+use shared_types::{ClaimSchemaId, EcosystemId, ProofSchemaId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -37,6 +37,17 @@ impl ProofSchemasDB {
         organisation: &Organisation,
         proof_input_schemas: Vec<CreateProofInputSchema<'_>>,
     ) -> ProofSchema {
+        self.create_with_ecosystem(name, organisation, proof_input_schemas, None)
+            .await
+    }
+
+    pub async fn create_with_ecosystem(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        proof_input_schemas: Vec<CreateProofInputSchema<'_>>,
+        ecosystem: Option<EcosystemId>,
+    ) -> ProofSchema {
         let mut input_schemas: Vec<ProofInputSchema> = vec![];
         for proof_input_schema in proof_input_schemas {
             let claim_schemas: Vec<_> = proof_input_schema
@@ -67,7 +78,7 @@ impl ProofSchemasDB {
         }
 
         let proof_schema = ProofSchema {
-            ecosystem: None,
+            ecosystem,
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             imported_source_url: Some("CORE_URL".to_string()),

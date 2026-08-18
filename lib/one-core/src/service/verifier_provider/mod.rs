@@ -1,32 +1,34 @@
 use std::sync::Arc;
 
-use dto::{ProviderTrustCollectionDTO, VerifierProviderMetadataResponseDTO};
+use dto::VerifierProviderMetadataResponseDTO;
 use error::VerifierProviderError;
-use mapper::params_into_display_names;
 use one_dto_mapper::convert_inner;
 
+use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
-use crate::model::trust_collection::TrustCollectionFilterValue;
 use crate::provider::verifier::provider::VerifierProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
-use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
-use crate::service::managed_instance::dto::WalletUnitAttestationMetadataDTO;
-use crate::service::proof_schema::dto::ProofSchemaFilterValue;
+use crate::service::managed_instance::dto::{
+    EcosystemMetadataDTO, WalletUnitAttestationMetadataDTO,
+};
+use crate::service::managed_instance::ecosystem_metadata::{
+    EcosystemEntityRepositories, ecosystem_metadata, provider_trust_collections,
+};
 use crate::service::verifier_provider::dto::FeatureFlags;
 
 pub mod dto;
 pub mod error;
-mod mapper;
 
 pub struct VerifierProviderService {
     verifier_provider: Arc<dyn VerifierProvider>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
+    config: Arc<CoreConfig>,
 }
 
 impl VerifierProviderService {
@@ -35,12 +37,16 @@ impl VerifierProviderService {
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             verifier_provider,
             trust_collection_repository,
             credential_schema_repository,
             proof_schema_repository,
+            organisation_repository,
+            config,
         }
     }
 
@@ -52,99 +58,6 @@ impl VerifierProviderService {
             .verifier_provider
             .get_by_id(id)
             .error_while("getting verifier provider")?;
-
-        let trust_collections = if verifier.trust_collections.is_empty() {
-            vec![]
-        } else {
-            let models = self
-                .trust_collection_repository
-                .list(ListQuery {
-                    filtering: Some(
-                        TrustCollectionFilterValue::Ids(
-                            verifier.trust_collections.keys().cloned().collect(),
-                        )
-                        .condition(),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("getting trust collections")?
-                .values;
-
-            verifier
-                .trust_collections
-                .into_iter()
-                .map(|(collection_id, params)| {
-                    let model = models.iter().find(|m| m.id == collection_id).ok_or(
-                        VerifierProviderError::MappingError(format!(
-                            "Missing collection {}",
-                            collection_id
-                        )),
-                    )?;
-
-                    Ok(ProviderTrustCollectionDTO {
-                        id: collection_id,
-                        name: model.name.to_owned(),
-                        logo: params.logo,
-                        display_name: params_into_display_names(params.display_name),
-                        description: params_into_display_names(params.description),
-                        default_selected: params.default_selected,
-                    })
-                })
-                .collect::<Result<_, VerifierProviderError>>()?
-        };
-
-        let credential_schemas = if verifier.credential_schemas.is_empty() {
-            None
-        } else {
-            let models = self
-                .credential_schema_repository
-                .get_credential_schema_list(ListQuery {
-                    filtering: Some(
-                        CredentialSchemaFilterValue::CredentialSchemaIds(
-                            verifier.credential_schemas,
-                        )
-                        .condition(),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("getting credential schemas")?
-                .values;
-
-            let result: Vec<String> = models.into_iter().map(|m| m.imported_source_url).collect();
-            if result.is_empty() {
-                None
-            } else {
-                Some(result)
-            }
-        };
-
-        let proof_schemas = if verifier.proof_schemas.is_empty() {
-            None
-        } else {
-            let models = self
-                .proof_schema_repository
-                .get_proof_schema_list(ListQuery {
-                    filtering: Some(
-                        ProofSchemaFilterValue::ProofSchemaIds(verifier.proof_schemas).condition(),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("getting proof schemas")?
-                .values;
-
-            let result: Vec<String> = models
-                .into_iter()
-                .flat_map(|m| m.imported_source_url)
-                .collect();
-            if result.is_empty() {
-                None
-            } else {
-                Some(result)
-            }
-        };
 
         let verifier_app_attestation = {
             let (enabled, app_integrity_check_required) =
@@ -159,20 +72,65 @@ impl VerifierProviderService {
             }
         };
 
+        // The advertised ecosystems, and the entities belonging to them, are the
+        // ones of the organisation owning this provider.
+        let organisation = self
+            .organisation_repository
+            .get_organisation_for_verifier_provider(id)
+            .await
+            .error_while("getting verifier provider organisation")?;
+
+        if organisation.is_none() {
+            tracing::warn!("Verifier provider `{id}` is not associated with any organisation");
+        }
+
+        let ecosystems = ecosystem_metadata(
+            &self.config,
+            organisation.as_ref(),
+            EcosystemEntityRepositories {
+                trust_collections: &*self.trust_collection_repository,
+                credential_schemas: &*self.credential_schema_repository,
+                proof_schemas: Some(&*self.proof_schema_repository),
+            },
+        )
+        .await?;
+
+        let credential_schemas =
+            flatten_schemas(&ecosystems, |ecosystem| &ecosystem.credential_schemas);
+        let proof_schemas = flatten_schemas(&ecosystems, |ecosystem| &ecosystem.proof_schemas);
+
         Ok(VerifierProviderMetadataResponseDTO {
             name: id.to_string(),
             app_version: verifier.app_version,
-            trust_collections,
+            trust_collections: provider_trust_collections(&ecosystems),
             verifier_app_attestation,
             user_authentication: convert_inner(verifier.user_authentication),
             feature_flags: FeatureFlags {
-                trust_ecosystems_enabled: verifier.feature_flags.trust_ecosystems_enabled,
+                ecosystems_enabled: verifier.feature_flags.ecosystems_enabled,
                 access_certificate_provisioning_enabled: verifier
                     .access_certificate_configuration
                     .is_some(),
+                ecosystems_enforcement_enabled: verifier
+                    .feature_flags
+                    .ecosystems_enforcement_enabled,
             },
             credential_schemas,
             proof_schemas,
+            ecosystems,
         })
     }
+}
+
+/// The deprecated flat schema lists, kept for verifier apps that do not
+/// understand `ecosystems` yet.
+fn flatten_schemas(
+    ecosystems: &[EcosystemMetadataDTO],
+    schemas: impl Fn(&EcosystemMetadataDTO) -> &Vec<String>,
+) -> Option<Vec<String>> {
+    let result: Vec<String> = ecosystems
+        .iter()
+        .flat_map(|ecosystem| schemas(ecosystem).to_owned())
+        .collect();
+
+    (!result.is_empty()).then_some(result)
 }

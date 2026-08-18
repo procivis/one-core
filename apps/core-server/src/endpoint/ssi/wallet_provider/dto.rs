@@ -4,7 +4,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
-use shared_types::{ManagedInstanceId, TrustCollectionId};
+use shared_types::{EcosystemId, ManagedInstanceId, TrustCollectionId};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use utoipa::ToSchema;
@@ -122,21 +122,94 @@ pub(crate) struct WalletUnitActivationResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(dto::WalletProviderMetadataResponseDTO)]
 pub(crate) struct WalletProviderMetadataResponseRestDTO {
     wallet_unit_attestation: WalletUnitAttestationMetadataRestDTO,
     name: String,
-    #[from(with_fn = convert_inner)]
     app_version: Option<AppVersionRestDTO>,
-    #[from(with_fn = convert_inner)]
+    /// The trust collections of all advertised `ecosystems`, flattened. The
+    /// display properties are the ones of the owning ecosystem.
+    #[deprecated = "use ecosystems instead"]
     trust_collections: Vec<ProviderTrustCollectionRestDTO>,
-    #[from(with_fn = convert_inner)]
     document_signers: Vec<DocumentSignerMetadataRestDTO>,
     feature_flags: FeatureFlagsRestDTO,
-    #[from(with_fn = convert_inner)]
     user_authentication: Option<UserAuthenticationRestDTO>,
+    ecosystems: Vec<WalletProviderEcosystemRestDTO>,
+}
+
+#[expect(deprecated)]
+impl From<dto::WalletProviderMetadataResponseDTO> for WalletProviderMetadataResponseRestDTO {
+    fn from(value: dto::WalletProviderMetadataResponseDTO) -> Self {
+        Self {
+            wallet_unit_attestation: value.wallet_unit_attestation.into(),
+            name: value.name,
+            app_version: convert_inner(value.app_version),
+            trust_collections: trust_collections_from_ecosystems(&value.ecosystems),
+            document_signers: convert_inner(value.document_signers),
+            feature_flags: value.feature_flags.into(),
+            user_authentication: convert_inner(value.user_authentication),
+            ecosystems: convert_inner(value.ecosystems),
+        }
+    }
+}
+
+/// The deprecated provider-level trust collection list, flattened out of the
+/// ecosystems. The display properties of the owning ecosystem stand in for the
+/// ones previously configured per collection.
+pub(crate) fn trust_collections_from_ecosystems(
+    ecosystems: &[dto::EcosystemMetadataDTO],
+) -> Vec<ProviderTrustCollectionRestDTO> {
+    ecosystems
+        .iter()
+        .flat_map(|ecosystem| {
+            ecosystem
+                .trust_collections
+                .iter()
+                .map(|collection| ProviderTrustCollectionRestDTO {
+                    id: collection.id,
+                    name: collection.name.to_owned(),
+                    logo: ecosystem.logo.to_owned(),
+                    display_name: convert_inner(ecosystem.display_name.to_owned()),
+                    description: convert_inner(ecosystem.description.to_owned()),
+                    default_selected: Some(ecosystem.default_selected),
+                })
+        })
+        .collect()
+}
+
+/// An ecosystem advertised by this wallet provider.
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::EcosystemMetadataDTO)]
+pub(crate) struct WalletProviderEcosystemRestDTO {
+    /// ecosystem provider name
+    pub name: EcosystemId,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub display_name: Vec<DisplayNameRestDTO>,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub description: Vec<DisplayNameRestDTO>,
+    pub logo: String,
+    /// Whether the wallet should select this ecosystem by default.
+    pub default_selected: bool,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub trust_collections: Vec<EcosystemTrustCollectionRestDTO>,
+    /// credential schema `importSourceUrl`'s
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub credential_schemas: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::EcosystemTrustCollectionDTO)]
+pub(crate) struct EcosystemTrustCollectionRestDTO {
+    pub id: TrustCollectionId,
+    /// trust collection provider name
+    pub name: String,
 }
 
 #[options_not_nullable]
@@ -165,9 +238,11 @@ pub(crate) struct TokenValidationRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(dto::FeatureFlags)]
 pub(crate) struct FeatureFlagsRestDTO {
-    pub trust_ecosystems_enabled: bool,
+    pub ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
     pub document_signing_enabled: bool,
+    /// Whether the wallet must enforce the ecosystems advertised in `ecosystems`.
+    pub ecosystems_enforcement_enabled: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

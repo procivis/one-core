@@ -433,6 +433,7 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
                         "enabled": true
                     },
                     "featureFlags": {
+                        // legacy key name, still accepted as an alias of `ecosystemsEnabled`
                         "trustEcosystemsEnabled": true,
                         "refreshCredentialBatchEnabled": true
                     }

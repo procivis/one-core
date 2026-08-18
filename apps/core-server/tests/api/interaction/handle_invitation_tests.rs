@@ -1864,7 +1864,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "name": "PROCIVIS_ONE",
             "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": false, "required": false},
-            "featureFlags": {"trustEcosystemsEnabled": false, "refreshCredentialBatchEnabled": false},
+            "featureFlags": {"ecosystemsEnabled": false, "refreshCredentialBatchEnabled": false},
             "trustCollections": []
         })))
         .mount(&mock_server)
@@ -2238,7 +2238,7 @@ async fn test_handle_invitation_trust_disabled_succeeds() {
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "name": "PROCIVIS_ONE",
             "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": false, "required": false},
-            "featureFlags": {"trustEcosystemsEnabled": false, "refreshCredentialBatchEnabled": false},
+            "featureFlags": {"ecosystemsEnabled": false, "refreshCredentialBatchEnabled": false},
             "trustCollections": []
         })))
         .mount(&mock_server)
@@ -2323,7 +2323,7 @@ async fn test_handle_invitation_trust_mandatory_without_identifier_returns_error
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "name": "PROCIVIS_ONE",
             "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": true, "required": true},
-            "featureFlags": {"trustEcosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
+            "featureFlags": {"ecosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
             "trustCollections": []
         })))
         .mount(&mock_server)
@@ -2421,7 +2421,7 @@ async fn test_handle_invitation_trust_optional_with_x509_certificate_untrusted_s
 #[tokio::test]
 async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_trust_list_returns_error()
  {
-    // GIVEN — wallet instance with trusted_rp_required + trustEcosystemsEnabled → TrustMandatory
+    // GIVEN — wallet instance with trusted_rp_required + ecosystemsEnabled → TrustMandatory
     //         x509_san_dns cert not in any trust list → AccessCertificateNotTrusted → 400 BR_0410
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -2462,7 +2462,7 @@ async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_tru
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "name": "PROCIVIS_ONE",
             "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": true, "required": true},
-            "featureFlags": {"trustEcosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
+            "featureFlags": {"ecosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
             "trustCollections": []
         })))
         .mount(&mock_server)

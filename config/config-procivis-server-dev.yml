@@ -23,9 +23,10 @@ walletProvider:
         eudiWalletInfo:
           providerName: "Procivis One Dev"
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
           refreshCredentialBatchEnabled: true
           documentSigningEnabled: true
+          ecosystemsEnforcementEnabled: false
         documentSigners:
           - SIGN8
   PROCIVIS_ONE_NATIVE:
@@ -64,9 +65,10 @@ walletProvider:
         appVersion:
           minimum: "v1.0.0"
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
           refreshCredentialBatchEnabled: true
           documentSigningEnabled: true
+          ecosystemsEnforcementEnabled: false
         walletLink: "https://docs.procivis.ch/components/wallet-app"
         walletClientId: "eudiw-abca"
         walletRegistration: OPTIONAL
@@ -93,7 +95,8 @@ verifierProvider:
         appVersion:
           minimum: "v1.0.0"
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
+          ecosystemsEnforcementEnabled: false
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

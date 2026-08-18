@@ -23,9 +23,10 @@ walletProvider:
         eudiWalletInfo:
           providerName: "Procivis One Test"
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
           refreshCredentialBatchEnabled: true
           documentSigningEnabled: true
+          ecosystemsEnforcementEnabled: false
         documentSigners:
           - SIGN8
 verifierProvider:
@@ -45,7 +46,8 @@ verifierProvider:
               bundleId: AGG3V6QN4G.ch.procivis.one.verifier.test
               enforceProductionBuild: false
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
+          ecosystemsEnforcementEnabled: false
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

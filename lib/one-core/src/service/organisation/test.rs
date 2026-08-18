@@ -27,16 +27,13 @@ use crate::repository::trust_collection_repository::MockTrustCollectionRepositor
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::managed_instance::dto::{
-    FeatureFlags as WalletProviderFeatureFlags,
-    ProviderTrustCollectionDTO as WalletProviderTrustCollectionDTO,
+    FeatureFlags as WalletProviderFeatureFlags, ProviderTrustCollectionDTO,
     WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
 };
 use crate::service::organisation::dto::UpsertOrganisationRequestDTO;
 use crate::service::test_utilities::dummy_organisation;
 use crate::service::verifier_provider::dto::{
-    FeatureFlags as VerifierProviderFeatureFlags,
-    ProviderTrustCollectionDTO as VerifierProviderTrustCollectionDTO,
-    VerifierProviderMetadataResponseDTO,
+    FeatureFlags as VerifierProviderFeatureFlags, VerifierProviderMetadataResponseDTO,
 };
 
 fn setup_service(organisation_repository: MockOrganisationRepository) -> OrganisationService {
@@ -249,7 +246,7 @@ fn dummy_instance(
 }
 
 fn wallet_metadata(
-    trust_collections: Vec<WalletProviderTrustCollectionDTO>,
+    trust_collections: Vec<ProviderTrustCollectionDTO>,
 ) -> WalletProviderMetadataResponseDTO {
     WalletProviderMetadataResponseDTO {
         wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
@@ -262,24 +259,27 @@ fn wallet_metadata(
         trust_collections,
         document_signers: vec![],
         feature_flags: WalletProviderFeatureFlags {
-            trust_ecosystems_enabled: true,
+            ecosystems_enabled: true,
             refresh_credential_batch_enabled: true,
             document_signing_enabled: false,
+            ecosystems_enforcement_enabled: false,
         },
         user_authentication: None,
+        ecosystems: vec![],
     }
 }
 
 fn verifier_metadata(
-    trust_collections: Vec<VerifierProviderTrustCollectionDTO>,
+    trust_collections: Vec<ProviderTrustCollectionDTO>,
 ) -> VerifierProviderMetadataResponseDTO {
     VerifierProviderMetadataResponseDTO {
         name: "PROCIVIS_ONE".to_string(),
         app_version: None,
         trust_collections,
         feature_flags: VerifierProviderFeatureFlags {
-            trust_ecosystems_enabled: true,
+            ecosystems_enabled: true,
             access_certificate_provisioning_enabled: false,
+            ecosystems_enforcement_enabled: false,
         },
         verifier_app_attestation:
             crate::service::managed_instance::dto::WalletUnitAttestationMetadataDTO {
@@ -290,6 +290,7 @@ fn verifier_metadata(
         user_authentication: None,
         proof_schemas: None,
         credential_schemas: None,
+        ecosystems: vec![],
     }
 }
 
@@ -355,16 +356,14 @@ async fn test_get_trust_collections_from_verifier_provider_only() {
     verifier_provider_client
         .expect_get_verifier_provider_metadata()
         .returning(move |_| {
-            Ok(verifier_metadata(vec![
-                VerifierProviderTrustCollectionDTO {
-                    id: Uuid::new_v4().into(),
-                    name: "Verifier Ecosystem".to_string(),
-                    logo: "".to_string(),
-                    display_name: vec![],
-                    description: vec![],
-                    default_selected: Some(true),
-                },
-            ]))
+            Ok(verifier_metadata(vec![ProviderTrustCollectionDTO {
+                id: Uuid::new_v4().into(),
+                name: "Verifier Ecosystem".to_string(),
+                logo: "".to_string(),
+                display_name: vec![],
+                description: vec![],
+                default_selected: Some(true),
+            }]))
         });
 
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
@@ -469,7 +468,7 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
     wallet_provider_client
         .expect_get_wallet_provider_metadata()
         .returning(|_| {
-            Ok(wallet_metadata(vec![WalletProviderTrustCollectionDTO {
+            Ok(wallet_metadata(vec![ProviderTrustCollectionDTO {
                 id: Uuid::new_v4().into(),
                 name: "Wallet Ecosystem".to_string(),
                 logo: "".to_string(),
@@ -483,16 +482,14 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
     verifier_provider_client
         .expect_get_verifier_provider_metadata()
         .returning(|_| {
-            Ok(verifier_metadata(vec![
-                VerifierProviderTrustCollectionDTO {
-                    id: Uuid::new_v4().into(),
-                    name: "Verifier Ecosystem".to_string(),
-                    logo: "".to_string(),
-                    display_name: vec![],
-                    description: vec![],
-                    default_selected: Some(true),
-                },
-            ]))
+            Ok(verifier_metadata(vec![ProviderTrustCollectionDTO {
+                id: Uuid::new_v4().into(),
+                name: "Verifier Ecosystem".to_string(),
+                logo: "".to_string(),
+                display_name: vec![],
+                description: vec![],
+                default_selected: Some(true),
+            }]))
         });
 
     let mut trust_collection_repository = MockTrustCollectionRepository::default();

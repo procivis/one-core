@@ -27,9 +27,10 @@ walletProvider:
         eudiWalletInfo:
           providerName: "Procivis One Trial"
         featureFlags:
-          trustEcosystemsEnabled: false
+          ecosystemsEnabled: false
           refreshCredentialBatchEnabled: false
           documentSigningEnabled: true
+          ecosystemsEnforcementEnabled: false
         documentSigners:
           - SIGN8
 verifierProvider:
@@ -49,7 +50,8 @@ verifierProvider:
               bundleId: AGG3V6QN4G.ch.procivis.one.verifier.trial
               enforceProductionBuild: true
         featureFlags:
-          trustEcosystemsEnabled: false
+          ecosystemsEnabled: false
+          ecosystemsEnforcementEnabled: false
 signer:
   REGISTRATION_CERTIFICATE:
     params:

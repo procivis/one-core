@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{ManagedInstanceId, RevocationMethodId, TrustCollectionId};
+use shared_types::{EcosystemId, ManagedInstanceId, RevocationMethodId, TrustCollectionId};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use time::{Duration, OffsetDateTime};
@@ -103,20 +101,37 @@ pub(super) struct WalletProviderParams {
     pub app_version: Option<AppVersionDTO>,
     pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
     #[serde(default)]
-    pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>, // FIX ME: This is a temporary solution, should be changed to a proper structure ONE-9309
-    #[serde(default)]
     pub document_signers: Vec<String>,
-    pub feature_flags: FeatureFlags,
+    pub feature_flags: FeatureFlagsParams,
     pub user_authentication: Option<UserAuthenticationParams>,
+}
+
+/// Feature flags as configured on the wallet provider config entry.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct FeatureFlagsParams {
+    #[serde(alias = "trustEcosystemsEnabled")]
+    pub ecosystems_enabled: bool,
+    pub refresh_credential_batch_enabled: bool,
+    #[serde(default)]
+    pub document_signing_enabled: bool,
+    #[serde(default)]
+    pub ecosystems_enforcement_enabled: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureFlags {
-    pub trust_ecosystems_enabled: bool,
+    // Older wallet providers still report this flag under its previous name.
+    #[serde(alias = "trustEcosystemsEnabled")]
+    pub ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
     #[serde(default)]
     pub document_signing_enabled: bool,
+    /// Whether the instances of this provider must enforce the ecosystems
+    /// advertised in `ecosystems`.
+    #[serde(default)]
+    pub ecosystems_enforcement_enabled: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -135,15 +150,6 @@ pub(crate) struct TokenValidationParams {
     pub aud: String,
     pub iss: String,
     pub jwks_uri: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct TrustCollectionParams {
-    pub logo: String,
-    pub display_name: HashMap<String, String>,
-    pub description: HashMap<String, String>,
-    pub default_selected: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -308,10 +314,45 @@ pub struct WalletProviderMetadataResponseDTO {
     pub wallet_unit_attestation: WalletUnitAttestationMetadataDTO,
     pub name: String,
     pub app_version: Option<AppVersionDTO>,
+    /// Deprecated, superseded by the trust collections of `ecosystems`
     pub trust_collections: Vec<ProviderTrustCollectionDTO>,
     pub document_signers: Vec<DocumentSignerMetadataDTO>,
     pub feature_flags: FeatureFlags,
     pub user_authentication: Option<UserAuthenticationDTO>,
+    pub ecosystems: Vec<EcosystemMetadataDTO>,
+}
+
+/// An ecosystem selected by the organisation owning the provider, together with
+/// the entities of that organisation belonging to the ecosystem.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EcosystemMetadataDTO {
+    /// Ecosystem provider name
+    pub name: EcosystemId,
+    #[serde(default)]
+    pub display_name: Vec<DisplayNameDTO>,
+    #[serde(default)]
+    pub description: Vec<DisplayNameDTO>,
+    pub logo: String,
+    /// Whether the instance should select this ecosystem by default.
+    #[serde(default)]
+    pub default_selected: bool,
+    #[serde(default)]
+    pub trust_collections: Vec<EcosystemTrustCollectionDTO>,
+    /// credential schema `importedSourceUrl`'s
+    #[serde(default)]
+    pub credential_schemas: Vec<String>,
+    /// proof schema `importedSourceUrl`'s, only filled for verifier providers.
+    #[serde(default)]
+    pub proof_schemas: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EcosystemTrustCollectionDTO {
+    pub id: TrustCollectionId,
+    /// Trust collection provider name
+    pub name: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

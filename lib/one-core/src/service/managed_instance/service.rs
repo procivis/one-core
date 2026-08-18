@@ -18,9 +18,9 @@ use super::ManagedInstanceService;
 use super::app_integrity::android::validate_attestation_android;
 use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
 use super::dto::{
-    DocumentSignerMetadataDTO, GetManagedInstanceListResponseDTO, GetManagedInstanceResponseDTO,
-    IntegrityCheck, IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
-    ManagedInstanceFilterParamsDTO, NoncePayload, ProviderTrustCollectionDTO,
+    DocumentSignerMetadataDTO, FeatureFlags, GetManagedInstanceListResponseDTO,
+    GetManagedInstanceResponseDTO, IntegrityCheck, IssueWalletUnitAttestationRequestDTO,
+    IssueWalletUnitAttestationResponseDTO, ManagedInstanceFilterParamsDTO, NoncePayload,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, UserAuthenticationParams,
     WalletInstanceAttestationClaims, WalletProviderMetadataResponseDTO, WalletProviderParams,
     WalletRegistrationRequirement, WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
@@ -44,7 +44,6 @@ use crate::model::history::{
 };
 use crate::model::identifier::IdentifierData;
 use crate::model::instance::{InstanceRole, InstanceStatus};
-use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::managed_instance::{
     ManagedInstance, ManagedInstanceListQuery, ManagedInstanceOs, SortableManagedInstanceColumn,
@@ -54,7 +53,6 @@ use crate::model::managed_instance_attested_key::{
     ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyRevocationInfo,
 };
 use crate::model::organisation::Organisation;
-use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
@@ -68,6 +66,9 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
 use crate::provider::verifier::model::AccessCertificateConfiguration;
 use crate::service::common_dto::ListQueryDTO;
+use crate::service::managed_instance::ecosystem_metadata::{
+    EcosystemEntityRepositories, ecosystem_metadata, provider_trust_collections,
+};
 use crate::util::key_selection::KeyFilter;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -1486,46 +1487,30 @@ impl ManagedInstanceService {
             WalletRegistrationRequirement::Disabled => (false, false),
         };
 
-        let trust_collections = if params.trust_collections.is_empty() {
-            vec![]
-        } else {
-            let models = self
-                .trust_collection_repository
-                .list(TrustCollectionListQuery {
-                    filtering: Some(
-                        TrustCollectionFilterValue::Ids(
-                            params.trust_collections.keys().cloned().collect(),
-                        )
-                        .condition(),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("getting trust collections")?
-                .values;
+        // The advertised ecosystems, and the entities belonging to them, are the
+        // ones of the organisation owning this provider.
+        let organisation = self
+            .organisation_repository
+            .get_organisation_for_wallet_provider(&wallet_provider)
+            .await
+            .error_while("getting wallet provider organisation")?;
 
-            params
-                .trust_collections
-                .into_iter()
-                .map(|(collection_id, params)| {
-                    let model = models.iter().find(|m| m.id == collection_id).ok_or(
-                        ManagedInstanceError::MappingError(format!(
-                            "Missing collection {}",
-                            collection_id
-                        )),
-                    )?;
+        if organisation.is_none() {
+            tracing::warn!(
+                "Wallet provider `{wallet_provider}` is not associated with any organisation"
+            );
+        }
 
-                    Ok(ProviderTrustCollectionDTO {
-                        id: collection_id,
-                        name: model.name.to_owned(),
-                        logo: params.logo,
-                        display_name: params_into_display_names(params.display_name),
-                        description: params_into_display_names(params.description),
-                        default_selected: params.default_selected,
-                    })
-                })
-                .collect::<Result<_, ManagedInstanceError>>()?
-        };
+        let ecosystems = ecosystem_metadata(
+            &self.config,
+            organisation.as_ref(),
+            EcosystemEntityRepositories {
+                trust_collections: &*self.trust_collection_repository,
+                credential_schemas: &*self.credential_schema_repository,
+                proof_schemas: None,
+            },
+        )
+        .await?;
 
         let document_signers = params
             .document_signers
@@ -1557,10 +1542,18 @@ impl ManagedInstanceService {
             },
             name: wallet_provider,
             app_version: params.app_version,
-            feature_flags: params.feature_flags,
-            trust_collections,
+            trust_collections: provider_trust_collections(&ecosystems),
+            feature_flags: FeatureFlags {
+                ecosystems_enabled: params.feature_flags.ecosystems_enabled,
+                refresh_credential_batch_enabled: params
+                    .feature_flags
+                    .refresh_credential_batch_enabled,
+                document_signing_enabled: params.feature_flags.document_signing_enabled,
+                ecosystems_enforcement_enabled: params.feature_flags.ecosystems_enforcement_enabled,
+            },
             user_authentication: convert_inner(params.user_authentication),
             document_signers,
+            ecosystems,
         })
     }
 

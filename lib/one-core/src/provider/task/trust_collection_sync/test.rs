@@ -267,26 +267,33 @@ fn dummy_verifier_instance() -> Instance {
     }
 }
 
+fn dummy_provider_trust_collections(
+    collections: &[TrustCollection],
+) -> Vec<ProviderTrustCollectionDTO> {
+    collections
+        .iter()
+        .map(|c| ProviderTrustCollectionDTO {
+            id: c.id,
+            name: c.name.clone(),
+            logo: "logo".to_string(),
+            display_name: vec![],
+            description: vec![],
+            default_selected: None,
+        })
+        .collect()
+}
+
 fn dummy_verifier_provider_metadata(
     collections: &[TrustCollection],
 ) -> VerifierProviderMetadataResponseDTO {
     VerifierProviderMetadataResponseDTO {
         name: "verifier-provider".to_string(),
         app_version: None,
-        trust_collections: collections
-            .iter()
-            .map(|c| verifier_provider::dto::ProviderTrustCollectionDTO {
-                id: c.id,
-                name: c.name.clone(),
-                logo: "logo".to_string(),
-                display_name: vec![],
-                description: vec![],
-                default_selected: None,
-            })
-            .collect(),
+        trust_collections: dummy_provider_trust_collections(collections),
         feature_flags: verifier_provider::dto::FeatureFlags {
-            trust_ecosystems_enabled: true,
+            ecosystems_enabled: true,
             access_certificate_provisioning_enabled: false,
+            ecosystems_enforcement_enabled: false,
         },
         verifier_app_attestation: WalletUnitAttestationMetadataDTO {
             app_integrity_check_required: false,
@@ -296,6 +303,7 @@ fn dummy_verifier_provider_metadata(
         user_authentication: None,
         proof_schemas: None,
         credential_schemas: None,
+        ecosystems: vec![],
     }
 }
 
@@ -310,23 +318,15 @@ fn dummy_wallet_provider_metadata(
         },
         name: "dummy provider".to_string(),
         app_version: None,
-        trust_collections: collections
-            .iter()
-            .map(|c| ProviderTrustCollectionDTO {
-                id: c.id,
-                name: c.name.clone(),
-                logo: "logo".to_string(),
-                display_name: vec![],
-                description: vec![],
-                default_selected: None,
-            })
-            .collect(),
+        trust_collections: dummy_provider_trust_collections(collections),
         document_signers: vec![],
         feature_flags: FeatureFlags {
-            trust_ecosystems_enabled: true,
+            ecosystems_enabled: true,
             refresh_credential_batch_enabled: true,
             document_signing_enabled: false,
+            ecosystems_enforcement_enabled: false,
         },
         user_authentication: None,
+        ecosystems: vec![],
     }
 }

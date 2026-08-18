@@ -17,12 +17,15 @@ use crate::config::core_config::{
     CoreConfig, DocumentSignerType, Fields, KeyAlgorithmType, Params,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::model::common::GetListResponse;
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::key::Key;
 use crate::model::managed_instance::{ManagedInstance, ManagedInstanceOs};
-use crate::model::organisation::Organisation;
+use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::relation::Related;
+use crate::model::trust_collection::TrustCollection;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::clock::DefaultClock;
 use crate::proto::http_client::{
@@ -48,6 +51,7 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::signer::provider::MockSignerProvider;
 use crate::provider::verifier::model::{ConfigFeatureFlags, VerifierParams};
 use crate::provider::verifier::provider::MockVerifierProvider;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::managed_instance_repository::MockManagedInstanceRepository;
@@ -56,9 +60,11 @@ use crate::repository::trust_collection_repository::MockTrustCollectionRepositor
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::managed_instance::ManagedInstanceService;
 use crate::service::managed_instance::dto::{
-    ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO,
+    DisplayNameDTO, ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO,
 };
-use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
+use crate::service::test_utilities::{
+    dummy_credential_schema, dummy_organisation, generic_config, get_dummy_date,
+};
 
 const BASE_URL: &str = "https://localhost";
 
@@ -69,6 +75,7 @@ fn mock_wallet_provider_service() -> ManagedInstanceService {
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::default()),
         tx_manager: Arc::new(NoTransactionManager),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
@@ -125,7 +132,7 @@ fn wallet_provider_config(
                     "minimum": "v1.50.0",
                 },
                 "featureFlags": {
-                    "trustEcosystemsEnabled": true,
+                    "ecosystemsEnabled": true,
                     "refreshCredentialBatchEnabled": true,
                     "documentSigningEnabled": true
                 },
@@ -359,14 +366,12 @@ async fn test_register_wallet_unit_integrity_check() {
 fn verifier_provider_params() -> VerifierParams {
     VerifierParams {
         app_version: None,
-        trust_collections: HashMap::new(),
         feature_flags: ConfigFeatureFlags {
-            trust_ecosystems_enabled: false,
+            ecosystems_enabled: false,
+            ecosystems_enforcement_enabled: false,
         },
         verifier_instance_attestation: None,
         user_authentication: None,
-        proof_schemas: vec![],
-        credential_schemas: vec![],
         access_certificate_configuration: None,
         device_auth_leeway_seconds: Duration::seconds(60),
     }
@@ -1085,9 +1090,16 @@ async fn test_get_wallet_provider_metadata_includes_document_signers() {
             })
         });
 
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation_for_wallet_provider()
+        .once()
+        .returning(|_| Ok(None));
+
     let mut service = mock_wallet_provider_service();
     service.config = Arc::new(config);
     service.document_signer_provider = Arc::new(document_signer_provider);
+    service.organisation_repository = Arc::new(organisation_repository);
 
     let result = service
         .get_wallet_provider_metadata("PROCIVIS_ONE".to_string())
@@ -1095,6 +1107,8 @@ async fn test_get_wallet_provider_metadata_includes_document_signers() {
         .unwrap();
 
     assert!(result.feature_flags.document_signing_enabled);
+    assert!(result.ecosystems.is_empty());
+    assert!(!result.feature_flags.ecosystems_enforcement_enabled);
     assert_eq!(result.document_signers.len(), 1);
 
     let doc_signer = &result.document_signers[0];
@@ -1103,4 +1117,200 @@ async fn test_get_wallet_provider_metadata_includes_document_signers() {
     assert_eq!(doc_signer.logo, "sign8-logo");
     assert_eq!(doc_signer.display_name.len(), 2);
     assert_eq!(doc_signer.description.len(), 2);
+}
+
+fn display_names(values: &[DisplayNameDTO]) -> Vec<(String, String)> {
+    values
+        .iter()
+        .map(|entry| (entry.lang.to_owned(), entry.value.to_owned()))
+        .collect()
+}
+
+fn eudi_ecosystem_config() -> Fields<config::core_config::EcosystemProviderType> {
+    Fields {
+        r#type: config::core_config::EcosystemProviderType::Eudi,
+        display: config::core_config::ConfigEntryDisplay::Translated(HashMap::from([(
+            "en".to_string(),
+            "EUDI".to_string(),
+        )])),
+        order: None,
+        priority: None,
+        enabled: true,
+        capabilities: None,
+        params: Some(Params {
+            public: Some(json!({
+                "logo": "eudi-logo",
+                "description": { "en": "EUDI ecosystem" },
+            })),
+            private: None,
+        }),
+    }
+}
+
+#[tokio::test]
+async fn test_get_wallet_provider_metadata_includes_ecosystems_of_provider_organisation() {
+    let organisation_id = Uuid::new_v4().into();
+    // the advertised ecosystems are the ones selected by the provider organisation
+    let organisation = Organisation {
+        wallet_provider: Some("PROCIVIS_ONE".to_string()),
+        configuration: OrganisationConfiguration {
+            selected_ecosystems: vec!["EUDI".into()],
+            ..Default::default()
+        },
+        ..dummy_organisation(Some(organisation_id))
+    };
+
+    // the enforcement flag comes from the provider config
+    let mut provider_config = wallet_provider_config(false);
+    let public = provider_config
+        .params
+        .as_mut()
+        .and_then(|params| params.public.as_mut())
+        .unwrap();
+    public["featureFlags"]["ecosystemsEnforcementEnabled"] = json!(true);
+
+    let mut config = CoreConfig::default();
+    config
+        .wallet_provider
+        .insert("PROCIVIS_ONE".to_string(), provider_config);
+    config
+        .ecosystem
+        .insert("EUDI".into(), eudi_ecosystem_config());
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation_for_wallet_provider()
+        .once()
+        .return_once(move |_| Ok(Some(organisation)));
+
+    let collection = TrustCollection {
+        ecosystem: "EUDI".into(),
+        id: Uuid::new_v4().into(),
+        name: "EUDI collection".to_string(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        deactivated_at: None,
+        remote_trust_collection_url: None,
+        organisation: dummy_organisation(Some(organisation_id)).into(),
+    };
+    let collection_id = collection.id;
+
+    let mut trust_collection_repository = MockTrustCollectionRepository::default();
+    trust_collection_repository
+        .expect_list()
+        .once()
+        .return_once(move |_| Ok(GetListResponse::one(collection)));
+
+    let credential_schema = CredentialSchema {
+        ecosystem: Some("EUDI".into()),
+        imported_source_url: "https://schemas.example.com/pid".to_string(),
+        ..dummy_credential_schema()
+    };
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(move |_| Ok(GetListResponse::one(credential_schema)));
+
+    let mut document_signer_provider = MockDocumentSignerProvider::default();
+    document_signer_provider.expect_metadata().returning(|_| {
+        Ok(DocumentSignerMetadata {
+            r#type: DocumentSignerType::WalletCentric,
+            display_name: HashMap::new(),
+            description: HashMap::new(),
+            logo: "sign8-logo".to_string(),
+        })
+    });
+
+    let mut service = mock_wallet_provider_service();
+    service.config = Arc::new(config);
+    service.organisation_repository = Arc::new(organisation_repository);
+    service.trust_collection_repository = Arc::new(trust_collection_repository);
+    service.credential_schema_repository = Arc::new(credential_schema_repository);
+    service.document_signer_provider = Arc::new(document_signer_provider);
+
+    let result = service
+        .get_wallet_provider_metadata("PROCIVIS_ONE".to_string())
+        .await
+        .unwrap();
+
+    assert!(result.feature_flags.ecosystems_enforcement_enabled);
+    assert_eq!(result.ecosystems.len(), 1);
+
+    let ecosystem = &result.ecosystems[0];
+    assert_eq!(ecosystem.name, "EUDI".into());
+    assert_eq!(ecosystem.logo, "eudi-logo");
+    assert_eq!(
+        display_names(&ecosystem.display_name),
+        vec![("en".to_string(), "EUDI".to_string())]
+    );
+    assert_eq!(
+        display_names(&ecosystem.description),
+        vec![("en".to_string(), "EUDI ecosystem".to_string())]
+    );
+    assert_eq!(ecosystem.trust_collections.len(), 1);
+    assert_eq!(ecosystem.trust_collections[0].id, collection_id);
+    assert_eq!(ecosystem.trust_collections[0].name, "EUDI collection");
+    assert_eq!(
+        ecosystem.credential_schemas,
+        vec!["https://schemas.example.com/pid".to_string()]
+    );
+    assert!(ecosystem.proof_schemas.is_empty());
+
+    // the deprecated flat list mirrors the collections of the advertised ecosystems
+    assert_eq!(result.trust_collections.len(), 1);
+    assert_eq!(result.trust_collections[0].id, collection_id);
+    assert_eq!(result.trust_collections[0].logo, "eudi-logo");
+}
+
+#[tokio::test]
+async fn test_get_wallet_provider_metadata_fails_for_unknown_ecosystem() {
+    let organisation = Organisation {
+        wallet_provider: Some("PROCIVIS_ONE".to_string()),
+        configuration: OrganisationConfiguration {
+            selected_ecosystems: vec!["UNKNOWN".into()],
+            ..Default::default()
+        },
+        ..dummy_organisation(None)
+    };
+
+    let mut config = CoreConfig::default();
+    config
+        .wallet_provider
+        .insert("PROCIVIS_ONE".to_string(), wallet_provider_config(false));
+    config
+        .ecosystem
+        .insert("EUDI".into(), eudi_ecosystem_config());
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation_for_wallet_provider()
+        .once()
+        .return_once(move |_| Ok(Some(organisation)));
+
+    let mut trust_collection_repository = MockTrustCollectionRepository::default();
+    trust_collection_repository
+        .expect_list()
+        .once()
+        .return_once(|_| Ok(GetListResponse::empty()));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(|_| Ok(GetListResponse::empty()));
+
+    let mut service = mock_wallet_provider_service();
+    service.config = Arc::new(config);
+    service.organisation_repository = Arc::new(organisation_repository);
+    service.trust_collection_repository = Arc::new(trust_collection_repository);
+    service.credential_schema_repository = Arc::new(credential_schema_repository);
+
+    let error = service
+        .get_wallet_provider_metadata("PROCIVIS_ONE".to_string())
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0089);
 }

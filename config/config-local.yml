@@ -64,9 +64,10 @@ walletProvider:
           solutionVersion: "1"
           wscdType: HYBRID
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
           refreshCredentialBatchEnabled: true
           documentSigningEnabled: true
+          ecosystemsEnforcementEnabled: false
         documentSigners:
           - SIGN8
 format:
@@ -320,7 +321,8 @@ verifierProvider:
           updateScreen:
             link: https//example.com
         featureFlags:
-          trustEcosystemsEnabled: true
+          ecosystemsEnabled: true
+          ecosystemsEnforcementEnabled: false
 globalSettings:
   httpClient:
     insecureHttpTransportAllowed: true

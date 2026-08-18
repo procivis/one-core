@@ -342,7 +342,7 @@ impl WRPValidator for WRPValidatorImpl {
                 .await
                 .error_while("getting wallet provider metadata")?;
 
-            if !metadata.feature_flags.trust_ecosystems_enabled {
+            if !metadata.feature_flags.ecosystems_enabled {
                 // trust management disabled via provider metadata
                 return Ok(TrustMode::Disabled);
             }
@@ -384,7 +384,7 @@ impl WRPValidator for WRPValidatorImpl {
                 .await
                 .error_while("getting verifier provider metadata")?;
 
-            if !metadata.feature_flags.trust_ecosystems_enabled {
+            if !metadata.feature_flags.ecosystems_enabled {
                 // trust management disabled via provider metadata
                 return Ok(TrustMode::Disabled);
             }

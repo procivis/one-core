@@ -19,7 +19,7 @@ fn verifier_metadata() -> serde_json::Value {
             "required": true
         },
         "featureFlags": {
-            "trustEcosystemsEnabled": true,
+            "ecosystemsEnabled": true,
             "accessCertificateProvisioningEnabled": false
         },
         "trustCollections": [],

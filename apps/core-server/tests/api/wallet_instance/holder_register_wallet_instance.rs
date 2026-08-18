@@ -1,4 +1,5 @@
 use one_core::model::instance::InstanceStatus;
+use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -22,7 +23,7 @@ pub(super) fn metadata_without_user_auth() -> serde_json::Value {
             "required": true
         },
         "featureFlags": {
-            "trustEcosystemsEnabled": true,
+            "ecosystemsEnabled": true,
             "refreshCredentialBatchEnabled": true
         },
         "trustCollections": []
@@ -38,7 +39,7 @@ fn metadata_with_user_auth() -> serde_json::Value {
             "required": true
         },
         "featureFlags": {
-            "trustEcosystemsEnabled": true,
+            "ecosystemsEnabled": true,
             "refreshCredentialBatchEnabled": true
         },
         "trustCollections": [],
@@ -65,7 +66,7 @@ fn metadata_with_optional_user_auth() -> serde_json::Value {
             "required": true
         },
         "featureFlags": {
-            "trustEcosystemsEnabled": true,
+            "ecosystemsEnabled": true,
             "refreshCredentialBatchEnabled": true
         },
         "trustCollections": [],
@@ -641,4 +642,75 @@ async fn holder_register_wallet_unit_succeeds_when_existing_wallet_unit_failed()
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
     assert_eq!(resp["status"], "ACTIVE");
+}
+
+/// The metadata this core serves must be understood by the client this core
+/// uses to consume it, so serve the real response of the wallet provider
+/// endpoint.
+#[tokio::test]
+async fn holder_register_wallet_unit_accepts_metadata_served_by_this_core() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    // an organisation with a selected ecosystem, so the metadata advertises one
+    context
+        .db
+        .organisations
+        .update(
+            &org.id,
+            UpdateOrganisationRequest {
+                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let metadata = context
+        .api
+        .ssi
+        .get_wallet_provider_metadata("PROCIVIS_ONE")
+        .await
+        .json_value()
+        .await;
+    assert_eq!(metadata["ecosystems"].as_array().unwrap().len(), 1);
+
+    let mock_server = MockServer::builder().start().await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(metadata))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/ssi/instance/v1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": Uuid::new_v4(),
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .holder_wallet_instances
+        .holder_register(TestHolderRegisterRequest {
+            organization_id: Some(org.id),
+            wallet_provider_url: Some(format!(
+                "{}/ssi/wallet-provider/v1/PROCIVIS_ONE",
+                mock_server.uri()
+            )),
+            key_type: Some("ECDSA".to_string()),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
 }
