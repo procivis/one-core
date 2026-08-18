@@ -4,13 +4,10 @@ use std::str::FromStr;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
-use one_core::model::history::{
-    HistoryAction, HistoryEntityType, HistoryMetadata, TrustResolutionMetadata,
-    TrustResolutionResult,
-};
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofStateEnum, UpdateProofRequest};
 use serde_json::json;
 use serde_json_path::JsonPath;
 use similar_asserts::assert_eq;
@@ -1058,6 +1055,17 @@ async fn test_get_proof_with_credentials() {
             None,
         )
         .await;
+    context
+        .db
+        .proofs
+        .update(
+            &proof.id,
+            UpdateProofRequest {
+                ecosystem: Some(Some("EUDI".into())),
+                ..Default::default()
+            },
+        )
+        .await;
 
     context
         .db
@@ -1065,24 +1073,6 @@ async fn test_get_proof_with_credentials() {
         .set_proof_claims(
             &proof.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
-        )
-        .await;
-    context
-        .db
-        .histories
-        .create(
-            &organisation,
-            TestingHistoryParams {
-                action: Some(HistoryAction::TrustResolved),
-                created_date: Some(get_dummy_date()),
-                entity_id: Some(proof.id.into()),
-                entity_type: Some(HistoryEntityType::Proof),
-                target: Some(credential.id.to_string()),
-                metadata: Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                    result: TrustResolutionResult::Trusted,
-                })),
-                ..Default::default()
-            },
         )
         .await;
 
@@ -1287,24 +1277,6 @@ async fn test_get_proof_as_holder_success() {
             None,
         )
         .await;
-    context
-        .db
-        .histories
-        .create(
-            &organisation,
-            TestingHistoryParams {
-                action: Some(HistoryAction::TrustResolved),
-                created_date: Some(get_dummy_date()),
-                entity_id: Some(proof.id.into()),
-                entity_type: Some(HistoryEntityType::Proof),
-                target: None,
-                metadata: Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                    result: TrustResolutionResult::Trusted,
-                })),
-                ..Default::default()
-            },
-        )
-        .await;
 
     // WHEN
     let resp = context.api.proofs.get(proof.id).await;
@@ -1316,7 +1288,7 @@ async fn test_get_proof_as_holder_success() {
     resp["organisationId"].assert_eq(&organisation.id);
     assert!(resp["schema"].as_object().is_none());
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 0);
-    resp["trustInformation"]["result"].assert_eq(&"TRUSTED".to_string());
+    resp["trustInformation"]["result"].assert_eq(&"UNTRUSTED".to_string());
 }
 
 #[tokio::test]

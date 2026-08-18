@@ -50,7 +50,6 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
-use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::relation::Related;
@@ -555,21 +554,6 @@ impl OID4VCIFinal1_0Service {
             let key_source = wua
                 .public_key_source(None)
                 .error_while("extracting WUA public key")?;
-
-            let organisation = schema.organisation.as_ref().await?;
-            let trust = self
-                .resolve_wallet_provider_trust(
-                    key_source.clone(),
-                    &organisation,
-                    credential.id,
-                    &schema.name,
-                )
-                .await?;
-            if organisation.configuration.enforce_ecosystem_as_issuer
-                && trust != TrustResolutionResult::Trusted
-            {
-                return Err(OpenID4VCIError::CredentialRequestDenied.into());
-            }
 
             if let Some(ecosystem_id) = &interaction.ecosystem {
                 let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
@@ -1238,20 +1222,6 @@ impl OID4VCIFinal1_0Service {
         verify_wia_signature(&wallet_instance_attestation, &verifier).await?;
 
         let key_source = wia_key_source(&wallet_instance_attestation)?;
-        let organisation = credential_schema.organisation.as_ref().await?;
-        let trust = self
-            .resolve_wallet_provider_trust(
-                key_source.clone(),
-                &organisation,
-                credential.id,
-                &credential_schema.name,
-            )
-            .await?;
-        if organisation.configuration.enforce_ecosystem_as_issuer
-            && trust != TrustResolutionResult::Trusted
-        {
-            return Err(OpenID4VCIError::InvalidClient.into());
-        }
 
         let interaction = self
             .interaction_repository

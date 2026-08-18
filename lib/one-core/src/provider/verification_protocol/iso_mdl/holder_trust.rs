@@ -4,7 +4,6 @@ use coset::iana;
 use shared_types::{EcosystemId, ProofId};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{VerifierInfoAttestation, VerifierInfoAttestationFormat};
-use time::Duration;
 
 use super::common::{DeviceRequest, ItemsRequest};
 use super::mapper::device_request_to_dcql_query;
@@ -16,7 +15,6 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::proto::cose::CoseSign1;
-use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName};
 use crate::provider::credential_formatter::mdoc_formatter::try_verify_detached_signature_with_provider;
 use crate::provider::credential_formatter::mdoc_formatter::util::{EmbeddedCbor, cose_header};
@@ -39,7 +37,6 @@ pub(super) async fn resolve_verifier_and_trust(
     interaction: &Interaction,
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
-    holder_trust_resolver: &dyn HolderTrustResolver,
     certificate_validator: &dyn CertificateValidator,
     identifier_creator: &dyn IdentifierCreator,
     verify_fn: &VerificationFn,
@@ -53,18 +50,6 @@ pub(super) async fn resolve_verifier_and_trust(
         verify_fn,
     )
     .await?;
-
-    holder_trust_resolver
-        .resolve_verification_trust(
-            verifier_details.as_ref(),
-            proof_id,
-            interaction.organisation.id(),
-            &dcql_query,
-            &verifier_info,
-            Duration::default(),
-        )
-        .await
-        .error_while("resolving trust")?;
 
     let ecosystem = ecosystem_autodetection(
         interaction.id,

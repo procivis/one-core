@@ -29,15 +29,14 @@ use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::holder_trust_resolver::MockHolderTrustResolver;
 use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
-use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, MockPublicKeyAgreementHandle, MockSignaturePublicKeyHandle,
@@ -80,9 +79,8 @@ struct TestInputs {
     pub http_client: MockHttpClient,
     pub interaction_repository: MockInteractionRepository,
     pub wrp_validator: MockWRPValidator,
-    pub trust_information_provider: MockTrustInformationProvider,
+    pub ecosystem_provider: MockEcosystemDirectory,
     pub transaction_data_provider: MockTransactionDataProvider,
-    pub holder_trust_resolver: MockHolderTrustResolver,
     pub params: Option<serde_json::Value>,
 }
 
@@ -100,9 +98,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         Arc::new(MockCredentialSchemaRepository::default()),
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.wrp_validator),
-        Arc::new(inputs.trust_information_provider),
+        Arc::new(inputs.ecosystem_provider),
         Arc::new(inputs.transaction_data_provider),
-        Arc::new(inputs.holder_trust_resolver),
         Arc::new(inputs.http_client),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(generic_config().core),
@@ -119,8 +116,7 @@ fn generic_params() -> serde_json::Value {
             "supportedClientIdSchemes": [
                 ClientIdPrefix::RedirectUri,
                 ClientIdPrefix::VerifierAttestation
-            ],
-            "trustEcosystemsLeewaySeconds": 45
+            ]
         },
         "verifier": {
             "interactionExpiresInSeconds": 1000,
@@ -1352,28 +1348,14 @@ fn unsigned_request_query(client_id: &str) -> String {
 
 #[tokio::test]
 async fn test_request_from_openid4vp_query_unsigned_request() {
-    let mut holder_trust_resolver = MockHolderTrustResolver::new();
-    holder_trust_resolver
-        .expect_resolve_verification_trust()
-        .once()
-        .returning(|verifier_details, _, _, _, verifier_info, _| {
-            // an unsigned request cannot carry verifier authentication data
-            assert!(verifier_details.is_none());
-            assert!(verifier_info.is_empty());
-            Ok(())
-        });
-
     let protocol = setup_protocol(TestInputs {
-        holder_trust_resolver,
         ..Default::default()
     });
 
     let (request, verifier_details) = protocol
-        .request_from_openid4vp_query(
-            &unsigned_request_query("redirect_uri:https://verifier.example.com/response"),
-            Uuid::new_v4().into(),
-            dummy_organisation(None).id,
-        )
+        .request_from_openid4vp_query(&unsigned_request_query(
+            "redirect_uri:https://verifier.example.com/response",
+        ))
         .await
         .unwrap();
 
@@ -1396,22 +1378,14 @@ async fn test_request_from_openid4vp_query_unsigned_request() {
 
 #[tokio::test]
 async fn test_request_from_openid4vp_query_unsigned_request_fails_for_signed_only_scheme() {
-    let mut holder_trust_resolver = MockHolderTrustResolver::new();
-    holder_trust_resolver
-        .expect_resolve_verification_trust()
-        .never();
-
     let protocol = setup_protocol(TestInputs {
-        holder_trust_resolver,
         ..Default::default()
     });
 
     let result = protocol
-        .request_from_openid4vp_query(
-            &unsigned_request_query("verifier_attestation:https://verifier.example.com"),
-            Uuid::new_v4().into(),
-            dummy_organisation(None).id,
-        )
+        .request_from_openid4vp_query(&unsigned_request_query(
+            "verifier_attestation:https://verifier.example.com",
+        ))
         .await;
 
     assert!(matches!(
@@ -1427,11 +1401,7 @@ async fn test_request_from_openid4vp_query_unsigned_request_fails_for_unsupporte
 
     // `x509_san_dns` is not in `holder.supportedClientIdSchemes` of the test params
     let result = protocol
-        .request_from_openid4vp_query(
-            &unsigned_request_query("x509_san_dns:verifier.example.com"),
-            Uuid::new_v4().into(),
-            dummy_organisation(None).id,
-        )
+        .request_from_openid4vp_query(&unsigned_request_query("x509_san_dns:verifier.example.com"))
         .await;
 
     assert!(matches!(

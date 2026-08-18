@@ -14,7 +14,7 @@ use crate::model::credential::ExactCredentialFilterColumn;
 use crate::model::credential_schema::{
     KeyStorageSecurity, LayoutType, TransactionCode, TransactionCodeType,
 };
-use crate::proto::trust_information::dto::TrustInformation;
+use crate::model::history::TrustResolutionResult;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
@@ -85,6 +85,14 @@ pub struct CredentialDetailResponseDTO<T> {
     pub parent_id: Option<CredentialId>,
     pub subscriber_information: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustInformation {
+    pub received_at: OffsetDateTime,
+    pub name: Option<String>,
+    pub result: TrustResolutionResult,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

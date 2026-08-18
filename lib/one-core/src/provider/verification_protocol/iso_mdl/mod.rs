@@ -33,10 +33,10 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
-use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{
@@ -72,7 +72,7 @@ pub(crate) struct IsoMdl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    trust_information_provider: Arc<dyn TrustInformationProvider>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
     wrp_validator: Arc<dyn WRPValidator>,
     ble: Option<BleWaiter>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
@@ -89,7 +89,7 @@ impl IsoMdl {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        trust_information_provider: Arc<dyn TrustInformationProvider>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
         wrp_validator: Arc<dyn WRPValidator>,
         ble: Option<BleWaiter>,
         nfc_hce: Option<Arc<dyn NfcHce>>,
@@ -103,7 +103,7 @@ impl IsoMdl {
             key_algorithm_provider,
             credential_schema_repository,
             credential_formatter_provider,
-            trust_information_provider,
+            ecosystem_provider,
             wrp_validator,
             ble,
             nfc_hce,
@@ -330,7 +330,7 @@ impl VerificationProtocol for IsoMdl {
             &*self.credential_repository,
             &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
-            &*self.trust_information_provider,
+            &*self.ecosystem_provider,
             &*self.wrp_validator,
             &self.config,
             None,

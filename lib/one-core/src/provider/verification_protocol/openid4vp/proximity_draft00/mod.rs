@@ -45,11 +45,11 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
-use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{CredentialToPresent, FormatPresentationCtx};
@@ -125,7 +125,7 @@ pub struct OpenID4VPProximityDraft00 {
     certificate_validator: Arc<dyn CertificateValidator>,
     wrp_validator: Arc<dyn WRPValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
-    trust_information_provider: Arc<dyn TrustInformationProvider>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
     config: Arc<CoreConfig>,
     params: OpenID4VPProximityDraft00Params,
 }
@@ -149,7 +149,7 @@ impl OpenID4VPProximityDraft00 {
         certificate_validator: Arc<dyn CertificateValidator>,
         wrp_validator: Arc<dyn WRPValidator>,
         identifier_creator: Arc<dyn IdentifierCreator>,
-        trust_information_provider: Arc<dyn TrustInformationProvider>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
         ble: Option<BleWaiter>,
     ) -> Result<Self, InitializationError> {
         let params: OpenID4VPProximityDraft00Params =
@@ -193,7 +193,7 @@ impl OpenID4VPProximityDraft00 {
             certificate_validator,
             wrp_validator,
             identifier_creator,
-            trust_information_provider,
+            ecosystem_provider,
             config,
             params,
         })
@@ -613,7 +613,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             &*self.credential_repository,
             &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
-            &*self.trust_information_provider,
+            &*self.ecosystem_provider,
             &*self.wrp_validator,
             &self.config,
             None,

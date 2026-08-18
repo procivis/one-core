@@ -135,7 +135,6 @@ issuanceProtocol:
         urlScheme: swiyu
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
-        trustEcosystemLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
@@ -152,7 +151,6 @@ issuanceProtocol:
         urlScheme: openid-credential-offer
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
-        trustEcosystemLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
@@ -171,7 +169,6 @@ issuanceProtocol:
         urlScheme: haip-vci
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
-        trustEcosystemLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds

@@ -6,6 +6,7 @@ use standardized_types::openid4vci::CredentialIssuerMetadata;
 use standardized_types::openid4vp::VerifierInfoAttestation;
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use strum::Display;
+use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::proto::jwt::model::DecomposedJwt;
@@ -71,6 +72,11 @@ pub enum SchemaFilter {
     ProofSchema(ProofSchemaId),
 }
 
-pub enum TrustDetail {
+pub struct TrustDetail {
+    pub received_at: OffsetDateTime,
+    pub info: TrustDetailInfo,
+}
+
+pub enum TrustDetailInfo {
     Eudi(EudiTrustInformationResponseDTO),
 }

@@ -5,7 +5,7 @@ use mockall::Sequence;
 use mockall::predicate::*;
 use rstest::rstest;
 use secrecy::SecretSlice;
-use shared_types::{EntityId, InteractionId, ProofId, TransactionDataType};
+use shared_types::{InteractionId, ProofId, TransactionDataType};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::AuthorizationRequest;
@@ -41,7 +41,6 @@ use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::holder_trust_resolver::MockHolderTrustResolver;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::notification_scheduler::MockNotificationScheduler;
@@ -49,8 +48,6 @@ use crate::proto::openid4vp_proof_validator::MockOpenId4VpProofValidator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::proto::trust_information::MockTrustInformationProvider;
-use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -116,9 +113,7 @@ struct Repositories {
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
     pub notification_scheduler: MockNotificationScheduler,
-    pub trust_information_provider: MockTrustInformationProvider,
     pub transaction_data_provider: MockTransactionDataProvider,
-    pub holder_trust_resolver: MockHolderTrustResolver,
     pub ecosystem_provider: MockEcosystemDirectory,
 }
 
@@ -155,9 +150,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(NoTransactionManager),
         Arc::new(repositories.proof_validator),
         Arc::new(repositories.notification_scheduler),
-        Arc::new(repositories.trust_information_provider),
         Arc::new(repositories.transaction_data_provider),
-        Arc::new(repositories.holder_trust_resolver),
         Arc::new(repositories.ecosystem_provider),
     )
 }
@@ -451,7 +444,6 @@ async fn test_get_proof_exists() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -675,7 +667,6 @@ async fn test_get_proof_with_array_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -936,7 +927,6 @@ async fn test_get_proof_with_array_in_object_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -1212,7 +1202,6 @@ async fn test_get_proof_with_object_array_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -1471,7 +1460,6 @@ async fn test_get_proof_with_array() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -1740,7 +1728,6 @@ async fn test_get_proof_with_array_in_object() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -2025,7 +2012,6 @@ async fn test_get_proof_with_object_array() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
@@ -4643,19 +4629,4 @@ fn mock_formatter_provider() -> MockCredentialFormatterProvider {
             Ok(Arc::new(formatter))
         });
     credential_formatter_provider
-}
-
-fn mock_trust_information_provider(
-    proof: &Proof,
-    trust_information: Vec<TrustInformation>,
-) -> MockTrustInformationProvider {
-    let mut trust_information_provider = MockTrustInformationProvider::default();
-    let entity_id: EntityId = proof.id.into();
-
-    trust_information_provider
-        .expect_get_trust_information()
-        .times(1)
-        .with(eq(entity_id))
-        .returning(move |_| Ok(trust_information.clone()));
-    trust_information_provider
 }

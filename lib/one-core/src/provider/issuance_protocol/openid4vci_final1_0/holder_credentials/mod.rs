@@ -28,10 +28,7 @@ use crate::model::credential_schema::{
     CredentialSchema, LayoutType, UpdateCredentialSchemaRequest,
 };
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
-use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    TrustResolutionMetadata, WalletRelyingPartyMetadata,
-};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
@@ -40,7 +37,6 @@ use crate::model::relation::Related;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::session_provider::SessionExt;
-use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::CredentialWithBlob;
@@ -75,8 +71,6 @@ impl OpenID4VCIFinal1_0 {
                 IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
             })?;
 
-        let mut trust_resolution = interaction_data.trust_resolution;
-
         let mut credentials = vec![];
         for issued_credential in issuer_response.credentials {
             let credential = self
@@ -97,7 +91,7 @@ impl OpenID4VCIFinal1_0 {
 
         validate_batch_consistency(&credentials).await?;
 
-        let (mut main_credential, issuer_cert, issuer_serialized) = if credentials.len() > 1 {
+        let mut main_credential = if credentials.len() > 1 {
             let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
             ))?;
@@ -128,27 +122,15 @@ impl OpenID4VCIFinal1_0 {
                 ..batch_item.credential.clone()
             };
             remap_claim_credential_ids(&mut credential).await?;
-            let issuer_cert = match &batch_item.credential.issuer_certificate {
-                Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
-                None => None,
-            };
-            let issuer_serialized = batch_item.serialized.clone();
-            let batch_parent = CredentialWithBlob {
+
+            CredentialWithBlob {
                 credential,
                 serialized: None,
-            };
-
-            (batch_parent, issuer_cert, issuer_serialized)
+            }
         } else {
-            let result = credentials.pop().ok_or(IssuanceProtocolError::Failed(
+            credentials.pop().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
-            ))?;
-            let cert = match &result.credential.issuer_certificate {
-                Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
-                None => None,
-            };
-            let serialized = result.serialized.clone();
-            (result, cert, serialized)
+            ))?
         };
 
         if let Some(disclosure_policy) = &interaction_data.disclosure_policy {
@@ -172,80 +154,6 @@ impl OpenID4VCIFinal1_0 {
                 self.change_to_batch_item(&mut c.credential, main_credential_id, &schema);
             });
         }
-
-        if interaction_data.trust_mode != TrustMode::Disabled {
-            trust_resolution = self
-                .resolve_credential_issuer_trust(
-                    &main_credential.credential,
-                    issuer_cert.as_ref(),
-                    issuer_serialized.as_ref(),
-                    &schema,
-                    formatter.as_ref(),
-                    trust_resolution,
-                    organisation.id,
-                )
-                .await;
-        }
-
-        if let Some(access_certificate) = &interaction_data.access_certificate {
-            self.store_trust_history_event(
-                HistoryAction::WrpAcReceived,
-                main_credential_id,
-                organisation.id,
-                Some(access_certificate.to_owned()),
-                None,
-            )
-            .await?;
-        }
-
-        if let (Some(registration_certificate), Some(relying_party_name)) = (
-            &interaction_data.registration_certificate,
-            &interaction_data.relying_party_name,
-        ) {
-            self.store_trust_history_event(
-                HistoryAction::WrpRcReceived,
-                main_credential_id,
-                organisation.id,
-                Some(registration_certificate.to_owned()),
-                Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        name: relying_party_name.to_string(),
-                        ..Default::default()
-                    },
-                )),
-            )
-            .await?;
-        }
-
-        if let (Some(national_registry_data), Some(relying_party_name)) = (
-            &interaction_data.national_registry_data,
-            &interaction_data.relying_party_name,
-        ) {
-            self.store_trust_history_event(
-                HistoryAction::WrpNrReceived,
-                main_credential_id,
-                organisation.id,
-                Some(national_registry_data.to_owned()),
-                Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        name: relying_party_name.to_string(),
-                        ..Default::default()
-                    },
-                )),
-            )
-            .await?;
-        }
-
-        self.store_trust_history_event(
-            HistoryAction::TrustResolved,
-            main_credential_id,
-            organisation.id,
-            None,
-            Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                result: trust_resolution,
-            })),
-        )
-        .await?;
 
         // Add main credential to the front so that the batch_parent already exists when the batch_items are created.
         Ok(IssuanceAcceptResponse {
@@ -324,13 +232,7 @@ impl OpenID4VCIFinal1_0 {
         interaction: &Interaction,
     ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
         if let Some(credential) = updated_credential {
-            self.process_mso_refresh(
-                &credential,
-                response,
-                organisation.id,
-                interaction_data.trust_mode == TrustMode::TrustMandatory,
-            )
-            .await?;
+            self.process_mso_refresh(&credential, response).await?;
 
             Ok(vec![credential.id])
         } else {
@@ -349,8 +251,6 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential: &Credential,
         mut response: SubmitIssuerResponse,
-        organisation_id: OrganisationId,
-        check_trust: bool,
     ) -> Result<(), IssuanceProtocolError> {
         if response.credentials.len() != 1 {
             return Err(IssuanceProtocolError::Failed(
@@ -362,7 +262,7 @@ impl OpenID4VCIFinal1_0 {
                 .credentials
                 .pop()
                 .ok_or(IssuanceProtocolError::Failed(
-                    "Missing credential schema".to_string(),
+                    "Missing issued credential".to_string(),
                 ))?;
 
         let schema = credential.schema.as_ref().await?;
@@ -371,32 +271,10 @@ impl OpenID4VCIFinal1_0 {
             .formatter_provider
             .get_credential_formatter(&credential_schema_format)?;
 
-        let extracted = formatter
+        formatter
             .extract_credentials(&updated_credential, Some(&schema), self.verification_fn())
             .await
             .error_while("extracting credential")?;
-
-        let issuer_certificate =
-            if let IdentifierDetails::Certificate(certificate) = extracted.issuer {
-                Some(certificate)
-            } else {
-                None
-            };
-
-        if check_trust {
-            self.wrp_validator
-                .validate_credential_issuer(
-                    issuer_certificate
-                        .as_ref()
-                        .map(|certificate| certificate.chain.as_str()),
-                    &schema,
-                    None,
-                    Default::default(),
-                    organisation_id,
-                )
-                .await
-                .error_while("validating credential issuer trust")?;
-        }
 
         let db_blob_storage = self
             .blob_storage_provider
@@ -508,18 +386,6 @@ impl OpenID4VCIFinal1_0 {
             &parent_format,
             &self.config.global_settings.default_language,
             false,
-        )
-        .await?;
-
-        self.validate_batch_refresh_trust(
-            interaction_data,
-            organisation,
-            interaction,
-            &schema,
-            batch_parent.id,
-            &batch_credential.credential,
-            batch_credential.serialized.as_ref(),
-            formatter.as_ref(),
         )
         .await?;
 

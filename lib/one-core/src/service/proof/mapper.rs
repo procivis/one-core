@@ -22,7 +22,7 @@ use crate::model::certificate::Certificate;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::history::History;
+use crate::model::history::{History, TrustResolutionResult};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -32,8 +32,9 @@ use crate::model::list_filter::{
 };
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
+use crate::provider::ecosystem::model::TrustDetailInfo;
 use crate::provider::verification_protocol::openid4vp::model::{
     CommonVerifierInteractionContent, TransactionDataRequest,
 };
@@ -41,6 +42,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    TrustInformation,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
@@ -194,7 +196,7 @@ pub(super) async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
-    trust_information: Vec<TrustInformation>,
+    trust_information: Option<TrustInformation>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
@@ -221,15 +223,11 @@ pub(super) async fn get_verifier_proof_detail(
     }
 
     for (credential_schema_id, credential) in credential_for_schema_model {
-        let credential_trust_information = trust_information
-            .iter()
-            .find(|info| info.credential_id == Some(credential.id))
-            .cloned();
         let credential_detail = credential_detail_response_from_model(
             credential,
             config,
             CredentialAttestationBlobs::default(),
-            credential_trust_information,
+            trust_information.clone(),
             None,
             credential_repository,
             formatter_provider,
@@ -563,7 +561,7 @@ pub(super) async fn get_holder_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
-    trust_information: Vec<TrustInformation>,
+    trust_information: Option<TrustInformation>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
@@ -673,7 +671,7 @@ pub(super) async fn get_holder_proof_detail(
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
-        trust_information: trust_information.into_iter().next(),
+        trust_information,
         subscriber_information,
         transaction_data: vec![],
         ecosystem: list_item_response.ecosystem,
@@ -889,4 +887,39 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
             & completed_date_after
             & completed_date_before
     }
+}
+
+pub(super) async fn get_proof_trust_information(
+    proof: &Proof,
+    ecosystem_provider: &dyn EcosystemDirectory,
+) -> Result<Option<TrustInformation>, ProofServiceError> {
+    Ok(match (proof.role, &proof.ecosystem) {
+        (ProofRole::Holder, None) => Some(TrustInformation {
+            received_at: proof.requested_date.unwrap_or(proof.last_modified),
+            name: None,
+            result: TrustResolutionResult::Untrusted,
+        }),
+        (ProofRole::Holder, Some(ecosystem_id)) => {
+            let ecosystem = ecosystem_provider.get(ecosystem_id)?;
+            let details = ecosystem
+                .verifier_trust_details(&proof.id)
+                .await
+                .error_while("getting trust detail")?;
+
+            let name = match details.info {
+                TrustDetailInfo::Eudi(info) => info.name,
+            };
+            Some(TrustInformation {
+                received_at: details.received_at,
+                name: Some(name),
+                result: TrustResolutionResult::Trusted,
+            })
+        }
+        (ProofRole::Verifier, None) => None,
+        (ProofRole::Verifier, Some(_)) => Some(TrustInformation {
+            received_at: proof.completed_date.unwrap_or(proof.last_modified),
+            name: None,
+            result: TrustResolutionResult::Trusted,
+        }),
+    })
 }

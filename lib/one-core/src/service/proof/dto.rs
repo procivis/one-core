@@ -11,12 +11,11 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn};
-use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::transaction_data::TransactionDataDisplayValue;
 use crate::provider::verification_protocol::openid4vp::model::CommonVerifierInteractionContent;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO, TrustInformation,
 };
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;

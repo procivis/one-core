@@ -36,15 +36,10 @@ pub(crate) struct Params {
     pub common: CommonParams,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderParams {
     pub supported_client_id_schemes: Vec<ClientIdPrefix>,
-
-    #[serde(default)]
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub trust_ecosystems_leeway_seconds: Duration,
 }
 
 #[serde_as]

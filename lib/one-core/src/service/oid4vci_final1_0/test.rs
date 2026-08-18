@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -7,7 +6,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialId, DidId, InteractionId};
+use shared_types::{CredentialFormat, DidId, InteractionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::oauth2::TokenType;
@@ -26,10 +25,6 @@ use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, Layo
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::Did;
-use crate::model::history::{
-    HistoryAction, HistoryEntityType, HistoryMetadata, TrustResolutionMetadata,
-    TrustResolutionResult,
-};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
@@ -41,12 +36,10 @@ use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRe
 use crate::proto::session_provider::MockSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
-use crate::proto::wrp_validator::MockWRPValidator;
-use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{FormatterCapabilities, PublicKeySource};
+use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -63,7 +56,6 @@ use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::trust_list_subscriber::{TrustEntityMetadata, TrustEntityResponse};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
@@ -95,8 +87,6 @@ struct Mocks {
     pub identifier_creator: MockIdentifierCreator,
     pub credential_issuer_metadata_cache: MockCredentialIssuerMetadataFetcher,
     pub formatter_provider: MockCredentialFormatterProvider,
-    pub wrp_validator: MockWRPValidator,
-    pub history_repository: MockHistoryRepository,
     pub ecosystem_provider: MockEcosystemDirectory,
 }
 
@@ -119,8 +109,6 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.identifier_creator),
         Arc::new(mocks.credential_issuer_metadata_cache),
         Arc::new(mocks.formatter_provider),
-        Arc::new(mocks.wrp_validator),
-        Arc::new(mocks.history_repository),
         Arc::new(mocks.ecosystem_provider),
     )
 }
@@ -144,7 +132,6 @@ pub struct ProtocolMocks {
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
     pub holder_wallet_unit_repository: MockInstanceRepository,
     pub certificate_validator: MockCertificateValidator,
-    pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,
     pub session_provider: MockSessionProvider,
     pub interaction_repository: MockInteractionRepository,
@@ -179,13 +166,11 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
             },
             "oauthAttestationLeewaySeconds": 0,
             "keyAttestationLeewaySeconds": 0,
-            "trustEcosystemLeewaySeconds": 0,
         }),
         "configId".to_string(),
         Arc::new(protocol_mocks.holder_wallet_unit_proto),
         Arc::new(protocol_mocks.holder_wallet_unit_repository),
         Arc::new(protocol_mocks.certificate_validator),
-        Arc::new(protocol_mocks.wrp_validator),
         Arc::new(protocol_mocks.history_repository),
         Arc::new(protocol_mocks.session_provider),
         Arc::new(protocol_mocks.interaction_repository),
@@ -3004,99 +2989,4 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
             OpenID4VCIError::InvalidRequest
         ))
     ));
-}
-
-fn wallet_provider_key_source() -> PublicKeySource<'static> {
-    PublicKeySource::Jwk {
-        jwk: Cow::Owned(PublicJwk::Ec(PublicJwkEc {
-            alg: None,
-            r#use: None,
-            kid: None,
-            crv: "P-256".to_string(),
-            x: "x".to_string(),
-            y: Some("y".to_string()),
-        })),
-    }
-}
-
-async fn resolve_wallet_provider_trust_case(
-    validator_result: Result<Option<TrustEntityResponse>, WRPValidatorError>,
-    expected: TrustResolutionResult,
-) {
-    let organisation = dummy_organisation(None);
-    let organisation_id = organisation.id;
-    let credential_id: CredentialId = Uuid::new_v4().into();
-
-    let mut wrp_validator = MockWRPValidator::default();
-    wrp_validator
-        .expect_validate_wallet_provider()
-        .once()
-        .withf(move |_, id| {
-            assert_eq!(*id, organisation_id);
-            true
-        })
-        .return_once(|_, _| validator_result);
-
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(move |history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            assert_eq!(history.entity_type, HistoryEntityType::Credential);
-            assert_eq!(history.entity_id, Some(credential_id.into()));
-            assert_eq!(history.organisation_id, Some(organisation_id));
-            assert_eq!(history.name, "schema");
-            let Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata { result })) =
-                &history.metadata
-            else {
-                panic!("expected trust resolution metadata: {:?}", history.metadata);
-            };
-            assert_eq!(*result, expected);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
-    let service = setup_service(Mocks {
-        wrp_validator,
-        history_repository,
-        ..Default::default()
-    });
-
-    let result = service
-        .resolve_wallet_provider_trust(
-            wallet_provider_key_source(),
-            &organisation,
-            credential_id,
-            "schema",
-        )
-        .await
-        .unwrap();
-    assert_eq!(result, expected);
-}
-
-#[tokio::test]
-async fn test_resolve_wallet_provider_trust_trusted() {
-    resolve_wallet_provider_trust_case(
-        Ok(Some(TrustEntityResponse {
-            derived_role: None,
-            metadata: TrustEntityMetadata::Lote(Default::default()),
-        })),
-        TrustResolutionResult::Trusted,
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn test_resolve_wallet_provider_trust_untrusted() {
-    resolve_wallet_provider_trust_case(Ok(None), TrustResolutionResult::Untrusted).await;
-}
-
-#[tokio::test]
-async fn test_resolve_wallet_provider_trust_unresolved() {
-    resolve_wallet_provider_trust_case(
-        Err(WRPValidatorError::IssuerNotTrusted),
-        TrustResolutionResult::Unknown,
-    )
-    .await;
 }

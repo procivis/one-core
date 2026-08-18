@@ -1,7 +1,7 @@
 use one_core::model::blob::BlobType;
 use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofStateEnum, UpdateProofRequest};
 use serde_json::json;
 use similar_asserts::assert_eq;
 
@@ -62,6 +62,17 @@ async fn test_get_proof_trust_detail_success() {
             None,
         )
         .await;
+    context
+        .db
+        .proofs
+        .update(
+            &proof.id,
+            UpdateProofRequest {
+                ecosystem: Some(Some("EUDI".into())),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let ac_blob = context
         .db
@@ -115,28 +126,32 @@ async fn test_get_proof_trust_detail_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+    let rp_data = json!({
+        "country": "CH",
+        "email": "tester@test.com",
+        "identifier": "NTRCH-ch.procivis",
+        "isPublicSector": false,
+        "name": "Sprint Review WRP",
+        "phone": "+4123456789",
+        "serviceDescription": [
+          {
+            "en": "This is a service description"
+          }
+        ],
+        "supervisoryAuthority": {
+          "email": "info@procivis.ch",
+          "phone": "+41 44 523 65 35",
+          "uri": "www.procivis.ch"
+        },
+        "website": "https://procivis.ch/"
+    });
+
     assert_eq!(
         resp,
         json!({
-          "eudiEcosystem": {
-            "country": "CH",
-            "email": "tester@test.com",
-            "identifier": "NTRCH-ch.procivis",
-            "isPublicSector": false,
-            "name": "Sprint Review WRP",
-            "phone": "+4123456789",
-            "serviceDescription": [
-              {
-                "en": "This is a service description"
-              }
-            ],
-            "supervisoryAuthority": {
-              "email": "info@procivis.ch",
-              "phone": "+41 44 523 65 35",
-              "uri": "www.procivis.ch"
-            },
-            "website": "https://procivis.ch/"
-          }
+            "ecosystem": "EUDI",
+            "eudiEcosystem": rp_data,
+            "verifier": rp_data
         })
     );
 }

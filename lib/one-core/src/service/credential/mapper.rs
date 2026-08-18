@@ -10,7 +10,8 @@ use super::dto::{
     CredentialFilterParamsDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
     CredentialSearchTypeDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
+    MdocMsoValidityResponseDTO, TrustInformation, WalletInstanceAttestationDTO,
+    WalletUnitAttestationDTO,
 };
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
@@ -27,6 +28,7 @@ use crate::model::credential::{
     ExactCredentialFilterColumn, SortableCredentialColumn,
 };
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::list_filter::{
@@ -35,9 +37,10 @@ use crate::model::list_filter::{
 };
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::localized_text::LocalizedTextField;
-use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
+use crate::provider::ecosystem::model::TrustDetailInfo;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential_schema::dto::{
@@ -933,4 +936,40 @@ pub(crate) async fn get_remaining_batch_item_count(
             None
         },
     )
+}
+
+pub(super) async fn get_credential_trust_information(
+    credential: &Credential,
+    ecosystem_provider: &dyn EcosystemDirectory,
+) -> Result<Option<TrustInformation>, CredentialServiceError> {
+    Ok(match (credential.role, &credential.ecosystem) {
+        (CredentialRole::Issuer, _) => None,
+        (CredentialRole::Holder, None) => Some(TrustInformation {
+            received_at: credential.issuance_date.unwrap_or(credential.last_modified),
+            name: None,
+            result: TrustResolutionResult::Untrusted,
+        }),
+        (CredentialRole::Holder, Some(ecosystem_id)) => {
+            let ecosystem = ecosystem_provider.get(ecosystem_id)?;
+            let details = ecosystem
+                .issuer_trust_details(&credential.id)
+                .await
+                .error_while("getting trust detail")?;
+
+            let name = match details.info {
+                TrustDetailInfo::Eudi(info) => info.name,
+            };
+            Some(TrustInformation {
+                received_at: details.received_at,
+                name: Some(name),
+                result: TrustResolutionResult::Trusted,
+            })
+        }
+        (CredentialRole::Verifier, None) => None,
+        (CredentialRole::Verifier, Some(_)) => Some(TrustInformation {
+            received_at: credential.created_date,
+            name: None,
+            result: TrustResolutionResult::Trusted,
+        }),
+    })
 }

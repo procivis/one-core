@@ -4,7 +4,9 @@ use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use proc_macros::provider_mock;
+use shared_types::i18n::I18nString;
 use shared_types::{CredentialId, EcosystemId, ProofId};
+use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use crate::model::credential::Credential;
 use crate::model::identifier::IdentifierFilterValue;
@@ -19,6 +21,7 @@ use crate::provider::ecosystem::model::{
 
 pub(crate) mod decorators;
 pub(crate) mod directory;
+pub mod dto;
 pub mod error;
 pub mod model;
 
@@ -57,6 +60,12 @@ pub trait Ecosystem: Provider + Send + Sync {
         &self,
         proof_id: &ProofId,
     ) -> Result<TrustDetail, EcosystemError>;
+
+    async fn get_trust_purpose(
+        &self,
+        proof_id: &ProofId,
+        query_id: &CredentialQueryId,
+    ) -> Result<Option<I18nString>, EcosystemError>;
 
     fn lifecycle_hook(&self) -> Result<(), EcosystemError>;
 }

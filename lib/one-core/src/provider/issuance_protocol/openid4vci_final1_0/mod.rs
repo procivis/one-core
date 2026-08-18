@@ -68,12 +68,10 @@ use crate::config::core_config::{
 };
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
-use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::did::KeyRole;
-use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
@@ -88,8 +86,6 @@ use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
-use crate::proto::wrp_validator::WRPValidator;
-use crate::proto::wrp_validator::model::{AccessCertificateResult, TrustMode};
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
@@ -133,7 +129,6 @@ pub mod service;
 mod test;
 #[cfg(test)]
 mod test_issuance;
-mod trust;
 pub mod validator;
 
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
@@ -163,7 +158,6 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
-    wrp_validator: Arc<dyn WRPValidator>,
     history_repository: Arc<dyn HistoryRepository>,
     session_provider: Arc<dyn SessionProvider>,
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -193,7 +187,6 @@ impl OpenID4VCIFinal1_0 {
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
-        wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
@@ -228,7 +221,6 @@ impl OpenID4VCIFinal1_0 {
             holder_wallet_unit_repository,
             key_security_level_provider,
             certificate_validator,
-            wrp_validator,
             history_repository,
             session_provider,
             interaction_repository,
@@ -259,7 +251,6 @@ impl OpenID4VCIFinal1_0 {
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
-        wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
@@ -287,7 +278,6 @@ impl OpenID4VCIFinal1_0 {
             holder_wallet_unit_repository,
             key_security_level_provider,
             certificate_validator,
-            wrp_validator,
             history_repository,
             session_provider,
             interaction_repository,
@@ -1057,34 +1047,15 @@ impl OpenID4VCIFinal1_0 {
     async fn fetch_issuer_metadata(
         &self,
         credential_issuer: &str,
-        organisation_id: OrganisationId,
-    ) -> Result<(IssuerMetadataRepresentation, TrustMode), IssuanceProtocolError> {
+        organisation: &Organisation,
+    ) -> Result<IssuerMetadataRepresentation, IssuanceProtocolError> {
         let credential_issuer_endpoint: Url = credential_issuer.parse().map_err(|_| {
             IssuanceProtocolError::InvalidRequest(format!(
                 "Invalid credential issuer url {credential_issuer}",
             ))
         })?;
 
-        let trust_mode = self
-            .wrp_validator
-            .wallet_trust_mode(organisation_id)
-            .await
-            .error_while("checking wallet trust mode")?;
-
-        let fetch_unsigned_metadata = async || {
-            Ok::<_, IssuanceProtocolError>(IssuerMetadataRepresentation::Unsigned(
-                fetch_metadata_json_with_fallback(
-                    self.metadata_cache.as_ref(),
-                    &credential_issuer_endpoint,
-                    "openid-credential-issuer",
-                )
-                .await?,
-            ))
-        };
-
-        if trust_mode == TrustMode::Disabled {
-            return Ok((fetch_unsigned_metadata().await?, trust_mode));
-        }
+        let trust_mandatory = organisation.configuration.enforce_ecosystem_as_holder;
 
         let jwt_result = fetch_metadata_jwt_with_fallback(
             self.metadata_cache.as_ref(),
@@ -1093,58 +1064,26 @@ impl OpenID4VCIFinal1_0 {
         )
         .await;
 
-        if trust_mode == TrustMode::TrustOptional
-            && let Err(err) = &jwt_result
-        {
+        if !trust_mandatory && let Err(err) = &jwt_result {
             tracing::warn!(
                 "Failed to fetch signed issuer metadata, falling back to unsigned metadata: {err}"
             );
-            return Ok((fetch_unsigned_metadata().await?, trust_mode));
+            return Ok(IssuerMetadataRepresentation::Unsigned(
+                fetch_metadata_json_with_fallback(
+                    self.metadata_cache.as_ref(),
+                    &credential_issuer_endpoint,
+                    "openid-credential-issuer",
+                )
+                .await?,
+            ));
         }
-        let jwt = jwt_result?;
 
+        let jwt = jwt_result?;
         self.validate_jwt(&jwt)
             .await
             .error_while("validating issuer metadata JWT")?;
 
-        let Some(x5c) = jwt.header.x5c.as_ref() else {
-            tracing::debug!("Issuer metadata signed via DID or JWK");
-
-            if trust_mode == TrustMode::TrustMandatory {
-                return Err(IssuanceProtocolError::Untrusted);
-            }
-
-            return Ok((IssuerMetadataRepresentation::Signed(jwt, None), trust_mode));
-        };
-
-        let access_certificate = if trust_mode != TrustMode::Disabled {
-            let pem_chain = x5c_into_pem_chain(x5c).error_while("converting x5c")?;
-            match self
-                .wrp_validator
-                .validate_access_certificate(&pem_chain, Some(organisation_id))
-                .await
-            {
-                Ok(result) => Some((result, pem_chain)),
-                // untrusted
-                Err(err) if err.error_code() == ErrorCode::BR_0410 => {
-                    if trust_mode == TrustMode::TrustMandatory {
-                        return Err(IssuanceProtocolError::Untrusted);
-                    }
-
-                    None
-                }
-                Err(err) => {
-                    return Err(err.error_while("validating access certificate").into());
-                }
-            }
-        } else {
-            None
-        };
-
-        Ok((
-            IssuerMetadataRepresentation::Signed(jwt, access_certificate),
-            trust_mode,
-        ))
+        Ok(IssuerMetadataRepresentation::Signed(jwt))
     }
 
     async fn validate_jwt<T: Debug>(
@@ -1180,7 +1119,6 @@ impl OpenID4VCIFinal1_0 {
         grants: Grants,
         configuration_ids: &[String],
         continue_issuance: Option<ContinueIssuanceDTO>,
-        trust_mode: TrustMode,
     ) -> Result<PrepareIssuanceSuccess, IssuanceProtocolError> {
         // We only support one credential at a time currently
         let configuration_id = configuration_ids.first().ok_or_else(|| {
@@ -1203,68 +1141,6 @@ impl OpenID4VCIFinal1_0 {
             self.key_security_level_provider.as_ref(),
             credential_config,
         )?;
-
-        let (
-            access_certificate,
-            registration_certificate,
-            national_registry_data,
-            relying_party_id,
-            relying_party_name,
-            national_registry_url,
-            trust_resolution,
-        ) = if trust_mode != TrustMode::Disabled
-            && let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
-                &issuer_metadata
-        {
-            match self
-                .validate_trust(
-                    credential_config,
-                    &jwt.payload.custom,
-                    organisation.id,
-                    &access_certificate.0,
-                )
-                .await
-            {
-                Ok(trust::TrustInfo {
-                    registration_certificate,
-                    national_registry_data,
-                    relying_party_name,
-                }) => (
-                    Some(access_certificate.1.to_owned()),
-                    registration_certificate,
-                    national_registry_data,
-                    Some(access_certificate.0.relying_party_id.clone()),
-                    Some(relying_party_name),
-                    access_certificate.0.registry_url.clone(),
-                    TrustResolutionResult::Trusted,
-                ),
-                Err(err) => {
-                    if trust_mode == TrustMode::TrustMandatory {
-                        return Err(err);
-                    } else {
-                        tracing::info!(%err, "Trust validation failure");
-                        (
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            TrustResolutionResult::Untrusted,
-                        )
-                    }
-                }
-            }
-        } else {
-            let trust_resolution = match trust_mode {
-                TrustMode::TrustMandatory => {
-                    return Err(IssuanceProtocolError::Untrusted);
-                }
-                TrustMode::TrustOptional => TrustResolutionResult::Untrusted,
-                TrustMode::Disabled => TrustResolutionResult::Unknown,
-            };
-            (None, None, None, None, None, None, trust_resolution)
-        };
 
         // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.2
         if let Some(authorization_server) = grants.authorization_server()
@@ -1336,14 +1212,6 @@ impl OpenID4VCIFinal1_0 {
             notification_id: None,
             protocol: self.config_id.to_owned(),
             format: credential_config.format.to_owned(),
-            access_certificate,
-            registration_certificate,
-            national_registry_url,
-            national_registry_data,
-            relying_party_name,
-            trust_resolution,
-            trust_mode,
-            relying_party_id,
             disclosure_policy: credential_config.disclosure_policy.clone(),
         };
         let data = serialize_interaction_data(&holder_data)?;
@@ -1579,8 +1447,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     ) -> Result<InvitationResponseEnum<'a>, IssuanceProtocolError> {
         let credential_offer = resolve_credential_offer(self.client.as_ref(), url).await?;
 
-        let (issuer_metadata, trust_mode) = self
-            .fetch_issuer_metadata(&credential_offer.credential_issuer, organisation.id)
+        let issuer_metadata = self
+            .fetch_issuer_metadata(&credential_offer.credential_issuer, &organisation)
             .await?;
 
         let AuthorizationMetadata {
@@ -1678,7 +1546,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 credential_offer.grants,
                 &credential_offer.credential_configuration_ids,
                 None,
-                trust_mode,
             )
             .await?;
 
@@ -2082,8 +1949,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
     ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
-        let (issuer_metadata, trust_mode) = self
-            .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, organisation.id)
+        let issuer_metadata = self
+            .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, &organisation)
             .await?;
 
         let AuthorizationMetadata {
@@ -2143,7 +2010,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 }),
                 &all_credential_configuration_ids,
                 Some(continue_issuance_dto),
-                trust_mode,
             )
             .await?;
 
@@ -2375,17 +2241,14 @@ async fn resolve_credential_offer(
 #[expect(clippy::large_enum_variant)]
 enum IssuerMetadataRepresentation {
     Unsigned(CredentialIssuerMetadata),
-    Signed(
-        DecomposedJwt<CredentialIssuerMetadata>,
-        Option<(AccessCertificateResult, String)>,
-    ),
+    Signed(DecomposedJwt<CredentialIssuerMetadata>),
 }
 
 impl IssuerMetadataRepresentation {
     fn metadata(&self) -> &CredentialIssuerMetadata {
         match &self {
             Self::Unsigned(metadata) => metadata,
-            Self::Signed(jwt, _) => &jwt.payload.custom,
+            Self::Signed(jwt) => &jwt.payload.custom,
         }
     }
 }

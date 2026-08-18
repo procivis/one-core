@@ -4,7 +4,7 @@ use one_core::model::claim::Claim;
 use one_core::model::identifier::{Identifier, IdentifierData};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
-use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofRole, ProofStateEnum, UpdateProofRequest};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::proof_repository::ProofRepository;
 use one_dto_mapper::convert_inner;
@@ -121,6 +121,13 @@ impl ProofsDB {
 
     pub async fn set_proof_claims(&self, id: &ProofId, claims: Vec<Claim>) {
         self.repository.set_proof_claims(id, claims).await.unwrap()
+    }
+
+    pub async fn update(&self, id: &ProofId, request: UpdateProofRequest) {
+        self.repository
+            .update_proof(id, request, None)
+            .await
+            .unwrap()
     }
 
     pub async fn get(&self, proof_id: &ProofId) -> Proof {

@@ -29,7 +29,6 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
@@ -135,7 +134,6 @@ pub(crate) async fn receive_mdl_request(
     proof_id: ProofId,
     qr_engagement: Option<EmbeddedCbor<DeviceEngagement>>,
     nfc_engagement: Option<NfcHceSession>,
-    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
@@ -248,7 +246,6 @@ pub(crate) async fn receive_mdl_request(
                         &interaction,
                         interaction_repository.as_ref(),
                         ecosystem_provider.as_ref(),
-                        holder_trust_resolver.as_ref(),
                         certificate_validator.as_ref(),
                         identifier_creator.as_ref(),
                         &verify_fn,

@@ -14,8 +14,8 @@ use super::dto::{
 };
 use super::error::ProofServiceError;
 use super::mapper::{
-    get_holder_proof_detail, get_verifier_proof_detail, interaction_data_from_proof,
-    list_item_from_proof, proof_from_create_request,
+    get_holder_proof_detail, get_proof_trust_information, get_verifier_proof_detail,
+    interaction_data_from_proof, list_item_from_proof, proof_from_create_request,
 };
 use super::validator::{
     throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
@@ -119,11 +119,8 @@ impl ProofService {
             .into_iter()
             .next();
 
-        let trust_information = self
-            .trust_information_provider
-            .get_trust_information(proof.id.into())
-            .await
-            .error_while("getting trust information")?;
+        let trust_information =
+            get_proof_trust_information(&proof, self.ecosystem_provider.as_ref()).await?;
 
         if proof.schema.is_some() {
             get_verifier_proof_detail(
@@ -976,7 +973,6 @@ impl ProofService {
             proof_id,
             qr_engagement,
             nfc_engagement,
-            self.holder_trust_resolver.clone(),
             self.ecosystem_provider.clone(),
             self.certificate_validator.clone(),
             self.identifier_creator.clone(),
@@ -1050,25 +1046,7 @@ impl ProofService {
             return Err(ProofServiceError::InvalidRole(proof.role));
         }
 
-        let Some(trust_details) = self
-            .trust_information_provider
-            .get_trust_detail(&id.into())
-            .await
-            .error_while("getting trust details")?
-        else {
-            return Ok(TrustInformationDetailResponseDTO {
-                ..Default::default()
-            });
-        };
-
-        let eudi_ecosystem = trust_details
-            .try_into()
-            .error_while("mapping trust information")?;
-
-        let mut result = TrustInformationDetailResponseDTO {
-            eudi_ecosystem: Some(eudi_ecosystem),
-            ..Default::default()
-        };
+        let mut result = TrustInformationDetailResponseDTO::default();
 
         if let Some(ecosystem_id) = proof.ecosystem {
             let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
@@ -1078,7 +1056,7 @@ impl ProofService {
                 .error_while("getting ecosystem trust detail")?;
 
             result.ecosystem = Some(ecosystem_id);
-            result.verifier = Some(verifier.into());
+            result.verifier = Some(verifier.info.into());
         }
 
         Ok(result)

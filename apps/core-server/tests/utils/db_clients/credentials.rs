@@ -171,7 +171,7 @@ impl CredentialsDB {
 
         Credential {
             expires_at: params.expires_at,
-            ecosystem: None,
+            ecosystem: params.ecosystem,
             id: credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

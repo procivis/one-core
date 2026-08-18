@@ -14,14 +14,11 @@ use standardized_types::openid4vci::{
     CredentialResponseEncryption, Grants, ProofTypeSupported, SigningAlgValue,
 };
 use time::{Duration, OffsetDateTime};
-use url::Url;
 
 use super::super::dto::ContinueIssuanceDTO;
 use super::super::model::{CommonParams, OpenID4VCRedirectUriParams, default_issuance_url_scheme};
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, CredentialSchema, LayoutProperties};
-use crate::model::history::TrustResolutionResult;
-use crate::proto::wrp_validator::model::TrustMode;
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
@@ -49,8 +46,6 @@ pub(crate) struct OpenID4VCIFinal1Params {
     pub oauth_attestation_leeway_seconds: Duration,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub key_attestation_leeway_seconds: Duration,
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub trust_ecosystem_leeway_seconds: Duration,
 
     #[serde(flatten)]
     pub common: CommonParams,
@@ -122,22 +117,6 @@ pub(crate) struct HolderInteractionData {
     /// OpenID4VCI credential format (of the offered credential)
     pub format: String,
 
-    #[serde(default)]
-    pub access_certificate: Option<String>,
-    #[serde(default)]
-    pub relying_party_id: Option<String>,
-    #[serde(default)]
-    pub national_registry_url: Option<Url>,
-    #[serde(default)]
-    pub registration_certificate: Option<String>,
-    #[serde(default)]
-    pub national_registry_data: Option<String>,
-    #[serde(default)]
-    pub relying_party_name: Option<String>,
-    #[serde(default = "TrustResolutionResult::unknown")]
-    pub trust_resolution: TrustResolutionResult,
-    #[serde(default = "TrustMode::optional")]
-    pub trust_mode: TrustMode,
     #[serde(default)]
     pub disclosure_policy: Option<DisclosurePolicy>,
 }

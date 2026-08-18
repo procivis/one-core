@@ -30,11 +30,11 @@ use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatc
 use crate::model::list_query::ListPagination;
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
-use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::verification_protocol::dto::{
     ApplicableCredential, ApplicableCredentialOrFailureHintEnum,
     CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
@@ -68,7 +68,7 @@ pub(crate) async fn get_presentation_definition_v2(
     credential_repository: &dyn CredentialRepository,
     credential_schema_repository: &dyn CredentialSchemaRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
-    trust_information_provider: &dyn TrustInformationProvider,
+    ecosystem_provider: &dyn EcosystemDirectory,
     wrp_validator: &dyn WRPValidator,
     config: &CoreConfig,
     verifier_details: Option<&IdentifierDetails>,
@@ -265,10 +265,16 @@ pub(crate) async fn get_presentation_definition_v2(
                 )?,
             );
         } else {
-            let purpose = trust_information_provider
-                .get_trust_purpose(proof.id.into(), &query.id)
-                .await
-                .error_while("resolving trust purpose")?;
+            let purpose = if let Some(ecosystem_id) = &proof.ecosystem {
+                let ecosystem = ecosystem_provider.get(ecosystem_id)?;
+                ecosystem
+                    .get_trust_purpose(&proof.id, &query.id)
+                    .await
+                    .error_while("getting ecosystem purpose")?
+            } else {
+                None
+            };
+
             credential_queries.insert(
                 query.id.to_string(),
                 CredentialQueryResponseDTO {
@@ -276,7 +282,7 @@ pub(crate) async fn get_presentation_definition_v2(
                     credential_or_failure_hint:
                         ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
                             applicable_credentials,
-                            purpose: purpose.map(|p| p.purpose),
+                            purpose,
                         },
                 },
             );

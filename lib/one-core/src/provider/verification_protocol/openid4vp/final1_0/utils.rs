@@ -2,7 +2,7 @@ use core::str;
 use std::collections::BTreeSet;
 
 use serde_json::json;
-use shared_types::{DidValue, OrganisationId, ProofId};
+use shared_types::DidValue;
 use standardized_types::openid4vp::{
     AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, PresentationFormat,
     VerifierAttestationClaims,
@@ -331,8 +331,6 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: String,
         query_params: AuthorizationRequestQueryParams,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
     ) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
         let request_token: DecomposedJwt<AuthorizationRequest> =
             Jwt::decompose_token(&request_token).error_while("parsing request JWT")?;
@@ -395,18 +393,6 @@ impl OpenID4VPFinal1_0 {
             ));
         }
 
-        self.holder_trust_resolver
-            .resolve_verification_trust(
-                verifier_details.as_ref(),
-                proof_id,
-                organisation_id,
-                &referenced_params.dcql_query,
-                &referenced_params.verifier_info,
-                self.params.holder.trust_ecosystems_leeway_seconds,
-            )
-            .await
-            .error_while("resolving trust")?;
-
         Ok((referenced_params, verifier_details))
     }
 
@@ -431,8 +417,6 @@ impl OpenID4VPFinal1_0 {
     async fn authorization_params_from_query_params(
         &self,
         query_params: AuthorizationRequestQueryParams,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
     ) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
         let (_, client_id_scheme) = decode_client_id_with_scheme(
             &query_params.client_id,
@@ -452,26 +436,12 @@ impl OpenID4VPFinal1_0 {
 
         let request = authorization_request_from_query_params(query_params)?;
 
-        self.holder_trust_resolver
-            .resolve_verification_trust(
-                None,
-                proof_id,
-                organisation_id,
-                &request.dcql_query,
-                &request.verifier_info,
-                self.params.holder.trust_ecosystems_leeway_seconds,
-            )
-            .await
-            .error_while("resolving trust")?;
-
         Ok((request, None))
     }
 
     pub(super) async fn request_from_openid4vp_query(
         &self,
         query: &str,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
     ) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
         let query_params: AuthorizationRequestQueryParams = serde_qs::from_str(query)
             .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
@@ -510,12 +480,12 @@ impl OpenID4VPFinal1_0 {
             // Unsigned request: all parameters are passed directly in the query string.
             (None, None) => {
                 return self
-                    .authorization_params_from_query_params(query_params, proof_id, organisation_id)
+                    .authorization_params_from_query_params(query_params)
                     .await;
             }
         };
 
-        self.authorization_params_from_token(request_token, query_params, proof_id, organisation_id)
+        self.authorization_params_from_token(request_token, query_params)
             .await
     }
 }

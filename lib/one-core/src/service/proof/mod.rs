@@ -3,14 +3,12 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::openid4vp_proof_validator::OpenId4VpProofValidator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::proto::trust_information::TrustInformationProvider;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -62,9 +60,7 @@ pub struct ProofService {
     transaction_manager: Arc<dyn TransactionManager>,
     proof_validator: Arc<dyn OpenId4VpProofValidator>,
     notification_scheduler: Arc<dyn NotificationScheduler>,
-    trust_information_provider: Arc<dyn TrustInformationProvider>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
-    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
@@ -95,9 +91,7 @@ impl ProofService {
         transaction_manager: Arc<dyn TransactionManager>,
         proof_validator: Arc<dyn OpenId4VpProofValidator>,
         notification_scheduler: Arc<dyn NotificationScheduler>,
-        trust_information_provider: Arc<dyn TrustInformationProvider>,
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
-        holder_trust_resolver: Arc<dyn HolderTrustResolver>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
@@ -125,9 +119,7 @@ impl ProofService {
             transaction_manager,
             proof_validator,
             notification_scheduler,
-            trust_information_provider,
             transaction_data_provider,
-            holder_trust_resolver,
             ecosystem_provider,
         }
     }

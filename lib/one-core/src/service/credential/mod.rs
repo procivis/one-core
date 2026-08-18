@@ -5,7 +5,6 @@ use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::proto::trust_information::TrustInformationProvider;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
@@ -35,7 +34,6 @@ pub struct CredentialService {
     session_provider: Arc<dyn SessionProvider>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
     notification_scheduler: Arc<dyn NotificationScheduler>,
-    trust_information_provider: Arc<dyn TrustInformationProvider>,
     tx_manager: Arc<dyn TransactionManager>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
@@ -54,7 +52,6 @@ impl CredentialService {
         session_provider: Arc<dyn SessionProvider>,
         credential_validity_manager: Arc<dyn CredentialValidityManager>,
         notification_scheduler: Arc<dyn NotificationScheduler>,
-        trust_information_provider: Arc<dyn TrustInformationProvider>,
         tx_manager: Arc<dyn TransactionManager>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
@@ -70,7 +67,6 @@ impl CredentialService {
             session_provider,
             credential_validity_manager,
             notification_scheduler,
-            trust_information_provider,
             tx_manager,
             ecosystem_provider,
         }

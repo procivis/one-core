@@ -68,6 +68,7 @@ async fn test_get_credential_trust_detail_success() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                ecosystem: Some("EUDI".into()),
                 ..Default::default()
             },
         )
@@ -111,28 +112,32 @@ async fn test_get_credential_trust_detail_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+
+    let rp_data = json!({
+         "country": "CH",
+         "email": "tester@test.com",
+         "identifier": "NTRCH-ch.procivis",
+         "isPublicSector": false,
+         "name": "Sprint Review WRP",
+         "phone": "+4123456789",
+         "serviceDescription": [
+           {
+             "en": "This is a service description"
+           }
+         ],
+         "supervisoryAuthority": {
+           "email": "info@procivis.ch",
+           "phone": "+41 44 523 65 35",
+           "uri": "www.procivis.ch"
+         },
+         "website": "https://procivis.ch/"
+    });
     assert_eq!(
         resp,
         json!({
-          "eudiEcosystem": {
-            "country": "CH",
-            "email": "tester@test.com",
-            "identifier": "NTRCH-ch.procivis",
-            "isPublicSector": false,
-            "name": "Sprint Review WRP",
-            "phone": "+4123456789",
-            "serviceDescription": [
-              {
-                "en": "This is a service description"
-              }
-            ],
-            "supervisoryAuthority": {
-              "email": "info@procivis.ch",
-              "phone": "+41 44 523 65 35",
-              "uri": "www.procivis.ch"
-            },
-            "website": "https://procivis.ch/"
-          }
+          "ecosystem": "EUDI",
+          "eudiEcosystem": rp_data,
+          "issuer": rp_data
         })
     );
 }

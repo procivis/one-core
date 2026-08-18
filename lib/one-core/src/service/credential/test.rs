@@ -6,7 +6,7 @@ use assert2::let_assert;
 use mockall::predicate::*;
 use serde_json::json;
 use serde_yaml;
-use shared_types::{CredentialId, EntityId};
+use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -39,8 +39,6 @@ use crate::proto::notification_scheduler::MockNotificationScheduler;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::proto::trust_information::MockTrustInformationProvider;
-use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -73,7 +71,6 @@ struct Repositories {
     pub credential_validity_manager: MockCredentialValidityManager,
     pub notification_scheduler: MockNotificationScheduler,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
-    pub trust_information_provider: MockTrustInformationProvider,
     pub ecosystem_provider: MockEcosystemDirectory,
 }
 
@@ -92,7 +89,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
             .unwrap_or(Arc::new(NoSessionProvider)),
         Arc::new(repositories.credential_validity_manager),
         Arc::new(repositories.notification_scheduler),
-        Arc::new(repositories.trust_information_provider),
         Arc::new(NoTransactionManager),
         Arc::new(repositories.ecosystem_provider),
     )
@@ -572,7 +568,6 @@ async fn test_get_credential_success() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -616,7 +611,6 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -688,7 +682,6 @@ async fn test_get_revoked_credential_success() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -3592,7 +3585,6 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -3835,7 +3827,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -4621,7 +4612,6 @@ async fn test_get_credential_success_array_index_sorting() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -5055,7 +5045,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -5322,7 +5311,6 @@ async fn test_get_credential_success_array_single_element() {
         credential_repository,
         formatter_provider,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -6022,21 +6010,6 @@ async fn test_credential_ops_session_org_mismatch() {
     let result = service.share_credential(&Uuid::new_v4().into()).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
     // revocation related operations are checked by the credential validity manager
-}
-
-fn mock_trust_information_provider(
-    credential: &Credential,
-    trust_information: Vec<TrustInformation>,
-) -> MockTrustInformationProvider {
-    let mut trust_information_provider = MockTrustInformationProvider::default();
-    let entity_id: EntityId = credential.id.into();
-
-    trust_information_provider
-        .expect_get_trust_information()
-        .times(1)
-        .with(eq(entity_id))
-        .returning(move |_| Ok(trust_information.clone()));
-    trust_information_provider
 }
 
 fn config_with_eaa_category() -> CoreConfig {

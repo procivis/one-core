@@ -6,7 +6,9 @@ use holder_proof::HolderProofResolver;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
+use shared_types::i18n::I18nString;
 use shared_types::{CredentialFormat, CredentialId, EcosystemId, ProofId};
+use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::Duration;
 
 use super::Ecosystem;
@@ -206,7 +208,8 @@ impl Ecosystem for EudiEcosystem {
                         interaction.organisation.id(),
                     )
                     .await
-                    .error_while("validating wallet provider")?;
+                    .error_while("validating wallet provider")?
+                    .ok_or(EcosystemError::UntrustedIdentifier)?;
             }
             ProtocolArtifact::VerifierSubmission {
                 credential,
@@ -252,6 +255,14 @@ impl Ecosystem for EudiEcosystem {
         proof_id: &ProofId,
     ) -> Result<TrustDetail, EcosystemError> {
         self.get_trust_detail((*proof_id).into()).await
+    }
+
+    async fn get_trust_purpose(
+        &self,
+        proof_id: &ProofId,
+        query_id: &CredentialQueryId,
+    ) -> Result<Option<I18nString>, EcosystemError> {
+        self.trust_purpose((*proof_id).into(), query_id).await
     }
 
     fn lifecycle_hook(&self) -> Result<(), EcosystemError> {

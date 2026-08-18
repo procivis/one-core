@@ -3,7 +3,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use maplit::hashmap;
-use shared_types::{InteractionId, ProofId};
+use mockall::predicate::eq;
+use shared_types::{EcosystemId, InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks, PublicJwk, PublicJwkEc};
@@ -19,9 +20,6 @@ use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::history::{
-    HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
-};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
@@ -29,15 +27,14 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::openid4vp_proof_validator::{MockOpenId4VpProofValidator, ValidatedProofResult};
-use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::proto::wrp_validator::MockWRPValidator;
-use crate::proto::wrp_validator::error::WRPValidatorError;
-use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
+use crate::provider::ecosystem::error::EcosystemError;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, MockPublicKeyAgreementHandle, MockSignaturePublicKeyHandle,
@@ -50,7 +47,6 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::test_utilities::*;
@@ -66,8 +62,6 @@ struct Mocks {
     pub blob_storage_provider: MockBlobStorageProvider,
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
-    pub wrp_validator: MockWRPValidator,
-    pub history_repository: MockHistoryRepository,
     pub ecosystem_provider: MockEcosystemDirectory,
 }
 
@@ -83,9 +77,6 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
         Arc::new(mocks.proof_validator),
-        Arc::new(mocks.wrp_validator),
-        Arc::new(mocks.history_repository),
-        Arc::new(NoSessionProvider),
         Arc::new(mocks.ecosystem_provider),
     )
 }
@@ -261,6 +252,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = crate::clock::now_utc();
+    let ecosystem_id: EcosystemId = "EUDI".into();
     let interaction = Interaction {
         id: interaction_id,
         created_date: now,
@@ -270,7 +262,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
-        ecosystem: None,
+        ecosystem: Some(ecosystem_id.clone()),
         ecosystem_data: None,
     };
 
@@ -299,6 +291,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
                     .into(),
                 ),
                 state: ProofStateEnum::Pending,
+                ecosystem: Some("EUDI".into()),
                 schema: Some(
                     ProofSchema {
                         input_schemas: vec![ProofInputSchema {
@@ -380,37 +373,28 @@ async fn test_submit_proof_failed_on_trust_failure() {
             ))
         });
 
-    let mut wrp_validator = MockWRPValidator::new();
-    wrp_validator
-        .expect_verifier_trust_mode()
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_get()
         .once()
-        .return_once(|_| Ok(TrustMode::TrustMandatory));
-    wrp_validator
-        .expect_validate_credential_issuer()
-        .once()
-        .return_once(|_, _, _, _, _| Err(WRPValidatorError::IssuerNotTrusted));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            assert2::assert!(
-                let Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata{
-                   result: TrustResolutionResult::Untrusted
-                })) = &history.metadata
-            );
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .with(eq(ecosystem_id))
+        .returning(|_| {
+            let mut ecosystem = MockEcosystem::new();
+            ecosystem
+                .expect_validate_interaction()
+                .once()
+                .withf(|artifact, _| {
+                    matches!(artifact, ProtocolArtifact::VerifierSubmission { .. })
+                })
+                .returning(|_, _| Err(EcosystemError::MissingIdentifier));
+            Ok(Arc::new(ecosystem))
+        });
 
     let service = setup_service(Mocks {
         proof_repository,
         blob_storage_provider,
         proof_validator,
-        wrp_validator,
-        history_repository,
+        ecosystem_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -425,7 +409,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
         .await
         .unwrap_err();
 
-    assert_eq!(err.error_code(), ErrorCode::BR_0433);
+    assert_eq!(err.error_code(), ErrorCode::BR_0477);
 }
 
 #[tokio::test]

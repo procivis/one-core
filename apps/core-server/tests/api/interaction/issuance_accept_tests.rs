@@ -223,15 +223,11 @@ async fn test_issuance_accept_openid4vc() {
         .histories
         .get_by_entity_id(&credential.id.into())
         .await;
-    assert_eq!(history.values.len(), 3); // Accepted + Issued + Trust resolved
+    assert_eq!(history.values.len(), 2); // Accepted + Issued
     let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
     assert_eq!(
         actions,
-        HashSet::from([
-            HistoryAction::Accepted,
-            HistoryAction::Issued,
-            HistoryAction::TrustResolved
-        ])
+        HashSet::from([HistoryAction::Accepted, HistoryAction::Issued])
     );
 }
 
@@ -927,15 +923,11 @@ async fn test_issuance_accept_schema_name_already_exists() {
         .histories
         .get_by_entity_id(&credential.id.into())
         .await;
-    assert_eq!(history.values.len(), 3); // Accepted + Issued + TrustResolved
+    assert_eq!(history.values.len(), 2); // Accepted + Issued
     let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
     assert_eq!(
         actions,
-        HashSet::from([
-            HistoryAction::Accepted,
-            HistoryAction::Issued,
-            HistoryAction::TrustResolved
-        ])
+        HashSet::from([HistoryAction::Accepted, HistoryAction::Issued])
     );
 
     // Assert credential schema has been automatically renamed due to clash with existing schema

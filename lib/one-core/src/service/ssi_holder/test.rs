@@ -24,7 +24,6 @@ use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -33,7 +32,6 @@ use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -1454,14 +1452,6 @@ fn dummy_interaction() -> HolderInteractionData {
         notification_id: None,
         protocol: "".to_string(),
         format: "dc+sd-jwt".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Trusted,
-        trust_mode: TrustMode::TrustOptional,
         disclosure_policy: None,
     }
 }

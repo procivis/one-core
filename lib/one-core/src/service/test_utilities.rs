@@ -122,7 +122,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                     public:
                         oauthAttestationLeewaySeconds: 60
                         keyAttestationLeewaySeconds: 60
-                        trustEcosystemLeewaySeconds: 60
                         preAuthorizedCodeExpiresInSeconds: 300
                         tokenExpiresInSeconds: 86400
                         refreshExpiresInSeconds: 886400

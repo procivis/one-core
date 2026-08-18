@@ -2341,7 +2341,7 @@ async fn test_handle_invitation_trust_mandatory_without_identifier_returns_error
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0433");
+    assert_eq!(resp.error_code().await, "BR_0476");
 }
 
 /// Builds an `openid4vp://` URL with an `x509_san_dns` request JWT signed with a fresh ECDSA
@@ -2421,8 +2421,8 @@ async fn test_handle_invitation_trust_optional_with_x509_certificate_untrusted_s
 #[tokio::test]
 async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_trust_list_returns_error()
  {
-    // GIVEN — wallet instance with trusted_rp_required + ecosystemsEnabled → TrustMandatory
-    //         x509_san_dns cert not in any trust list → AccessCertificateNotTrusted → 400 BR_0410
+    // GIVEN — wallet instance with trusted_rp_required + trustEcosystemsEnabled → TrustMandatory
+    //         x509_san_dns cert not in any trust list → AccessCertificateNotTrusted → 400
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -2480,5 +2480,5 @@ async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_tru
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0410");
+    assert_eq!(resp.error_code().await, "BR_0476");
 }

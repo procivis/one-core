@@ -35,6 +35,9 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::trust_detail::{
+    EudiTrustInformationResponseRestDTO, TrustInformationDetailResponseRestEnum,
+};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential::dto::{
@@ -675,4 +678,18 @@ pub(crate) struct ShareProofResponseRestDTO {
 #[into(ExactProofFilterColumn)]
 pub(crate) enum ExactProofFilterColumnRestEnum {
     Name,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProofTrustInformationDetailResponseRestDTO {
+    /// EUDI trust information received from Access Certificates,
+    /// Registration Certificates, or National Registry public APIs.
+    /// Deprecated: Use `ecosystem` and `verifier` fields
+    #[deprecated]
+    pub eudi_ecosystem: Option<EudiTrustInformationResponseRestDTO>,
+
+    pub ecosystem: Option<EcosystemId>,
+    pub verifier: Option<TrustInformationDetailResponseRestEnum>,
 }

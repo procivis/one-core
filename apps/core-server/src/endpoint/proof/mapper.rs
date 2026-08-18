@@ -1,13 +1,16 @@
 use one_core::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, PresentationDefinitionTransactionDataDTO,
 };
+use one_core::service::common_dto::TrustInformationDetailResponseDTO;
 use one_core::service::proof::dto::{ProofTransactionDataResponseDTO, TransactionDataResponseDTO};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 
 use super::dto::{
     ApplicableCredentialOrFailureHintRestEnum, PresentationDefinitionTransactionDataRestDTO,
-    ProofTransactionDataResponseRestDTO, TransactionDataResponseRestDTO,
+    ProofTransactionDataResponseRestDTO, ProofTrustInformationDetailResponseRestDTO,
+    TransactionDataResponseRestDTO,
 };
+use crate::dto::common::trust_detail::TrustInformationDetailResponseRestEnum;
 use crate::mapper::MapperError;
 
 impl TryFrom<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailureHintRestEnum {
@@ -81,6 +84,26 @@ impl From<TransactionDataResponseDTO> for TransactionDataResponseRestDTO {
             r#type: r#type.to_string(),
             credential_schema_ids,
             data,
+        }
+    }
+}
+
+impl From<TrustInformationDetailResponseDTO> for ProofTrustInformationDetailResponseRestDTO {
+    fn from(value: TrustInformationDetailResponseDTO) -> Self {
+        let verifier = convert_inner(value.verifier);
+
+        let eudi_ecosystem =
+            if let Some(TrustInformationDetailResponseRestEnum::Eudi(eudi_verifier)) = &verifier {
+                Some(eudi_verifier.to_owned())
+            } else {
+                None
+            };
+
+        Self {
+            #[expect(deprecated)]
+            eudi_ecosystem,
+            ecosystem: value.ecosystem,
+            verifier,
         }
     }
 }

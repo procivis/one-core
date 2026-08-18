@@ -26,12 +26,12 @@ use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
-use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
@@ -102,7 +102,7 @@ async fn test_presentation_reject_ok() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
-        Arc::new(MockTrustInformationProvider::new()),
+        Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockWRPValidator::new()),
         Some(ble_waiter),
         None,
@@ -617,11 +617,6 @@ async fn test_get_presentation_definition_v2() {
             Ok(Arc::new(formatter))
         });
 
-    let mut trust_information_provider = MockTrustInformationProvider::new();
-    trust_information_provider
-        .expect_get_trust_purpose()
-        .return_once(|_, _| Ok(None));
-
     let service = IsoMdl::new(
         "ISO_MDL".to_string(),
         Arc::new(generic_config().core),
@@ -631,7 +626,7 @@ async fn test_get_presentation_definition_v2() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
-        Arc::new(trust_information_provider),
+        Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockWRPValidator::new()),
         None,
         None,

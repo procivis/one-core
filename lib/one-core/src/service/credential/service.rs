@@ -13,7 +13,7 @@ use super::dto::{
 use super::error::CredentialServiceError;
 use super::mapper::{
     claims_from_create_request, credential_detail_response_from_model, from_create_request,
-    get_remaining_batch_item_count, to_credential_list_response,
+    get_credential_trust_information, get_remaining_batch_item_count, to_credential_list_response,
 };
 use super::validator::{
     throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
@@ -293,19 +293,14 @@ impl CredentialService {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
 
-        let trust_information = self
-            .trust_information_provider
-            .get_trust_information((*credential_id).into())
-            .await
-            .error_while("getting trust information")?
-            .into_iter()
-            .next();
-
         let attestation_blobs = self.get_wallet_attestation_blobs(&credential).await?;
 
         let remaining_batch_item_count =
             get_remaining_batch_item_count(&credential, self.credential_repository.as_ref())
                 .await?;
+
+        let trust_information =
+            get_credential_trust_information(&credential, self.ecosystem_provider.as_ref()).await?;
 
         let response = credential_detail_response_from_model(
             credential,
@@ -607,25 +602,7 @@ impl CredentialService {
             return Err(CredentialServiceError::InvalidRole(credential.role));
         }
 
-        let Some(trust_details) = self
-            .trust_information_provider
-            .get_trust_detail(&id.into())
-            .await
-            .error_while("getting trust details")?
-        else {
-            return Ok(TrustInformationDetailResponseDTO {
-                ..Default::default()
-            });
-        };
-
-        let eudi_ecosystem = trust_details
-            .try_into()
-            .error_while("mapping trust information")?;
-
-        let mut result = TrustInformationDetailResponseDTO {
-            eudi_ecosystem: Some(eudi_ecosystem),
-            ..Default::default()
-        };
+        let mut result = TrustInformationDetailResponseDTO::default();
 
         if let Some(ecosystem_id) = credential.ecosystem {
             let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
@@ -635,7 +612,7 @@ impl CredentialService {
                 .error_while("getting ecosystem trust detail")?;
 
             result.ecosystem = Some(ecosystem_id);
-            result.issuer = Some(issuer.into());
+            result.issuer = Some(issuer.info.into());
         }
 
         Ok(result)

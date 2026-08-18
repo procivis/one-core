@@ -1,9 +1,14 @@
+use one_core::service::common_dto::TrustInformationDetailResponseDTO;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
 use one_dto_mapper::{convert_inner, try_convert_inner};
 
-use super::dto::{CredentialDetailClaimValueResponseRestDTO, GetCredentialResponseRestDTO};
+use super::dto::{
+    CredentialDetailClaimValueResponseRestDTO, CredentialTrustInformationDetailResponseRestDTO,
+    GetCredentialResponseRestDTO,
+};
+use crate::dto::common::trust_detail::TrustInformationDetailResponseRestEnum;
 use crate::mapper::MapperError;
 
 impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
@@ -58,6 +63,26 @@ impl<IN, OUT: From<IN>> From<DetailCredentialClaimValueResponseDTO<IN>>
             DetailCredentialClaimValueResponseDTO::Nested(nested) => {
                 Self::Nested(convert_inner(nested))
             }
+        }
+    }
+}
+
+impl From<TrustInformationDetailResponseDTO> for CredentialTrustInformationDetailResponseRestDTO {
+    fn from(value: TrustInformationDetailResponseDTO) -> Self {
+        let issuer = convert_inner(value.issuer);
+
+        let eudi_ecosystem =
+            if let Some(TrustInformationDetailResponseRestEnum::Eudi(eudi_issuer)) = &issuer {
+                Some(eudi_issuer.to_owned())
+            } else {
+                None
+            };
+
+        Self {
+            #[expect(deprecated)]
+            eudi_ecosystem,
+            ecosystem: value.ecosystem,
+            issuer,
         }
     }
 }

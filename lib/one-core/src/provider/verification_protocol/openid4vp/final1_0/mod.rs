@@ -37,12 +37,11 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::relation::Related;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::http_client::HttpClient;
-use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -114,9 +113,8 @@ pub(crate) struct OpenID4VPFinal1_0 {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     wrp_validator: Arc<dyn WRPValidator>,
-    trust_information_provider: Arc<dyn TrustInformationProvider>,
+    ecosystem_provider: Arc<dyn EcosystemDirectory>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
-    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
     base_url: Option<String>,
     params: Params,
     config: Arc<CoreConfig>,
@@ -142,9 +140,8 @@ impl OpenID4VPFinal1_0 {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         wrp_validator: Arc<dyn WRPValidator>,
-        trust_information_provider: Arc<dyn TrustInformationProvider>,
+        ecosystem_provider: Arc<dyn EcosystemDirectory>,
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
-        holder_trust_resolver: Arc<dyn HolderTrustResolver>,
         client: Arc<dyn HttpClient>,
         params: serde_json::Value,
         config: Arc<CoreConfig>,
@@ -171,9 +168,8 @@ impl OpenID4VPFinal1_0 {
             client,
             params,
             config,
-            trust_information_provider,
+            ecosystem_provider,
             transaction_data_provider,
-            holder_trust_resolver,
         })
     }
 
@@ -380,9 +376,8 @@ impl OpenID4VPFinal1_0 {
 
         let proof_id = Uuid::new_v4().into();
         let mut holder_interaction_data = {
-            let (authorization_request, verifier_details) = self
-                .request_from_openid4vp_query(query, proof_id, organisation.id)
-                .await?;
+            let (authorization_request, verifier_details) =
+                self.request_from_openid4vp_query(query).await?;
 
             let mut interaction_data: OpenID4VPHolderInteractionData =
                 authorization_request.try_into()?;
@@ -823,7 +818,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             &*self.credential_repository,
             &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
-            &*self.trust_information_provider,
+            &*self.ecosystem_provider,
             &*self.wrp_validator,
             &self.config,
             interaction_data.verifier_details.as_ref(),

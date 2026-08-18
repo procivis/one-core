@@ -2,7 +2,9 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use shared_types::i18n::I18nString;
 use shared_types::{CredentialId, EcosystemId, ProofId};
+use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use super::Ecosystem;
 use super::error::EcosystemError;
@@ -71,6 +73,14 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         self.disabled_error()
     }
 
+    async fn get_trust_purpose(
+        &self,
+        _proof_id: &ProofId,
+        _query_id: &CredentialQueryId,
+    ) -> Result<Option<I18nString>, EcosystemError> {
+        self.disabled_error()
+    }
+
     fn lifecycle_hook(&self) -> Result<(), EcosystemError> {
         self.disabled_error()
     }
@@ -136,6 +146,14 @@ impl Ecosystem for CapabilityChecked {
         proof_id: &ProofId,
     ) -> Result<TrustDetail, EcosystemError> {
         self.0.verifier_trust_details(proof_id).await
+    }
+
+    async fn get_trust_purpose(
+        &self,
+        proof_id: &ProofId,
+        query_id: &CredentialQueryId,
+    ) -> Result<Option<I18nString>, EcosystemError> {
+        self.0.get_trust_purpose(proof_id, query_id).await
     }
 
     fn lifecycle_hook(&self) -> Result<(), EcosystemError> {

@@ -4,9 +4,9 @@ use standardized_types::etsi_119_475::registration_certificate::{Payload, Superv
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::proto::jwt::model::JWTPayload;
-use crate::proto::trust_information::dto::{TrustDetails, WalletRelyingPartyDetails};
 use crate::proto::wrp_validator::model::WRPPayload;
-use crate::provider::ecosystem::model::TrustDetail;
+use crate::provider::ecosystem::dto::{TrustDetails, WalletRelyingPartyDetails};
+use crate::provider::ecosystem::model::TrustDetailInfo;
 use crate::service::common_dto::{
     BoundedB64Image, EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, ListQueryDTO,
     TrustInformationDetailResponseEnum,
@@ -103,10 +103,10 @@ impl TryFrom<TrustDetails> for EudiTrustInformationResponseDTO {
     }
 }
 
-impl From<TrustDetail> for TrustInformationDetailResponseEnum {
-    fn from(value: TrustDetail) -> Self {
+impl From<TrustDetailInfo> for TrustInformationDetailResponseEnum {
+    fn from(value: TrustDetailInfo) -> Self {
         match value {
-            TrustDetail::Eudi(detail) => Self::Eudi(detail),
+            TrustDetailInfo::Eudi(detail) => Self::Eudi(detail),
         }
     }
 }

@@ -340,8 +340,6 @@ impl OID4VPFinal1_0Service {
                 .await
                 .map_err(Into::<OID4VPFinal1_0ServiceError>::into)?;
 
-            self.verify_trust(&proof, &proof_result).await?;
-
             if let Some(ecosystem_id) = &interaction.ecosystem {
                 let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
 

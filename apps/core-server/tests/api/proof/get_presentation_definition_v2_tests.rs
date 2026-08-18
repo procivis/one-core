@@ -7,6 +7,7 @@ use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
+use one_core::model::proof::UpdateProofRequest;
 use one_core::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -117,6 +118,17 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
         None,
     )
     .await;
+    context
+        .db
+        .proofs
+        .update(
+            &proof.id,
+            UpdateProofRequest {
+                ecosystem: Some(Some("EUDI".into())),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let mut purpose = std::collections::HashMap::new();
     purpose.insert(

@@ -16,7 +16,6 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
-use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -89,7 +88,6 @@ fn initialize_provider(
     credential_schema_importer: &Arc<dyn CredentialSchemaImporter>,
     wallet_unit_proto: &Arc<dyn HolderWalletUnitProto>,
     holder_wallet_unit_repository: &Arc<dyn InstanceRepository>,
-    wrp_validator: &Arc<dyn WRPValidator>,
     history_repository: &Arc<dyn HistoryRepository>,
     session_provider: &Arc<dyn SessionProvider>,
     credential_schema_repository: &Arc<dyn CredentialSchemaRepository>,
@@ -118,7 +116,6 @@ fn initialize_provider(
             wallet_unit_proto.clone(),
             holder_wallet_unit_repository.clone(),
             certificate_validator.clone(),
-            wrp_validator.clone(),
             history_repository.clone(),
             session_provider.clone(),
             interaction_repository.clone(),
@@ -145,7 +142,6 @@ fn initialize_provider(
             wallet_unit_proto.clone(),
             holder_wallet_unit_repository.clone(),
             certificate_validator.clone(),
-            wrp_validator.clone(),
             history_repository.clone(),
             session_provider.clone(),
             interaction_repository.clone(),
@@ -174,7 +170,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
-    wrp_validator: Arc<dyn WRPValidator>,
     history_repository: Arc<dyn HistoryRepository>,
     session_provider: Arc<dyn SessionProvider>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
@@ -206,7 +201,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
                 &credential_schema_importer,
                 &wallet_unit_proto,
                 &holder_wallet_unit_repository,
-                &wrp_validator,
                 &history_repository,
                 &session_provider,
                 &credential_schema_repository,

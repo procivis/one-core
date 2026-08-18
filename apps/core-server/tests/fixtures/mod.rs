@@ -45,7 +45,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
     BlobId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId, DidMethodId,
-    DidValue, EntityId, IdentifierId, InteractionId, KeyId, ProofId,
+    DidValue, EcosystemId, EntityId, IdentifierId, InteractionId, KeyId, ProofId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -930,6 +930,7 @@ pub struct TestingCredentialParams {
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 pub async fn create_credential(
@@ -964,7 +965,7 @@ pub async fn create_credential(
 
     let credential = Credential {
         expires_at: params.expires_at,
-        ecosystem: None,
+        ecosystem: params.ecosystem,
         id: credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

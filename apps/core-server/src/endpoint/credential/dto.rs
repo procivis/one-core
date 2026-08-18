@@ -1,14 +1,13 @@
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
-use one_core::proto::trust_information::dto::TrustInformation;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
     CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
-    WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
+    TrustInformation, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
@@ -23,7 +22,10 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
-use crate::dto::common::trust_detail::TrustResolutionResultRestEnum;
+use crate::dto::common::trust_detail::{
+    EudiTrustInformationResponseRestDTO, TrustInformationDetailResponseRestEnum,
+    TrustResolutionResultRestEnum,
+};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
@@ -208,6 +210,20 @@ pub struct WalletInstanceAttestationRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct WalletUnitAttestationRestDTO {
     attestation: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialTrustInformationDetailResponseRestDTO {
+    /// EUDI trust information received from Access Certificates,
+    /// Registration Certificates, or National Registry public APIs.
+    /// Deprecated: Use `ecosystem` and `issuer` fields
+    #[deprecated]
+    pub eudi_ecosystem: Option<EudiTrustInformationResponseRestDTO>,
+
+    pub ecosystem: Option<EcosystemId>,
+    pub issuer: Option<TrustInformationDetailResponseRestEnum>,
 }
 
 #[options_not_nullable]

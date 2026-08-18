@@ -20,6 +20,8 @@ pub enum EcosystemError {
         role: EcosystemRole,
         filter: SchemaFilter,
     },
+    #[error("Untrusted identifier")]
+    UntrustedIdentifier,
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -31,6 +33,7 @@ impl ErrorCodeMixin for EcosystemError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::MissingIdentifier
+            | Self::UntrustedIdentifier
             | Self::InvalidIdentifier(_)
             | Self::DisallowedSchemaFormat(_) => ErrorCode::BR_0477,
             Self::UnsupportedRole(_) | Self::InvalidRoleFilter { .. } => ErrorCode::BR_0479,

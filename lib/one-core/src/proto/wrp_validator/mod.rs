@@ -1,3 +1,6 @@
+// TODO (ONE-9974): clean-up
+#![allow(unused)]
+
 use error::WRPValidatorError;
 use model::{
     AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, TrustMode,

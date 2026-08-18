@@ -20,7 +20,6 @@ use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
-use crate::proto::holder_trust_resolver::resolver::HolderTrustResolverProto;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
 use crate::proto::mqtt_client::rumqttc_client::RumqttcClient;
@@ -33,7 +32,6 @@ use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorP
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
-use crate::proto::trust_information::provider::TrustInformationProviderImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
@@ -445,18 +443,6 @@ impl OneCore {
             data_provider.get_proof_schema_repository(),
         )?;
 
-        let holder_trust_resolver = Arc::new(HolderTrustResolverProto::new(
-            data_provider.get_history_repository(),
-            wrp_validator.clone(),
-            blob_storage_provider.clone(),
-            session_provider.clone(),
-        ));
-
-        let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
-            data_provider.get_history_repository(),
-            blob_storage_provider.clone(),
-        ));
-
         let key_security_level_provider = key_security_level_provider_from_config(&mut config)?;
 
         let openid_metadata_cache = openid_metadata_cache_from_config(
@@ -484,7 +470,6 @@ impl OneCore {
             credential_schema_importer.clone(),
             wallet_unit_proto.clone(),
             data_provider.get_instance_repository(),
-            wrp_validator.clone(),
             data_provider.get_history_repository(),
             session_provider.clone(),
             data_provider.get_credential_schema_repository(),
@@ -510,9 +495,8 @@ impl OneCore {
             Some(mqtt_client),
             nfc_hce.clone(),
             wrp_validator.clone(),
-            trust_information_provider.clone(),
+            ecosystem_provider.clone(),
             transaction_data_provider.clone(),
-            holder_trust_resolver.clone(),
         )?;
 
         let config = Arc::new(config);
@@ -614,7 +598,6 @@ impl OneCore {
                 session_provider.clone(),
                 credential_validity_manager,
                 notification_scheduler.clone(),
-                trust_information_provider.clone(),
                 data_provider.get_tx_manager(),
                 ecosystem_provider.clone(),
             ),
@@ -655,8 +638,6 @@ impl OneCore {
                 identifier_creator.clone(),
                 credential_issuer_metadata_cache.clone(),
                 credential_formatter_provider.clone(),
-                wrp_validator.clone(),
-                data_provider.get_history_repository(),
                 ecosystem_provider.clone(),
             ),
             oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService::new(
@@ -677,8 +658,6 @@ impl OneCore {
                 wallet_unit_proto.clone(),
                 credential_issuer_metadata_cache,
                 credential_formatter_provider.clone(),
-                wrp_validator.clone(),
-                data_provider.get_history_repository(),
                 ecosystem_provider.clone(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
@@ -692,9 +671,6 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
-                wrp_validator.clone(),
-                data_provider.get_history_repository(),
-                session_provider.clone(),
                 ecosystem_provider.clone(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
@@ -708,9 +684,6 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
-                wrp_validator.clone(),
-                data_provider.get_history_repository(),
-                session_provider.clone(),
                 ecosystem_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
@@ -776,9 +749,7 @@ impl OneCore {
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator,
                 notification_scheduler,
-                trust_information_provider,
                 transaction_data_provider,
-                holder_trust_resolver,
                 ecosystem_provider.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(

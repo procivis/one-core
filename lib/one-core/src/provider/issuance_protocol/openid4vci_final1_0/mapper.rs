@@ -341,7 +341,7 @@ impl From<IssuerMetadataRepresentation>
                     credential_issuer_metadata,
                 ))
             }
-            IssuerMetadataRepresentation::Signed(jwt, _) => {
+            IssuerMetadataRepresentation::Signed(jwt) => {
                 crate::provider::ecosystem::model::IssuerMetadataRepresentation::Signed(Box::new(
                     jwt,
                 ))

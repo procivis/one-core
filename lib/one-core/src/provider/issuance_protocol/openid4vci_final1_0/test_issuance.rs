@@ -28,7 +28,6 @@ use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
-use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
@@ -211,13 +210,11 @@ async fn test_issuer_submit_succeeds() {
             "urlScheme": "openid-credential-offer",
             "oauthAttestationLeewaySeconds": 60,
             "keyAttestationLeewaySeconds": 60,
-            "trustEcosystemLeewaySeconds": 60,
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockInstanceRepository::new()),
         Arc::new(MockCertificateValidator::new()),
-        Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
@@ -397,13 +394,11 @@ async fn test_issue_credential_for_mdoc_succeeds() {
             "urlScheme": "openid-credential-offer",
             "oauthAttestationLeewaySeconds": 60,
             "keyAttestationLeewaySeconds": 60,
-            "trustEcosystemLeewaySeconds": 60,
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockInstanceRepository::new()),
         Arc::new(MockCertificateValidator::new()),
-        Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
@@ -559,13 +554,11 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
             "urlScheme": "openid-credential-offer",
             "oauthAttestationLeewaySeconds": 60,
             "keyAttestationLeewaySeconds": 60,
-            "trustEcosystemLeewaySeconds": 60,
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockInstanceRepository::new()),
         Arc::new(MockCertificateValidator::new()),
-        Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
@@ -663,13 +656,11 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             "urlScheme": "openid-credential-offer",
             "oauthAttestationLeewaySeconds": 60,
             "keyAttestationLeewaySeconds": 60,
-            "trustEcosystemLeewaySeconds": 60,
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockInstanceRepository::new()),
         Arc::new(MockCertificateValidator::new()),
-        Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),

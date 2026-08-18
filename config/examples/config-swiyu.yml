@@ -46,13 +46,12 @@ issuanceProtocol:
       public:
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
-        trustEcosystemLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         redirectUri:
           enabled: true
-          allowedSchemes: [ "https" ]
+          allowedSchemes: ["https"]
       private:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
@@ -67,7 +66,7 @@ verificationProtocol:
       public:
         redirectUri:
           enabled: true
-          allowedSchemes: [ "https" ]
+          allowedSchemes: ["https"]
       private:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
@@ -225,7 +224,7 @@ keySecurityLevel:
       public:
         holder:
           priority: 40
-          keyStorages: [ "INTERNAL" ]
+          keyStorages: ["INTERNAL"]
 blobStorage:
   DB:
     enabled: true

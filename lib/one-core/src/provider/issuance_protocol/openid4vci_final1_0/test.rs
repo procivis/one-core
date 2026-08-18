@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
@@ -13,10 +12,6 @@ use serde_json::{Value, json};
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_472::disclosure_policy::{DisclosurePolicy, PolicyType};
-use standardized_types::etsi_119_475::Credential as RegistrationCertificateCredential;
-use standardized_types::etsi_119_475::registration_certificate::{
-    Payload as RegistrationCertificatePayload, Status, SupervisoryAuthority,
-};
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk, PublicJwkEc};
@@ -26,8 +21,6 @@ use standardized_types::openid4vci::{
     CredentialResponseEncryption, Grants, KeyAttestationsRequired, KeyStorageSecurityLevel,
     PreAuthorizedCodeGrant, ProofTypeSupported, Proofs,
 };
-use standardized_types::openid4vp::dcql;
-use standardized_types::openid4vp::dcql::MsoMdocMeta;
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -41,7 +34,7 @@ use super::service::create_credential_offer;
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
 };
-use crate::mapper::x509::x5c_into_pem_chain;
+use crate::error::ErrorCodeMixinExt;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
@@ -49,12 +42,12 @@ use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, Layo
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::history::{HistoryAction, TrustResolutionResult};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
+use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::relation::Related;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
@@ -64,13 +57,8 @@ use crate::proto::identifier_creator::{
     CreateLocalIdentifierRequest, IdentifierName, IdentifierRole, MockIdentifierCreator,
     RemoteIdentifierRelation,
 };
-use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_instance::{IssuedWalletUnitAttestations, MockHolderWalletUnitProto};
-use crate::proto::wrp_validator::MockWRPValidator;
-use crate::proto::wrp_validator::model::{
-    AccessCertificateResult, RegistrationCertificateResult, TrustMode,
-};
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -125,7 +113,6 @@ struct TestInputs {
     pub certificate_validator: MockCertificateValidator,
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
     pub holder_wallet_unit_repository: MockInstanceRepository,
-    pub wrp_validator: Option<MockWRPValidator>,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub config: CoreConfig,
@@ -166,14 +153,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.holder_wallet_unit_proto),
         Arc::new(inputs.holder_wallet_unit_repository),
         Arc::new(inputs.certificate_validator),
-        Arc::new(inputs.wrp_validator.unwrap_or_else(|| {
-            // default to disabled since most tests don't test / mock calls to the wallet provider
-            let mut wrp_validator = MockWRPValidator::new();
-            wrp_validator
-                .expect_wallet_trust_mode()
-                .returning(|_| Ok(TrustMode::Disabled));
-            wrp_validator
-        })),
         Arc::new(inputs.history_repository),
         Arc::new(NoSessionProvider),
         Arc::new(inputs.interaction_repository),
@@ -557,14 +536,6 @@ async fn test_holder_accept_credential_success() {
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -733,16 +704,6 @@ async fn test_holder_accept_credential_success() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -751,7 +712,6 @@ async fn test_holder_accept_credential_success() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -830,14 +790,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -1004,16 +956,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -1022,7 +964,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1113,14 +1054,6 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -1339,16 +1272,6 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -1359,7 +1282,6 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1430,14 +1352,6 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -1695,16 +1609,6 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -1715,7 +1619,6 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1816,14 +1719,6 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -2048,16 +1943,6 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -2067,7 +1952,6 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -2151,14 +2035,6 @@ async fn test_holder_reject_credential() {
             notification_id: Some("notification_id".to_string()),
             protocol: "OPENID4VCI_FINAL1".to_string(),
             format: "jwt_vc_json".to_string(),
-            access_certificate: None,
-            relying_party_id: None,
-            national_registry_url: None,
-            registration_certificate: None,
-            national_registry_data: None,
-            relying_party_name: None,
-            trust_resolution: TrustResolutionResult::Unknown,
-            trust_mode: TrustMode::Disabled,
             disclosure_policy: None,
             credential_request_encryption: None,
             credential_response_encryption: None,
@@ -2374,6 +2250,15 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
                     }).to_string().into_bytes())
                 });
 
+    // signed metadata not supported
+    metadata_cache
+        .expect_get()
+        .with(always(), eq("application/jwt"))
+        .returning(|_, _| {
+            Err(crate::proto::http_client::Error::Timeout
+                .error_while("test")
+                .into())
+        });
     metadata_cache
         .expect_get()
         .with(eq(format!(
@@ -2521,12 +2406,6 @@ async fn test_handle_invitation_falls_back_to_unsigned_metadata_when_trust_optio
             .into_bytes())
         });
 
-    let mut wrp_validator = MockWRPValidator::new();
-    wrp_validator
-        .expect_wallet_trust_mode()
-        .once()
-        .returning(|_| Ok(TrustMode::TrustOptional));
-
     let mut interaction_repository = MockInteractionRepository::default();
     interaction_repository
         .expect_create_interaction()
@@ -2535,7 +2414,6 @@ async fn test_handle_invitation_falls_back_to_unsigned_metadata_when_trust_optio
 
     let protocol = setup_protocol(TestInputs {
         metadata_cache,
-        wrp_validator: Some(wrp_validator),
         interaction_repository,
         ..Default::default()
     });
@@ -2568,24 +2446,21 @@ async fn test_handle_invitation_requires_signed_metadata_when_trust_mandatory() 
                 .into())
         });
 
-    let mut wrp_validator = MockWRPValidator::new();
-    wrp_validator
-        .expect_wallet_trust_mode()
-        .once()
-        .returning(|_| Ok(TrustMode::TrustMandatory));
-
     let protocol = setup_protocol(TestInputs {
         metadata_cache,
-        wrp_validator: Some(wrp_validator),
         ..Default::default()
     });
 
+    let organisation = Organisation {
+        configuration: OrganisationConfiguration {
+            enforce_ecosystem_as_holder: true,
+            ..Default::default()
+        },
+        ..dummy_organisation(None)
+    };
+
     protocol
-        .holder_handle_invitation(
-            unsigned_metadata_offer_url(),
-            dummy_organisation(None),
-            None,
-        )
+        .holder_handle_invitation(unsigned_metadata_offer_url(), organisation, None)
         .await
         .unwrap_err();
 }
@@ -2752,76 +2627,6 @@ async fn test_handle_invitation_signed_metadata() {
             })
         });
 
-    let rp_id = "rp_id";
-    let mut wrp_validator = MockWRPValidator::new();
-    wrp_validator
-        .expect_wallet_trust_mode()
-        .once()
-        .return_once(|_| Ok(TrustMode::TrustMandatory));
-    wrp_validator
-        .expect_validate_access_certificate()
-        .once()
-        .return_once(|_, _| {
-            Ok(AccessCertificateResult {
-                trust_entity: None,
-                relying_party_id: rp_id.to_string(),
-                registry_url: None,
-            })
-        });
-    wrp_validator
-        .expect_validate_registration_certificate()
-        .with(eq(registration_certificate), eq(rp_id), always(), always())
-        .once()
-        .return_once(|_, _, _, _| {
-            Ok(RegistrationCertificateResult {
-                trust_entity: None,
-                payload: JWTPayload {
-                    issued_at: Some(crate::clock::now_utc()),
-                    expires_at: None,
-                    invalid_before: None,
-                    issuer: None,
-                    subject: Some(rp_id.to_string()),
-                    audience: None,
-                    jwt_id: None,
-                    proof_of_possession_key: None,
-                    custom: RegistrationCertificatePayload {
-                        name: "".to_string(),
-                        sub_ln: None,
-                        sub_gn: None,
-                        sub_fn: None,
-                        country: "".to_string(),
-                        registry_uri: Url::parse("https://example.com").unwrap(),
-                        service_descriptions: vec![],
-                        entitlements: vec![],
-                        privacy_policy: Url::parse("https://example.com").unwrap(),
-                        info_uri: Url::parse("https://example.com").unwrap(),
-                        supervisory_authority: SupervisoryAuthority {
-                            email: "".to_string(),
-                            phone: "".to_string(),
-                            uri: "".to_string(),
-                        },
-                        policy_id: vec![],
-                        certificate_policy: Url::parse("https://example.com").unwrap(),
-                        status: Status {
-                            status_list: HashMap::new(),
-                        },
-                        provides_attestations: Some(vec![RegistrationCertificateCredential {
-                            format: dcql::CredentialFormat::MsoMdoc(MsoMdocMeta {
-                                doctype_value: "doctype".to_string(),
-                            }),
-                            claim: None,
-                        }]),
-                        credentials: None,
-                        purpose: None,
-                        intended_use_id: Some("intended_use_id".to_string()),
-                        public_body: None,
-                        support_uri: Url::parse("https://example.com").unwrap(),
-                        intermediary: None,
-                    },
-                },
-            })
-        });
-
     let mut interaction_repository = MockInteractionRepository::default();
     interaction_repository
         .expect_create_interaction()
@@ -2829,13 +2634,6 @@ async fn test_handle_invitation_signed_metadata() {
             let data: HolderInteractionData =
                 serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 
-            let pem_chain = x5c_into_pem_chain(&[access_certificate.to_string()]).unwrap();
-
-            assert_eq!(data.access_certificate.unwrap(), pem_chain);
-            assert_eq!(
-                data.registration_certificate.unwrap(),
-                registration_certificate
-            );
             assert_eq!(
                 data.disclosure_policy.unwrap(),
                 DisclosurePolicy {
@@ -2854,7 +2652,6 @@ async fn test_handle_invitation_signed_metadata() {
         metadata_cache,
         key_algorithm_provider,
         certificate_validator,
-        wrp_validator: Some(wrp_validator),
         interaction_repository,
         client: Some(client),
         params: Some(test_params("openid-credential-offer")),
@@ -2928,6 +2725,15 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
             }
         });
 
+    // signed metadata not supported
+    metadata_cache
+        .expect_get()
+        .with(always(), eq("application/jwt"))
+        .returning(|_, _| {
+            Err(crate::proto::http_client::Error::Timeout
+                .error_while("test")
+                .into())
+        });
     metadata_cache
         .expect_get()
         .with(eq(format!(
@@ -2964,15 +2770,15 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
             }
         });
 
-    let capture_integration_id = Arc::new(Mutex::new(None));
+    let capture_interaction_id = Arc::new(Mutex::new(None));
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_create_interaction()
         .times(1)
         .returning({
-            let capture_integration_id = capture_integration_id.clone();
+            let capture_interaction_id = capture_interaction_id.clone();
             move |i: Interaction| {
-                let mut guard = capture_integration_id.lock().unwrap();
+                let mut guard = capture_interaction_id.lock().unwrap();
                 *guard = Some(i.id);
                 Ok(i.id)
             }
@@ -3016,7 +2822,7 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
         .unwrap();
 
     assert_eq!(
-        capture_integration_id.lock().unwrap().unwrap(),
+        capture_interaction_id.lock().unwrap().unwrap(),
         result.interaction_id
     );
 }
@@ -3117,14 +2923,6 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -3277,14 +3075,6 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -3502,16 +3292,6 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
         });
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|history| {
-            assert_eq!(history.action, HistoryAction::TrustResolved);
-            true
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -3522,7 +3302,6 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -3581,14 +3360,6 @@ async fn interaction_with_metadata(
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -3770,12 +3541,6 @@ async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut config = dummy_config();
     config.global_settings.default_language = "en".to_string();
 
@@ -3788,7 +3553,6 @@ async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
         credential_schema_importer: Some(credential_schema_importer),
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config,
         ..Default::default()
     });
@@ -3990,12 +3754,6 @@ async fn test_holder_accept_credential_uses_default_language_for_display_without
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut config = dummy_config();
     config.global_settings.default_language = "fr".to_string(); // custom default language
 
@@ -4008,7 +3766,6 @@ async fn test_holder_accept_credential_uses_default_language_for_display_without
         credential_schema_importer: Some(credential_schema_importer),
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config,
         ..Default::default()
     });
@@ -4206,12 +3963,6 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut config = dummy_config();
     config.global_settings.default_language = "en".to_string();
 
@@ -4224,7 +3975,6 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
         credential_schema_importer: Some(credential_schema_importer),
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config,
         ..Default::default()
     });
@@ -4326,14 +4076,6 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: Some(disclosure_policy.to_owned()),
         credential_request_encryption: None,
         credential_response_encryption: None,
@@ -4475,12 +4217,6 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut config = dummy_config();
     config.global_settings.default_language = "en".to_string();
 
@@ -4493,7 +4229,6 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
         credential_schema_importer: Some(credential_schema_importer),
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config,
         ..Default::default()
     });
@@ -4541,8 +4276,7 @@ fn test_params(issuance_url_scheme: &str) -> serde_json::Value {
         },
         "urlScheme": issuance_url_scheme,
         "oauthAttestationLeewaySeconds": 60,
-        "keyAttestationLeewaySeconds": 60,
-        "trustEcosystemLeewaySeconds": 60
+        "keyAttestationLeewaySeconds": 60
     })
 }
 
@@ -4587,14 +4321,6 @@ async fn encryption_interaction_data(
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
-        access_certificate: None,
-        relying_party_id: None,
-        national_registry_url: None,
-        registration_certificate: None,
-        national_registry_data: None,
-        relying_party_name: None,
-        trust_resolution: TrustResolutionResult::Unknown,
-        trust_mode: TrustMode::Disabled,
         disclosure_policy: None,
         credential_request_encryption,
         credential_response_encryption,
@@ -4732,12 +4458,6 @@ async fn provider_with_encryption(credential: &Credential) -> OpenID4VCIFinal1_0
         .once()
         .return_once(|_, _| Ok(None));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -4746,7 +4466,6 @@ async fn provider_with_encryption(credential: &Credential) -> OpenID4VCIFinal1_0
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
-        history_repository,
         config: dummy_config(),
         ..Default::default()
     })

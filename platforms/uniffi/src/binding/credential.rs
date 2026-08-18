@@ -1,10 +1,9 @@
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
-use one_core::proto::trust_information::dto::TrustInformation;
 use one_core::service::credential::dto::{
     CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
-    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO,
+    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, TrustInformation,
 };
 use one_core::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use one_dto_mapper::{From, Into, convert_inner};

@@ -39,7 +39,6 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::swiyu_http_client;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
-use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -77,8 +76,6 @@ pub(crate) struct OpenID4VCISwiyuParams {
     pub oauth_attestation_leeway_seconds: Duration,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub key_attestation_leeway_seconds: Duration,
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub trust_ecosystem_leeway_seconds: Duration,
 
     #[serde(flatten)]
     pub common: CommonParams,
@@ -97,7 +94,6 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
             nonce: value.nonce,
             oauth_attestation_leeway_seconds: value.oauth_attestation_leeway_seconds,
             key_attestation_leeway_seconds: value.key_attestation_leeway_seconds,
-            trust_ecosystem_leeway_seconds: value.trust_ecosystem_leeway_seconds,
             common: value.common,
         }
     }
@@ -133,7 +129,6 @@ impl OpenID4VCISwiyu {
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
-        wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
@@ -172,7 +167,6 @@ impl OpenID4VCISwiyu {
                 holder_wallet_unit_proto,
                 holder_wallet_unit_repository,
                 certificate_validator,
-                wrp_validator,
                 history_repository,
                 session_provider,
                 interaction_repository,
