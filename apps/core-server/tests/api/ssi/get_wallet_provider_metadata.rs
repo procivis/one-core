@@ -39,6 +39,7 @@ async fn test_wallet_provider_metadata_success() {
                 "minimum":"v1.50.0"
             },
             "featureFlags": {
+              "trustEcosystemsEnabled": true,
               "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
               "documentSigningEnabled": true,
@@ -111,6 +112,7 @@ async fn test_wallet_provider_metadata_success_all_fields() {
                 }
             },
             "featureFlags": {
+              "trustEcosystemsEnabled": true,
               "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
               "documentSigningEnabled": true,
@@ -229,6 +231,7 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
                 "minimum":"v1.50.0"
             },
             "featureFlags": {
+              "trustEcosystemsEnabled": true,
               "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
               "documentSigningEnabled": true,

@@ -145,37 +145,13 @@ impl From<dto::WalletProviderMetadataResponseDTO> for WalletProviderMetadataResp
             wallet_unit_attestation: value.wallet_unit_attestation.into(),
             name: value.name,
             app_version: convert_inner(value.app_version),
-            trust_collections: trust_collections_from_ecosystems(&value.ecosystems),
+            trust_collections: convert_inner(value.trust_collections),
             document_signers: convert_inner(value.document_signers),
             feature_flags: value.feature_flags.into(),
             user_authentication: convert_inner(value.user_authentication),
             ecosystems: convert_inner(value.ecosystems),
         }
     }
-}
-
-/// The deprecated provider-level trust collection list, flattened out of the
-/// ecosystems. The display properties of the owning ecosystem stand in for the
-/// ones previously configured per collection.
-pub(crate) fn trust_collections_from_ecosystems(
-    ecosystems: &[dto::EcosystemMetadataDTO],
-) -> Vec<ProviderTrustCollectionRestDTO> {
-    ecosystems
-        .iter()
-        .flat_map(|ecosystem| {
-            ecosystem
-                .trust_collections
-                .iter()
-                .map(|collection| ProviderTrustCollectionRestDTO {
-                    id: collection.id,
-                    name: collection.name.to_owned(),
-                    logo: ecosystem.logo.to_owned(),
-                    display_name: convert_inner(ecosystem.display_name.to_owned()),
-                    description: convert_inner(ecosystem.description.to_owned()),
-                    default_selected: Some(ecosystem.default_selected),
-                })
-        })
-        .collect()
 }
 
 /// An ecosystem advertised by this wallet provider.
@@ -234,10 +210,12 @@ pub(crate) struct TokenValidationRestDTO {
     jwks_uri: String,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(dto::FeatureFlags)]
 pub(crate) struct FeatureFlagsRestDTO {
+    /// Always reports the same value as `ecosystemsEnabled`.
+    #[deprecated = "use ecosystemsEnabled instead"]
+    pub trust_ecosystems_enabled: bool,
     pub ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
     pub document_signing_enabled: bool,

@@ -1,8 +1,6 @@
 use one_core::provider::verifier::model::{VerifierAppVersion, VerifierUpdateScreen};
 use one_core::service::managed_instance::dto::EcosystemMetadataDTO;
-use one_core::service::verifier_provider::dto::{
-    FeatureFlags, VerifierProviderMetadataResponseDTO,
-};
+use one_core::service::verifier_provider::dto::VerifierProviderMetadataResponseDTO;
 use one_dto_mapper::{From, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::Serialize;
@@ -93,10 +91,12 @@ pub struct VerifierProviderUpdateScreenResponseDTO {
     pub link: String,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(FeatureFlags)]
 pub struct VerifierFeatureFlagsRestDTO {
+    /// Always reports the same value as `ecosystemsEnabled`.
+    #[deprecated = "use ecosystemsEnabled instead"]
+    pub trust_ecosystems_enabled: bool,
     pub ecosystems_enabled: bool,
     pub access_certificate_provisioning_enabled: bool,
     /// Whether the verifier app must enforce the ecosystems advertised in `ecosystems`.

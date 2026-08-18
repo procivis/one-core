@@ -21,14 +21,40 @@ pub struct VerifierProviderMetadataResponseDTO {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", try_from = "FeatureFlagsWire")]
 pub struct FeatureFlags {
-    // Older verifier providers still report this flag under its previous name.
-    #[serde(alias = "trustEcosystemsEnabled")]
     pub ecosystems_enabled: bool,
     pub access_certificate_provisioning_enabled: bool,
     /// Whether the instances of this provider must enforce the ecosystems
     /// advertised in `ecosystems`.
     #[serde(default)]
     pub ecosystems_enforcement_enabled: bool,
+}
+
+/// Wire format of [`FeatureFlags`]. `ecosystemsEnabled` was previously named
+/// `trustEcosystemsEnabled`: verifier providers running an older core report
+/// only the old name, ones running a current core report both.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FeatureFlagsWire {
+    ecosystems_enabled: Option<bool>,
+    trust_ecosystems_enabled: Option<bool>,
+    access_certificate_provisioning_enabled: bool,
+    #[serde(default)]
+    ecosystems_enforcement_enabled: bool,
+}
+
+impl TryFrom<FeatureFlagsWire> for FeatureFlags {
+    type Error = String;
+
+    fn try_from(value: FeatureFlagsWire) -> Result<Self, Self::Error> {
+        Ok(Self {
+            ecosystems_enabled: value
+                .ecosystems_enabled
+                .or(value.trust_ecosystems_enabled)
+                .ok_or("missing field `ecosystemsEnabled`")?,
+            access_certificate_provisioning_enabled: value.access_certificate_provisioning_enabled,
+            ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
+        })
+    }
 }

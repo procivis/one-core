@@ -33,6 +33,7 @@ async fn test_get_verifier_provider_success() {
         body["appVersion"]["updateScreen"]["link"],
         "https//example.com"
     );
+    assert_eq!(body["featureFlags"]["trustEcosystemsEnabled"], true);
     assert_eq!(body["featureFlags"]["ecosystemsEnabled"], true);
     assert_eq!(body["featureFlags"]["ecosystemsEnforcementEnabled"], false);
     assert_eq!(body["trustCollections"].as_array().unwrap().len(), 0);
