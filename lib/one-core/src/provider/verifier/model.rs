@@ -29,7 +29,6 @@ fn default_device_auth_leeway() -> Duration {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ConfigFeatureFlags {
-    #[serde(alias = "trustEcosystemsEnabled")]
     pub ecosystems_enabled: bool,
     #[serde(default)]
     pub ecosystems_enforcement_enabled: bool,
