@@ -70,7 +70,7 @@ impl EudiEcosystem {
                             .get_credential_schema(credential_schema_id)
                             .await
                             .error_while("getting credential schema")?;
-                        let schema_format =
+                        let (schema_format, _) =
                             credential_schema_to_schema_format(&schema, &self.config).await?;
 
                         if !all_pid_schema_formats.contains(&schema_format) {
@@ -226,7 +226,7 @@ async fn filter_value_from_credential_schema(
     config: &CoreConfig,
     context: TrustContext,
 ) -> Result<IdentifierFilterValue, EcosystemError> {
-    let schema_format = credential_schema_to_schema_format(schema, config).await?;
+    let (schema_format, _) = credential_schema_to_schema_format(schema, config).await?;
     Ok(match context {
         TrustContext::Issuance => IdentifierFilterValue::TrustAllowedIssuanceTypes(schema_format),
         TrustContext::Verification => {

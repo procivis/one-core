@@ -3,7 +3,6 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use holder_issuance::HolderIssuanceResolver;
 use holder_proof::HolderProofResolver;
-use mapper::credential_schema_to_schema_format;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
@@ -18,7 +17,7 @@ use super::model::{
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
-use crate::model::identifier::{IdentifierData, IdentifierFilterValue};
+use crate::model::identifier::IdentifierFilterValue;
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::proof::Proof;
@@ -37,6 +36,7 @@ mod holder_proof;
 mod identifier_filter;
 mod mapper;
 mod trust_detail;
+mod validator;
 mod verifier_submission;
 
 #[serde_as]
@@ -225,74 +225,11 @@ impl Ecosystem for EudiEcosystem {
     }
 
     async fn validate_credential(&self, credential: &Credential) -> Result<(), EcosystemError> {
-        let Some(issuer_identifier) = &credential.issuer_identifier else {
-            return Err(EcosystemError::MissingIdentifier);
-        };
-        let issuer_identifier = issuer_identifier.as_ref().await?;
-
-        if !matches!(issuer_identifier.data, IdentifierData::Certificate(_)) {
-            return Err(EcosystemError::InvalidIdentifier(issuer_identifier.id));
-        }
-
-        let Some(_issuer_certificate) = &credential.issuer_certificate else {
-            return Err(EcosystemError::MissingIdentifier);
-        };
-
-        let reg_certs = issuer_identifier.trust_information.as_ref().await?;
-        if !reg_certs.is_empty() {
-            let credential_schema = credential.schema.as_ref().await?;
-            let schema_format =
-                credential_schema_to_schema_format(&credential_schema, &self.config).await?;
-
-            if !reg_certs
-                .iter()
-                .any(|reg_cert| reg_cert.allowed_issuance_types.contains(&schema_format))
-            {
-                return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
-            }
-        }
-
-        Ok(())
+        self.validate_credential_creation(credential).await
     }
 
     async fn validate_proof(&self, proof: &Proof) -> Result<(), EcosystemError> {
-        let Some(verifier_identifier) = &proof.verifier_identifier else {
-            return Err(EcosystemError::MissingIdentifier);
-        };
-        let verifier_identifier = verifier_identifier.as_ref().await?;
-
-        if !matches!(verifier_identifier.data, IdentifierData::Certificate(_)) {
-            return Err(EcosystemError::InvalidIdentifier(verifier_identifier.id));
-        }
-
-        let Some(_verifier_certificate) = &proof.verifier_certificate else {
-            return Err(EcosystemError::MissingIdentifier);
-        };
-
-        let reg_certs = verifier_identifier.trust_information.as_ref().await?;
-        if !reg_certs.is_empty() {
-            let Some(proof_schema) = &proof.schema else {
-                return Err(EcosystemError::MappingError(
-                    "Missing proof schema".to_string(),
-                ));
-            };
-            let proof_schema = proof_schema.as_ref().await?;
-            let input_schemas = proof_schema.input_schemas.as_ref().await?;
-            for input_schema in &input_schemas {
-                let credential_schema = input_schema.credential_schema.as_ref().await?;
-                let schema_format =
-                    credential_schema_to_schema_format(&credential_schema, &self.config).await?;
-
-                if !reg_certs
-                    .iter()
-                    .any(|reg_cert| reg_cert.allowed_verification_types.contains(&schema_format))
-                {
-                    return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
-                }
-            }
-        }
-
-        Ok(())
+        self.validate_proof_creation(proof).await
     }
 
     async fn identifier_filter<'a>(
