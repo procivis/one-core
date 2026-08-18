@@ -21,7 +21,6 @@ use crate::provider::ecosystem::model::{
 
 pub(crate) mod decorators;
 pub(crate) mod directory;
-pub mod dto;
 pub mod error;
 pub mod model;
 

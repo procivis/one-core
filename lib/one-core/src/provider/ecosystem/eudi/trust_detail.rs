@@ -1,5 +1,6 @@
 use shared_types::EntityId;
 use shared_types::i18n::I18nString;
+use standardized_types::etsi_119_475::registration_certificate::{Payload, SupervisoryAuthority};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use super::EudiEcosystem;
@@ -13,10 +14,12 @@ use crate::model::history::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListQuery, ListSorting};
 use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::JWTPayload;
+use crate::proto::wrp_validator::model::WRPPayload;
 use crate::provider::blob_storage::BlobStorage;
-use crate::provider::ecosystem::dto::{TrustDetails, WalletRelyingPartyDetails};
 use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::{TrustDetail, TrustDetailInfo};
+use crate::service::common_dto::{EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO};
 use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_from_pem_chain};
 
 impl EudiEcosystem {
@@ -57,14 +60,7 @@ impl EudiEcosystem {
 
         Ok(TrustDetail {
             received_at: history_event.created_date,
-            info: TrustDetailInfo::Eudi(
-                TrustDetails::Etsi {
-                    wrp,
-                    access_certificate,
-                }
-                .try_into()
-                .error_while("converting trust detail")?,
-            ),
+            info: TrustDetailInfo::Eudi(build_eudi_trust_info(access_certificate, wrp)?),
         })
     }
 
@@ -215,4 +211,140 @@ fn trust_purpose_from_history(
             .map(|p| (p.lang.to_owned(), p.value.to_owned()))
             .collect(),
     )))
+}
+
+enum WalletRelyingPartyDetails {
+    RegistrationCertificate(JWTPayload<Payload>),
+    NationalRegistryInfo(JWTPayload<WRPPayload>),
+}
+
+fn build_eudi_trust_info(
+    access_certificate: EtsiParsedAccessCert,
+    wrp: WalletRelyingPartyDetails,
+) -> Result<EudiTrustInformationResponseDTO, EcosystemError> {
+    let (eudi_ecosystem, has_intermediary) = match wrp {
+        WalletRelyingPartyDetails::RegistrationCertificate(reg_cert) => map_reg_cert(reg_cert)?,
+        WalletRelyingPartyDetails::NationalRegistryInfo(national_registry_info) => {
+            map_national_registry_info(national_registry_info)?
+        }
+    };
+    let (intermediary, email, phone) = map_access_cert(access_certificate, has_intermediary);
+    Ok(EudiTrustInformationResponseDTO {
+        intermediary,
+        email,
+        phone,
+        ..eudi_ecosystem
+    })
+}
+
+fn map_reg_cert(
+    reg_cert: JWTPayload<Payload>,
+) -> Result<(EudiTrustInformationResponseDTO, bool), EcosystemError> {
+    Ok((
+        EudiTrustInformationResponseDTO {
+            name: reg_cert.custom.name,
+            website: reg_cert.custom.support_uri,
+            email: None,
+            phone: None,
+            country: reg_cert.custom.country,
+            identifier: reg_cert.subject.ok_or(EcosystemError::MappingError(
+                "Missing registration certificate subject".to_string(),
+            ))?,
+            service_description: reg_cert
+                .custom
+                .service_descriptions
+                .into_iter()
+                .map(|langs| {
+                    langs
+                        .into_iter()
+                        .map(|lang| (lang.lang, lang.value))
+                        .collect()
+                })
+                .collect(),
+            supervisory_authority: reg_cert.custom.supervisory_authority,
+            intermediary: None,
+            is_public_sector: reg_cert.custom.public_body.unwrap_or_default(),
+        },
+        reg_cert.custom.intermediary.is_some(),
+    ))
+}
+
+fn map_national_registry_info(
+    national_registry_info: JWTPayload<WRPPayload>,
+) -> Result<(EudiTrustInformationResponseDTO, bool), EcosystemError> {
+    let data = national_registry_info.custom.data;
+    Ok((
+        EudiTrustInformationResponseDTO {
+            name: data.trade_name.ok_or(EcosystemError::MappingError(
+                "Missing trade name".to_string(),
+            ))?,
+            website: data
+                .support_uri
+                .into_iter()
+                .next()
+                .ok_or(EcosystemError::MappingError(
+                    "Empty support uri".to_string(),
+                ))?,
+            email: data.email.into_iter().next(),
+            phone: data.phone.into_iter().next(),
+            country: data.country,
+            identifier: national_registry_info
+                .subject
+                .ok_or(EcosystemError::MappingError(
+                    "Missing registration certificate subject".to_string(),
+                ))?,
+            service_description: vec![
+                data.srv_description
+                    .into_iter()
+                    .map(|lang| (lang.lang, lang.content))
+                    .collect(),
+            ],
+            supervisory_authority: SupervisoryAuthority {
+                email: data.supervisory_authority.email.into_iter().next().ok_or(
+                    EcosystemError::MappingError("Empty supervisor authority email".to_string()),
+                )?,
+                phone: data.supervisory_authority.phone.into_iter().next().ok_or(
+                    EcosystemError::MappingError("Empty supervisor authority phone".to_string()),
+                )?,
+                uri: data
+                    .supervisory_authority
+                    .info_uri
+                    .into_iter()
+                    .next()
+                    .ok_or(EcosystemError::MappingError(
+                        "Empty supervisor authority info_uri".to_string(),
+                    ))?,
+            },
+            intermediary: None,
+            is_public_sector: data.is_psb.unwrap_or_default(),
+        },
+        data.uses_intermediary
+            .is_some_and(|intermediaries| !intermediaries.is_empty()),
+    ))
+}
+
+fn map_access_cert(
+    access_certificate: EtsiParsedAccessCert,
+    has_intermediary: bool,
+) -> (
+    Option<EudiIntermediaryResponseDTO>,
+    Option<String>,
+    Option<String>,
+) {
+    if has_intermediary {
+        (
+            Some(EudiIntermediaryResponseDTO {
+                name: access_certificate.common_name,
+                identifier: access_certificate.rp_id,
+                website: access_certificate.support_uri.clone(),
+                email: access_certificate.email,
+                phone: access_certificate.phone,
+                country: access_certificate.country,
+            }),
+            None,
+            None,
+        )
+    } else {
+        (None, access_certificate.email, access_certificate.phone)
+    }
 }
