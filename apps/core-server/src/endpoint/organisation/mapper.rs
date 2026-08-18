@@ -96,6 +96,7 @@ fn upsert_configuration_from_request(
     })
 }
 
+#[expect(deprecated)]
 pub(crate) fn upsert_request_from_request(
     id: OrganisationId,
     request: UpsertOrganisationRequestRestDTO,

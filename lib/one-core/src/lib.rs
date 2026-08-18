@@ -20,6 +20,7 @@ use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporterPr
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
+use crate::proto::ecosystem_sync::EcosystemSyncProto;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
@@ -546,6 +547,16 @@ impl OneCore {
                 data_provider.get_tx_manager(),
             ));
 
+        let ecosystem_sync = Arc::new(EcosystemSyncProto::new(
+            data_provider.get_instance_repository(),
+            wallet_unit_client.clone(),
+            verifier_provider_client.clone(),
+            trust_collection_manager.clone(),
+            data_provider.get_trust_collection_repository(),
+            trust_list_subscription_sync.clone(),
+            schema_importer.clone(),
+        ));
+
         let task_provider = task_provider_from_config(
             &config,
             data_provider.get_claim_repository(),
@@ -558,17 +569,13 @@ impl OneCore {
             data_provider.get_notification_repository(),
             data_provider.get_trust_list_subscription_repository(),
             data_provider.get_instance_repository(),
-            data_provider.get_trust_collection_repository(),
             credential_validity_manager.clone(),
             certificate_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
             notification_sender.clone(),
             trust_list_subscriber_provider.clone(),
-            trust_collection_manager.clone(),
-            trust_list_subscription_sync.clone(),
-            wallet_unit_client.clone(),
-            verifier_provider_client.clone(),
+            ecosystem_sync.clone(),
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(
@@ -606,6 +613,7 @@ impl OneCore {
                 trust_list_subscription_sync.clone(),
                 data_provider.get_trust_collection_repository(),
                 data_provider.get_trust_list_subscription_repository(),
+                ecosystem_sync,
                 config.clone(),
             ),
             credential_service: CredentialService::new(

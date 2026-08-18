@@ -55,6 +55,7 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     /// The trust collections this organization's wallet subscribes to,
     /// selected from those made available by the Wallet Provider. Omit to
     /// leave the current selection unchanged.
+    #[deprecated = "use configuration.selectedEcosystems instead"]
     pub trust_collections: Option<Vec<TrustCollectionId>>,
     /// Optionally assign a parent organization to share policy-level
     /// configuration, such as trust collections, across a one-level hierarchy.

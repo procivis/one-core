@@ -292,7 +292,8 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0476
         | ErrorCode::BR_0477
         | ErrorCode::BR_0479
-        | ErrorCode::BR_0480 => StatusCode::BAD_REQUEST,
+        | ErrorCode::BR_0480
+        | ErrorCode::BR_0481 => StatusCode::BAD_REQUEST,
         ErrorCode::BR_0000
         | ErrorCode::BR_0038
         | ErrorCode::BR_0039

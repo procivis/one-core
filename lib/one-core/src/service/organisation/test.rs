@@ -22,6 +22,7 @@ use crate::model::organisation::{
     GetOrganisationList, Organisation, OrganisationConfiguration, OrganisationListQuery,
 };
 use crate::model::trust_collection::TrustCollection;
+use crate::proto::ecosystem_sync::MockEcosystemSync;
 use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::MockVerifierProviderClient;
 use crate::proto::wallet_provider_client::MockWalletProviderClient;
@@ -37,7 +38,9 @@ use crate::service::managed_instance::dto::{
     ProviderTrustCollectionDTO, WalletProviderMetadataResponseDTO,
     WalletUnitAttestationMetadataDTO,
 };
-use crate::service::organisation::dto::{TrustCollectionInfoDTO, UpsertOrganisationRequestDTO};
+use crate::service::organisation::dto::{
+    TrustCollectionInfoDTO, UpsertOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
+};
 use crate::service::test_utilities::dummy_organisation;
 use crate::service::verifier_provider::dto::{
     FeatureFlags as VerifierProviderFeatureFlags, VerifierProviderMetadataResponseDTO,
@@ -60,6 +63,7 @@ fn setup_service_with_mocks(
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(Default::default()),
     }
 }
@@ -460,6 +464,7 @@ async fn verifier_provider_trust_collections(
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(trust_collection_repository),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(Default::default()),
     };
 
@@ -567,6 +572,7 @@ async fn test_get_trust_collections_reports_legacy_per_collection_selection() {
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(trust_collection_repository),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(Default::default()),
     };
 
@@ -683,6 +689,7 @@ async fn test_get_ecosystems_deduplicates_providers_and_filters_unknown_ecosyste
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(config_with_eudi_ecosystem()),
     };
 
@@ -743,6 +750,7 @@ async fn test_get_ecosystems_reports_unselected_ecosystem() {
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(config_with_eudi_ecosystem()),
     };
 
@@ -780,6 +788,7 @@ async fn test_get_ecosystems_without_instances_lists_configured_ecosystems() {
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(config_with_eudi_ecosystem()),
     };
 
@@ -893,6 +902,7 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
         trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
         trust_collection_repository: Arc::new(trust_collection_repository),
         trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
         core_config: Arc::new(Default::default()),
     };
 
@@ -911,4 +921,199 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
         .await;
 
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0472);
+}
+
+/// A provider mandating ecosystem enforcement overrules the organisation: its instances
+/// must keep enforcing, so the flags cannot be turned off while it is linked.
+#[tokio::test]
+async fn test_upsert_organisation_cannot_disable_enforcement_mandated_by_provider() {
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation = organisation_selecting(organisation_id, &["EUDI"]);
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(organisation_selecting(organisation_id, &["EUDI"])));
+    // no `expect_update_organisation`: the request must be rejected before it is applied
+
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Wallet), eq(organisation_id))
+        .returning(move |_, _| {
+            Ok(Some(dummy_instance(
+                Uuid::new_v4(),
+                organisation.clone(),
+                InstanceRole::Wallet,
+            )))
+        });
+
+    let mut wallet_provider_client = MockWalletProviderClient::default();
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .returning(|_| Ok(wallet_metadata_enforcing_ecosystems(true)));
+
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(instance_repository),
+        wallet_provider_client: Arc::new(wallet_provider_client),
+        verifier_provider_client: Arc::new(MockVerifierProviderClient::default()),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
+        core_config: Arc::new(Default::default()),
+    };
+
+    let result = service
+        .upsert_organisation(upsert_configuration(
+            organisation_id,
+            UpsertOrganisationConfigurationDTO {
+                enforce_ecosystem_as_holder: Some(false),
+                ..Default::default()
+            },
+        ))
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0481);
+}
+
+/// A provider leaving enforcement to the organisation lets it turn the flags off.
+#[tokio::test]
+async fn test_upsert_organisation_disables_enforcement_provider_leaves_optional() {
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation = organisation_selecting(organisation_id, &["EUDI"]);
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(organisation_selecting(organisation_id, &["EUDI"])));
+    organisation_repository
+        .expect_update_organisation()
+        .once()
+        .withf(|_, request| {
+            request.configuration.as_ref().is_some_and(|configuration| {
+                !configuration.enforce_ecosystem_as_holder
+                    && configuration.selected_ecosystems == vec![EcosystemId::from("EUDI")]
+            })
+        })
+        .returning(|_, _| Ok(()));
+
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Wallet), eq(organisation_id))
+        .returning(move |_, _| {
+            Ok(Some(dummy_instance(
+                Uuid::new_v4(),
+                organisation.clone(),
+                InstanceRole::Wallet,
+            )))
+        });
+    instance_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Verifier), eq(organisation_id))
+        .returning(|_, _| Ok(None));
+
+    let mut wallet_provider_client = MockWalletProviderClient::default();
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .returning(|_| Ok(wallet_metadata_enforcing_ecosystems(false)));
+
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(instance_repository),
+        wallet_provider_client: Arc::new(wallet_provider_client),
+        verifier_provider_client: Arc::new(MockVerifierProviderClient::default()),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        // no `expect_sync_organisation`: no ecosystem is newly enabled
+        ecosystem_sync: Arc::new(MockEcosystemSync::default()),
+        core_config: Arc::new(Default::default()),
+    };
+
+    service
+        .upsert_organisation(upsert_configuration(
+            organisation_id,
+            UpsertOrganisationConfigurationDTO {
+                enforce_ecosystem_as_holder: Some(false),
+                ..Default::default()
+            },
+        ))
+        .await
+        .unwrap();
+}
+
+/// Changing the ecosystem selection syncs right away, rather than leaving the organisation
+/// to wait for the next run of the periodic task.
+#[tokio::test]
+async fn test_upsert_organisation_syncs_on_changed_ecosystem_selection() {
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(organisation_selecting(organisation_id, &["EUDI"])));
+    organisation_repository
+        .expect_update_organisation()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut ecosystem_sync = MockEcosystemSync::default();
+    ecosystem_sync
+        .expect_sync_organisation()
+        .once()
+        .withf(move |organisation| organisation.id == organisation_id)
+        .returning(|_| Ok(1));
+
+    let service = OrganisationService {
+        organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        instance_repository: Arc::new(MockInstanceRepository::new()),
+        wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
+        verifier_provider_client: Arc::new(MockVerifierProviderClient::default()),
+        trust_list_subscription_sync: Arc::new(MockTrustListSubscriptionSync::default()),
+        trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
+        trust_subscription_repository: Arc::new(MockTrustListSubscriptionRepository::default()),
+        ecosystem_sync: Arc::new(ecosystem_sync),
+        core_config: Arc::new(Default::default()),
+    };
+
+    service
+        .upsert_organisation(upsert_configuration(
+            organisation_id,
+            UpsertOrganisationConfigurationDTO {
+                selected_ecosystems: Some(vec!["EUDI".into(), "OTHER".into()]),
+                ..Default::default()
+            },
+        ))
+        .await
+        .unwrap();
+}
+
+/// An update touching nothing but the organisation configuration.
+fn upsert_configuration(
+    id: OrganisationId,
+    configuration: UpsertOrganisationConfigurationDTO,
+) -> UpsertOrganisationRequestDTO {
+    UpsertOrganisationRequestDTO {
+        id,
+        deactivate: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
+        verifier_provider: None,
+        verifier_provider_issuer: None,
+        configuration: Some(configuration),
+        trust_collections: None,
+        parent_organisation: None,
+    }
+}
+
+fn wallet_metadata_enforcing_ecosystems(enforced: bool) -> WalletProviderMetadataResponseDTO {
+    let mut metadata = wallet_metadata(vec![]);
+    metadata.feature_flags.ecosystems_enforcement_enabled = enforced;
+    metadata
 }

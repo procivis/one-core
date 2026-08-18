@@ -12,6 +12,8 @@ pub enum OrganisationServiceError {
     TrustCollectionsNotInSync,
     #[error("Trust collections must all belong to the same provider (wallet or verifier)")]
     TrustCollectionsSpanMultipleProviders,
+    #[error("Ecosystem enforcement is mandated by the organisation's provider")]
+    EcosystemEnforcementMandated,
 
     #[error("Identifier does not belong to this organisation")]
     IdentifierOrganisationMismatch,
@@ -37,6 +39,7 @@ impl ErrorCodeMixin for OrganisationServiceError {
             Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
             Self::TrustCollectionsNotInSync => ErrorCode::BR_0407,
             Self::TrustCollectionsSpanMultipleProviders => ErrorCode::BR_0472,
+            Self::EcosystemEnforcementMandated => ErrorCode::BR_0481,
             Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
             Self::VerifierProviderAlreadyAssociated(_) => ErrorCode::BR_0465,

@@ -51,7 +51,10 @@ impl CredentialSchemaImporterProto {
 
 #[async_trait::async_trait]
 impl CredentialSchemaImporter for CredentialSchemaImporterProto {
-    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    // Errors are logged at `debug`, not `warn`: an already-imported schema is expected when
+    // a provider re-advertises its schemas on every sync, and the API callers surface their
+    // failures to the client, which the server logs on its own.
+    #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     async fn import_credential_schema(
         &self,
         mut credential_schema: CredentialSchema,

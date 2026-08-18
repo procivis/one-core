@@ -17,12 +17,9 @@ use crate::config::core_config::{CoreConfig, TaskType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_validity_manager::CredentialValidityManager;
+use crate::proto::ecosystem_sync::EcosystemSync;
 use crate::proto::notification_sender::NotificationSender;
 use crate::proto::session_provider::SessionProvider;
-use crate::proto::trust_collection::TrustCollectionManager;
-use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
-use crate::proto::verifier_provider_client::VerifierProviderClient;
-use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::task::ecosystem_sync::EcosystemSyncTask;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
@@ -35,7 +32,6 @@ use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::notification_repository::NotificationRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 
 #[derive(Debug, Error)]
@@ -83,17 +79,13 @@ pub(crate) fn task_provider_from_config(
     notification_repository: Arc<dyn NotificationRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
-    trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     notification_sender: Arc<dyn NotificationSender>,
     trust_list_subscription_provider: Arc<dyn TrustListSubscriberProvider>,
-    collection_sync: Arc<dyn TrustCollectionManager>,
-    subscription_sync: Arc<dyn TrustListSubscriptionSync>,
-    wallet_unit_client: Arc<dyn WalletProviderClient>,
-    verifier_provider_client: Arc<dyn VerifierProviderClient>,
+    ecosystem_sync: Arc<dyn EcosystemSync>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
     let mut tasks: HashMap<TaskId, Arc<dyn Task>> = HashMap::new();
     let config_arc = Arc::new(config.clone());
@@ -159,11 +151,7 @@ pub(crate) fn task_provider_from_config(
             }
             TaskType::EcosystemSync => Arc::new(EcosystemSyncTask::new(
                 holder_wallet_unit_repository.clone(),
-                wallet_unit_client.clone(),
-                verifier_provider_client.clone(),
-                collection_sync.clone(),
-                trust_collection_repository.clone(),
-                subscription_sync.clone(),
+                ecosystem_sync.clone(),
             )),
         };
         tasks.insert(name.to_owned(), task);

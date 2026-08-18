@@ -14,8 +14,8 @@ use super::mapper::{
     prepare_trust_collection_info, request_to_model, set_active_trust_collections,
 };
 use super::validator::{
-    validate_parent_organisation, validate_verifier_provider, validate_wallet_provider,
-    validate_wallet_provider_issuer,
+    validate_ecosystem_enforcement, validate_parent_organisation, validate_verifier_provider,
+    validate_wallet_provider, validate_wallet_provider_issuer,
 };
 use crate::config::core_config::ConfigExt;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -288,10 +288,22 @@ impl OrganisationService {
             }
         }
 
+        if let Some(update) = &request.configuration {
+            validate_ecosystem_enforcement(
+                existing_organisation.as_ref(),
+                update,
+                &*self.instance_repository,
+                &*self.wallet_provider_client,
+                &*self.verifier_provider_client,
+            )
+            .await?;
+        }
+
         let existing_configuration = existing_organisation
             .as_ref()
             .map(|org| org.configuration.clone())
             .unwrap_or_default();
+        let previously_selected_ecosystems = existing_configuration.selected_ecosystems.clone();
         let configuration =
             request
                 .configuration
@@ -311,6 +323,9 @@ impl OrganisationService {
                         .enforce_ecosystem_as_verifier
                         .unwrap_or(existing_configuration.enforce_ecosystem_as_verifier),
                 });
+        let ecosystem_selection_changed = configuration.as_ref().is_some_and(|configuration| {
+            configuration.selected_ecosystems != previously_selected_ecosystems
+        });
 
         let success_log = format!("Updated organisation {}", request.id);
         let mut update_request: UpdateOrganisationRequest = request.clone().into();
@@ -320,6 +335,7 @@ impl OrganisationService {
             .update_organisation(&request.id, update_request)
             .await;
 
+        let mut updated = true;
         match result {
             Ok(_) => tracing::info!(message = success_log),
             Err(DataLayerError::AlreadyExists) => {
@@ -328,6 +344,7 @@ impl OrganisationService {
             Err(DataLayerError::RecordNotUpdated) => {
                 // Organisation does not exist, create a new one instead.
                 self.create_organisation(request.into()).await?;
+                updated = false;
             }
             Err(err) => return Err(err.error_while("updating organisation").into()),
         }
@@ -343,6 +360,36 @@ impl OrganisationService {
             .await
             .error_while("setting active trust collections")?;
         }
+
+        // An organisation just created has no instance to sync with yet, so only an update
+        // can change a selection that has anything to pull in.
+        if updated && ecosystem_selection_changed {
+            self.sync_ecosystems(organisation_id).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Pulls in what the organisation's providers advertise for its selected ecosystems:
+    /// their trust collections, which are mirrored and subscribed to, and their credential
+    /// and proof schemas, which are imported.
+    ///
+    /// The periodic `ECOSYSTEM_SYNC` task does the same, but an organisation that just
+    /// enabled an ecosystem should not have to wait for its next run.
+    async fn sync_ecosystems(
+        &self,
+        organisation_id: OrganisationId,
+    ) -> Result<(), OrganisationServiceError> {
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&organisation_id)
+            .await
+            .error_while("getting organisation")?;
+
+        self.ecosystem_sync
+            .sync_organisation(&organisation)
+            .await
+            .error_while("syncing ecosystems")?;
 
         Ok(())
     }

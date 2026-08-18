@@ -1026,6 +1026,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Deprecated fields must not be mixed with their replacements")]
     BR_0480,
+
+    #[strum(message = "Ecosystem enforcement mandated by provider, cannot be disabled")]
+    BR_0481,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
