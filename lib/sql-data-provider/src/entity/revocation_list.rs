@@ -86,4 +86,6 @@ pub enum RevocationListFormat {
     JsonLdClassic,
     #[sea_orm(string_value = "X509_CRL")]
     X509Crl,
+    #[sea_orm(string_value = "CWT")]
+    Cwt,
 }

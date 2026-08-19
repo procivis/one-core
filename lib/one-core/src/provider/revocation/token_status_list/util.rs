@@ -36,8 +36,6 @@ impl ErrorCodeMixin for TokenError {
     }
 }
 
-pub(crate) const PREFERRED_ENTRY_SIZE: usize = 2;
-
 pub(super) fn extract_state_from_token(
     status_list: &TokenStatusListSubject,
     index: usize,
@@ -99,7 +97,7 @@ pub(super) fn generate_token(
                 bitvec.set(revocation_bit_index, true)
             }
             RevocationListEntryState::Suspended => {
-                if bits < PREFERRED_ENTRY_SIZE {
+                if bits < 2 {
                     return Err(TokenError::SuspensionRequiresAtLeastTwoBits);
                 }
                 let suspension_bit_index = most_significant_bit_index + bits - 2;

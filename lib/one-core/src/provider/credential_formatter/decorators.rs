@@ -50,7 +50,7 @@ impl<T: Provider + CredentialFormatter + Display + ?Sized> CredentialFormatter
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<Vec<u8>, FormatterError> {
         self.disabled_error()
     }
 
@@ -186,7 +186,7 @@ impl CredentialFormatter for CapabilityChecked {
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<Vec<u8>, FormatterError> {
         self.0
             .format_status_list(
                 revocation_list_url,

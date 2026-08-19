@@ -164,14 +164,14 @@ impl CredentialFormatter for JWTFormatter {
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<Vec<u8>, FormatterError> {
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)?;
 
         let jose_alg = key_algorithm.issuance_jose_alg_id();
 
-        match status_list_type {
+        let status_list = match status_list_type {
             RevocationType::BitstringStatusList => {
                 self.format_bitstring_status_list(
                     revocation_list_url,
@@ -181,25 +181,32 @@ impl CredentialFormatter for JWTFormatter {
                     auth_fn,
                     status_purpose,
                 )
-                .await
+                .await?
             }
             RevocationType::TokenStatusList => {
+                let bits = if status_purpose == StatusPurpose::RevocationAndSuspension {
+                    2
+                } else {
+                    1
+                };
                 self.format_token_status_list(
                     revocation_list_url,
                     issuer,
                     encoded_list,
                     jose_alg,
                     auth_fn,
-                    self.key_algorithm_provider.as_ref(),
+                    bits,
                 )
-                .await
+                .await?
             }
             _ => {
                 return Err(FormatterError::CouldNotFormat(format!(
                     "Unsupported status list: {status_list_type}"
                 )));
             }
-        }
+        };
+
+        Ok(status_list.into_bytes())
     }
 
     async fn extract_credentials<'a>(

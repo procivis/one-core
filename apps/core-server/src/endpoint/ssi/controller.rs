@@ -130,7 +130,8 @@ pub(crate) async fn get_did_webvh_log(
                   "encodedList": "uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
                 }
               })),
-            (String = "application/statuslist+jwt")
+            (String = "application/statuslist+jwt"),
+            ([u8] = "application/statuslist+cwt")
         )),
         (status = 404, description = "Revocation list not found"),
         (status = 500, description = "Server error"),

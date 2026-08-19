@@ -184,7 +184,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<Vec<u8>, FormatterError> {
         if status_list_type != RevocationType::BitstringStatusList {
             return Err(FormatterError::CouldNotFormat(
                 "Only BitstringStatusList can be formatted with JSON_LD_BBSPLUS formatter"
@@ -239,7 +239,7 @@ impl CredentialFormatter for JsonLdBbsplus {
 
         vcdm.proof = Some(proof);
 
-        Ok(serde_json::to_string(&vcdm)?)
+        Ok(serde_json::to_string(&vcdm)?.into_bytes())
     }
 
     async fn extract_credentials<'a>(

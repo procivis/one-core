@@ -43,6 +43,7 @@ pub enum StatusListCredentialFormat {
     Jwt,
     JsonLdClassic,
     X509Crl,
+    Cwt,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

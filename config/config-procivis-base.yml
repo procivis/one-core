@@ -277,6 +277,15 @@ revocation:
     params:
       public:
         refreshIntervalSeconds: 86400
+  MDOC_TOKENSTATUSLIST:
+    display: "revocation.mdocTokenList"
+    order: 7
+    enabled: true
+    type: "TOKENSTATUSLIST"
+    params:
+      public:
+        format: "CWT"
+        operations: ["REVOKE"]
 did:
   KEY:
     display: "did.key"

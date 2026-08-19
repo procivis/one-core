@@ -316,7 +316,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<Vec<u8>, FormatterError> {
         Err(FormatterError::CouldNotFormat(
             "Cannot format StatusList with SD-JWT VC formatter".to_string(),
         ))

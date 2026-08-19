@@ -37,7 +37,8 @@ use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{
-    dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
+    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    get_dummy_date,
 };
 
 #[test]
@@ -1437,6 +1438,51 @@ async fn test_parse_credential() {
         get_mapping_keys(&|mapping| mapping.namespace == Some("namespace2".to_string())),
         hashset! { "arr" }
     );
+}
+
+#[tokio::test]
+async fn test_format_status_list() {
+    let params = json!({
+        "expirationSeconds": 10,
+        "msoExpectedUpdateInSeconds": 10,
+        "msoMinimumRefreshSeconds": 10,
+        "leewaySeconds": 60
+    });
+
+    let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
+        "MDOC".into(),
+        params,
+        Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        generic_config().core.datatype,
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockHttpClient::new()),
+    )
+    .unwrap();
+
+    let mut auth_fn = MockSignatureProvider::new();
+    auth_fn
+        .expect_sign()
+        .returning(|_| Ok("signature".as_bytes().to_vec()));
+    auth_fn.expect_get_key_id().returning(|| None);
+
+    let _encoded = formatter
+        .format_status_list(
+            "url".to_string(),
+            SelectedKey::Certificate {
+                certificate: Box::new(dummy_certificate(Uuid::new_v4().into())),
+                key: Box::new(dummy_key()),
+            },
+            "eNo76fITAAPfAgc".to_string(),
+            KeyAlgorithmType::Ecdsa,
+            Box::new(auth_fn),
+            StatusPurpose::Revocation,
+            RevocationType::TokenStatusList,
+        )
+        .await
+        .unwrap();
 }
 
 #[test]

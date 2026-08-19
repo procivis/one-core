@@ -128,7 +128,7 @@ impl CredentialFormatter for JsonLdClassic {
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<Vec<u8>, FormatterError> {
         if status_list_type != RevocationType::BitstringStatusList {
             return Err(FormatterError::CouldNotFormat(
                 "Only BitstringStatusList can be formatted with JSON_LD_CLASSIC formatter"
@@ -160,7 +160,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let credential = self.add_proof(credential, algorithm, auth_fn).await?;
 
-        Ok(serde_json::to_string(&credential)?)
+        Ok(serde_json::to_string(&credential)?.into_bytes())
     }
 
     async fn extract_credentials<'a>(

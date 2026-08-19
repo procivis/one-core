@@ -68,7 +68,7 @@ async fn test_get_revocation_list() {
     assert_eq!(
         result,
         RevocationListResponseDTO {
-            revocation_list: "revocation-list-credential".to_owned(),
+            revocation_list: b"revocation-list-credential".to_vec(),
             format: StatusListCredentialFormat::Jwt,
             r#type: RevocationType::BitstringStatusList
         }

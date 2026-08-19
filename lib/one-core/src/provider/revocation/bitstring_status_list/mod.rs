@@ -226,7 +226,7 @@ impl RevocationMethod for BitstringStatusList {
 
         let encoded_list = generate_bitstring_from_entries(current_entries, purpose).await?;
 
-        let list_credential = format_status_list_credential(
+        let formatted_list = format_status_list_credential(
             &current_list.id,
             &issuer_identifier,
             encoded_list,
@@ -239,7 +239,7 @@ impl RevocationMethod for BitstringStatusList {
         .await?;
 
         self.revocation_list_repository
-            .update_formatted_list(&current_list.id, list_credential.into_bytes())
+            .update_formatted_list(&current_list.id, formatted_list)
             .await
             .error_while("updating revocation list")?;
 
@@ -648,7 +648,7 @@ impl BitstringStatusList {
         purpose: RevocationListPurpose,
     ) -> Result<RevocationListId, RevocationError> {
         let revocation_list_id = Uuid::new_v4().into();
-        let list_credential = format_status_list_credential(
+        let formatted_list = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,
             util::generate_bitstring(vec![]).error_while("generating bitstring")?,
@@ -665,7 +665,7 @@ impl BitstringStatusList {
                 id: revocation_list_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
-                formatted_list: list_credential.into_bytes(),
+                formatted_list,
                 format: self.params.format,
                 r#type: self.config_id.to_owned(),
                 purpose,
@@ -698,7 +698,7 @@ pub(crate) async fn format_status_list_credential(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
-) -> Result<String, RevocationError> {
+) -> Result<Vec<u8>, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
     if !matches!(issuer_identifier.data, IdentifierData::Did(_)) {

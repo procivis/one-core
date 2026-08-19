@@ -10,9 +10,7 @@ use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, Issuer};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
 use crate::util::key_selection::SelectedKey;
 
 impl JWTFormatter {
@@ -79,7 +77,7 @@ impl JWTFormatter {
         encoded_list: String,
         jose_alg: String,
         auth_fn: AuthenticationFn,
-        key_alg_provider: &dyn KeyAlgorithmProvider,
+        bits: usize,
     ) -> Result<String, FormatterError> {
         let (issuer, public_key_info) = match issuer {
             SelectedKey::Did { did, .. } => (Some(did.did.to_string()), None),
@@ -90,7 +88,8 @@ impl JWTFormatter {
                 )),
             ),
             SelectedKey::Key(key) => {
-                let key = key_alg_provider
+                let key = self
+                    .key_algorithm_provider
                     .key_algorithm_from_key(&key)
                     .error_while("getting key algorithm")?
                     .reconstruct_key(&key.public_key, None, None)
@@ -104,7 +103,7 @@ impl JWTFormatter {
 
         let content = TokenStatusListContent {
             status_list: TokenStatusListSubject {
-                bits: PREFERRED_ENTRY_SIZE,
+                bits,
                 value: encoded_list,
             },
         };

@@ -6,9 +6,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use coset::iana::{EnumI64, HeaderParameter};
-use coset::{HeaderBuilder, ProtectedHeader, SignatureContext};
-use ct_codecs::{Base64, Decoder, Encoder};
+use coset::cwt::{ClaimsSetBuilder, Timestamp};
+use coset::iana::{CborTag, EnumI64, HeaderParameter};
+use coset::{AsCborValue, CborSerializable, HeaderBuilder, ProtectedHeader, SignatureContext};
+use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use futures::future::BoxFuture;
 use indexmap::{IndexMap, IndexSet};
 use one_crypto::utilities::generate_random_bytes;
@@ -294,17 +295,96 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn format_status_list<'a>(
         &self,
-        _revocation_list_url: String,
-        _issuer: SelectedKey,
-        _encoded_list: String,
-        _algorithm: KeyAlgorithmType,
-        _auth_fn: AuthenticationFn,
-        _status_purpose: StatusPurpose,
-        _status_list_type: RevocationType,
-    ) -> Result<String, FormatterError> {
-        Err(FormatterError::CouldNotFormat(
-            "Cannot format StatusList with MDOC formatter".to_string(),
-        ))
+        revocation_list_url: String,
+        issuer: SelectedKey,
+        encoded_list: String,
+        algorithm: KeyAlgorithmType,
+        auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
+        status_list_type: RevocationType,
+    ) -> Result<Vec<u8>, FormatterError> {
+        if status_purpose != StatusPurpose::Revocation {
+            return Err(FormatterError::CouldNotFormat(format!(
+                "Unsupported status list purpose: {status_purpose}"
+            )));
+        }
+        if status_list_type != RevocationType::TokenStatusList {
+            return Err(FormatterError::CouldNotFormat(format!(
+                "Unsupported status list type: {status_list_type}"
+            )));
+        }
+
+        let SelectedKey::Certificate { certificate, .. } = &issuer else {
+            return Err(FormatterError::CouldNotFormat(
+                "Unsupported issuer identifier".to_string(),
+            ));
+        };
+
+        let list = Base64UrlSafeNoPadding::decode_to_vec(encoded_list, None)?;
+
+        let protected_headers = HeaderBuilder::new()
+            .algorithm(build_algorithm_header_value(algorithm)?)
+            .add_header(
+                HeaderParameter::ObjectContentType,
+                ciborium::Value::Text("application/statuslist+cwt".to_string()),
+            )
+            .add_header(
+                HeaderParameter::X5Chain,
+                build_x5chain_header_value(certificate)?,
+            )
+            .build();
+        let unprotected_headers = {
+            let mut unprotected_headers = HeaderBuilder::new();
+            if let Some(kid) = auth_fn.get_key_id() {
+                unprotected_headers = unprotected_headers.add_header(
+                    HeaderParameter::Kid,
+                    ciborium::Value::Bytes(kid.into_bytes()),
+                );
+            }
+            unprotected_headers.build()
+        };
+        let payload = {
+            let mut payload = ClaimsSetBuilder::new()
+                .subject(revocation_list_url)
+                .issued_at(Timestamp::WholeSeconds(
+                    crate::clock::now_utc().unix_timestamp(),
+                ))
+                .build()
+                .to_cbor_value()?;
+
+            let status_list = ciborium::Value::Map(vec![
+                (ciborium::Value::Text("bits".to_string()), 1u8.into()),
+                (
+                    ciborium::Value::Text("lst".to_string()),
+                    ciborium::Value::Bytes(list),
+                ),
+            ]);
+            payload
+                .as_map_mut()
+                .ok_or(FormatterError::CouldNotFormat(
+                    "invalid CWT payload".to_string(),
+                ))?
+                .push((65533u16.into(), status_list));
+
+            payload.to_vec()?
+        };
+        let cose_sign1 = CoseSign1Builder::new()
+            .protected(ProtectedHeader {
+                original_data: None,
+                header: protected_headers,
+            })
+            .unprotected(unprotected_headers)
+            .payload(payload)
+            .try_create_signature_with_provider(&[], &*auth_fn)
+            .await
+            .error_while("creating signature")?
+            .build()
+            .to_cbor_value()?;
+
+        Ok(
+            ciborium::Value::Tag(CborTag::CoseSign1.to_i64() as _, Box::new(cose_sign1))
+                .to_vec()?,
+        )
     }
 
     async fn extract_credentials<'a>(

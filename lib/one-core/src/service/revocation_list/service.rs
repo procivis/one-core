@@ -25,9 +25,7 @@ impl RevocationListService {
             .error_while("getting revocation type")?;
 
         Ok(RevocationListResponseDTO {
-            revocation_list: list
-                .get_status_credential()
-                .error_while("parsing status list")?,
+            revocation_list: list.formatted_list,
             format: list.format,
             r#type,
         })

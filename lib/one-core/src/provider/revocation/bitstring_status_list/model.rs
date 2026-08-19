@@ -4,7 +4,7 @@ use strum::{AsRefStr, Display};
 
 use crate::model::revocation_list::RevocationListPurpose;
 
-#[derive(Debug, Serialize, Deserialize, From, AsRefStr, Display)]
+#[derive(Debug, Serialize, Deserialize, From, AsRefStr, Display, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[from(RevocationListPurpose)]
 pub enum StatusPurpose {

@@ -3,7 +3,7 @@ use crate::model::revocation_list::StatusListCredentialFormat;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationListResponseDTO {
-    pub revocation_list: String,
+    pub revocation_list: Vec<u8>,
     pub format: StatusListCredentialFormat,
     pub r#type: RevocationType,
 }

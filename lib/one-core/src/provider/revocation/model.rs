@@ -1,6 +1,6 @@
 //! `struct`s and `enum`s for revocation method provider.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use standardized_types::x509::CertificateSerial;
 use strum::Display;
 use time::OffsetDateTime;
@@ -54,7 +54,7 @@ pub struct RevocationMethodCapabilities {
     pub operations: Vec<Operation>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Display)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Operation {
     Revoke,

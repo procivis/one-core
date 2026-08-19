@@ -69,7 +69,7 @@ pub trait CredentialFormatter: Provider + Send + Sync {
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
-    ) -> Result<String, FormatterError>;
+    ) -> Result<Vec<u8>, FormatterError>;
 
     /// Parses a received credential and verifies the signature.
     async fn extract_credentials<'a>(
