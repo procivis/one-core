@@ -211,6 +211,7 @@ pub(crate) async fn get_identifier_list(
     summary = "Resolve trust entries",
     description = "",
 )]
+#[deprecated = "Deprecated in favor of credential and proof trust details"]
 pub(crate) async fn resolve_trust_entries(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
