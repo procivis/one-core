@@ -29,7 +29,7 @@ mod test;
 pub struct InstanceService {
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    holder_wallet_instance_repository: Arc<dyn InstanceRepository>,
+    instance_repository: Arc<dyn InstanceRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -51,7 +51,7 @@ impl InstanceService {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
-        holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
+        instance_repository: Arc<dyn InstanceRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         key_repository: Arc<dyn KeyRepository>,
         key_provider: Arc<dyn KeyProvider>,
@@ -79,7 +79,7 @@ impl InstanceService {
             os_info_provider,
             trust_collection_manager,
             organisation_repository,
-            holder_wallet_instance_repository: holder_wallet_unit_repository,
+            instance_repository,
             history_repository,
             clock,
             base_url,

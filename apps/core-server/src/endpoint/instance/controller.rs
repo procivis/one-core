@@ -41,7 +41,7 @@ pub(crate) async fn register_remote_instance(
             state
                 .core
                 .instance_service
-                .holder_register(request.try_into()?)
+                .register_instance(request.try_into()?)
                 .await
                 .error_while("registering holder wallet instance")?,
         )

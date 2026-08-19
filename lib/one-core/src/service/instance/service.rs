@@ -1,7 +1,8 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{InstanceId, ManagedInstanceId};
+use shared_types::{EcosystemId, InstanceId, ManagedInstanceId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -23,13 +24,12 @@ use crate::model::instance::{
 };
 use crate::model::key::Key;
 use crate::model::managed_instance::ManagedInstanceOs;
-use crate::model::organisation::Organisation;
+use crate::model::organisation::{Organisation, UpdateOrganisationRequest};
 use crate::proto::csr_creator::{CsrRequestProfile, CsrRequestSubject, GenerateCsrRequest};
 use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
-use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::proto::wallet_provider_client::dto::MetadataTarget;
 use crate::proto::wallet_provider_client::error::WalletProviderClientError;
@@ -39,9 +39,10 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::managed_instance::dto::{
-    ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
-    UserAuthenticationDTO, WalletUnitAttestationMetadataDTO,
+    ActivateWalletUnitRequestDTO, EcosystemMetadataDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO, UserAuthenticationDTO, WalletUnitAttestationMetadataDTO,
 };
+use crate::service::managed_instance::ecosystem_metadata::remote_trust_collections;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 /// Provider metadata relevant for instance registration, unified over the
@@ -50,10 +51,13 @@ pub(super) struct ProviderMetadata {
     pub name: String,
     pub attestation: WalletUnitAttestationMetadataDTO,
     pub user_authentication: Option<UserAuthenticationDTO>,
-    pub trust_collections: Vec<RemoteTrustCollectionInfoDTO>,
+    pub ecosystems: Vec<EcosystemMetadataDTO>,
     pub credential_schemas: Vec<String>,
     pub proof_schemas: Vec<String>,
     pub access_certificate_provisioning_enabled: bool,
+    /// Whether the provider requires the instances it backs to enforce the ecosystems it
+    /// advertises.
+    pub ecosystems_enforcement_enabled: bool,
 }
 
 pub(crate) fn provider_metadata_url(
@@ -72,7 +76,7 @@ pub(crate) fn provider_metadata_url(
 }
 
 impl InstanceService {
-    pub async fn holder_register(
+    pub async fn register_instance(
         &self,
         request: HolderRegisterInstanceRequestDTO,
     ) -> Result<HolderRegisterInstanceResponseDTO, HolderInstanceError> {
@@ -91,7 +95,7 @@ impl InstanceService {
         }
 
         let existing_instance = self
-            .holder_wallet_instance_repository
+            .instance_repository
             .get_by_role(request.role, organisation.id)
             .await
             .error_while("checking presence of instance")?;
@@ -103,7 +107,7 @@ impl InstanceService {
             }
             // A failed (Error) instance is left behind when registration is aborted (e.g.
             // expired nonce). Remove it so the holder can restart registration
-            self.holder_wallet_instance_repository
+            self.instance_repository
                 .delete(&existing_instance.id)
                 .await
                 .error_while("deleting failed instance")?;
@@ -112,7 +116,7 @@ impl InstanceService {
         let (os, key_storage_id) = self.resolve_os_and_key_storage().await?;
         let key_type = self.parse_and_validate_key_type(&request.key_type)?;
 
-        let wallet_provider_url = Url::from_str(&request.provider.url)
+        let provider_url = Url::from_str(&request.provider.url)
             .map_err(HolderInstanceError::InvalidWalletProviderUrl)?
             .origin()
             .ascii_serialization();
@@ -123,9 +127,9 @@ impl InstanceService {
                 request.provider.r#type,
             )
             .await?;
-        let provider_info = WalletProviderInfo {
+        let provider_info = ProviderInfo {
             name: metadata.name.clone(),
-            url: wallet_provider_url.clone(),
+            url: provider_url.clone(),
         };
 
         self.schema_importer
@@ -191,30 +195,26 @@ impl InstanceService {
             }
         };
 
-        let wallet_instance_request = registration_status.map_to_create_wallet_instance_request(
-            &request,
-            &organisation,
-            wallet_provider_url,
-            &metadata,
-        );
-        let user_nonce = wallet_instance_request.user_nonce.clone();
-        let status = wallet_instance_request.status;
+        let instance =
+            registration_status.map_to_instance(&request, &organisation, provider_url, &metadata);
+        let user_nonce = instance.user_nonce.clone();
+        let status = instance.status;
 
-        let holder_wallet_unit_id = self
-            .holder_wallet_instance_repository
-            .create(wallet_instance_request)
+        let instance_id = self
+            .instance_repository
+            .create(instance)
             .await
             .error_while("creating holder wallet unit")?;
 
         let now = self.clock.now_utc();
-        let wallet_unit_name = format!(
+        let name = format!(
             "{}-{}-{}",
             request.provider.r#type,
             os,
             now.unix_timestamp()
         );
         let success_log = format!(
-            "Registered wallet unit `{wallet_unit_name}`({holder_wallet_unit_id}) using provider `{}`, with status {status}",
+            "Registered instance `{name}`({instance_id}) using provider `{}`, with status {status}",
             request.provider.url
         );
         self.history_repository
@@ -222,10 +222,10 @@ impl InstanceService {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 action: HistoryAction::Created,
-                name: wallet_unit_name,
+                name,
                 source: HistorySource::Core,
                 target: None,
-                entity_id: Some(holder_wallet_unit_id.into()),
+                entity_id: Some(instance_id.into()),
                 entity_type: HistoryEntityType::WalletUnit,
                 metadata: None,
                 metadata_blob_id: None,
@@ -238,18 +238,79 @@ impl InstanceService {
         self.trust_collection_manager
             .create_empty_trust_collections(
                 &request.provider.url,
-                metadata.trust_collections,
+                remote_trust_collections(&metadata.ecosystems),
                 organisation.id,
             )
             .await
             .error_while("creating empty trust collections")?;
 
+        self.align_organisation_configuration(&organisation, &metadata, request.role)
+            .await?;
+
         tracing::info!(message = success_log);
         Ok(HolderRegisterInstanceResponseDTO {
-            id: holder_wallet_unit_id,
+            id: instance_id,
             status,
             user_nonce,
         })
+    }
+
+    /// Brings the configuration of the organisation the instance was registered for in line
+    /// with the settings of the provider backing it: ecosystems the provider does not
+    /// advertise are deselected, and enforcement of the selected ecosystems is turned on when
+    /// the provider mandates it.
+    ///
+    /// Enforcement is only turned on for the role the registered instance covers - a wallet
+    /// instance acts as holder, a verifier instance as verifier - and never turned off: a
+    /// provider not mandating it leaves the choice to the organisation.
+    async fn align_organisation_configuration(
+        &self,
+        organisation: &Organisation,
+        metadata: &ProviderMetadata,
+        role: InstanceRole,
+    ) -> Result<(), HolderInstanceError> {
+        let mut configuration = organisation.configuration.clone();
+
+        let advertised: HashSet<&EcosystemId> = metadata
+            .ecosystems
+            .iter()
+            .map(|ecosystem| &ecosystem.name)
+            .collect();
+        configuration.selected_ecosystems.retain(|ecosystem| {
+            let advertised = advertised.contains(ecosystem);
+            if !advertised {
+                tracing::info!(
+                    "Deselecting ecosystem `{ecosystem}` of organisation `{}`: not advertised by provider `{}`",
+                    organisation.id,
+                    metadata.name,
+                );
+            }
+            advertised
+        });
+
+        if metadata.ecosystems_enforcement_enabled {
+            match role {
+                InstanceRole::Wallet => configuration.enforce_ecosystem_as_holder = true,
+                InstanceRole::Verifier => configuration.enforce_ecosystem_as_verifier = true,
+            }
+        }
+
+        if configuration == organisation.configuration {
+            return Ok(());
+        }
+
+        self.organisation_repository
+            .update_organisation(
+                &organisation.id,
+                UpdateOrganisationRequest {
+                    configuration: Some(configuration),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating organisation configuration")?;
+
+        Ok(())
     }
 
     pub async fn holder_activate(
@@ -258,7 +319,7 @@ impl InstanceService {
         request: HolderActivateInstanceRequestDTO,
     ) -> Result<HolderActivateInstanceResponseDTO, HolderInstanceError> {
         let holder_wallet_instance = self
-            .holder_wallet_instance_repository
+            .instance_repository
             .get(&id)
             .await
             .error_while("getting holder wallet instance")?;
@@ -317,7 +378,7 @@ impl InstanceService {
         let activation_status = if let Some(nonce) = holder_wallet_instance.nonce {
             let (os, key_storage_id) = self.resolve_os_and_key_storage().await?;
 
-            let provider_info = WalletProviderInfo {
+            let provider_info = ProviderInfo {
                 name: holder_wallet_instance.provider_name.clone(),
                 url: holder_wallet_instance.provider_url.clone(),
             };
@@ -385,7 +446,7 @@ impl InstanceService {
                 // The registration nonce has expired. Mark the instance failed (out of PENDING)
                 // so the wallet restarts registration from scratch instead of re-activating
                 // against the dead nonce.
-                self.holder_wallet_instance_repository
+                self.instance_repository
                     .update(
                         &id,
                         UpdateInstanceRequest {
@@ -400,7 +461,7 @@ impl InstanceService {
             other => other.error_while("activating wallet unit")?,
         };
 
-        self.holder_wallet_instance_repository
+        self.instance_repository
             .update(
                 &id,
                 UpdateInstanceRequest {
@@ -480,7 +541,7 @@ impl InstanceService {
         id: InstanceId,
     ) -> Result<HolderInstanceResponseDTO, HolderInstanceError> {
         Ok(instance_to_detail_dto(
-            self.holder_wallet_instance_repository
+            self.instance_repository
                 .get(&id)
                 .await
                 .error_while("getting holder wallet unit")?,
@@ -516,7 +577,7 @@ impl InstanceService {
 
     pub async fn holder_instance_status(&self, id: InstanceId) -> Result<(), HolderInstanceError> {
         let holder_wallet_unit = self
-            .holder_wallet_instance_repository
+            .instance_repository
             .get(&id)
             .await
             .error_while("getting holder wallet unit")?;
@@ -532,7 +593,7 @@ impl InstanceService {
             .error_while("checking wallet unit status")?;
 
         if wallet_unit_status == WalletUnitStatusCheckResponse::Revoked {
-            self.holder_wallet_instance_repository
+            self.instance_repository
                 .update(
                     &id,
                     UpdateInstanceRequest {
@@ -568,7 +629,7 @@ impl InstanceService {
     /// key is generated during activation) and store both nonces. Stays pending until activation.
     async fn register_pending_integrity_check(
         &self,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         os: ManagedInstanceOs,
         role: InstanceRole,
     ) -> Result<RegistrationStatus, HolderInstanceError> {
@@ -604,7 +665,7 @@ impl InstanceService {
     /// user nonce. Stays pending until the user authenticates during activation.
     async fn register_pending_no_integrity_check(
         &self,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
@@ -640,7 +701,7 @@ impl InstanceService {
     /// immediately with the attestation (no user token).
     async fn register_and_activate_with_integrity_check(
         &self,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
@@ -686,7 +747,7 @@ impl InstanceService {
     /// No authentication, no integrity check: register with a key and activate in a single step.
     async fn register_active(
         &self,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
@@ -720,7 +781,7 @@ impl InstanceService {
 
     async fn register_without_integrity_check(
         &self,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
@@ -754,7 +815,7 @@ impl InstanceService {
     #[expect(clippy::too_many_arguments)]
     async fn activate_with_integrity_check(
         &self,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
@@ -849,7 +910,7 @@ impl InstanceService {
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         organisation: Organisation,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         nonce: Option<String>,
         os: ManagedInstanceOs,
     ) -> Result<AttestationProofs, HolderInstanceError> {
@@ -961,7 +1022,7 @@ impl InstanceService {
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         organisation: Organisation,
-        provider_info: &WalletProviderInfo,
+        provider_info: &ProviderInfo,
         nonce: Option<String>,
     ) -> Result<(Key, String), HolderInstanceError> {
         let key_storage = self.key_provider.get_key_storage(key_storage_id)?;
@@ -1146,7 +1207,7 @@ impl InstanceService {
     }
 }
 
-struct WalletProviderInfo {
+struct ProviderInfo {
     name: String,
     url: String,
 }
@@ -1173,7 +1234,7 @@ enum RegistrationStatus {
 }
 
 impl RegistrationStatus {
-    fn map_to_create_wallet_instance_request(
+    fn map_to_instance(
         self,
         request: &HolderRegisterInstanceRequestDTO,
         organisation: &Organisation,

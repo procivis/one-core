@@ -11,7 +11,7 @@ use super::dto::{HolderRegisterInstanceRequestDTO, InstanceProviderDTO};
 use super::error::HolderInstanceError;
 use crate::config::core_config::CoreConfig;
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
-use crate::model::organisation::Organisation;
+use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::proto::clock::DefaultClock;
 use crate::proto::csr_creator::MockCsrCreator;
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -34,8 +34,9 @@ use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::managed_instance::dto::{
-    ActivateWalletUnitResponseDTO, FeatureFlags, RegisterWalletUnitResponseDTO,
-    WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
+    ActivateWalletUnitResponseDTO, EcosystemMetadataDTO, FeatureFlags,
+    RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
+    WalletUnitAttestationMetadataDTO,
 };
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
@@ -47,7 +48,7 @@ fn mock_instance_service() -> InstanceService {
         key_repository: Arc::new(MockKeyRepository::default()),
         wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
         verifier_provider_client: Arc::new(MockVerifierProviderClient::default()),
-        holder_wallet_instance_repository: Arc::new(MockInstanceRepository::default()),
+        instance_repository: Arc::new(MockInstanceRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
@@ -215,7 +216,7 @@ async fn holder_register_success() {
         organisation_repository: Arc::new(organisation_repository),
         key_repository: Arc::new(key_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
@@ -235,10 +236,214 @@ async fn holder_register_success() {
     };
 
     // when
-    let result = service.holder_register(request).await;
+    let result = service.register_instance(request).await;
 
     // then
     assert!(result.is_ok(), "holder_register failed: {result:?}");
+}
+
+/// The provider settings govern the organisation configuration: ecosystems the provider does
+/// not advertise get deselected, and enforcement is turned on for the role of the registered
+/// instance when mandated.
+#[tokio::test]
+async fn holder_register_aligns_organisation_configuration_with_provider() {
+    // given
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .once()
+        .return_once(move |id| {
+            check!(id == &organisation_id);
+            Ok(Organisation {
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                configuration: OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into(), "NOT_ADVERTISED".into()],
+                    ..Default::default()
+                },
+                ..dummy_organisation(Some(*id))
+            })
+        });
+    organisation_repository
+        .expect_update_organisation()
+        .once()
+        .return_once(move |id, request| {
+            check!(id == &organisation_id);
+            assert_eq!(
+                request.configuration,
+                Some(OrganisationConfiguration {
+                    // the advertised one stays selected, the one the provider does not
+                    // advertise is deselected and the default-selected one is not added
+                    selected_ecosystems: vec!["EUDI".into()],
+                    // only the role of the registered wallet instance is enforced
+                    enforce_ecosystem_as_issuer: false,
+                    enforce_ecosystem_as_holder: true,
+                    enforce_ecosystem_as_verifier: false,
+                })
+            );
+            Ok(())
+        });
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_create_key()
+        .once()
+        .return_once(move |dto| Ok(dto.id));
+    let mut key_storage = MockKeyStorage::new();
+    key_storage
+        .expect_generate_attestation_key()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(StorageGeneratedKey {
+                public_key: vec![1, 2, 3, 4],
+                key_reference: Some(vec![1, 2, 3]),
+            })
+        });
+    key_storage
+        .expect_generate_attestation()
+        .times(1)
+        .returning(move |_, _| Ok(vec!["test_attestation".to_string()]));
+
+    let key_storage = Arc::new(key_storage);
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .returning(move |_| Ok(key_storage.clone()));
+    key_provider
+        .expect_get_attestation_signature_provider()
+        .returning(move |_, _, _| {
+            let mut signature_provider = MockSignatureProvider::new();
+            signature_provider
+                .expect_jose_alg()
+                .returning(|| Ok("EdDSA".to_string()));
+            signature_provider.expect_get_key_id().returning(|| None);
+            signature_provider
+                .expect_sign()
+                .once()
+                .returning(|_| Ok(vec![0x01]));
+            Ok(Box::new(signature_provider))
+        });
+
+    let mut os_info_provider = MockOSInfoProvider::new();
+    os_info_provider
+        .expect_get_os_name()
+        .once()
+        .return_once(|| OSName::Android);
+
+    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let mut wallet_provider_client = MockWalletProviderClient::new();
+    wallet_provider_client
+        .expect_register()
+        .once()
+        .return_once(move |_, _dto| {
+            Ok(RegisterWalletUnitResponseDTO {
+                id: wallet_unit_id,
+                nonce: Some("test_nonce".to_string()),
+                user_nonce: None,
+            })
+        });
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .once()
+        .return_once(move |_| {
+            Ok(WalletProviderMetadataResponseDTO {
+                wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
+                    app_integrity_check_required: true,
+                    enabled: true,
+                    required: true,
+                },
+                name: "Wallet Provider Name".to_string(),
+                app_version: None,
+                feature_flags: FeatureFlags {
+                    ecosystems_enabled: true,
+                    refresh_credential_batch_enabled: true,
+                    document_signing_enabled: false,
+                    ecosystems_enforcement_enabled: true,
+                },
+                trust_collections: vec![],
+                user_authentication: None,
+                document_signers: vec![],
+                ecosystems: vec![
+                    ecosystem_metadata("EUDI", false),
+                    ecosystem_metadata("DEFAULT_SELECTED", true),
+                ],
+            })
+        });
+
+    wallet_provider_client
+        .expect_activate()
+        .once()
+        .return_once(move |_, _, _| {
+            Ok(ActivateWalletUnitResponseDTO {
+                access_certificate: None,
+            })
+        });
+
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository
+        .expect_get_by_role()
+        .once()
+        .return_once(|_, _| Ok(None));
+    instance_repository
+        .expect_create()
+        .once()
+        .return_once(move |instance: Instance| Ok(instance.id));
+
+    let mut trust_collection_manager = MockTrustCollectionManager::new();
+    trust_collection_manager
+        .expect_create_empty_trust_collections()
+        .once()
+        .return_once(|_, _, _| Ok(vec![]));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
+    let service = InstanceService {
+        organisation_repository: Arc::new(organisation_repository),
+        key_repository: Arc::new(key_repository),
+        wallet_provider_client: Arc::new(wallet_provider_client),
+        instance_repository: Arc::new(instance_repository),
+        history_repository: Arc::new(history_repository),
+        key_provider: Arc::new(key_provider),
+        os_info_provider: Arc::new(os_info_provider),
+        trust_collection_manager: Arc::new(trust_collection_manager),
+        config: Arc::new(generic_config().core),
+        ..mock_instance_service()
+    };
+
+    let request = HolderRegisterInstanceRequestDTO {
+        organisation_id,
+        key_type: "EDDSA".to_string(),
+        role: InstanceRole::Wallet,
+        provider: InstanceProviderDTO {
+            r#type: WalletProviderType::ProcivisOne,
+            url: "https://wallet.provider/register".to_string(),
+        },
+    };
+
+    // when
+    let result = service.register_instance(request).await;
+
+    // then
+    assert!(result.is_ok(), "holder_register failed: {result:?}");
+}
+
+fn ecosystem_metadata(name: &str, default_selected: bool) -> EcosystemMetadataDTO {
+    EcosystemMetadataDTO {
+        name: name.into(),
+        display_name: vec![],
+        description: vec![],
+        logo: "logo".to_string(),
+        default_selected,
+        trust_collections: vec![],
+        credential_schemas: vec![],
+        proof_schemas: vec![],
+    }
 }
 
 #[tokio::test]
@@ -344,7 +549,7 @@ async fn holder_register_key_attestation_not_supported() {
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
@@ -364,7 +569,7 @@ async fn holder_register_key_attestation_not_supported() {
     };
 
     // when
-    let result = service.holder_register(request).await.unwrap();
+    let result = service.register_instance(request).await.unwrap();
 
     // then
     assert_eq!(result.status, InstanceStatus::Unattested);
@@ -405,7 +610,7 @@ async fn holder_instance_status_check_still_valid() {
         .return_once(|_| Ok(WalletUnitStatusCheckResponse::Active));
 
     let service = InstanceService {
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         wallet_unit_proto: Arc::new(wallet_unit_proto),
         ..mock_instance_service()
     };
@@ -475,7 +680,7 @@ async fn holder_instance_status_check_revocation() {
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let service = InstanceService {
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         wallet_unit_proto: Arc::new(wallet_unit_proto),
         history_repository: Arc::new(history_repository),
         ..mock_instance_service()
@@ -508,7 +713,7 @@ async fn holder_instance_status_check_not_found() {
         });
 
     let service = InstanceService {
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         ..mock_instance_service()
     };
 
@@ -551,7 +756,7 @@ async fn holder_instance_status_check_already_revoked() {
     let wallet_unit_proto = MockHolderWalletUnitProto::new();
 
     let service = InstanceService {
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         wallet_unit_proto: Arc::new(wallet_unit_proto),
         ..mock_instance_service()
     };
@@ -612,7 +817,7 @@ async fn holder_register_already_exists() {
 
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
-        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(holder_wallet_unit_repository),
         config: Arc::new(generic_config().core),
         ..mock_instance_service()
     };
@@ -628,7 +833,7 @@ async fn holder_register_already_exists() {
     };
 
     // when
-    let result = service.holder_register(request).await;
+    let result = service.register_instance(request).await;
 
     // then
     assert!(matches!(

@@ -134,8 +134,10 @@ pub(super) async fn validate_verifier_provider(
     Ok(())
 }
 
-/// The `enforceEcosystemAs*` flags may only be turned off while none of the providers
-/// backing the organisation's instances mandates ecosystem enforcement.
+/// An `enforceEcosystemAs*` flag may only be turned off while the provider backing the
+/// instance of the corresponding role does not mandate ecosystem enforcement: the holder flag
+/// is governed by the wallet provider, the verifier flag by the verifier provider. No provider
+/// mandates the issuer flag, which the organisation therefore governs on its own.
 pub(super) async fn validate_ecosystem_enforcement(
     organisation: Option<&Organisation>,
     update: &UpsertOrganisationConfigurationDTO,
@@ -143,75 +145,74 @@ pub(super) async fn validate_ecosystem_enforcement(
     wallet_provider_client: &dyn WalletProviderClient,
     verifier_provider_client: &dyn VerifierProviderClient,
 ) -> Result<(), OrganisationServiceError> {
-    let disables_enforcement = [
-        update.enforce_ecosystem_as_issuer,
-        update.enforce_ecosystem_as_holder,
-        update.enforce_ecosystem_as_verifier,
+    let disabled_roles = [
+        (InstanceRole::Wallet, update.enforce_ecosystem_as_holder),
+        (InstanceRole::Verifier, update.enforce_ecosystem_as_verifier),
     ]
-    .contains(&Some(false));
-    if !disables_enforcement {
-        return Ok(());
-    }
+    .into_iter()
+    .filter(|(_, enforce)| enforce == &Some(false))
+    .map(|(role, _)| role);
 
     // A not-yet-existing organisation cannot have an instance linked to a provider.
     let Some(organisation) = organisation else {
         return Ok(());
     };
 
-    let enforced = provider_enforces_ecosystems(
-        organisation,
-        instance_repository,
-        wallet_provider_client,
-        verifier_provider_client,
-    )
-    .await?;
-    if enforced {
-        return Err(OrganisationServiceError::EcosystemEnforcementMandated);
+    for role in disabled_roles {
+        let enforced = provider_enforces_ecosystems(
+            role,
+            organisation,
+            instance_repository,
+            wallet_provider_client,
+            verifier_provider_client,
+        )
+        .await?;
+        if enforced {
+            return Err(OrganisationServiceError::EcosystemEnforcementMandated);
+        }
     }
 
     Ok(())
 }
 
-/// Whether the provider backing either of the organisation's instances requires its
+/// Whether the provider backing the organisation's instance of the given role requires its
 /// instances to enforce the ecosystems it advertises.
 async fn provider_enforces_ecosystems(
+    role: InstanceRole,
     organisation: &Organisation,
     instance_repository: &dyn InstanceRepository,
     wallet_provider_client: &dyn WalletProviderClient,
     verifier_provider_client: &dyn VerifierProviderClient,
 ) -> Result<bool, OrganisationServiceError> {
-    let wallet_instance = instance_repository
-        .get_by_role(InstanceRole::Wallet, organisation.id)
+    let Some(instance) = instance_repository
+        .get_by_role(role, organisation.id)
         .await
-        .error_while("getting wallet instance")?;
-    if let Some(wallet_instance) = wallet_instance {
-        let metadata = wallet_provider_client
-            .get_wallet_provider_metadata(wallet_instance.into())
-            .await
-            .error_while("getting wallet provider metadata")?;
-        if metadata.feature_flags.ecosystems_enforcement_enabled {
-            return Ok(true);
-        }
-    }
+        .error_while("getting instance")?
+    else {
+        return Ok(false);
+    };
 
-    let verifier_instance = instance_repository
-        .get_by_role(InstanceRole::Verifier, organisation.id)
-        .await
-        .error_while("getting verifier instance")?;
-    if let Some(verifier_instance) = verifier_instance {
-        let metadata_url = provider_metadata_url(
-            &verifier_instance.provider_url,
-            &verifier_instance.provider_name,
-            InstanceRole::Verifier,
-        );
-        let metadata = verifier_provider_client
-            .get_verifier_provider_metadata(&metadata_url)
-            .await
-            .error_while("getting verifier provider metadata")?;
-        if metadata.feature_flags.ecosystems_enforcement_enabled {
-            return Ok(true);
+    Ok(match role {
+        InstanceRole::Wallet => {
+            wallet_provider_client
+                .get_wallet_provider_metadata(instance.into())
+                .await
+                .error_while("getting wallet provider metadata")?
+                .feature_flags
+                .ecosystems_enforcement_enabled
         }
-    }
-
-    Ok(false)
+        InstanceRole::Verifier => {
+            let metadata_url = provider_metadata_url(
+                &instance.provider_url,
+                &instance.provider_name,
+                InstanceRole::Verifier,
+            );
+            verifier_provider_client
+                .get_verifier_provider_metadata(&metadata_url)
+                .await
+                .error_while("getting verifier provider metadata")?
+                .feature_flags
+                .ecosystems_enforcement_enabled
+        }
+    })
 }

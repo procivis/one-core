@@ -22,7 +22,7 @@ impl OneCore {
         let core = self.use_core().await?;
         let response = core
             .instance_service
-            .holder_register(request.try_into()?)
+            .register_instance(request.try_into()?)
             .await?;
         Ok(response.into())
     }

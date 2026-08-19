@@ -9,7 +9,6 @@ use crate::model::organisation::Organisation;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::service::key::dto::KeyListItemResponseDTO;
 use crate::service::managed_instance::dto::WalletProviderMetadataResponseDTO;
-use crate::service::managed_instance::ecosystem_metadata::remote_trust_collections;
 use crate::service::verifier_provider::dto::VerifierProviderMetadataResponseDTO;
 
 impl From<WalletProviderMetadataResponseDTO> for ProviderMetadata {
@@ -18,10 +17,11 @@ impl From<WalletProviderMetadataResponseDTO> for ProviderMetadata {
             name: value.name,
             attestation: value.wallet_unit_attestation,
             user_authentication: value.user_authentication,
-            trust_collections: remote_trust_collections(&value.ecosystems),
+            ecosystems: value.ecosystems,
             credential_schemas: vec![],
             proof_schemas: vec![],
             access_certificate_provisioning_enabled: false,
+            ecosystems_enforcement_enabled: value.feature_flags.ecosystems_enforcement_enabled,
         }
     }
 }
@@ -32,12 +32,13 @@ impl From<VerifierProviderMetadataResponseDTO> for ProviderMetadata {
             name: value.name,
             attestation: value.verifier_app_attestation,
             user_authentication: value.user_authentication,
-            trust_collections: remote_trust_collections(&value.ecosystems),
+            ecosystems: value.ecosystems,
             credential_schemas: value.credential_schemas.unwrap_or_default(),
             proof_schemas: value.proof_schemas.unwrap_or_default(),
             access_certificate_provisioning_enabled: value
                 .feature_flags
                 .access_certificate_provisioning_enabled,
+            ecosystems_enforcement_enabled: value.feature_flags.ecosystems_enforcement_enabled,
         }
     }
 }
