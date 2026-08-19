@@ -56,6 +56,7 @@ pub struct CredentialSchemaListItemResponseDTO {
 pub struct CredentialSchemaFormatResponseDTO {
     pub format: CredentialFormat,
     pub schema_id: String,
+    pub dcql: Option<CredentialSchemaDcqlResponseDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,7 +136,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub ecosystem: Option<EcosystemId>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct CredentialSchemaDcqlResponseDTO {
     #[serde(flatten)]
     pub format: dcql::CredentialFormat,

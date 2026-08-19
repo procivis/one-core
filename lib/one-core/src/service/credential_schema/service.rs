@@ -448,7 +448,7 @@ impl CredentialSchemaService {
             ));
         }
 
-        schema_to_detail_v2_response_dto(schema, format).await
+        schema_to_detail_v2_response_dto(schema, format, &self.config).await
     }
 
     /// Returns list of credential schemas according to query
@@ -525,7 +525,7 @@ impl CredentialSchemaService {
             Vec::with_capacity(result.values.len());
         for credential_schema in result.values {
             items.push(
-                to_credential_schema_list_v2_response(credential_schema)
+                to_credential_schema_list_v2_response(credential_schema, &self.config)
                     .await
                     .error_while("mapping credential schemas")?,
             );

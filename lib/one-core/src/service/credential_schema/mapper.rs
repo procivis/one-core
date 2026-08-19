@@ -268,6 +268,7 @@ pub(crate) async fn schema_to_detail_v1_response_dto(
 pub(crate) async fn schema_to_detail_v2_response_dto(
     value: CredentialSchema,
     format: Option<&CredentialFormat>,
+    config: &CoreConfig,
 ) -> Result<CredentialSchemaDetailV2ResponseDTO, CredentialSchemaServiceError> {
     let formats = value.formats.as_ref().await?;
     let formats = if let Some(format) = format {
@@ -285,6 +286,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         .map(|f| CredentialSchemaFormatResponseDTO {
             format: f.format.clone(),
             schema_id: f.schema_id.clone(),
+            dcql: map_dcql_format_meta(f, config),
         })
         .collect();
 
@@ -722,6 +724,7 @@ pub(crate) async fn to_credential_schema_list_response(
 
 pub(crate) async fn to_credential_schema_list_v2_response(
     credential_schema: CredentialSchema,
+    config: &CoreConfig,
 ) -> Result<CredentialSchemaListItemV2ResponseDTO, NestedError> {
     let formats = credential_schema.formats.as_ref().await?;
     let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
@@ -729,6 +732,7 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         .map(|f| CredentialSchemaFormatResponseDTO {
             format: f.format.clone(),
             schema_id: f.schema_id.clone(),
+            dcql: map_dcql_format_meta(f, config),
         })
         .collect();
 

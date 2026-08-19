@@ -928,6 +928,8 @@ pub(crate) struct DisclosurePolicyCreateRequestRestDTO {
 pub(crate) struct CredentialSchemaFormatResponseRestDTO {
     pub format: CredentialFormat,
     pub schema_id: String,
+    #[from(with_fn = convert_inner)]
+    pub dcql: Option<CredentialSchemaDcqlResponseRestDTO>,
 }
 
 #[options_not_nullable]
