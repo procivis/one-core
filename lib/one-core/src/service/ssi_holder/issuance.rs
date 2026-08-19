@@ -456,11 +456,9 @@ impl SSIHolderService {
         protocol: &dyn IssuanceProtocol,
     ) -> Result<(), HolderServiceError> {
         let credential_id = credential.id;
-        protocol
-            .holder_reject_credential(credential)
-            .await
-            .error_while("rejecting credential")?;
 
+        // Reject locally first; the issuer notification is informational and
+        // must not break the rejection.
         self.credential_repository
             .update_credential(
                 credential_id,
@@ -471,6 +469,12 @@ impl SSIHolderService {
             )
             .await
             .error_while("updating credential")?;
+
+        if let Err(error) = protocol.holder_reject_credential(credential).await {
+            tracing::warn!(
+                "Failed to notify the issuer about rejected credential {credential_id}: {error}"
+            );
+        }
 
         Ok(())
     }

@@ -40,7 +40,7 @@ use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::ecosystem::model::{IssuerMetadataRepresentation, ProtocolArtifact};
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
-use crate::provider::issuance_protocol::error::TxCodeError;
+use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
 use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse,
 };
@@ -776,6 +776,53 @@ async fn test_reject_credential() {
         .expect_holder_reject_credential()
         .once()
         .returning(|_| Ok(()));
+
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
+
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
+        ..mock_ssi_holder_service()
+    };
+
+    let interaction_id = Uuid::new_v4().into();
+    service.reject_credential(&interaction_id).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_reject_credential_failed_issuer_notification() {
+    let mut credential = dummy_credential(None);
+    credential.state = CredentialStateEnum::Accepted;
+
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_| Ok(vec![credential]));
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .withf(|_, request| {
+            assert_eq!(request.state, Some(CredentialStateEnum::Rejected));
+            true
+        })
+        .returning(|_, _| Ok(()));
+
+    let mut exchange_protocol_mock = MockIssuanceProtocol::default();
+    exchange_protocol_mock
+        .expect_get_capabilities()
+        .returning(|| IssuanceProtocolCapabilities {
+            features: vec![Features::SupportsRejection],
+            did_methods: vec![],
+        });
+    exchange_protocol_mock
+        .expect_holder_reject_credential()
+        .once()
+        .returning(|_| Err(IssuanceProtocolError::Failed("notification".to_string())));
 
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
