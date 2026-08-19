@@ -223,7 +223,10 @@ impl CredentialFormatter for MdocFormatter {
         let validity_info = ValidityInfo {
             signed: DateTime(crate::clock::now_utc()),
             valid_from: DateTime(crate::clock::now_utc()),
-            valid_until: DateTime(crate::clock::now_utc() + self.params.expiration_seconds),
+            valid_until: DateTime(
+                vcdm.valid_until
+                    .unwrap_or_else(|| crate::clock::now_utc() + self.params.expiration_seconds),
+            ),
             expected_update: Some(DateTime(
                 crate::clock::now_utc() + self.params.mso_expected_update_in_seconds,
             )),

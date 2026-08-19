@@ -459,3 +459,78 @@ async fn test_get_credential_with_expires_at() {
         OffsetDateTime::parse(resp["expiresAt"].as_str().unwrap(), &Rfc3339).unwrap();
     assert_eq!(returned_expires_at, expires_at);
 }
+
+#[tokio::test]
+async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                format: Some("MDOC".into()),
+                batch_size: Some(2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // MDOC's `expirationSeconds` config default is 72h - pick a real expiration that doesn't
+    // land on `issuanceDate + expirationSeconds`, so a fallback to that computed value (instead
+    // of the batch item's own real `expires_at`) would be caught by the assertions below
+    let expires_at = get_dummy_date() + time::Duration::hours(1);
+    let item_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                expires_at: Some(expires_at),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.get(&item_credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&item_credential.id);
+
+    let returned_expires_at =
+        OffsetDateTime::parse(resp["expiresAt"].as_str().unwrap(), &Rfc3339).unwrap();
+    let mso_expiration = OffsetDateTime::parse(
+        resp["mdocMsoValidity"]["expiration"].as_str().unwrap(),
+        &Rfc3339,
+    )
+    .unwrap();
+
+    // the top-level credential expiration must match the mdoc-specific MSO validity expiration
+    assert_eq!(expires_at, returned_expires_at);
+    assert_eq!(expires_at, mso_expiration);
+}

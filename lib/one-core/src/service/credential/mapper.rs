@@ -108,8 +108,8 @@ pub(crate) async fn credential_detail_response_from_model(
             .get::<mdoc_formatter::Params, _>(&credential_format)
             .error_while("parsing formatter params")?;
 
-        let issuance_date = match value.r#type {
-            CredentialType::BatchItem => value.issuance_date,
+        let issuance_date_with_expiry = match value.r#type {
+            CredentialType::BatchItem => value.issuance_date.map(|i| (i, value.expires_at)),
             CredentialType::BatchParent => None,
             CredentialType::Single => {
                 // use the latest item
@@ -133,14 +133,14 @@ pub(crate) async fn credential_detail_response_from_model(
                     .error_while("getting batch items")?
                     .values
                     .first()
-                    .and_then(|c| c.issuance_date)
+                    .and_then(|c| c.issuance_date.map(|d| (d, c.expires_at)))
                     // fallback for legacy credentials
-                    .or(Some(value.last_modified))
+                    .or(Some((value.last_modified, None)))
             }
         };
 
-        issuance_date.map(|issuance_date| MdocMsoValidityResponseDTO {
-            expiration: issuance_date + params.expiration_seconds,
+        issuance_date_with_expiry.map(|(issuance_date, expiry)| MdocMsoValidityResponseDTO {
+            expiration: expiry.unwrap_or(issuance_date + params.expiration_seconds),
             next_update: issuance_date + params.mso_expected_update_in_seconds,
             last_update: issuance_date,
         })

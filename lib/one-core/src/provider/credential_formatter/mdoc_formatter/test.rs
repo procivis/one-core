@@ -478,6 +478,191 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 }
 
 #[tokio::test]
+async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
+    // the MSO's `validUntil` must mirror the credential's actual (real) expiration date
+    // (`vcdm.valid_until`) rather than being independently recomputed from
+    // `now + expirationSeconds`, otherwise the signed mdoc's own validity info can disagree
+    // with the expiration date the core reports for the credential elsewhere (e.g. GET credential).
+    let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
+
+    let claims = vec![PublishedClaim {
+        key: "a/b/c".to_string(),
+        value: PublishedClaimValue::String("15".to_string()),
+        datatype: Some("STRING".to_string()),
+        array_item: false,
+    }];
+
+    // chosen far outside the `expirationSeconds: 10` fallback window used below, so a test
+    // failure (i.e. falling back to `now + expirationSeconds`) can't accidentally pass;
+    // nanoseconds are stripped since mdoc's `tdate` CBOR encoding only has second precision
+    let real_valid_until = (crate::clock::now_utc() + Duration::days(3))
+        .replace_nanosecond(0)
+        .unwrap();
+
+    let vcdm = VcdmCredential::new_v2(
+        issuer_did.clone(),
+        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
+    )
+    .add_credential_schema(CredentialSchema {
+        id: "credential-schema-id".to_string(),
+        r#type: "Mdoc".to_string(),
+        metadata: None,
+    })
+    .with_valid_until(real_valid_until);
+
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
+
+    let holder_identifier = Identifier {
+        data: IdentifierData::Did(
+            (Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            })
+            .into(),
+        ),
+        ..dummy_identifier()
+    };
+
+    let credential_data = CredentialData {
+        vcdm,
+        claims,
+        holder_identifier: Some(holder_identifier),
+        holder_key_id: None,
+        issuer_certificate: Some(Certificate {
+            id: Uuid::new_v4().into(),
+            identifier_id: Uuid::new_v4().into(),
+            organisation: dummy_organisation(None).into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            expiry_date: crate::clock::now_utc().add(Duration::days(7)),
+            name: "test".to_string(),
+            chain: r#"-----BEGIN CERTIFICATE-----
+MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
+aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
+Y29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMC
+Q0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNV
+BAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMB
+BwMiAAJx38tO0JCdq3ZecMSW6a+BAAzllydQxVOQ+KDjnwLXJ6OCAeswggHnMA4G
+A1UdDwEB/wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB/wQC
+MAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBP
+oE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdG
+MzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbsw
+gbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vl
+ci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBa
+BggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENE
+MjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1Ud
+EgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0
+ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFem
+Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
+1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg==
+-----END CERTIFICATE-----
+"#
+            .to_string(),
+            fingerprint: hex::encode("testfoo"),
+            state: CertificateState::Active,
+            roles: vec![],
+            key: None,
+        }),
+    };
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .withf({
+            let holder_did = holder_did.clone();
+            move |did| did == &holder_did
+        })
+        .returning(|holder_did| {
+            Ok(DidDocument {
+                context: json!({}),
+                id: holder_did.to_owned(),
+                verification_method: vec![DidVerificationMethod {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: "did-vm-controller".to_string(),
+                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
+                        alg: None,
+                        r#use: None,
+                        kid: None,
+                        crv: "P-256".to_string(),
+                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+                    }),
+                }],
+                authentication: None,
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                also_known_as: None,
+                service: None,
+            })
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider.expect_parse_jwk().returning(|_| {
+        let mut public_key = MockSignaturePublicKeyHandle::new();
+        public_key.expect_as_cose().returning(|| {
+            Ok(CoseKeyBuilder::new_ec2_pub_key(
+                iana::EllipticCurve::P_256,
+                b"xabc".into(),
+                b"yabc".into(),
+            )
+            .build())
+        });
+        Ok(ParsedKey {
+            algorithm_type: KeyAlgorithmType::Ecdsa,
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(public_key))),
+        })
+    });
+
+    let params = json!({
+        "expirationSeconds": 10,
+        "msoExpectedUpdateInSeconds": 10,
+        "msoMinimumRefreshSeconds": 10,
+        "leewaySeconds": 60
+    });
+
+    let config = generic_config().core;
+
+    let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
+        "MDOC".into(),
+        params,
+        Arc::new(MockCertificateValidator::new()),
+        Arc::new(did_method_provider),
+        config.datatype,
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(key_algorithm_provider),
+        Arc::new(MockHttpClient::new()),
+    )
+    .unwrap();
+
+    let mut auth_fn = MockSignatureProvider::new();
+    auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
+    auth_fn
+        .expect_get_key_algorithm()
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
+
+    let formatted_credential = formatter
+        .format_credential(credential_data, Box::new(auth_fn))
+        .await
+        .unwrap();
+
+    let formatted_credential =
+        Base64UrlSafeNoPadding::decode_to_vec(formatted_credential.as_ref(), None).unwrap();
+    let issuer_signed: IssuerSigned = ciborium::from_reader(&formatted_credential[..]).unwrap();
+    let cose_sign1 = issuer_signed.issuer_auth.0;
+
+    let mso: EmbeddedCbor<MobileSecurityObject> =
+        ciborium::from_reader(cose_sign1.payload.unwrap().as_slice()).unwrap();
+
+    assert_eq!(real_valid_until, mso.inner().validity_info.valid_until.0);
+}
+
+#[tokio::test]
 async fn test_unverified_credential_extraction() {
     // arrange
     let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
