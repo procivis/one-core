@@ -1,10 +1,5 @@
-// TODO (ONE-9974): clean-up
-#![allow(unused)]
-
 use error::WRPValidatorError;
-use model::{
-    AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, TrustMode,
-};
+use model::{AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult};
 use shared_types::OrganisationId;
 use standardized_types::etsi_119_475::registration_certificate::Payload;
 use time::Duration;
@@ -82,16 +77,4 @@ pub(crate) trait WRPValidator: Send + Sync {
         key_source: PublicKeySource<'a>,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
-
-    /// Decide on the current trust settings for the given wallet organisation
-    async fn wallet_trust_mode(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<TrustMode, WRPValidatorError>;
-
-    /// Decide on the current trust settings for the given verifier organisation
-    async fn verifier_trust_mode(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<TrustMode, WRPValidatorError>;
 }

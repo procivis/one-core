@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_with::{OneOrMany, serde_as};
 use standardized_types::etsi_119_475::Credential;
 use standardized_types::etsi_119_475::registration_certificate::Payload;
@@ -23,26 +23,6 @@ pub(crate) struct RegistrationCertificateResult {
     #[expect(unused)]
     pub trust_entity: Option<TrustEntityResponse>,
     pub payload: JWTPayload<Payload>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum TrustMode {
-    /// Only interactions with trusted parties allowed, untrusted operations result in failure
-    TrustMandatory,
-
-    /// Both trusted and untrusted operations allowed,
-    /// trusted operations will result in additional history events describing validated trust information
-    TrustOptional,
-
-    /// No trust checking performed, operations will result in `Unknown` trust results
-    Disabled,
-}
-
-impl TrustMode {
-    pub fn optional() -> Self {
-        Self::TrustOptional
-    }
 }
 
 pub(crate) struct FetchRegistryResult {
