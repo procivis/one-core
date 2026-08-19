@@ -10,6 +10,7 @@ use crate::service::managed_instance::dto::{DisplayNameDTO, ProviderTrustCollect
 #[derive(Clone, Debug)]
 pub struct TrustCollectionInfoDTO {
     pub selected: bool,
+    pub default_selected: bool,
     pub collection: ProviderTrustCollectionDTO,
 }
 
@@ -18,6 +19,7 @@ pub struct TrustCollectionInfoDTO {
 #[derive(Clone, Debug)]
 pub struct EcosystemInfoDTO {
     pub selected: bool,
+    pub default_selected: bool,
     /// Ecosystem provider name
     pub name: EcosystemId,
     pub display_name: Vec<DisplayNameDTO>,

@@ -471,6 +471,7 @@ impl OrganisationService {
 
             result.push(EcosystemInfoDTO {
                 selected: selected_ecosystems.contains(&ecosystem.name),
+                default_selected: ecosystem.default_selected,
                 name: ecosystem.name,
                 display_name: ecosystem.display_name,
                 description: ecosystem.description,
@@ -495,6 +496,7 @@ impl OrganisationService {
 
                 Ok(EcosystemInfoDTO {
                     selected: selected_ecosystems.contains(name),
+                    default_selected: false,
                     name: name.to_owned(),
                     display_name: display.display_name,
                     description: display.description,

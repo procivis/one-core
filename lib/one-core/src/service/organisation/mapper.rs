@@ -325,6 +325,7 @@ pub(super) async fn prepare_trust_collection_info(
 
         result.push(TrustCollectionInfoDTO {
             selected,
+            default_selected: metadata_collection.default_selected,
             collection: ProviderTrustCollectionDTO {
                 id: local_collection.id,
                 ..metadata_collection

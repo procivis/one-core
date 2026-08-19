@@ -419,8 +419,8 @@ pub struct ProviderTrustCollectionDTO {
     pub logo: String,
     pub display_name: Vec<DisplayNameDTO>,
     pub description: Vec<DisplayNameDTO>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_selected: Option<bool>,
+    #[serde(default)]
+    pub default_selected: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

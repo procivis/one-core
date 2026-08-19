@@ -172,7 +172,7 @@ pub(crate) fn provider_trust_collections(
                     logo: ecosystem.logo.to_owned(),
                     display_name: ecosystem.display_name.to_owned(),
                     description: ecosystem.description.to_owned(),
-                    default_selected: Some(ecosystem.default_selected),
+                    default_selected: ecosystem.default_selected,
                 })
         })
         .collect()

@@ -296,6 +296,8 @@ pub(crate) struct OrganisationTrustCollectionRestDTO {
     /// When true, the organization has selected the ecosystem this trust
     /// collection belongs to.
     pub selected: bool,
+    /// When true, the trust collection is selected by provider default (if any).
+    pub default_selected: bool,
     #[serde(flatten)]
     pub collection: ProviderTrustCollectionRestDTO,
 }
@@ -320,6 +322,8 @@ impl From<Vec<EcosystemInfoDTO>> for OrganisationEcosystemListResponseRestDTO {
 pub(crate) struct OrganisationEcosystemRestDTO {
     /// When true, the organization has selected this ecosystem.
     pub selected: bool,
+    /// When true, the ecosystem should be selected by provider default (if any).
+    pub default_selected: bool,
     /// Ecosystem provider name.
     pub name: EcosystemId,
     #[from(with_fn = convert_inner)]

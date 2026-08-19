@@ -213,6 +213,8 @@ pub(crate) struct OrganisationConfigurationBindingDTO {
 pub struct EcosystemInfoBindingDTO {
     /// When true, the organization has selected this ecosystem.
     pub selected: bool,
+    /// When true, the ecosystem should be selected by provider default (if any).
+    pub default_selected: bool,
     /// Ecosystem provider name.
     #[from(with_fn_ref = "ToString::to_string")]
     pub name: String,

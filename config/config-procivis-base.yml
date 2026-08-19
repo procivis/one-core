@@ -865,7 +865,8 @@ transactionDataProvider:
 ecosystem:
   EUDI:
     type: "EUDI"
-    display: "ecosystem.eudi"
+    display:
+      en: "EUDI"
     order: 1
     params:
       public:
