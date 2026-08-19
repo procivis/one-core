@@ -121,6 +121,7 @@ pub struct ClaimQuery {
 /// Format-specific metadata for credential queries
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "utoipa", schema(as = DcqlCredentialFormat))]
 #[serde(tag = "format", content = "meta")]
 pub enum CredentialFormat {
     #[serde(rename = "jwt_vc_json")]
