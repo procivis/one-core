@@ -13,6 +13,7 @@ use time::macros::datetime;
 use uuid::Uuid;
 
 use super::*;
+use crate::clock::run_with_mocked_time_async;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::did::Did;
@@ -1468,21 +1469,56 @@ async fn test_format_status_list() {
         .returning(|_| Ok("signature".as_bytes().to_vec()));
     auth_fn.expect_get_key_id().returning(|| None);
 
-    let _encoded = formatter
-        .format_status_list(
-            "url".to_string(),
-            SelectedKey::Certificate {
-                certificate: Box::new(dummy_certificate(Uuid::new_v4().into())),
-                key: Box::new(dummy_key()),
-            },
-            "eNo76fITAAPfAgc".to_string(),
-            KeyAlgorithmType::Ecdsa,
-            Box::new(auth_fn),
-            StatusPurpose::Revocation,
-            RevocationType::TokenStatusList,
-        )
-        .await
-        .unwrap();
+    let chain = r#"-----BEGIN CERTIFICATE-----
+MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
+aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
+Y29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMC
+Q0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNV
+BAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMB
+BwMiAAJx38tO0JCdq3ZecMSW6a+BAAzllydQxVOQ+KDjnwLXJ6OCAeswggHnMA4G
+A1UdDwEB/wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB/wQC
+MAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBP
+oE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdG
+MzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbsw
+gbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vl
+ci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBa
+BggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENE
+MjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1Ud
+EgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0
+ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFem
+Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
+1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg==
+-----END CERTIFICATE-----
+"#;
+    let certificate = Certificate {
+        chain: chain.to_string(),
+        ..dummy_certificate(Uuid::new_v4().into())
+    };
+
+    let formatted_list = run_with_mocked_time_async(datetime!(2026-01-01 0:00 UTC), async move {
+        formatter
+            .format_status_list(
+                "url".to_string(),
+                SelectedKey::Certificate {
+                    certificate: Box::new(certificate),
+                    key: Box::new(dummy_key()),
+                },
+                "eNo76fITAAPfAgc".to_string(),
+                KeyAlgorithmType::Ecdsa,
+                Box::new(auth_fn),
+                StatusPurpose::Revocation,
+                RevocationType::TokenStatusList,
+            )
+            .await
+            .unwrap()
+    })
+    .await;
+
+    assert_eq!(
+        hex::encode(formatted_list),
+        "d2845903b0a3012610781a6170706c69636174696f6e2f7374617475736c6973742b637774182159038b308203873082032ca00302010202146a140a5fc290f3acc397483d5b2de45baa3114e4300a06082a8648ce3d0403023062310b3009060355040613024348310f300d06035504070c065a75726963683111300f060355040a0c0850726f63697669733111300f060355040b0c0850726f6369766973311c301a06035504030c1363612e6465762e6d646c2d706c75732e636f6d301e170d3234303531343039303030305a170d3238303232393030303030305a3055310b3009060355040613024348310f300d06035504070c065a757269636831143012060355040a0c0b50726f6369766973204147311f301d06035504030c16746573742e65733235362e70726f63697669732e63683039301306072a8648ce3d020106082a8648ce3d0301070322000271dfcb4ed0909dab765e70c496e9af81000ce5972750c55390f8a0e39f02d727a38201eb308201e7300e0603551d0f0101ff04040302078030150603551d250101ff040b3009060728818c5d050102300c0603551d130101ff04023000301f0603551d23041830168014ed1ab09de2604550003bda5a34321a98be2db7c5305a0603551d1f04533051304fa04da04b864968747470733a2f2f63612e6465762e6d646c2d706c75732e636f6d2f63726c2f343043443232353437463338333443353236433543323245314132364337453230333332343636382f3081c806082b060105050701010481bb3081b8305a06082b06010505073002864e687474703a2f2f63612e6465762e6d646c2d706c75732e636f6d2f6973737565722f343043443232353437463338333443353236433543323245314132364337453230333332343636382e646572305a06082b06010505073001864e687474703a2f2f63612e6465762e6d646c2d706c75732e636f6d2f6f6373702f343043443232353437463338333443353236433543323245314132364337453230333332343636382f636572742f30260603551d12041f301d861b68747470733a2f2f63612e6465762e6d646c2d706c75732e636f6d30210603551d11041a30188216746573742e65733235362e70726f63697669732e6368301d0603551d0e04160414c6c4ed2680f6c30a7dff0284313457a6169e3445300a06082a8648ce3d04030203490030460221008919b1202a391b16b876570ad2a7b2183ab204e03db3f108d55d5be0a7c8b25d02210087bb47881840942487dfae399273b3fa62741fc60a1c054928ee7adae44d0b86a05826a3026375726c061a6955b90019fffda2646269747301636c73744b78da3be9f2130003df0207497369676e6174757265"
+    );
 }
 
 #[test]
