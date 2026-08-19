@@ -425,18 +425,6 @@ impl OneCore {
         let blob_storage_provider =
             blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;
 
-        let ecosystem_provider = ecosystem_directory_from_config(
-            &mut config,
-            data_provider.get_history_repository(),
-            data_provider.get_interaction_repository(),
-            wrp_validator.clone(),
-            blob_storage_provider.clone(),
-            session_provider.clone(),
-            credential_formatter_provider.clone(),
-            data_provider.get_credential_schema_repository(),
-            data_provider.get_proof_schema_repository(),
-        )?;
-
         let key_security_level_provider = key_security_level_provider_from_config(&mut config)?;
 
         let openid_metadata_cache = openid_metadata_cache_from_config(
@@ -468,6 +456,32 @@ impl OneCore {
             session_provider.clone(),
             data_provider.get_credential_schema_repository(),
             data_provider.get_interaction_repository(),
+        )?;
+
+        let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(
+            data_provider.get_credential_repository(),
+            issuance_provider.clone(),
+            revocation_method_provider.clone(),
+            credential_formatter_provider.clone(),
+            blob_storage_provider.clone(),
+            session_provider.clone(),
+            data_provider.get_tx_manager(),
+            Arc::new(config.clone()),
+        ));
+
+        let ecosystem_provider = ecosystem_directory_from_config(
+            &mut config,
+            data_provider.get_history_repository(),
+            data_provider.get_interaction_repository(),
+            wrp_validator.clone(),
+            blob_storage_provider.clone(),
+            session_provider.clone(),
+            credential_formatter_provider.clone(),
+            data_provider.get_credential_repository(),
+            data_provider.get_credential_schema_repository(),
+            data_provider.get_proof_schema_repository(),
+            wallet_unit_proto.clone(),
+            credential_validity_manager.clone(),
         )?;
 
         let verification_provider = verification_protocol_provider_from_config(
@@ -514,17 +528,6 @@ impl OneCore {
             proof_schema_importer.clone(),
         ));
 
-        let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(
-            data_provider.get_credential_repository(),
-            issuance_provider.clone(),
-            revocation_method_provider.clone(),
-            credential_formatter_provider.clone(),
-            blob_storage_provider.clone(),
-            session_provider.clone(),
-            data_provider.get_tx_manager(),
-            config.clone(),
-        ));
-
         let remote_trust_collection_cache = Arc::new(remote_trust_collection_cache_from_config(
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
@@ -566,6 +569,7 @@ impl OneCore {
             notification_sender.clone(),
             trust_list_subscriber_provider.clone(),
             ecosystem_sync.clone(),
+            ecosystem_provider.clone(),
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

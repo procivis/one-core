@@ -717,6 +717,9 @@ pub enum TaskType {
     #[serde(rename = "ECOSYSTEM_SYNC")]
     #[strum(serialize = "ECOSYSTEM_SYNC")]
     EcosystemSync,
+    #[serde(rename = "ECOSYSTEM_LIFECYCLE_CHECK")]
+    #[strum(serialize = "ECOSYSTEM_LIFECYCLE_CHECK")]
+    EcosystemLifecycleCheck,
 }
 
 pub type TrustListPublisherConfig = ConfigBlock<String, TrustListPublisherType>;

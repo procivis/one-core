@@ -81,7 +81,7 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         self.disabled_error()
     }
 
-    fn lifecycle_hook(&self) -> Result<(), EcosystemError> {
+    async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
         self.disabled_error()
     }
 }
@@ -156,7 +156,7 @@ impl Ecosystem for CapabilityChecked {
         self.0.get_trust_purpose(proof_id, query_id).await
     }
 
-    fn lifecycle_hook(&self) -> Result<(), EcosystemError> {
-        self.0.lifecycle_hook()
+    async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
+        self.0.lifecycle_hook().await
     }
 }

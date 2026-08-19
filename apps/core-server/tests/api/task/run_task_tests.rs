@@ -58,6 +58,24 @@ async fn test_run_task_lifecycle_check_no_update() {
 }
 
 #[tokio::test]
+async fn test_run_task_ecosystem_lifecycle_check_no_update() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.tasks.run("ECOSYSTEM_LIFECYCLE_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let eudi = &resp["ecosystems"]["EUDI"];
+    assert_eq!(eudi["totalChecks"], 0);
+    assert_eq!(eudi["revokedCredentialIds"].as_array().unwrap().len(), 0);
+    assert_eq!(eudi["failedCredentialIds"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
 async fn test_run_task_lifecycle_check_reactivates_suspended() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;

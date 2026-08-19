@@ -23,12 +23,15 @@ use crate::model::identifier::IdentifierFilterValue;
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::proof::Proof;
+use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::model::TrustScope;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::provider_directory::InitializationError;
+use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -37,6 +40,7 @@ use crate::repository::proof_schema_repository::ProofSchemaRepository;
 mod holder_issuance;
 mod holder_proof;
 mod identifier_filter;
+mod lifecycle;
 mod mapper;
 mod trust_detail;
 mod validator;
@@ -74,10 +78,13 @@ pub struct EudiEcosystem {
     holder_issuance_resolver: HolderIssuanceResolver,
     wrp_validator: Arc<dyn WRPValidator>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+    credential_validity_manager: Arc<dyn CredentialValidityManager>,
 }
 
 impl EudiEcosystem {
@@ -92,8 +99,11 @@ impl EudiEcosystem {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        credential_repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+        wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
+        credential_validity_manager: Arc<dyn CredentialValidityManager>,
     ) -> Result<Self, InitializationError> {
         let params: Params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -123,10 +133,13 @@ impl EudiEcosystem {
             config_id,
             wrp_validator,
             formatter_provider,
+            credential_repository,
             credential_schema_repository,
             proof_schema_repository,
             history_repository,
             blob_storage_provider,
+            wallet_unit_proto,
+            credential_validity_manager,
             params,
         })
     }
@@ -276,7 +289,7 @@ impl Ecosystem for EudiEcosystem {
         self.trust_purpose((*proof_id).into(), query_id).await
     }
 
-    fn lifecycle_hook(&self) -> Result<(), EcosystemError> {
-        todo!()
+    async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
+        self.run_lifecycle_check().await
     }
 }

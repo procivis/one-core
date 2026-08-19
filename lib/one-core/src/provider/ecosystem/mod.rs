@@ -66,7 +66,7 @@ pub trait Ecosystem: Provider + Send + Sync {
         query_id: &CredentialQueryId,
     ) -> Result<Option<I18nString>, EcosystemError>;
 
-    fn lifecycle_hook(&self) -> Result<(), EcosystemError>;
+    async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError>;
 }
 
 impl Display for dyn Ecosystem {

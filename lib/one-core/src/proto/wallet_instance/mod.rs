@@ -23,6 +23,7 @@ use crate::proto::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CertificateDetails, CredentialStatus, IdentifierDetails,
 };
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -33,7 +34,7 @@ use crate::repository::instance_repository::InstanceRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::managed_instance::dto::{
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
-    IssueWiaRequestDTO, IssueWuaRequestDTO, WalletUnitAttestationClaims,
+    IssueWiaRequestDTO, IssueWuaRequestDTO,
 };
 
 #[derive(Debug)]
@@ -52,6 +53,14 @@ pub(crate) enum IssueWalletAttestationRequest<'a> {
     Wia(WIARequestParams),
     Wua(WUARequestParams<'a>),
     WuaAndWia(WUARequestParams<'a>, WIARequestParams),
+}
+
+/// Minimal claims shape for a revocation-status check: any wallet attestation (WUA or WIA) that
+/// carries a token status list entry can be parsed into this.
+#[derive(Debug, serde::Deserialize)]
+struct AttestationStatusClaims {
+    #[serde(default)]
+    status: Option<SdJwtVcStatus>,
 }
 
 #[derive(PartialEq)]
@@ -79,9 +88,11 @@ pub(crate) trait HolderWalletUnitProto: Send + Sync {
         holder_wallet_unit: &Instance,
     ) -> Result<WalletUnitStatusCheckResponse, Error>;
 
-    async fn check_wallet_unit_attestation_status(
+    /// Check the revocation status of a wallet attestation (WUA or WIA) against the token
+    /// status list it points to. An attestation without a `status` claim counts as active.
+    async fn check_attestation_status(
         &self,
-        wua: &str,
+        attestation: &str,
     ) -> Result<WalletUnitStatusCheckResponse, Error>;
 }
 
@@ -201,26 +212,28 @@ impl HolderWalletUnitProtoImpl {
 
 #[async_trait]
 impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
-    async fn check_wallet_unit_attestation_status(
+    async fn check_attestation_status(
         &self,
-        wua: &str,
+        attestation: &str,
     ) -> Result<WalletUnitStatusCheckResponse, Error> {
         const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
         const URI_KEY: &str = "uri";
         const INDEX_KEY: &str = "idx";
 
-        let parsed_wallet_unit_attestation: Jwt<WalletUnitAttestationClaims> =
-            Jwt::build_from_token(wua, None, None)
+        // only the `status` claim matters here, so the token is parsed into a minimal shape
+        // that fits both a WUA and a WIA
+        let parsed_attestation: Jwt<AttestationStatusClaims> =
+            Jwt::build_from_token(attestation, None, None)
                 .await
-                .error_while("parsing WUA token")?;
+                .error_while("parsing attestation token")?;
 
-        let Some(status) = &parsed_wallet_unit_attestation.payload.custom.status else {
+        let Some(status) = &parsed_attestation.payload.custom.status else {
             return Ok(WalletUnitStatusCheckResponse::Active);
         };
 
         let issuer_identifier = match (
-            parsed_wallet_unit_attestation.header.jwk,
-            parsed_wallet_unit_attestation.header.x5c.as_ref(),
+            parsed_attestation.header.jwk,
+            parsed_attestation.header.x5c.as_ref(),
         ) {
             (Some(jwk), None) => IdentifierDetails::Key(jwk),
             (None, Some(x5c)) => {
@@ -249,7 +262,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             }
             _ => {
                 return Err(Error::MappingError(
-                    "Wallet unit attestation issuer not found".to_string(),
+                    "Wallet attestation issuer not found".to_string(),
                 ));
             }
         };
@@ -309,7 +322,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
         for wua in &holder_wallet_unit.wallet_unit_attestations.as_ref().await? {
             if let WalletUnitStatusCheckResponse::Revoked = self
-                .check_wallet_unit_attestation_status(&wua.attestation.clone())
+                .check_attestation_status(&wua.attestation.clone())
                 .await?
             {
                 return Ok(WalletUnitStatusCheckResponse::Revoked);

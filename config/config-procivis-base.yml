@@ -606,6 +606,10 @@ task:
     type: "ECOSYSTEM_SYNC"
     display: "task.ecosystemSync"
     order: 7
+  ECOSYSTEM_LIFECYCLE_CHECK:
+    type: "ECOSYSTEM_LIFECYCLE_CHECK"
+    display: "task.ecosystemCheck"
+    order: 8
 cacheEntities:
   X509_CRL:
     cacheType: DB
