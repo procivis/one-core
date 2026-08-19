@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
@@ -45,7 +44,6 @@ pub struct ManagedInstanceService {
     signer_provider: Arc<dyn SignerProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     http_client: Arc<dyn HttpClient>,
-    clock: Arc<dyn Clock>,
     session_provider: Arc<dyn SessionProvider>,
     document_signer_provider: Arc<dyn DocumentSignerProvider>,
     verifier_provider: Arc<dyn VerifierProvider>,
@@ -69,7 +67,6 @@ impl ManagedInstanceService {
         signer_provider: Arc<dyn SignerProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         http_client: Arc<dyn HttpClient>,
-        clock: Arc<dyn Clock>,
         session_provider: Arc<dyn SessionProvider>,
         document_signer_provider: Arc<dyn DocumentSignerProvider>,
         verifier_provider: Arc<dyn VerifierProvider>,
@@ -92,7 +89,6 @@ impl ManagedInstanceService {
             http_client,
             config,
             base_url,
-            clock,
             session_provider,
             document_signer_provider,
             verifier_provider,

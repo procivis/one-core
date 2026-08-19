@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::proto::clock::Clock;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::document_signer::provider::DocumentSignerProvider;
 use crate::repository::history_repository::HistoryRepository;
@@ -14,7 +13,6 @@ pub struct QesService {
     document_signer_provider: Arc<dyn DocumentSignerProvider>,
     history_repository: Arc<dyn HistoryRepository>,
     session_provider: Arc<dyn SessionProvider>,
-    clock: Arc<dyn Clock>,
 }
 
 impl QesService {
@@ -22,13 +20,11 @@ impl QesService {
         document_signer_provider: Arc<dyn DocumentSignerProvider>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
-        clock: Arc<dyn Clock>,
     ) -> Self {
         Self {
             document_signer_provider,
             history_repository,
             session_provider,
-            clock,
         }
     }
 }

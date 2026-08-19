@@ -8,7 +8,6 @@ use time::OffsetDateTime;
 use super::preprocessing::preprocess_services;
 use crate::error::ContextWithErrorCode;
 use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
-use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
 use crate::proto::xades::{XAdESProto, XAdESSignedXML, XAdESVerified};
 use crate::provider::caching_loader::{ResolveResult, Resolver, ResolverError};
@@ -68,7 +67,6 @@ fn assert_tsl_signature_policy(
 }
 
 pub struct EtsiLotlResolver {
-    clock: Arc<dyn Clock>,
     client: Arc<dyn HttpClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
     xades_proto: Arc<dyn XAdESProto>,
@@ -79,7 +77,6 @@ pub struct EtsiLotlResolver {
 
 impl EtsiLotlResolver {
     pub fn new(
-        clock: Arc<dyn Clock>,
         client: Arc<dyn HttpClient>,
         certificate_validator: Arc<dyn CertificateValidator>,
         xades_proto: Arc<dyn XAdESProto>,
@@ -87,7 +84,6 @@ impl EtsiLotlResolver {
         leeway: time::Duration,
     ) -> Self {
         Self {
-            clock,
             client,
             certificate_validator,
             xades_proto,
@@ -123,7 +119,7 @@ impl EtsiLotlResolver {
             .await
             .error_while("verifying TSL signature")?;
 
-        assert_tsl_signature_policy(&verified, self.leeway, self.clock.now_utc())?;
+        assert_tsl_signature_policy(&verified, self.leeway, crate::clock::now_utc())?;
         let signer_pem = verified.signer_chain_pem;
 
         match pin {
@@ -145,7 +141,7 @@ impl EtsiLotlResolver {
 
         let tsl = signed.content;
         if let Some(next) = tsl.scheme_information.next_update.date_time
-            && next + self.leeway < self.clock.now_utc()
+            && next + self.leeway < crate::clock::now_utc()
         {
             return Err(ResolverError::InvalidResponse(format!(
                 "TSL at {url} is expired"

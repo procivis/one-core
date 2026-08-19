@@ -16,7 +16,6 @@ use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
     CrlMode,
 };
-use crate::proto::clock::DefaultClock;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
@@ -101,7 +100,6 @@ STsfRXkSUfgzmbAsuDE=
             Duration::days(1),
             Duration::days(1),
         )),
-        Arc::new(DefaultClock),
         Duration::minutes(1),
         Arc::new(AndroidAttestationCrlCache::new(
             Arc::new(AndroidAttestationCrlResolver::new(http_client)),
@@ -230,7 +228,6 @@ fn create_certificate_validator() -> CertificateValidatorImpl {
     CertificateValidatorImpl::new(
         Arc::new(key_algorithm_provider),
         crl_cache,
-        Arc::new(DefaultClock),
         Duration::minutes(1),
         android_key_attestation_crl_cache,
     )

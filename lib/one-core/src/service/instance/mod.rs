@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::config::core_config::CoreConfig;
-use crate::proto::clock::Clock;
 use crate::proto::csr_creator::CsrCreator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::os_provider::OSInfoProvider;
@@ -38,7 +37,6 @@ pub struct InstanceService {
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     os_info_provider: Arc<dyn OSInfoProvider>,
     trust_collection_manager: Arc<dyn TrustCollectionManager>,
-    clock: Arc<dyn Clock>,
     base_url: Option<String>,
     config: Arc<CoreConfig>,
     session_provider: Arc<dyn SessionProvider>,
@@ -61,7 +59,6 @@ impl InstanceService {
         wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         os_info_provider: Arc<dyn OSInfoProvider>,
         trust_collection_manager: Arc<dyn TrustCollectionManager>,
-        clock: Arc<dyn Clock>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         session_provider: Arc<dyn SessionProvider>,
@@ -81,7 +78,6 @@ impl InstanceService {
             organisation_repository,
             instance_repository,
             history_repository,
-            clock,
             base_url,
             config,
             session_provider,

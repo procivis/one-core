@@ -242,8 +242,8 @@ mod test {
     use time::macros::datetime;
 
     use super::*;
+    use crate::clock::run_with_mocked_time_async;
     use crate::proto::certificate_validator::CertificateValidatorImpl;
-    use crate::proto::clock::MockClock;
     use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidCertificateInfo, AndroidKeyAttestationsCrl,
@@ -316,35 +316,36 @@ w1IdYIg2Wxg7yHcQZemFQg==
             Duration::days(1),
             Duration::days(1),
         ));
-        let mut clock = MockClock::new();
-        clock
-            .expect_now_utc()
-            .returning(|| datetime!(2024-10-01 0:00 UTC)); // a date the test vector happens to be valid at
+
         let certificate_validator = CertificateValidatorImpl::new(
             Arc::new(key_algorithm_provider),
             crl_cache,
-            Arc::new(clock),
             Duration::minutes(1),
             android_key_attestation_crl_cache,
         );
-        validate_attestation_android(
-            &ATTESTATION_CHAIN
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-            "INdGT5ahPwBSIASvphcj5UiS4f3N8W4BBqLOiBPCksXW",
-            &AndroidBundle {
-                bundle_id: "com.exampleapp".to_string(),
-                signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+
+        // a date the test vector happens to be valid at
+        run_with_mocked_time_async(datetime!(2024-10-01 0:00 UTC), async move {
+            validate_attestation_android(
+                &ATTESTATION_CHAIN
                     .iter()
                     .map(ToString::to_string)
-                    .collect(),
-                trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
-            },
-            &certificate_validator,
-        )
-        .await
-        .expect("Failed to validate attestation");
+                    .collect::<Vec<_>>(),
+                "INdGT5ahPwBSIASvphcj5UiS4f3N8W4BBqLOiBPCksXW",
+                &AndroidBundle {
+                    bundle_id: "com.exampleapp".to_string(),
+                    signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect(),
+                    trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
+                },
+                &certificate_validator,
+            )
+            .await
+            .expect("Failed to validate attestation");
+        })
+        .await;
     }
 
     #[tokio::test]
@@ -376,33 +377,34 @@ w1IdYIg2Wxg7yHcQZemFQg==
             Duration::days(1),
             Duration::days(1),
         ));
-        let mut clock = MockClock::new();
-        clock
-            .expect_now_utc()
-            .returning(|| datetime!(2025-09-05 0:00 UTC)); // a date the test vector happens to be valid at
+
         let certificate_validator = CertificateValidatorImpl::new(
             Arc::new(key_algorithm_provider),
             crl_cache,
-            Arc::new(clock),
             Duration::minutes(1),
             android_key_attestation_crl_cache,
         );
-        let result = validate_attestation_android(
-            &EXAMPLE_ATTESTATION
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-            "AttestationChallenge",
-            &AndroidBundle {
-                bundle_id: "com.exampleapp".to_string(),
-                signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+
+        // a date the test vector happens to be valid at
+        let result = run_with_mocked_time_async(datetime!(2025-09-05 0:00 UTC), async move {
+            validate_attestation_android(
+                &EXAMPLE_ATTESTATION
                     .iter()
                     .map(ToString::to_string)
-                    .collect(),
-                trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
-            },
-            &certificate_validator,
-        )
+                    .collect::<Vec<_>>(),
+                "AttestationChallenge",
+                &AndroidBundle {
+                    bundle_id: "com.exampleapp".to_string(),
+                    signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect(),
+                    trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
+                },
+                &certificate_validator,
+            )
+            .await
+        })
         .await;
 
         assert!(matches!(
@@ -443,33 +445,34 @@ w1IdYIg2Wxg7yHcQZemFQg==
             Duration::days(1),
             Duration::days(1),
         ));
-        let mut clock = MockClock::new();
-        clock
-            .expect_now_utc()
-            .returning(|| datetime!(2024-10-01 0:00 UTC)); // a date the test vector happens to be valid at
+
         let certificate_validator = CertificateValidatorImpl::new(
             Arc::new(key_algorithm_provider),
             crl_cache,
-            Arc::new(clock),
             Duration::minutes(1),
             android_key_attestation_crl_cache,
         );
-        let result = validate_attestation_android(
-            &ATTESTATION_CHAIN
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-            "INdGT5ahPwBSIASvphcj5UiS4f3N8W4BBqLOiBPCksXW",
-            &AndroidBundle {
-                bundle_id: "com.exampleapp".to_string(),
-                signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+
+        // a date the test vector happens to be valid at
+        let result = run_with_mocked_time_async(datetime!(2024-10-01 0:00 UTC), async move {
+            validate_attestation_android(
+                &ATTESTATION_CHAIN
                     .iter()
                     .map(ToString::to_string)
-                    .collect(),
-                trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
-            },
-            &certificate_validator,
-        )
+                    .collect::<Vec<_>>(),
+                "INdGT5ahPwBSIASvphcj5UiS4f3N8W4BBqLOiBPCksXW",
+                &AndroidBundle {
+                    bundle_id: "com.exampleapp".to_string(),
+                    signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect(),
+                    trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
+                },
+                &certificate_validator,
+            )
+            .await
+        })
         .await;
 
         assert!(matches!(

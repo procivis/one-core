@@ -20,7 +20,6 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
-use crate::proto::clock::Clock;
 use crate::proto::jwt::JwtPublicKeyInfo;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -59,7 +58,6 @@ pub struct PayloadParams {
 pub struct RegistrationCertificate {
     config_key: SignerId,
     params: Params,
-    clock: Arc<dyn Clock>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -69,7 +67,6 @@ impl RegistrationCertificate {
     pub fn new(
         config_name: SignerId,
         params: Params,
-        clock: Arc<dyn Clock>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -77,7 +74,6 @@ impl RegistrationCertificate {
         Self {
             config_key: config_name,
             params,
-            clock,
             revocation_method_provider,
             key_provider,
             key_algorithm_provider,
@@ -139,7 +135,7 @@ impl Signer for RegistrationCertificate {
         issuer: Issuer,
         request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let SignatureValidity { start, end } =
             calculate_signature_validity(self.params.max_validity_duration_seconds, &request)?;
         let payload: model::RequestData = serde_json::from_value(request.data.clone())?;

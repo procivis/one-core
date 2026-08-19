@@ -1,6 +1,5 @@
 pub mod bluetooth_low_energy;
 pub mod certificate_validator;
-pub mod clock;
 pub(crate) mod cose;
 pub(crate) mod credential_schema;
 pub(crate) mod credential_validity_manager;

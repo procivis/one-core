@@ -8,7 +8,6 @@ use super::TrustListPublisher;
 use super::etsi_lote::{EtsiLoteParams, EtsiLotePublisher};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, TrustListPublisherType};
-use crate::proto::clock::Clock;
 use crate::proto::xades::XAdESProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -31,10 +30,8 @@ impl TrustListPublisherProvider for TrustListPublisherProviderImpl {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) fn trust_list_publisher_provider_from_config(
     config: &mut CoreConfig,
-    clock: Arc<dyn Clock>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     xades_proto: Arc<dyn XAdESProto>,
@@ -55,7 +52,6 @@ pub(crate) fn trust_list_publisher_provider_from_config(
                 Arc::new(EtsiLotePublisher {
                     method_id: method_id.clone(),
                     params,
-                    clock: clock.clone(),
                     key_provider: key_provider.clone(),
                     key_algorithm_provider: key_algorithm_provider.clone(),
                     xades_proto: xades_proto.clone(),

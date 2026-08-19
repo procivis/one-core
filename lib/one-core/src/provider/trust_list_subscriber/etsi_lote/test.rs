@@ -10,6 +10,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
+use crate::clock::run_with_mocked_time_async;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{Certificate, CertificateState};
@@ -17,7 +18,6 @@ use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::relation::RelatedVec;
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
-use crate::proto::clock::MockClock;
 use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
 use crate::proto::xades::{MockXAdESProto, XAdES};
 use crate::provider::caching_loader::etsi_lote::EtsiLoteCache;
@@ -77,14 +77,18 @@ async fn validate_subscription_success() {
     let time = datetime!(2026-03-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(time, &reference);
+    let subscriber = setup_subscriber(&reference);
 
-    let result = subscriber
-        .validate_subscription(
-            &reference,
-            Some(TrustListRoleEnum::NationalRegistryRegistrar),
-        )
-        .await;
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .validate_subscription(
+                &reference,
+                Some(TrustListRoleEnum::NationalRegistryRegistrar),
+            )
+            .await
+    })
+    .await;
+
     assert!(result.is_ok());
 }
 
@@ -93,14 +97,18 @@ async fn validate_subscription_roleless_when_no_role_derivable() {
     let time = datetime!(2026-03-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(time, &reference);
+    let subscriber = setup_subscriber(&reference);
 
     // A LoTE with no derivable role is a roleless subscription; the role is then
     // re-derived per entity at resolve time.
-    let result = subscriber
-        .validate_subscription(&reference, None)
-        .await
-        .unwrap();
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .validate_subscription(&reference, None)
+            .await
+            .unwrap()
+    })
+    .await;
+
     assert_eq!(result.role, None);
 }
 
@@ -109,11 +117,15 @@ async fn resolve_unsupported_identifier_type() {
     let time = datetime!(2026-03-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(time, &reference);
+    let subscriber = setup_subscriber(&reference);
 
-    let result = subscriber
-        .resolve_entries(&reference, &[dummy_identifier()])
-        .await;
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .resolve_entries(&reference, &[dummy_identifier()])
+            .await
+    })
+    .await;
+
     assert!(matches!(
         result,
         Err(TrustListSubscriberError::UnsupportedIdentifierType(_))
@@ -124,13 +136,14 @@ async fn resolve_unsupported_identifier_type() {
 async fn validate_subscription_expired() {
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(crate::clock::now_utc(), &reference);
+    let subscriber = setup_subscriber(&reference);
 
     let result = subscriber
         .validate_subscription(&reference, None)
         .await
         .err()
         .unwrap();
+
     assert_eq!(result.error_code(), ErrorCode::BR_0354);
 }
 
@@ -139,7 +152,7 @@ async fn resolve_untrusted_identifier() {
     let time = datetime!(2026-03-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(time, &reference);
+    let subscriber = setup_subscriber(&reference);
 
     let identifier_id = Uuid::new_v4().into();
     let now = crate::clock::now_utc();
@@ -170,10 +183,14 @@ async fn resolve_untrusted_identifier() {
         trust_information: Default::default(),
     };
 
-    let result = subscriber
-        .resolve_entries(&reference, &[identifier])
-        .await
-        .unwrap();
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .resolve_entries(&reference, &[identifier])
+            .await
+            .unwrap()
+    })
+    .await;
+
     assert_eq!(result, HashMap::new());
 }
 
@@ -182,7 +199,7 @@ async fn resolve_trusted_identifier() {
     let time = datetime!(2026-03-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote").unwrap();
 
-    let subscriber = setup_subscriber(time, &reference);
+    let subscriber = setup_subscriber(&reference);
 
     let identifier_id = Uuid::new_v4().into();
     let now = crate::clock::now_utc();
@@ -213,19 +230,19 @@ async fn resolve_trusted_identifier() {
         trust_information: Default::default(),
     };
 
-    let result = subscriber
-        .resolve_entries(&reference, &[identifier])
-        .await
-        .unwrap();
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .resolve_entries(&reference, &[identifier])
+            .await
+            .unwrap()
+    })
+    .await;
+
     assert_eq!(result.len(), 1);
     assert!(result.contains_key(&identifier_id));
 }
 
-fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber {
-    let mut clock = MockClock::new();
-    // test vector still valid
-    clock.expect_now_utc().returning(move || time);
-    let clock = Arc::new(clock);
+fn setup_subscriber(reference: &Url) -> EtsiLoteSubscriber {
     let mut client = MockHttpClient::new();
     mock_http_get_request(
         &mut client,
@@ -298,7 +315,6 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
 
     let certificate_validator = Arc::new(certificate_validator);
     let resolver = EtsiLoteResolver::new(
-        clock,
         client,
         Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider.clone(),
@@ -325,10 +341,7 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
 const LOTE_XML: &str = r##"<?xml version="1.0" encoding="UTF-8"?>
 <ListOfTrustedEntities xmlns="http://uri.etsi.org/019602/v1#" LOTETag="http://uri.etsi.org/019602/tag#"><ListAndSchemeInformation><LoTEVersionIdentifier>1</LoTEVersionIdentifier><LoTESequenceNumber>1</LoTESequenceNumber><LoTEType>http://uri.etsi.org/19602/LoTEType/EURegistrarsAndRegistersList</LoTEType><SchemeOperatorName><Name xml:lang="en">Test Operator</Name></SchemeOperatorName><StatusDeterminationApproach/><SchemeTerritory>EU</SchemeTerritory><ListIssueDateTime>2026-03-01T00:00:00Z</ListIssueDateTime><NextUpdate><dateTime>2026-06-01T00:00:00Z</dateTime></NextUpdate></ListAndSchemeInformation><TrustedEntitiesList><TrustedEntity><TrustedEntityInformation><TEName><Name xml:lang="de-DE">Test Entity</Name></TEName></TrustedEntityInformation><TrustedEntityServices><TrustedEntityService><ServiceInformation><ServiceName><Name xml:lang="de-DE">Test Service</Name></ServiceName><ServiceDigitalIdentity><DigitalId><X509Certificate>MIICLzCCAdSgAwIBAgIUHyRjE466YA7tc888k03Ou2QodF4wCgYIKoZIzj0EAwIwKDELMAkGA1UEBhMCREUxGTAXBgNVBAMMEEdlcm1hbiBSZWdpc3RyYXIwHhcNMjYwMTE2MTExNTU0WhcNMjgwMTE2MTExNTU0WjAoMQswCQYDVQQGEwJERTEZMBcGA1UEAwwQR2VybWFuIFJlZ2lzdHJhcjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMefY2X4ixfRkWEvp9grF2i21z6PKZsr8zzBaJ/+GnotCeH2cJ6GtLhxXhHfJjrETsMNIGhVaJoHoHcZTBHJrfyjgdswgdgwHQYDVR0OBBYEFKnCo9ovbaxU7s65TugsySwAg4AzMB8GA1UdIwQYMBaAFKnCo9ovbaxU7s65TugsySwAg4AzMBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMCoGA1UdEgQjMCGGH2h0dHBzOi8vc2FuZGJveC5ldWRpLXdhbGxldC5vcmcwRgYDVR0fBD8wPTA7oDmgN4Y1aHR0cHM6Ly9zYW5kYm94LmV1ZGktd2FsbGV0Lm9yZy9zdGF0dXMtbWFuYWdlbWVudC9jcmwwCgYIKoZIzj0EAwIDSQAwRgIhAIY7ERpRrDRl0lr5H5uxjJ83JR4qua2sfPKxX+pl4Qw+AiEA2qL6LXVORA2r2VZjSEknfciwIG7laA12kjnyGAD3V/A=</X509Certificate></DigitalId></ServiceDigitalIdentity><ServiceStatus>http://uri.etsi.org/19602/SvcStatus/active</ServiceStatus><StatusStartingTime>2026-03-01T00:00:00Z</StatusStartingTime></ServiceInformation></TrustedEntityService></TrustedEntityServices></TrustedEntity></TrustedEntitiesList><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="id-7f5552b2-bd88-425b-a42d-64e074b23d31"><ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"/><ds:Reference Id="r-id-7f5552b2-bd88-425b-a42d-64e074b23d31" URI=""><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>ibHwcbENffk1nsVFRhNhhBX9XOKIluQTGocvLekeOBY=</ds:DigestValue></ds:Reference><ds:Reference URI="#xades-id-7f5552b2-bd88-425b-a42d-64e074b23d31" Type="http://uri.etsi.org/01903#SignedProperties"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>Y0OazMA/aZaHQmPILNDLNRnNAaOWjb6NVKO63gg8xLg=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue Id="value-id-7f5552b2-bd88-425b-a42d-64e074b23d31">dFO8cosEG/KAgMqgB3BXGpuDuzZAGcgh5mv93DkqahQu054UOXL38EeIoWmfyYeMlwEPZpfWSzujtTpWgDZk+g==</ds:SignatureValue><ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIIBMTCB2KADAgECAhQSJe8xsm3dMnAInnpRGvwiotSp6jAKBggqhkjOPQQDAjAYMRYwFAYDVQQDDA1YQWRFUyBUZXN0IENBMCAXDTc1MDEwMTAwMDAwMFoYDzQwOTYwMTAxMDAwMDAwWjAYMRYwFAYDVQQDDA1YQWRFUyBUZXN0IENBMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcd/LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yeJpCY9SCKvzQjZcIWqfb8o+p1YfQ/EzMII/xbe4/GVQDAKBggqhkjOPQQDAgNIADBFAiEA34ISXnPYu5LRBb0itF0Nlmm4imiZ5YUKZahKnnmmAMQCIBWBr/GnmGAj5aqM+V6HGzhpwlz6d5ocJqb5GY+WhnHb</ds:X509Certificate></ds:X509Data></ds:KeyInfo><ds:Object><xades:QualifyingProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Target="#id-7f5552b2-bd88-425b-a42d-64e074b23d31"><xades:SignedProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="xades-id-7f5552b2-bd88-425b-a42d-64e074b23d31"><xades:SignedSignatureProperties><xades:SigningTime>2026-03-29T20:35:02.640504Z</xades:SigningTime><xades:SigningCertificateV2><xades:Cert><xades:CertDigest><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>Vko5kJdJk0XOYw1G3uHVzAgQ+uPXlHRtH32Qp1K2FSs=</ds:DigestValue></xades:CertDigest><xades:IssuerSerialV2/></xades:Cert></xades:SigningCertificateV2></xades:SignedSignatureProperties><xades:SignedDataObjectProperties><xades:DataObjectFormat ObjectReference="#r-id-7f5552b2-bd88-425b-a42d-64e074b23d31"><xades:MimeType>text/xml</xades:MimeType></xades:DataObjectFormat></xades:SignedDataObjectProperties></xades:SignedProperties></xades:QualifyingProperties></ds:Object></ds:Signature></ListOfTrustedEntities>"##;
 
-fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber {
-    let mut clock = MockClock::new();
-    clock.expect_now_utc().returning(move || time);
-    let clock = Arc::new(clock);
+fn setup_subscriber_xml(reference: &Url) -> EtsiLoteSubscriber {
     let mut client = MockHttpClient::new();
     mock_http_get_request(
         &mut client,
@@ -407,7 +420,6 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
     let xades = XAdES::new(crypto, cert_validator.clone());
 
     let resolver = EtsiLoteResolver::new(
-        clock,
         client,
         Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider.clone(),
@@ -433,14 +445,18 @@ async fn validate_subscription_xml_success() {
     let time = datetime!(2026-04-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote-xml").unwrap();
 
-    let subscriber = setup_subscriber_xml(time, &reference);
+    let subscriber = setup_subscriber_xml(&reference);
 
-    let result = subscriber
-        .validate_subscription(
-            &reference,
-            Some(TrustListRoleEnum::NationalRegistryRegistrar),
-        )
-        .await;
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .validate_subscription(
+                &reference,
+                Some(TrustListRoleEnum::NationalRegistryRegistrar),
+            )
+            .await
+    })
+    .await;
+
     assert!(result.is_ok());
 }
 
@@ -450,13 +466,17 @@ async fn validate_subscription_xml_expired() {
     let time = datetime!(2026-07-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote-xml").unwrap();
 
-    let subscriber = setup_subscriber_xml(time, &reference);
+    let subscriber = setup_subscriber_xml(&reference);
 
-    let result = subscriber
-        .validate_subscription(&reference, None)
-        .await
-        .err()
-        .unwrap();
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .validate_subscription(&reference, None)
+            .await
+            .err()
+            .unwrap()
+    })
+    .await;
+
     assert_eq!(result.error_code(), ErrorCode::BR_0354);
 }
 
@@ -465,7 +485,7 @@ async fn resolve_trusted_identifier_xml() {
     let time = datetime!(2026-04-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote-xml").unwrap();
 
-    let subscriber = setup_subscriber_xml(time, &reference);
+    let subscriber = setup_subscriber_xml(&reference);
 
     let identifier_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
@@ -496,10 +516,14 @@ async fn resolve_trusted_identifier_xml() {
         trust_information: Default::default(),
     };
 
-    let result = subscriber
-        .resolve_entries(&reference, &[identifier])
-        .await
-        .unwrap();
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .resolve_entries(&reference, &[identifier])
+            .await
+            .unwrap()
+    })
+    .await;
+
     assert_eq!(result.len(), 1);
     assert!(result.contains_key(&identifier_id));
 }
@@ -509,7 +533,7 @@ async fn resolve_untrusted_identifier_xml() {
     let time = datetime!(2026-04-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote-xml").unwrap();
 
-    let subscriber = setup_subscriber_xml(time, &reference);
+    let subscriber = setup_subscriber_xml(&reference);
 
     let identifier_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
@@ -540,9 +564,13 @@ async fn resolve_untrusted_identifier_xml() {
         trust_information: Default::default(),
     };
 
-    let result = subscriber
-        .resolve_entries(&reference, &[identifier])
-        .await
-        .unwrap();
+    let result = run_with_mocked_time_async(time, async move {
+        subscriber
+            .resolve_entries(&reference, &[identifier])
+            .await
+            .unwrap()
+    })
+    .await;
+
     assert!(result.is_empty());
 }

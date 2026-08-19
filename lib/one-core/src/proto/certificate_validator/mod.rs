@@ -6,7 +6,6 @@ use x509_parser::certificate::X509Certificate;
 
 use crate::config::core_config::{CacheEntitiesConfig, CacheEntityCacheType, GlobalSettings};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
-use crate::proto::clock::{Clock, DefaultClock};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::http_client::{HttpClient, HttpClientSecurityConfig};
 use crate::provider::caching_loader::android_attestation_crl::{
@@ -221,7 +220,6 @@ impl CertificateValidationOptions {
 pub(crate) struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crl_cache: Arc<X509CrlCache>,
-    clock: Arc<dyn Clock>,
     clock_leeway: Duration,
     android_attestation_crl_cache: Arc<AndroidAttestationCrlCache>,
 }
@@ -230,14 +228,12 @@ impl CertificateValidatorImpl {
     pub(crate) fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         crl_cache: Arc<X509CrlCache>,
-        clock: Arc<dyn Clock>,
         clock_leeway: Duration,
         android_attestation_crl_cache: Arc<AndroidAttestationCrlCache>,
     ) -> Self {
         Self {
             key_algorithm_provider,
             crl_cache,
-            clock,
             clock_leeway,
             android_attestation_crl_cache,
         }
@@ -258,7 +254,6 @@ pub(crate) fn certificate_validator_from_config(
             cache_entities,
             remote_entity_cache_repository,
         )?),
-        Arc::new(DefaultClock),
         global_settings.certificate_validation.leeway_seconds,
         Arc::new(initialize_android_key_attestation_crl_cache(client)),
     )))

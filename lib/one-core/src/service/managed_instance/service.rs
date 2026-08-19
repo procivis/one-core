@@ -353,7 +353,7 @@ impl ManagedInstanceService {
         provider_label: &str,
         user_binding_required: bool,
     ) -> Result<RegisterWalletUnitResponseDTO, ManagedInstanceError> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
         let user_nonce = user_binding_required.then(|| generate_alphanumeric(44));
         let organisation_id = organisation.id;
@@ -401,7 +401,7 @@ impl ManagedInstanceService {
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: self.clock.now_utc(),
+                created_date: crate::clock::now_utc(),
                 action,
                 name: wallet_unit_name,
                 source: HistorySource::Core,
@@ -427,7 +427,7 @@ impl ManagedInstanceService {
         public_key_jwk: PublicJwk,
         user_binding_required: bool,
     ) -> Result<RegisterWalletUnitResponseDTO, ManagedInstanceError> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let user_nonce = user_binding_required.then(|| generate_alphanumeric(44));
         let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
@@ -523,7 +523,7 @@ impl ManagedInstanceService {
                 .ok_or(ManagedInstanceError::MissingWalletUnitAttestation)?;
 
             if wallet_unit.last_modified + reg_params.integrity_check.timeout_seconds
-                < self.clock.now_utc()
+                < crate::clock::now_utc()
             {
                 let error = ManagedInstanceError::InvalidWalletUnitAttestationNonce;
                 self.set_instance_to_error(
@@ -712,7 +712,7 @@ impl ManagedInstanceService {
                 &wallet_unit_id,
                 UpdateManagedInstanceRequest {
                     status: Some(InstanceStatus::Active),
-                    last_issuance: Some(self.clock.now_utc()),
+                    last_issuance: Some(crate::clock::now_utc()),
                     authentication_key_jwk,
                     user_sub,
                     verifier_csr: Some(None),
@@ -863,7 +863,7 @@ impl ManagedInstanceService {
         )
         .await?;
 
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let (public_key_info, auth_fn) = self.get_key_info(issuer_identifier).await?;
 
         let mut instance_attestations = vec![];
@@ -1078,7 +1078,7 @@ impl ManagedInstanceService {
         auth_fn: &AuthenticationFn,
         issuer_public_key_info: JwtPublicKeyInfo,
     ) -> Result<Jwt<WalletInstanceAttestationClaims>, ManagedInstanceError> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let jose_alg = auth_fn.jose_alg().error_while("preparing WIA header")?;
         let key_id = auth_fn.get_key_id();
 
@@ -1125,7 +1125,7 @@ impl ManagedInstanceService {
         issuer_public_key_info: JwtPublicKeyInfo,
         revocation_info: Option<CredentialRevocationInfo>,
     ) -> Result<Jwt<WalletUnitAttestationClaims>, ManagedInstanceError> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let jose_alg = auth_fn.jose_alg().error_while("preparing WUA header")?;
         let key_id = auth_fn.get_key_id();
 

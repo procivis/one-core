@@ -27,7 +27,6 @@ use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::relation::Related;
 use crate::model::trust_collection::TrustCollection;
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::clock::DefaultClock;
 use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
@@ -83,7 +82,6 @@ fn mock_wallet_provider_service() -> ManagedInstanceService {
         signer_provider: Arc::new(MockSignerProvider::default()),
         certificate_validator: Arc::new(MockCertificateValidator::default()),
         http_client: Arc::new(MockHttpClient::default()),
-        clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
         session_provider: Arc::new(NoSessionProvider),

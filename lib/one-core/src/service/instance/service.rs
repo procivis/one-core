@@ -206,7 +206,7 @@ impl InstanceService {
             .await
             .error_while("creating holder wallet unit")?;
 
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let name = format!(
             "{}-{}-{}",
             request.provider.r#type,
@@ -617,7 +617,7 @@ impl InstanceService {
                     metadata_blob_id: None,
                     organisation_id: Some(holder_wallet_unit.organisation.id()),
                     user: self.session_provider.session().user(),
-                    created_date: self.clock.now_utc(),
+                    created_date: crate::clock::now_utc(),
                 })
                 .await
                 .error_while("creating history")?;
@@ -929,7 +929,7 @@ impl InstanceService {
         )?;
         let attestation_key_proof = self
             .create_signed_key_possession_proof(
-                self.clock.now_utc(),
+                crate::clock::now_utc(),
                 &provider_info.name,
                 auth_fn,
                 &provider_info.url,
@@ -953,7 +953,7 @@ impl InstanceService {
             )?;
             let signed_proof = self
                 .create_device_signing_key_pop(
-                    self.clock.now_utc(),
+                    crate::clock::now_utc(),
                     auth_fn,
                     key_handle.public_key_as_jwk().error_while("creating JWK")?,
                     &provider_info.name,
@@ -1036,7 +1036,7 @@ impl InstanceService {
         )?;
         let proof = self
             .create_signed_key_possession_proof(
-                self.clock.now_utc(),
+                crate::clock::now_utc(),
                 &provider_info.name,
                 auth_fn,
                 &provider_info.url,

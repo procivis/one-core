@@ -12,7 +12,6 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
-use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
@@ -62,7 +61,6 @@ fn assert_lote_signature_policy(
 }
 
 pub struct EtsiLoteResolver {
-    clock: Arc<dyn Clock>,
     client: Arc<dyn HttpClient>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -77,7 +75,6 @@ pub struct EtsiLoteResolver {
 impl EtsiLoteResolver {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
-        clock: Arc<dyn Clock>,
         client: Arc<dyn HttpClient>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -88,7 +85,6 @@ impl EtsiLoteResolver {
         max_pointer_depth: Option<usize>,
     ) -> Self {
         Self {
-            clock,
             client,
             did_method_provider,
             key_algorithm_provider,
@@ -170,7 +166,7 @@ impl EtsiLoteResolver {
                         .await
                         .error_while("verifying ETSI LoTE XML signature")?;
 
-                    assert_lote_signature_policy(&verified, self.leeway, self.clock.now_utc())?;
+                    assert_lote_signature_policy(&verified, self.leeway, crate::clock::now_utc())?;
 
                     (signed_xml.content.into(), verified.signer_chain_pem)
                 }
@@ -181,7 +177,7 @@ impl EtsiLoteResolver {
         }
 
         let expiry = lote.list_and_scheme_information.next_update;
-        if expiry + self.leeway < self.clock.now_utc() {
+        if expiry + self.leeway < crate::clock::now_utc() {
             return Err(ResolverError::InvalidResponse(
                 "LoTE trust list is expired".to_string(),
             ));

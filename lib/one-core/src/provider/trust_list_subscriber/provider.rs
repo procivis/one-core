@@ -9,7 +9,6 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CacheEntityCacheType, CoreConfig, TrustListSubscriberType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
 use crate::proto::xades::XAdESProto;
 use crate::provider::caching_loader::etsi_lote::EtsiLoteCache;
@@ -64,10 +63,8 @@ impl TrustListSubscriberProvider for TrustListSubscriberProviderImpl {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) fn trust_list_subscriber_provider_from_config(
     config: &mut CoreConfig,
-    clock: Arc<dyn Clock>,
     client: Arc<dyn HttpClient>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -88,7 +85,6 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
             TrustListSubscriberType::EtsiLote => {
                 let params: EtsiLoteParams = config.trust_list_subscriber.get(key)?;
                 let resolver = EtsiLoteResolver::new(
-                    clock.clone(),
                     client.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
@@ -148,7 +144,6 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
             .collect::<Result<Vec<_>, _>>()?;
 
         let resolver = EtsiLotlResolver::new(
-            clock.clone(),
             client.clone(),
             certificate_validator.clone(),
             xades_proto.clone(),

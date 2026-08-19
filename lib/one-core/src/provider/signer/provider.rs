@@ -12,7 +12,6 @@ use crate::config::core_config::{
 use crate::config::{ConfigValidationError, ProviderReference};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::model::revocation_list::RevocationListEntityInfo;
-use crate::proto::clock::Clock;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -68,13 +67,11 @@ impl SignerProvider for SignerProviderImpl {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn initialize_provider(
     name: &SignerId,
     fields: &Fields<SignerType>,
     revocation_config: &ConfigBlock<RevocationMethodId, RevocationType>,
     core_base_url: &Option<String>,
-    clock: &Arc<dyn Clock>,
     key_provider: &Arc<dyn KeyProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
@@ -89,7 +86,6 @@ fn initialize_provider(
             let signer = registration_certificate::RegistrationCertificate::new(
                 name.to_owned(),
                 params.clone(),
-                clock.clone(),
                 revocation_method_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
@@ -162,11 +158,9 @@ fn initialize_provider(
     Ok(provider)
 }
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) fn signer_provider_from_config(
     core_base_url: Option<String>,
     config: &mut CoreConfig,
-    clock: Arc<dyn Clock>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -183,7 +177,6 @@ pub(crate) fn signer_provider_from_config(
                 fields,
                 revocation_config,
                 &core_base_url,
-                &clock,
                 &key_provider,
                 &key_algorithm_provider,
                 &revocation_method_provider,

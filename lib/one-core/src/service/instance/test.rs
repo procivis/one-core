@@ -12,7 +12,6 @@ use super::error::HolderInstanceError;
 use crate::config::core_config::CoreConfig;
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
-use crate::proto::clock::DefaultClock;
 use crate::proto::csr_creator::MockCsrCreator;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::os_provider::MockOSInfoProvider;
@@ -53,7 +52,6 @@ fn mock_instance_service() -> InstanceService {
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
         os_info_provider: Arc::new(MockOSInfoProvider::default()),
-        clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
         session_provider: Arc::new(NoSessionProvider),

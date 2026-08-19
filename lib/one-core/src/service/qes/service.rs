@@ -67,7 +67,7 @@ impl QesService {
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: self.clock.now_utc(),
+                created_date: crate::clock::now_utc(),
                 action: HistoryAction::Signed,
                 name: String::new(),
                 source: HistorySource::Qtsp,
@@ -101,7 +101,6 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::proto::clock::DefaultClock;
     use crate::proto::session_provider::NoSessionProvider;
     use crate::provider::document_signer::MockDocumentSigner;
     use crate::provider::document_signer::model::{Authorization, SignedDocument};
@@ -120,7 +119,6 @@ mod test {
             Arc::new(provider),
             Arc::new(history),
             Arc::new(NoSessionProvider),
-            Arc::new(DefaultClock),
         )
     }
 
@@ -208,7 +206,6 @@ mod test {
             Arc::new(provider),
             Arc::new(history),
             Arc::new(NoSessionProvider),
-            Arc::new(DefaultClock),
         );
 
         service

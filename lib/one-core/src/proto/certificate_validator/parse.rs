@@ -249,7 +249,7 @@ impl CertificateValidatorImpl {
         cert: &X509Certificate,
         leeway: Duration,
     ) -> Result<(), Error> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         if ASN1Time::from(now + leeway) < cert.validity.not_before {
             return Err(Error::CertificateNotYetValid);
         }

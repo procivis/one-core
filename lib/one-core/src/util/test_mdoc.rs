@@ -9,7 +9,6 @@ use time::Duration;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::proto::certificate_validator::CertificateValidatorImpl;
-use crate::proto::clock::DefaultClock;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
@@ -83,7 +82,6 @@ pub async fn format_mdoc_credential(
         Arc::new(CertificateValidatorImpl::new(
             key_algorithm_provider.clone(),
             crl_cache,
-            Arc::new(DefaultClock),
             Duration::minutes(1),
             android_key_attestation_crl_cache,
         )) as _,

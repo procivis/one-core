@@ -18,7 +18,6 @@ use crate::model::common::GetListResponse;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::relation::RelatedVec;
-use crate::proto::clock::DefaultClock;
 use crate::proto::jwt::Jwt;
 use crate::proto::xades::MockXAdESProto;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
@@ -307,7 +306,6 @@ fn make_publisher(
             refresh_interval_seconds: time::Duration::seconds(86400),
             content_type: LoteContentType::Jwt,
         },
-        clock: Arc::new(DefaultClock),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         xades_proto: Arc::new(xades_proto),
@@ -1080,7 +1078,6 @@ async fn test_format_trust_list_xml_empty_list() {
             refresh_interval_seconds: time::Duration::seconds(86400),
             content_type: LoteContentType::Xml,
         },
-        clock: Arc::new(DefaultClock),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         xades_proto: {
@@ -1138,7 +1135,6 @@ async fn test_format_trust_list_xml_with_entry() {
             refresh_interval_seconds: time::Duration::seconds(86400),
             content_type: LoteContentType::Xml,
         },
-        clock: Arc::new(DefaultClock),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         xades_proto: {

@@ -13,7 +13,6 @@ use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral
 use crate::proto::certificate_validator::{
     CertificateValidator, certificate_validator_from_config,
 };
-use crate::proto::clock::DefaultClock;
 use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
 use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporterProto;
@@ -200,8 +199,6 @@ impl OneCore {
 
         let mqtt_client = Arc::new(RumqttcClient::default());
 
-        let clock = Arc::new(DefaultClock);
-
         let crypto = initialize_crypto_provider();
 
         // data_provider variable gets replaced with the decorated variant, so that it cannot be misued later
@@ -349,7 +346,6 @@ impl OneCore {
         let signer_provider = signer_provider_from_config(
             core_base_url.clone(),
             &mut config,
-            clock.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
@@ -390,7 +386,6 @@ impl OneCore {
 
         let trust_list_publisher_provider = trust_list_publisher_provider_from_config(
             &mut config,
-            clock.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             xades_proto.clone(),
@@ -401,7 +396,6 @@ impl OneCore {
 
         let trust_list_subscriber_provider = trust_list_subscriber_provider_from_config(
             &mut config,
-            clock.clone(),
             client.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
@@ -831,7 +825,6 @@ impl OneCore {
                 signer_provider.clone(),
                 certificate_validator,
                 client.clone(),
-                clock.clone(),
                 session_provider.clone(),
                 document_signer_provider.clone(),
                 verifier_provider.clone(),
@@ -842,7 +835,6 @@ impl OneCore {
                 document_signer_provider,
                 data_provider.get_history_repository(),
                 session_provider.clone(),
-                clock,
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
@@ -882,7 +874,6 @@ impl OneCore {
                 wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
                 trust_collection_manager,
-                Arc::new(DefaultClock),
                 core_base_url,
                 config.clone(),
                 session_provider.clone(),

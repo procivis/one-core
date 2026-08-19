@@ -32,7 +32,6 @@ use crate::model::trust_list_publication::{
 };
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
-use crate::proto::clock::Clock;
 use crate::proto::xades::XAdESProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -48,7 +47,6 @@ use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, Sel
 pub(crate) struct EtsiLotePublisher {
     pub method_id: TrustListPublisherId,
     pub params: EtsiLoteParams,
-    pub clock: Arc<dyn Clock>,
     pub key_provider: Arc<dyn KeyProvider>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub xades_proto: Arc<dyn XAdESProto>,
@@ -131,10 +129,11 @@ impl TrustListPublisher for EtsiLotePublisher {
 
         let publication_id = TrustListPublicationId::from(uuid::Uuid::new_v4());
 
+        let now = crate::clock::now_utc();
         let publication = TrustListPublication {
             id: publication_id,
-            created_date: self.clock.now_utc(),
-            last_modified: self.clock.now_utc(),
+            created_date: now,
+            last_modified: now,
             name: request.name,
             role: request.role,
             r#type: self.method_id.clone(),
@@ -174,10 +173,11 @@ impl TrustListPublisher for EtsiLotePublisher {
         let metadata = serde_json::to_vec(&entry_params)?;
 
         let entry_id = TrustEntryId::from(uuid::Uuid::new_v4());
+        let now = crate::clock::now_utc();
         let entry = TrustEntry {
             id: entry_id,
-            created_date: self.clock.now_utc(),
-            last_modified: self.clock.now_utc(),
+            created_date: now,
+            last_modified: now,
             state: TrustEntryStateEnum::Active,
             metadata,
             trust_list_publication: publication.to_owned().into(),
@@ -237,7 +237,7 @@ impl TrustListPublisher for EtsiLotePublisher {
     ) -> Result<TrustListContent, TrustListPublisherError> {
         let refresh_interval = self.params.refresh_interval_seconds;
 
-        let content = if publication.last_modified + refresh_interval > self.clock.now_utc() {
+        let content = if publication.last_modified + refresh_interval > crate::clock::now_utc() {
             publication.content
         } else {
             self.sign_trust_list(publication.id).await?
@@ -257,7 +257,7 @@ impl EtsiLotePublisher {
         organisation_name: &str,
         entries: &[(TrustEntry, Identifier)],
     ) -> Result<Vec<u8>, TrustListPublisherError> {
-        let now = self.clock.now_utc();
+        let now = crate::clock::now_utc();
         let payload = build_lote_payload(
             publication,
             organisation_name,
@@ -309,7 +309,7 @@ impl EtsiLotePublisher {
             }
             LoteContentType::Jwt => {
                 let payload_json = serde_json::to_vec(&payload)?;
-                sign_jades_compact(&payload_json, &*signer, x5c, self.clock.now_utc()).await
+                sign_jades_compact(&payload_json, &*signer, x5c, now).await
             }
         }
     }
