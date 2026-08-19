@@ -19,7 +19,7 @@ pub struct TrustInformationDetailResponseBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
-#[uniffi(name = "TrustInformationDetail")]
+#[uniffi(name = "TrustInformationDetailInfo")]
 pub enum TrustInformationDetailResponseBindingEnum {
     Eudi(EudiTrustInformationResponseBindingDTO),
 }
