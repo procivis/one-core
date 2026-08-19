@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
+use shared_types::{EcosystemId, OrganisationId};
 use thiserror::Error;
 use time::Duration;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::proto::wrp_validator::model::TrustScope;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::history_repository::HistoryRepository;
@@ -58,9 +60,11 @@ pub(crate) struct HolderIssuanceResolver {
     session_provider: Arc<dyn SessionProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     leeway: Duration,
+    ecosystem: EcosystemId,
 }
 
 impl HolderIssuanceResolver {
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         history_repository: Arc<dyn HistoryRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
@@ -69,6 +73,7 @@ impl HolderIssuanceResolver {
         session_provider: Arc<dyn SessionProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         leeway: Duration,
+        ecosystem: EcosystemId,
     ) -> Self {
         Self {
             history_repository,
@@ -78,6 +83,15 @@ impl HolderIssuanceResolver {
             session_provider,
             formatter_provider,
             leeway,
+            ecosystem,
+        }
+    }
+
+    /// Trust may only be resolved against collections of the ecosystem being acted in.
+    pub(super) fn trust_scope(&self, organisation_id: OrganisationId) -> TrustScope {
+        TrustScope {
+            organisation_id,
+            ecosystem: self.ecosystem.to_owned(),
         }
     }
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{OrganisationId, ProofId};
+use shared_types::{EcosystemId, OrganisationId, ProofId};
 use standardized_types::etsi_119_475::registration_certificate;
 use standardized_types::etsi_119_475::registry::IntendedUse;
 use standardized_types::etsi_119_602::MultiLangString;
@@ -34,12 +34,14 @@ impl HolderProofResolver {
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
+        ecosystem: EcosystemId,
     ) -> Self {
         Self {
             history_repository,
             wrp_validator,
             blob_storage_provider,
             session_provider,
+            ecosystem,
         }
     }
 
@@ -109,7 +111,10 @@ impl HolderProofResolver {
     ) -> Result<AccessCertificateResult, HolderProofError> {
         let result = self
             .wrp_validator
-            .validate_access_certificate(&certificate.chain, Some(organisation_id))
+            .validate_access_certificate(
+                &certificate.chain,
+                Some(&self.trust_scope(organisation_id)),
+            )
             .await
             .error_while("validating access certificate")?;
 
@@ -153,7 +158,7 @@ impl HolderProofResolver {
                 .validate_registration_certificate(
                     &reg_cert.data,
                     expected_rp_id,
-                    Some(organisation_id),
+                    Some(&self.trust_scope(organisation_id)),
                     leeway,
                 )
                 .await
@@ -296,7 +301,7 @@ impl HolderProofResolver {
             .fetch_from_registry(
                 relying_party_id,
                 registry_url,
-                Some(organisation_id),
+                Some(&self.trust_scope(organisation_id)),
                 leeway,
             )
             .await

@@ -7,7 +7,7 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::i18n::I18nString;
-use shared_types::{CredentialFormat, CredentialId, EcosystemId, ProofId};
+use shared_types::{CredentialFormat, CredentialId, EcosystemId, OrganisationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::Duration;
 
@@ -25,6 +25,7 @@ use crate::model::list_filter::ListFilterCondition;
 use crate::model::proof::Proof;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::proto::wrp_validator::model::TrustScope;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::provider_directory::InitializationError;
@@ -101,13 +102,13 @@ impl EudiEcosystem {
             })?;
 
         Ok(Self {
-            config_id,
             config,
             holder_proof_resolver: HolderProofResolver::new(
                 history_repository.clone(),
                 wrp_validator.clone(),
                 blob_storage_provider.clone(),
                 session_provider.clone(),
+                config_id.clone(),
             ),
             holder_issuance_resolver: HolderIssuanceResolver::new(
                 history_repository.clone(),
@@ -117,7 +118,9 @@ impl EudiEcosystem {
                 session_provider,
                 formatter_provider.clone(),
                 params.leeway_seconds,
+                config_id.clone(),
             ),
+            config_id,
             wrp_validator,
             formatter_provider,
             credential_schema_repository,
@@ -126,6 +129,14 @@ impl EudiEcosystem {
             blob_storage_provider,
             params,
         })
+    }
+
+    /// Trust may only be resolved against collections of the ecosystem being acted in.
+    pub(super) fn trust_scope(&self, organisation_id: OrganisationId) -> TrustScope {
+        TrustScope {
+            organisation_id,
+            ecosystem: self.config_id.to_owned(),
+        }
     }
 }
 
@@ -205,7 +216,7 @@ impl Ecosystem for EudiEcosystem {
                 self.wrp_validator
                     .validate_wallet_provider(
                         wallet_provider.to_owned(),
-                        interaction.organisation.id(),
+                        &self.trust_scope(interaction.organisation.id()),
                     )
                     .await
                     .error_while("validating wallet provider")?

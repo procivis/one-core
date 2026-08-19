@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde_with::{OneOrMany, serde_as};
+use shared_types::{EcosystemId, OrganisationId};
 use standardized_types::etsi_119_475::Credential;
 use standardized_types::etsi_119_475::registration_certificate::Payload;
 use standardized_types::etsi_119_475::registry::{
@@ -11,6 +12,12 @@ use url::Url;
 
 use crate::proto::jwt::model::JWTPayload;
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
+
+#[derive(Clone, Debug)]
+pub(crate) struct TrustScope {
+    pub organisation_id: OrganisationId,
+    pub ecosystem: EcosystemId,
+}
 
 pub(crate) struct AccessCertificateResult {
     #[expect(unused)]

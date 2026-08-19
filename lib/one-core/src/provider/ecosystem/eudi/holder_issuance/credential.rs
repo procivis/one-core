@@ -58,7 +58,7 @@ impl HolderIssuanceResolver {
                 &schema,
                 credential_category,
                 x5_references,
-                organisation_id,
+                &self.trust_scope(organisation_id),
             )
             .await
             .error_while("validating issuer")?;
@@ -83,7 +83,7 @@ impl HolderIssuanceResolver {
                 .validate_registration_certificate(
                     &registration_certificate,
                     &interaction_data.relying_party_id,
-                    Some(organisation_id),
+                    Some(&self.trust_scope(organisation_id)),
                     self.leeway,
                 )
                 .await

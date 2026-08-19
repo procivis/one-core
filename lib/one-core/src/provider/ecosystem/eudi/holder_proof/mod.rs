@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use shared_types::{EcosystemId, OrganisationId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use thiserror::Error;
 
@@ -7,6 +8,7 @@ use crate::config::core_config::IdentifierType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::proto::wrp_validator::model::TrustScope;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::repository::history_repository::HistoryRepository;
 
@@ -45,4 +47,15 @@ pub(crate) struct HolderProofResolver {
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
+    ecosystem: EcosystemId,
+}
+
+impl HolderProofResolver {
+    /// Trust may only be resolved against collections of the ecosystem being acted in.
+    pub(super) fn trust_scope(&self, organisation_id: OrganisationId) -> TrustScope {
+        TrustScope {
+            organisation_id,
+            ecosystem: self.ecosystem.to_owned(),
+        }
+    }
 }

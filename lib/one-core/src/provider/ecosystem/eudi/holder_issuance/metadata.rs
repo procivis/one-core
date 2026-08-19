@@ -55,7 +55,7 @@ impl HolderIssuanceResolver {
             .wrp_validator
             .validate_access_certificate(
                 &access_certificate_pem_chain,
-                Some(interaction.organisation.id()),
+                Some(&self.trust_scope(interaction.organisation.id())),
             )
             .await
             .error_while("validating access certificate")?;
@@ -167,7 +167,7 @@ impl HolderIssuanceResolver {
             .fetch_from_registry(
                 relying_party_id,
                 registry_url,
-                Some(organisation_id),
+                Some(&self.trust_scope(organisation_id)),
                 self.leeway,
             )
             .await
@@ -229,7 +229,7 @@ impl HolderIssuanceResolver {
             .validate_registration_certificate(
                 &issuer_info.data,
                 expected_relying_party_id,
-                Some(organisation_id),
+                Some(&self.trust_scope(organisation_id)),
                 self.leeway,
             )
             .await

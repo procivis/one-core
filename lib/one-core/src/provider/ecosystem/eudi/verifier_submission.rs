@@ -33,7 +33,7 @@ impl EudiEcosystem {
                 &schema,
                 category,
                 issuer_certificate.x5_references,
-                organisation_id,
+                &self.trust_scope(organisation_id),
             )
             .await
             .error_while("validating credential issuer")?;

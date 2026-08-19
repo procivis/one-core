@@ -1,6 +1,7 @@
 use error::WRPValidatorError;
-use model::{AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult};
-use shared_types::OrganisationId;
+use model::{
+    AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, TrustScope,
+};
 use standardized_types::etsi_119_475::registration_certificate::Payload;
 use time::Duration;
 use url::Url;
@@ -32,17 +33,17 @@ pub(crate) fn credential_category(claims: &[Claim], namespaced: bool) -> Option<
 #[async_trait::async_trait]
 pub(crate) trait WRPValidator: Send + Sync {
     /// Validate and optionally resolve WRPAC trust information
-    async fn validate_access_certificate(
+    async fn validate_access_certificate<'a>(
         &self,
         pem_chain: &str,
-        validate_trust: Option<OrganisationId>,
+        validate_trust: Option<&'a TrustScope>,
     ) -> Result<AccessCertificateResult, WRPValidatorError>;
 
-    async fn validate_registration_certificate(
+    async fn validate_registration_certificate<'a>(
         &self,
         wrprc_jwt: &str,
         expected_relying_party_id: &str,
-        validate_trust: Option<OrganisationId>,
+        validate_trust: Option<&'a TrustScope>,
         leeway: Duration,
     ) -> Result<RegistrationCertificateResult, WRPValidatorError>;
 
@@ -53,11 +54,11 @@ pub(crate) trait WRPValidator: Send + Sync {
     ) -> Result<(), WRPValidatorError>;
 
     /// Receive registration from the WRP registry
-    async fn fetch_from_registry(
+    async fn fetch_from_registry<'a>(
         &self,
         relying_party_id: &str,
         registry_url: &Url,
-        validate_trust: Option<OrganisationId>,
+        validate_trust: Option<&'a TrustScope>,
         leeway: Duration,
     ) -> Result<FetchRegistryResult, WRPValidatorError>;
 
@@ -67,7 +68,7 @@ pub(crate) trait WRPValidator: Send + Sync {
         credential_schema: &CredentialSchema,
         credential_category: Option<&'a str>,
         issuer_x5_references: X5References,
-        organisation_id: OrganisationId,
+        trust_scope: &TrustScope,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
 
     /// Validate that the wallet provider which signed a wallet attestation (WIA/WUA)
@@ -75,6 +76,6 @@ pub(crate) trait WRPValidator: Send + Sync {
     async fn validate_wallet_provider<'a>(
         &self,
         key_source: PublicKeySource<'a>,
-        organisation_id: OrganisationId,
+        trust_scope: &TrustScope,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
 }
