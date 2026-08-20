@@ -7,10 +7,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaListQuery, GetCredentialSchemaList,
     UpdateCredentialSchemaRequest,
 };
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
-use crate::model::relation::{AsyncModelLoader, AsyncModelsLoader};
-use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
+use crate::model::relation::AsyncModelLoader;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -51,23 +48,5 @@ pub trait CredentialSchemaRepository: Send + Sync {
 impl AsyncModelLoader<CredentialSchema> for Arc<dyn CredentialSchemaRepository> {
     async fn load(&self, id: &CredentialSchemaId) -> Result<CredentialSchema, DataLayerError> {
         self.get_credential_schema(id).await
-    }
-}
-
-#[async_trait::async_trait]
-impl AsyncModelsLoader<CredentialSchema> for Arc<dyn CredentialSchemaRepository> {
-    async fn load(
-        &self,
-        ids: &[CredentialSchemaId],
-    ) -> Result<Vec<CredentialSchema>, DataLayerError> {
-        Ok(self
-            .get_credential_schema_list(ListQuery {
-                filtering: Some(
-                    CredentialSchemaFilterValue::CredentialSchemaIds(ids.to_vec()).condition(),
-                ),
-                ..Default::default()
-            })
-            .await?
-            .values)
     }
 }

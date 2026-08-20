@@ -4,7 +4,7 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofSchema, SortableProofSchemaColumn,
 };
-use one_core::model::relation::{AsyncVecLoader, BatchModelLoader, Related, RelatedVec};
+use one_core::model::relation::{AsyncVecLoader, Related, RelatedVec};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -144,11 +144,6 @@ impl AsyncVecLoader<ProofInputSchema> for ProofInputSchemasLoader {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        let schemas_loader = BatchModelLoader::new(
-            input_schemas.iter().map(|model| model.credential_schema),
-            self.credential_schema_repository.clone(),
-        );
-
         for input_schema in input_schemas {
             inputs.push(ProofInputSchema {
                 claim_schemas: RelatedVec::new(ProofInputClaimSchemasLoader {
@@ -158,7 +153,7 @@ impl AsyncVecLoader<ProofInputSchema> for ProofInputSchemasLoader {
                 }),
                 credential_schema: Related::new(
                     input_schema.credential_schema,
-                    schemas_loader.clone(),
+                    self.credential_schema_repository.clone(),
                 ),
             })
         }
