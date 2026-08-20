@@ -17,7 +17,6 @@ use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::{IdentifierDetails, X5References};
 use crate::provider::ecosystem::eudi::mapper::formatter_requires_namespaces;
-use crate::provider::issuance_protocol::deserialize_interaction_data;
 
 impl HolderIssuanceResolver {
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
@@ -63,15 +62,18 @@ impl HolderIssuanceResolver {
             .await
             .error_while("validating issuer")?;
 
-        let Some(ecosystem_data) = interaction.ecosystem_data.as_ref() else {
-            return Err(HolderIssuanceError::MappingError(
-                "No ecosystem data stored in the interaction".to_string(),
-            ));
+        let Some(interaction_data) = interaction
+            .ecosystem_data
+            .get::<MetadataEcosystemData>(&self.ecosystem)
+        else {
+            return Err(HolderIssuanceError::MappingError(format!(
+                "No ecosystem data stored in the interaction for ecosystem `{}`",
+                self.ecosystem
+            )));
         };
-
-        let mut interaction_data: MetadataEcosystemData =
-            deserialize_interaction_data(Some(ecosystem_data))
-                .error_while("parsing ecosystem data")?;
+        let mut interaction_data = interaction_data.map_err(|e| {
+            HolderIssuanceError::MappingError(format!("parsing ecosystem data: {e}"))
+        })?;
 
         let validated_registration_certificate = if let Some(registration_certificate) =
             interaction_data

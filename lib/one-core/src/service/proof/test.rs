@@ -636,7 +636,7 @@ async fn test_get_proof_with_array_holder() {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -896,7 +896,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -1171,7 +1171,7 @@ async fn test_get_proof_with_object_array_holder() {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -4116,7 +4116,7 @@ async fn test_delete_proof_ok_for_allowed_state(
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: None,
-            ecosystem_data: None,
+            ecosystem_data: Default::default(),
         }
         .into(),
     );
@@ -4187,7 +4187,7 @@ async fn test_delete_proof_ok_for_requested_state() {
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: None,
-            ecosystem_data: None,
+            ecosystem_data: Default::default(),
         }
         .into(),
     );
@@ -4261,7 +4261,7 @@ async fn test_delete_proof_fails_for_invalid_state(
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: None,
-            ecosystem_data: None,
+            ecosystem_data: Default::default(),
         }
         .into(),
     );
@@ -4351,7 +4351,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: None,
-            ecosystem_data: None,
+            ecosystem_data: Default::default(),
         }
         .into(),
     );
@@ -4435,7 +4435,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: None,
-            ecosystem_data: None,
+            ecosystem_data: Default::default(),
         }
         .into(),
     );

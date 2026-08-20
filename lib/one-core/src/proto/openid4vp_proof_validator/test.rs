@@ -327,7 +327,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: None,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
     let claim_schema_required = ClaimSchema {
         key: "required_key".to_string(),

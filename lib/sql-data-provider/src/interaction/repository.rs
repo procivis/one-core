@@ -24,7 +24,7 @@ impl InteractionRepository for InteractionProvider {
         &self,
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError> {
-        let interaction = interaction::ActiveModel::from(request)
+        let interaction = interaction::ActiveModel::try_from(request)?
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -36,7 +36,7 @@ impl InteractionRepository for InteractionProvider {
         id: InteractionId,
         request: UpdateInteractionRequest,
     ) -> Result<(), DataLayerError> {
-        let mut model: interaction::ActiveModel = request.into();
+        let mut model: interaction::ActiveModel = request.try_into()?;
         model.id = Unchanged(id);
         model
             .update(&self.db)

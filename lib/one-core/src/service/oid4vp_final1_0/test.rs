@@ -115,7 +115,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: None,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     let interaction_id_copy = interaction_id.to_owned();
@@ -263,7 +263,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: Some(ecosystem_id.clone()),
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     let interaction_id_copy = interaction_id.to_owned();

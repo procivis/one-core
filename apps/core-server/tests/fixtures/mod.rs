@@ -872,7 +872,7 @@ pub async fn create_interaction_with_id(
         interaction_type,
         expires_at: None,
         ecosystem: None,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     data_layer

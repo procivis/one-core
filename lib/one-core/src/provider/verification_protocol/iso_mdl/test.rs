@@ -225,7 +225,7 @@ async fn test_presentation_reject_ok() {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -310,7 +310,7 @@ async fn test_get_presentation_definition_v2() {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),

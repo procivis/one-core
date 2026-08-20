@@ -495,7 +495,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
                 interaction_type: crate::model::interaction::InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -679,7 +679,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
                 interaction_type: crate::model::interaction::InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -856,7 +856,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
                 interaction_type: crate::model::interaction::InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -1038,7 +1038,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
                 interaction_type: crate::model::interaction::InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),

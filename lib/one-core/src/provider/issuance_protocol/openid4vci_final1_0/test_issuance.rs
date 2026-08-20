@@ -836,7 +836,7 @@ async fn dummy_credential() -> Credential {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),

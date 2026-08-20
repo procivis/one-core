@@ -648,7 +648,7 @@ impl SSIHolderService {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
             .await
             .error_while("creating interaction")?;

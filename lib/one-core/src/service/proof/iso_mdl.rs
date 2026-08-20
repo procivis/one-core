@@ -79,7 +79,7 @@ impl ProofService {
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: ecosystem.clone(),
-            ecosystem_data: None,
+            ecosystem_data: Default::default(),
         };
         self.interaction_repository
             .create_interaction(interaction.clone())

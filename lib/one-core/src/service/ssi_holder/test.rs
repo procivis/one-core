@@ -95,7 +95,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                         interaction_type: InteractionType::Verification,
                         expires_at: None,
                         ecosystem: None,
-                        ecosystem_data: None,
+                        ecosystem_data: Default::default(),
                     }
                     .into(),
                 ),
@@ -168,7 +168,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                             interaction_type: InteractionType::Verification,
                             expires_at: None,
                             ecosystem: None,
-                            ecosystem_data: None,
+                            ecosystem_data: Default::default(),
                         }
                         .into(),
                     ),
@@ -223,7 +223,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                         interaction_type: InteractionType::Verification,
                         expires_at: None,
                         ecosystem: None,
-                        ecosystem_data: None,
+                        ecosystem_data: Default::default(),
                     }
                     .into(),
                 ),
@@ -383,7 +383,7 @@ async fn test_accept_credential() {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
         });
 
@@ -521,7 +521,7 @@ async fn test_accept_credential_with_did() {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
         });
 
@@ -626,7 +626,7 @@ async fn test_accept_credential_batch() {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
         });
 
@@ -729,7 +729,7 @@ async fn test_accept_credential_wrong_tx_code() {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
         });
 
@@ -958,7 +958,7 @@ async fn test_continue_issuance() {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
         });
 
@@ -1247,7 +1247,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             }
             .into(),
         ),
@@ -1374,7 +1374,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,
-                ecosystem_data: None,
+                ecosystem_data: Default::default(),
             })
         });
 

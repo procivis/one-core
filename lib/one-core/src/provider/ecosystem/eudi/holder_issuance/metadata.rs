@@ -14,7 +14,6 @@ use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::proto::wrp_validator::model::AccessCertificateResult;
 use crate::provider::ecosystem::model::IssuerMetadataRepresentation;
-use crate::provider::issuance_protocol::serialize_interaction_data;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct MetadataEcosystemData {
@@ -93,14 +92,18 @@ impl HolderIssuanceResolver {
             return Err(HolderIssuanceError::NoCredentialConfiguration);
         };
 
-        let ecosystem_data = serialize_interaction_data(&interaction_data)
-            .error_while("serializing interaction data")?;
+        let mut ecosystem_data = interaction.ecosystem_data.to_owned();
+        ecosystem_data
+            .set(self.ecosystem.to_owned(), &interaction_data)
+            .map_err(|e| {
+                HolderIssuanceError::MappingError(format!("serializing ecosystem data: {e}"))
+            })?;
 
         self.interaction_repository
             .update_interaction(
                 interaction.id,
                 UpdateInteractionRequest {
-                    ecosystem_data: Some(Some(ecosystem_data)),
+                    ecosystem_data: Some(ecosystem_data),
                     ..Default::default()
                 },
             )

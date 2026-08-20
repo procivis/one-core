@@ -297,7 +297,7 @@ fn test_holder_proof(
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: None,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     Proof {

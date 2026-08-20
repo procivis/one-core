@@ -711,7 +711,7 @@ pub(super) async fn create_interaction_and_proof(
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: None,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     let interaction_id = interaction_repository

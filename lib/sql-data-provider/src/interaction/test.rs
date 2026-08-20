@@ -95,7 +95,7 @@ async fn test_create_interaction() {
         interaction_type: InteractionType::Issuance,
         expires_at: None,
         ecosystem: None,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     let result = setup.provider.create_interaction(interaction).await;

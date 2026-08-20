@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::interaction::{Interaction, InteractionType};
+use one_core::model::interaction::{EcosystemDataMap, Interaction, InteractionType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
@@ -17,7 +17,7 @@ pub struct TestingInteractionParams {
     pub expires_at: Option<OffsetDateTime>,
     pub nonce_id: Option<NonceId>,
     pub ecosystem: Option<EcosystemId>,
-    pub ecosystem_data: Option<Vec<u8>>,
+    pub ecosystem_data: EcosystemDataMap,
 }
 
 pub struct InteractionsDB {

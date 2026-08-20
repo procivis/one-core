@@ -29,7 +29,7 @@ pub(crate) async fn add_new_interaction(
         interaction_type,
         expires_at,
         ecosystem,
-        ecosystem_data: None,
+        ecosystem_data: Default::default(),
     };
 
     interaction_repository
