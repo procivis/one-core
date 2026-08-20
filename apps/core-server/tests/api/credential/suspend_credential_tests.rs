@@ -82,54 +82,6 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 }
 
 #[tokio::test]
-async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
-    // GIVEN
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            TestingCreateSchemaParams {
-                format: Some("MDOC".into()),
-                allow_suspension: Some(true),
-                ..Default::default()
-            },
-        )
-        .await;
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Accepted,
-            &identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams::default(),
-        )
-        .await;
-
-    let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
-    let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
-    // WHEN
-    let resp = context
-        .api
-        .credentials
-        .suspend(&credential.id, Some(suspend_end_date_str.to_string()))
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 204);
-
-    let credential = context.db.credentials.get(&credential.id).await;
-
-    assert_eq!(CredentialStateEnum::Suspended, credential.state.clone());
-
-    assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
-}
-
-#[tokio::test]
 async fn test_suspend_credential_with_none_fails() {
     // GIVEN
     let (context, organisation, _issuer_did, identifier, ..) =

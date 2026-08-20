@@ -22,7 +22,7 @@ use self::resolver::StatusListCachingLoader;
 use self::util::calculate_preferred_token_size;
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
-use crate::mapper::x509::pem_chain_into_x5c;
+use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -367,7 +367,7 @@ impl RevocationMethod for TokenStatusList {
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
 
         let status_list = if response.content_type == "application/statuslist+cwt" {
-            let certificate = credential_status
+            let ca_certificate = credential_status
                 .additional_fields
                 .get(CERTIFICATE_KEY)
                 .and_then(|index| index.as_str())
@@ -376,7 +376,7 @@ impl RevocationMethod for TokenStatusList {
             self.extract_info_from_list_credential_cwt(
                 response.content,
                 issuer_details,
-                certificate,
+                ca_certificate,
                 list_url,
             )
             .await?
@@ -904,13 +904,13 @@ impl TokenStatusList {
     async fn extract_info_from_list_credential_cwt(
         &self,
         cwt: Vec<u8>,
-        issuer_details: &IdentifierDetails,
-        certificate: Option<String>,
+        credential_issuer_details: &IdentifierDetails,
+        ca_certificate: Option<String>,
         list_url: &str,
     ) -> Result<TokenStatusListSubject, RevocationError> {
         let cose_sign1 = CoseSign1(coset::CoseSign1::from_tagged_slice(cwt.as_slice())?);
 
-        let certificate_details = extract_certificate_from_x5chain_header(
+        let cwt_certificate_details = extract_certificate_from_x5chain_header(
             self.certificate_validator.as_ref(),
             self.http_client.as_ref(),
             &cose_sign1,
@@ -926,34 +926,54 @@ impl TokenStatusList {
             certificate_validator: self.certificate_validator.clone(),
         };
 
-        let x5c =
-            pem_chain_into_x5c(&certificate_details.chain).error_while("converting PEM chain")?;
+        let x5c = pem_chain_into_x5c(&cwt_certificate_details.chain)
+            .error_while("converting PEM chain")?;
         try_verify_cose_sign1(&cose_sign1, &x5c, &key_verification)
             .await
             .error_while("verifying cwt")?;
 
-        let ca_pem_chain = if let Some(certificate) = certificate {
-            certificate
+        let ca_pem_chain = if let Some(ca_certificate) = ca_certificate {
+            Some(ca_certificate)
         } else {
-            let IdentifierDetails::Certificate(details) = issuer_details else {
+            let IdentifierDetails::Certificate(credential_issuer_certificate) =
+                credential_issuer_details
+            else {
                 return Err(RevocationError::ValidationError(
                     "invalid issuer type".to_string(),
                 ));
             };
-            details.chain.to_owned()
-        };
 
-        self.certificate_validator
-            .validate_chain_against_ca_chain(
-                &certificate_details.chain,
-                &ca_pem_chain,
-                CertificateValidationOptions::signature_and_revocation(Some(vec![
-                    EnforceKeyUsage::DigitalSignature,
-                ])),
-                CertSelection::Leaf,
-            )
-            .await
-            .error_while("checking CA chain")?;
+            if credential_issuer_certificate.chain == cwt_certificate_details.chain {
+                // CWT issued by the same certificate, skipping consistency check
+                None
+            } else {
+                let mut x5c = pem_chain_into_x5c(&credential_issuer_certificate.chain)
+                    .error_while("converting PEM chain")?;
+                if x5c.len() < 2 {
+                    // this is a valid case, the IACA certificate is not contained in the MDOC credential
+                    // but then we cannot validate consistency of the CWT issuer
+                    tracing::warn!("missing CA certificate in chain");
+                    None
+                } else {
+                    // remove the leaf certificate and keep the rest of the CA chain
+                    x5c.remove(0);
+                    Some(x5c_into_pem_chain(&x5c).error_while("converting x5c")?)
+                }
+            }
+        };
+        if let Some(ca_pem_chain) = ca_pem_chain {
+            self.certificate_validator
+                .validate_chain_against_ca_chain(
+                    &cwt_certificate_details.chain,
+                    &ca_pem_chain,
+                    CertificateValidationOptions::signature_and_revocation(Some(vec![
+                        EnforceKeyUsage::DigitalSignature,
+                    ])),
+                    CertSelection::Leaf,
+                )
+                .await
+                .error_while("checking CA chain")?;
+        }
 
         let payload = cose_sign1
             .0

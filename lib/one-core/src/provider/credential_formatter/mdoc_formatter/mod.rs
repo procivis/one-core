@@ -499,7 +499,7 @@ impl CredentialFormatter for MdocFormatter {
                 VerificationProtocolType::IsoMdl,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
-            revocation_methods: vec![RevocationType::MdocMsoUpdateSuspension],
+            revocation_methods: vec![RevocationType::TokenStatusList],
             signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             verification_key_storages: vec![KeyStorageType::Internal],

@@ -39,9 +39,9 @@ verifierProvider:
             android:
               bundleId: ch.procivis.one.verifier.test
               signingCertificateFingerprints: [
-                "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
-                "7A:7F:0A:B5:13:4F:07:9E:5A:66:E1:F9:BB:C2:21:58:F8:66:88:9E:7E:00:0E:27:47:12:42:55:84:6E:11:CA", # google-play
-              ]
+                  "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
+                  "7A:7F:0A:B5:13:4F:07:9E:5A:66:E1:F9:BB:C2:21:58:F8:66:88:9E:7E:00:0E:27:47:12:42:55:84:6E:11:CA", # google-play
+                ]
             ios:
               bundleId: AGG3V6QN4G.ch.procivis.one.verifier.test
               enforceProductionBuild: false
@@ -61,7 +61,7 @@ format:
         msoExpectedUpdateInSeconds: 60
         msoMinimumRefreshSeconds: 10
         leewaySeconds: 10
-        revocationMethod: "MDOC_MSO_UPDATE_SUSPENSION"
+        revocationMethod: "MDOC_TOKENSTATUSLIST"
 transport:
   MQTT:
     type: "MQTT"

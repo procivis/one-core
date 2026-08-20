@@ -16,7 +16,6 @@ impl RevocationListResponseDTO {
                 _ => None,
             },
             RevocationType::CRL => Some("application/pkix-crl".to_owned()),
-            _ => None,
         }
     }
 }

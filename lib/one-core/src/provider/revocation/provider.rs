@@ -8,7 +8,6 @@ use super::bitstring_status_list::BitstringStatusList;
 use super::bitstring_status_list::resolver::StatusListCachingLoader;
 use super::crl::CRLRevocation;
 use super::decorators::CapabilityChecked;
-use super::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use super::status_list_2021::StatusList2021;
 use super::token_status_list::TokenStatusList;
 use crate::config::ConfigValidationError;
@@ -86,9 +85,6 @@ fn initialize_provider(
     client: &Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn RevocationMethod>, InitializationError> {
     let revocation_method: Arc<dyn RevocationMethod> = match fields.r#type {
-        RevocationType::MdocMsoUpdateSuspension => Arc::new(MdocMsoUpdateSuspensionRevocation {
-            config_id: name.to_owned(),
-        }),
         RevocationType::BitstringStatusList => Arc::new(BitstringStatusList::new(
             name.to_owned(),
             core_base_url.clone(),

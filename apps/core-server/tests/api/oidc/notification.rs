@@ -1,8 +1,9 @@
+use one_core::model::certificate::CertificateRole;
 use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchema;
-use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
+use one_core::model::revocation_list::{RevocationListPurpose, StatusListCredentialFormat};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
@@ -11,11 +12,11 @@ use standardized_types::openid4vci::NotificationEvent;
 use time::macros::format_description;
 use uuid::Uuid;
 
-use crate::fixtures::{
-    ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
-};
+use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_post_notification_credential_accepted() {
@@ -91,30 +92,50 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
         .create(&organisation, eddsa_testing_params())
         .await;
 
-    let issuer_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: key.clone(),
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
     let issuer_identifier = context
         .db
         .identifiers
         .create(
             &organisation,
             TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                r#type: Some(IdentifierType::Certificate),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let pem = r#"-----BEGIN CERTIFICATE-----
+MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
+aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
+Y29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMC
+Q0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNV
+BAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMB
+BwMiAAJx38tO0JCdq3ZecMSW6a+BAAzllydQxVOQ+KDjnwLXJ6OCAeswggHnMA4G
+A1UdDwEB/wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB/wQC
+MAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBP
+oE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdG
+MzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbsw
+gbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vl
+ci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBa
+BggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENE
+MjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1Ud
+EgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0
+ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFem
+Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
+1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg==
+-----END CERTIFICATE-----
+"#;
+    let certificate = context
+        .db
+        .certificates
+        .create(
+            issuer_identifier.id,
+            organisation.clone(),
+            TestingCertificateParams {
+                key: Some(key.clone()),
+                roles: Some(vec![CertificateRole::AssertionMethod]),
+                chain: Some(pem.to_string()),
                 ..Default::default()
             },
         )
@@ -171,6 +192,7 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
+                issuer_certificate: Some(certificate.clone()),
                 key: Some(key),
                 claims_data: Some(vec![
                     ClaimData {
@@ -189,6 +211,27 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
                 ..Default::default()
             },
         )
+        .await;
+
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            issuer_identifier,
+            Some(TestingRevocationListParams {
+                issuer_certificate: Some(certificate),
+                purpose: Some(RevocationListPurpose::Revocation),
+                format: Some(StatusListCredentialFormat::Cwt),
+                r#type: Some("MDOC_TOKENSTATUSLIST".into()),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, credential.id, 0)
         .await;
 
     (context, credential, credential_schema)
