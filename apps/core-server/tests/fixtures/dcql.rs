@@ -8,6 +8,7 @@ use serde_json::json;
 use standardized_types::openid4vp::dcql::DcqlQuery;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 
 pub(crate) async fn proof_for_dcql_query(
     context: &TestContext,
@@ -22,11 +23,12 @@ pub(crate) async fn proof_for_dcql_query(
         .db
         .interactions
         .create(
-            None,
-            &interaction_data_dcql(dcql_query, verifier_details),
             org,
             InteractionType::Verification,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data_dcql(dcql_query, verifier_details)),
+                ..Default::default()
+            },
         )
         .await;
 

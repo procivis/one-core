@@ -23,13 +23,7 @@ async fn test_get_credential_offer_success_jwt() {
     let interaction = context
         .db
         .interactions
-        .create(
-            None,
-            "NONE".as_bytes(),
-            &organisation,
-            InteractionType::Issuance,
-            None,
-        )
+        .create(&organisation, InteractionType::Issuance, Default::default())
         .await;
 
     let credential = context
@@ -101,13 +95,7 @@ async fn test_get_credential_offer_success_with_tx_code() {
     let interaction = context
         .db
         .interactions
-        .create(
-            None,
-            "NONE".as_bytes(),
-            &organisation,
-            InteractionType::Issuance,
-            None,
-        )
+        .create(&organisation, InteractionType::Issuance, Default::default())
         .await;
 
     let credential = context
@@ -176,13 +164,7 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let interaction = context
         .db
         .interactions
-        .create(
-            None,
-            "NONE".as_bytes(),
-            &organisation,
-            InteractionType::Issuance,
-            None,
-        )
+        .create(&organisation, InteractionType::Issuance, Default::default())
         .await;
 
     let credential = context
@@ -250,13 +232,7 @@ async fn test_get_credential_offer_success_mdoc() {
     let interaction = context
         .db
         .interactions
-        .create(
-            None,
-            "NONE".as_bytes(),
-            &organisation,
-            InteractionType::Issuance,
-            None,
-        )
+        .create(&organisation, InteractionType::Issuance, Default::default())
         .await;
 
     let credential = context
@@ -335,13 +311,7 @@ async fn test_get_credential_offer_not_found_batch_item() {
     let interaction = context
         .db
         .interactions
-        .create(
-            None,
-            "NONE".as_bytes(),
-            &organisation,
-            InteractionType::Issuance,
-            None,
-        )
+        .create(&organisation, InteractionType::Issuance, Default::default())
         .await;
 
     let credential = context

@@ -35,6 +35,7 @@ use crate::utils::api_clients::Client;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 use crate::utils::field_match::FieldHelpers;
@@ -117,11 +118,13 @@ async fn test_post_issuer_credential_in_parallel() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&interaction_data).unwrap(),
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -267,11 +270,13 @@ async fn test_post_issuer_credential_embeds_expires_at_in_formatted_credential()
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -389,11 +394,13 @@ async fn test_post_issuer_credential_no_schema_expiration_means_no_expiry() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -499,11 +506,13 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
             .db
             .interactions
             .create(
-                Some(interaction_id),
-                &interaction_data,
                 &organisation,
                 InteractionType::Issuance,
-                None,
+                TestingInteractionParams {
+                    id: Some(interaction_id),
+                    data: Some(interaction_data),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -608,11 +617,13 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
             .db
             .interactions
             .create(
-                Some(interaction_id),
-                &interaction_data,
                 &organisation,
                 InteractionType::Issuance,
-                None,
+                TestingInteractionParams {
+                    id: Some(interaction_id),
+                    data: Some(interaction_data),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -911,11 +922,13 @@ async fn test_post_issuer_credential_with(
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1104,11 +1117,13 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 

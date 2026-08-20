@@ -39,11 +39,9 @@ async fn test_get_proof_trust_detail_success() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Verification,
-            None,
+            Default::default(),
         )
         .await;
 

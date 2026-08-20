@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
@@ -57,11 +58,12 @@ async fn test_delete_proof_claims_success() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &[],
             &organisation,
             InteractionType::Verification,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                ..Default::default()
+            },
         )
         .await;
 

@@ -7,6 +7,7 @@ use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -40,11 +41,13 @@ async fn test_continue_issuance_endpoint() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &interaction_body,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_body),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -211,11 +214,12 @@ async fn test_continue_issuance_endpoint_failed_invalid_authorization_server() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_body,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_body),
+                ..Default::default()
+            },
         )
         .await
         .id;

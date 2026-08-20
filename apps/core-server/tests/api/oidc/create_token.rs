@@ -10,6 +10,7 @@ use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::ssi::TokenRequest;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -33,11 +34,13 @@ async fn test_oidc_issuer_create_token() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -100,11 +103,13 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -169,11 +174,13 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -249,11 +256,13 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -334,11 +343,13 @@ async fn test_oidc_issuer_create_token_with_tx_code_success() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -411,11 +422,13 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -490,11 +503,13 @@ async fn test_oidc_issuer_create_token_tx_code_missing() {
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 

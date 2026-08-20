@@ -4,9 +4,21 @@ use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
-use shared_types::InteractionId;
+use shared_types::{EcosystemId, InteractionId, NonceId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+#[derive(Debug, Default)]
+pub struct TestingInteractionParams {
+    pub id: Option<InteractionId>,
+    pub data: Option<Vec<u8>>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub expires_at: Option<OffsetDateTime>,
+    pub nonce_id: Option<NonceId>,
+    pub ecosystem: Option<EcosystemId>,
+    pub ecosystem_data: Option<Vec<u8>>,
+}
 
 pub struct InteractionsDB {
     repository: Arc<dyn InteractionRepository>,
@@ -19,23 +31,21 @@ impl InteractionsDB {
 
     pub async fn create(
         &self,
-        id: Option<InteractionId>,
-        data: &[u8],
         organisation: &Organisation,
         interaction_type: InteractionType,
-        expires_at: Option<OffsetDateTime>,
+        params: TestingInteractionParams,
     ) -> Interaction {
         let interaction = Interaction {
-            id: id.unwrap_or(Uuid::new_v4().into()),
-            created_date: one_core::clock::now_utc(),
-            last_modified: one_core::clock::now_utc(),
-            data: Some(data.into()),
+            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            created_date: params.created_date.unwrap_or(one_core::clock::now_utc()),
+            last_modified: params.last_modified.unwrap_or(one_core::clock::now_utc()),
+            data: params.data,
             organisation: organisation.to_owned().into(),
-            nonce_id: None,
+            nonce_id: params.nonce_id,
             interaction_type,
-            expires_at,
-            ecosystem: None,
-            ecosystem_data: None,
+            expires_at: params.expires_at,
+            ecosystem: params.ecosystem,
+            ecosystem_data: params.ecosystem_data,
         };
 
         self.repository

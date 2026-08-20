@@ -5,6 +5,7 @@ use similar_asserts::assert_eq;
 use crate::fixtures::TestingCredentialParams;
 use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 
 #[tokio::test]
 async fn test_issuance_reject_openid4vci_notification_not_supported_by_issuer() {
@@ -22,11 +23,12 @@ async fn test_issuance_reject_openid4vci_notification_not_supported_by_issuer() 
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
     let credential = context
@@ -85,11 +87,12 @@ async fn test_issuance_reject_openid4vci_with_notification() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
     let credential = context

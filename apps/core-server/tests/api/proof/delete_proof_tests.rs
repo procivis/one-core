@@ -21,11 +21,9 @@ async fn test_delete_proof_created_holder_success() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Verification,
-            None,
+            Default::default(),
         )
         .await;
 
@@ -102,11 +100,9 @@ async fn test_delete_proof_accepted_holder_fail() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Verification,
-            None,
+            Default::default(),
         )
         .await;
     let proof = context

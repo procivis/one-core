@@ -31,6 +31,7 @@ use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::notifications::TestingNotificationParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -394,11 +395,12 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_refresh_tok
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -512,11 +514,12 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_own_expires_at_
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -613,11 +616,12 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_with_no_items() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -694,11 +698,12 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_refresh_token_e
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -794,11 +799,12 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_not_all_ite
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -915,11 +921,12 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
         .db
         .interactions
         .create(
-            None,
-            &expiring_interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(expiring_interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -972,11 +979,12 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
         .db
         .interactions
         .create(
-            None,
-            &valid_interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(valid_interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1079,11 +1087,12 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_item_revoked_no
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1883,11 +1892,12 @@ async fn test_run_interaction_expiration_check_with_update() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Verification,
-            Some(one_core::clock::now_utc()),
+            TestingInteractionParams {
+                expires_at: Some(one_core::clock::now_utc()),
+                ..Default::default()
+            },
         )
         .await;
     let proof = context
@@ -1910,11 +1920,12 @@ async fn test_run_interaction_expiration_check_with_update() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Issuance,
-            Some(one_core::clock::now_utc()),
+            TestingInteractionParams {
+                expires_at: Some(one_core::clock::now_utc()),
+                ..Default::default()
+            },
         )
         .await;
     let credential = context

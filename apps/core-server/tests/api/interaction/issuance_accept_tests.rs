@@ -27,6 +27,7 @@ use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifi
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::managed_instances::TestWalletInstance;
 use crate::utils::field_match::FieldHelpers;
@@ -150,11 +151,12 @@ async fn test_issuance_accept_openid4vc() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -320,11 +322,12 @@ async fn test_issuance_accept_extracts_expires_at_from_issued_credential() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -418,11 +421,12 @@ async fn accept_batch_issuance(
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -678,11 +682,12 @@ async fn test_issuance_accept_with_new_nested_optional_claims() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -873,11 +878,12 @@ async fn test_issuance_accept_schema_name_already_exists() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1013,11 +1019,12 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1149,11 +1156,12 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1248,11 +1256,12 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1367,11 +1376,12 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1485,11 +1495,12 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1546,11 +1557,12 @@ async fn test_fail_issuance_accept_openid4vc_no_suitable_key_storage() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1644,11 +1656,12 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1744,11 +1757,12 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1858,11 +1872,12 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -2063,11 +2078,12 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 

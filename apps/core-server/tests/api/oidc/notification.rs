@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
@@ -174,11 +175,13 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .db
         .interactions
         .create(
-            Some(interaction_id),
-            &data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(data),
+                ..Default::default()
+            },
         )
         .await;
 

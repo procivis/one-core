@@ -25,6 +25,7 @@ use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifi
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
@@ -503,11 +504,12 @@ async fn test_revoke_check_mdoc_update() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -645,11 +647,12 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
     let expired_credential = expired_mdoc_credential().await;
@@ -791,11 +794,12 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -938,11 +942,12 @@ async fn test_revoke_check_token_update() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1077,11 +1082,12 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1208,11 +1214,12 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1337,11 +1344,12 @@ async fn test_suspended_to_valid_mdoc() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1513,11 +1521,12 @@ async fn test_suspended_to_suspended_update_failed() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1760,11 +1769,12 @@ async fn test_revoke_check_batch_parent_stays_accepted_when_item_expires_but_ref
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1904,11 +1914,12 @@ async fn test_revoke_check_batch_parent_expires_when_all_items_and_refresh_token
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -2000,11 +2011,12 @@ async fn test_revoke_check_batch_parent_expires_when_refresh_token_expired_even_
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -2122,11 +2134,12 @@ async fn test_revoke_check_batch_parent_expires_when_own_expires_at_passed() {
         .db
         .interactions
         .create(
-            None,
-            &interaction_data,
             &organisation,
             InteractionType::Issuance,
-            None,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
         )
         .await;
 

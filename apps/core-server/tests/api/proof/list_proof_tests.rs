@@ -944,11 +944,9 @@ async fn test_list_proofs_with_org_by_interaction() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Verification,
-            None,
+            Default::default(),
         )
         .await;
 
@@ -1131,11 +1129,9 @@ async fn test_list_proofs_by_role() {
         .db
         .interactions
         .create(
-            None,
-            &[],
             &organisation,
             InteractionType::Verification,
-            None,
+            Default::default(),
         )
         .await;
     let holder_proof = context
