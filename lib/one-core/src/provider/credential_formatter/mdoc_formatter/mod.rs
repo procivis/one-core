@@ -7,8 +7,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use coset::cwt::{ClaimsSetBuilder, Timestamp};
-use coset::iana::{CborTag, EnumI64, HeaderParameter};
-use coset::{AsCborValue, CborSerializable, HeaderBuilder, ProtectedHeader, SignatureContext};
+use coset::iana::{EnumI64, HeaderParameter};
+use coset::{
+    AsCborValue, CborSerializable, HeaderBuilder, ProtectedHeader, SignatureContext,
+    TaggedCborSerializable,
+};
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use futures::future::BoxFuture;
 use indexmap::{IndexMap, IndexSet};
@@ -31,12 +34,14 @@ use uuid::Uuid;
 use self::util::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
     EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject, Namespace, Namespaces,
-    ValidityInfo, ValueDigests, build_algorithm_header_value, extract_algorithm_from_header,
-    extract_certificate_from_x5chain_header, try_extract_holder_public_key,
-    try_extract_mobile_security_object,
+    ValidityInfo, ValueDigests, build_algorithm_header_value, create_status,
+    extract_algorithm_from_header, extract_certificate_from_x5chain_header, parse_status,
+    try_extract_holder_public_key, try_extract_mobile_security_object,
 };
 use super::error::FormatterError;
 use super::json_claims::prepare_identifier;
+use super::mapper::first_certificate;
+use super::mdoc_formatter::util::StatusListEncoded;
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialSchema, CredentialSubject, DetailCredential, Features,
@@ -63,7 +68,6 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
-use crate::provider::credential_formatter::mapper::first_certificate;
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -241,6 +245,7 @@ impl CredentialFormatter for MdocFormatter {
             device_key_info,
             doc_type: credential_schema.id,
             validity_info,
+            status: create_status(vcdm.credential_status)?,
         };
         let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)?.into_bytes();
 
@@ -352,13 +357,12 @@ impl CredentialFormatter for MdocFormatter {
                 .build()
                 .to_cbor_value()?;
 
-            let status_list = ciborium::Value::Map(vec![
-                (ciborium::Value::Text("bits".to_string()), 1u8.into()),
-                (
-                    ciborium::Value::Text("lst".to_string()),
-                    ciborium::Value::Bytes(list),
-                ),
-            ]);
+            let status_list = ciborium::cbor!(StatusListEncoded {
+                bits: 1,
+                list: Bstr(list),
+                aggregation_uri: None,
+            })?;
+
             payload
                 .as_map_mut()
                 .ok_or(FormatterError::CouldNotFormat(
@@ -378,13 +382,9 @@ impl CredentialFormatter for MdocFormatter {
             .try_create_signature_with_provider(&[], &*auth_fn)
             .await
             .error_while("creating signature")?
-            .build()
-            .to_cbor_value()?;
+            .build();
 
-        Ok(
-            ciborium::Value::Tag(CborTag::CoseSign1.to_i64() as _, Box::new(cose_sign1))
-                .to_vec()?,
-        )
+        Ok(cose_sign1.to_tagged_vec()?)
     }
 
     async fn extract_credentials<'a>(
@@ -658,7 +658,7 @@ impl CredentialFormatter for MdocFormatter {
             }]
             .into(),
             batch_size: None,
-            allow_revocation: false,
+            allow_revocation: mso.status.is_some(),
             translations: Default::default(),
             embedded_disclosure_policy: None,
         };
@@ -771,7 +771,7 @@ async fn extract_credentials_internal(
         issuer: IdentifierDetails::Certificate(issuer_cert),
         subject: Some(IdentifierDetails::Key(holder_jwk)),
         claims: CredentialSubject { claims, id: None },
-        status: vec![],
+        status: parse_status(mso.status),
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
             r#type: "mdoc".to_string(),

@@ -118,6 +118,7 @@ fn initialize_provider(
             ),
             credential_formatter_provider.clone(),
             certificate_validator.clone(),
+            client.clone(),
             revocation_list_repository.clone(),
             wallet_unit_repository.clone(),
             identifier_repository.clone(),

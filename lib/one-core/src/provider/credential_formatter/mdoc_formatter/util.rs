@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ciborium::Value;
 use ciborium::tag::Required;
 use coset::iana::EnumI64;
@@ -6,7 +8,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
-use serde_with::skip_serializing_none;
+use serde_with::{DefaultOnError, serde_as, skip_serializing_none};
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -21,7 +23,9 @@ use crate::proto::cose::CoseSign1;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::common::resolve_x5u;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{CertificateDetails, X5References};
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, CredentialStatus, X5References,
+};
 
 const EMBEDDED_CBOR_TAG: u64 = 24;
 const DATE_TIME_CBOR_TAG: u64 = 0;
@@ -96,6 +100,8 @@ pub struct DeviceKeyInfo {
 }
 
 // payload for the IssuerAuth CoseSign1
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileSecurityObject {
@@ -105,6 +111,35 @@ pub struct MobileSecurityObject {
     pub device_key_info: DeviceKeyInfo,
     pub doc_type: String,
     pub validity_info: ValidityInfo,
+    #[serde_as(as = "DefaultOnError")]
+    #[serde(default)]
+    pub status: Option<Status>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Status {
+    StatusList(StatusList),
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct StatusList {
+    #[serde(rename = "idx")]
+    pub index: usize,
+    pub uri: String,
+    pub certificate: Option<Bstr>,
+}
+
+/// Part of CWT-encoded status list, under payload field 65533
+/// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-12#name-status-list-in-cbor-format
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StatusListEncoded {
+    pub bits: u8,
+    #[serde(rename = "lst")]
+    pub list: Bstr,
+    pub aggregation_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -450,6 +485,7 @@ pub(crate) fn try_extract_mobile_security_object(
 
     Ok(mso.into_inner())
 }
+
 pub(crate) fn try_extract_holder_public_key(
     CoseSign1(issuer_auth): &CoseSign1,
 ) -> Result<PublicJwk, FormatterError> {
@@ -535,6 +571,73 @@ pub(crate) fn try_extract_holder_public_key(
             )));
         }
     })
+}
+
+pub(super) fn create_status(
+    credential_status: Vec<CredentialStatus>,
+) -> Result<Option<Status>, FormatterError> {
+    use crate::provider::revocation::token_status_list::{INDEX_KEY, URI_KEY};
+
+    let Some(status) = credential_status.first() else {
+        return Ok(None);
+    };
+
+    let uri = status
+        .additional_fields
+        .get(URI_KEY)
+        .and_then(|url| url.as_str())
+        .ok_or(FormatterError::CouldNotFormat(
+            "Missing status list url".to_string(),
+        ))?
+        .to_string();
+
+    let list_index = status
+        .additional_fields
+        .get(INDEX_KEY)
+        .and_then(|index| index.as_str())
+        .ok_or(FormatterError::CouldNotFormat(
+            "Missing status list index".to_string(),
+        ))?;
+    let index = list_index
+        .parse()
+        .map_err(|_| FormatterError::CouldNotFormat("Invalid list index".to_string()))?;
+
+    Ok(Some(Status::StatusList(StatusList {
+        uri,
+        index,
+        certificate: None,
+    })))
+}
+
+pub(super) fn parse_status(status: Option<Status>) -> Vec<CredentialStatus> {
+    use crate::provider::revocation::token_status_list::{CERTIFICATE_KEY, INDEX_KEY, URI_KEY};
+
+    match status {
+        None => vec![],
+        Some(Status::StatusList(value)) => {
+            let mut additional_fields = HashMap::from([
+                (URI_KEY.to_string(), serde_json::Value::String(value.uri)),
+                (
+                    INDEX_KEY.to_string(),
+                    serde_json::Value::String(value.index.to_string()),
+                ),
+            ]);
+
+            if let Some(certificate) = value.certificate {
+                additional_fields.insert(
+                    CERTIFICATE_KEY.to_string(),
+                    serde_json::Value::String(der_chain_into_pem_chain(vec![certificate.0])),
+                );
+            }
+
+            vec![CredentialStatus {
+                id: None,
+                r#type: "TokenStatusListEntry".to_string(),
+                status_purpose: Some("revocation".to_string()),
+                additional_fields,
+            }]
+        }
+    }
 }
 
 /// Automatic parser of ISO mDL versions

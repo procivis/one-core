@@ -4,19 +4,25 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use coset::iana::{CwtClaimName, EnumI64};
+use coset::{AsCborValue, TaggedCborSerializable};
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
 use rcgen::KeyUsagePurpose;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
 use self::util::calculate_preferred_token_size;
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -31,13 +37,21 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
     UpdateRevocationListEntryRequest,
 };
-use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::certificate_validator::{
+    CertSelection, CertificateValidationOptions, CertificateValidator, EnforceKeyUsage,
+};
+use crate::proto::cose::CoseSign1;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
+use crate::provider::credential_formatter::jwt_formatter::model::{
+    TokenStatusListContent, TokenStatusListSubject,
+};
+use crate::provider::credential_formatter::mdoc_formatter::util::{
+    StatusListEncoded, extract_certificate_from_x5chain_header,
+};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, IdentifierDetails, TokenVerifier,
 };
@@ -46,6 +60,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStat
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::presentation_formatter::mso_mdoc::try_verify_cose_sign1;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
@@ -58,6 +73,9 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
+use crate::validator::{
+    validate_expiration_time, validate_issuance_time, validate_not_before_time,
+};
 
 pub mod resolver;
 pub mod util;
@@ -67,8 +85,10 @@ mod test;
 
 pub(crate) const URI_KEY: &str = "uri";
 pub(crate) const INDEX_KEY: &str = "idx";
+pub(crate) const CERTIFICATE_KEY: &str = "certificate";
 const CREDENTIAL_STATUS_TYPE: &str = "TokenStatusListEntry";
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Params {
@@ -76,6 +96,9 @@ struct Params {
     pub format: StatusListCredentialFormat,
     #[serde(default = "default_operations")]
     pub operations: Vec<Operation>,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_1_minute")]
+    leeway_seconds: Duration,
 }
 
 fn default_format() -> StatusListCredentialFormat {
@@ -84,6 +107,10 @@ fn default_format() -> StatusListCredentialFormat {
 
 fn default_operations() -> Vec<Operation> {
     vec![Operation::Revoke, Operation::Suspend]
+}
+
+pub(super) fn default_1_minute() -> Duration {
+    Duration::minutes(1)
 }
 
 #[derive(Provider)]
@@ -96,6 +123,7 @@ pub struct TokenStatusList {
     caching_loader: StatusListCachingLoader,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    http_client: Arc<dyn HttpClient>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     wallet_unit_repository: Arc<dyn ManagedInstanceRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
@@ -115,6 +143,7 @@ impl TokenStatusList {
         caching_loader: StatusListCachingLoader,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        http_client: Arc<dyn HttpClient>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         wallet_unit_repository: Arc<dyn ManagedInstanceRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
@@ -158,6 +187,7 @@ impl TokenStatusList {
             caching_loader,
             formatter_provider,
             certificate_validator,
+            http_client,
             revocation_list_repository,
             wallet_unit_repository,
             identifier_repository,
@@ -328,7 +358,7 @@ impl RevocationMethod for TokenStatusList {
             .parse()
             .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
 
-        let (content, _media_type) = &self
+        let (content, _) = &self
             .caching_loader
             .get(list_url, self.resolver.clone(), force_refresh)
             .await
@@ -336,31 +366,28 @@ impl RevocationMethod for TokenStatusList {
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
 
-        let response_content = String::from_utf8(response.content)?;
-        let key_verification: Box<dyn TokenVerifier> = Box::new(KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-            certificate_validator: self.certificate_validator.clone(),
-        });
+        let status_list = if response.content_type == "application/statuslist+cwt" {
+            let certificate = credential_status
+                .additional_fields
+                .get(CERTIFICATE_KEY)
+                .and_then(|index| index.as_str())
+                .map(ToString::to_string);
 
-        // TODO: ONE-6158 validate issuer certificate/CA of status-list is trusted
-
-        let issuer_did = if let IdentifierDetails::Did(issuer_did) = issuer_details {
-            Some(issuer_did.to_owned())
+            self.extract_info_from_list_credential_cwt(
+                response.content,
+                issuer_details,
+                certificate,
+                list_url,
+            )
+            .await?
         } else {
-            None
+            let response_content = String::from_utf8(response.content)?;
+            self.extract_info_from_list_credential_jwt(&response_content, issuer_details)
+                .await?
         };
 
-        let jwt: Jwt<TokenStatusListContent> =
-            Jwt::build_from_token(&response_content, Some(&key_verification), issuer_did)
-                .await
-                .error_while("validating token status list")?;
-
-        Ok(
-            util::extract_state_from_token(&jwt.payload.custom.status_list, list_index)
-                .error_while("extracting token status")?,
-        )
+        Ok(util::extract_state_from_token(&status_list, list_index)
+            .error_while("extracting token status")?)
     }
 
     async fn add_issued_attestation(
@@ -845,6 +872,138 @@ impl TokenStatusList {
             },
         )
     }
+
+    async fn extract_info_from_list_credential_jwt(
+        &self,
+        jwt: &str,
+        issuer_details: &IdentifierDetails,
+    ) -> Result<TokenStatusListSubject, RevocationError> {
+        let key_verification: Box<dyn TokenVerifier> = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        });
+
+        // TODO: ONE-6158 validate issuer certificate/CA of status-list is trusted
+
+        let issuer_did = if let IdentifierDetails::Did(issuer_did) = issuer_details {
+            Some(issuer_did.to_owned())
+        } else {
+            None
+        };
+
+        let jwt: Jwt<TokenStatusListContent> =
+            Jwt::build_from_token(jwt, Some(&key_verification), issuer_did)
+                .await
+                .error_while("validating token status list")?;
+
+        Ok(jwt.payload.custom.status_list)
+    }
+
+    async fn extract_info_from_list_credential_cwt(
+        &self,
+        cwt: Vec<u8>,
+        issuer_details: &IdentifierDetails,
+        certificate: Option<String>,
+        list_url: &str,
+    ) -> Result<TokenStatusListSubject, RevocationError> {
+        let cose_sign1 = CoseSign1(coset::CoseSign1::from_tagged_slice(cwt.as_slice())?);
+
+        let certificate_details = extract_certificate_from_x5chain_header(
+            self.certificate_validator.as_ref(),
+            self.http_client.as_ref(),
+            &cose_sign1,
+            true,
+        )
+        .await
+        .error_while("extracting certificate")?;
+
+        let key_verification = KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        };
+
+        let x5c =
+            pem_chain_into_x5c(&certificate_details.chain).error_while("converting PEM chain")?;
+        try_verify_cose_sign1(&cose_sign1, &x5c, &key_verification)
+            .await
+            .error_while("verifying cwt")?;
+
+        let ca_pem_chain = if let Some(certificate) = certificate {
+            certificate
+        } else {
+            let IdentifierDetails::Certificate(details) = issuer_details else {
+                return Err(RevocationError::ValidationError(
+                    "invalid issuer type".to_string(),
+                ));
+            };
+            details.chain.to_owned()
+        };
+
+        self.certificate_validator
+            .validate_chain_against_ca_chain(
+                &certificate_details.chain,
+                &ca_pem_chain,
+                CertificateValidationOptions::signature_and_revocation(Some(vec![
+                    EnforceKeyUsage::DigitalSignature,
+                ])),
+                CertSelection::Leaf,
+            )
+            .await
+            .error_while("checking CA chain")?;
+
+        let payload = cose_sign1
+            .0
+            .payload
+            .ok_or(RevocationError::ValidationError(
+                "missing CWT payload".to_string(),
+            ))?;
+
+        let payload: ciborium::Value = ciborium::from_reader(payload.as_slice())?;
+        let payload = payload.as_map().ok_or(RevocationError::ValidationError(
+            "invalid CWT payload".to_string(),
+        ))?;
+        let get_payload_field = |index: i64| {
+            let index = ciborium::Value::Integer(index.into());
+            payload.iter().find_map(|(k, v)| (k == &index).then_some(v))
+        };
+
+        let subject = get_payload_field(CwtClaimName::Sub.to_i64());
+        if subject
+            .and_then(|subject| subject.as_text())
+            .is_none_or(|subject| subject != list_url)
+        {
+            return Err(RevocationError::ValidationError(format!(
+                "Invalid subject: `{subject:?}`",
+            )));
+        }
+
+        let issued_at = get_payload_field(CwtClaimName::Iat.to_i64());
+        validate_issuance_time(&timestamp_to_time(issued_at)?, self.params.leeway_seconds)
+            .error_while("checking validity")?;
+
+        let not_before = get_payload_field(CwtClaimName::Nbf.to_i64());
+        validate_not_before_time(&timestamp_to_time(not_before)?, self.params.leeway_seconds)
+            .error_while("checking validity")?;
+
+        let expires_at = get_payload_field(CwtClaimName::Exp.to_i64());
+        validate_expiration_time(&timestamp_to_time(expires_at)?, self.params.leeway_seconds)
+            .error_while("checking validity")?;
+
+        let status_list: StatusListEncoded = get_payload_field(65533)
+            .ok_or(RevocationError::ValidationError(
+                "missing CWT status list".to_string(),
+            ))?
+            .deserialized()?;
+
+        Ok(TokenStatusListSubject {
+            bits: status_list.bits as _,
+            value: Base64UrlSafeNoPadding::encode_to_string(status_list.list.0)?,
+        })
+    }
 }
 
 pub(crate) fn credential_status_from_sdjwt_status(
@@ -974,5 +1133,25 @@ fn get_revocation_list_url(
             "Host URL not specified".to_string()
         ))?,
         revocation_list_id
+    ))
+}
+
+fn timestamp_to_time(
+    timestamp: Option<&ciborium::Value>,
+) -> Result<Option<OffsetDateTime>, RevocationError> {
+    use coset::cwt::Timestamp;
+
+    let Some(timestamp) = timestamp else {
+        return Ok(None);
+    };
+
+    let unix_timestamp = match Timestamp::from_cbor_value(timestamp.to_owned())? {
+        Timestamp::WholeSeconds(unix_timestamp) => unix_timestamp,
+        Timestamp::FractionalSeconds(fractional) => fractional as i64,
+    };
+
+    Ok(Some(
+        OffsetDateTime::from_unix_timestamp(unix_timestamp)
+            .map_err(|e| RevocationError::ValidationError(format!("Invalid timestamp: {e}")))?,
     ))
 }

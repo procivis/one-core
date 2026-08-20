@@ -32,7 +32,10 @@ impl Resolver for StatusListResolver {
         let response = self
             .client
             .get(url)
-            .header("Accept", "application/statuslist+jwt")
+            .header(
+                "Accept",
+                "application/statuslist+jwt, application/statuslist+cwt",
+            )
             .send()
             .await
             .error_while("downloading token status list")?

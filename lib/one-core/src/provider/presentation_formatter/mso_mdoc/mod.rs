@@ -373,7 +373,7 @@ impl MsoMdocPresentationFormatter {
     }
 }
 
-async fn try_verify_cose_sign1(
+pub(crate) async fn try_verify_cose_sign1(
     CoseSign1(cose_sign1): &CoseSign1,
     chain: &[String],
     verifier: &dyn TokenVerifier,

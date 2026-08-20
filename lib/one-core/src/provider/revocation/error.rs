@@ -32,6 +32,14 @@ pub enum RevocationError {
     JsonError(#[from] serde_json::Error),
     #[error("X509 error: `{0}`")]
     X509Error(#[from] rcgen::Error),
+    #[error("CBOR parsing: `{0}`")]
+    CBORParsing(#[from] ciborium::de::Error<std::io::Error>),
+    #[error("CBOR value: `{0}`")]
+    CBORValue(#[from] ciborium::value::Error),
+    #[error("COSE error: `{0}`")]
+    CoseError(#[from] coset::CoseError),
+    #[error("Encoding error: `{0}`")]
+    EncodingError(#[from] ct_codecs::Error),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
