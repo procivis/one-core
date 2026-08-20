@@ -25,6 +25,7 @@ use crate::fixtures::{
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
+use crate::utils::db_clients::proofs::TestingProofParams;
 use crate::utils::field_match::FieldHelpers;
 
 const QES_APPROVAL_TYPE: &str = "https://cloudsignatureconsortium.org/2025/qes-approval";
@@ -288,15 +289,14 @@ async fn setup_submittable_mdoc_with_transaction_data(
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            None,
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier),
+                verifier_key: Some(verifier_key),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
         )
         .await;
 

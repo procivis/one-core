@@ -35,6 +35,7 @@ use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::notifications::TestingNotificationParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::proofs::TestingProofParams;
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
@@ -1340,15 +1341,15 @@ async fn test_run_retain_proof_check_with_update() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Accepted,
-            "OPENID4VP_DRAFT20",
-            None,
-            verifier_key.clone(),
-            Some(proof_blob_1.id),
-            None,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                proof_schema: Some(proof_schema.clone()),
+                verifier_identifier: Some(identifier.clone()),
+                verifier_key: Some(verifier_key.clone()),
+                proof_blob_id: Some(proof_blob_1.id),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1356,15 +1357,15 @@ async fn test_run_retain_proof_check_with_update() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VP_DRAFT20",
-            None,
-            verifier_key,
-            Some(proof_blob_2.id),
-            None,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                proof_schema: Some(proof_schema),
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_blob_id: Some(proof_blob_2.id),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1904,15 +1905,15 @@ async fn test_run_interaction_expiration_check_with_update() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VP_DRAFT20",
-            Some(&proof_interaction),
-            key,
-            None,
-            None,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                proof_schema: Some(proof_schema),
+                verifier_identifier: Some(identifier.clone()),
+                verifier_key: Some(key),
+                interaction: Some(proof_interaction),
+                ..Default::default()
+            },
         )
         .await;
 

@@ -23,6 +23,7 @@ use crate::fixtures::{
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
+use crate::utils::db_clients::proofs::TestingProofParams;
 use crate::{fixtures, utils};
 
 #[tokio::test]
@@ -494,15 +495,14 @@ async fn setup_submittable_presentation_dcql(
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            None,
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
         )
         .await;
     (
@@ -796,15 +796,14 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            None,
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key),
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
         )
         .await;
 

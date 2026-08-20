@@ -11,6 +11,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::proofs::TestingProofParams;
 
 #[tokio::test]
 async fn test_delete_proof_created_holder_success() {
@@ -41,15 +42,15 @@ async fn test_delete_proof_created_holder_success() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            None,
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            key,
-            Some(blob.id),
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                interaction: Some(interaction.clone()),
+                proof_blob_id: Some(blob.id),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -109,15 +110,14 @@ async fn test_delete_proof_accepted_holder_fail() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            None,
             ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                interaction: Some(interaction),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -138,15 +138,14 @@ async fn test_delete_proof_created_issuer_success() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -193,15 +192,14 @@ async fn test_delete_proof_accepted_issuer_fail() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -222,15 +220,14 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -323,15 +320,14 @@ async fn test_delete_proof_old_exchange() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Requested,
             "PROCIVIS_TEMPORARY", // this provider no longer exists
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 

@@ -12,6 +12,7 @@ use crate::fixtures::{TestingDidParams, TestingIdentifierParams, create_organisa
 use crate::utils::api_clients::proofs::ProofFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::proofs::TestingProofParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -88,15 +89,15 @@ async fn test_list_proof_success() {
             .db
             .proofs
             .create(
-                None,
-                &verifier_identifier,
-                Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                None,
-                verifier_key.to_owned(),
-                None,
-                Some("NFC".to_string()),
+                TestingProofParams {
+                    verifier_identifier: Some(verifier_identifier.clone()),
+                    verifier_key: Some(verifier_key.to_owned()),
+                    proof_schema: Some(proof_schema.clone()),
+                    engagement: Some("NFC".to_string()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -196,15 +197,14 @@ async fn test_list_proofs_by_ids() {
             .db
             .proofs
             .create(
-                None,
-                &verifier_identifier,
-                Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                None,
-                verifier_key.to_owned(),
-                None,
-                None,
+                TestingProofParams {
+                    verifier_identifier: Some(verifier_identifier.clone()),
+                    verifier_key: Some(verifier_key.to_owned()),
+                    proof_schema: Some(proof_schema.clone()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -336,15 +336,14 @@ async fn test_list_proofs_by_name() {
             .db
             .proofs
             .create(
-                None,
-                &verifier_identifier,
-                Some(&proof_schema1),
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                None,
-                verifier_key.to_owned(),
-                None,
-                None,
+                TestingProofParams {
+                    verifier_identifier: Some(verifier_identifier.clone()),
+                    verifier_key: Some(verifier_key.to_owned()),
+                    proof_schema: Some(proof_schema1.clone()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -355,15 +354,14 @@ async fn test_list_proofs_by_name() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema2),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema2.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -492,15 +490,14 @@ async fn test_list_proofs_by_schema_ids() {
             .db
             .proofs
             .create(
-                None,
-                &verifier_identifier,
-                Some(&proof_schema1),
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                None,
-                verifier_key.to_owned(),
-                None,
-                None,
+                TestingProofParams {
+                    verifier_identifier: Some(verifier_identifier.clone()),
+                    verifier_key: Some(verifier_key.to_owned()),
+                    proof_schema: Some(proof_schema1.clone()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -511,15 +508,14 @@ async fn test_list_proofs_by_schema_ids() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema2),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema2.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -639,15 +635,14 @@ async fn test_list_proofs_by_verifiers() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -655,15 +650,14 @@ async fn test_list_proofs_by_verifiers() {
         .db
         .proofs
         .create(
-            None,
-            &identifier2,
-            Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier2.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -766,15 +760,14 @@ async fn test_list_proofs_by_state() {
             .db
             .proofs
             .create(
-                None,
-                &verifier_identifier,
-                Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                None,
-                verifier_key.to_owned(),
-                None,
-                None,
+                TestingProofParams {
+                    verifier_identifier: Some(verifier_identifier.clone()),
+                    verifier_key: Some(verifier_key.to_owned()),
+                    proof_schema: Some(proof_schema.clone()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -785,15 +778,14 @@ async fn test_list_proofs_by_state() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Error,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -900,15 +892,14 @@ async fn test_list_proof_with_retain_date() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -956,15 +947,14 @@ async fn test_list_proofs_with_org_by_interaction() {
             .db
             .proofs
             .create(
-                None,
-                &identifier,
-                None,
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                Some(&interaction),
-                key.clone(),
-                None,
-                None,
+                TestingProofParams {
+                    verifier_identifier: Some(identifier.clone()),
+                    verifier_key: Some(key.to_owned()),
+                    interaction: Some(interaction.clone()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -1003,15 +993,14 @@ async fn test_list_proofs_with_org_by_interaction() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Error,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier.clone()),
+                verifier_key: Some(key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1111,15 +1100,14 @@ async fn test_list_proofs_by_role() {
             .db
             .proofs
             .create(
-                None,
-                &verifier_identifier,
-                Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_FINAL1",
-                None,
-                verifier_key.to_owned(),
-                None,
-                None,
+                TestingProofParams {
+                    verifier_identifier: Some(verifier_identifier.clone()),
+                    verifier_key: Some(verifier_key.to_owned()),
+                    proof_schema: Some(proof_schema.clone()),
+                    ..Default::default()
+                },
             )
             .await;
 
@@ -1138,15 +1126,14 @@ async fn test_list_proofs_by_role() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            None,
             ProofStateEnum::Error,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier),
+                verifier_key: Some(verifier_key),
+                interaction: Some(interaction),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1281,17 +1268,16 @@ async fn test_list_proof_with_profile() {
     context
         .db
         .proofs
-        .create_with_profile(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
+        .create(
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            Some(test_profile_1.to_string()),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                profile: Some(test_profile_1.to_string()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1299,17 +1285,16 @@ async fn test_list_proof_with_profile() {
     context
         .db
         .proofs
-        .create_with_profile(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
+        .create(
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            Some(test_profile_2.to_string()),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                profile: Some(test_profile_2.to_string()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1317,15 +1302,14 @@ async fn test_list_proof_with_profile() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1459,15 +1443,14 @@ async fn test_list_proofs_by_date() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1475,15 +1458,14 @@ async fn test_list_proofs_by_date() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1491,15 +1473,14 @@ async fn test_list_proofs_by_date() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier.clone()),
+                verifier_key: Some(verifier_key.to_owned()),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 

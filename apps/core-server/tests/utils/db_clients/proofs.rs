@@ -1,16 +1,42 @@
 use std::sync::Arc;
 
+use one_core::model::certificate::Certificate;
 use one_core::model::claim::Claim;
 use one_core::model::identifier::{Identifier, IdentifierData};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
-use one_core::model::proof::{Proof, ProofRole, ProofStateEnum, UpdateProofRequest};
+use one_core::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum, UpdateProofRequest};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::proof_repository::ProofRepository;
 use one_dto_mapper::convert_inner;
-use shared_types::{BlobId, ProofId};
+use shared_types::{BlobId, EcosystemId, ProofId};
 use sql_data_provider::test_utilities::get_dummy_date;
+use time::OffsetDateTime;
 use uuid::Uuid;
+
+#[derive(Debug, Default)]
+pub struct TestingProofParams {
+    pub id: Option<ProofId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub requested_date: Option<Option<OffsetDateTime>>,
+    pub completed_date: Option<Option<OffsetDateTime>>,
+    pub proof_schema: Option<ProofSchema>,
+    pub ecosystem: Option<EcosystemId>,
+    pub interaction: Option<Interaction>,
+    pub role: Option<ProofRole>,
+    pub claims: Option<Vec<ProofClaim>>,
+    pub transport: Option<String>,
+    pub redirect_uri: Option<String>,
+    pub verifier_identifier: Option<Identifier>,
+    pub verifier_key: Option<Key>,
+    pub verifier_certificate: Option<Certificate>,
+    pub profile: Option<String>,
+    pub proof_blob_id: Option<BlobId>,
+    pub engagement: Option<String>,
+    pub webhook_url: Option<String>,
+    pub subscriber_information: Option<String>,
+}
 
 pub struct ProofsDB {
     repository: Arc<dyn ProofRepository>,
@@ -21,49 +47,13 @@ impl ProofsDB {
         Self { repository }
     }
 
-    #[expect(clippy::too_many_arguments)]
     pub async fn create(
         &self,
-        id: Option<ProofId>,
-        verifier_identifier: &Identifier,
-        proof_schema: Option<&ProofSchema>,
         state: ProofStateEnum,
-        exchange: &str,
-        interaction: Option<&Interaction>,
-        verifier_key: Key,
-        proof_blob_id: Option<BlobId>,
-        engagement: Option<String>,
+        protocol: &str,
+        params: TestingProofParams,
     ) -> Proof {
-        self.create_with_profile(
-            id,
-            verifier_identifier,
-            proof_schema,
-            state,
-            exchange,
-            interaction,
-            verifier_key,
-            None,
-            proof_blob_id,
-            engagement,
-        )
-        .await
-    }
-
-    #[expect(clippy::too_many_arguments)]
-    pub async fn create_with_profile(
-        &self,
-        id: Option<ProofId>,
-        verifier_identifier: &Identifier,
-        proof_schema: Option<&ProofSchema>,
-        state: ProofStateEnum,
-        exchange: &str,
-        interaction: Option<&Interaction>,
-        verifier_key: Key,
-        profile: Option<String>,
-        proof_blob_id: Option<BlobId>,
-        engagement: Option<String>,
-    ) -> Proof {
-        let requested_date = match state {
+        let computed_requested_date = match state {
             ProofStateEnum::Pending
             | ProofStateEnum::Requested
             | ProofStateEnum::Accepted
@@ -72,46 +62,60 @@ impl ProofsDB {
             _ => None,
         };
 
-        let completed_date = match state {
+        let computed_completed_date = match state {
             ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(get_dummy_date()),
             _ => None,
         };
 
-        let role = if proof_schema.is_some() {
+        let computed_role = if params.proof_schema.is_some() {
             ProofRole::Verifier
         } else {
             ProofRole::Holder
         };
 
+        let computed_verifier_certificate = {
+            let certs = params
+                .verifier_identifier
+                .as_ref()
+                .and_then(|verifier_identifier| match &verifier_identifier.data {
+                    IdentifierData::Certificate(certs)
+                    | IdentifierData::CertificateAuthority(certs) => Some(certs),
+                    _ => None,
+                });
+
+            match certs {
+                None => None,
+                Some(certs) => certs.as_ref().await.unwrap().first().cloned(),
+            }
+        };
+
         let proof = Proof {
-            ecosystem: None,
-            id: id.unwrap_or_else(|| Uuid::new_v4().into()),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            protocol: exchange.to_owned(),
-            transport: "HTTP".to_string(),
-            redirect_uri: None,
+            ecosystem: params.ecosystem,
+            id: params.id.unwrap_or_else(|| Uuid::new_v4().into()),
+            created_date: params.created_date.unwrap_or(get_dummy_date()),
+            last_modified: params.last_modified.unwrap_or(get_dummy_date()),
+            protocol: protocol.to_owned(),
+            transport: params.transport.unwrap_or("HTTP".to_string()),
+            redirect_uri: params.redirect_uri,
             state,
-            role,
-            requested_date,
-            completed_date,
-            claims: Default::default(),
-            schema: convert_inner(proof_schema.cloned()),
-            verifier_identifier: Some(verifier_identifier.to_owned().into()),
-            verifier_key: Some(verifier_key.into()),
-            verifier_certificate: match &verifier_identifier.data {
-                IdentifierData::Certificate(certs)
-                | IdentifierData::CertificateAuthority(certs) => {
-                    convert_inner(certs.as_ref().await.unwrap().first().cloned())
-                }
-                _ => None,
-            },
-            interaction: convert_inner(interaction.cloned()),
-            profile,
-            proof_blob_id,
-            engagement,
-            webhook_url: None,
-            subscriber_information: None,
+            role: params.role.unwrap_or(computed_role),
+            requested_date: params.requested_date.unwrap_or(computed_requested_date),
+            completed_date: params.completed_date.unwrap_or(computed_completed_date),
+            claims: params.claims.unwrap_or_default().into(),
+            schema: convert_inner(params.proof_schema),
+            verifier_identifier: convert_inner(params.verifier_identifier),
+            verifier_key: convert_inner(params.verifier_key),
+            verifier_certificate: convert_inner(
+                params
+                    .verifier_certificate
+                    .or(computed_verifier_certificate),
+            ),
+            interaction: convert_inner(params.interaction),
+            profile: params.profile,
+            proof_blob_id: params.proof_blob_id,
+            engagement: params.engagement,
+            webhook_url: params.webhook_url,
+            subscriber_information: params.subscriber_information,
         };
 
         let proof_id = self.repository.create_proof(proof.clone()).await.unwrap();

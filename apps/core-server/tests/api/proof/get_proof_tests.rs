@@ -7,7 +7,7 @@ use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
-use one_core::model::proof::{ProofStateEnum, UpdateProofRequest};
+use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use serde_json_path::JsonPath;
 use similar_asserts::assert_eq;
@@ -24,6 +24,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::proofs::TestingProofParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -98,15 +99,15 @@ async fn test_get_proof_success() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            Some("NFC".to_string()),
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                engagement: Some("NFC".to_string()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -205,15 +206,14 @@ async fn test_get_proof_detached_success() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -321,15 +321,14 @@ async fn test_get_proof_with_nested_claims() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -432,15 +431,14 @@ async fn test_get_proof_with_empty_array() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -627,15 +625,14 @@ async fn test_get_proof_with_array() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -757,15 +754,14 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -911,15 +907,14 @@ async fn test_get_proof_with_nested_optional_inputs() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1044,24 +1039,13 @@ async fn test_get_proof_with_credentials() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
-        )
-        .await;
-    context
-        .db
-        .proofs
-        .update(
-            &proof.id,
-            UpdateProofRequest {
-                ecosystem: Some(Some("EUDI".into())),
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema),
+                ecosystem: Some("EUDI".into()),
                 ..Default::default()
             },
         )
@@ -1179,15 +1163,14 @@ async fn test_get_proof_with_deleted_credential() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1264,15 +1247,14 @@ async fn test_get_proof_as_holder_success() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            None, // Proof schema is empty on holder side
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            Some(&interaction), // Interaction is present on holder side
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier),
+                verifier_key: Some(verifier_key),
+                interaction: Some(interaction),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1360,15 +1342,14 @@ async fn test_get_proof_with_retain_date() {
         .db
         .proofs
         .create(
-            None,
-            &verifier_identifier,
-            Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key.to_owned(),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(verifier_identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1479,15 +1460,14 @@ async fn test_get_proof_with_deleted_claims() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1577,15 +1557,14 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema.clone()),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1718,17 +1697,16 @@ async fn test_get_proof_with_credentials_returns_profiles() {
     let proof = context
         .db
         .proofs
-        .create_with_profile(
-            None,
-            &identifier,
-            Some(&proof_schema),
+        .create(
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            verifier_key,
-            Some(test_profile.to_string()),
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(verifier_key),
+                proof_schema: Some(proof_schema),
+                profile: Some(test_profile.to_string()),
+                ..Default::default()
+            },
         )
         .await;
 

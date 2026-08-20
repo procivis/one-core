@@ -15,6 +15,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::identifier_trust_information::TestingIdentifierTrustInformationParams;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
+use crate::utils::db_clients::proofs::TestingProofParams;
 
 fn decode_jwt(jwt: &str) -> (Value, Value) {
     let parts: Vec<&str> = jwt.splitn(3, '.').collect();
@@ -89,15 +90,14 @@ async fn setup_final1_certificate_proof(
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                proof_schema: Some(proof_schema),
+                verifier_identifier: Some(identifier.clone()),
+                verifier_key: Some(key),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -409,15 +409,14 @@ async fn test_get_client_request_final1_includes_transaction_data() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            None,
             ProofStateEnum::Pending,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            key,
-            None,
-            None,
+            TestingProofParams {
+                interaction: Some(interaction),
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                ..Default::default()
+            },
         )
         .await;
 

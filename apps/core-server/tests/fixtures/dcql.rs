@@ -9,6 +9,7 @@ use standardized_types::openid4vp::dcql::DcqlQuery;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::interactions::TestingInteractionParams;
+use crate::utils::db_clients::proofs::TestingProofParams;
 
 pub(crate) async fn proof_for_dcql_query(
     context: &TestContext,
@@ -36,15 +37,14 @@ pub(crate) async fn proof_for_dcql_query(
         .db
         .proofs
         .create(
-            None,
-            identifier,
-            None,
             ProofStateEnum::Requested,
             protocol,
-            Some(&interaction),
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier.to_owned()),
+                verifier_key: Some(key),
+                interaction: Some(interaction),
+                ..Default::default()
+            },
         )
         .await
 }

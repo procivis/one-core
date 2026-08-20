@@ -1,13 +1,14 @@
 use one_core::model::blob::BlobType;
 use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
-use one_core::model::proof::{ProofStateEnum, UpdateProofRequest};
+use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
+use crate::utils::db_clients::proofs::TestingProofParams;
 
 const ACCESS_CERT: &str = r#"-----BEGIN CERTIFICATE-----
 MIIC+jCCAp+gAwIBAgIRAQrC1dwJkUxlszrpRjXZv+QwCgYIKoZIzj0EAwIwEjEQ
@@ -49,24 +50,13 @@ async fn test_get_proof_trust_detail_success() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            None,
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",
-            Some(&interaction),
-            key,
-            None,
-            None,
-        )
-        .await;
-    context
-        .db
-        .proofs
-        .update(
-            &proof.id,
-            UpdateProofRequest {
-                ecosystem: Some(Some("EUDI".into())),
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                interaction: Some(interaction),
+                ecosystem: Some("EUDI".into()),
                 ..Default::default()
             },
         )

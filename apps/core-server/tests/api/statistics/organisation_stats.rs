@@ -12,6 +12,7 @@ use crate::fixtures::{TestingCredentialParams, create_proof_schema};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::proofs::TestingProofParams;
 
 #[tokio::test]
 async fn test_organisation_stats_empty() {
@@ -167,15 +168,14 @@ async fn dummy_history_data(
         .db
         .proofs
         .create(
-            None,
-            identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VP_DRAFT20",
-            None,
-            key,
-            None,
-            None,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                proof_schema: Some(proof_schema),
+                verifier_identifier: Some(identifier.clone()),
+                verifier_key: Some(key),
+                ..Default::default()
+            },
         )
         .await;
     context

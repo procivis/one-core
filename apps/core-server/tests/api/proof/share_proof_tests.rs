@@ -18,6 +18,7 @@ use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::proofs::TestingProofParams;
 
 #[tokio::test]
 async fn test_share_proof_success() {
@@ -307,15 +308,14 @@ async fn test_share_proof_success_with_separate_encryption_key() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            signing_key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(signing_key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -394,15 +394,14 @@ async fn test_share_proof_success_mdoc() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             VerificationProtocolType::OpenId4VpFinal1_0.as_ref(),
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -507,15 +506,14 @@ async fn test_share_proof_success_jsonld() {
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -632,15 +630,14 @@ async fn prepare_created_certificate_openid4vp_proof(exchange: &str) -> (TestCon
         .db
         .proofs
         .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
             ProofStateEnum::Created,
             exchange,
-            None,
-            key,
-            None,
-            None,
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                ..Default::default()
+            },
         )
         .await;
 
