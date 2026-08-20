@@ -177,11 +177,13 @@ impl EcosystemSyncProto {
 
         let mut count = 0;
         for collection in to_sync {
-            self.subscription_sync
-                .sync_subscriptions(collection)
-                .await
-                .error_while("syncing subscriptions")?;
-            count += 1;
+            match self.subscription_sync.sync_subscriptions(collection).await {
+                Ok(()) => count += 1,
+                Err(error) => tracing::warn!(
+                    "Failed syncing subscriptions of trust collection {}: {error}",
+                    collection.id,
+                ),
+            }
         }
 
         Ok(count)

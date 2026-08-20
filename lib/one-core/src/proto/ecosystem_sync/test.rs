@@ -1,7 +1,8 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use mockall::Sequence;
-use shared_types::EcosystemId;
+use shared_types::{EcosystemId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
@@ -17,7 +18,9 @@ use crate::proto::schema_import::MockSchemaImporter;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_collection::MockTrustCollectionManager;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
-use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
+use crate::proto::trust_list_subscription_sync::{
+    MockTrustListSubscriptionSync, TrustListSubscriptionSyncError,
+};
 use crate::proto::verifier_provider_client::MockVerifierProviderClient;
 use crate::proto::wallet_provider_client::MockWalletProviderClient;
 use crate::repository::instance_repository::MockInstanceRepository;
@@ -332,13 +335,98 @@ async fn test_sync_imports_schemas_of_selected_ecosystems_only() {
     assert_eq!(synced, 0);
 }
 
+#[tokio::test]
+async fn test_collection_failing_to_sync_does_not_stop_the_remaining_ones() {
+    let instance = dummy_wallet_unit(organisation_selecting(&[ECOSYSTEM]));
+    let collection_to_keep = dummy_collection("to be kept".to_string());
+    let collection_to_delete = dummy_collection("to be deleted".to_string());
+    let collection_to_create_remote = dummy_collection("to be created".to_string());
+    let remote_collection_url = format!(
+        "https://wallet-provider.org/ssi/trust-collection/v1/{}",
+        collection_to_create_remote.id
+    );
+    let keep = collection_to_keep.clone();
+    let mut wallet_unit_client = MockWalletProviderClient::new();
+    wallet_unit_client
+        .expect_get_wallet_provider_metadata()
+        .once()
+        .returning(move |_| {
+            Ok(dummy_wallet_provider_metadata(&[
+                keep.clone(),
+                collection_to_create_remote.clone(),
+            ]))
+        });
+
+    let (collection_repository, _) = setup_collection_repository(
+        collection_to_keep,
+        collection_to_delete,
+        remote_collection_url,
+    );
+    let mut subscription_sync = MockTrustListSubscriptionSync::new();
+    let attempts = Arc::new(AtomicUsize::new(0));
+    let attempted = attempts.clone();
+    subscription_sync
+        .expect_sync_subscriptions()
+        .times(2)
+        .returning(move |collection| {
+            // only the first of the two collections fails
+            if attempted.fetch_add(1, Ordering::SeqCst) == 0 {
+                return Err(TrustListSubscriptionSyncError::NotRemote(collection.id));
+            }
+            Ok(())
+        });
+
+    let collection_repository = Arc::new(collection_repository);
+    let collection_sync = TrustCollectionManagerImpl::new(
+        collection_repository.clone(),
+        Arc::new(MockOrganisationRepository::default()),
+        Arc::new(NoTransactionManager),
+    );
+    let ecosystem_sync = EcosystemSyncProto::new(
+        Arc::new(MockInstanceRepository::new()),
+        Arc::new(wallet_unit_client),
+        Arc::new(MockVerifierProviderClient::new()),
+        Arc::new(collection_sync),
+        collection_repository,
+        Arc::new(subscription_sync),
+        Arc::new(permissive_schema_importer()),
+    );
+
+    let synced = ecosystem_sync.sync_instance(&instance).await.unwrap();
+    assert_eq!(synced, 1);
+    assert_eq!(attempts.load(Ordering::SeqCst), 2);
+}
+
 fn setup_mocks(
     collection_to_keep: TrustCollection,
     collection_to_delete: TrustCollection,
     remote_collection_url: String,
 ) -> (MockTrustCollectionRepository, MockTrustListSubscriptionSync) {
-    let id_to_delete = collection_to_delete.id;
     let id_to_keep = collection_to_keep.id;
+    let (collection_repository, id_to_create_local) = setup_collection_repository(
+        collection_to_keep,
+        collection_to_delete,
+        remote_collection_url,
+    );
+
+    let mut subscription_sync = MockTrustListSubscriptionSync::new();
+    subscription_sync
+        .expect_sync_subscriptions()
+        .withf(move |collection| collection.id == id_to_create_local || collection.id == id_to_keep)
+        .times(2)
+        .returning(|_| Ok(()));
+    (collection_repository, subscription_sync)
+}
+
+/// Mirrors a provider advertising `collection_to_keep` and a collection to be created,
+/// while `collection_to_delete` is no longer advertised. Returns the repository along with
+/// the id of the collection it creates.
+fn setup_collection_repository(
+    collection_to_keep: TrustCollection,
+    collection_to_delete: TrustCollection,
+    remote_collection_url: String,
+) -> (MockTrustCollectionRepository, TrustCollectionId) {
+    let id_to_delete = collection_to_delete.id;
     let mut seq = Sequence::new();
     let mut collection_repository = MockTrustCollectionRepository::new();
 
@@ -417,13 +505,7 @@ fn setup_mocks(
                     == remote_collection_url
         })
         .returning(move |collection| Ok(collection.id));
-    let mut subscription_sync = MockTrustListSubscriptionSync::new();
-    subscription_sync
-        .expect_sync_subscriptions()
-        .withf(move |collection| collection.id == id_to_create_local || collection.id == id_to_keep)
-        .times(2)
-        .returning(|_| Ok(()));
-    (collection_repository, subscription_sync)
+    (collection_repository, id_to_create_local)
 }
 
 /// Collects the ecosystems a trust collection list query filters on.

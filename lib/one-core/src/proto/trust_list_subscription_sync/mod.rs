@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use futures::FutureExt;
@@ -12,7 +13,9 @@ use crate::model::trust_list_subscription::{
     TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
 use crate::proto::transaction_manager::TransactionManager;
+use crate::proto::trust_list_subscription_sync::dto::{RemoteTrustCollection, RemoteTrustList};
 use crate::provider::caching_loader::remote_trust_collection::RemoteTrustCollectionCache;
+use crate::repository::error::DataLayerError;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 
 pub(crate) mod dto;
@@ -63,6 +66,25 @@ impl TrustListSubscriptionSyncImpl {
             transaction_manager,
         }
     }
+
+    fn to_add(
+        &self,
+        remote_collection: &RemoteTrustCollection,
+        existing_subscriptions: &GetTrustListSubscriptionList,
+    ) -> Vec<RemoteTrustList> {
+        let subscribed_references: HashSet<&str> = existing_subscriptions
+            .values
+            .iter()
+            .map(|subscription| subscription.reference.as_str())
+            .collect();
+
+        remote_collection
+            .trust_lists
+            .iter()
+            .filter(|list| !subscribed_references.contains(list.reference.as_str()))
+            .cloned()
+            .collect()
+    }
 }
 
 #[async_trait::async_trait]
@@ -98,29 +120,36 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                     })
                     .await
                     .error_while("listing existing trust list subscriptions")?;
-                // remove the ones we already have
-                let mut new_lists = remote_collection.trust_lists.clone();
-                new_lists.retain(|list| {
-                    existing_subscriptions
-                        .values
-                        .iter()
-                        .any(|s| s.reference != list.reference)
-                });
 
-                let to_add = remote_collection
+                // Subscriptions that are no longer advertised go first: uniqueness of both
+                // the name and the reference is enforced per collection over the rows that
+                // are not deactivated, so a list keeping its name while changing its
+                // reference would collide with its own stale row if it were created before
+                // that row is gone.
+                let advertised_references: HashSet<&str> = remote_collection
                     .trust_lists
                     .iter()
-                    .filter(|s| {
-                        !existing_subscriptions
-                            .values
-                            .iter()
-                            .any(|list| list.reference == s.reference)
-                    })
-                    .cloned();
+                    .map(|list| list.reference.as_str())
+                    .collect();
+                let to_delete = existing_subscriptions
+                    .values
+                    .iter()
+                    .filter(|s| !advertised_references.contains(s.reference.as_str()))
+                    .map(|s| s.id);
+                for id in to_delete {
+                    self.subscription_repository
+                        .delete(id)
+                        .await
+                        .error_while("deleting trust list subscription")?;
+                }
 
+                let to_add =
+                    self.to_add(&remote_collection, &existing_subscriptions);
                 for list in to_add {
                     let now = crate::clock::now_utc();
-                    self.subscription_repository
+                    let (name, reference) = (list.name.clone(), list.reference.clone());
+                    let result = self
+                        .subscription_repository
                         .create(TrustListSubscription {
                             id: Uuid::new_v4().into(),
                             name: list.name,
@@ -133,26 +162,26 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                             state: TrustListSubscriptionState::Active,
                             trust_collection: trust_collection.clone().into(),
                         })
-                        .await
-                        .error_while("creating trust list subscription")?;
+                        .await;
+                    match result {
+                        Ok(_) => {}
+                        // The subscription may have been created by a concurrent sync, or a
+                        // list that is still advertised - and hence not deleted above - may
+                        // hold on to the name. Neither must abort the remaining lists.
+                        Err(DataLayerError::AlreadyExists) => {
+                            tracing::warn!(
+                                "Skipping trust list `{name}` ({reference}) of trust collection {}: subscription already exists",
+                                trust_collection.id,
+                            );
+                        }
+                        Err(err) => {
+                            return Err(err)
+                                .error_while("creating trust list subscription")
+                                .map_err(Into::into);
+                        }
+                    }
                 }
 
-                let to_delete = existing_subscriptions
-                    .values
-                    .iter()
-                    .filter(|s| {
-                        !remote_collection
-                            .trust_lists
-                            .iter()
-                            .any(|list| list.reference == s.reference)
-                    })
-                    .map(|s| s.id);
-                for id in to_delete {
-                    self.subscription_repository
-                        .delete(id)
-                        .await
-                        .error_while("deleting trust list subscription")?;
-                }
                 Ok::<_, TrustListSubscriptionSyncError>(())
             }
             .boxed())
