@@ -308,6 +308,7 @@ fn dummy_credential(
     state: CredentialStateEnum,
     pre_authorized_code: bool,
     schema: CredentialSchema,
+    r#type: CredentialType,
 ) -> Credential {
     Credential {
         expires_at: None,
@@ -321,7 +322,7 @@ fn dummy_credential(
         protocol: protocol.to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        r#type: CredentialType::Single,
+        r#type,
         state,
         suspend_end_date: None,
         claims: Default::default(),
@@ -1123,6 +1124,7 @@ async fn test_create_token() {
         CredentialStateEnum::Pending,
         false,
         schema.clone(),
+        CredentialType::Single,
     );
     let interaction_id = credential.interaction.as_ref().unwrap().id();
     let interaction = credential
@@ -1247,6 +1249,7 @@ async fn test_create_token_pre_authorized_code_used() {
         CredentialStateEnum::Pending,
         true,
         clone,
+        CredentialType::Single,
     );
     let interaction = credential
         .interaction
@@ -1315,6 +1318,7 @@ async fn test_create_token_wrong_credential_state() {
         CredentialStateEnum::Offered,
         false,
         clone,
+        CredentialType::Single,
     );
     let interaction = credential
         .interaction
@@ -1376,6 +1380,7 @@ async fn test_create_credential_success() {
         CredentialStateEnum::Offered,
         true,
         schema.clone(),
+        CredentialType::Single,
     );
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
@@ -1578,6 +1583,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         CredentialStateEnum::Offered,
         true,
         schema.clone(),
+        CredentialType::Single,
     );
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
@@ -1780,6 +1786,7 @@ async fn test_create_credential_success_mdoc() {
         CredentialStateEnum::Offered,
         true,
         schema.clone(),
+        CredentialType::BatchParent,
     );
     let holder_identifier_id = Uuid::new_v4().into();
     let holder_did_id: DidId = Uuid::new_v4().into();
@@ -2243,6 +2250,7 @@ async fn test_create_credential_issuer_failed() {
         CredentialStateEnum::Offered,
         true,
         schema.clone(),
+        CredentialType::Single,
     );
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
@@ -2419,6 +2427,7 @@ async fn test_create_credential_nonce_reused() {
         CredentialStateEnum::Offered,
         true,
         schema.clone(),
+        CredentialType::Single,
     );
 
     {
@@ -2588,6 +2597,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         CredentialStateEnum::Pending,
         false,
         schema.clone(),
+        CredentialType::Single,
     );
     let interaction_id = credential.interaction.as_ref().unwrap().id();
     let interaction = credential
@@ -2693,6 +2703,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
             CredentialStateEnum::Accepted,
             false,
             schema.clone(),
+            CredentialType::Single,
         )
     };
 
@@ -2787,6 +2798,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             CredentialStateEnum::Accepted,
             false,
             schema.clone(),
+            CredentialType::Single,
         )
     };
 
@@ -2846,6 +2858,7 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
         CredentialStateEnum::Pending,
         false,
         schema.clone(),
+        CredentialType::Single,
     );
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -2902,6 +2915,7 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
         CredentialStateEnum::Pending,
         false,
         schema.clone(),
+        CredentialType::Single,
     );
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -2957,6 +2971,7 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
         CredentialStateEnum::Pending,
         false,
         schema.clone(),
+        CredentialType::Single,
     );
     credential_repository
         .expect_get_credentials_by_interaction_id()

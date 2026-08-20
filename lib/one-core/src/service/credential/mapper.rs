@@ -110,8 +110,7 @@ pub(crate) async fn credential_detail_response_from_model(
 
         let issuance_date_with_expiry = match value.r#type {
             CredentialType::BatchItem => value.issuance_date.map(|i| (i, value.expires_at)),
-            CredentialType::BatchParent => None,
-            CredentialType::Single => {
+            CredentialType::BatchParent | CredentialType::Single => {
                 // use the latest item
                 credential_repository
                     .get_credential_list(ListQuery {
@@ -487,6 +486,7 @@ fn get_revocation_date(
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(super) fn from_create_request(
     request: CreateCredentialRequestDTO,
     credential_id: CredentialId,
@@ -495,9 +495,10 @@ pub(super) fn from_create_request(
     issuer_certificate: Option<Certificate>,
     schema: CredentialSchema,
     key: Key,
+    format_type: FormatType,
 ) -> Credential {
     let now = crate::clock::now_utc();
-    let r#type = if schema.batch_size.is_some_and(|s| s >= 2) {
+    let r#type = if format_type == FormatType::Mdoc || schema.batch_size.is_some_and(|s| s >= 2) {
         CredentialType::BatchParent
     } else {
         CredentialType::Single

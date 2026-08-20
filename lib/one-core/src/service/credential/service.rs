@@ -83,6 +83,11 @@ impl CredentialService {
             .error_while("validating key storage security")?;
 
         let schema_format = schema.format().await?;
+        let format_type = self
+            .config
+            .format
+            .get_type(&schema_format)
+            .error_while("getting credential schema format type")?;
         let formatter_capabilities = self
             .formatter_provider
             .get_credential_formatter(&schema_format)?
@@ -184,6 +189,7 @@ impl CredentialService {
             issuer_certificate,
             schema,
             issuer_key,
+            format_type,
         );
 
         if let Some(ecosystem) = &ecosystem {

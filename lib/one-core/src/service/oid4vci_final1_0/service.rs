@@ -661,13 +661,6 @@ impl OID4VCIFinal1_0Service {
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
         let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
-
-        let format_type = self
-            .config
-            .format
-            .get_fields(&format.format)
-            .error_while("getting format config")?
-            .r#type;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format.format)?;
@@ -686,54 +679,17 @@ impl OID4VCIFinal1_0Service {
                     .pop()
                     .ok_or(OpenID4VCIError::InvalidOrMissingProof)?;
 
-                if format_type == FormatType::Mdoc {
-                    // store the issued credential as a batch_item under the main credential
-                    let batch_item = self
-                        .prepare_batch_item(credential.id, batch_item_expires_at)
-                        .await?;
-                    let batch_item_id = self
-                        .credential_repository
-                        .create_credential(batch_item)
-                        .await
-                        .error_while("creating MDOC batch item")?;
-
-                    if credential.state == CredentialStateEnum::Offered {
-                        self.credential_repository
-                            .update_credential(
-                                credential.id,
-                                UpdateCredentialRequest {
-                                    state: Some(CredentialStateEnum::Accepted),
-                                    issuance_date: Some(now),
-                                    ..Default::default()
-                                },
-                            )
-                            .await
-                            .error_while("updating parent credential")?;
-                    }
-
-                    vec![
-                        self.issue_single_credential(
-                            holder_identifier,
-                            batch_item_id,
-                            format.id,
-                            issuance_protocol.as_ref(),
-                            now,
-                        )
-                        .await?,
-                    ]
-                } else {
-                    // directly issue and modify this credential
-                    vec![
-                        self.issue_single_credential(
-                            holder_identifier,
-                            credential.id,
-                            format.id,
-                            issuance_protocol.as_ref(),
-                            now,
-                        )
-                        .await?,
-                    ]
-                }
+                // directly issue and modify this credential
+                vec![
+                    self.issue_single_credential(
+                        holder_identifier,
+                        credential.id,
+                        format.id,
+                        issuance_protocol.as_ref(),
+                        now,
+                    )
+                    .await?,
+                ]
             }
             CredentialType::BatchParent => {
                 let batch_item_template = self
