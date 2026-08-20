@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    BlobId, CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
-    ProofId, ProofSchemaId, TrustCollectionId,
+    BlobId, CredentialId, CredentialSchemaId, EcosystemId, EntityId, HistoryId, IdentifierId,
+    OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
 };
 use standardized_types::etsi_119_602::MultiLangString;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
@@ -34,9 +34,15 @@ pub struct HistoryErrorMetadata {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WalletRelyingPartyMetadata {
-    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub purpose: HashMap<CredentialQueryId, Vec<MultiLangString>>,
+    /// ecosystem that resolved this trust information
+    ///
+    /// `None` on events written before the tag was introduced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

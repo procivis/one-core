@@ -274,12 +274,11 @@ impl HolderProofResolver {
                 proof_id,
                 organisation_id,
                 Some(used_reg_cert),
-                Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        name: relying_party_name,
-                        purpose,
-                    },
-                )),
+                Some(WalletRelyingPartyMetadata {
+                    name: Some(relying_party_name),
+                    purpose,
+                    ..Default::default()
+                }),
             )
             .await?;
         }
@@ -326,12 +325,11 @@ impl HolderProofResolver {
             proof_id,
             organisation_id,
             Some(info.jwt),
-            Some(HistoryMetadata::WalletRelyingParty(
-                WalletRelyingPartyMetadata {
-                    name: info.payload.custom.data.trade_name.unwrap_or_default(),
-                    purpose,
-                },
-            )),
+            Some(WalletRelyingPartyMetadata {
+                name: info.payload.custom.data.trade_name,
+                purpose,
+                ..Default::default()
+            }),
         )
         .await?;
 
@@ -344,7 +342,7 @@ impl HolderProofResolver {
         proof_id: ProofId,
         organisation_id: OrganisationId,
         blob_content: Option<String>,
-        metadata: Option<HistoryMetadata>,
+        metadata: Option<WalletRelyingPartyMetadata>,
     ) -> Result<(), HolderProofError> {
         let metadata_blob_id = if let Some(blob_content) = blob_content {
             let blob_storage = self
@@ -374,7 +372,12 @@ impl HolderProofResolver {
                 source: HistorySource::Core,
                 entity_id: Some(proof_id.into()),
                 entity_type: HistoryEntityType::Proof,
-                metadata,
+                metadata: Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        ecosystem: Some(self.ecosystem.to_owned()),
+                        ..metadata.unwrap_or_default()
+                    },
+                )),
                 metadata_blob_id,
                 organisation_id: Some(organisation_id),
                 user: self.session_provider.session().user(),

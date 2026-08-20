@@ -115,12 +115,10 @@ impl HolderIssuanceResolver {
                 credential.id,
                 organisation_id,
                 Some(validated_registration_certificate),
-                Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        name: interaction_data.relying_party_name,
-                        ..Default::default()
-                    },
-                )),
+                Some(WalletRelyingPartyMetadata {
+                    name: Some(interaction_data.relying_party_name),
+                    ..Default::default()
+                }),
             )
             .await?;
         } else {
@@ -144,12 +142,10 @@ impl HolderIssuanceResolver {
                 credential.id,
                 organisation_id,
                 Some(national_registry_data),
-                Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        name: relying_party_name,
-                        ..Default::default()
-                    },
-                )),
+                Some(WalletRelyingPartyMetadata {
+                    name: Some(relying_party_name),
+                    ..Default::default()
+                }),
             )
             .await?;
         }
@@ -163,7 +159,7 @@ impl HolderIssuanceResolver {
         credential_id: CredentialId,
         organisation_id: OrganisationId,
         blob_content: Option<String>,
-        metadata: Option<HistoryMetadata>,
+        metadata: Option<WalletRelyingPartyMetadata>,
     ) -> Result<(), HolderIssuanceError> {
         let metadata_blob_id = if let Some(blob_content) = blob_content {
             let blob_storage = self
@@ -192,7 +188,12 @@ impl HolderIssuanceResolver {
                 source: HistorySource::Core,
                 entity_id: Some(credential_id.into()),
                 entity_type: HistoryEntityType::Credential,
-                metadata,
+                metadata: Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        ecosystem: Some(self.ecosystem.to_owned()),
+                        ..metadata.unwrap_or_default()
+                    },
+                )),
                 metadata_blob_id,
                 organisation_id: Some(organisation_id),
                 user: self.session_provider.session().user(),

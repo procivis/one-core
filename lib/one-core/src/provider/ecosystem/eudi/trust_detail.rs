@@ -1,5 +1,5 @@
-use shared_types::EntityId;
 use shared_types::i18n::I18nString;
+use shared_types::{EcosystemId, EntityId};
 use standardized_types::etsi_119_475::registration_certificate::{Payload, SupervisoryAuthority};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
@@ -8,8 +8,7 @@ use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::common::SortDirection;
 use crate::model::history::{
-    GetHistoryList, History, HistoryAction, HistoryFilterValue, HistoryMetadata,
-    SortableHistoryColumn,
+    History, HistoryAction, HistoryFilterValue, HistoryMetadata, SortableHistoryColumn,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListQuery, ListSorting};
@@ -47,6 +46,8 @@ impl EudiEcosystem {
             .await
             .error_while("getting history list")?;
 
+        let history = resolved_by(&self.config_id, history.values);
+
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
@@ -67,11 +68,10 @@ impl EudiEcosystem {
     async fn parsed_access_cert_from_history(
         &self,
         id: &EntityId,
-        history: &GetHistoryList,
+        history: &[History],
         blob_storage: &dyn BlobStorage,
     ) -> Result<EtsiParsedAccessCert, EcosystemError> {
         let access_cert_history = history
-            .values
             .iter()
             .find(|h| h.action == HistoryAction::WrpAcReceived)
             .ok_or(EcosystemError::MappingError(format!(
@@ -105,11 +105,10 @@ impl EudiEcosystem {
     async fn parsed_wrp_info_from_history<'a>(
         &self,
         id: &EntityId,
-        history: &'a GetHistoryList,
+        history: &'a [History],
         blob_storage: &dyn BlobStorage,
     ) -> Result<(WalletRelyingPartyDetails, &'a History), EcosystemError> {
         let reg_cert_history = history
-            .values
             .iter()
             .find(|h| {
                 h.action == HistoryAction::WrpRcReceived || h.action == HistoryAction::WrpNrReceived
@@ -180,11 +179,35 @@ impl EudiEcosystem {
             .await
             .error_while("getting history list")?;
 
-        Ok(match history.values.into_iter().next() {
-            None => None,
-            Some(history) => trust_purpose_from_history(history, query_id)?,
-        })
+        Ok(
+            match resolved_by(&self.config_id, history.values)
+                .into_iter()
+                .next()
+            {
+                None => None,
+                Some(history) => trust_purpose_from_history(history, query_id)?,
+            },
+        )
     }
+}
+
+/// Keep only the trust events `ecosystem` resolved.
+///
+/// Several ecosystems can resolve trust for the same entity while they are still candidates of
+/// an interaction, so their events have to be told apart.
+///
+/// Events without an ecosystem are kept: those were written before the tag was introduced.
+fn resolved_by(ecosystem: &EcosystemId, history: Vec<History>) -> Vec<History> {
+    history
+        .into_iter()
+        .filter(|history| match &history.metadata {
+            Some(HistoryMetadata::WalletRelyingParty(metadata)) => metadata
+                .ecosystem
+                .as_ref()
+                .is_none_or(|resolved_by| resolved_by == ecosystem),
+            _ => true,
+        })
+        .collect()
 }
 
 fn trust_purpose_from_history(
@@ -346,5 +369,63 @@ fn map_access_cert(
         )
     } else {
         (None, access_certificate.email, access_certificate.phone)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use shared_types::HistoryId;
+    use similar_asserts::assert_eq;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::clock::now_utc;
+    use crate::model::history::{HistoryEntityType, HistorySource, WalletRelyingPartyMetadata};
+
+    fn trust_event(ecosystem: Option<&str>) -> History {
+        History {
+            id: HistoryId::from(Uuid::new_v4()),
+            created_date: now_utc(),
+            action: HistoryAction::WrpRcReceived,
+            name: Default::default(),
+            target: None,
+            source: HistorySource::Core,
+            entity_id: None,
+            entity_type: HistoryEntityType::Proof,
+            metadata: Some(HistoryMetadata::WalletRelyingParty(
+                WalletRelyingPartyMetadata {
+                    ecosystem: ecosystem.map(EcosystemId::from),
+                    ..Default::default()
+                },
+            )),
+            organisation_id: None,
+            user: None,
+            metadata_blob_id: None,
+        }
+    }
+
+    #[test]
+    fn test_events_of_another_ecosystem_are_filtered_out() {
+        let mine = trust_event(Some("EUDI"));
+        let theirs = trust_event(Some("OTHER"));
+
+        let resolved = resolved_by(&EcosystemId::from("EUDI"), vec![mine.clone(), theirs]);
+
+        assert_eq!(
+            vec![mine.id],
+            resolved.iter().map(|h| h.id).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_untagged_legacy_events_are_kept() {
+        let legacy = trust_event(None);
+
+        let resolved = resolved_by(&EcosystemId::from("EUDI"), vec![legacy.clone()]);
+
+        assert_eq!(
+            vec![legacy.id],
+            resolved.iter().map(|h| h.id).collect::<Vec<_>>()
+        );
     }
 }

@@ -183,7 +183,7 @@ async fn test_get_credential_with_trust_information_success() {
                 entity_id: Some(credential.id.into()),
                 metadata: Some(HistoryMetadata::WalletRelyingParty(
                     WalletRelyingPartyMetadata {
-                        name: "Sprint Review WRP".to_string(),
+                        name: Some("Sprint Review WRP".to_string()),
                         ..Default::default()
                     },
                 )),

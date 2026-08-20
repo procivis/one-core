@@ -36,7 +36,7 @@ pub struct HistoryErrorMetadataDTO {
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 #[from(WalletRelyingPartyMetadata)]
 pub struct WalletRelyingPartyMetadataDTO {
-    pub name: String,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]

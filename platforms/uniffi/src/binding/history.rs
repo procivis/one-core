@@ -156,7 +156,7 @@ pub struct HistoryErrorMetadataBindingDTO {
 #[from(WalletRelyingPartyMetadataDTO)]
 #[uniffi(name = "WalletRelyingPartyMetadata")]
 pub struct WalletRelyingPartyMetadataBindingDTO {
-    pub name: String,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, From, uniffi::Record)]

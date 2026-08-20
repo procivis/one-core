@@ -164,7 +164,7 @@ pub(crate) struct UnexportableEntitiesResponseRestDTO {
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[from(one_core::service::history::dto::WalletRelyingPartyMetadataDTO)]
 pub(crate) struct WalletRelyingPartyMetadataRestDTO {
-    pub name: String,
+    pub name: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]

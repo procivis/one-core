@@ -151,8 +151,9 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
                 metadata: Some(
                     one_core::model::history::HistoryMetadata::WalletRelyingParty(
                         one_core::model::history::WalletRelyingPartyMetadata {
-                            name: "Test RP".to_string(),
+                            name: Some("Test RP".to_string()),
                             purpose,
+                            ecosystem: Some("EUDI".into()),
                         },
                     ),
                 ),
