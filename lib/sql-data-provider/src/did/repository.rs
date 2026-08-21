@@ -134,15 +134,15 @@ impl DidRepository for DidProvider {
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
-    async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError> {
-        let UpdateDidRequest {
-            id,
-            deactivated,
-            log,
-        } = request;
+    async fn update_did(
+        &self,
+        id: &DidId,
+        request: UpdateDidRequest,
+    ) -> Result<(), DataLayerError> {
+        let UpdateDidRequest { deactivated, log } = request;
 
         let did: did::ActiveModel = did::ActiveModel {
-            id: Unchanged(id),
+            id: Unchanged(*id),
             deactivated: deactivated.map(Set).unwrap_or_default(),
             log: log.map(Set).unwrap_or_default(),
             ..Default::default()

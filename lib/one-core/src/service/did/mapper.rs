@@ -204,12 +204,8 @@ pub(super) async fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, DidService
     Ok(did_keys)
 }
 
-pub(super) fn did_update_to_update_request(
-    did_id: DidId,
-    did_update: DidUpdate,
-) -> UpdateDidRequest {
+pub(super) fn did_update_to_update_request(did_update: DidUpdate) -> UpdateDidRequest {
     UpdateDidRequest {
-        id: did_id,
         deactivated: did_update.deactivated,
         log: did_update.log.map(Some),
     }

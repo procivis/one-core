@@ -25,7 +25,8 @@ pub trait DidRepository: Send + Sync {
 
     async fn get_did_list(&self, query: DidListQuery) -> Result<GetDidList, DataLayerError>;
 
-    async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError>;
+    async fn update_did(&self, id: &DidId, request: UpdateDidRequest)
+    -> Result<(), DataLayerError>;
 
     async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError>;
 }

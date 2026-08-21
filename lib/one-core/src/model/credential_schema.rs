@@ -236,10 +236,9 @@ pub type CredentialSchemaListQuery = ListQuery<
     CredentialSchemaListIncludeEntityTypeEnum,
 >;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateCredentialSchemaRequest {
-    pub id: CredentialSchemaId,
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
     pub layout_properties: Option<LayoutProperties>,

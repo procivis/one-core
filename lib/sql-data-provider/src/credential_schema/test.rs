@@ -471,18 +471,19 @@ async fn test_update_credential_schema_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .update_credential_schema(UpdateCredentialSchemaRequest {
-            id: credential_schema.id,
-            claim_schemas: None,
-            layout_properties: Some(LayoutProperties {
-                background: Some(BackgroundProperties {
-                    color: Some("color".to_string()),
-                    image: None,
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                layout_properties: Some(LayoutProperties {
+                    background: Some(BackgroundProperties {
+                        color: Some("color".to_string()),
+                        image: None,
+                    }),
+                    ..Default::default()
                 }),
                 ..Default::default()
-            }),
-            claim_mappings: None,
-        })
+            },
+        )
         .await;
     assert!(result.is_ok());
 
@@ -513,22 +514,23 @@ async fn test_update_credential_schema_claims_success() {
     let now = now_utc();
     let claim_schema_id = Uuid::new_v4().into();
     let result = repository
-        .update_credential_schema(UpdateCredentialSchemaRequest {
-            id: credential_schema.id,
-            claim_schemas: Some(vec![ClaimSchema {
-                id: claim_schema_id,
-                key: "new claim".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: now,
-                last_modified: now,
-                array: false,
-                metadata: false,
-                required: false,
-                translations: Default::default(),
-            }]),
-            layout_properties: None,
-            claim_mappings: None,
-        })
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: claim_schema_id,
+                    key: "new claim".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    array: false,
+                    metadata: false,
+                    required: false,
+                    translations: Default::default(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
     assert!(result.is_ok());
     let claim_schema = crate::entity::claim_schema::Entity::find_by_id(claim_schema_id)

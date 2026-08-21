@@ -160,10 +160,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
     async fn update_credential_schema(
         &self,
+        id: &CredentialSchemaId,
         request: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError> {
-        let id = &request.id;
-
         let layout_properties = match request.layout_properties {
             None => Unchanged(Default::default()),
             Some(layout_properties) => Set(Some(layout_properties.into())),
@@ -198,11 +197,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         localized_texts
                             .extend(claim_schema.translations.as_ref().await?.to_owned());
                     }
-                    let claim_schema_models = claim_schemas_to_model_vec(
-                        claim_schemas,
-                        &request.id,
-                        max_existing_order + 1,
-                    );
+                    let claim_schema_models =
+                        claim_schemas_to_model_vec(claim_schemas, id, max_existing_order + 1);
 
                     claim_schema::Entity::insert_many(claim_schema_models)
                         .exec(&self.db)

@@ -66,9 +66,10 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
 
     async fn update_credential_schema(
         &self,
+        id: &CredentialSchemaId,
         schema: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError> {
-        self.inner.update_credential_schema(schema).await
+        self.inner.update_credential_schema(id, schema).await
     }
 
     async fn get_credential_schema(

@@ -34,6 +34,7 @@ pub trait CredentialSchemaRepository: Send + Sync {
 
     async fn update_credential_schema(
         &self,
+        id: &CredentialSchemaId,
         schema: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError>;
 

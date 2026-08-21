@@ -116,9 +116,8 @@ pub type GetDidList = GetListResponse<Did>;
 
 pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct UpdateDidRequest {
-    pub id: DidId,
     pub deactivated: Option<bool>,
     pub log: Option<Option<String>>,
 }

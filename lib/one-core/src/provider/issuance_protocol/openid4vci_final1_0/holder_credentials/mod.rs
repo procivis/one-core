@@ -207,12 +207,14 @@ impl OpenID4VCIFinal1_0 {
 
         if !new_claim_schemas.is_empty() {
             self.credential_schema_repository
-                .update_credential_schema(UpdateCredentialSchemaRequest {
-                    id: schema.id,
-                    claim_schemas: Some(new_claim_schemas),
-                    layout_properties: None,
-                    claim_mappings: Some(new_mappings),
-                })
+                .update_credential_schema(
+                    &schema.id,
+                    UpdateCredentialSchemaRequest {
+                        claim_schemas: Some(new_claim_schemas),
+                        claim_mappings: Some(new_mappings),
+                        ..Default::default()
+                    },
+                )
                 .await
                 .error_while("updating credential schema")?;
         }

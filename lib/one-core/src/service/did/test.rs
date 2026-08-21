@@ -305,7 +305,7 @@ async fn test_update_did() {
     did_repository
         .expect_update_did()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut identifier_repository = MockIdentifierRepository::default();
     identifier_repository

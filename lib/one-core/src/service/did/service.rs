@@ -237,7 +237,7 @@ impl DidService {
                 .await
                 .error_while("deactivating DID")?;
             self.did_repository
-                .update_did(did_update_to_update_request(did.id, update))
+                .update_did(&did.id, did_update_to_update_request(update))
                 .await
                 .error_while("updating did")?;
 

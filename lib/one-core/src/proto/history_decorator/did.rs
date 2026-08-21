@@ -77,11 +77,15 @@ impl DidRepository for DidHistoryDecorator {
         self.inner.get_did_list(query).await
     }
 
-    async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError> {
-        self.inner.update_did(request.clone()).await?;
+    async fn update_did(
+        &self,
+        id: &DidId,
+        request: UpdateDidRequest,
+    ) -> Result<(), DataLayerError> {
+        self.inner.update_did(id, request.clone()).await?;
 
         if let Some(deactivated) = request.deactivated {
-            let did = self.inner.get_did(&request.id).await?;
+            let did = self.inner.get_did(id).await?;
 
             self.create_history(
                 did.id,
