@@ -310,6 +310,9 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260804_140000_add_ecosystem_to_interaction::Migration),
             Box::new(migrations::m20260805_083424_interaction_ecosystem_data::Migration),
             Box::new(migrations::m20260821_031302_remove_layout_type::Migration),
+            Box::new(
+                migrations::m20260821_071004_backfill_batch_parent_for_mdoc_credentials::Migration,
+            ),
         ]
     }
 }
