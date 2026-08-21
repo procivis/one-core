@@ -30,8 +30,8 @@ use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
-    CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO,
-    CredentialSchemaTranslationsRestDTO, KeyStorageSecurityRestEnum,
+    CredentialSchemaListItemResponseRestDTO, CredentialSchemaTranslationsRestDTO,
+    KeyStorageSecurityRestEnum,
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
@@ -273,8 +273,6 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     /// Part of the `credentialSchema` property.
     pub schema_id: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,

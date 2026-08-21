@@ -672,7 +672,6 @@ async fn to_credential_schema_detail_response(
         key_storage_security: credential_schema.key_storage_security,
         organisation_id: credential_schema.organisation.id(),
         schema_id,
-        layout_type: credential_schema.layout_type.into(),
         layout_properties: credential_schema.layout_properties.map(Into::into),
         allow_suspension: credential_schema.allow_suspension,
         requires_wallet_instance_attestation: credential_schema

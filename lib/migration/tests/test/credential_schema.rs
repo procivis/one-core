@@ -14,7 +14,6 @@ async fn test_db_schema_credential_schema() {
         "name",
         "organisation_id",
         "layout_properties",
-        "layout_type",
         "imported_source_url",
         "allow_suspension",
         "requires_wallet_instance_attestation",
@@ -91,11 +90,6 @@ async fn test_db_schema_credential_schema() {
         .column("layout_properties")
         .r#type(ColumnType::JsonBinary)
         .nullable(true);
-    credential_schema
-        .column("layout_type")
-        .r#type(ColumnType::String(None))
-        .nullable(false)
-        .default(None);
     credential_schema
         .column("imported_source_url")
         .r#type(ColumnType::String(None))

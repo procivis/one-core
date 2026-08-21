@@ -51,7 +51,6 @@ fn generate_credential_detail_response(
             revocation_method: None,
             organisation_id: Uuid::new_v4().into(),
             key_storage_security: None,
-            layout_type: None,
             schema_id: "".to_string(),
             layout_properties: None,
             allow_suspension: true,
@@ -189,7 +188,6 @@ fn generate_credential_matching_detail(
             }]
             .into(),
             key_storage_security: detail.schema.key_storage_security,
-            layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
             imported_source_url: detail.schema.imported_source_url,
             allow_suspension: detail.schema.allow_suspension,

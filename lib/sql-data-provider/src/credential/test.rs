@@ -9,7 +9,7 @@ use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialListQuery, CredentialRole,
     CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
-use one_core::model::credential_schema::{CredentialSchema, LayoutType};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
@@ -139,7 +139,6 @@ async fn setup_empty() -> TestSetup {
             .collect::<Vec<_>>()
             .into(),
         organisation: dummy_organisation(Some(organisation_id)).into(),
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,

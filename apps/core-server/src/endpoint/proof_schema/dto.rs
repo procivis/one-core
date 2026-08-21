@@ -182,7 +182,12 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     #[try_into(infallible)]
     pub schema_id: String,
-    #[try_into(with_fn = convert_inner, infallible)]
+    /// kept for backwards compatibility
+    #[serde(default)]
+    #[schema(ignore)]
+    #[try_into(skip)]
+    #[deprecated]
+    #[expect(unused)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
@@ -396,7 +401,6 @@ mod test {
                     key_storage_security: Some(KeyStorageSecurityRestEnum::Basic),
                     schema_id: "schema_id".to_string(),
                     imported_source_url: "imported_source_url".to_string(),
-                    layout_type: Some(CredentialSchemaLayoutType::Card),
                     layout_properties: Some(CredentialSchemaLayoutPropertiesRestDTO {
                         background: Some(CredentialSchemaBackgroundPropertiesRestDTO {
                             color: Some("color".to_string()),

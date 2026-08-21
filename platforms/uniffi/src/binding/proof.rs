@@ -35,7 +35,7 @@ use crate::OneCore;
 use crate::binding::credential::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
 use crate::binding::credential_schema::{
     CredentialSchemaLayoutPropertiesBindingDTO, CredentialSchemaTransactionCodeBindingDTO,
-    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum, LayoutTypeBindingEnum,
+    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum,
 };
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
@@ -742,8 +742,6 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,

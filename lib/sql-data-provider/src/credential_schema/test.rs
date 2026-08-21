@@ -4,7 +4,7 @@ use one_core::clock::now_utc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaListQuery, LayoutProperties,
-    LayoutType, UpdateCredentialSchemaRequest,
+    UpdateCredentialSchemaRequest,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::ListFilterValue;
@@ -156,7 +156,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                 .collect::<Vec<_>>()
                 .into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -230,7 +229,6 @@ async fn test_create_credential_schema_success() {
             .into(),
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -449,7 +447,6 @@ async fn test_delete_credential_schema_not_found() {
             }]
             .into(),
             key_storage_security: None,
-            layout_type: LayoutType::Document,
             layout_properties: None,
             imported_source_url: "".to_string(),
             allow_suspension: false,
@@ -484,7 +481,6 @@ async fn test_update_credential_schema_success() {
                 }),
                 ..Default::default()
             }),
-            layout_type: Some(LayoutType::Document),
             claim_mappings: None,
         })
         .await;
@@ -492,7 +488,6 @@ async fn test_update_credential_schema_success() {
 
     let db_schemas = credential_schema::Entity::find().all(&db).await.unwrap();
     assert_eq!(db_schemas.len(), 1);
-    assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
     assert_eq!(
         &db_schemas[0]
             .layout_properties
@@ -532,7 +527,6 @@ async fn test_update_credential_schema_claims_success() {
                 translations: Default::default(),
             }]),
             layout_properties: None,
-            layout_type: None,
             claim_mappings: None,
         })
         .await;

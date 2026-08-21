@@ -24,9 +24,7 @@ use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{
-    CredentialSchema, LayoutType, UpdateCredentialSchemaRequest,
-};
+use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -212,7 +210,6 @@ impl OpenID4VCIFinal1_0 {
                 .update_credential_schema(UpdateCredentialSchemaRequest {
                     id: schema.id,
                     claim_schemas: Some(new_claim_schemas),
-                    layout_type: None,
                     layout_properties: None,
                     claim_mappings: Some(new_mappings),
                 })
@@ -558,7 +555,6 @@ impl OpenID4VCIFinal1_0 {
         .await?;
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);
         schema.organisation = organisation.to_owned().into();
-        schema.layout_type = LayoutType::Card;
         schema.key_storage_security = interaction_data
             .proof_types_supported
             .as_ref()

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::common::SortDirection;
-use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::{ListPagination, ListSorting};
@@ -213,7 +213,6 @@ async fn test_create_proof_schema_already_exists() {
                     .into(),
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
-                    layout_type: LayoutType::Card,
                     layout_properties: None,
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
@@ -333,7 +332,6 @@ async fn test_create_proof_schema_success() {
                     .into(),
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
-                    layout_type: LayoutType::Card,
                     layout_properties: None,
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
@@ -1064,7 +1062,6 @@ async fn test_get_proof_schema_list_filter_formats() {
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
         key_storage_security: Set(None),
-        layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
         imported_source_url: Set("URL".to_string()),
         allow_suspension: Set(false),
@@ -1103,7 +1100,6 @@ async fn test_get_proof_schema_list_filter_formats() {
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
         key_storage_security: Set(None),
-        layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
         imported_source_url: Set("URL".to_string()),
         allow_suspension: Set(false),

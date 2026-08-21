@@ -91,7 +91,6 @@ pub(super) fn credential_from_unexportable_model(
             key_storage_security: convert_inner(value.credential_schema_key_storage_security),
             claim_schemas: claim_schemas.into(),
             organisation: Related::new(value.organisation_id, organisation_repository.to_owned()),
-            layout_type: value.credential_schema_layout_type.into(),
             layout_properties: None,
             allow_suspension: value.credential_schema_allow_suspension,
             requires_wallet_instance_attestation: value

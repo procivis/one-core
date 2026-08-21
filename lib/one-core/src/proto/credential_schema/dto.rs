@@ -7,9 +7,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::model;
-use crate::model::credential_schema::{
-    CodeTypeEnum, KeyStorageSecurity, LayoutType, TransactionCodeType,
-};
+use crate::model::credential_schema::{CodeTypeEnum, KeyStorageSecurity, TransactionCodeType};
 use crate::model::organisation::Organisation;
 use crate::proto::credential_schema::transaction_code::TransactionCodeLength;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
@@ -42,7 +40,6 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_wallet_instance_attestation: Option<bool>,
@@ -100,7 +97,6 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_wallet_instance_attestation: Option<bool>,

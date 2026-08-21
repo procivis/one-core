@@ -13,7 +13,6 @@ use super::OneCore;
 use super::common::SortDirection;
 use super::credential_schema::{
     CredentialSchemaLayoutPropertiesBindingDTO, KeyStorageSecurityBindingEnum,
-    LayoutTypeBindingEnum,
 };
 use super::mapper::optional_time;
 use crate::binding::credential::CredentialSchemaBindingDTO;
@@ -240,8 +239,6 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub schema_id: String,
     #[try_into(infallible)]
     pub imported_source_url: String,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible)]

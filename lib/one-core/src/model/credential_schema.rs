@@ -35,7 +35,6 @@ pub struct CredentialSchema {
     pub last_modified: OffsetDateTime,
     pub name: CredentialSchemaName,
     pub key_storage_security: Option<KeyStorageSecurity>,
-    pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
     pub imported_source_url: String,
     pub requires_wallet_instance_attestation: bool,
@@ -161,14 +160,6 @@ pub enum CredentialSchemaExactColumn {
     SchemaId,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum LayoutType {
-    Card,
-    Document,
-    SingleAttribute,
-}
-
 #[derive(
     Clone, Copy, Debug, Eq, Serialize, Deserialize, PartialEq, Display, Hash, PartialOrd, Ord,
 )]
@@ -251,6 +242,5 @@ pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
 }

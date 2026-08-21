@@ -18,7 +18,7 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::CredentialRole;
-use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
+use crate::model::credential_schema::{BackgroundProperties, LayoutProperties};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::http_client::HttpClient;
@@ -47,10 +47,6 @@ async fn test_format_with_layout() {
     assert_eq!(
         token["credentialSchema"]["metadata"]["layoutProperties"]["background"]["color"].as_str(),
         Some("color"),
-    );
-    assert_eq!(
-        token["credentialSchema"]["metadata"]["layoutType"].as_str(),
-        Some("CARD"),
     );
     assert_eq!(
         token["validUntil"].as_str(),
@@ -87,7 +83,6 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
         id: "credential-schema-id".to_string(),
         r#type: "FallbackSchema2024".to_string(),
         metadata: Some(CredentialSchemaMetadata {
-            layout_type: LayoutType::Card,
             layout_properties: LayoutProperties {
                 background: Some(BackgroundProperties {
                     color: Some("color".to_string()),

@@ -7,7 +7,7 @@ use shared_types::{
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::proof_schema::{ExactProofSchemaFilterColumn, ProofSchema};
 use crate::service::credential_schema::dto::{
@@ -174,7 +174,6 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_wallet_instance_attestation: Option<bool>,

@@ -14,7 +14,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
@@ -312,7 +312,6 @@ fn generic_credential() -> Credential {
             .into(),
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,

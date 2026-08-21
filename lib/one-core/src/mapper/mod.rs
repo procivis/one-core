@@ -431,7 +431,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
+    use crate::model::credential_schema::KeyStorageSecurity;
     use crate::model::credential_schema_format::CredentialSchemaFormat;
     use crate::model::did::{Did, DidType};
     use crate::model::identifier::{IdentifierData, IdentifierState};
@@ -506,7 +506,6 @@ mod tests {
                 }]
                 .into(),
                 key_storage_security: Some(KeyStorageSecurity::Basic),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 claim_schemas: claim_schemas.to_owned().into(),
                 organisation: dummy_organisation(None).into(),

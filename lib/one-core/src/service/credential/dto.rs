@@ -11,9 +11,7 @@ use time::OffsetDateTime;
 use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
 use crate::model::credential::ExactCredentialFilterColumn;
-use crate::model::credential_schema::{
-    KeyStorageSecurity, LayoutType, TransactionCode, TransactionCodeType,
-};
+use crate::model::credential_schema::{KeyStorageSecurity, TransactionCode, TransactionCodeType};
 use crate::model::history::TrustResolutionResult;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::service::certificate::dto::CertificateResponseDTO;
@@ -139,7 +137,6 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,

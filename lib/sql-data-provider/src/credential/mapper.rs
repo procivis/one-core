@@ -4,7 +4,7 @@ use one_core::model::claim::Claim;
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
 };
-use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
+use one_core::model::credential_schema::{CredentialSchema, TransactionCode};
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::{Related, RelatedVec};
@@ -362,8 +362,6 @@ pub(super) fn credential_list_model_to_repository_model(
             credential.credential_schema_organisation_id,
             organisation_repository.to_owned(),
         ),
-        // todo: this should be fixed in another ticket
-        layout_type: LayoutType::Card,
         layout_properties: credential
             .credential_schema_schema_layout_properties
             .map(|layout_properties| layout_properties.into()),

@@ -13,7 +13,7 @@ use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCore;
 use crate::binding::credential_schema::{
     CredentialClaimSchemaTranslationsBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
-    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum, LayoutTypeBindingEnum,
+    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum,
 };
 use crate::binding::history::TrustResolutionResultBindingEnum;
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
@@ -86,7 +86,6 @@ pub struct CredentialSchemaBindingDTO {
     pub revocation_method: Option<String>,
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub schema_id: String,
-    pub layout_type: Option<LayoutTypeBindingEnum>,
     pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,

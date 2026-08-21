@@ -10,7 +10,7 @@ use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType, TransactionCodeType,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, TransactionCodeType,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::credential_schema::dto::{
@@ -93,7 +93,6 @@ async fn test_parse_import_credential_schema_success() {
             }],
             key_storage_security: Some(KeyStorageSecurity::Basic),
             schema_id: "http://example.com/schema".to_string(),
-            layout_type: Some(LayoutType::Card),
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: None,
@@ -180,7 +179,6 @@ async fn test_parse_import_with_nested_claims_success() {
             }],
             key_storage_security: Some(KeyStorageSecurity::Basic),
             schema_id: "http://example.com/schema".to_string(),
-            layout_type: Some(LayoutType::Card),
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: None,
@@ -237,7 +235,6 @@ async fn test_importer_import_credential_schema_success() {
         }]
         .into(),
         organisation: dummy_organisation(None).into(),
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -300,7 +297,6 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         .into(),
         claim_schemas: vec![].into(),
         organisation: dummy_organisation(None).into(),
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -376,7 +372,6 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         .into(),
         claim_schemas: vec![].into(),
         organisation: dummy_organisation(None).into(),
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,

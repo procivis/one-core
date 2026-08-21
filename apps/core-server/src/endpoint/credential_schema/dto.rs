@@ -66,8 +66,6 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     /// the database ID of this schema record.
     pub schema_id: String,
     #[from(with_fn = convert_inner)]
-    pub layout_type: Option<CredentialSchemaLayoutType>,
-    #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
@@ -98,8 +96,6 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     pub imported_source_url: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
@@ -142,8 +138,6 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     /// the database ID of this schema record.
     pub schema_id: String,
     pub imported_source_url: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
@@ -366,11 +360,12 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     /// must meet for credential issuance.
     #[try_into(with_fn = convert_inner, infallible)]
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
-    /// Determines the general appearance of the credential in the holder's
-    /// wallet and the options supported in `layoutProperties`.
-    #[serde(default)]
-    #[schema(default = CredentialSchemaLayoutType::default)]
-    #[try_into(infallible)]
+    /// kept for backwards compatibility
+    #[serde(default, skip_serializing)]
+    #[schema(ignore)]
+    #[try_into(skip)]
+    #[deprecated]
+    #[expect(unused)]
     pub layout_type: CredentialSchemaLayoutType,
     /// Credential appearance design.
     #[serde(default)]
@@ -444,10 +439,9 @@ pub enum TransactionCodeTypeRestEnum {
     Alphanumeric,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]
+/// Deprecated, kept for backward compatibility
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[into(one_core::model::credential_schema::LayoutType)]
-#[from(one_core::model::credential_schema::LayoutType)]
 pub(crate) enum CredentialSchemaLayoutType {
     #[default]
     Card,
@@ -616,8 +610,12 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub schema_id: String,
     #[try_into(infallible)]
     pub imported_source_url: String,
+    /// kept for backwards compatibility
     #[serde(default)]
-    #[try_into(with_fn = convert_inner, infallible)]
+    #[schema(ignore)]
+    #[try_into(skip)]
+    #[deprecated]
+    #[expect(unused)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
@@ -848,10 +846,12 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     /// Specifies key storage security requirements.
     #[try_into(with_fn = convert_inner, infallible)]
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
-    /// Determines the general appearance of the credential in the holder's wallet.
-    #[serde(default)]
-    #[schema(default = CredentialSchemaLayoutType::default)]
-    #[try_into(infallible)]
+    /// kept for backwards compatibility
+    #[serde(default, skip_serializing)]
+    #[schema(ignore)]
+    #[try_into(skip)]
+    #[deprecated]
+    #[expect(unused)]
     pub layout_type: CredentialSchemaLayoutType,
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
@@ -989,8 +989,6 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
-    pub layout_type: Option<CredentialSchemaLayoutType>,
-    #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
@@ -1085,8 +1083,12 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     #[try_into(infallible)]
     pub imported_source_url: String,
+    /// kept for backwards compatibility
     #[serde(default)]
-    #[try_into(with_fn = convert_inner, infallible)]
+    #[schema(ignore)]
+    #[try_into(skip)]
+    #[deprecated]
+    #[expect(unused)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
@@ -1162,7 +1164,6 @@ mod test {
             key_storage_security: Some(KeyStorageSecurityRestEnum::Basic),
             schema_id: "schema_id".to_string(),
             imported_source_url: "imported_source_url".to_string(),
-            layout_type: Some(CredentialSchemaLayoutType::Card),
             layout_properties: Some(CredentialSchemaLayoutPropertiesRestDTO {
                 background: Some(CredentialSchemaBackgroundPropertiesRestDTO {
                     color: Some("color".to_string()),

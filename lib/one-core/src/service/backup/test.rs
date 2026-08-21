@@ -12,7 +12,7 @@ use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
@@ -128,7 +128,6 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                     }]
                     .into(),
                     organisation: dummy_organisation(None).into(),
-                    layout_type: LayoutType::Card,
                     layout_properties: None,
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,

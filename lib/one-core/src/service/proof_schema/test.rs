@@ -22,7 +22,7 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::proof_schema::{
@@ -425,7 +425,6 @@ async fn test_create_proof_schema_success() {
                 key_storage_security: None,
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -564,7 +563,6 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 claim_schemas: vec![claim_schema_software.clone()].into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -709,7 +707,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -874,7 +871,6 @@ async fn test_create_proof_schema_array_object_fail() {
                 ]
                 .into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -1045,7 +1041,6 @@ async fn test_create_proof_schema_array_success() {
                 ]
                 .into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -1209,7 +1204,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 }]
                 .into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -1429,7 +1423,6 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -1631,7 +1624,6 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -1840,7 +1832,6 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -2021,7 +2012,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 }]
                 .into(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
@@ -2081,7 +2071,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -2214,7 +2203,6 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 }]
                 .into(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
@@ -2274,7 +2262,6 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -2399,7 +2386,6 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -2479,7 +2465,6 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -2542,7 +2527,6 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
-                layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
@@ -2843,7 +2827,6 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
             .into(),
             imported_source_url: "CORE_URL".to_string(),
             key_storage_security: None,
-            layout_type: LayoutType::Card,
             layout_properties: None,
             claim_schemas: claims.into(),
             organisation: dummy_organisation(None).into(),
@@ -3092,7 +3075,6 @@ async fn test_create_proof_schema_verify_nested_generic(
                 key_storage_security: None,
                 claim_schemas: claim_schemas_cloned.into(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,

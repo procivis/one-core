@@ -111,7 +111,6 @@ impl CredentialSchemaService {
             organisation_id: request.organisation_id,
             claims,
             key_storage_security: request.key_storage_security,
-            layout_type: request.layout_type,
             layout_properties: request.layout_properties,
             allow_suspension: request.allow_suspension,
             allow_revocation,

@@ -23,8 +23,7 @@ use crate::mapper::credential_schema_claim::{
 };
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LayoutType,
-    LogoProperties,
+    BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LogoProperties,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -98,7 +97,6 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             last_modified: dto.schema.last_modified,
             name: dto.schema.name,
             key_storage_security: dto.schema.key_storage_security,
-            layout_type: dto.schema.layout_type,
             layout_properties,
             imported_source_url: dto.schema.imported_source_url,
             allow_revocation: Some(
@@ -207,7 +205,6 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             last_modified: now,
             name: dto.schema.name,
             key_storage_security: dto.schema.key_storage_security,
-            layout_type: dto.schema.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: self.parse_layout_properties(
                 dto.schema.layout_properties,
                 &claim_schemas,

@@ -35,7 +35,6 @@ async fn test_get_credential_schema_success() {
         .assert_eq(&credential_schema.requires_wallet_instance_attestation);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["revocationMethod"], "BITSTRINGSTATUSLIST");
-    assert_eq!(resp["layoutType"], "CARD");
     assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");
     assert_eq!(resp["layoutProperties"]["primaryAttribute"], "firstName");
     assert_eq!(resp["layoutProperties"]["secondaryAttribute"], "firstName");

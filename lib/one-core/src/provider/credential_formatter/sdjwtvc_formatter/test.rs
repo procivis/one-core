@@ -20,7 +20,6 @@ use uuid::Uuid;
 use crate::config::core_config::{DidType, KeyAlgorithmType};
 use crate::error::NestedError;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::LayoutType;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -676,7 +675,6 @@ async fn test_extract_credentials_swiyu() {
         }]
         .into(),
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         imported_source_url: "".to_string(),
         allow_suspension: false,
@@ -1114,7 +1112,6 @@ fn test_schema_id() {
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: None,
         allow_suspension: None,

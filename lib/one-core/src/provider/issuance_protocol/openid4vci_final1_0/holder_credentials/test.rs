@@ -7,7 +7,7 @@ use crate::clock::now_utc;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::service::test_utilities::dummy_organisation;
@@ -498,7 +498,6 @@ fn credential_schema(
         last_modified: now,
         name: "schema".to_string(),
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         imported_source_url: "CORE_URL".to_string(),
         requires_wallet_instance_attestation: false,

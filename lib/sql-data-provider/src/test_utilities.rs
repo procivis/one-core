@@ -28,7 +28,7 @@ use uuid::Uuid;
 
 use crate::entity::blob::BlobType;
 use crate::entity::credential::{CredentialRole, CredentialType};
-use crate::entity::credential_schema::{KeyStorageSecurity, LayoutType};
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::interaction::InteractionType;
@@ -194,7 +194,6 @@ pub async fn insert_credential_schema_to_database(
         organisation_id: Set(organisation_id),
         key_storage_security: Set(key_storage_security),
         deleted_at: Set(deleted_at),
-        layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
         allow_suspension: Set(true),
         requires_wallet_instance_attestation: Set(key_storage_security.is_some()),

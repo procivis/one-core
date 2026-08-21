@@ -16,7 +16,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -811,7 +811,6 @@ async fn dummy_credential() -> Credential {
                     translations: Default::default(),
                 }]
                 .into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 organisation: dummy_organisation(None).into(),
                 allow_suspension: true,

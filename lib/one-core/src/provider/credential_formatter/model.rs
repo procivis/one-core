@@ -24,7 +24,7 @@ use crate::config::core_config::{
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
-use crate::model::credential_schema::{LayoutProperties, LayoutType};
+use crate::model::credential_schema::LayoutProperties;
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::TokenError;
 use crate::provider::did_method::error::DidMethodError;
@@ -261,7 +261,6 @@ pub struct CredentialSchema {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaMetadata {
     pub layout_properties: LayoutProperties,
-    pub layout_type: LayoutType,
 }
 
 impl CredentialSchema {

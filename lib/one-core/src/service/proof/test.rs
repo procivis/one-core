@@ -27,7 +27,7 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
@@ -277,7 +277,6 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             .into(),
             key_storage_security: None,
             imported_source_url: "CORE_URL".to_string(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),
@@ -372,7 +371,6 @@ async fn test_get_proof_exists() {
                             }]
                             .into(),
                             organisation: dummy_organisation(None).into(),
-                            layout_type: LayoutType::Card,
                             layout_properties: None,
                             allow_suspension: true,
                             requires_wallet_instance_attestation: false,
@@ -500,7 +498,6 @@ async fn test_get_proof_with_array_holder() {
             .into(),
             claim_schemas: vec![claim_schema.clone()].into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -750,7 +747,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             .into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -1015,7 +1011,6 @@ async fn test_get_proof_with_object_array_holder() {
             .into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -1285,7 +1280,6 @@ async fn test_get_proof_with_array() {
             .into(),
             claim_schemas: vec![claim_schema.clone()].into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -1543,7 +1537,6 @@ async fn test_get_proof_with_array_in_object() {
             .into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -1817,7 +1810,6 @@ async fn test_get_proof_with_object_array() {
             .into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,

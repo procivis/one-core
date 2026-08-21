@@ -17,7 +17,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
-use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -192,7 +192,6 @@ async fn test_presentation_reject_ok() {
                         }]
                         .into(),
                         key_storage_security: None,
-                        layout_type: LayoutType::Card,
                         layout_properties: None,
                         claim_schemas: Default::default(),
                         organisation: dummy_organisation(Some(organisation_id)).into(),
@@ -470,7 +469,6 @@ async fn test_get_presentation_definition_v2() {
                 claim_mappings: claim_mappings.into(),
             }]
             .into(),
-            layout_type: LayoutType::Card,
             organisation: dummy_organisation(Some(organisation_id)).into(),
             layout_properties: None,
             claim_schemas: claim_schemas.values().cloned().collect::<Vec<_>>().into(),

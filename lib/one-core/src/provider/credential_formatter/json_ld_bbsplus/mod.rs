@@ -32,7 +32,7 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierData;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
@@ -501,7 +501,6 @@ impl CredentialFormatter for JsonLdBbsplus {
             last_modified: now,
             name: schema_name,
             key_storage_security: None,
-            layout_type: LayoutType::Card,
             layout_properties: None,
             imported_source_url: "".to_string(),
             allow_suspension: false,

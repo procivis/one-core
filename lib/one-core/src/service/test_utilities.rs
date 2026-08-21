@@ -22,7 +22,7 @@ use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
@@ -369,7 +369,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             }]
             .into(),
             organisation: dummy_organisation(None).into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -572,7 +571,6 @@ pub fn dummy_credential_schema_with_format(format: &str) -> CredentialSchema {
         batch_size: None,
         claim_schemas: Default::default(),
         organisation: dummy_organisation(None).into(),
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,

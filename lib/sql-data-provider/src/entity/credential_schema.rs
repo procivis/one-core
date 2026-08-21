@@ -20,8 +20,6 @@ pub struct Model {
     pub name: String,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub organisation_id: OrganisationId,
-    #[sea_orm(column_type = "Text")]
-    pub layout_type: LayoutType,
     #[sea_orm(column_type = "Json")]
     pub layout_properties: Option<LayoutProperties>,
     pub imported_source_url: String,
@@ -56,19 +54,6 @@ pub enum KeyStorageSecurity {
     EnhancedBasic,
     #[sea_orm(string_value = "BASIC")]
     Basic,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
-#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
-#[from(model::credential_schema::LayoutType)]
-#[into(model::credential_schema::LayoutType)]
-pub enum LayoutType {
-    #[sea_orm(string_value = "CARD")]
-    Card,
-    #[sea_orm(string_value = "DOCUMENT")]
-    Document,
-    #[sea_orm(string_value = "SINGLE_ATTRIBUTE")]
-    SingleAttribute,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]

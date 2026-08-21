@@ -18,7 +18,6 @@ use shared_types::{CredentialSchemaId, OrganisationId};
 use crate::common::list_query_with_custom_model;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{claim_schemas_to_model_vec, credential_schema_from_models};
-use crate::entity::credential_schema::LayoutType;
 use crate::entity::{
     claim_schema, credential_schema, credential_schema_format,
     credential_schema_format_claim_schema,
@@ -165,11 +164,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     ) -> Result<(), DataLayerError> {
         let id = &request.id;
 
-        let layout_type = match request.layout_type {
-            None => Unchanged(LayoutType::Card),
-            Some(layout_type) => Set(layout_type.into()),
-        };
-
         let layout_properties = match request.layout_properties {
             None => Unchanged(Default::default()),
             Some(layout_properties) => Set(Some(layout_properties.into())),
@@ -178,7 +172,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let update_model = credential_schema::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(one_core::clock::now_utc()),
-            layout_type,
             layout_properties,
             ..Default::default()
         };

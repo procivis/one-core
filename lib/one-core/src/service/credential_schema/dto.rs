@@ -15,8 +15,7 @@ use uuid::Uuid;
 use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchemaExactColumn, KeyStorageSecurity, LayoutType, TransactionCode,
-    TransactionCodeType,
+    CredentialSchemaExactColumn, KeyStorageSecurity, TransactionCode, TransactionCodeType,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 pub use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
@@ -43,7 +42,6 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
@@ -93,7 +91,6 @@ pub struct CredentialSchemaDetailV2ResponseDTO {
     pub claims: Vec<CredentialClaimSchemaV2DTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
@@ -124,7 +121,6 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
@@ -267,7 +263,6 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub formats: Vec<CredentialSchemaFormatResponseDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub imported_source_url: String,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
@@ -285,7 +280,6 @@ pub struct CreateCredentialSchemaV2RequestDTO {
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
-    pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub allow_suspension: Option<bool>,
     pub allow_revocation: Option<bool>,
@@ -327,7 +321,6 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
-    pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,
     pub allow_suspension: Option<bool>,
@@ -488,8 +481,6 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub schema_id: String,
     pub imported_source_url: String,
     #[into(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutType>,
-    #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_wallet_instance_attestation: Option<bool>,
@@ -577,9 +568,6 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     #[serde(default)]
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub imported_source_url: String,
-    #[serde(default)]
-    #[into(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutType>,
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,

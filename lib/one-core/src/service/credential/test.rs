@@ -27,7 +27,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -200,7 +200,6 @@ async fn generic_credential() -> Credential {
                 key_storage_security: None,
                 claim_schemas: vec![claim_schema].into(),
                 organisation: organisation.into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -316,7 +315,6 @@ async fn generic_credential_list_entity() -> Credential {
                 .into(),
                 claim_schemas: Default::default(),
                 organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -3162,7 +3160,6 @@ fn generate_credential_schema_with_claim_schemas(
         last_modified: now,
         name: "nested".to_string(),
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -3780,7 +3777,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
                 .into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -4565,7 +4561,6 @@ async fn test_get_credential_success_array_index_sorting() {
                 .into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -4987,7 +4982,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                 .into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -5264,7 +5258,6 @@ async fn test_get_credential_success_array_single_element() {
                 .into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
-                layout_type: LayoutType::Card,
                 layout_properties: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -5422,7 +5415,6 @@ async fn test_create_credential_array(
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -5839,7 +5831,6 @@ async fn test_create_credential_invalid_certificate_role() {
         }]
         .into(),
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         claim_schemas: claim_schemas.into(),
         organisation: organisation.clone().into(),

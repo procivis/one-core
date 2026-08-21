@@ -160,7 +160,6 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             imported_source_url: Set(value.imported_source_url),
             organisation_id: Set(value.organisation.id()),
             key_storage_security: Set(convert_inner(value.key_storage_security)),
-            layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
             allow_suspension: Set(value.allow_suspension),
             requires_wallet_instance_attestation: Set(value.requires_wallet_instance_attestation),
@@ -232,7 +231,6 @@ pub(super) fn credential_schema_from_models(
             credential_schema.organisation_id,
             organisation_repository.to_owned(),
         ),
-        layout_type: credential_schema.layout_type.into(),
         layout_properties: if skip_layout_properties {
             None
         } else {

@@ -17,7 +17,7 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::CredentialRole;
-use crate::model::credential_schema::{LayoutProperties, LayoutType};
+use crate::model::credential_schema::LayoutProperties;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::jwt::model::JWTPayload;
@@ -62,7 +62,6 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
                 picture_attribute: None,
                 code: None,
             },
-            layout_type: LayoutType::Card,
         }),
     };
 
@@ -771,7 +770,6 @@ fn test_schema_id() {
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: None,
         allow_suspension: None,

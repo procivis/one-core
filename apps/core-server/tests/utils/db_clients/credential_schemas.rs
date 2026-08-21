@@ -4,7 +4,7 @@ use std::sync::Arc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
-    CredentialSchemaListQuery, KeyStorageSecurity, LayoutProperties, LayoutType, LogoProperties,
+    CredentialSchemaListQuery, KeyStorageSecurity, LayoutProperties, LogoProperties,
     TransactionCode,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
@@ -152,7 +152,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
                 primary_attribute: Some("firstName".to_owned()),
                 secondary_attribute: Some("firstName".to_owned()),
@@ -254,7 +253,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
@@ -382,7 +380,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
@@ -510,7 +507,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
@@ -650,7 +646,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
@@ -932,7 +927,6 @@ impl CredentialSchemasDB {
             .into(),
             deleted_at: None,
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
@@ -1009,7 +1003,6 @@ impl CredentialSchemasDB {
             .into(),
             deleted_at: None,
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -1091,7 +1084,6 @@ impl CredentialSchemasDB {
             .into(),
             deleted_at: None,
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
                 background: Some(BackgroundProperties {
                     color: Some("color".to_string()),
@@ -1216,7 +1208,6 @@ impl CredentialSchemasDB {
             ]
             .into(),
             claim_schemas: claim_schemas.into(),
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: false,
             requires_wallet_instance_attestation: false,

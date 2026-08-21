@@ -21,9 +21,7 @@ use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType,
 };
-use one_core::model::credential_schema::{
-    CredentialSchema, KeyStorageSecurity, LayoutProperties, LayoutType,
-};
+use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutProperties};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::did::{Did, DidType, RelatedKey};
@@ -625,7 +623,6 @@ pub struct TestingCredentialSchemaParams {
     pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<Option<KeyStorageSecurity>>,
     pub allow_revocation: Option<bool>,
-    pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: Option<String>,
 }
@@ -689,7 +686,6 @@ pub async fn create_credential_schema(
         }]
         .into(),
         claim_schemas: vec![claim_schema].into(),
-        layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -771,7 +767,6 @@ pub async fn create_credential_schema_with_claims(
         }]
         .into(),
         claim_schemas: claim_schemas.into(),
-        layout_type: LayoutType::Card,
         layout_properties: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,

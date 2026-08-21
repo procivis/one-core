@@ -125,7 +125,6 @@ pub(crate) async fn vcdm_from_credential_and_published_claims(
         convert_inner(credential_schema.layout_properties.clone());
     let metadata = layout_properties.map(|layout_properties| CredentialSchemaMetadata {
         layout_properties: layout_properties.into(),
-        layout_type: credential_schema.layout_type.clone(),
     });
 
     let vcdm_schema = CredentialSchema {

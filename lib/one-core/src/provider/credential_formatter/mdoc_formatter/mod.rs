@@ -639,7 +639,6 @@ impl CredentialFormatter for MdocFormatter {
             last_modified: now,
             name: doctype.to_owned(),
             key_storage_security: None,
-            layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
             imported_source_url: "".to_string(),
             allow_suspension: false,

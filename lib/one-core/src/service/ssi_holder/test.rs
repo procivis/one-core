@@ -20,7 +20,7 @@ use super::dto::HandleInvitationRequestDTO;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -1227,7 +1227,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             claim_schemas: vec![claim_schema].into(),
             organisation: dummy_organisation(organisation_id).into(),
             deleted_at: None,
-            layout_type: LayoutType::Card,
             layout_properties: None,
             allow_suspension: true,
             requires_wallet_instance_attestation: false,

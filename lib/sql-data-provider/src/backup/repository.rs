@@ -284,10 +284,6 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::Expiration,
                 "credential_schema_expiration",
             )
-            .column_as(
-                credential_schema::Column::LayoutType,
-                "credential_schema_layout_type",
-            )
             .column_as(organisation::Column::Id, "organisation_id")
             .expr_as_(
                 coalesce_to_empty_array(

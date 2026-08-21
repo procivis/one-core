@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_core::model::credential_schema::{
-    CredentialSchemaExactColumn, KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn,
+    CredentialSchemaExactColumn, KeyStorageSecurity, SortableCredentialSchemaColumn,
     TransactionCodeType,
 };
 use one_core::service::credential_schema::dto::{
@@ -194,16 +194,6 @@ pub struct CredentialSchemaShareResponseBindingDTO {
 pub enum SortableCredentialSchemaColumnBindingEnum {
     Name,
     CreatedDate,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
-#[from(LayoutType)]
-#[into(LayoutType)]
-#[uniffi(name = "LayoutType")]
-pub enum LayoutTypeBindingEnum {
-    Card,
-    Document,
-    SingleAttribute,
 }
 
 #[derive(Clone, Debug, From, TryInto, uniffi::Record)]
@@ -413,8 +403,6 @@ pub struct CredentialSchemaDetailV2BindingDTO {
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
-    #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
@@ -445,8 +433,6 @@ pub struct CredentialSchemaListItemV2BindingDTO {
     #[from(with_fn = convert_inner)]
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub imported_source_url: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
@@ -518,8 +504,6 @@ pub struct CreateCredentialSchemaV2RequestBindingDTO {
     pub claims: Vec<CredentialClaimSchemaRequestBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
-    #[try_into(infallible)]
-    pub layout_type: LayoutTypeBindingEnum,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible)]
@@ -587,8 +571,6 @@ pub struct ImportCredentialSchemaV2RequestSchemaBindingDTO {
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     #[try_into(infallible)]
     pub imported_source_url: String,
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible)]

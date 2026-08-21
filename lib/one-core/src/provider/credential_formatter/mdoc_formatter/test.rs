@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::*;
 use crate::clock::run_with_mocked_time_async;
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
+use crate::model::credential_schema::{BackgroundProperties, LayoutProperties};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
@@ -212,7 +212,6 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         id: "credential-schema-id".to_string(),
         r#type: "Mdoc".to_string(),
         metadata: Some(CredentialSchemaMetadata {
-            layout_type: LayoutType::Card,
             layout_properties: LayoutProperties {
                 background: Some(BackgroundProperties {
                     color: Some("color".to_string()),
@@ -971,7 +970,6 @@ async fn format_and_extract_ecdsa() -> DetailCredential {
         id: "credential-schema-id".to_string(),
         r#type: "Mdoc".to_string(),
         metadata: Some(CredentialSchemaMetadata {
-            layout_type: LayoutType::Card,
             layout_properties: LayoutProperties {
                 background: Some(BackgroundProperties {
                     color: Some("color".to_string()),
@@ -1194,7 +1192,6 @@ fn test_credential_schema_id() {
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         key_storage_security: None,
-        layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: Some(schema_id.clone()),
         allow_suspension: None,
