@@ -52,7 +52,7 @@ impl CredentialValidityManagerImpl {
             Err(IssuanceProtocolError::RefreshNotPossible)
                 if credential_expired(&detail_credential) =>
             {
-                CredentialStateEnum::Revoked
+                CredentialStateEnum::Expired
             }
             Err(err) => {
                 tracing::warn!(%err, "Credential refresh failure");
@@ -173,8 +173,8 @@ fn credential_expired(detail_credential: &DetailCredential) -> bool {
 fn credential_requires_update(detail_credential: &DetailCredential) -> bool {
     let now = crate::clock::now_utc();
 
-    if let Some(valid_until) = detail_credential.update_at {
-        return valid_until < now;
+    if let Some(update_at) = detail_credential.update_at {
+        return update_at < now;
     }
 
     credential_expired(detail_credential)

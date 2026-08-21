@@ -1131,7 +1131,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let resp = resp.json_value().await;
 
     resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("REVOKED", resp[0]["status"]);
+    assert_eq!("EXPIRED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
@@ -1146,7 +1146,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         expired_credential.as_ref().as_bytes().to_vec()
     );
     let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(updated_credentials.state, CredentialStateEnum::Revoked,);
+    assert_eq!(updated_credentials.state, CredentialStateEnum::Expired);
 }
 
 #[tokio::test]

@@ -773,11 +773,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .error_while("getting credential format type")?
             .r#type;
 
-        if format_type == FormatType::Mdoc {
-            // Mdoc flow ends here. Nothing else to do for MDOC, since it does not have revocation mechanism
-            return self.update_mdoc(&credential, force_refresh).await;
-        }
-
         match credential.r#type {
             CredentialType::Single => {
                 let (result, _) = self
@@ -787,6 +782,15 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                         force_refresh,
                     )
                     .await?;
+
+                // for Single MDOC credentials we also update MSO (if possible)
+                if result.success
+                    && result.status == CredentialStateEnum::Accepted
+                    && format_type == FormatType::Mdoc
+                {
+                    return self.update_mdoc(&credential, force_refresh).await;
+                }
+
                 Ok(result)
             }
             CredentialType::BatchParent => {
