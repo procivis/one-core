@@ -134,6 +134,13 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     /// Policy-level configuration for this organization.
     #[from(with_fn = convert_inner)]
     pub configuration: Option<OrganisationConfigurationRestDTO>,
+    /// The ecosystems offered to this organization by its wallet or verifier
+    /// provider, annotated with whether the organization currently selected
+    /// each one. Ecosystems this system is not configured for are omitted.
+    /// If there is no wallet or verifier provider, the ecosystems configured
+    /// in the local system are returned.
+    #[from(with_fn = convert_inner)]
+    pub ecosystems: Vec<OrganisationEcosystemRestDTO>,
     #[from(with_fn = convert_inner)]
     pub wallet_provider: Option<WalletProviderDetailResponseRestDTO>,
     #[from(with_fn = convert_inner)]
@@ -190,7 +197,6 @@ pub(crate) struct VerifierProviderDetailResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OrganisationConfigurationRestDTO {
-    pub selected_ecosystems: Vec<EcosystemId>,
     /// When true, the verifier will only validate presentations of
     /// credentials issued by trusted issuers.
     #[deprecated = "use enforceEcosystemAsVerifier instead"]

@@ -91,6 +91,8 @@ async fn holder_register_wallet_unit_successfully() {
 
     let mock_server = MockServer::builder().start().await;
 
+    // the organisation detail reports the ecosystems of the wallet provider too, but
+    // reuses the metadata cached during the registration
     Mock::given(method(Method::GET))
         .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
         .respond_with(ResponseTemplate::new(200).set_body_json(metadata_without_user_auth()))

@@ -25,9 +25,9 @@ use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use crate::service::managed_instance::dto::ProviderTrustCollectionDTO;
+use crate::service::managed_instance::dto::{EcosystemMetadataDTO, ProviderTrustCollectionDTO};
 use crate::service::organisation::dto::{
-    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
+    CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
     TrustCollectionInfoDTO, UpsertOrganisationRequestDTO, VerifierProviderDetailResponseDTO,
     WalletProviderDetailResponseDTO,
@@ -83,6 +83,7 @@ impl From<UpsertOrganisationRequestDTO> for UpdateOrganisationRequest {
 
 pub(super) fn detail_from_model(
     organisation: Organisation,
+    ecosystems: Vec<EcosystemInfoDTO>,
     wallet_provider_issuer: Option<Identifier>,
     verifier_provider_issuer: Option<Identifier>,
     wallet_instance: Option<InstanceDetailResponseDTO>,
@@ -94,6 +95,7 @@ pub(super) fn detail_from_model(
         last_modified: organisation.last_modified,
         deactivated_at: organisation.deactivated_at,
         configuration: Some(organisation.configuration.into()),
+        ecosystems,
         wallet_provider: map_to_wallet_provider(
             organisation.wallet_provider,
             wallet_provider_issuer,
@@ -261,6 +263,47 @@ pub(super) fn group_remote_trust_collections_by_local_id(
     }
 
     Ok(roles_by_local_id)
+}
+
+/// Folds ecosystems advertised by more than one provider into a single entry: an
+/// organisation with both a wallet and a verifier provider is offered the same ecosystem
+/// by each of them, and it participates in it as a whole rather than per provider.
+/// Display information is taken from the first observed entry.
+pub(super) fn merge_ecosystems(ecosystems: Vec<EcosystemMetadataDTO>) -> Vec<EcosystemMetadataDTO> {
+    let mut merged: Vec<EcosystemMetadataDTO> = vec![];
+
+    for ecosystem in ecosystems {
+        let Some(existing) = merged
+            .iter_mut()
+            .find(|existing| existing.name == ecosystem.name)
+        else {
+            merged.push(ecosystem);
+            continue;
+        };
+        for collection in ecosystem.trust_collections {
+            if !existing
+                .trust_collections
+                .iter()
+                .any(|existing| existing.id == collection.id)
+            {
+                existing.trust_collections.push(collection);
+            }
+        }
+        extend_unique(
+            &mut existing.credential_schemas,
+            ecosystem.credential_schemas,
+        );
+        extend_unique(&mut existing.proof_schemas, ecosystem.proof_schemas);
+    }
+    merged
+}
+
+fn extend_unique(target: &mut Vec<String>, values: Vec<String>) {
+    for value in values {
+        if !target.contains(&value) {
+            target.push(value);
+        }
+    }
 }
 
 pub(super) async fn prepare_trust_collection_info(

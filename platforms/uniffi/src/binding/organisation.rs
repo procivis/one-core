@@ -42,7 +42,8 @@ impl OneCore {
             .await?)
     }
 
-    /// Returns details of an existing organization.
+    /// Returns details of an existing organization, including the ecosystems
+    /// offered to it.
     #[uniffi::method]
     pub async fn get_organisation(
         &self,
@@ -52,23 +53,6 @@ impl OneCore {
         let id = into_id(&id)?;
         let response = core.organisation_service.get_organisation(&id).await?;
         Ok(response.into())
-    }
-
-    /// Returns the ecosystems offered to this organization by its wallet or
-    /// verifier provider, annotated with whether the organization currently
-    /// selected each one. Ecosystems this system is not configured for are
-    /// omitted.
-    /// If there is no wallet or verifier provider, the ecosystems
-    /// configured in the local system are returned.
-    #[uniffi::method]
-    pub async fn get_organisation_ecosystems(
-        &self,
-        id: String,
-    ) -> Result<Vec<EcosystemInfoBindingDTO>, BindingError> {
-        let core = self.use_core().await?;
-        let id = into_id(&id)?;
-        let response = core.organisation_service.get_ecosystems(&id).await?;
-        Ok(convert_inner(response))
     }
 }
 
@@ -141,6 +125,13 @@ pub struct GetOrganisationDetailsResponseBindingDTO {
     /// Policy-level configuration for this organization.
     #[from(with_fn = convert_inner)]
     pub configuration: Option<OrganisationConfigurationBindingDTO>,
+    /// The ecosystems offered to this organization by its wallet or verifier
+    /// provider, annotated with whether the organization currently selected
+    /// each one. Ecosystems this system is not configured for are omitted.
+    /// If there is no wallet or verifier provider, the ecosystems configured
+    /// in the local system are returned.
+    #[from(with_fn = convert_inner)]
+    pub ecosystems: Vec<EcosystemInfoBindingDTO>,
     #[from(with_fn = convert_inner)]
     pub wallet_provider: Option<WalletProviderDetailResponseBindingDTO>,
     #[from(with_fn = convert_inner)]
@@ -194,8 +185,6 @@ pub(crate) struct VerifierProviderDetailResponseBindingDTO {
 #[uniffi(name = "OrganisationConfiguration")]
 #[from(OrganisationConfigurationDTO)]
 pub(crate) struct OrganisationConfigurationBindingDTO {
-    #[from(with_fn = convert_inner)]
-    pub selected_ecosystems: Vec<String>,
     /// When true, the issuer will only issue credentials to holders of one of
     /// the selected ecosystems.
     pub enforce_ecosystem_as_issuer: bool,

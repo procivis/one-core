@@ -1,11 +1,65 @@
 use one_core::model::instance::{InstanceRole, InstanceStatus, WalletProviderType};
+use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
+use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
+use wiremock::http::Method;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
 use crate::utils::field_match::FieldHelpers;
+
+fn wallet_provider_metadata() -> serde_json::Value {
+    json!({
+        "name": "PROCIVIS_ONE",
+        "walletUnitAttestation": {
+            "appIntegrityCheckRequired": false,
+            "enabled": true,
+            "required": true
+        },
+        "featureFlags": {
+            "ecosystemsEnabled": true,
+            "refreshCredentialBatchEnabled": true
+        },
+        "trustCollections": [],
+        "ecosystems": [ecosystem_metadata()]
+    })
+}
+
+fn verifier_provider_metadata() -> serde_json::Value {
+    json!({
+        "name": "PROCIVIS_ONE",
+        "verifierAppAttestation": {
+            "appIntegrityCheckRequired": false,
+            "enabled": true,
+            "required": true
+        },
+        "featureFlags": {
+            "ecosystemsEnabled": true,
+            "accessCertificateProvisioningEnabled": false
+        },
+        "trustCollections": [],
+        "proofSchemas": [],
+        "credentialSchemas": [],
+        "ecosystems": [ecosystem_metadata()]
+    })
+}
+
+fn ecosystem_metadata() -> serde_json::Value {
+    json!({
+        "name": "EUDI",
+        "displayName": [{ "lang": "en", "value": "EUDI" }],
+        "description": [{ "lang": "en", "value": "EUDI ecosystem" }],
+        "logo": "data:image/png;base64,logo",
+        "defaultSelected": true,
+        "trustCollections": [],
+        "credentialSchemas": [],
+        "proofSchemas": []
+    })
+}
 
 #[tokio::test]
 async fn test_get_organisation_success() {
@@ -63,6 +117,14 @@ async fn test_get_organisation_returns_wallet_instance() {
             },
         )
         .await;
+    let mock_server = MockServer::builder().start().await;
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(wallet_provider_metadata()))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
     let holder_wallet_instance = context
         .db
         .holder_wallet_units
@@ -73,7 +135,7 @@ async fn test_get_organisation_returns_wallet_instance() {
                 status: Some(InstanceStatus::Active),
                 provider_type: Some(WalletProviderType::ProcivisOne),
                 provider_name: Some("PROCIVIS_ONE".to_string()),
-                provider_url: Some("https://wallet.provider".to_string()),
+                provider_url: Some(mock_server.uri()),
                 provider_wallet_unit_id: Some(Uuid::new_v4().into()),
                 role: Some(InstanceRole::Wallet),
                 user_nonce: None,
@@ -90,12 +152,21 @@ async fn test_get_organisation_returns_wallet_instance() {
     resp["id"].assert_eq(&organisation.id);
 
     let wallet_instance = resp["walletInstance"].as_object().unwrap();
-    assert_eq!(wallet_instance["providerUrl"], "https://wallet.provider");
+    assert_eq!(wallet_instance["providerUrl"], mock_server.uri());
     assert_eq!(wallet_instance["id"], holder_wallet_instance.id.to_string());
     assert_eq!(wallet_instance["providerName"], "PROCIVIS_ONE");
     assert_eq!(wallet_instance["authenticationKeyType"], "ECDSA");
 
+    // the ecosystems advertised by the wallet provider, none of them selected yet
+    let ecosystems = resp["ecosystems"].as_array().unwrap();
+    assert_eq!(ecosystems.len(), 1);
+    assert_eq!(ecosystems[0]["name"], "EUDI");
+    assert_eq!(ecosystems[0]["selected"], false);
+    assert_eq!(ecosystems[0]["defaultSelected"], true);
+    assert_eq!(ecosystems[0]["logo"], "data:image/png;base64,logo");
+
     let configuration = resp["configuration"].as_object().unwrap();
+    assert!(!configuration.contains_key("selectedEcosystems"));
     assert_eq!(configuration["trustedRpRequired"], false);
     assert_eq!(configuration["trustedIssuerRequired"], false);
     assert_eq!(configuration["trustedWalletProviderRequired"], false);
@@ -160,6 +231,14 @@ async fn test_get_organisation_with_verifier_instance_success() {
             },
         )
         .await;
+    let mock_server = MockServer::builder().start().await;
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/verifier-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(verifier_provider_metadata()))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
     let verifier_instance = context
         .db
         .holder_wallet_units
@@ -168,6 +247,7 @@ async fn test_get_organisation_with_verifier_instance_success() {
             Some(key),
             TestHolderWalletInstanceParams {
                 role: Some(InstanceRole::Verifier),
+                provider_url: Some(mock_server.uri()),
                 ..Default::default()
             },
         )
@@ -189,12 +269,49 @@ async fn test_get_organisation_with_verifier_instance_success() {
         verifier_instance.id.to_string()
     );
     assert_eq!(verifier_instance_resp["providerName"], "PROCIVIS_ONE");
-    assert_eq!(
-        verifier_instance_resp["providerUrl"],
-        "https://wallet.provider"
-    );
+    assert_eq!(verifier_instance_resp["providerUrl"], mock_server.uri());
     assert_eq!(verifier_instance_resp["authenticationKeyType"], "ECDSA");
+
+    // the ecosystems advertised by the verifier provider
+    let ecosystems = resp["ecosystems"].as_array().unwrap();
+    assert_eq!(ecosystems.len(), 1);
+    assert_eq!(ecosystems[0]["name"], "EUDI");
+    assert_eq!(ecosystems[0]["selected"], false);
 
     let configuration = resp["configuration"].as_object().unwrap();
     assert_eq!(configuration["trustedIssuerRequired"], false);
+}
+
+#[tokio::test]
+async fn test_get_organisation_without_instance_returns_configured_ecosystems() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context
+        .db
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.organisations.get(&organisation.id).await;
+
+    // THEN
+    // no instance is linked, so the ecosystems configured on this core are reported
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let ecosystems = resp["ecosystems"].as_array().unwrap();
+    assert_eq!(ecosystems.len(), 1);
+    assert_eq!(ecosystems[0]["name"], "EUDI");
+    assert_eq!(ecosystems[0]["selected"], true);
+    assert_eq!(ecosystems[0]["description"][0]["value"], "EUDI ecosystem");
+    assert!(!ecosystems[0]["logo"].as_str().unwrap().is_empty());
 }

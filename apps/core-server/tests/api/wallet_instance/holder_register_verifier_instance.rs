@@ -98,10 +98,12 @@ async fn holder_register_wallet_and_verifier_instance_in_same_organisation() {
         .mount(&mock_server)
         .await;
 
+    // once for the registration, once more for the ecosystems of the organisation
+    // detail (unlike the wallet provider metadata, this one is not cached)
     Mock::given(method(Method::GET))
         .and(path("/ssi/verifier-provider/v1/PROCIVIS_ONE"))
         .respond_with(ResponseTemplate::new(200).set_body_json(verifier_metadata()))
-        .expect(1)
+        .expect(2)
         .mount(&mock_server)
         .await;
 

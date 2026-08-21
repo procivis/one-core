@@ -16,7 +16,7 @@ pub struct TrustCollectionInfoDTO {
 
 /// An ecosystem offered to an organisation by its wallet and/or verifier
 /// provider, annotated with whether the organisation currently selected it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EcosystemInfoDTO {
     pub selected: bool,
     pub default_selected: bool,
@@ -54,6 +54,9 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub deactivated_at: Option<OffsetDateTime>,
     pub parent_organisation: Option<OrganisationId>,
     pub configuration: Option<OrganisationConfigurationDTO>,
+    /// The ecosystems offered to this organisation, annotated with whether it
+    /// currently selected each one.
+    pub ecosystems: Vec<EcosystemInfoDTO>,
     pub wallet_instance: Option<InstanceDetailResponseDTO>,
     pub verifier_instance: Option<InstanceDetailResponseDTO>,
     pub wallet_provider: Option<WalletProviderDetailResponseDTO>,
@@ -97,7 +100,6 @@ pub struct VerifierProviderDetailResponseDTO {
 #[derive(Clone, Debug, PartialEq, Eq, Default, From)]
 #[from(OrganisationConfiguration)]
 pub struct OrganisationConfigurationDTO {
-    pub selected_ecosystems: Vec<EcosystemId>,
     pub enforce_ecosystem_as_issuer: bool,
     pub enforce_ecosystem_as_holder: bool,
     pub enforce_ecosystem_as_verifier: bool,

@@ -423,7 +423,7 @@ pub struct ProviderTrustCollectionDTO {
     pub default_selected: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplayNameDTO {
     pub lang: String,

@@ -189,7 +189,7 @@ pub(crate) async fn patch_organisation(
         the ecosystem each one belongs to.
     "},
 )]
-#[deprecated = "Deprecated in favor of GET /api/organisation/v1/{id}/ecosystems"]
+#[deprecated = "Deprecated in favor of the `ecosystems` field of GET /api/organisation/v1/{id}"]
 pub(crate) async fn get_organisation_trust_collections(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,
@@ -224,6 +224,7 @@ pub(crate) async fn get_organisation_trust_collections(
         configured in the local system are returned.
     "},
 )]
+#[deprecated = "Deprecated in favor of the `ecosystems` field of GET /api/organisation/v1/{id}"]
 pub(crate) async fn get_organisation_ecosystems(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,

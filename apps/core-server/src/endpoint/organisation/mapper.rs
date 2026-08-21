@@ -20,7 +20,6 @@ impl From<OrganisationId> for CreateOrganisationResponseRestDTO {
 impl From<OrganisationConfigurationDTO> for OrganisationConfigurationRestDTO {
     fn from(value: OrganisationConfigurationDTO) -> Self {
         Self {
-            selected_ecosystems: value.selected_ecosystems,
             trusted_issuer_required: value.enforce_ecosystem_as_verifier,
             trusted_rp_required: value.enforce_ecosystem_as_holder,
             trusted_wallet_provider_required: value.enforce_ecosystem_as_issuer,
