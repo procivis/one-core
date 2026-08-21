@@ -1,4 +1,4 @@
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 
 use axum::http::Method;
 use one_core::model::blob::BlobType;
@@ -258,6 +258,72 @@ async fn test_run_task_lifecycle_check_expires_non_accepted_non_terminal_credent
 
     let offered_credential = context.db.credentials.get(&offered_credential.id).await;
     assert_eq!(offered_credential.state, CredentialStateEnum::Expired);
+}
+
+#[tokio::test]
+async fn test_run_task_lifecycle_check_expires_expiring_credential() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
+    let a_while_later = one_core::clock::now_utc().add(Duration::hours(1));
+
+    let expired_credential_id = Uuid::new_v4().into();
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                id: Some(expired_credential_id),
+                role: Some(CredentialRole::Issuer),
+                expires_at: Some(a_while_ago),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let _not_yet_expired = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Issuer),
+                expires_at: Some(a_while_later),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("LIFECYCLE_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let expired_ids: Vec<String> = resp["expiredCredentialIds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(expired_ids.len(), 1);
+    assert!(expired_ids.contains(&expired_credential_id.to_string()));
+
+    let updated_credential = context.db.credentials.get(&expired_credential_id).await;
+    assert_eq!(updated_credential.state, CredentialStateEnum::Expired);
 }
 
 /// Terminal states (e.g. `Revoked`) are never touched by the lifecycle check, even with a past
