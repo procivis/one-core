@@ -35,7 +35,6 @@ pub enum RevocationState {
     Suspended {
         suspend_end_date: Option<OffsetDateTime>,
     },
-    Expired,
 }
 
 impl From<RevocationState> for RevocationListEntryState {
@@ -44,7 +43,6 @@ impl From<RevocationState> for RevocationListEntryState {
             RevocationState::Valid => RevocationListEntryState::Active,
             RevocationState::Revoked => RevocationListEntryState::Revoked,
             RevocationState::Suspended { .. } => RevocationListEntryState::Suspended,
-            RevocationState::Expired => RevocationListEntryState::Revoked,
         }
     }
 }

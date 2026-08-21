@@ -1,0 +1,946 @@
+use one_core::model::credential::{CredentialStateEnum, CredentialType};
+use one_core::model::history::HistoryAction;
+use one_core::model::revocation_list::{RevocationListEntryState, RevocationListPurpose};
+use serde_json::json;
+use similar_asserts::assert_eq;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
+use uuid::Uuid;
+
+use crate::fixtures::sts::{StsSetup, setup_sts};
+use crate::fixtures::{TestingCredentialParams, assert_history_count};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
+
+fn random_credential_id() -> Uuid {
+    Uuid::new_v4()
+}
+
+// ---------------------------------------------------------------------------
+// Deserialization
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_deserializes_all_known_states() {
+    // GIVEN a caller with full permissions and a credential id that does not exist
+    let context = TestContext::new(None).await;
+    let id = random_credential_id();
+
+    for body in [
+        json!({"state": "ACCEPTED"}),
+        json!({"state": "REVOKED"}),
+        json!({"state": "SUSPENDED"}),
+        json!({"state": "SUSPENDED", "suspendEndDate": "2023-06-09T14:19:57.000Z"}),
+        json!({"state": "EXPIRING"}),
+    ] {
+        // WHEN
+        let resp = context
+            .api
+            .credentials
+            .patch_state(&id, body.clone(), None)
+            .await;
+
+        // THEN deserialization succeeded and the request reached the service layer,
+        // which reports the (non-existent) credential as not found
+        assert_eq!(
+            resp.status(),
+            404,
+            "body {body} should deserialize correctly"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_on_unknown_state_value() {
+    let context = TestContext::new(None).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "NOT_A_REAL_STATE"}), None)
+        .await;
+
+    assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_on_missing_state_tag() {
+    let context = TestContext::new(None).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({}), None)
+        .await;
+
+    assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_on_unknown_field() {
+    let context = TestContext::new(None).await;
+    let id = random_credential_id();
+
+    // NOTE: deny_unknown_fields only takes effect for the struct-shaped `Suspended` variant here;
+    // serde's internally-tagged enum support does not enforce it for unit variants like
+    // `Accepted` (see https://github.com/serde-rs/serde/issues/1358) - extra fields sent
+    // alongside e.g. `"state": "ACCEPTED"` are currently silently ignored.
+    let resp = context
+        .api
+        .credentials
+        .patch_state(
+            &id,
+            json!({"state": "SUSPENDED", "unexpected": "field"}),
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_on_invalid_suspend_end_date() {
+    let context = TestContext::new(None).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(
+            &id,
+            json!({"state": "SUSPENDED", "suspendEndDate": "not-a-date"}),
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+}
+
+// ---------------------------------------------------------------------------
+// Permission gate
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_forbidden_without_any_state_permission() {
+    // GIVEN a caller with a permission unrelated to any credential state transition
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["CREDENTIAL_DETAIL"]).await;
+    let context = TestContext::new(Some(config)).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "ACCEPTED"}), Some(token))
+        .await;
+
+    // THEN the coarse-grained endpoint permission check rejects the request outright
+    assert_eq!(resp.status(), 403);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_unauthorized_on_mismatched_permission() {
+    // GIVEN a caller who may suspend credentials, but is requesting a state that requires
+    // reactivation permission instead
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["CREDENTIAL_SUSPEND"]).await;
+    let context = TestContext::new(Some(config)).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "ACCEPTED"}), Some(token))
+        .await;
+
+    // THEN the caller has a permission from the endpoint's permission list (so the coarse
+    // check passes) but not the specific one required for this state (fine-grained check fails)
+    assert_eq!(resp.status(), 401);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_allows_accepted_with_reactivate_permission() {
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["CREDENTIAL_REACTIVATE"]).await;
+    let context = TestContext::new(Some(config)).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "ACCEPTED"}), Some(token))
+        .await;
+
+    // THEN the permission gate let the request through to the service, which reports the
+    // (non-existent) credential as not found
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_allows_suspended_with_suspend_permission() {
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["CREDENTIAL_SUSPEND"]).await;
+    let context = TestContext::new(Some(config)).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(
+            &id,
+            json!({"state": "SUSPENDED", "suspendEndDate": "2023-06-09T14:19:57.000Z"}),
+            Some(token),
+        )
+        .await;
+
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_allows_revoked_with_revoke_permission() {
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["CREDENTIAL_REVOKE"]).await;
+    let context = TestContext::new(Some(config)).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "REVOKED"}), Some(token))
+        .await;
+
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_allows_expiring_with_expire_permission() {
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["CREDENTIAL_EXPIRE"]).await;
+    let context = TestContext::new(Some(config)).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "EXPIRING"}), Some(token))
+        .await;
+
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_all_permissions_bypasses_fine_grained_check() {
+    // GIVEN the default test context, which authenticates via a static token granting
+    // every permission (Permissions::All), independent of the endpoint's specific list
+    let context = TestContext::new(None).await;
+    let id = random_credential_id();
+
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&id, json!({"state": "SUSPENDED"}), None)
+        .await;
+
+    assert_eq!(resp.status(), 404);
+}
+
+// ---------------------------------------------------------------------------
+// state = SUSPENDED
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_suspended_with_bitstring_status_list_success() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                purpose: Some(RevocationListPurpose::Suspension),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, credential.id, 0)
+        .await;
+
+    let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
+    let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(
+            &credential.id,
+            json!({"state": "SUSPENDED", "suspendEndDate": suspend_end_date_str}),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Suspended, credential.state.clone());
+    assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
+    assert_history_count(&context, &credential.id.into(), HistoryAction::Suspended, 1).await;
+
+    let revocation_list_entry = context
+        .db
+        .revocation_lists
+        .get_entries(revocation_list.id)
+        .await;
+    assert_eq!(revocation_list_entry.len(), 1);
+    assert_eq!(
+        revocation_list_entry[0].state,
+        RevocationListEntryState::Suspended
+    );
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_suspended_fails_when_not_allowed() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                allow_suspension: Some(false),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+    context.db.revocation_lists.create(identifier, None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "SUSPENDED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0162", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_suspended_fails_when_expired() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expired,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "SUSPENDED"}), None)
+        .await;
+
+    // THEN - invalid state transition
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0366");
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.state);
+}
+
+// ---------------------------------------------------------------------------
+// state = ACCEPTED
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_accepted_with_bitstring_status_list_success() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                purpose: Some(RevocationListPurpose::Suspension),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, credential.id, 0)
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .update_entry(
+            revocation_list.id,
+            0,
+            Some(RevocationListEntryState::Revoked),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "ACCEPTED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+
+    let revocation_list_entry = context
+        .db
+        .revocation_lists
+        .get_entries(revocation_list.id)
+        .await;
+    assert_eq!(revocation_list_entry.len(), 1);
+    assert_eq!(
+        revocation_list_entry[0].state,
+        RevocationListEntryState::Active
+    );
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_accepted_fails_when_expired() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expired,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "ACCEPTED"}), None)
+        .await;
+
+    // THEN - same error as reactivating a REVOKED credential (invalid state transition)
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0366");
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.state);
+}
+
+// ---------------------------------------------------------------------------
+// state = REVOKED
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_revoked_with_bitstring_status_list_success() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+    context.db.revocation_lists.create(identifier, None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "REVOKED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Revoked, credential.state);
+    assert_history_count(&context, &credential.id.into(), HistoryAction::Revoked, 1).await;
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_revoked_with_webhook() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let webhook_url = format!("{}/webhook", context.server_mock.uri());
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                webhook_url: Some(webhook_url.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context.db.revocation_lists.create(identifier, None).await;
+
+    context
+        .server_mock
+        .webhook(json!({
+            "credentialId": credential.id,
+            "status": "REVOKED"
+        }))
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "REVOKED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    context.server_mock.wait_for_background_request().await;
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_revoked_fails_when_expired() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expired,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "REVOKED"}), None)
+        .await;
+
+    // THEN - same error as revoking an already REVOKED credential (invalid state transition)
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0366");
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.state);
+}
+
+// ---------------------------------------------------------------------------
+// Deleted credential (shared across target states: the check happens before
+// the state-specific branching, so one representative target state is enough)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_fails_credential_deleted() {
+    // GIVEN
+    let (context, organisation, _issuer_did, identifier, ..) =
+        TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                deleted_at: Some(one_core::clock::now_utc()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context.db.revocation_lists.create(identifier, None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "REVOKED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+}
+
+// ---------------------------------------------------------------------------
+// state = EXPIRING
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_patch_credential_state_expiring_from_accepted_success() {
+    // GIVEN a normally valid batch-parent credential - moving to EXPIRING never touches the
+    // revocation method (it's a pure state-flag transition), so no revocation list is needed
+    // here. Only batch-parent (mdoc) credentials can transition to EXPIRING; single credentials
+    // are rejected by `change_credential_expiration_state`.
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "EXPIRING"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.state);
+    assert_history_count(&context, &credential.id.into(), HistoryAction::Expiring, 1).await;
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_expiring_from_suspended_success() {
+    // GIVEN a batch-parent credential - see test above for why that type is required
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "EXPIRING"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.state);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_accepted_from_expiring_success() {
+    // GIVEN a batch-parent credential already flagged as EXPIRING - moving back to ACCEPTED
+    // from this specific state is also a pure state-flag transition (bypasses revocation
+    // infra), unlike ACCEPTED from SUSPENDED which goes through the revocation method
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "ACCEPTED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_expiring_fails_from_revoked() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Revoked,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "EXPIRING"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0366");
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Revoked, credential.state);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_revoke_fails_from_expiring() {
+    // GIVEN an EXPIRING credential can only go back to ACCEPTED - it cannot be revoked or
+    // suspended directly
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "REVOKED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0366");
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.state);
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_suspend_fails_from_expiring() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&credential.id, json!({"state": "SUSPENDED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0366");
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.state);
+}

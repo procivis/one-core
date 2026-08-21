@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use super::CredentialService;
 use super::dto::{
-    CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
-    CredentialFilterParamsDTO, CredentialRevocationCheckResponseDTO,
+    ChangeCredentialStateDTO, CreateCredentialRequestDTO, CredentialAttestationBlobs,
+    CredentialDetailResponseDTO, CredentialFilterParamsDTO, CredentialRevocationCheckResponseDTO,
     DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, ShareCredentialResponseDTO,
     SuspendCredentialRequestDTO,
 };
@@ -32,8 +32,8 @@ use crate::model::identifier::{IdentifierState, IdentifierType};
 use crate::model::interaction::InteractionType;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::provider::issuance_protocol::model::ShareResponse;
-use crate::provider::revocation::model::RevocationState;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::BusinessLogicError;
@@ -425,10 +425,23 @@ impl CredentialService {
         credential_id: &CredentialId,
     ) -> Result<(), CredentialServiceError> {
         self.credential_validity_manager
-            .change_credential_validity_state(credential_id, RevocationState::Valid)
+            .change_credential_state(credential_id, ChangeCredentialState::Accepted)
             .await
             .error_while("reactivating credential")?;
         tracing::info!("Reactivated credential {credential_id}");
+        Ok(())
+    }
+
+    pub async fn patch_credential_state(
+        &self,
+        credential_id: &CredentialId,
+        change_credential_state: ChangeCredentialStateDTO,
+    ) -> Result<(), CredentialServiceError> {
+        self.credential_validity_manager
+            .change_credential_state(credential_id, change_credential_state.into())
+            .await
+            .error_while("patching credential state")?;
+        tracing::info!("Patched credential state {credential_id} to {change_credential_state:?}");
         Ok(())
     }
 
@@ -438,9 +451,9 @@ impl CredentialService {
         request: SuspendCredentialRequestDTO,
     ) -> Result<(), CredentialServiceError> {
         self.credential_validity_manager
-            .change_credential_validity_state(
+            .change_credential_state(
                 credential_id,
-                RevocationState::Suspended {
+                ChangeCredentialState::Suspended {
                     suspend_end_date: request.suspend_end_date,
                 },
             )
@@ -460,7 +473,7 @@ impl CredentialService {
         credential_id: &CredentialId,
     ) -> Result<(), CredentialServiceError> {
         self.credential_validity_manager
-            .change_credential_validity_state(credential_id, RevocationState::Revoked)
+            .change_credential_state(credential_id, ChangeCredentialState::Revoked)
             .await
             .error_while("revoking credential")?;
         tracing::info!("Revoked credential {credential_id}");

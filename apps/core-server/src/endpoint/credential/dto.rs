@@ -2,9 +2,9 @@ use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
 use one_core::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
-    CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
-    CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
+    ChangeCredentialStateDTO, CreateCredentialRequestDTO, CredentialFilterParamsDTO,
+    CredentialListItemResponseDTO, CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO,
+    CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
     TrustInformation, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
@@ -318,6 +318,7 @@ pub(crate) enum CredentialStateRestEnum {
     Error,
     InteractionExpired,
     Expired,
+    Expiring,
 }
 
 /// The type representation of the credential in the system.
@@ -590,6 +591,25 @@ pub(crate) struct SuspendCredentialRequestRestDTO {
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(
+    tag = "state",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    deny_unknown_fields
+)]
+#[into(ChangeCredentialStateDTO)]
+pub enum PatchCredentialStateRequestRestDTO {
+    Accepted,
+    Revoked,
+    #[serde(rename_all = "camelCase")]
+    Suspended {
+        #[serde(default, deserialize_with = "deserialize_timestamp")]
+        #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+        suspend_end_date: Option<OffsetDateTime>,
+    },
+    Expiring,
 }
 
 #[options_not_nullable]

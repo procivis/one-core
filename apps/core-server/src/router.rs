@@ -264,6 +264,10 @@ fn get_management_endpoints(
                 post(credential::controller::suspend_credential),
             )
             .route(
+                "/api/credential/v1/{id}/state",
+                patch(credential::controller::patch_credential_state),
+            )
+            .route(
                 "/api/credential/v1/{id}/share",
                 post(credential::controller::share_credential),
             )

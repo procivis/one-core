@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Display;
 
 use one_core::model::credential::CredentialListIncludeEntityTypeEnum;
-use serde_json::json;
+use serde_json::{Value, json};
 use shared_types::{CredentialId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -266,6 +266,22 @@ impl CredentialsApi {
             .unwrap_or(json!({}));
 
         self.client.post(&url, body).await
+    }
+
+    pub async fn patch_state(
+        &self,
+        id: &impl Display,
+        body: Value,
+        bearer_token: Option<String>,
+    ) -> Response {
+        let url = format!("/api/credential/v1/{id}/state");
+        if let Some(bearer_token) = bearer_token {
+            return self
+                .client
+                .patch_custom_bearer_auth(&url, &bearer_token, body)
+                .await;
+        }
+        self.client.patch(&url, body).await
     }
 
     pub async fn revocation_check(

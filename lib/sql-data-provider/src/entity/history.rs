@@ -117,6 +117,8 @@ pub enum HistoryAction {
     Reactivated,
     #[sea_orm(string_value = "EXPIRED")]
     Expired,
+    #[sea_orm(string_value = "EXPIRING")]
+    Expiring,
     #[sea_orm(string_value = "INTERACTION_CREATED")]
     InteractionCreated,
     #[sea_orm(string_value = "INTERACTION_ERRORED")]

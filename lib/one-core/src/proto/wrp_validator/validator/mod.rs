@@ -515,9 +515,9 @@ impl WRPValidatorImpl {
 
         match revocation_status {
             RevocationState::Valid => Ok(()),
-            RevocationState::Revoked
-            | RevocationState::Suspended { .. }
-            | RevocationState::Expired => Err(WRPValidatorError::CertificateRevoked),
+            RevocationState::Revoked | RevocationState::Suspended { .. } => {
+                Err(WRPValidatorError::CertificateRevoked)
+            }
         }
     }
 

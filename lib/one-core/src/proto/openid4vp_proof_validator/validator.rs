@@ -753,9 +753,7 @@ impl OpenId4VpProofValidatorProto {
                 .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?
             {
                 RevocationState::Valid => {}
-                RevocationState::Revoked
-                | RevocationState::Suspended { .. }
-                | RevocationState::Expired => {
+                RevocationState::Revoked | RevocationState::Suspended { .. } => {
                     return Err(OpenID4VCError::CredentialIsRevokedOrSuspended);
                 }
             }

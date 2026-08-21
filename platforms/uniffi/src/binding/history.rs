@@ -75,6 +75,7 @@ pub enum HistoryActionBindingEnum {
     Updated,
     Reactivated,
     Expired,
+    Expiring,
     InteractionCreated,
     InteractionErrored,
     InteractionExpired,

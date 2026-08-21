@@ -131,6 +131,7 @@ pub enum HistoryAction {
     Updated,
     Reactivated,
     Expired,
+    Expiring,
     InteractionCreated,
     InteractionErrored,
     InteractionExpired,

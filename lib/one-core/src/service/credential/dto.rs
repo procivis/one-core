@@ -15,6 +15,7 @@ use crate::model::credential_schema::{
     KeyStorageSecurity, LayoutType, TransactionCode, TransactionCodeType,
 };
 use crate::model::history::TrustResolutionResult;
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
@@ -201,6 +202,18 @@ pub enum CredentialStateEnum {
     Error,
     InteractionExpired,
     Expired,
+    Expiring,
+}
+
+#[derive(Clone, Copy, Debug, Into)]
+#[into(ChangeCredentialState)]
+pub enum ChangeCredentialStateDTO {
+    Accepted,
+    Revoked,
+    Suspended {
+        suspend_end_date: Option<OffsetDateTime>,
+    },
+    Expiring,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Into, From)]

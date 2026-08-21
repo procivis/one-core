@@ -9,6 +9,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
     Error as CredentialValidityManagerError, MockCredentialValidityManager,
 };
@@ -21,7 +22,6 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::ecosystem::eudi::EudiEcosystem;
-use crate::provider::revocation::model::RevocationState;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -51,8 +51,8 @@ fn no_revocations() -> MockCredentialValidityManager {
 fn revokes_successfully() -> MockCredentialValidityManager {
     let mut credential_validity_manager = MockCredentialValidityManager::new();
     credential_validity_manager
-        .expect_change_credential_validity_state()
-        .withf(|_, state| *state == RevocationState::Revoked)
+        .expect_change_credential_state()
+        .withf(|_, state| matches!(state, ChangeCredentialState::Revoked))
         .returning(|_, _| Ok(()));
     credential_validity_manager
 }
@@ -534,7 +534,7 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
 
     let mut credential_validity_manager = MockCredentialValidityManager::new();
     credential_validity_manager
-        .expect_change_credential_validity_state()
+        .expect_change_credential_state()
         .once()
         .returning(|_, _| {
             Err(CredentialValidityManagerError::MappingError(

@@ -4,6 +4,7 @@ use futures::FutureExt;
 use one_crypto::encryption::EncryptionError;
 use shared_types::{CredentialId, CredentialSchemaId, RevocationMethodId};
 use time::OffsetDateTime;
+use tracing::warn;
 
 use crate::config::core_config::{BlobStorageType, CoreConfig, FormatType};
 use crate::error::{
@@ -18,6 +19,9 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
+use crate::proto::credential_validity_manager::dto::{
+    ChangeCredentialState, ChangeType, ExpirationState,
+};
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
@@ -35,6 +39,8 @@ use crate::validator::{
     throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
 };
 
+pub mod dto;
+mod mapper;
 mod mdoc;
 #[cfg(test)]
 mod test;
@@ -42,10 +48,10 @@ mod test;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait CredentialValidityManager: Send + Sync {
-    async fn change_credential_validity_state(
+    async fn change_credential_state(
         &self,
         credential_id: &CredentialId,
-        revocation_state: RevocationState,
+        change_credential_state: ChangeCredentialState,
     ) -> Result<(), Error>;
 
     async fn check_holder_credential_validity(
@@ -74,10 +80,13 @@ pub enum Error {
     NoRevocationMethod(CredentialSchemaId),
     #[error("Suspension not supported by revocation method `{revocation_method}`")]
     SuspensionNotSupported { revocation_method: String },
-    #[error("Invalid credential state transition from state `{current_state}` to `{target_state}`")]
+    #[error(
+        "Invalid credential state transition from state `{current_state}` to `{target_state}` for type `{current_type}`"
+    )]
     InvalidCredentialStateTransition {
         current_state: CredentialStateEnum,
         target_state: CredentialStateEnum,
+        current_type: CredentialType,
     },
     #[error("Incompatible issuer identifier")]
     IncompatibleIssuerIdentifier,
@@ -146,6 +155,200 @@ impl CredentialValidityManagerImpl {
         }
     }
 
+    async fn change_credential_revocation_state(
+        &self,
+        credential: Credential,
+        credential_schema: CredentialSchema,
+        revocation_state: RevocationState,
+    ) -> Result<(), Error> {
+        validate_revocation_state_transition(
+            credential.state,
+            credential.r#type,
+            &revocation_state,
+        )?;
+        let format = credential_schema.format().await?;
+        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
+
+        let revocation_method_id = credential_schema
+            .revocation_method_id(formatter.as_ref())
+            .ok_or(Error::NoRevocationMethod(credential_schema.id.to_owned()))?;
+        verify_suspension_support(&credential_schema, revocation_method_id, &revocation_state)?;
+
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method(revocation_method_id)?;
+
+        match credential.r#type {
+            CredentialType::Single => {
+                self.change_revocation_state(
+                    credential.id,
+                    revocation_state,
+                    revocation_method.as_ref(),
+                )
+                .await?;
+            }
+            CredentialType::BatchItem => {
+                // only batch members can be individually updated, not MDOC MSO's
+                let parent = credential
+                    .parent
+                    .as_ref()
+                    .ok_or(Error::MappingError(
+                        "Missing parent of batch item".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?;
+                if parent.r#type != CredentialType::BatchParent {
+                    return Err(Error::InvalidCredentialType(credential.r#type));
+                }
+
+                let parent_status =
+                    revocation_state_from_credential_state(parent.state, parent.suspend_end_date)
+                        .error_while("parsing status")?;
+
+                self.tx_manager
+                    .tx(async {
+                        self.change_revocation_state(
+                            credential.id,
+                            revocation_state,
+                            revocation_method.as_ref(),
+                        )
+                        .await?;
+
+                        // update parent state if needed
+                        if parent_status != revocation_state {
+                            let batch_items = self
+                                .credential_repository
+                                .get_credential_list(ListQuery {
+                                    filtering: Some(
+                                        CredentialFilterValue::ParentCredential(parent.id)
+                                            .condition()
+                                            & CredentialFilterValue::Deleted(false),
+                                    ),
+                                    ..Default::default()
+                                })
+                                .await
+                                .error_while("getting batch items")?
+                                .values;
+
+                            let item_states = batch_items
+                                .into_iter()
+                                .map(|c| {
+                                    revocation_state_from_credential_state(
+                                        c.state,
+                                        c.suspend_end_date,
+                                    )
+                                })
+                                .collect::<Result<Vec<_>, _>>()
+                                .error_while("getting batch items states")?;
+
+                            self.update_batch_parent_state(&parent, &item_states)
+                                .await?;
+                        }
+
+                        Ok::<_, Error>(())
+                    }
+                    .boxed())
+                    .await
+                    .error_while("changing batch item state")??;
+            }
+            CredentialType::BatchParent => {
+                // all underlying batch items must be updated
+                let credentials = self
+                    .credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(credential.id).condition()
+                                & CredentialFilterValue::Deleted(false),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting batch items")?
+                    .values;
+
+                let mut batch_items_to_update = vec![];
+                for credential in credentials {
+                    // skipping items with the target state
+                    // except Suspension, since there might be change in `suspend_end_date`
+                    if credential.state != CredentialStateEnum::Suspended
+                        && credential.state == revocation_state.into()
+                    {
+                        continue;
+                    }
+
+                    validate_revocation_state_transition(
+                        credential.state,
+                        credential.r#type,
+                        &revocation_state,
+                    )
+                    .error_while(format!(
+                        "checking state of batch credential `{}`",
+                        credential.id
+                    ))?;
+
+                    batch_items_to_update.push(credential.id);
+                }
+
+                self.tx_manager
+                    .tx(async {
+                        for batch_item_id in batch_items_to_update {
+                            self.change_revocation_state(
+                                batch_item_id,
+                                revocation_state,
+                                revocation_method.as_ref(),
+                            )
+                            .await?;
+                        }
+
+                        // batch parent not linked directly with any technical credential, only update state
+                        self.update_credential_state(credential.id, revocation_state)
+                            .await?;
+
+                        Ok::<_, Error>(())
+                    }
+                    .boxed())
+                    .await
+                    .error_while("changing batch parent state")??;
+            }
+        };
+
+        Ok(())
+    }
+
+    async fn change_credential_expiration_state(
+        &self,
+        credential: Credential,
+        expiration_state: ExpirationState,
+    ) -> Result<(), Error> {
+        validate_expiration_state_transition(
+            credential.state,
+            credential.r#type,
+            &expiration_state,
+        )?;
+        match credential.r#type {
+            CredentialType::BatchParent => {
+                self.credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(expiration_state.into()),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("updating credential")?;
+                Ok(())
+            }
+            CredentialType::Single | CredentialType::BatchItem => {
+                warn!(
+                    "Credential expiration is not supported for {} credential",
+                    credential.r#type
+                );
+                Err(Error::InvalidCredentialType(credential.r#type))
+            }
+        }
+    }
+
     async fn change_revocation_state(
         &self,
         credential_id: CredentialId,
@@ -163,13 +366,13 @@ impl CredentialValidityManagerImpl {
             .await
             .error_while("marking credential status")?;
 
-        self.change_credential_state(credential_id, revocation_state)
+        self.update_credential_state(credential_id, revocation_state)
             .await?;
 
         Ok(())
     }
 
-    async fn change_credential_state(
+    async fn update_credential_state(
         &self,
         credential_id: CredentialId,
         revocation_state: RevocationState,
@@ -331,7 +534,7 @@ impl CredentialValidityManagerImpl {
                 }
                 Ok(state) => match state {
                     RevocationState::Valid => {}
-                    RevocationState::Revoked | RevocationState::Expired => {
+                    RevocationState::Revoked => {
                         worst_revocation_state = state;
                         break;
                     }
@@ -485,10 +688,10 @@ fn batch_refresh_token_expired(interaction: Option<&Interaction>) -> Result<bool
 
 #[async_trait::async_trait]
 impl CredentialValidityManager for CredentialValidityManagerImpl {
-    async fn change_credential_validity_state(
+    async fn change_credential_state(
         &self,
         credential_id: &CredentialId,
-        revocation_state: RevocationState,
+        change_credential_state: ChangeCredentialState,
     ) -> Result<(), Error> {
         let credential = self
             .credential_repository
@@ -504,11 +707,11 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         if credential.role != CredentialRole::Issuer {
             return Err(Error::InvalidCredentialRole {
                 role: credential.role,
-                credential_id: *credential_id,
+                credential_id: credential.id,
             });
         }
 
-        let credential_schema = credential.schema.as_ref().await?;
+        let credential_schema = credential.schema.as_ref().await?.clone();
 
         throw_if_org_id_not_matching_session(
             credential_schema.organisation.id_ref(),
@@ -516,149 +719,20 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         )
         .error_while("verifying organisation")?;
 
-        validate_state_transition(credential.state, &revocation_state)?;
-
-        let format = credential_schema.format().await?;
-        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
-
-        let revocation_method_id = credential_schema
-            .revocation_method_id(formatter.as_ref())
-            .ok_or(Error::NoRevocationMethod(credential_schema.id.to_owned()))?;
-        verify_suspension_support(&credential_schema, revocation_method_id, &revocation_state)?;
-
-        let revocation_method = self
-            .revocation_method_provider
-            .get_revocation_method(revocation_method_id)?;
-
-        match credential.r#type {
-            CredentialType::Single => {
-                self.change_revocation_state(
-                    credential.id,
+        match change_credential_state.to_change_type(&credential) {
+            ChangeType::Expiration(expiration_state) => {
+                self.change_credential_expiration_state(credential, expiration_state)
+                    .await
+            }
+            ChangeType::Revocation(revocation_state) => {
+                self.change_credential_revocation_state(
+                    credential,
+                    credential_schema,
                     revocation_state,
-                    revocation_method.as_ref(),
                 )
-                .await?;
+                .await
             }
-            CredentialType::BatchItem => {
-                // only batch members can be individually updated, not MDOC MSO's
-                let parent = credential
-                    .parent
-                    .as_ref()
-                    .ok_or(Error::MappingError(
-                        "Missing parent of batch item".to_string(),
-                    ))?
-                    .as_ref()
-                    .await?;
-                if parent.r#type != CredentialType::BatchParent {
-                    return Err(Error::InvalidCredentialType(credential.r#type));
-                }
-
-                let parent_status =
-                    revocation_state_from_credential_state(parent.state, parent.suspend_end_date)
-                        .error_while("parsing status")?;
-
-                self.tx_manager
-                    .tx(async {
-                        self.change_revocation_state(
-                            credential.id,
-                            revocation_state,
-                            revocation_method.as_ref(),
-                        )
-                        .await?;
-
-                        // update parent state if needed
-                        if parent_status != revocation_state {
-                            let batch_items = self
-                                .credential_repository
-                                .get_credential_list(ListQuery {
-                                    filtering: Some(
-                                        CredentialFilterValue::ParentCredential(parent.id)
-                                            .condition()
-                                            & CredentialFilterValue::Deleted(false),
-                                    ),
-                                    ..Default::default()
-                                })
-                                .await
-                                .error_while("getting batch items")?
-                                .values;
-
-                            let item_states = batch_items
-                                .into_iter()
-                                .map(|c| {
-                                    revocation_state_from_credential_state(
-                                        c.state,
-                                        c.suspend_end_date,
-                                    )
-                                })
-                                .collect::<Result<Vec<_>, _>>()
-                                .error_while("getting batch items states")?;
-
-                            self.update_batch_parent_state(&parent, &item_states)
-                                .await?;
-                        }
-
-                        Ok::<_, Error>(())
-                    }
-                    .boxed())
-                    .await
-                    .error_while("changing batch item state")??;
-            }
-            CredentialType::BatchParent => {
-                // all underlying batch items must be updated
-                let credentials = self
-                    .credential_repository
-                    .get_credential_list(ListQuery {
-                        filtering: Some(
-                            CredentialFilterValue::ParentCredential(credential.id).condition()
-                                & CredentialFilterValue::Deleted(false),
-                        ),
-                        ..Default::default()
-                    })
-                    .await
-                    .error_while("getting batch items")?
-                    .values;
-
-                let mut batch_items_to_update = vec![];
-                for credential in credentials {
-                    // skipping items with the target state
-                    // except Suspension, since there might be change in `suspend_end_date`
-                    if credential.state != CredentialStateEnum::Suspended
-                        && credential.state == revocation_state.into()
-                    {
-                        continue;
-                    }
-
-                    validate_state_transition(credential.state, &revocation_state).error_while(
-                        format!("checking state of batch credential `{}`", credential.id),
-                    )?;
-
-                    batch_items_to_update.push(credential.id);
-                }
-
-                self.tx_manager
-                    .tx(async {
-                        for batch_item_id in batch_items_to_update {
-                            self.change_revocation_state(
-                                batch_item_id,
-                                revocation_state,
-                                revocation_method.as_ref(),
-                            )
-                            .await?;
-                        }
-
-                        // batch parent not linked directly with any technical credential, only update state
-                        self.change_credential_state(credential.id, revocation_state)
-                            .await?;
-
-                        Ok::<_, Error>(())
-                    }
-                    .boxed())
-                    .await
-                    .error_while("changing batch parent state")??;
-            }
-        };
-
-        Ok(())
+        }
     }
 
     async fn check_holder_credential_validity(
@@ -894,8 +968,9 @@ async fn issuer_details(issuer_identifier: &Identifier) -> Result<IdentifierDeta
     })
 }
 
-fn validate_state_transition(
+fn validate_revocation_state_transition(
     current_state: CredentialStateEnum,
+    current_type: CredentialType,
     target_state: &RevocationState,
 ) -> Result<(), Error> {
     let valid_states: &[CredentialStateEnum] = match target_state {
@@ -905,12 +980,34 @@ fn validate_state_transition(
         ],
         RevocationState::Valid => &[CredentialStateEnum::Suspended],
         RevocationState::Suspended { .. } => &[CredentialStateEnum::Accepted],
-        RevocationState::Expired => &[],
     };
     if !valid_states.contains(&current_state) {
         return Err(Error::InvalidCredentialStateTransition {
             current_state,
             target_state: (*target_state).into(),
+            current_type,
+        });
+    }
+    Ok(())
+}
+
+fn validate_expiration_state_transition(
+    current_state: CredentialStateEnum,
+    current_type: CredentialType,
+    target_state: &ExpirationState,
+) -> Result<(), Error> {
+    let valid_states: &[CredentialStateEnum] = match target_state {
+        ExpirationState::Accepted => &[CredentialStateEnum::Expiring],
+        ExpirationState::Expiring => &[
+            CredentialStateEnum::Accepted,
+            CredentialStateEnum::Suspended,
+        ],
+    };
+    if !valid_states.contains(&current_state) {
+        return Err(Error::InvalidCredentialStateTransition {
+            current_state,
+            target_state: (*target_state).into(),
+            current_type,
         });
     }
     Ok(())
@@ -983,7 +1080,7 @@ fn get_best_state(states: &[RevocationState]) -> RevocationState {
                     *state
                 };
             }
-            RevocationState::Revoked | RevocationState::Expired => {
+            RevocationState::Revoked => {
                 // try next
             }
         };

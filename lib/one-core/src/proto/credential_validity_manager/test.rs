@@ -22,6 +22,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::Key;
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
     CredentialValidityManager, CredentialValidityManagerImpl, Error,
 };
@@ -1428,7 +1429,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     });
 
     validity_manager
-        .change_credential_validity_state(&credential.id, RevocationState::Revoked)
+        .change_credential_state(&credential.id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 }
@@ -1495,7 +1496,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     });
 
     validity_manager
-        .change_credential_validity_state(&credential.id, RevocationState::Revoked)
+        .change_credential_state(&credential.id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 }
@@ -1522,9 +1523,9 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
     });
 
     let result = validity_manager
-        .change_credential_validity_state(
+        .change_credential_state(
             &credential.id,
-            RevocationState::Suspended {
+            ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
         )
@@ -1609,9 +1610,9 @@ async fn test_suspend_credential_success() {
     });
 
     validity_manager
-        .change_credential_validity_state(
+        .change_credential_state(
             &credential.id,
-            RevocationState::Suspended {
+            ChangeCredentialState::Suspended {
                 suspend_end_date: Some(suspend_end_date),
             },
         )
@@ -1680,7 +1681,7 @@ async fn test_reactivate_credential_success() {
     });
 
     validity_manager
-        .change_credential_validity_state(&credential.id, RevocationState::Valid)
+        .change_credential_state(&credential.id, ChangeCredentialState::Accepted)
         .await
         .unwrap();
 }
@@ -1706,7 +1707,7 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
     });
 
     let result = validity_manager
-        .change_credential_validity_state(&credential.id, RevocationState::Valid)
+        .change_credential_state(&credential.id, ChangeCredentialState::Accepted)
         .await
         .unwrap_err();
 
@@ -1737,7 +1738,7 @@ async fn test_revoke_credential_invalid_role() {
     });
 
     let result = validity_manager
-        .change_credential_validity_state(&credential.id, RevocationState::Revoked)
+        .change_credential_state(&credential.id, ChangeCredentialState::Revoked)
         .await
         .unwrap_err();
 
@@ -1801,9 +1802,9 @@ async fn test_suspend_credential_failed_mdoc_batch_item() {
     });
 
     let result = validity_manager
-        .change_credential_validity_state(
+        .change_credential_state(
             &credential.id,
-            RevocationState::Suspended {
+            ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
         )
@@ -1919,7 +1920,7 @@ async fn test_revoke_credential_batch_parent() {
     });
 
     validity_manager
-        .change_credential_validity_state(&parent_credential.id, RevocationState::Revoked)
+        .change_credential_state(&parent_credential.id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 }
@@ -2034,7 +2035,7 @@ async fn test_revoke_credential_batch_item() {
     });
 
     validity_manager
-        .change_credential_validity_state(&child_credential.id, RevocationState::Revoked)
+        .change_credential_state(&child_credential.id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 }
@@ -2058,7 +2059,7 @@ async fn test_credential_ops_session_org_mismatch() {
     });
 
     let result = validity_manager
-        .change_credential_validity_state(&Uuid::new_v4().into(), RevocationState::Valid)
+        .change_credential_state(&Uuid::new_v4().into(), ChangeCredentialState::Accepted)
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
     let result = validity_manager

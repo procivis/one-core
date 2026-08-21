@@ -12,10 +12,10 @@ use crate::model::credential::{
 };
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
 use crate::model::list_query::ListPagination;
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage::BlobStorage;
 use crate::provider::ecosystem::error::EcosystemError;
-use crate::provider::revocation::model::RevocationState;
 use crate::service::credential::dto::WalletUnitAttestationDTO;
 
 mod dto;
@@ -147,7 +147,7 @@ impl EudiEcosystem {
     async fn revoke_pid(&self, credential_id: CredentialId, result: &mut EudiLifecycleResultDTO) {
         let Err(error) = self
             .credential_validity_manager
-            .change_credential_validity_state(&credential_id, RevocationState::Revoked)
+            .change_credential_state(&credential_id, ChangeCredentialState::Revoked)
             .await
         else {
             result.revoked_credential_ids.push(credential_id);

@@ -21,6 +21,7 @@ pub enum Permission {
     CredentialSchemaShare,
     CredentialShare,
     CredentialSuspend,
+    CredentialExpire,
     DashboardDetail,
     DidCreate,
     DidDeactivate,

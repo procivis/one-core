@@ -13,10 +13,10 @@ use crate::model::credential::{
     CredentialType, UpdateCredentialRequest,
 };
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
     CredentialValidityManager, is_batch_parent_expired,
 };
-use crate::provider::revocation::model::RevocationState;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::error::ServiceError;
 
@@ -67,7 +67,7 @@ impl LifecycleCheckProvider {
 
         for credential in &credential_list.values {
             self.credential_validity_manager
-                .change_credential_validity_state(&credential.id, RevocationState::Valid)
+                .change_credential_state(&credential.id, ChangeCredentialState::Accepted)
                 .await
                 .error_while("reactivating credential")?;
         }

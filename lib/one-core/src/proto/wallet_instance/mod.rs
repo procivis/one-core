@@ -303,9 +303,9 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
         Ok(match revocation_status {
             RevocationState::Valid => WalletUnitStatusCheckResponse::Active,
-            RevocationState::Revoked
-            | RevocationState::Suspended { .. }
-            | RevocationState::Expired => WalletUnitStatusCheckResponse::Revoked,
+            RevocationState::Revoked | RevocationState::Suspended { .. } => {
+                WalletUnitStatusCheckResponse::Revoked
+            }
         })
     }
 

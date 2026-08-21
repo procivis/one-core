@@ -65,6 +65,7 @@ pub enum CredentialStateEnum {
     Suspended,
     Error,
     InteractionExpired,
+    Expiring,
     Expired,
 }
 
@@ -75,6 +76,7 @@ impl CredentialStateEnum {
 
     pub fn non_terminal_states() -> &'static [Self] {
         &[
+            CredentialStateEnum::Expiring,
             CredentialStateEnum::Created,
             CredentialStateEnum::Pending,
             CredentialStateEnum::Offered,

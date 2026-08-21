@@ -134,11 +134,20 @@ impl HttpClient {
     }
 
     pub async fn patch(&self, url: &str, body: impl Into<Option<Value>>) -> Response {
+        self.patch_custom_bearer_auth(url, &self.token, body).await
+    }
+
+    pub async fn patch_custom_bearer_auth(
+        &self,
+        url: &str,
+        token: &str,
+        body: impl Into<Option<Value>>,
+    ) -> Response {
         let url = format!("{}{url}", self.base_url);
 
         let resp = http_client()
             .patch(url)
-            .bearer_auth(&self.token)
+            .bearer_auth(token)
             .json(&body.into())
             .send()
             .await

@@ -138,11 +138,6 @@ impl CapabilityChecked {
             RevocationState::Valid => return Ok(()),
             RevocationState::Revoked => Operation::Revoke,
             RevocationState::Suspended { .. } => Operation::Suspend,
-            RevocationState::Expired => {
-                return Err(RevocationError::MappingError(
-                    "cannot mark a credential as expired through a revocation method".to_string(),
-                ));
-            }
         };
 
         if !self.0.get_capabilities().operations.contains(&operation) {

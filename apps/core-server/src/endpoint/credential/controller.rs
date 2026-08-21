@@ -9,18 +9,19 @@ use shared_types::{CredentialId, Permission};
 use super::dto::{
     CredentialDetailClaimResponseRestDTO, CredentialRevocationCheckRequestRestDTO,
     CredentialRevocationCheckResponseRestDTO, CredentialTrustInformationDetailResponseRestDTO,
-    ShareCredentialResponseRestDTO,
+    PatchCredentialStateRequestRestDTO, ShareCredentialResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse, VecResponse,
 };
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
     SuspendCredentialRequestRestDTO,
 };
 use crate::extractor::Qs;
+use crate::middleware::Permissions;
 use crate::router::AppState;
 
 #[endpoint(
@@ -174,6 +175,7 @@ pub(crate) async fn post_credential(
         Related guide: [Suspension and Revocation](https://docs.procivis.ch/issue/suspend-revoke)
     "},
 )]
+#[deprecated = "Deprecated in favor of PATCH /api/credential/v1/{id}/state"]
 pub(crate) async fn reactivate_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -204,6 +206,7 @@ pub(crate) async fn reactivate_credential(
         Related guide: [Suspension and Revocation](https://docs.procivis.ch/issue/suspend-revoke)
     "},
 )]
+#[deprecated = "Deprecated in favor of PATCH /api/credential/v1/{id}/state"]
 pub(crate) async fn revoke_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -231,6 +234,7 @@ pub(crate) async fn revoke_credential(
         Related guide: [Suspension and Revocation](https://docs.procivis.ch/issue/suspend-revoke)
     "},
 )]
+#[deprecated = "Deprecated in favor of PATCH /api/credential/v1/{id}/state"]
 pub(crate) async fn suspend_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -245,6 +249,54 @@ pub(crate) async fn suspend_credential(
         .suspend_credential(&id, request.into())
         .await;
     EmptyOrErrorResponse::from_result(result, state, "suspending credential")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialRevoke, Permission::CredentialSuspend, Permission::CredentialReactivate, Permission::CredentialExpire],
+    patch,
+    path = "/api/credential/v1/{id}/state",
+    request_body = PatchCredentialStateRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = CredentialId, Path, description = "Credential id")
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Update the state of a credential",
+    description = indoc::formatdoc! {"
+        Updates state of a credential.
+    "},
+)]
+pub(crate) async fn patch_credential_state(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PatchCredentialStateRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    match authorized.permissions {
+        Permissions::All => {}
+        Permissions::Subset(subset) => match request {
+            PatchCredentialStateRequestRestDTO::Accepted
+                if subset.contains(&Permission::CredentialReactivate) => {}
+            PatchCredentialStateRequestRestDTO::Suspended { .. }
+                if subset.contains(&Permission::CredentialSuspend) => {}
+            PatchCredentialStateRequestRestDTO::Revoked
+                if subset.contains(&Permission::CredentialRevoke) => {}
+            PatchCredentialStateRequestRestDTO::Expiring
+                if subset.contains(&Permission::CredentialExpire) => {}
+            _ => return EmptyOrErrorResponse::Error(ErrorResponse::Unauthorized),
+        },
+    }
+    let result = state
+        .core
+        .credential_service
+        .patch_credential_state(&id, request.into())
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "patching credential state")
 }
 
 #[endpoint(

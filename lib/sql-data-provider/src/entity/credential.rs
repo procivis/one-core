@@ -190,4 +190,6 @@ pub enum CredentialState {
     InteractionExpired,
     #[sea_orm(string_value = "EXPIRED")]
     Expired,
+    #[sea_orm(string_value = "EXPIRING")]
+    Expiring,
 }
