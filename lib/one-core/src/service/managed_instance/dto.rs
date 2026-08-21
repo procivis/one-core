@@ -118,7 +118,7 @@ pub(super) struct FeatureFlagsParams {
     pub ecosystems_enforcement_enabled: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", try_from = "FeatureFlagsWire")]
 pub struct FeatureFlags {
     pub ecosystems_enabled: bool,

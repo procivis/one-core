@@ -8,7 +8,10 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::OrganisationService;
-use super::dto::{CreateOrganisationRequestDTO, OrganisationFilterParamsDTO};
+use super::dto::{
+    CreateOrganisationRequestDTO, OrganisationFilterParamsDTO, VerifierInstanceFeatureFlagsDTO,
+    WalletInstanceFeatureFlagsDTO,
+};
 use super::error::OrganisationServiceError;
 use crate::config::core_config::{
     ConfigEntryDisplay, CoreConfig, EcosystemProviderType, Fields, Params,
@@ -41,7 +44,7 @@ use crate::service::managed_instance::dto::{
 use crate::service::organisation::dto::{
     TrustCollectionInfoDTO, UpsertOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
 };
-use crate::service::test_utilities::dummy_organisation;
+use crate::service::test_utilities::{dummy_key, dummy_organisation};
 use crate::service::verifier_provider::dto::{
     FeatureFlags as VerifierProviderFeatureFlags, VerifierProviderMetadataResponseDTO,
 };
@@ -157,10 +160,10 @@ async fn test_get_organisation_success() {
         .returning(move |_| Ok(org_clone.clone()));
 
     let mut instance_repository = MockInstanceRepository::new();
-    // twice for the instance details, twice for the ecosystems offered by the providers
+    // once per role, feeding both the instance details and the offered ecosystems
     instance_repository
         .expect_get_by_role()
-        .times(4)
+        .times(2)
         .returning(|_, _| Ok(None));
 
     let service = setup_service(Mocks {
@@ -210,6 +213,87 @@ async fn test_get_organisation_includes_offered_ecosystems() {
     assert_eq!(result.ecosystems.len(), 1);
     assert_eq!(result.ecosystems[0].name, EcosystemId::from("EUDI"));
     assert!(result.ecosystems[0].selected);
+}
+
+/// Each instance reports the feature flags advertised by the provider backing it; flags the
+/// reporting provider does not know about stay `false`.
+#[tokio::test]
+async fn test_get_organisation_reports_provider_feature_flags() {
+    let organisation_id = Uuid::new_v4().into();
+    let organisation = dummy_organisation(Some(organisation_id));
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let org_clone = organisation.clone();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(org_clone.clone()));
+
+    let mut instance_repository = MockInstanceRepository::new();
+    let instance_org = organisation.clone();
+    instance_repository
+        .expect_get_by_role()
+        .returning(move |role, _| {
+            Ok(Some(Instance {
+                authentication_key: Some(dummy_key().into()),
+                ..dummy_instance(Uuid::new_v4(), instance_org.clone(), role)
+            }))
+        });
+
+    let mut wallet_provider_client = MockWalletProviderClient::default();
+    wallet_provider_client
+        .expect_get_wallet_provider_metadata()
+        .returning(|_| {
+            Ok(WalletProviderMetadataResponseDTO {
+                feature_flags: WalletProviderFeatureFlags {
+                    ecosystems_enabled: true,
+                    refresh_credential_batch_enabled: true,
+                    document_signing_enabled: true,
+                    ecosystems_enforcement_enabled: false,
+                },
+                ..wallet_metadata(vec![])
+            })
+        });
+
+    let mut verifier_provider_client = MockVerifierProviderClient::default();
+    verifier_provider_client
+        .expect_get_verifier_provider_metadata()
+        .returning(|_| {
+            Ok(VerifierProviderMetadataResponseDTO {
+                feature_flags: VerifierProviderFeatureFlags {
+                    ecosystems_enabled: false,
+                    access_certificate_provisioning_enabled: true,
+                    ecosystems_enforcement_enabled: true,
+                },
+                ..verifier_metadata(vec![])
+            })
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        instance_repository,
+        wallet_provider_client,
+        verifier_provider_client,
+        ..Default::default()
+    });
+    let result = service.get_organisation(&organisation_id).await.unwrap();
+
+    assert_eq!(
+        result.wallet_instance.unwrap().feature_flags,
+        WalletInstanceFeatureFlagsDTO {
+            ecosystems_enabled: true,
+            ecosystems_enforcement_enabled: false,
+            refresh_credential_batch_enabled: true,
+            document_signing_enabled: true,
+        }
+    );
+    assert_eq!(
+        result.verifier_instance.unwrap().feature_flags,
+        VerifierInstanceFeatureFlagsDTO {
+            ecosystems_enabled: false,
+            ecosystems_enforcement_enabled: true,
+            access_certificate_provisioning_enabled: true,
+        }
+    );
 }
 
 #[tokio::test]

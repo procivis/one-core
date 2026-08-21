@@ -1,7 +1,8 @@
 use one_core::service::managed_instance::dto::DisplayNameDTO;
 use one_core::service::organisation::dto::{
     EcosystemInfoDTO, GetOrganisationDetailsResponseDTO, InstanceDetailResponseDTO,
-    OrganisationConfigurationDTO, VerifierProviderDetailResponseDTO,
+    OrganisationConfigurationDTO, VerifierInstanceFeatureFlagsDTO,
+    VerifierProviderDetailResponseDTO, WalletInstanceFeatureFlagsDTO,
     WalletProviderDetailResponseDTO,
 };
 use one_dto_mapper::{From, convert_inner};
@@ -139,22 +140,58 @@ pub struct GetOrganisationDetailsResponseBindingDTO {
     /// Wallet registration details for this organization's Business
     /// Wallet.
     #[from(with_fn = convert_inner)]
-    pub wallet_instance: Option<InstanceDetailResponseBindingDTO>,
+    pub wallet_instance: Option<WalletInstanceDetailResponseBindingDTO>,
     /// Verifier registration details for this organization's Business
     /// Verifier.
     #[from(with_fn = convert_inner)]
-    pub verifier_instance: Option<InstanceDetailResponseBindingDTO>,
+    pub verifier_instance: Option<VerifierInstanceDetailResponseBindingDTO>,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]
-#[uniffi(name = "InstanceDetail")]
-#[from(InstanceDetailResponseDTO)]
-pub(crate) struct InstanceDetailResponseBindingDTO {
+#[uniffi(name = "WalletInstanceDetail")]
+#[from(InstanceDetailResponseDTO::<WalletInstanceFeatureFlagsDTO>)]
+pub(crate) struct WalletInstanceDetailResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
     pub provider_url: String,
     pub provider_name: String,
     pub authentication_key_type: String,
+    /// The feature flags advertised by the provider backing this instance.
+    pub feature_flags: WalletInstanceFeatureFlagsBindingDTO,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[uniffi(name = "WalletInstanceFeatureFlags")]
+#[from(WalletInstanceFeatureFlagsDTO)]
+pub(crate) struct WalletInstanceFeatureFlagsBindingDTO {
+    pub ecosystems_enabled: bool,
+    /// Whether this instance must enforce the ecosystems advertised by its provider.
+    pub ecosystems_enforcement_enabled: bool,
+    pub refresh_credential_batch_enabled: bool,
+    pub document_signing_enabled: bool,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[uniffi(name = "VerifierInstanceDetail")]
+#[from(InstanceDetailResponseDTO::<VerifierInstanceFeatureFlagsDTO>)]
+pub(crate) struct VerifierInstanceDetailResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub provider_url: String,
+    pub provider_name: String,
+    pub authentication_key_type: String,
+    /// The feature flags advertised by the provider backing this instance.
+    pub feature_flags: VerifierInstanceFeatureFlagsBindingDTO,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[uniffi(name = "VerifierInstanceFeatureFlags")]
+#[from(VerifierInstanceFeatureFlagsDTO)]
+pub(crate) struct VerifierInstanceFeatureFlagsBindingDTO {
+    pub ecosystems_enabled: bool,
+    /// Whether this instance must enforce the ecosystems advertised by its provider.
+    pub ecosystems_enforcement_enabled: bool,
+    pub access_certificate_provisioning_enabled: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

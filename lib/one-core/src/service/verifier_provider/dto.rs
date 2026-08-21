@@ -20,7 +20,7 @@ pub struct VerifierProviderMetadataResponseDTO {
     pub ecosystems: Vec<EcosystemMetadataDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase", try_from = "FeatureFlagsWire")]
 pub struct FeatureFlags {
     pub ecosystems_enabled: bool,

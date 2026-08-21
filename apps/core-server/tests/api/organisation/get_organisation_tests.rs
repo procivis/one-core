@@ -157,6 +157,12 @@ async fn test_get_organisation_returns_wallet_instance() {
     assert_eq!(wallet_instance["providerName"], "PROCIVIS_ONE");
     assert_eq!(wallet_instance["authenticationKeyType"], "ECDSA");
 
+    let feature_flags = wallet_instance["featureFlags"].as_object().unwrap();
+    assert_eq!(feature_flags["ecosystemsEnabled"], true);
+    assert_eq!(feature_flags["refreshCredentialBatchEnabled"], true);
+    assert_eq!(feature_flags["documentSigningEnabled"], false);
+    assert_eq!(feature_flags["ecosystemsEnforcementEnabled"], false);
+
     // the ecosystems advertised by the wallet provider, none of them selected yet
     let ecosystems = resp["ecosystems"].as_array().unwrap();
     assert_eq!(ecosystems.len(), 1);
@@ -271,6 +277,11 @@ async fn test_get_organisation_with_verifier_instance_success() {
     assert_eq!(verifier_instance_resp["providerName"], "PROCIVIS_ONE");
     assert_eq!(verifier_instance_resp["providerUrl"], mock_server.uri());
     assert_eq!(verifier_instance_resp["authenticationKeyType"], "ECDSA");
+
+    let feature_flags = verifier_instance_resp["featureFlags"].as_object().unwrap();
+    assert_eq!(feature_flags["ecosystemsEnabled"], true);
+    assert_eq!(feature_flags["accessCertificateProvisioningEnabled"], false);
+    assert_eq!(feature_flags["ecosystemsEnforcementEnabled"], false);
 
     // the ecosystems advertised by the verifier provider
     let ecosystems = resp["ecosystems"].as_array().unwrap();

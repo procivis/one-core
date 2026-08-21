@@ -1,13 +1,14 @@
 use one_core::service::error::ValidationError;
 use one_core::service::organisation::dto::{
-    OrganisationConfigurationDTO, UpsertOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
+    InstanceDetailResponseDTO, OrganisationConfigurationDTO, UpsertOrganisationConfigurationDTO,
+    UpsertOrganisationRequestDTO,
 };
 use shared_types::{IdentifierId, OrganisationId};
 
 use super::dto::{
-    CreateOrganisationResponseRestDTO, OrganisationConfigurationRestDTO,
-    UpsertOrganisationConfigurationRestDTO, UpsertOrganisationRequestRestDTO,
-    UpsertProviderRequestRestDTO,
+    CreateOrganisationResponseRestDTO, InstanceDetailResponseRestDTO,
+    OrganisationConfigurationRestDTO, UpsertOrganisationConfigurationRestDTO,
+    UpsertOrganisationRequestRestDTO, UpsertProviderRequestRestDTO,
 };
 
 impl From<OrganisationId> for CreateOrganisationResponseRestDTO {
@@ -117,4 +118,19 @@ pub(crate) fn upsert_request_from_request(
         trust_collections: request.trust_collections,
         parent_organisation: request.parent_organisation,
     })
+}
+
+impl<IN, OUT> From<InstanceDetailResponseDTO<IN>> for InstanceDetailResponseRestDTO<OUT>
+where
+    IN: Into<OUT>,
+{
+    fn from(value: InstanceDetailResponseDTO<IN>) -> Self {
+        Self {
+            id: value.id,
+            provider_name: value.provider_name,
+            provider_url: value.provider_url,
+            authentication_key_type: value.authentication_key_type,
+            feature_flags: value.feature_flags.into(),
+        }
+    }
 }

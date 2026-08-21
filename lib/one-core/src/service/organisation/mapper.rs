@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
 use crate::model::identifier::Identifier;
-use crate::model::instance::InstanceRole;
+use crate::model::instance::{Instance, InstanceRole};
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
 };
@@ -29,7 +29,8 @@ use crate::service::managed_instance::dto::{EcosystemMetadataDTO, ProviderTrustC
 use crate::service::organisation::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
-    TrustCollectionInfoDTO, UpsertOrganisationRequestDTO, VerifierProviderDetailResponseDTO,
+    TrustCollectionInfoDTO, UpsertOrganisationRequestDTO, VerifierInstanceFeatureFlagsDTO,
+    VerifierProviderDetailResponseDTO, WalletInstanceFeatureFlagsDTO,
     WalletProviderDetailResponseDTO,
 };
 use crate::service::organisation::error::OrganisationServiceError;
@@ -86,8 +87,8 @@ pub(super) fn detail_from_model(
     ecosystems: Vec<EcosystemInfoDTO>,
     wallet_provider_issuer: Option<Identifier>,
     verifier_provider_issuer: Option<Identifier>,
-    wallet_instance: Option<InstanceDetailResponseDTO>,
-    verifier_instance: Option<InstanceDetailResponseDTO>,
+    wallet_instance: Option<InstanceDetailResponseDTO<WalletInstanceFeatureFlagsDTO>>,
+    verifier_instance: Option<InstanceDetailResponseDTO<VerifierInstanceFeatureFlagsDTO>>,
 ) -> GetOrganisationDetailsResponseDTO {
     GetOrganisationDetailsResponseDTO {
         id: organisation.id,
@@ -110,6 +111,22 @@ pub(super) fn detail_from_model(
         wallet_instance,
         verifier_instance,
     }
+}
+
+pub(super) async fn instance_detail_from_model<T>(
+    instance: Instance,
+    feature_flags: impl Into<T>,
+) -> Result<Option<InstanceDetailResponseDTO<T>>, OrganisationServiceError> {
+    let Some(authentication_key) = instance.authentication_key else {
+        return Ok(None);
+    };
+    Ok(Some(InstanceDetailResponseDTO {
+        id: instance.id,
+        provider_url: instance.provider_url,
+        provider_name: instance.provider_name,
+        authentication_key_type: authentication_key.as_ref().await?.key_type.to_owned(),
+        feature_flags: feature_flags.into(),
+    }))
 }
 
 pub(super) fn list_item_from_model(

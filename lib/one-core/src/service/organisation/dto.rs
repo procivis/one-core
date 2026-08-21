@@ -5,7 +5,10 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::organisation::OrganisationConfiguration;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
-use crate::service::managed_instance::dto::{DisplayNameDTO, ProviderTrustCollectionDTO};
+use crate::service::managed_instance::dto::{
+    DisplayNameDTO, FeatureFlags as WalletProviderFeatureFlags, ProviderTrustCollectionDTO,
+};
+use crate::service::verifier_provider::dto::FeatureFlags as VerifierProviderFeatureFlags;
 
 #[derive(Clone, Debug)]
 pub struct TrustCollectionInfoDTO {
@@ -57,8 +60,8 @@ pub struct GetOrganisationDetailsResponseDTO {
     /// The ecosystems offered to this organisation, annotated with whether it
     /// currently selected each one.
     pub ecosystems: Vec<EcosystemInfoDTO>,
-    pub wallet_instance: Option<InstanceDetailResponseDTO>,
-    pub verifier_instance: Option<InstanceDetailResponseDTO>,
+    pub wallet_instance: Option<InstanceDetailResponseDTO<WalletInstanceFeatureFlagsDTO>>,
+    pub verifier_instance: Option<InstanceDetailResponseDTO<VerifierInstanceFeatureFlagsDTO>>,
     pub wallet_provider: Option<WalletProviderDetailResponseDTO>,
     pub verifier_provider: Option<VerifierProviderDetailResponseDTO>,
 }
@@ -78,11 +81,51 @@ pub struct GetOrganisationListItemResponseDTO {
 /// verifier instance (both are the same underlying `Instance`, distinguished
 /// only by which slot on the organization they're linked from).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InstanceDetailResponseDTO {
+pub struct InstanceDetailResponseDTO<T> {
     pub id: InstanceId,
     pub provider_name: String,
     pub provider_url: String,
     pub authentication_key_type: String,
+    /// Feature flags advertised by the provider backing this instance.
+    pub feature_flags: T,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct WalletInstanceFeatureFlagsDTO {
+    pub ecosystems_enabled: bool,
+    /// Whether this instance must enforce the ecosystems advertised by its provider.
+    pub ecosystems_enforcement_enabled: bool,
+    pub refresh_credential_batch_enabled: bool,
+    pub document_signing_enabled: bool,
+}
+
+impl From<WalletProviderFeatureFlags> for WalletInstanceFeatureFlagsDTO {
+    fn from(value: WalletProviderFeatureFlags) -> Self {
+        Self {
+            ecosystems_enabled: value.ecosystems_enabled,
+            ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
+            refresh_credential_batch_enabled: value.refresh_credential_batch_enabled,
+            document_signing_enabled: value.document_signing_enabled,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct VerifierInstanceFeatureFlagsDTO {
+    pub ecosystems_enabled: bool,
+    /// Whether this instance must enforce the ecosystems advertised by its provider.
+    pub ecosystems_enforcement_enabled: bool,
+    pub access_certificate_provisioning_enabled: bool,
+}
+
+impl From<VerifierProviderFeatureFlags> for VerifierInstanceFeatureFlagsDTO {
+    fn from(value: VerifierProviderFeatureFlags) -> Self {
+        Self {
+            ecosystems_enabled: value.ecosystems_enabled,
+            ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
+            access_certificate_provisioning_enabled: value.access_certificate_provisioning_enabled,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

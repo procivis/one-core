@@ -1,8 +1,9 @@
 use one_core::service::error::ServiceError;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
-    GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
-    TrustCollectionInfoDTO, VerifierProviderDetailResponseDTO, WalletProviderDetailResponseDTO,
+    GetOrganisationListItemResponseDTO, OrganisationFilterParamsDTO, TrustCollectionInfoDTO,
+    VerifierInstanceFeatureFlagsDTO, VerifierProviderDetailResponseDTO,
+    WalletInstanceFeatureFlagsDTO, WalletProviderDetailResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -148,21 +149,44 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     /// Wallet registration details for this organization's Business
     /// Wallet.
     #[from(with_fn = convert_inner)]
-    pub wallet_instance: Option<InstanceDetailResponseRestDTO>,
+    pub wallet_instance: Option<InstanceDetailResponseRestDTO<WalletInstanceFeatureFlagsRestDTO>>,
     /// Verifier registration details for this organization's Business
     /// Verifier.
     #[from(with_fn = convert_inner)]
-    pub verifier_instance: Option<InstanceDetailResponseRestDTO>,
+    pub verifier_instance:
+        Option<InstanceDetailResponseRestDTO<VerifierInstanceFeatureFlagsRestDTO>>,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(InstanceDetailResponseDTO)]
-pub(crate) struct InstanceDetailResponseRestDTO {
+pub(crate) struct InstanceDetailResponseRestDTO<T> {
     pub id: InstanceId,
     pub provider_name: String,
     pub provider_url: String,
     pub authentication_key_type: String,
+    /// The feature flags advertised by the provider backing this instance.
+    pub feature_flags: T,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(WalletInstanceFeatureFlagsDTO)]
+pub(crate) struct WalletInstanceFeatureFlagsRestDTO {
+    pub ecosystems_enabled: bool,
+    /// Whether this instance must enforce the ecosystems advertised by its provider.
+    pub ecosystems_enforcement_enabled: bool,
+    pub refresh_credential_batch_enabled: bool,
+    pub document_signing_enabled: bool,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(VerifierInstanceFeatureFlagsDTO)]
+pub(crate) struct VerifierInstanceFeatureFlagsRestDTO {
+    pub ecosystems_enabled: bool,
+    /// Whether this instance must enforce the ecosystems advertised by its provider.
+    pub ecosystems_enforcement_enabled: bool,
+    pub access_certificate_provisioning_enabled: bool,
 }
 
 #[options_not_nullable]
