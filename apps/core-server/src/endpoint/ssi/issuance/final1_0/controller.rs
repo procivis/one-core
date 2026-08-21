@@ -288,6 +288,21 @@ pub(crate) async fn oid4vci_final1_0_create_token(
             )
                 .into_response()
         }
+        Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
+            tracing::error!("Invalid credential state state error: {state}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::CredentialRequestDenied,
+                    error_description: Some(format!(
+                        "{} | Credential is in state: {}",
+                        e.error_code(),
+                        state
+                    )),
+                }),
+            )
+                .into_response()
+        }
         Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
@@ -357,7 +372,22 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
             )
                 .into_response()
         }
-        Err(error) if matches!(error.error_code(), ErrorCode::BR_0238 | ErrorCode::BR_0002) => (
+        Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
+            tracing::error!("Invalid credential state error: {state}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::CredentialRequestDenied,
+                    error_description: Some(format!(
+                        "{} | Credential is in state: {}",
+                        e.error_code(),
+                        state
+                    )),
+                }),
+            )
+                .into_response()
+        }
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0238) => (
             StatusCode::BAD_REQUEST,
             Json(OpenID4VCIErrorResponseRestDTO {
                 error: OpenID4VCIErrorRestEnum::InvalidRequest,

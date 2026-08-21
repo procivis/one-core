@@ -1,5 +1,5 @@
 use futures::future::join_all;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialStateEnum, CredentialType, UpdateCredentialRequest};
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
@@ -545,4 +545,92 @@ async fn test_oidc_issuer_create_token_tx_code_missing() {
 
     let resp = resp.json_value().await;
     resp["error"].assert_eq(&"invalid_request".to_string());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_fails_when_credential_is_expiring() {
+    // GIVEN a batch-parent credential that has already transitioned to EXPIRING - fetching (or
+    // refreshing) a token for its interaction must be rejected upfront, since none of the
+    // credentials tied to that interaction can be (re)issued once one of them is expiring
+    let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let interaction_id = Uuid::new_v4().into();
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test-schema", &org, TestingCreateSchemaParams::default())
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &org,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                r#type: Some(CredentialType::BatchParent),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .update(
+            credential.id,
+            UpdateCredentialRequest {
+                state: Some(CredentialStateEnum::Expiring),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let pre_authorized_code = interaction_id.to_string();
+    let resp = context
+        .api
+        .ssi
+        .create_token(
+            credential_schema.id,
+            TokenRequest::PreAuthorizedCode {
+                code: pre_authorized_code,
+                tx_code: None,
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(400, resp.status());
+
+    let resp = resp.json_value().await;
+    assert!(
+        resp["error_description"]
+            .as_str()
+            .is_some_and(|desc| desc.contains("BR_0002")),
+        "expected error_description to carry the BR code, got: {resp}"
+    );
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(credential.state, CredentialStateEnum::Expiring);
 }

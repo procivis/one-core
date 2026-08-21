@@ -922,6 +922,17 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credentials")?;
 
+        // only batch_parent can be in state `Expiring`,
+        // if it's the case, then any other credential related to specified interaction cannot be issued, or token cannot be refreshed
+        if credentials
+            .iter()
+            .any(|c| c.state == CredentialStateEnum::Expiring)
+        {
+            return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+                CredentialStateEnum::Expiring,
+            ));
+        }
+
         let credential = credentials.first().ok_or(
             OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
         )?;
@@ -1355,6 +1366,11 @@ impl OID4VCIFinal1_0Service {
         interaction: &Interaction,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         if credential.state.is_terminal() {
+            return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+                credential.state,
+            ));
+        }
+        if credential.state == CredentialStateEnum::Expiring {
             return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
                 credential.state,
             ));

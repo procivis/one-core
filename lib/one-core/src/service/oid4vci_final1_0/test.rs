@@ -1362,6 +1362,68 @@ async fn test_create_token_wrong_credential_state() {
     ));
 }
 
+#[tokio::test]
+async fn test_create_token_fails_when_related_credential_is_expiring() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let interaction_repository = MockInteractionRepository::default();
+
+    let schema = generic_credential_schema();
+
+    let clone = schema.clone();
+    repository
+        .expect_get_credential_schema()
+        .times(1)
+        .with(eq(schema.id.to_owned()))
+        .returning(move |_| Ok(clone.clone()));
+
+    let batch_parent = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Expiring,
+        false,
+        schema.clone(),
+        CredentialType::BatchParent,
+    );
+    let batch_item = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Accepted,
+        false,
+        schema.clone(),
+        CredentialType::BatchItem,
+    );
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_| Ok(vec![batch_parent, batch_item]));
+
+    // no interaction is loaded since the request is rejected before entering the transaction
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        credential_repository,
+        interaction_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+    let result = service
+        .create_token(
+            &schema.id,
+            TokenRequest::PreAuthorizedCode {
+                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
+            },
+            None,
+            None,
+        )
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+            CredentialStateEnum::Expiring
+        ))
+    ));
+}
+
 // const NONCE: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTgyNjU2NDMsImV4cCI6MTk1ODI2NTY0MywiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTozMDAwIiwianRpIjoiYTRiMTQ5NzYtYzQ2MS00OWNkLWEyODItYzBmZjcyMGY3YTYyIiwiY29udGV4dCI6Imlzc3VhbmNlLW9wZW5pZHZjaS1maW5hbC0xLjAtbm9uY2UifQ.Am8B0y5QqsiJluim9Q6Ov-4Po3VLkLcxAg2L0vDXNu8";
 const PROOF_JWT: &str = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20iLCJub25jZSI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpwWVhRaU9qRTNOVGd5TmpVMk5ETXNJbVY0Y0NJNk1UazFPREkyTlRZME15d2lhWE56SWpvaWFIUjBjRG92THpFeU55NHdMakF1TVRvek1EQXdJaXdpYW5ScElqb2lZVFJpTVRRNU56WXRZelEyTVMwME9XTmtMV0V5T0RJdFl6Qm1aamN5TUdZM1lUWXlJaXdpWTI5dWRHVjRkQ0k2SW1semMzVmhibU5sTFc5d1pXNXBaSFpqYVMxbWFXNWhiQzB4TGpBdGJtOXVZMlVpZlEuQW04QjB5NVFxc2lKbHVpbTlRNk92LTRQbzNWTGtMY3hBZzJMMHZEWE51OCJ9.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw";
 
@@ -2231,6 +2293,79 @@ async fn test_create_credential_access_token_expired() {
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidToken
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_fails_when_credential_is_expiring() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+
+    let schema = generic_credential_schema();
+    let interaction_id: InteractionId = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        .unwrap()
+        .into();
+
+    let clone = schema.clone();
+    repository
+        .expect_get_credential_schema()
+        .times(1)
+        .with(eq(schema.id.to_owned()))
+        .returning(move |_| Ok(clone.clone()));
+
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .returning(move |_, _| {
+            Ok(dummy_interaction(
+                Some(interaction_id),
+                true,
+                None,
+                None,
+                None,
+            ))
+        });
+
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Expiring,
+        true,
+        schema.clone(),
+        CredentialType::BatchParent,
+    );
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_| Ok(vec![credential]));
+
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        credential_repository,
+        interaction_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(
+            &schema.id,
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            CredentialRequest {
+                credential: CredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id().await.unwrap().to_owned(),
+                ),
+                proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
+                credential_response_encryption: None,
+            },
+        )
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+            CredentialStateEnum::Expiring
         ))
     ));
 }

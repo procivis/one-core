@@ -5,7 +5,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use futures::future::join_all;
 use maplit::hashmap;
 use one_core::model::certificate::{Certificate, CertificateState};
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialStateEnum, CredentialType, UpdateCredentialRequest};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
@@ -294,6 +294,116 @@ async fn test_post_issuer_credential_fails_when_credential_expired() {
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(CredentialStateEnum::Expired, credential.state);
     assert!(credential.issuance_date.is_none());
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_fails_when_credential_expiring() {
+    // an issuer-side credential (the batch parent, for a batch/MDOC schema, or the credential
+    // itself otherwise) that has been flagged `EXPIRING` must not be usable to issue a (further)
+    // credential from - `create_credential` rejects it upfront, mirroring the `Expired` guard
+    // covered above, but without the state-mutating side effect of the expiry check (EXPIRING
+    // is a pure pre-existing flag, not something this endpoint transitions into)
+    let TestIssuerSetup {
+        interaction_id,
+        access_token,
+        organisation,
+        context,
+        key,
+        issuer_identifier,
+        ..
+    } = issuer_setup(None).await;
+
+    let schema_id = "test-schema-id".to_string();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &organisation,
+            TestingCreateSchemaParams {
+                schema_id: Some(schema_id.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data =
+        dummy_issuer_interaction_data(&access_token, IssuerInteractionDataParams::default());
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_data),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                key: Some(key),
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .update(
+            credential.id,
+            UpdateCredentialRequest {
+                state: Some(CredentialStateEnum::Expiring),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let nonce = context
+        .api
+        .ssi
+        .generate_nonce("OPENID4VCI_FINAL1")
+        .await
+        .json_value()
+        .await["c_nonce"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let jwt = proof_jwt(true, Some(&nonce)).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential(credential_schema.id, &schema_id, &jwt)
+        .await;
+
+    // THEN
+    assert_eq!(400, resp.status());
+
+    let resp = resp.json_value().await;
+    assert!(
+        resp["error_description"]
+            .as_str()
+            .is_some_and(|desc| desc.contains("BR_0002")),
+        "expected error_description to carry the BR code, got: {resp}"
+    );
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.state);
 }
 
 #[tokio::test]
