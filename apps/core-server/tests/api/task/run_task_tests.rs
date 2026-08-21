@@ -309,7 +309,7 @@ async fn test_run_task_lifecycle_check_does_not_expire_terminal_state_credential
 }
 
 #[tokio::test]
-async fn test_run_task_lifecycle_check_does_not_expire_mdoc() {
+async fn test_run_task_lifecycle_check_expires_mdoc() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
@@ -355,10 +355,10 @@ async fn test_run_task_lifecycle_check_does_not_expire_mdoc() {
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(!expired_ids.contains(&credential.id.to_string()));
+    assert!(expired_ids.contains(&credential.id.to_string()));
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(credential.state, CredentialStateEnum::Accepted);
+    assert_eq!(credential.state, CredentialStateEnum::Expired);
 }
 
 /// A batch parent's own items no longer decide its fate: as long as its own `expires_at` is in

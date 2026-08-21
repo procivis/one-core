@@ -6,7 +6,6 @@ use time::OffsetDateTime;
 
 use self::dto::LifecycleCheckResultDTO;
 use super::Task;
-use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
@@ -25,19 +24,16 @@ pub mod dto;
 pub(crate) struct LifecycleCheckProvider {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
-    config: Arc<CoreConfig>,
 }
 
 impl LifecycleCheckProvider {
     pub fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         credential_validity_manager: Arc<dyn CredentialValidityManager>,
-        config: Arc<CoreConfig>,
     ) -> Self {
         LifecycleCheckProvider {
             credential_repository,
             credential_validity_manager,
-            config,
         }
     }
 
@@ -138,9 +134,6 @@ impl LifecycleCheckProvider {
         let mut expired_ids = vec![];
 
         for credential in stale_credentials.values {
-            if self.is_mdoc(&credential).await? {
-                continue;
-            }
             if self.expire_if_stale(&credential, now).await? {
                 expired_ids.push(credential.id);
             }
@@ -175,10 +168,6 @@ impl LifecycleCheckProvider {
                 .collect();
 
             for credential in batch_parents.values {
-                if self.is_mdoc(&credential).await? {
-                    continue;
-                }
-
                 let all_items_expired = !parents_with_remaining_items.contains(&credential.id);
 
                 // the parent is only expired once every item has individually expired, and
@@ -211,20 +200,6 @@ impl LifecycleCheckProvider {
         }
 
         Ok((expired_ids, total_checks))
-    }
-
-    async fn is_mdoc(&self, credential: &Credential) -> Result<bool, ServiceError> {
-        let credential_schema = credential.schema.as_ref().await?;
-        let format = credential_schema.format().await?;
-        let format_type = self
-            .config
-            .format
-            .get_fields(&format)
-            .error_while("getting format config")?
-            .r#type;
-
-        // mdoc validity is handled entirely through the MSO refresh cycle, not here
-        Ok(format_type == FormatType::Mdoc)
     }
 
     async fn expire_if_stale(

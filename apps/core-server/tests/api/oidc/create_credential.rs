@@ -202,6 +202,101 @@ async fn test_post_issuer_credential_fail_expired_access_token() {
 }
 
 #[tokio::test]
+async fn test_post_issuer_credential_fails_when_credential_expired() {
+    // an issuer-side credential (the batch parent, for a batch/MDOC schema, or the credential
+    // itself otherwise) that has already expired must not be usable to issue a (further)
+    // credential from - `create_credential` rejects it upfront instead of minting a new batch
+    // item under an already-expired parent
+    let TestIssuerSetup {
+        interaction_id,
+        access_token,
+        organisation,
+        context,
+        key,
+        issuer_identifier,
+        ..
+    } = issuer_setup(None).await;
+
+    let schema_id = "test-schema-id".to_string();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &organisation,
+            TestingCreateSchemaParams {
+                schema_id: Some(schema_id.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data =
+        dummy_issuer_interaction_data(&access_token, IssuerInteractionDataParams::default());
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(interaction_data),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                key: Some(key),
+                expires_at: Some(one_core::clock::now_utc() - Duration::seconds(1)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let nonce = context
+        .api
+        .ssi
+        .generate_nonce("OPENID4VCI_FINAL1")
+        .await
+        .json_value()
+        .await["c_nonce"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let jwt = proof_jwt(true, Some(&nonce)).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential(credential_schema.id, &schema_id, &jwt)
+        .await;
+
+    // THEN
+    // `InvalidCredentialState` (BR_0002) isn't one of the variants this endpoint maps to 400/404,
+    // so it currently falls through to the generic 500 handler - asserting the exact status here
+    // so this test breaks loudly if that mapping ever changes
+    assert_eq!(400, resp.status());
+
+    // no *issuance* happened, but the expiry check itself eagerly transitions the stale
+    // credential to `Expired` as a side effect of being caught by the check
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.state);
+    assert!(credential.issuance_date.is_none());
+}
+
+#[tokio::test]
 async fn test_post_issuer_credential_sets_expires_at_from_schema() {
     let issuer_setup = issuer_setup(None).await;
     let credential_schema = issuer_setup

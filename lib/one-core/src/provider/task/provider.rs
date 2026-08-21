@@ -91,8 +91,6 @@ pub(crate) fn task_provider_from_config(
     ecosystem_directory: Arc<dyn EcosystemDirectory>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
     let mut tasks: HashMap<TaskId, Arc<dyn Task>> = HashMap::new();
-    let config_arc = Arc::new(config.clone());
-
     for (name, field) in config.task.iter() {
         if !field.enabled {
             continue;
@@ -102,7 +100,6 @@ pub(crate) fn task_provider_from_config(
             TaskType::LifecycleCheck => Arc::new(LifecycleCheckProvider::new(
                 credential_repository.clone(),
                 credential_validity_manager.clone(),
-                config_arc.clone(),
             )),
             TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(
                 claim_repository.clone(),

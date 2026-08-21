@@ -357,7 +357,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
             )
                 .into_response()
         }
-        Err(error) if error.error_code() == ErrorCode::BR_0238 => (
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0238 | ErrorCode::BR_0002) => (
             StatusCode::BAD_REQUEST,
             Json(OpenID4VCIErrorResponseRestDTO {
                 error: OpenID4VCIErrorRestEnum::InvalidRequest,

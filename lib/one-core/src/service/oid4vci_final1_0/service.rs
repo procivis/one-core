@@ -35,6 +35,7 @@ use super::validator::{
     validate_credential_request_format, validate_pop_audience, validate_timestamps,
     verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match, wia_key_source,
 };
+use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -53,6 +54,7 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::relation::Related;
+use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
@@ -331,6 +333,8 @@ impl OID4VCIFinal1_0Service {
             );
         };
 
+        self.validate_credential_state(credential, &interaction)
+            .await?;
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
             .error_while("validating protocol type")?;
 
@@ -1342,6 +1346,36 @@ impl OID4VCIFinal1_0Service {
                 .error_while("marking credential status")?;
         }
 
+        Ok(())
+    }
+
+    async fn validate_credential_state(
+        &self,
+        credential: &Credential,
+        interaction: &Interaction,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        if credential.state.is_terminal() {
+            return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+                credential.state,
+            ));
+        }
+        if is_batch_parent_expired(credential, Some(interaction), now_utc())
+            .error_while("checking credential state")?
+        {
+            self.credential_repository
+                .update_credential(
+                    credential.id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Expired),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating expired credential")?;
+            return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+                credential.state,
+            ));
+        }
         Ok(())
     }
 }

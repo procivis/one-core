@@ -628,7 +628,7 @@ impl CredentialValidityManagerImpl {
         item_revocation_states: &[RevocationState],
     ) -> Result<CredentialStateEnum, Error> {
         if is_batch_parent_expired(parent, interaction, crate::clock::now_utc())? {
-            if parent.state != CredentialStateEnum::Expired {
+            if !parent.state.is_terminal() {
                 self.credential_repository
                     .update_credential(
                         parent.id,
@@ -661,7 +661,15 @@ pub(crate) fn is_batch_parent_expired(
     if parent.expires_at.is_some_and(|expires_at| expires_at < now) {
         return Ok(true);
     }
-    batch_refresh_token_expired(interaction)
+    let Some(interaction) = interaction else {
+        return Ok(false);
+    };
+    let data: RefreshTokenInteractionData = deserialize_interaction_data(interaction.data.as_ref())
+        .error_while("parsing interaction data")?;
+
+    Ok(data
+        .refresh_token_expires_at
+        .is_some_and(|expires_at| expires_at < now))
 }
 
 /// Only the `refresh_token_expires_at` field is relevant here, so we deserialize into this
@@ -672,18 +680,6 @@ pub(crate) fn is_batch_parent_expired(
 struct RefreshTokenInteractionData {
     #[serde(default, with = "time::serde::rfc3339::option")]
     refresh_token_expires_at: Option<OffsetDateTime>,
-}
-
-fn batch_refresh_token_expired(interaction: Option<&Interaction>) -> Result<bool, Error> {
-    let Some(interaction) = interaction else {
-        return Ok(false);
-    };
-    let data: RefreshTokenInteractionData = deserialize_interaction_data(interaction.data.as_ref())
-        .error_while("parsing interaction data")?;
-
-    Ok(data
-        .refresh_token_expires_at
-        .is_some_and(|expires_at| expires_at < crate::clock::now_utc()))
 }
 
 #[async_trait::async_trait]
