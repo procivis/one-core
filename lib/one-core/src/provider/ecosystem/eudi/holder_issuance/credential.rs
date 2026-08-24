@@ -62,19 +62,18 @@ impl HolderIssuanceResolver {
             .await
             .error_while("validating issuer")?;
 
-        let Some(interaction_data) = interaction
+        let Some(mut interaction_data) = interaction
             .ecosystem_data
             .get::<MetadataEcosystemData>(&self.ecosystem)
+            .map_err(|e| {
+                HolderIssuanceError::MappingError(format!("parsing ecosystem data: {e}"))
+            })?
         else {
             return Err(HolderIssuanceError::MappingError(format!(
                 "No ecosystem data stored in the interaction for ecosystem `{}`",
                 self.ecosystem
             )));
         };
-        let mut interaction_data = interaction_data.map_err(|e| {
-            HolderIssuanceError::MappingError(format!("parsing ecosystem data: {e}"))
-        })?;
-
         let validated_registration_certificate = if let Some(registration_certificate) =
             interaction_data
                 .registration_certificates

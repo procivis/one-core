@@ -1,12 +1,15 @@
 use std::sync::Arc;
 use std::vec;
 
-use one_core::model::interaction::{Interaction, InteractionType, UpdateInteractionRequest};
+use one_core::model::interaction::{
+    EcosystemDetection, Interaction, InteractionEcosystems, InteractionType,
+    UpdateInteractionRequest,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
-use shared_types::InteractionId;
+use shared_types::{EcosystemId, InteractionId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -249,4 +252,66 @@ async fn test_delete_interaction() {
     let result = get_interaction(&setup.db, &setup.interaction_id).await;
 
     assert!(matches!(result, Err(DbErr::RecordNotFound(_))));
+}
+
+#[tokio::test]
+async fn test_update_interaction_ecosystem_detection() {
+    let setup = setup_with_interaction().await;
+
+    let candidates = vec![EcosystemId::from("EUDI"), EcosystemId::from("OTHER")];
+    let mut ecosystem_data = InteractionEcosystems::default();
+    ecosystem_data.set_detection(EcosystemDetection::Applicable(candidates.clone()));
+
+    setup
+        .provider
+        .update_interaction(
+            setup.interaction_id,
+            UpdateInteractionRequest {
+                ecosystem_data: Some(ecosystem_data),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let result = setup
+        .provider
+        .get_interaction(&setup.interaction_id, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        &EcosystemDetection::Applicable(candidates),
+        result.ecosystem_data.detection()
+    );
+}
+
+#[tokio::test]
+async fn test_narrowing_to_no_candidate_is_not_pending() {
+    let setup = setup_with_interaction().await;
+
+    let mut ecosystem_data = InteractionEcosystems::default();
+    ecosystem_data.set_detection(EcosystemDetection::Applicable(vec![]));
+
+    setup
+        .provider
+        .update_interaction(
+            setup.interaction_id,
+            UpdateInteractionRequest {
+                ecosystem_data: Some(ecosystem_data),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    // an exhausted candidate list is a verdict, not "detection has not run yet"
+    let result = setup
+        .provider
+        .get_interaction(&setup.interaction_id, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        &EcosystemDetection::Applicable(vec![]),
+        result.ecosystem_data.detection()
+    );
 }

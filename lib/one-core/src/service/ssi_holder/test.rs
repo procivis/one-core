@@ -275,7 +275,7 @@ async fn test_accept_credential() {
     let identifier_id = Uuid::new_v4().into();
 
     let mut identifier_repository = MockIdentifierRepository::new();
-    identifier_repository.expect_get().return_once(move |_| {
+    identifier_repository.expect_get().returning(move |_| {
         Ok(Identifier {
             id: identifier_id,
             data: IdentifierData::Did(
@@ -366,19 +366,18 @@ async fn test_accept_credential() {
                 },
             })))
         });
-    let organisation = dummy_organisation(None);
     let interaction_id = Uuid::new_v4().into();
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _| {
+        .returning(|_, _| {
             Ok(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: organisation.into(),
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -386,6 +385,12 @@ async fn test_accept_credential() {
                 ecosystem_data: Default::default(),
             })
         });
+
+    // no ecosystem applies: the narrowing persists the empty candidate set, the commit the selection
+    interaction_repository
+        .expect_update_interaction()
+        .times(2)
+        .returning(|_, _| Ok(()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -504,19 +509,18 @@ async fn test_accept_credential_with_did() {
             })))
         });
 
-    let organisation = dummy_organisation(None);
     let interaction_id = Uuid::new_v4().into();
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _| {
+        .returning(|_, _| {
             Ok(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: organisation.into(),
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -524,6 +528,12 @@ async fn test_accept_credential_with_did() {
                 ecosystem_data: Default::default(),
             })
         });
+
+    // no ecosystem applies: the narrowing persists the empty candidate set, the commit the selection
+    interaction_repository
+        .expect_update_interaction()
+        .times(2)
+        .returning(|_, _| Ok(()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -608,8 +618,7 @@ async fn test_accept_credential_batch() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .once()
-        .return_once(move |_, _| {
+        .returning(move |_, _| {
             Ok(Interaction {
                 id: interaction_id,
                 created_date: get_dummy_date(),
@@ -629,6 +638,12 @@ async fn test_accept_credential_batch() {
                 ecosystem_data: Default::default(),
             })
         });
+
+    // no ecosystem applies: the narrowing persists the empty candidate set, the commit the selection
+    interaction_repository
+        .expect_update_interaction()
+        .times(2)
+        .returning(|_, _| Ok(()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -961,6 +976,11 @@ async fn test_continue_issuance() {
                 ecosystem_data: Default::default(),
             })
         });
+    // autodetection records that no ecosystem applies, so a later step does not re-detect
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .returning(|_, _| Ok(()));
 
     let mut issuance_protocol = MockIssuanceProtocol::new();
     issuance_protocol

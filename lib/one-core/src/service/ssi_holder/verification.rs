@@ -51,7 +51,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
-use crate::validator::ecosystem::{SelectionRole, ecosystem_autodetection};
+use crate::validator::ecosystem::{SelectionRole, commit_selected_ecosystem, resolve_ecosystem};
 use crate::validator::{throw_if_endpoint_version_incompatible, throw_if_proof_state_not_eq};
 
 impl SSIHolderService {
@@ -390,19 +390,34 @@ impl SSIHolderService {
             .await
             .error_while("handling invitation")?;
 
-        let ecosystem = ecosystem_autodetection(
-            interaction_id,
-            &ecosystem_artifact,
-            user_selected_ecosystem,
-            self.interaction_repository.as_ref(),
-            self.ecosystem_provider.as_ref(),
-            SelectionRole::Holder,
-        )
-        .await
-        .error_while("selecting ecosystem")?;
+        // the proof request carries all the trust information there is, no later step adds to it,
+        // so the ecosystem is already final here
+        let ecosystem = match user_selected_ecosystem {
+            Some(selection) => {
+                commit_selected_ecosystem(
+                    interaction_id,
+                    &ecosystem_artifact,
+                    &selection,
+                    self.interaction_repository.as_ref(),
+                    self.ecosystem_provider.as_ref(),
+                )
+                .await
+                .error_while("committing selected ecosystem")?;
+                Some(selection)
+            }
+            None => resolve_ecosystem(
+                interaction_id,
+                &ecosystem_artifact,
+                self.interaction_repository.as_ref(),
+                self.ecosystem_provider.as_ref(),
+                SelectionRole::Holder,
+            )
+            .await
+            .error_while("resolving ecosystem")?,
+        };
 
         proof.protocol = protocol.clone();
-        proof.ecosystem = ecosystem.clone();
+        proof.ecosystem = ecosystem.to_owned();
 
         self.fill_verifier_in_proof(&mut proof).await?;
 

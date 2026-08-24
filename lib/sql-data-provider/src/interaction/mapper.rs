@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::interaction::{EcosystemDataMap, Interaction, UpdateInteractionRequest};
+use one_core::model::interaction::{Interaction, InteractionEcosystems, UpdateInteractionRequest};
 use one_core::model::relation::Related;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -63,6 +63,6 @@ pub(crate) fn interaction_from_model(
         interaction_type: interaction.interaction_type.into(),
         expires_at: interaction.expires_at,
         ecosystem: interaction.ecosystem,
-        ecosystem_data: EcosystemDataMap::from_stored(interaction.ecosystem_data),
+        ecosystem_data: InteractionEcosystems::from_stored(interaction.ecosystem_data),
     }
 }

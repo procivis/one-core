@@ -27,7 +27,7 @@ use crate::provider::presentation_formatter::mso_mdoc::model::ReaderAuthenticati
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::validator::ecosystem::{SelectionRole, ecosystem_autodetection};
+use crate::validator::ecosystem::{SelectionRole, resolve_ecosystem};
 
 #[expect(clippy::too_many_arguments)]
 pub(super) async fn resolve_verifier_and_trust(
@@ -51,7 +51,8 @@ pub(super) async fn resolve_verifier_and_trust(
     )
     .await?;
 
-    let ecosystem = ecosystem_autodetection(
+    // the device request carries all the trust information there is, so the ecosystem is final
+    let ecosystem = resolve_ecosystem(
         interaction.id,
         &ProtocolArtifact::HolderProof {
             verifier_details: Cow::Borrowed(&verifier_details),
@@ -59,13 +60,12 @@ pub(super) async fn resolve_verifier_and_trust(
             verifier_info,
             proof_id,
         },
-        interaction.ecosystem.to_owned(),
         interaction_repository,
         ecosystem_provider,
         SelectionRole::Holder,
     )
     .await
-    .error_while("selecting ecosystem")?;
+    .error_while("resolving ecosystem")?;
 
     let identifier = if let Some(verifier_details) = verifier_details {
         let (identifier, _) = identifier_creator

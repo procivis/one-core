@@ -23,21 +23,54 @@ pub struct Interaction {
     pub nonce_id: Option<NonceId>,
     pub interaction_type: InteractionType,
     pub expires_at: Option<OffsetDateTime>,
+    /// the ecosystem this interaction runs under, once committed: either the one the user picked,
+    /// or what autodetection settled on in the last step that could narrow it down
     pub ecosystem: Option<EcosystemId>,
-    /// additional data managed by the ecosystem providers
-    pub ecosystem_data: EcosystemDataMap,
+    /// ecosystem state carried across the steps of the interaction: how far autodetection got,
+    /// plus the data the ecosystem providers manage themselves
+    pub ecosystem_data: InteractionEcosystems,
 }
 
-/// Per-ecosystem slots of [`Interaction::ecosystem_data`].
-///
-/// Each ecosystem owns its own entry, so that several candidate ecosystems can carry state
-/// through a multi-step interaction without clobbering each other.
-// `PartialEq` unconditionally: `UpdateInteractionRequest` derives it outside of test builds too
+/// Ecosystem state carried across the steps of an interaction.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct EcosystemDataMap(HashMap<EcosystemId, serde_json::Value>);
+#[serde(rename_all = "camelCase")]
+pub struct InteractionEcosystems {
+    /// Information about the state of autodetection
+    #[serde(default, skip_serializing_if = "EcosystemDetection::is_pending")]
+    detection: EcosystemDetection,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    data: HashMap<EcosystemId, serde_json::Value>,
+}
 
-impl EcosystemDataMap {
+/// How far ecosystem autodetection has got on an interaction.
+///
+/// Autodetection only: an interaction whose [`Interaction::ecosystem`] is set runs under that
+/// commitment and never consults this.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum EcosystemDetection {
+    /// autodetection has not run yet
+    #[default]
+    Pending,
+    /// ecosystems still applicable; empty once none are left, and nothing will be assigned
+    Applicable(Vec<EcosystemId>),
+}
+
+impl EcosystemDetection {
+    /// Ecosystems still applicable, empty unless detection ran and found any.
+    pub fn applicable(&self) -> &[EcosystemId] {
+        match self {
+            Self::Applicable(candidates) => candidates,
+            Self::Pending => &[],
+        }
+    }
+
+    pub fn is_pending(&self) -> bool {
+        matches!(self, Self::Pending)
+    }
+}
+
+impl InteractionEcosystems {
     /// Parse the stored column value.
     pub fn from_stored(stored: Option<Vec<u8>>) -> Self {
         stored
@@ -49,17 +82,33 @@ impl EcosystemDataMap {
             .unwrap_or_default()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    /// Serialize back into the representation stored on the interaction, `None` if neither
+    /// detection nor any ecosystem has stored anything.
+    pub fn into_stored(self) -> Result<Option<Vec<u8>>, serde_json::Error> {
+        if self.detection.is_pending() && self.data.is_empty() {
+            return Ok(None);
+        }
+
+        serde_json::to_vec(&self).map(Some)
+    }
+
+    pub fn detection(&self) -> &EcosystemDetection {
+        &self.detection
+    }
+
+    pub fn set_detection(&mut self, detection: EcosystemDetection) {
+        self.detection = detection;
     }
 
     /// Read the slot of `ecosystem`, `None` if the ecosystem has not stored anything yet.
     pub fn get<T: DeserializeOwned>(
         &self,
         ecosystem: &EcosystemId,
-    ) -> Option<Result<T, serde_json::Error>> {
-        let value = self.0.get(ecosystem)?;
-        Some(serde_json::from_value(value.to_owned()))
+    ) -> Result<Option<T>, serde_json::Error> {
+        let Some(value) = self.data.get(ecosystem) else {
+            return Ok(None);
+        };
+        Ok(Some(serde_json::from_value(value.to_owned())?))
     }
 
     /// Replace the slot of `ecosystem`.
@@ -68,27 +117,17 @@ impl EcosystemDataMap {
         ecosystem: EcosystemId,
         data: &T,
     ) -> Result<(), serde_json::Error> {
-        self.0.insert(ecosystem, serde_json::to_value(data)?);
+        self.data.insert(ecosystem, serde_json::to_value(data)?);
         Ok(())
-    }
-
-    /// Serialize back into the representation stored on the interaction, `None` if no
-    /// ecosystem has stored anything.
-    pub fn into_stored(self) -> Result<Option<Vec<u8>>, serde_json::Error> {
-        if self.is_empty() {
-            return Ok(None);
-        }
-
-        serde_json::to_vec(&self).map(Some)
     }
 }
 
-// no `Eq`: `serde_json::Value` in `EcosystemDataMap` is only `PartialEq`
+// no `Eq`: `serde_json::Value` in `InteractionEcosystems` is only `PartialEq`
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct UpdateInteractionRequest {
     pub data: Option<Option<Vec<u8>>>,
     pub ecosystem: Option<Option<EcosystemId>>,
-    pub ecosystem_data: Option<EcosystemDataMap>,
+    pub ecosystem_data: Option<InteractionEcosystems>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumString, AsRefStr, Serialize, Deserialize)]
@@ -128,12 +167,12 @@ mod tests {
 
     #[test]
     fn test_ecosystem_data_slots_are_kept_per_ecosystem() {
-        let mut map = EcosystemDataMap::default();
+        let mut map = InteractionEcosystems::default();
         map.set(EcosystemId::from("EUDI"), &slot("eudi")).unwrap();
         map.set(EcosystemId::from("OTHER"), &slot("other")).unwrap();
 
         let stored = map.into_stored().unwrap();
-        let map = EcosystemDataMap::from_stored(stored);
+        let map = InteractionEcosystems::from_stored(stored);
 
         assert_eq!(
             slot("eudi"),
@@ -151,27 +190,73 @@ mod tests {
 
     #[test]
     fn test_ecosystem_data_of_unknown_ecosystem_is_missing() {
-        let mut map = EcosystemDataMap::default();
+        let mut map = InteractionEcosystems::default();
         map.set(EcosystemId::from("EUDI"), &slot("eudi")).unwrap();
 
-        assert!(map.get::<Slot>(&EcosystemId::from("OTHER")).is_none());
+        assert!(
+            map.get::<Slot>(&EcosystemId::from("OTHER"))
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
-    fn test_empty_ecosystem_data_is_not_stored() {
-        assert_eq!(None, EcosystemDataMap::default().into_stored().unwrap());
-    }
-
-    #[test]
-    fn test_ecosystem_data_of_absent_or_legacy_payload_is_empty() {
+    fn test_untouched_ecosystems_are_not_stored() {
         assert_eq!(
-            EcosystemDataMap::default(),
-            EcosystemDataMap::from_stored(None)
+            None,
+            InteractionEcosystems::default().into_stored().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_detection_survives_a_round_trip_without_any_ecosystem_data() {
+        let mut ecosystem_data = InteractionEcosystems::default();
+        ecosystem_data.set_detection(EcosystemDetection::Applicable(vec![EcosystemId::from(
+            "EUDI",
+        )]));
+
+        let stored = ecosystem_data.into_stored().unwrap();
+        let ecosystem_data = InteractionEcosystems::from_stored(stored);
+
+        assert_eq!(
+            &EcosystemDetection::Applicable(vec![EcosystemId::from("EUDI")]),
+            ecosystem_data.detection()
+        );
+    }
+
+    #[test]
+    fn test_narrowing_to_nothing_is_distinct_from_pending() {
+        let mut ecosystem_data = InteractionEcosystems::default();
+        ecosystem_data.set_detection(EcosystemDetection::Applicable(vec![]));
+
+        let stored = ecosystem_data.into_stored().unwrap();
+        let ecosystem_data = InteractionEcosystems::from_stored(stored);
+
+        // narrowing down to nothing is a verdict, and must not read back as "not run yet"
+        assert_eq!(
+            &EcosystemDetection::Applicable(vec![]),
+            ecosystem_data.detection()
+        );
+        assert!(!ecosystem_data.detection().is_pending());
+        assert!(ecosystem_data.detection().applicable().is_empty());
+    }
+
+    #[test]
+    fn test_absent_or_legacy_payload_reads_as_pending_and_empty() {
+        assert_eq!(
+            InteractionEcosystems::default(),
+            InteractionEcosystems::from_stored(None)
         );
 
-        // pre-map payload: a bare object that is not a map of ecosystem slots
+        // pre-map payload: a bare object that is not the ecosystem state
         let legacy = serde_json::to_vec(&slot("legacy")).unwrap();
-        let map = EcosystemDataMap::from_stored(Some(legacy));
-        assert!(map.get::<Slot>(&EcosystemId::from("EUDI")).is_none());
+        let ecosystem_data = InteractionEcosystems::from_stored(Some(legacy));
+        assert!(ecosystem_data.detection().is_pending());
+        assert!(
+            ecosystem_data
+                .get::<Slot>(&EcosystemId::from("EUDI"))
+                .unwrap()
+                .is_none()
+        );
     }
 }
