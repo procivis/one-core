@@ -18,7 +18,7 @@ use crate::service::instance::service::provider_metadata_url;
 use crate::service::managed_instance::error::ManagedInstanceError;
 use crate::util::key_selection::KeyFilter;
 
-pub(super) async fn validate_wallet_provider_issuer(
+pub(super) async fn validate_provider_issuer(
     id: Option<&OrganisationId>,
     issuer_id: IdentifierId,
     identifier_repository: &dyn IdentifierRepository,

@@ -12,11 +12,11 @@ use super::error::OrganisationServiceError;
 use super::mapper::{
     detail_from_model, group_remote_trust_collections_by_local_id, instance_detail_from_model,
     list_item_from_model, merge_ecosystems, prepare_trust_collection_info, request_to_model,
-    set_active_trust_collections,
+    set_active_trust_collections, upsert_request_to_fresh_model,
 };
 use super::validator::{
-    validate_ecosystem_enforcement, validate_parent_organisation, validate_verifier_provider,
-    validate_wallet_provider, validate_wallet_provider_issuer,
+    validate_ecosystem_enforcement, validate_parent_organisation, validate_provider_issuer,
+    validate_verifier_provider, validate_wallet_provider,
 };
 use crate::config::core_config::ConfigExt;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -295,8 +295,7 @@ impl OrganisationService {
         let existing_id = existing_organisation.as_ref().map(|org| &org.id);
 
         if let Some(Some(issuer)) = request.wallet_provider_issuer {
-            validate_wallet_provider_issuer(existing_id, issuer, &*self.identifier_repository)
-                .await?;
+            validate_provider_issuer(existing_id, issuer, &*self.identifier_repository).await?;
         }
 
         if let Some(Some(wallet_provider)) = &request.wallet_provider {
@@ -310,8 +309,7 @@ impl OrganisationService {
         }
 
         if let Some(Some(issuer)) = request.verifier_provider_issuer {
-            validate_wallet_provider_issuer(existing_id, issuer, &*self.identifier_repository)
-                .await?;
+            validate_provider_issuer(existing_id, issuer, &*self.identifier_repository).await?;
         }
 
         if let Some(Some(verifier_provider)) = &request.verifier_provider {
@@ -396,7 +394,14 @@ impl OrganisationService {
             }
             Err(DataLayerError::RecordNotUpdated) => {
                 // Organisation does not exist, create a new one instead.
-                self.create_organisation(request.into()).await?;
+                self.organisation_repository
+                    .create_organisation(upsert_request_to_fresh_model(
+                        request,
+                        &self.organisation_repository,
+                    ))
+                    .await
+                    .error_while("creating fresh organisation")?;
+
                 updated = false;
             }
             Err(err) => return Err(err.error_while("updating organisation").into()),

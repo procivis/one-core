@@ -11,7 +11,7 @@ use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
 };
 use crate::model::organisation::{
-    Organisation, OrganisationFilterValue, UpdateOrganisationRequest,
+    Organisation, OrganisationConfiguration, OrganisationFilterValue, UpdateOrganisationRequest,
 };
 use crate::model::relation::Related;
 use crate::model::trust_collection::{
@@ -57,15 +57,6 @@ pub(super) fn request_to_model(
     }
 }
 
-impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
-    fn from(request: UpsertOrganisationRequestDTO) -> Self {
-        Self {
-            id: Some(request.id),
-            parent_organisation: request.parent_organisation.flatten(),
-        }
-    }
-}
-
 impl From<UpsertOrganisationRequestDTO> for UpdateOrganisationRequest {
     fn from(request: UpsertOrganisationRequestDTO) -> Self {
         Self {
@@ -79,6 +70,43 @@ impl From<UpsertOrganisationRequestDTO> for UpdateOrganisationRequest {
             // service, which has access to the organisation's current state.
             configuration: None,
         }
+    }
+}
+
+pub(super) fn upsert_request_to_fresh_model(
+    request: UpsertOrganisationRequestDTO,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> Organisation {
+    let configuration = match request.configuration {
+        Some(request) => OrganisationConfiguration {
+            selected_ecosystems: request.selected_ecosystems.unwrap_or_default(),
+            enforce_ecosystem_as_issuer: request.enforce_ecosystem_as_issuer.unwrap_or_default(),
+            enforce_ecosystem_as_holder: request.enforce_ecosystem_as_holder.unwrap_or_default(),
+            enforce_ecosystem_as_verifier: request
+                .enforce_ecosystem_as_verifier
+                .unwrap_or_default(),
+        },
+        None => Default::default(),
+    };
+
+    let now = crate::clock::now_utc();
+    Organisation {
+        id: request.id,
+        created_date: now,
+        last_modified: now,
+        deactivated_at: request
+            .deactivate
+            .is_some_and(|deactivate| deactivate)
+            .then_some(now),
+        wallet_provider: request.wallet_provider.flatten(),
+        wallet_provider_issuer: None,
+        verifier_provider: request.verifier_provider.flatten(),
+        verifier_provider_issuer: None,
+        configuration,
+        parent_organisation: request
+            .parent_organisation
+            .flatten()
+            .map(|parent_id| Related::new(parent_id, organisation_repository.clone())),
     }
 }
 

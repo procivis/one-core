@@ -3,7 +3,7 @@ use std::fmt::Display;
 use serde::Serialize;
 use serde_json::json;
 use serde_with::skip_serializing_none;
-use shared_types::{IdentifierId, OrganisationId};
+use shared_types::{EcosystemId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -45,6 +45,7 @@ pub struct UpsertOrganisationConfigurationParams {
     pub enforce_ecosystem_as_issuer: Option<bool>,
     pub enforce_ecosystem_as_holder: Option<bool>,
     pub enforce_ecosystem_as_verifier: Option<bool>,
+    pub selected_ecosystems: Option<Vec<EcosystemId>>,
 }
 
 #[skip_serializing_none]

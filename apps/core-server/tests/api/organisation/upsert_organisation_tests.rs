@@ -14,7 +14,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_upsert_organisation_success_not_existing() {
     // GIVEN
-    let context = TestContext::new(None).await;
+    let (context, parent_organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let organisation_id = Uuid::new_v4();
@@ -24,6 +24,22 @@ async fn test_upsert_organisation_success_not_existing() {
         .upsert(
             &organisation_id,
             UpsertParams {
+                wallet_provider: Some(Some(ProviderParams {
+                    name: Some("PROCIVIS_ONE".to_string()),
+                    issuer: None,
+                })),
+                verifier_provider: Some(Some(ProviderParams {
+                    name: Some("PROCIVIS_ONE".to_string()),
+                    issuer: None,
+                })),
+                configuration: Some(UpsertOrganisationConfigurationParams {
+                    selected_ecosystems: Some(vec!["EUDI".into()]),
+                    enforce_ecosystem_as_issuer: Some(true),
+                    enforce_ecosystem_as_holder: None,
+                    enforce_ecosystem_as_verifier: Some(true),
+                    ..Default::default()
+                }),
+                parent_organisation: Some(Some(parent_organisation.id)),
                 ..Default::default()
             },
         )
@@ -31,11 +47,32 @@ async fn test_upsert_organisation_success_not_existing() {
 
     // THEN
     assert_eq!(resp.status(), 204);
+
     let organisation = context.db.organisations.get(&organisation_id.into()).await;
+    assert_eq!(
+        organisation.parent_organisation.unwrap().id(),
+        parent_organisation.id
+    );
+    assert_eq!(organisation.wallet_provider.unwrap(), "PROCIVIS_ONE");
+    assert_eq!(organisation.verifier_provider.unwrap(), "PROCIVIS_ONE");
+    assert_eq!(
+        organisation.configuration.selected_ecosystems,
+        vec!["EUDI".into()]
+    );
+    assert_eq!(organisation.configuration.enforce_ecosystem_as_issuer, true);
+    assert_eq!(
+        organisation.configuration.enforce_ecosystem_as_holder,
+        false
+    );
+    assert_eq!(
+        organisation.configuration.enforce_ecosystem_as_verifier,
+        true
+    );
+
     let history = context
         .db
         .histories
-        .get_by_entity_id(&organisation.id.into())
+        .get_by_entity_id(&organisation_id.into())
         .await;
     assert_eq!(
         history.values.first().unwrap().action,
