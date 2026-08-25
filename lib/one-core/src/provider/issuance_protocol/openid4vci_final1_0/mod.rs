@@ -568,14 +568,12 @@ impl OpenID4VCIFinal1_0 {
     async fn holder_fetch_nonce(
         &self,
         interaction_data: &HolderInteractionData,
-    ) -> Result<String, IssuanceProtocolError> {
-        let nonce_endpoint =
-            interaction_data
-                .nonce_endpoint
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "nonce endpoint is missing".to_string(),
-                ))?;
+    ) -> Result<Option<String>, IssuanceProtocolError> {
+        // missing `nonce_endpoint` means the issuer does not require nonce in proofs
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.4
+        let Some(nonce_endpoint) = interaction_data.nonce_endpoint.as_ref() else {
+            return Ok(None);
+        };
 
         let response: NonceResponse = async {
             self.client
@@ -588,7 +586,7 @@ impl OpenID4VCIFinal1_0 {
         .await
         .error_while("requesting nonce")?;
 
-        Ok(response.c_nonce)
+        Ok(Some(response.c_nonce))
     }
 
     /// Fetches a challenge from the attestation-based client authentication challenge endpoint
@@ -709,7 +707,7 @@ impl OpenID4VCIFinal1_0 {
             let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
                 interaction_data.issuer_url.to_owned(),
                 public_key_info,
-                Some(nonce.to_owned()),
+                nonce.to_owned(),
                 wua_proof,
                 auth_fn,
                 client_id,
