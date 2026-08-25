@@ -257,10 +257,14 @@ pub struct CredentialSchema {
     pub metadata: Option<CredentialSchemaMetadata>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaMetadata {
     pub layout_properties: LayoutProperties,
+    /// only for backward compatibility
+    #[serde(default)]
+    pub layout_type: Option<String>,
 }
 
 impl CredentialSchema {

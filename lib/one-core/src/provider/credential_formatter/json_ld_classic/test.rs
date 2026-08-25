@@ -94,6 +94,7 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
                 picture_attribute: None,
                 code: None,
             },
+            layout_type: None,
         }),
     };
 

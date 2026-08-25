@@ -125,6 +125,8 @@ pub(crate) async fn vcdm_from_credential_and_published_claims(
         convert_inner(credential_schema.layout_properties.clone());
     let metadata = layout_properties.map(|layout_properties| CredentialSchemaMetadata {
         layout_properties: layout_properties.into(),
+        // for backward compatibility
+        layout_type: Some("CARD".to_string()),
     });
 
     let vcdm_schema = CredentialSchema {

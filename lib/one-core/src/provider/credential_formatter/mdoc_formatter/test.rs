@@ -223,6 +223,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
                 picture_attribute: None,
                 code: None,
             },
+            layout_type: None,
         }),
     });
 
@@ -981,6 +982,7 @@ async fn format_and_extract_ecdsa() -> DetailCredential {
                 picture_attribute: None,
                 code: None,
             },
+            layout_type: None,
         }),
     });
 

@@ -62,6 +62,7 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
                 picture_attribute: None,
                 code: None,
             },
+            layout_type: None,
         }),
     };
 
