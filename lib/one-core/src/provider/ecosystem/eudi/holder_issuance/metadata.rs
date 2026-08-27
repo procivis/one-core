@@ -26,7 +26,7 @@ pub(super) struct MetadataEcosystemData {
 }
 
 impl HolderIssuanceResolver {
-    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     pub(crate) async fn resolve_metadata_trust(
         &self,
         interaction: &Interaction,

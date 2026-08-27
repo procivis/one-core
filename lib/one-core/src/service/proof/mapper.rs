@@ -44,7 +44,9 @@ use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     TrustInformation,
 };
-use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential::mapper::{
+    credential_detail_response_from_model, get_credential_trust_information,
+};
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::credential_schema::mapper::to_credential_schema_list_response;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
@@ -196,9 +198,9 @@ pub(super) async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
-    trust_information: Option<TrustInformation>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
+    ecosystem_provider: &dyn EcosystemDirectory,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
         .schema
@@ -223,11 +225,16 @@ pub(super) async fn get_verifier_proof_detail(
     }
 
     for (credential_schema_id, credential) in credential_for_schema_model {
+        // trust is per credential: its own ecosystem, not the one of the proof
+        let trust_information = get_credential_trust_information(&credential, ecosystem_provider)
+            .await
+            .error_while("getting credential trust information")?;
+
         let credential_detail = credential_detail_response_from_model(
             credential,
             config,
             CredentialAttestationBlobs::default(),
-            trust_information.clone(),
+            trust_information,
             None,
             credential_repository,
             formatter_provider,

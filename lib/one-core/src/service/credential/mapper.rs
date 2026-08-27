@@ -938,7 +938,7 @@ pub(crate) async fn get_remaining_batch_item_count(
     )
 }
 
-pub(super) async fn get_credential_trust_information(
+pub(crate) async fn get_credential_trust_information(
     credential: &Credential,
     ecosystem_provider: &dyn EcosystemDirectory,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {

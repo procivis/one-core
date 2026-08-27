@@ -27,8 +27,10 @@ use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
+use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 pub(super) struct ValidatedProofCredential {
@@ -271,12 +273,14 @@ fn extract_matching_requested_claim(
 }
 
 /// proof processing on verifier's side
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn accept_proof(
     proof: Proof,
     interaction: &Interaction,
     proved_credentials: Vec<ValidatedProofCredential>,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
+    interaction_repository: &dyn InteractionRepository,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 ) -> Result<(), ServiceError> {
@@ -297,7 +301,7 @@ pub(crate) async fn accept_proof(
         credential_schemas.insert(credential_schema.id, credential_schema.clone());
     }
 
-    let mut proof_claims: Vec<Claim> = vec![];
+    let mut model_credentials = Vec::with_capacity(proved_credentials.len());
     for ValidatedProofCredential {
         credential,
         credential_schema_id,
@@ -335,7 +339,7 @@ pub(crate) async fn accept_proof(
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
         let mappings_map = mappings.iter().map(|m| (m.claim_schema_id, m)).collect();
 
-        let mut model_credential = extracted_credential_to_model(
+        let model_credential = extracted_credential_to_model(
             &claim_schemas,
             &mappings_map,
             credential_schema.to_owned(),
@@ -347,22 +351,35 @@ pub(crate) async fn accept_proof(
             credential.issuance_date,
         )?;
 
-        if let Some(ecosystem_id) = &interaction.ecosystem {
-            let ecosystem = ecosystem_provider.get(ecosystem_id)?;
+        model_credentials.push((model_credential, credential.issuer));
+    }
 
-            ecosystem
-                .validate_interaction(
-                    &ProtocolArtifact::VerifierSubmission {
-                        credential: Cow::Borrowed(&model_credential),
-                        issuer_details: Cow::Borrowed(&credential.issuer),
-                    },
-                    interaction,
-                )
-                .await
-                .error_while("validating ecosystem")?;
+    let ecosystems = {
+        let artifacts = model_credentials
+            .iter()
+            .map(
+                |(model_credential, issuer_details)| ProtocolArtifact::VerifierSubmission {
+                    credential: Cow::Borrowed(model_credential),
+                    issuer_details: Cow::Borrowed(issuer_details),
+                },
+            )
+            .collect::<Vec<_>>();
 
-            model_credential.ecosystem = Some(ecosystem_id.to_owned());
-        }
+        resolve_verifier_submission_ecosystems(
+            interaction.id,
+            &artifacts,
+            interaction_repository,
+            ecosystem_provider.as_ref(),
+        )
+        .await
+        .error_while("resolving ecosystems")?
+    };
+
+    let mut proof_claims: Vec<Claim> = vec![];
+    for ((mut model_credential, _), ecosystem) in
+        model_credentials.into_iter().zip(ecosystems.per_credential)
+    {
+        model_credential.ecosystem = ecosystem;
 
         let mut claims = model_credential.claims.as_ref().await?.to_owned();
         proof_claims.append(&mut claims);
@@ -378,6 +395,7 @@ pub(crate) async fn accept_proof(
             &proof.id,
             UpdateProofRequest {
                 state: Some(ProofStateEnum::Accepted),
+                ecosystem: Some(ecosystems.committed),
                 ..Default::default()
             },
             None,

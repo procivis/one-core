@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
-use shared_types::{BlobId, KeyId, ProofId};
+use shared_types::{BlobId, EcosystemId, KeyId, ProofId};
 use standardized_types::openid4vp::{
     ClientIdPrefix, ClientMetadata, DirectPostResponse, EncryptedResponse, VerifierInfoAttestation,
     VerifierInfoAttestationFormat,
@@ -42,6 +42,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::repository::error::DataLayerError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::openid4vp::persist_accepted_proof;
+use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
 use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
 
 impl OID4VPFinal1_0Service {
@@ -326,7 +327,11 @@ impl OID4VPFinal1_0Service {
             .error_while("creating proof blob")?;
 
         let validation_result: Result<
-            (ValidatedProofResult, DirectPostResponse),
+            (
+                ValidatedProofResult,
+                Option<EcosystemId>,
+                DirectPostResponse,
+            ),
             OID4VPFinal1_0ServiceError,
         > = async {
             let (mut proof_result, response) = self
@@ -340,36 +345,46 @@ impl OID4VPFinal1_0Service {
                 .await
                 .map_err(Into::<OID4VPFinal1_0ServiceError>::into)?;
 
-            if let Some(ecosystem_id) = &interaction.ecosystem {
-                let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+            let ecosystems = {
+                let artifacts = proof_result
+                    .proved_credentials
+                    .iter()
+                    .map(|proved_credential| ProtocolArtifact::VerifierSubmission {
+                        credential: Cow::Borrowed(&proved_credential.credential),
+                        issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
+                    })
+                    .collect::<Vec<_>>();
 
-                for proved_credential in proof_result.proved_credentials.iter_mut() {
-                    ecosystem
-                        .validate_interaction(
-                            &ProtocolArtifact::VerifierSubmission {
-                                credential: Cow::Borrowed(&proved_credential.credential),
-                                issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
-                            },
-                            &interaction,
-                        )
-                        .await
-                        .error_while("validating ecosystem")?;
+                resolve_verifier_submission_ecosystems(
+                    interaction.id,
+                    &artifacts,
+                    self.interaction_repository.as_ref(),
+                    self.ecosystem_provider.as_ref(),
+                )
+                .await
+                .error_while("resolving ecosystems")?
+            };
 
-                    proved_credential.credential.ecosystem = Some(ecosystem_id.to_owned());
-                }
+            for (proved_credential, ecosystem) in proof_result
+                .proved_credentials
+                .iter_mut()
+                .zip(ecosystems.per_credential)
+            {
+                proved_credential.credential.ecosystem = ecosystem;
             }
 
-            Ok((proof_result, response))
+            Ok((proof_result, ecosystems.committed, response))
         }
         .await;
 
         match validation_result {
-            Ok((validated_proof_result, response)) => {
+            Ok((validated_proof_result, ecosystem, response)) => {
                 persist_accepted_proof(
                     &proof,
                     validated_proof_result,
                     &organisation,
                     proof_blob_id,
+                    Some(ecosystem),
                     &*self.proof_repository,
                     &*self.credential_repository,
                     &*self.transaction_manager,

@@ -1,9 +1,10 @@
+use std::borrow::Cow;
 use std::str::FromStr;
 
 use anyhow::Context;
 use futures::FutureExt;
 use futures::future::BoxFuture;
-use shared_types::{BlobId, ProofId};
+use shared_types::{BlobId, EcosystemId, ProofId};
 use standardized_types::openid4vp::DirectPostResponse;
 use tracing::warn;
 use uuid::Uuid;
@@ -16,6 +17,8 @@ use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, SubmissionRequestData, VpSubmissionData,
@@ -27,6 +30,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::
     MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
 };
 use crate::util::openid4vp::persist_accepted_proof;
+use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
 
 impl ProofService {
     // TODO: This method is used as part of the OID4VP BLE/MQTT flow
@@ -202,22 +206,64 @@ impl ProofService {
             .await
             .error_while("creating proof blob")?;
 
-        match self
-            .proof_validator
-            .validate_submission(
-                unpacked_request,
-                proof.to_owned(),
-                interaction_data,
-                VerificationProtocolType::OpenId4VpProximityDraft00,
-            )
-            .await
-        {
-            Ok((accept_proof_result, response)) => {
+        let validation_result: Result<
+            (
+                ValidatedProofResult,
+                Option<EcosystemId>,
+                DirectPostResponse,
+            ),
+            ProofServiceError,
+        > = async {
+            let (mut proof_result, response) = self
+                .proof_validator
+                .validate_submission(
+                    unpacked_request,
+                    proof.to_owned(),
+                    interaction_data,
+                    VerificationProtocolType::OpenId4VpProximityDraft00,
+                )
+                .await?;
+
+            let ecosystems = {
+                let artifacts = proof_result
+                    .proved_credentials
+                    .iter()
+                    .map(|proved_credential| ProtocolArtifact::VerifierSubmission {
+                        credential: Cow::Borrowed(&proved_credential.credential),
+                        issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
+                    })
+                    .collect::<Vec<_>>();
+
+                resolve_verifier_submission_ecosystems(
+                    interaction.id,
+                    &artifacts,
+                    self.interaction_repository.as_ref(),
+                    self.ecosystem_provider.as_ref(),
+                )
+                .await
+                .error_while("resolving ecosystems")?
+            };
+
+            for (proved_credential, ecosystem) in proof_result
+                .proved_credentials
+                .iter_mut()
+                .zip(ecosystems.per_credential)
+            {
+                proved_credential.credential.ecosystem = ecosystem;
+            }
+
+            Ok((proof_result, ecosystems.committed, response))
+        }
+        .await;
+
+        match validation_result {
+            Ok((accept_proof_result, ecosystem, response)) => {
                 persist_accepted_proof(
                     &proof,
                     accept_proof_result,
                     &organisation,
                     proof_blob_id,
+                    Some(ecosystem),
                     &*self.proof_repository,
                     &*self.credential_repository,
                     &*self.transaction_manager,
@@ -231,7 +277,7 @@ impl ProofService {
                 let message = format!("Proof validation failed: {err}");
                 self.mark_proof_as_failed(&proof.id, Some(proof_blob_id), message)
                     .await;
-                Err(err.into())
+                Err(err)
             }
         }
     }

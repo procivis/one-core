@@ -687,6 +687,7 @@ impl OneCore {
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
+                data_provider.get_interaction_repository(),
                 data_provider.get_key_repository(),
                 key_provider.clone(),
                 config.clone(),
@@ -700,6 +701,7 @@ impl OneCore {
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
+                data_provider.get_interaction_repository(),
                 data_provider.get_key_repository(),
                 key_provider.clone(),
                 config.clone(),

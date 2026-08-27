@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
@@ -1031,7 +1031,11 @@ async fn test_get_proof_with_credentials() {
             CredentialStateEnum::Created,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            Default::default(),
+            TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
+                ecosystem: Some("EUDI".into()),
+                ..Default::default()
+            },
         )
         .await;
 

@@ -23,6 +23,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
+use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -47,6 +48,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::test_utilities::*;
@@ -55,6 +57,7 @@ use crate::service::test_utilities::*;
 struct Mocks {
     pub credential_repository: MockCredentialRepository,
     pub proof_repository: MockProofRepository,
+    pub interaction_repository: MockInteractionRepository,
     pub key_repository: MockKeyRepository,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
@@ -69,6 +72,7 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
     OID4VPFinal1_0Service::new(
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.proof_repository),
+        Arc::new(mocks.interaction_repository),
         Arc::new(mocks.key_repository),
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
@@ -253,18 +257,31 @@ async fn test_submit_proof_failed_on_trust_failure() {
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = crate::clock::now_utc();
     let ecosystem_id: EcosystemId = "EUDI".into();
+    let organisation = Organisation {
+        configuration: OrganisationConfiguration {
+            selected_ecosystems: vec![ecosystem_id.clone()],
+            ..Default::default()
+        },
+        ..dummy_organisation(None)
+    };
     let interaction = Interaction {
         id: interaction_id,
         created_date: now,
         last_modified: now,
         data: Some(interaction_data_serialized),
-        organisation: dummy_organisation(None).into(),
+        organisation: organisation.into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: Some(ecosystem_id.clone()),
         ecosystem_data: Default::default(),
     };
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    let interaction_copy = interaction.clone();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |_, _| Ok(interaction_copy.clone()));
 
     let interaction_id_copy = interaction_id.to_owned();
     proof_repository
@@ -392,6 +409,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
 
     let service = setup_service(Mocks {
         proof_repository,
+        interaction_repository,
         blob_storage_provider,
         proof_validator,
         ecosystem_provider,

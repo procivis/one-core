@@ -19,7 +19,7 @@ use crate::provider::credential_formatter::model::{IdentifierDetails, X5Referenc
 use crate::provider::ecosystem::eudi::mapper::formatter_requires_namespaces;
 
 impl HolderIssuanceResolver {
-    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     pub(crate) async fn resolve_credential_issuer_trust(
         &self,
         credential: &Credential,

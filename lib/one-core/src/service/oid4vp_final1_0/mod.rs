@@ -9,6 +9,7 @@ use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -20,6 +21,7 @@ pub mod service;
 pub struct OID4VPFinal1_0Service {
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     key_repository: Arc<dyn KeyRepository>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
@@ -36,6 +38,7 @@ impl OID4VPFinal1_0Service {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
         key_repository: Arc<dyn KeyRepository>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
@@ -49,6 +52,7 @@ impl OID4VPFinal1_0Service {
         Self {
             credential_repository,
             proof_repository,
+            interaction_repository,
             key_repository,
             key_provider,
             config,

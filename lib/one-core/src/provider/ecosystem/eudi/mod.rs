@@ -172,7 +172,12 @@ impl Ecosystem for EudiEcosystem {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    #[tracing::instrument(
+        level = "debug",
+        skip_all,
+        fields(ecosystem = %self.config_id),
+        err(level = "debug")
+    )]
     async fn validate_interaction<'a>(
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,

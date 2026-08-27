@@ -119,20 +119,20 @@ impl ProofService {
             .into_iter()
             .next();
 
-        let trust_information =
-            get_proof_trust_information(&proof, self.ecosystem_provider.as_ref()).await?;
-
         if proof.schema.is_some() {
             get_verifier_proof_detail(
                 proof,
                 &self.config,
                 history_event,
-                trust_information,
                 &*self.credential_repository,
                 &*self.credential_formatter_provider,
+                self.ecosystem_provider.as_ref(),
             )
             .await
         } else {
+            let trust_information =
+                get_proof_trust_information(&proof, self.ecosystem_provider.as_ref()).await?;
+
             get_holder_proof_detail(
                 proof,
                 &self.config,

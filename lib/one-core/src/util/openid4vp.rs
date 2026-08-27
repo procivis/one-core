@@ -1,6 +1,6 @@
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
-use shared_types::BlobId;
+use shared_types::{BlobId, EcosystemId};
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::openid4vp::credential_from_proved;
@@ -21,6 +21,7 @@ pub(crate) async fn persist_accepted_proof(
     validated_proof_result: ValidatedProofResult,
     organisation: &Organisation,
     proof_blob_id: BlobId,
+    ecosystem: Option<Option<EcosystemId>>,
     proof_repository: &dyn ProofRepository,
     credential_repository: &dyn CredentialRepository,
     transaction_manager: &dyn TransactionManager,
@@ -63,6 +64,7 @@ pub(crate) async fn persist_accepted_proof(
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
                             proof_blob_id: Some(Some(proof_blob_id)),
+                            ecosystem,
                             ..Default::default()
                         },
                         None,

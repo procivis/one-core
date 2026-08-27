@@ -53,6 +53,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 
 #[derive(Debug, Clone)]
@@ -145,6 +146,7 @@ pub(crate) async fn start_client(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
@@ -170,6 +172,7 @@ pub(crate) async fn start_client(
                     key_algorithm_provider.clone(),
                     credential_repository.clone(),
                     proof_repository.clone(),
+                    interaction_repository.clone(),
                     certificate_validator.clone(),
                     identifier_creator.clone(),
                     ecosystem_provider.clone(),
@@ -237,6 +240,7 @@ async fn verifier_flow(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
@@ -264,6 +268,7 @@ async fn verifier_flow(
         key_algorithm_provider,
         credential_repository,
         proof_repository,
+        interaction_repository,
         certificate_validator,
         identifier_creator,
         ecosystem_provider,
@@ -296,6 +301,7 @@ async fn process_proof(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
@@ -403,6 +409,7 @@ async fn process_proof(
         key_algorithm_provider,
         credential_repository,
         &*proof_repository,
+        &*interaction_repository,
         certificate_validator,
         identifier_creator,
         ecosystem_provider,
@@ -470,6 +477,7 @@ async fn fill_proof_claims_and_credentials(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: &dyn ProofRepository,
+    interaction_repository: &dyn InteractionRepository,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
@@ -501,6 +509,7 @@ async fn fill_proof_claims_and_credentials(
         proved_credentials,
         &*credential_repository,
         proof_repository,
+        interaction_repository,
         identifier_creator,
         ecosystem_provider,
     )

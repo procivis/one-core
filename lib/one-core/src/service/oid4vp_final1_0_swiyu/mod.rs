@@ -11,6 +11,7 @@ use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
@@ -28,6 +29,7 @@ impl OID4VPFinal1_0SwiyuService {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
         key_repository: Arc<dyn KeyRepository>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
@@ -41,6 +43,7 @@ impl OID4VPFinal1_0SwiyuService {
         let inner = OID4VPFinal1_0Service::new(
             credential_repository,
             proof_repository.clone(),
+            interaction_repository,
             key_repository,
             key_provider.clone(),
             config,

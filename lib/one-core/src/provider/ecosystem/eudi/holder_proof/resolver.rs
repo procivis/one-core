@@ -45,7 +45,7 @@ impl HolderProofResolver {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     pub(crate) async fn resolve_trust(
         &self,
         verifier_details: Option<&IdentifierDetails>,
