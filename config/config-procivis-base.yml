@@ -904,3 +904,48 @@ ecosystem:
                 "eu.europa.ec.eudi.tax.1",
               ]
             pidSchemaIds: ["eu.europa.ec.eudi.pid.1"]
+  LITHUANIA_SANDBOX:
+    type: "EUDI"
+    display:
+      de: "Lithuania Sandkasten"
+      en: "Lithuania Sandbox"
+    order: 2
+    params:
+      public:
+        logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAACE4AAAhOAFFljFgAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAARJJREFUeAHt27uNAjAUBVEbPWnjFSUQEtM0HVAD/SAI+JQxyTkleAI78N3v2/G7yBwWKQFiAsQEiAkQEyAmQEyAmAAxAWICxASICRATICZATICYADEBYgLEBIgJEBMgJkBMgJgAMQFiAsQEiAkQm70ozWs+i878Xy+LzjwP9hmlWVuAkldQTICYADEBYgLEBIgJEBMgJkBMgJgAMQFiAsQEiAkQEyAmQEyAmAAxAWICxASICRATICZATICYALFZ20KgNH8mGql9P519jw7NY1wDJacfEyAmQEyAmAAxAWICxASICRATICZATICYADEBYgLEBIgJEBMgJkBMgJgAMQFiAsQEiAkQEyAmQEyAmAAxAWI/4aEMnilw/04AAAAASUVORK5CYII="
+        description:
+          en: "Lithuania sandbox ecosystem"
+          de: "Lithuania Sandkasten Ökosystem"
+        instanceProviderDefaultSelected: false
+        credentialSchemas:
+          - format: SD_JWT_VC
+            ecosystemSchemaIds:
+              [
+                "urn:eudi:pid:1",
+                "urn:eu.europa.ec.eudi:pseudonym_age_over_18:1",
+                "urn:eu.europa.ec.eudi:ehic:1",
+                "urn:eu.europa.ec.eudi:por:1",
+                "urn:eu.europa.ec.eudi:pid:1",
+                "urn:eu.europa.ec.eudi:tax:1",
+                "urn:eu.europa.ec.eudi:msisdn:1",
+                "urn:eu.europa.ec.eudi:iban:1",
+                "urn:eu.europa.ec.eudi:hiid:1",
+              ]
+            pidSchemaIds: ["urn:eudi:pid:1"]
+          - format: MDOC
+            ecosystemSchemaIds:
+              [
+                "org.iso.18013.5.1.mDL",
+                "org.iso.23220.photoid.1",
+                "eu.europa.ec.av.1",
+                "eu.europa.ec.eudi.iban.1",
+                "eu.europa.ec.eudi.ehic.1",
+                "eu.europa.ec.eudi.pseudonym.age_over_18.1",
+                "eu.europa.ec.eudi.loyalty.1",
+                "eu.europa.ec.eudi.hiid.1",
+                "eu.europa.ec.eudi.pid.1",
+                "eu.europa.ec.eudi.msisdn.1",
+                "eu.europa.ec.eudi.por.1",
+                "eu.europa.ec.eudi.tax.1",
+              ]
+            pidSchemaIds: ["eu.europa.ec.eudi.pid.1"]

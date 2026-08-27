@@ -332,3 +332,6 @@ documentSignerProvider:
     params:
       private:
         redirectUri: "http://localhost:3000/capture"
+ecosystem:
+  LITHUANIA_SANDBOX:
+    enabled: false
