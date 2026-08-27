@@ -150,24 +150,19 @@ fn get_credential_schema_context(
     credential_schema_id: CredentialSchemaId,
     schema_format: &CredentialSchemaFormat,
 ) -> Result<Url, FormatterError> {
-    // default for v1 schema
-    let mut context = format!("{core_base_url}/ssi/context/v1/{}", credential_schema_id);
-
-    // append format if v2 schema with format
-    if let Ok(url) = schema_format.schema_id.parse::<Url>()
-        && let Some(path) = url.path_segments()
-    {
-        let mut path: Vec<_> = path.collect();
-
-        if let Some(format) = path.pop()
-            && let Some(id) = path.pop()
-            && credential_schema_id.to_string() == id
-            && path.join("/") == "ssi/schema/v2"
-        {
-            context = format!("{core_base_url}/ssi/context/v1/{id}/{format}");
-        }
-    }
-
+    // Derive the context from `schema_id` itself rather than from the local
+    // `credential_schema_id`/`core_base_url`. `schema_id` is what ends up in
+    // `vcdm.credentialSchema.id`, and holder/verifier-side validation
+    // (`is_context_list_valid`) derives the *expected* context from it with
+    // this same replacement. For imported schemas `schema_id` is copied
+    // verbatim from the original system and may reference a different
+    // host/uuid than our own `credential_schema_id`/`core_base_url`, so
+    // deriving the context from it directly keeps the two in sync.
+    let context = match &schema_format.schema_id {
+        id if id.contains("/ssi/schema/v1/") => id.replace("/ssi/schema/v1/", "/ssi/context/v1/"),
+        id if id.contains("/ssi/schema/v2/") => id.replace("/ssi/schema/v2/", "/ssi/context/v1/"),
+        _ => format!("{core_base_url}/ssi/context/v1/{credential_schema_id}"),
+    };
     Ok(context.parse()?)
 }
 
@@ -331,5 +326,83 @@ pub(super) fn to_format_with_mappings(
         format,
         schema_id,
         claim_mappings: claim_mappings.into(),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use indexmap::indexset;
+    use similar_asserts::assert_eq;
+    use uuid::Uuid;
+
+    use super::{W3C_SCHEMA_TYPE, get_credential_schema_context};
+    use crate::model::credential_schema_format::CredentialSchemaFormat;
+    use crate::provider::credential_formatter::model::CredentialSchema as VcdmSchema;
+    use crate::provider::credential_formatter::vcdm::ContextType;
+    use crate::util::vcdm_jsonld_contexts::is_context_list_valid;
+
+    // Regression test for the bug reported for JSON-LD (Classic/BBS+) schema
+    // import: import assigns a new local `credential_schema.id` (and may
+    // rehost `imported_source_url`), but the per-format `schema_id` - which
+    // becomes `credentialSchema.id` in issued VCs - is copied verbatim from
+    // the imported schema, so it may still reference a different host/uuid
+    // than the local `credential_schema_id`/`core_base_url`. The `@context`
+    // entry must be derived from `schema_id` itself (not from the local id),
+    // so it stays consistent with what holder/verifier-side
+    // `is_context_list_valid` expects.
+    #[test]
+    fn test_context_matches_schema_id_for_imported_json_ld_schema() {
+        let now = crate::clock::now_utc();
+
+        // `schema_id` as copied verbatim from the imported schema: it still
+        // references the *original* system's host and UUID.
+        let original_host = "https://original.example.com";
+        let original_uuid = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
+        let imported_schema_id =
+            format!("{original_host}/ssi/schema/v2/{original_uuid}/JSON_LD_CLASSIC");
+
+        // The row id generated locally for the imported schema (`Uuid::new_v4()`
+        // in `CredentialSchemaImportParserImpl::parse`), unrelated to `original_uuid`.
+        let new_local_host = "https://local.example.com";
+        let new_credential_schema_id = Uuid::parse_str("22222222-2222-2222-2222-222222222222")
+            .unwrap()
+            .into();
+
+        let schema_format = CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_id: new_credential_schema_id,
+            format: "JSON_LD_CLASSIC".into(),
+            schema_id: imported_schema_id.clone(),
+            claim_mappings: Default::default(),
+        };
+
+        // This is exactly what the formatter does when building the VC.
+        let context_url =
+            get_credential_schema_context(new_local_host, new_credential_schema_id, &schema_format)
+                .unwrap();
+
+        // The context follows `schema_id` onto the *original* host/uuid,
+        // ignoring the local host/id entirely.
+        assert_eq!(
+            context_url.as_str(),
+            format!("{original_host}/ssi/context/v1/{original_uuid}/JSON_LD_CLASSIC")
+        );
+
+        // `vcdm.credentialSchema.id` (== schema_id) also points at the
+        // original host/uuid, untouched by import.
+        let vcdm_schema = VcdmSchema {
+            id: imported_schema_id,
+            r#type: W3C_SCHEMA_TYPE.to_string(),
+            metadata: None,
+        };
+
+        let context_list = indexset![ContextType::Url(context_url)];
+
+        // Fixed: holder/verifier-side validation now accepts the credential
+        // because the derived context and schema_id agree.
+        let result = is_context_list_valid(&context_list, None, Some(&vec![vcdm_schema]));
+        assert!(result.is_ok());
     }
 }
