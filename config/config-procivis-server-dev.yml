@@ -136,3 +136,50 @@ signer:
       private:
         payload:
           issuer: "https://core.dev.procivis-one"
+
+ecosystem:
+  EUDI2:
+    type: "EUDI"
+    display:
+      en: "EUDI 2 en"
+      de: "EUDI 2 de"
+    order: 1
+    params:
+      public:
+        logo: "data:image/png;base64,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"
+        description:
+          en: "EUDI 2 ecosystem"
+          de: "EUDI 2 Ökosystem"
+        instanceProviderDefaultSelected: false
+        credentialSchemas:
+          - format: SD_JWT_VC
+            ecosystemSchemaIds:
+              [
+                "urn:eudi:pid:1",
+                "urn:eu.europa.ec.eudi:pseudonym_age_over_18:1",
+                "urn:eu.europa.ec.eudi:ehic:1",
+                "urn:eu.europa.ec.eudi:por:1",
+                "urn:eu.europa.ec.eudi:pid:1",
+                "urn:eu.europa.ec.eudi:tax:1",
+                "urn:eu.europa.ec.eudi:msisdn:1",
+                "urn:eu.europa.ec.eudi:iban:1",
+                "urn:eu.europa.ec.eudi:hiid:1",
+              ]
+            pidSchemaIds: ["urn:eudi:pid:1"]
+          - format: MDOC
+            ecosystemSchemaIds:
+              [
+                "org.iso.18013.5.1.mDL",
+                "org.iso.23220.photoid.1",
+                "eu.europa.ec.av.1",
+                "eu.europa.ec.eudi.iban.1",
+                "eu.europa.ec.eudi.ehic.1",
+                "eu.europa.ec.eudi.pseudonym.age_over_18.1",
+                "eu.europa.ec.eudi.loyalty.1",
+                "eu.europa.ec.eudi.hiid.1",
+                "eu.europa.ec.eudi.pid.1",
+                "eu.europa.ec.eudi.msisdn.1",
+                "eu.europa.ec.eudi.por.1",
+                "eu.europa.ec.eudi.tax.1",
+              ]
+            pidSchemaIds: ["eu.europa.ec.eudi.pid.1"]
