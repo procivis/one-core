@@ -42,6 +42,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
             EncryptionAlgorithm::A128GCM,
             EncryptionAlgorithm::A256GCM,
             EncryptionAlgorithm::A128CBCHS256,
+            EncryptionAlgorithm::A256CBCHS512,
         ]);
     }
 

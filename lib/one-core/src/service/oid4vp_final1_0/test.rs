@@ -611,7 +611,8 @@ async fn test_get_client_metadata_success() {
             encrypted_response_enc_values_supported: Some(vec![
                 EncryptionAlgorithm::A128GCM,
                 EncryptionAlgorithm::A256GCM,
-                EncryptionAlgorithm::A128CBCHS256
+                EncryptionAlgorithm::A128CBCHS256,
+                EncryptionAlgorithm::A256CBCHS512
             ]),
             ..Default::default()
         },

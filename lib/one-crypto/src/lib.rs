@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use hmac::Hmac;
 use secrecy::SecretSlice;
-use sha2::Sha256;
+use sha2::{Sha256, Sha512};
 use thiserror::Error;
 
 use crate::hasher::sha256::SHA256;
@@ -28,6 +28,7 @@ pub mod utilities;
 mod password;
 
 type HmacSha256 = Hmac<Sha256>;
+type HmacSha512 = Hmac<Sha512>;
 
 #[cfg(test)]
 mod test;

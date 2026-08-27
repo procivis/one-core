@@ -31,6 +31,9 @@ pub enum EncryptionAlgorithm {
     #[serde(rename = "A128CBC-HS256")]
     #[strum(to_string = "A128CBC-HS256")]
     A128CBCHS256,
+    #[serde(rename = "A256CBC-HS512")]
+    #[strum(to_string = "A256CBC-HS512")]
+    A256CBCHS512,
 }
 
 /// Algorithm to derive / encrypt / select the encryption key

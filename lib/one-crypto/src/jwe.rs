@@ -3,7 +3,9 @@ use std::str::FromStr;
 
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::consts::{U12, U16};
-use aes::cipher::{BlockCipher, BlockDecryptMut, BlockEncrypt, BlockEncryptMut, BlockSizeUser};
+use aes::cipher::{
+    BlockCipher, BlockDecryptMut, BlockEncrypt, BlockEncryptMut, BlockSizeUser, KeySizeUser,
+};
 use aes::{Aes128, Aes256};
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit};
@@ -11,15 +13,16 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use flate2::read::DeflateDecoder;
 use flate2::write::DeflateEncoder;
 use hmac::Mac;
+use hmac::digest::FixedOutputReset;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 
-use crate::HmacSha256;
 use crate::encryption::EncryptionError;
 use crate::utilities::{generate_random_bytes, get_rng};
+use crate::{HmacSha256, HmacSha512};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Header {
@@ -118,7 +121,12 @@ pub fn build_jwe(
             protected_header_b64.as_bytes(),
             &encryption_key,
         )?,
-        EncryptionAlgorithm::A128CBCHS256 => encrypt_in_place_aes_cbc_hs256(
+        EncryptionAlgorithm::A128CBCHS256 => encrypt_in_place_aes_cbc_hmac::<Aes128, HmacSha256>(
+            &mut compressed_payload,
+            protected_header_b64.as_bytes(),
+            &encryption_key,
+        )?,
+        EncryptionAlgorithm::A256CBCHS512 => encrypt_in_place_aes_cbc_hmac::<Aes256, HmacSha512>(
             &mut compressed_payload,
             protected_header_b64.as_bytes(),
             &encryption_key,
@@ -166,25 +174,30 @@ where
     Ok(AeadOutput { tag_b64, iv_b64 })
 }
 
-type Aes128CbcEnc = cbc::Encryptor<Aes128>;
-fn encrypt_in_place_aes_cbc_hs256(
+fn encrypt_in_place_aes_cbc_hmac<
+    Cipher: BlockEncryptMut + BlockCipher + KeySizeUser + KeyInit,
+    Hash: Mac + KeyInit + FixedOutputReset,
+>(
     buf: &mut Vec<u8>,
     associated_data: &[u8],
     key: &SecretSlice<u8>,
 ) -> Result<AeadOutput, EncryptionError> {
     use aes::cipher::KeyIvInit;
+
+    let key_size = Cipher::key_size();
     let secret = key.expose_secret();
-    if secret.len() != 32 {
+    if secret.len() != key_size * 2 {
         return Err(EncryptionError::Crypto(format!(
-            "wrong key size: expected 32, got {}",
+            "wrong key size: expected {}, got {}",
+            key_size * 2,
             secret.len()
         )));
     }
     let hmac_key = &secret
-        .get(..16)
+        .get(..key_size)
         .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
     let aes_key = &secret
-        .get(16..32)
+        .get(key_size..)
         .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
 
     // CBC requires padding
@@ -195,15 +208,15 @@ fn encrypt_in_place_aes_cbc_hs256(
     }
 
     let iv = generate_random_bytes::<16>();
-    let cipher128 = Aes128CbcEnc::new(
+    let cipher = cbc::Encryptor::<Cipher>::new(
         GenericArray::from_slice(aes_key),
         GenericArray::from_slice(&iv),
     );
-    cipher128
+    cipher
         .encrypt_padded_mut::<Pkcs7>(buf, msg_len)
         .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {err}")))?;
 
-    let tag = calculate_tag_aes_cbc_hs256(buf, associated_data, &iv, hmac_key)?;
+    let tag = calculate_tag_aes_cbc::<Hash>(buf, associated_data, &iv, hmac_key)?;
     let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {e}")))?;
     let iv_b64 = Base64UrlSafeNoPadding::encode_to_string(iv)
@@ -211,8 +224,11 @@ fn encrypt_in_place_aes_cbc_hs256(
     Ok(AeadOutput { tag_b64, iv_b64 })
 }
 
-type Aes128CbcDec = cbc::Decryptor<Aes128>;
-fn decrypt_in_place_aes_cbc_hs256<'a>(
+fn decrypt_in_place_aes_cbc_hmac<
+    'a,
+    Cipher: BlockDecryptMut + BlockCipher + KeySizeUser + KeyInit,
+    Hash: Mac + KeyInit + FixedOutputReset,
+>(
     buf: &'a mut [u8],
     associated_data: &[u8],
     iv: &[u8],
@@ -221,50 +237,53 @@ fn decrypt_in_place_aes_cbc_hs256<'a>(
 ) -> Result<&'a [u8], EncryptionError> {
     use aes::cipher::KeyIvInit;
     let secret = key.expose_secret();
-    if secret.len() != 32 {
+
+    let key_size = Cipher::key_size();
+    if secret.len() != key_size * 2 {
         return Err(EncryptionError::Crypto(format!(
-            "wrong key size: expected 32, got {}",
+            "wrong key size: expected {}, got {}",
+            key_size * 2,
             secret.len()
         )));
     }
     let hmac_key = &secret
-        .get(..16)
+        .get(..key_size)
         .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
     let aes_key = &secret
-        .get(16..32)
+        .get(key_size..)
         .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
     if iv.len() != 16 {
         return Err(EncryptionError::Crypto(format!(
             "wrong iv size: expected 16, got {}",
-            secret.len()
+            iv.len()
         )));
     }
 
-    let calculated_tag = calculate_tag_aes_cbc_hs256(buf, associated_data, iv, hmac_key)?;
+    let calculated_tag = calculate_tag_aes_cbc::<Hash>(buf, associated_data, iv, hmac_key)?;
     if tag != calculated_tag {
         return Err(EncryptionError::Crypto(
             "Data could not be authenticated".to_string(),
         ));
     }
 
-    let cipher128 = Aes128CbcDec::new(
+    let cipher = cbc::Decryptor::<Cipher>::new(
         GenericArray::from_slice(aes_key),
         GenericArray::from_slice(iv),
     );
-    let plaintext = cipher128
+    let plaintext = cipher
         .decrypt_padded_mut::<Pkcs7>(buf)
         .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {err}")))?;
 
     Ok(plaintext)
 }
 
-fn calculate_tag_aes_cbc_hs256(
+fn calculate_tag_aes_cbc<Hmac: Mac + KeyInit + FixedOutputReset>(
     buf: &[u8],
     associated_data: &[u8],
     iv: &[u8],
     hmac_key: &[u8],
 ) -> Result<Vec<u8>, EncryptionError> {
-    let mut mac = <HmacSha256 as Mac>::new_from_slice(hmac_key)
+    let mut mac = <Hmac as Mac>::new_from_slice(hmac_key)
         .map_err(|e| EncryptionError::Crypto(format!("failed to create mac: {e}")))?;
     Mac::update(&mut mac, associated_data);
     Mac::update(&mut mac, iv);
@@ -274,11 +293,12 @@ fn calculate_tag_aes_cbc_hs256(
     let ad_len = ((associated_data.len() * 8) as u64).to_be_bytes();
     Mac::update(&mut mac, &ad_len);
 
-    // the tag is defined as only the first 16 bytes of the hash
+    let mac = mac.finalize_reset().into_bytes();
+
+    // the tag is defined as only the first T_LEN bytes of the hash
+    let tag_length = Hmac::output_size() / 2;
     let calculated_tag = mac
-        .finalize_reset()
-        .into_bytes()
-        .get(..16)
+        .get(..tag_length)
         .ok_or(EncryptionError::Crypto("wrong mac size".to_string()))?
         .to_vec();
     Ok(calculated_tag)
@@ -348,6 +368,20 @@ impl EncryptedJWE {
         let encryption_key = self.derive_encryption_key(&shared_secret, &header)?;
 
         let decrypted = match header.enc {
+            EncryptionAlgorithm::A128GCM => {
+                let cipher =
+                    Aes128Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
+                let mut buf = self.payload.clone();
+                cipher
+                    .decrypt_in_place_detached(
+                        GenericArray::from_slice(&self.nonce),
+                        self.protected_header_b64.as_bytes(),
+                        &mut buf,
+                        GenericArray::from_slice(&self.tag),
+                    )
+                    .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?;
+                buf
+            }
             EncryptionAlgorithm::A256GCM => {
                 let cipher =
                     Aes256Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
@@ -364,7 +398,7 @@ impl EncryptedJWE {
             }
             EncryptionAlgorithm::A128CBCHS256 => {
                 let mut buf = self.payload.clone();
-                decrypt_in_place_aes_cbc_hs256(
+                decrypt_in_place_aes_cbc_hmac::<Aes128, HmacSha256>(
                     &mut buf,
                     self.protected_header_b64.as_bytes(),
                     &self.nonce,
@@ -374,19 +408,17 @@ impl EncryptedJWE {
                 .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?
                 .to_vec()
             }
-            EncryptionAlgorithm::A128GCM => {
-                let cipher =
-                    Aes128Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
+            EncryptionAlgorithm::A256CBCHS512 => {
                 let mut buf = self.payload.clone();
-                cipher
-                    .decrypt_in_place_detached(
-                        GenericArray::from_slice(&self.nonce),
-                        self.protected_header_b64.as_bytes(),
-                        &mut buf,
-                        GenericArray::from_slice(&self.tag),
-                    )
-                    .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?;
-                buf
+                decrypt_in_place_aes_cbc_hmac::<Aes256, HmacSha512>(
+                    &mut buf,
+                    self.protected_header_b64.as_bytes(),
+                    &self.nonce,
+                    &self.tag,
+                    &encryption_key,
+                )
+                .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?
+                .to_vec()
             }
         };
 
@@ -449,6 +481,7 @@ pub(super) fn derive_encryption_key(
     let (key_len, key_buffer): (u32, _) = match alg {
         EncryptionAlgorithm::A128GCM => (128, vec![0u8; 16]),
         EncryptionAlgorithm::A256GCM | EncryptionAlgorithm::A128CBCHS256 => (256, vec![0u8; 32]),
+        EncryptionAlgorithm::A256CBCHS512 => (512, vec![0u8; 64]),
     };
 
     let alg = alg.to_string();
@@ -786,7 +819,34 @@ mod test {
         let iv = hex::decode("1af38c2dc2b96ffdd86694092341bc04").unwrap();
         let mut ciphertext = hex::decode("c80edfa32ddf39d5ef00c0b468834279a2e46a1b8049f792f76bfe54b903a9c9a94ac9b47ad2655c5f10f9aef71427e2fc6f9b3f399a221489f16362c703233609d45ac69864e3321cf82935ac4096c86e133314c54019e8ca7980dfa4b9cf1b384c486f3a54c51078158ee5d79de59fbd34d848b3d69550a67646344427ade54b8851ffb598f7f80074b9473c82e2db").unwrap();
 
-        let decrypted = decrypt_in_place_aes_cbc_hs256(
+        let decrypted = decrypt_in_place_aes_cbc_hmac::<Aes128, HmacSha256>(
+            &mut ciphertext,
+            associated_data.as_slice(),
+            &iv,
+            &tag,
+            &key,
+        )
+        .unwrap();
+        assert_eq!(decrypted, expected_plaintext);
+    }
+
+    /// Test case: https://datatracker.ietf.org/doc/html/rfc7518#appendix-B.3
+    #[tokio::test]
+    async fn test_decrypt_aes256_cbc_hs512() {
+        let expected_plaintext = b"A cipher system must not be required to be secret, and it must be able to fall into the hands of the enemy without inconvenience";
+        let associated_data = b"The second principle of Auguste Kerckhoffs";
+
+        let key = SecretSlice::from(
+            hex::decode("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f")
+                .unwrap(),
+        );
+
+        let tag = hex::decode("4dd3b4c088a7f45c216839645b2012bf2e6269a8c56a816dbc1b267761955bc5")
+            .unwrap();
+        let iv = hex::decode("1af38c2dc2b96ffdd86694092341bc04").unwrap();
+        let mut ciphertext = hex::decode("4affaaadb78c31c5da4b1b590d10ffbd3dd8d5d302423526912da037ecbcc7bd822c301dd67c373bccb584ad3e9279c2e6d12a1374b77f077553df829410446b36ebd97066296ae6427ea75c2e0846a11a09ccf5370dc80bfecbad28c73f09b3a3b75e662a2594410ae496b2e2e6609e31e6e02cc837f053d21f37ff4f51950bbe2638d09dd7a4930930806d0703b1f6").unwrap();
+
+        let decrypted = decrypt_in_place_aes_cbc_hmac::<Aes256, HmacSha512>(
             &mut ciphertext,
             associated_data.as_slice(),
             &iv,

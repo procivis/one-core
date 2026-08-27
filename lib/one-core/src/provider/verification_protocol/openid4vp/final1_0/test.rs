@@ -590,6 +590,7 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
             EncryptionAlgorithm::A128GCM,
             EncryptionAlgorithm::A256GCM,
             EncryptionAlgorithm::A128CBCHS256,
+            EncryptionAlgorithm::A256CBCHS512,
         ])
     );
 }
