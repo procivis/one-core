@@ -16,6 +16,7 @@ use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::Identifier;
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
@@ -179,6 +180,7 @@ pub(crate) fn extracted_credential_to_model(
     holder_identifier: Option<Identifier>,
     exchange: String,
     issuance_date: Option<OffsetDateTime>,
+    format: Option<&CredentialSchemaFormat>,
 ) -> Result<Credential, ServiceError> {
     let now = crate::clock::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -219,6 +221,7 @@ pub(crate) fn extracted_credential_to_model(
         issuer_certificate,
         holder_identifier: holder_identifier.map(Into::into),
         schema: credential_schema.into(),
+        format: format.map(|format| format.to_owned().into()),
         redirect_uri: None,
         interaction: None,
         key: None,
@@ -482,6 +485,15 @@ mod tests {
             log: None,
         };
         let credential_schema_id = Uuid::new_v4().into();
+        let format = CredentialSchemaFormat {
+            id: credential_schema_format_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "MDOC".into(),
+            ecosystem_schema_id: "pavel.3310.simple".to_owned(),
+            claim_mappings: Default::default(),
+        };
         let credential = extracted_credential_to_model(
             &claim_schemas,
             &mappings,
@@ -495,16 +507,7 @@ mod tests {
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 name: "CredentialSchema".to_string(),
-                formats: vec![CredentialSchemaFormat {
-                    id: credential_schema_format_id,
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "MDOC".into(),
-                    schema_id: "pavel.3310.simple".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 layout_properties: None,
                 claim_schemas: claim_schemas.to_owned().into(),
@@ -540,6 +543,7 @@ mod tests {
             None,
             "ISO_MDL".to_string(),
             Some(issuance_date),
+            Some(&format),
         )
         .unwrap();
 

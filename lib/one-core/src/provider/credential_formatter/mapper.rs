@@ -130,7 +130,7 @@ pub(crate) async fn vcdm_from_credential_and_published_claims(
     });
 
     let vcdm_schema = CredentialSchema {
-        id: credential_schema_format.schema_id.clone(),
+        id: credential_schema_format.ecosystem_schema_id.clone(),
         r#type: W3C_SCHEMA_TYPE.to_string(),
         metadata,
     };
@@ -158,7 +158,7 @@ fn get_credential_schema_context(
     // verbatim from the original system and may reference a different
     // host/uuid than our own `credential_schema_id`/`core_base_url`, so
     // deriving the context from it directly keeps the two in sync.
-    let context = match &schema_format.schema_id {
+    let context = match &schema_format.ecosystem_schema_id {
         id if id.contains("/ssi/schema/v1/") => id.replace("/ssi/schema/v1/", "/ssi/context/v1/"),
         id if id.contains("/ssi/schema/v2/") => id.replace("/ssi/schema/v2/", "/ssi/context/v1/"),
         _ => format!("{core_base_url}/ssi/context/v1/{credential_schema_id}"),
@@ -299,7 +299,7 @@ impl CredentialClaimValue {
 pub(super) fn to_format_with_mappings(
     format: CredentialFormat,
     credential_schema_id: CredentialSchemaId,
-    schema_id: String,
+    ecosystem_schema_id: String,
     claim_schemas: &[ClaimSchema],
     now: OffsetDateTime,
 ) -> CredentialSchemaFormat {
@@ -324,7 +324,7 @@ pub(super) fn to_format_with_mappings(
         last_modified: now,
         credential_schema_id,
         format,
-        schema_id,
+        ecosystem_schema_id,
         claim_mappings: claim_mappings.into(),
     }
 }
@@ -374,7 +374,7 @@ mod test {
             last_modified: now,
             credential_schema_id: new_credential_schema_id,
             format: "JSON_LD_CLASSIC".into(),
-            schema_id: imported_schema_id.clone(),
+            ecosystem_schema_id: imported_schema_id.clone(),
             claim_mappings: Default::default(),
         };
 

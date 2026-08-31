@@ -229,6 +229,7 @@ impl BackupRepository for BackupProvider {
                 credential::Column::Protocol,
                 credential::Column::WebhookUrl,
                 credential::Column::EmbeddedDisclosurePolicy,
+                credential::Column::Format,
             ])
             .column_as(credential_schema::Column::Id, "credential_schema_id")
             .column_as(

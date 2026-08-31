@@ -108,13 +108,13 @@ async fn test_presentation_reject_ok() {
         None,
     );
 
-    let schema_id = "org.iso.18013.5.1".to_string();
+    let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
     let organisation_id = Uuid::new_v4().into();
     let device_request_bytes = to_cbor(&DeviceRequest {
         version: Default::default(),
         doc_requests: vec![DocRequest {
             items_request: EmbeddedCbor::new(ItemsRequest {
-                doc_type: schema_id.clone(),
+                doc_type: ecosystem_schema_id.clone(),
                 name_spaces: hashmap! {
                     "org.iso.18013.5.1.mDL".to_string() => hashmap! {
                         "name".to_string() => true,
@@ -187,7 +187,7 @@ async fn test_presentation_reject_ok() {
                             last_modified: crate::clock::now_utc(),
                             credential_schema_id,
                             format: "".into(),
-                            schema_id,
+                            ecosystem_schema_id,
                             claim_mappings: Default::default(),
                         }]
                         .into(),
@@ -242,12 +242,12 @@ async fn test_presentation_reject_ok() {
 #[tokio::test]
 async fn test_get_presentation_definition_v2() {
     let organisation_id = Uuid::new_v4().into();
-    let schema_id = "org.iso.18013.5.1".to_string();
+    let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
     let device_request_bytes = to_cbor(&DeviceRequest {
         version: Default::default(),
         doc_requests: vec![DocRequest {
             items_request: EmbeddedCbor::new(ItemsRequest {
-                doc_type: schema_id.clone(),
+                doc_type: ecosystem_schema_id.clone(),
                 name_spaces: hashmap! {
                     "org.iso.18013.5.1.mDL".to_string() => hashmap! {
                         "name".to_string() => true,
@@ -448,6 +448,15 @@ async fn test_get_presentation_definition_v2() {
             namespace: Some("org.iso.18013.5.1.mDL".to_string()),
         },
     ];
+    let format = CredentialSchemaFormat {
+        id: credential_schema_format_id,
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "MDOC".into(),
+        ecosystem_schema_id: ecosystem_schema_id.clone(),
+        claim_mappings: claim_mappings.into(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -459,16 +468,7 @@ async fn test_get_presentation_definition_v2() {
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "schema-name".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: credential_schema_format_id,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "MDOC".into(),
-                schema_id: schema_id.clone(),
-                claim_mappings: claim_mappings.into(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             organisation: dummy_organisation(Some(organisation_id)).into(),
             layout_properties: None,
             claim_schemas: claim_schemas.values().cloned().collect::<Vec<_>>().into(),
@@ -583,8 +583,8 @@ async fn test_get_presentation_definition_v2() {
         r#type: CredentialType::Single,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
 
     let mut credential_repository = MockCredentialRepository::new();
@@ -640,10 +640,10 @@ async fn test_get_presentation_definition_v2() {
     assert!(
         presentation_definition
             .credential_queries
-            .contains_key(&schema_id)
+            .contains_key(&ecosystem_schema_id)
     );
 
-    let credential_query = &presentation_definition.credential_queries[&schema_id];
+    let credential_query = &presentation_definition.credential_queries[&ecosystem_schema_id];
 
     assert_eq!(credential_query.multiple, false);
     let ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {

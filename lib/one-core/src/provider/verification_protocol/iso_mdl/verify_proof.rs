@@ -349,6 +349,7 @@ pub(crate) async fn accept_proof(
             None,
             proof.protocol.to_owned(),
             credential.issuance_date,
+            Some(format),
         )?;
 
         model_credentials.push((model_credential, credential.issuer));

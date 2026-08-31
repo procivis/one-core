@@ -40,3 +40,4 @@ pub mod m20260804_140000_add_ecosystem_to_interaction;
 pub mod m20260805_083424_interaction_ecosystem_data;
 pub mod m20260821_031302_remove_layout_type;
 pub mod m20260821_071004_backfill_batch_parent_for_mdoc_credentials;
+pub mod m20260831_105417_credential_format;

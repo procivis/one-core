@@ -1257,7 +1257,7 @@ impl OpenID4VCIFinal1_0 {
             let valid_trust_information_list = trust_information_list
                 .iter()
                 .filter(|ti| ti.is_valid(now_utc()))
-                .filter(|ti| ti.is_issuance_allowed_for(&format.schema_id, &format_type));
+                .filter(|ti| ti.is_issuance_allowed_for(&format.ecosystem_schema_id, &format_type));
 
             for trust_information in valid_trust_information_list {
                 let certificate = blob_storage
@@ -1357,7 +1357,7 @@ impl OpenID4VCIFinal1_0 {
                 .map_err(OpenIDIssuanceError::OpenID4VCI)?;
 
                 credential_configurations_supported
-                    .insert(format.schema_id.to_owned(), configuration);
+                    .insert(format.ecosystem_schema_id.to_owned(), configuration);
             }
         }
 

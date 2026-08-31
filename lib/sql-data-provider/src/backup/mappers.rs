@@ -14,6 +14,7 @@ use time::Duration;
 use super::models::{ClaimWithSchema, UnexportableCredentialModel};
 use crate::claim::mapper::claim_from_model;
 use crate::claim_schema::mapper::claim_schema_from_model;
+use crate::credential::mapper::CredentialSchemaFormatLoader;
 use crate::credential_schema::mapper::CredentialSchemaFormatsLoader;
 use crate::localized_text::LocalizedTextLoader;
 use crate::transaction_context::TransactionManagerImpl;
@@ -119,5 +120,8 @@ pub(super) fn credential_from_unexportable_model(
         parent: value
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),
+        format: value
+            .format
+            .map(|id| Related::new(id, CredentialSchemaFormatLoader { db: db.clone() })),
     })
 }

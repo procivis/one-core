@@ -14,6 +14,6 @@ pub struct CredentialSchemaFormat {
     pub last_modified: OffsetDateTime,
     pub credential_schema_id: CredentialSchemaId,
     pub format: CredentialFormat,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
     pub claim_mappings: RelatedVec<CredentialSchemaFormatClaimSchema>,
 }

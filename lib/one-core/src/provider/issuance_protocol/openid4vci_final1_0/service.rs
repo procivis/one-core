@@ -129,7 +129,7 @@ pub(crate) async fn credential_configuration_supported(
         FormatType::SdJwt => sdjwt_configuration(
             "vc+sd-jwt",
             credential_metadata,
-            &format.schema_id,
+            &format.ecosystem_schema_id,
             cryptographic_binding_methods_supported,
             proof_types_supported,
             credential_signing_alg_values_supported,
@@ -138,14 +138,14 @@ pub(crate) async fn credential_configuration_supported(
         FormatType::SdJwtVc => sdjwt_configuration(
             "dc+sd-jwt",
             credential_metadata,
-            &format.schema_id,
+            &format.ecosystem_schema_id,
             cryptographic_binding_methods_supported,
             proof_types_supported,
             credential_signing_alg_values_supported,
             disclosure_policy,
         ),
         FormatType::Mdoc => mdoc_configuration(
-            format.schema_id.to_string(),
+            format.ecosystem_schema_id.to_string(),
             credential_metadata,
             proof_types_supported,
             disclosure_policy,

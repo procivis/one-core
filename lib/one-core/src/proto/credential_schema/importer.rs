@@ -61,7 +61,10 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
     ) -> Result<CredentialSchema, Error> {
         let schema_ids: Vec<String> = {
             let formats = credential_schema.formats.as_ref().await?;
-            formats.iter().map(|f| f.schema_id.clone()).collect()
+            formats
+                .iter()
+                .map(|f| f.ecosystem_schema_id.clone())
+                .collect()
         };
 
         let conflicting_credential_schemas = self

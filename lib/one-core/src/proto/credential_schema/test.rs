@@ -218,7 +218,7 @@ async fn test_importer_import_credential_schema_success() {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "http://example.com/schema".to_owned(),
+            ecosystem_schema_id: "http://example.com/schema".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -291,7 +291,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "http://example.com/schema".to_owned(),
+            ecosystem_schema_id: "http://example.com/schema".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -331,7 +331,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         format: "JWT".into(),
         claim_mappings: Default::default(),
         credential_schema_id: existing_schema.id,
-        schema_id: "http://different.com/schema".to_owned(),
+        ecosystem_schema_id: "http://different.com/schema".to_owned(),
     }]
     .into();
 
@@ -366,7 +366,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "http://example.com/schema".to_owned(),
+            ecosystem_schema_id: "http://example.com/schema".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),

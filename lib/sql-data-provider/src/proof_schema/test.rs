@@ -207,7 +207,7 @@ async fn test_create_proof_schema_already_exists() {
                         last_modified: one_core::clock::now_utc(),
                         credential_schema_id,
                         format: "JWT".into(),
-                        schema_id: "CredentialSchemaId".to_owned(),
+                        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                         claim_mappings: Default::default(),
                     }]
                     .into(),
@@ -326,7 +326,7 @@ async fn test_create_proof_schema_success() {
                         last_modified: one_core::clock::now_utc(),
                         credential_schema_id,
                         format: "JWT".into(),
-                        schema_id: "CredentialSchemaId".to_owned(),
+                        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                         claim_mappings: Default::default(),
                     }]
                     .into(),
@@ -1082,7 +1082,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         last_modified: Set(date_now),
         credential_schema_id: Set(cred_schema_jwt_id),
         format: Set("JWT".into()),
-        schema_id: Set("JWT".to_string()),
+        ecosystem_schema_id: Set("JWT".to_string()),
     }
     .insert(&db)
     .await
@@ -1120,7 +1120,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         last_modified: Set(date_now),
         credential_schema_id: Set(cred_schema_mdoc_id),
         format: Set("MDOC".into()),
-        schema_id: Set("MDOC".to_string()),
+        ecosystem_schema_id: Set("MDOC".to_string()),
     }
     .insert(&db)
     .await

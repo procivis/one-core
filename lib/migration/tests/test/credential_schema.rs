@@ -240,7 +240,7 @@ async fn test_db_schema_credential_schema_format() {
         "last_modified",
         "credential_schema_id",
         "format",
-        "schema_id",
+        "ecosystem_schema_id",
     ];
 
     let credential_schema_format = schema
@@ -252,14 +252,14 @@ async fn test_db_schema_credential_schema_format() {
             &["credential_schema_id", "format"],
         )
         .index(
-            "index-CredentialSchemaFormat-CredentialSchemaId-SchemaId_Unique",
+            "index-CredentialSchemaFormat-CredentialSchemaId-ESchemaId_Unique",
             true,
-            &["credential_schema_id", "schema_id"],
+            &["credential_schema_id", "ecosystem_schema_id"],
         )
         .index(
-            "index-CredentialSchemaFormat-SchemaId-Format-CredentialSchemaId",
+            "index-CredentialSchemaFormat-ESchemaId-Format-CredentialSchemaId",
             false,
-            &["schema_id", "format", "credential_schema_id"],
+            &["ecosystem_schema_id", "format", "credential_schema_id"],
         );
     credential_schema_format
         .column("id")
@@ -293,7 +293,7 @@ async fn test_db_schema_credential_schema_format() {
         .nullable(false)
         .default(None);
     credential_schema_format
-        .column("schema_id")
+        .column("ecosystem_schema_id")
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);

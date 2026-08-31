@@ -39,6 +39,7 @@ impl CredentialProvider {
             &self.identifier_repository,
             &self.certificate_repository,
             &self.interaction_repository,
+            &self.db,
         )
     }
 
@@ -104,6 +105,7 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
             credential::Column::WebhookUrl,
             credential::Column::EmbeddedDisclosurePolicy,
             credential::Column::Ecosystem,
+            credential::Column::Format,
         ])
         .join(
             sea_orm::JoinType::InnerJoin,

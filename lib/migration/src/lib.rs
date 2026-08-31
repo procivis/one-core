@@ -313,6 +313,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20260821_071004_backfill_batch_parent_for_mdoc_credentials::Migration,
             ),
+            Box::new(migrations::m20260831_105417_credential_format::Migration),
         ]
     }
 }

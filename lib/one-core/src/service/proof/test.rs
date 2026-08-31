@@ -271,7 +271,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
                 format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
+                ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                 claim_mappings: Default::default(),
             }]
             .into(),
@@ -354,7 +354,7 @@ async fn test_get_proof_exists() {
                                 last_modified: crate::clock::now_utc(),
                                 credential_schema_id,
                                 format: "JWT".into(),
-                                schema_id: "CredentialSchemaId".to_owned(),
+                                ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                                 claim_mappings: Default::default(),
                             }]
                             .into(),
@@ -473,6 +473,15 @@ async fn test_get_proof_with_array_holder() {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -486,16 +495,7 @@ async fn test_get_proof_with_array_holder() {
             key_storage_security: None,
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema.clone()].into(),
             organisation: organisation.clone().into(),
             layout_properties: None,
@@ -571,8 +571,8 @@ async fn test_get_proof_with_array_holder() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
     let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
 
@@ -722,6 +722,15 @@ async fn test_get_proof_with_array_in_object_holder() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -735,16 +744,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             key_storage_security: None,
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_properties: None,
@@ -830,8 +830,8 @@ async fn test_get_proof_with_array_in_object_holder() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
     let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
 
@@ -986,6 +986,15 @@ async fn test_get_proof_with_object_array_holder() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -999,16 +1008,7 @@ async fn test_get_proof_with_object_array_holder() {
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_properties: None,
@@ -1104,8 +1104,8 @@ async fn test_get_proof_with_object_array_holder() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
     let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
 
@@ -1255,6 +1255,15 @@ async fn test_get_proof_with_array() {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -1268,16 +1277,7 @@ async fn test_get_proof_with_array() {
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema.clone()].into(),
             organisation: organisation.clone().into(),
             layout_properties: None,
@@ -1353,8 +1353,8 @@ async fn test_get_proof_with_array() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
     let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
 
@@ -1512,6 +1512,15 @@ async fn test_get_proof_with_array_in_object() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -1525,16 +1534,7 @@ async fn test_get_proof_with_array_in_object() {
             key_storage_security: None,
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_properties: None,
@@ -1620,8 +1620,8 @@ async fn test_get_proof_with_array_in_object() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
     let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
 
@@ -1785,6 +1785,15 @@ async fn test_get_proof_with_object_array() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -1798,16 +1807,7 @@ async fn test_get_proof_with_object_array() {
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_properties: None,
@@ -1903,8 +1903,8 @@ async fn test_get_proof_with_object_array() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     };
     let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
 

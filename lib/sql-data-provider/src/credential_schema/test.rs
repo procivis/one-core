@@ -136,7 +136,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                 last_modified: get_dummy_date(),
                 credential_schema_id,
                 format: "JWT".into(),
-                schema_id: credential_schema_id.to_string(),
+                ecosystem_schema_id: credential_schema_id.to_string(),
                 claim_mappings: Default::default(),
             }]
             .into(),
@@ -223,7 +223,7 @@ async fn test_create_credential_schema_success() {
                 last_modified: now_utc(),
                 credential_schema_id,
                 format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
+                ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                 claim_mappings: Default::default(),
             }]
             .into(),
@@ -442,7 +442,7 @@ async fn test_delete_credential_schema_not_found() {
                 last_modified: now_utc(),
                 credential_schema_id,
                 format: "MDOC".into(),
-                schema_id: "Test_schema_id".to_owned(),
+                ecosystem_schema_id: "Test_schema_id".to_owned(),
                 claim_mappings: Default::default(),
             }]
             .into(),

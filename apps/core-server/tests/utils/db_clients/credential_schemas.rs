@@ -147,7 +147,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
-                schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
+                ecosystem_schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
                 claim_mappings: claim_mappings.into(),
             }]
             .into(),
@@ -236,7 +236,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JSON_LD_BBSPLUS".into()),
-                schema_id: id.to_string(),
+                ecosystem_schema_id: id.to_string(),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -363,7 +363,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
-                schema_id: params.schema_id.unwrap_or("doctype".to_string()),
+                ecosystem_schema_id: params.schema_id.unwrap_or("doctype".to_string()),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -490,7 +490,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
-                schema_id: format!("ssi/schema/{id}"),
+                ecosystem_schema_id: format!("ssi/schema/{id}"),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -629,7 +629,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
-                schema_id: format!("ssi/schema/{id}"),
+                ecosystem_schema_id: format!("ssi/schema/{id}"),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -909,7 +909,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
-                schema_id: format!("ssi/schema/{id}"),
+                ecosystem_schema_id: format!("ssi/schema/{id}"),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -985,7 +985,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: "JWT".into(),
-                schema_id: id.to_string(),
+                ecosystem_schema_id: id.to_string(),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -1066,7 +1066,7 @@ impl CredentialSchemasDB {
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id.to_owned().into(),
                 format: format.into(),
-                schema_id: schema_id.to_owned(),
+                ecosystem_schema_id: schema_id.to_owned(),
                 claim_mappings: claim_schemas
                     .iter()
                     .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -1169,7 +1169,7 @@ impl CredentialSchemasDB {
                     last_modified: one_core::clock::now_utc(),
                     credential_schema_id: id,
                     format: "SD_JWT_VC".into(),
-                    schema_id: "sd-jwt_vct".to_string(),
+                    ecosystem_schema_id: "sd-jwt_vct".to_string(),
                     claim_mappings: claim_schemas
                         .iter()
                         .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -1190,7 +1190,7 @@ impl CredentialSchemasDB {
                     last_modified: one_core::clock::now_utc(),
                     credential_schema_id: id,
                     format: "MDOC".into(),
-                    schema_id: "mdoc_doctype".to_string(),
+                    ecosystem_schema_id: "mdoc_doctype".to_string(),
                     claim_mappings: claim_schemas
                         .iter()
                         .map(|cs| CredentialSchemaFormatClaimSchema {

@@ -35,6 +35,7 @@ async fn test_db_schema_credential() {
             "subscriber_information",
             "ecosystem",
             "expires_at",
+            "format",
         ])
         .index("index-Credential-CreatedDate", false, &["created_date"])
         .index("index-Credential-Role", false, &["role"])
@@ -191,6 +192,11 @@ async fn test_db_schema_credential() {
         .column("expires_at")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(true);
+    credential
+        .column("format")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-Credential-Format", "credential_schema_format", "id");
 }
 
 #[tokio::test]

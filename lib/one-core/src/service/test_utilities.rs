@@ -287,6 +287,15 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
     let credential_id = Uuid::new_v4().into();
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "format".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -345,16 +354,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             last_modified: crate::clock::now_utc(),
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "format".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             imported_source_url: "CORE_URL".to_string(),
             claim_schemas: vec![ClaimSchema {
                 id: claim_schema_id,
@@ -399,8 +399,8 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }
 
@@ -564,7 +564,7 @@ pub fn dummy_credential_schema_with_format(format: &str) -> CredentialSchema {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: format.into(),
-            schema_id: "CredentialSchemaId".to_owned(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),

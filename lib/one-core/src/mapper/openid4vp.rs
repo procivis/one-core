@@ -83,6 +83,7 @@ pub(crate) async fn credential_from_proved(
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: None,
     })
 }
 

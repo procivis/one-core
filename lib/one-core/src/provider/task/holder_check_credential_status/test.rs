@@ -245,6 +245,15 @@ fn generic_credential() -> Credential {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -300,16 +309,7 @@ fn generic_credential() -> Credential {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_properties: None,
@@ -329,7 +329,7 @@ fn generic_credential() -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }

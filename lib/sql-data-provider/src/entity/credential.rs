@@ -6,8 +6,8 @@ use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    BlobId, CertificateId, CredentialId, CredentialSchemaId, DidId, EcosystemId, IdentifierId,
-    InteractionId, KeyId,
+    BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DidId,
+    EcosystemId, IdentifierId, InteractionId, KeyId,
 };
 use time::OffsetDateTime;
 
@@ -18,6 +18,7 @@ pub struct Model {
     pub id: CredentialId,
 
     pub credential_schema_id: CredentialSchemaId,
+    pub format: Option<CredentialSchemaFormatId>,
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

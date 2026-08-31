@@ -140,7 +140,7 @@ fn test_credential_schema(format: CredentialFormat) -> CredentialSchema {
             last_modified: crate::clock::now_utc(),
             credential_schema_id: Uuid::new_v4().into(),
             format,
-            schema_id: "test_schema_id".to_owned(),
+            ecosystem_schema_id: "test_schema_id".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),

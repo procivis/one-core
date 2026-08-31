@@ -374,7 +374,7 @@ impl CredentialFormatter for SDJWTFormatter {
             created_date: now,
             last_modified: now,
             name: schema_name,
-            formats: vec![format].into(),
+            formats: vec![format.clone()].into(),
             batch_size: None,
             key_storage_security: None,
             layout_properties: None,
@@ -426,6 +426,7 @@ impl CredentialFormatter for SDJWTFormatter {
             parent: None,
             embedded_disclosure_policy: None,
             subscriber_information: None,
+            format: Some(format.into()),
         })
     }
 

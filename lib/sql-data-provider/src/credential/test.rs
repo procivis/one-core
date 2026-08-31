@@ -117,7 +117,7 @@ async fn setup_empty() -> TestSetup {
             last_modified: now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -384,6 +384,7 @@ async fn test_create_credential_success() {
             embedded_disclosure_policy: None,
             subscriber_information: None,
             parent: None,
+            format: None,
         })
         .await;
 
@@ -443,6 +444,7 @@ async fn test_create_credential_empty_claims() {
             embedded_disclosure_policy: None,
             subscriber_information: None,
             parent: None,
+            format: None,
         })
         .await;
 
@@ -514,6 +516,7 @@ async fn test_create_credential_already_exists() {
             embedded_disclosure_policy: None,
             subscriber_information: None,
             parent: None,
+            format: None,
         })
         .await;
 

@@ -148,9 +148,10 @@ impl OpenID4VCIFinal1_0 {
             .await?;
         if !credentials.is_empty() {
             // update batch items
-            credentials.iter_mut().for_each(|c| {
-                self.change_to_batch_item(&mut c.credential, main_credential_id, &schema);
-            });
+            for c in credentials.iter_mut() {
+                self.change_to_batch_item(&mut c.credential, main_credential_id, &schema, &format)
+                    .await?;
+            }
         }
 
         // Add main credential to the front so that the batch_parent already exists when the batch_items are created.
@@ -160,17 +161,24 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    fn change_to_batch_item(
+    async fn change_to_batch_item(
         &self,
         credential: &mut Credential,
         parent_id: CredentialId,
         schema: &CredentialSchema,
-    ) {
+        format: &CredentialFormat,
+    ) -> Result<(), IssuanceProtocolError> {
         credential.schema = schema.clone().into();
         credential.r#type = CredentialType::BatchItem;
         credential.parent = Some(Related::new(parent_id, self.credential_repository.clone()));
         credential.claims = Default::default();
         credential.interaction = None;
+
+        let formats = schema.formats.as_ref().await?;
+        let format = formats.iter().find(|f| &f.format == format).cloned();
+        credential.format = convert_inner(format);
+
+        Ok(())
     }
 
     async fn process_schema(
@@ -188,12 +196,10 @@ impl OpenID4VCIFinal1_0 {
         if let Some(conflicting_format) = &conflicting_format {
             let mut credential_schema = credential.schema.as_mut().await?;
             let mut formats = credential_schema.formats.as_mut().await?;
-            formats
-                .first_mut()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "missing parsed format".to_string(),
-                ))?
-                .format = conflicting_format.clone();
+            let format = formats.first_mut().ok_or(IssuanceProtocolError::Failed(
+                "missing parsed format".to_string(),
+            ))?;
+            format.format = conflicting_format.clone();
         }
 
         let (new_claim_schemas, new_mappings) = validate_existing_and_find_new_claim_schemas(
@@ -348,16 +354,15 @@ impl OpenID4VCIFinal1_0 {
                     schema.id
                 ))
             })?
-            .format
-            .clone();
+            .to_owned();
         drop(parent_formats);
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&parent_format)?;
+            .get_credential_formatter(&parent_format.format)?;
 
         let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
         for issued_credential in issuer_response.credentials {
-            let credential = self
+            let mut credential = self
                 .prepare_issued_credential(
                     &issued_credential,
                     &mut holder_bindings,
@@ -367,6 +372,7 @@ impl OpenID4VCIFinal1_0 {
                     issuer_response.redirect_uri.as_ref(),
                 )
                 .await?;
+            credential.format = Some(parent_format.clone().into());
             batch_credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -382,7 +388,7 @@ impl OpenID4VCIFinal1_0 {
         validate_existing_and_find_new_claim_schemas(
             &mut schema,
             &mut batch_credential.credential,
-            &parent_format,
+            &parent_format.format,
             &self.config.global_settings.default_language,
             false,
         )
@@ -415,7 +421,13 @@ impl OpenID4VCIFinal1_0 {
                 mut credential,
                 serialized,
             } = batch_credential;
-            self.change_to_batch_item(&mut credential, batch_parent.id, &schema);
+            self.change_to_batch_item(
+                &mut credential,
+                batch_parent.id,
+                &schema,
+                &parent_format.format,
+            )
+            .await?;
 
             let credential_blob_id = if let Some(token) = serialized {
                 let blob = Blob::new(token.as_ref(), BlobType::Credential);
@@ -602,7 +614,7 @@ async fn get_or_create_credential_schema(
     if let Some(stored_schema) = stored_schema {
         let conflicting_format = if let Some(conflicting_schema) =
             stored_schema.formats.as_ref().await?.iter().find(|format| {
-                format.schema_id == parsed_schema_id && format.format != parsed_format
+                format.ecosystem_schema_id == parsed_schema_id && format.format != parsed_format
             }) {
             if config
                 .format
@@ -623,7 +635,9 @@ async fn get_or_create_credential_schema(
             } else {
                 return Err(IssuanceProtocolError::Failed(format!(
                     "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
-                    conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
+                    conflicting_schema.id,
+                    conflicting_schema.ecosystem_schema_id,
+                    conflicting_schema.format
                 )));
             }
         } else {
@@ -676,16 +690,10 @@ async fn validate_existing_and_find_new_claim_schemas(
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
     let parsed_formats = parsed_schema.formats.as_ref().await?.to_owned();
-    let parsed_mappings = parsed_formats
-        .iter()
-        .find(|f| f.format == *format)
-        .ok_or(IssuanceProtocolError::Failed(format!(
-            "No matching parsed format found for `{format}`"
-        )))?
-        .claim_mappings
-        .as_ref()
-        .await?
-        .to_owned();
+    let parsed_format = parsed_formats.iter().find(|f| f.format == *format).ok_or(
+        IssuanceProtocolError::Failed(format!("No matching parsed format found for `{format}`")),
+    )?;
+    let parsed_mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
     drop(parsed_schema);
 
     let mut stored_formats = stored_schema.formats.as_mut().await?;
@@ -779,8 +787,6 @@ async fn validate_existing_and_find_new_claim_schemas(
         }
     }
 
-    drop(parsed_mappings);
-
     if !allow_new_claim_schemas && !new_claim_schemas.is_empty() {
         return Err(IssuanceProtocolError::Failed(format!(
             "Unknown claims found: {}",
@@ -791,9 +797,10 @@ async fn validate_existing_and_find_new_claim_schemas(
         )));
     }
     stored_claim_schemas.extend(new_claim_schemas.clone());
-    drop(parsed_formats);
+
     drop(stored_claim_schemas);
     drop(stored_mappings);
+    credential.format = Some(stored_format.to_owned().into());
     drop(stored_formats);
     credential.schema = stored_schema.to_owned().into();
     Ok((new_claim_schemas, new_mappings))

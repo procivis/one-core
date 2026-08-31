@@ -253,7 +253,7 @@ pub(crate) async fn schema_to_detail_v1_response_dto(
         organisation_id: value.organisation.id(),
         claims: claim_schemas,
         key_storage_security: value.key_storage_security,
-        schema_id: format.schema_id.clone(),
+        schema_id: format.ecosystem_schema_id.clone(),
         layout_properties: value.layout_properties.map(|item| item.into()),
         allow_suspension: value.allow_suspension,
         requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
@@ -284,7 +284,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         .iter()
         .map(|f| CredentialSchemaFormatResponseDTO {
             format: f.format.clone(),
-            schema_id: f.schema_id.clone(),
+            schema_id: f.ecosystem_schema_id.clone(),
             dcql: map_dcql_format_meta(f, config),
         })
         .collect();
@@ -436,10 +436,10 @@ fn schema_to_dcql_meta(
 ) -> dcql::CredentialFormat {
     match format_type {
         FormatType::SdJwtVc => dcql::CredentialFormat::SdJwt(SdJwtVcMeta {
-            vct_values: vec![format.schema_id.clone()],
+            vct_values: vec![format.ecosystem_schema_id.clone()],
         }),
         FormatType::Mdoc => dcql::CredentialFormat::MsoMdoc(MsoMdocMeta {
-            doctype_value: format.schema_id.clone(),
+            doctype_value: format.ecosystem_schema_id.clone(),
         }),
         FormatType::Jwt => dcql::CredentialFormat::JwtVc(w3c_meta_from_format(format)),
         FormatType::SdJwt => dcql::CredentialFormat::W3cSdJwt(w3c_meta_from_format(format)),
@@ -450,14 +450,14 @@ fn schema_to_dcql_meta(
 
 fn w3c_meta_from_format(format: &CredentialSchemaFormat) -> W3cVcMeta {
     // This is a terrible heuristic, but until proper support for JSON-LD contexts is added, this is the best we can do.
-    let context = if let Ok(url) = Url::parse(&format.schema_id)
+    let context = if let Ok(url) = Url::parse(&format.ecosystem_schema_id)
         && url.path().starts_with("/ssi/schema/v1/")
     {
         format
-            .schema_id
+            .ecosystem_schema_id
             .replace("/ssi/schema/v1/", "/ssi/context/v1/")
     } else {
-        format.schema_id.clone()
+        format.ecosystem_schema_id.clone()
     };
     W3cVcMeta {
         type_values: vec![vec![Context::CredentialsV2.to_string(), context]],
@@ -633,7 +633,7 @@ pub(super) fn add_metadata_claims_and_mappings(
 pub(super) fn build_format_with_claim_mappings(
     credential_schema_id: CredentialSchemaId,
     format: CredentialFormat,
-    schema_id: String,
+    ecosystem_schema_id: String,
     now: time::OffsetDateTime,
     key_to_claim_schema_and_mappings: &IndexMap<
         String,
@@ -675,7 +675,7 @@ pub(super) fn build_format_with_claim_mappings(
         last_modified: now,
         credential_schema_id,
         format,
-        schema_id,
+        ecosystem_schema_id,
         claim_mappings: RelatedVec::from(format_specific_mappings),
     })
 }
@@ -727,7 +727,7 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         .iter()
         .map(|f| CredentialSchemaFormatResponseDTO {
             format: f.format.clone(),
-            schema_id: f.schema_id.clone(),
+            schema_id: f.ecosystem_schema_id.clone(),
             dcql: map_dcql_format_meta(f, config),
         })
         .collect();

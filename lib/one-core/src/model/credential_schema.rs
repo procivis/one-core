@@ -81,7 +81,7 @@ impl CredentialSchema {
             .get_formats()
             .await?
             .iter()
-            .any(|f| other_schema_ids.contains(&f.schema_id)))
+            .any(|f| other_schema_ids.contains(&f.ecosystem_schema_id)))
     }
 
     // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
@@ -91,7 +91,7 @@ impl CredentialSchema {
 
     // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
     pub async fn schema_id(&self) -> Result<String, NestedError> {
-        Ok(self.first_format().await?.schema_id)
+        Ok(self.first_format().await?.ecosystem_schema_id)
     }
 
     // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema

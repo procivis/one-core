@@ -240,7 +240,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                                 .column(credential_schema_format::Column::CredentialSchemaId)
                                 .from(credential_schema_format::Entity)
                                 .cond_where(
-                                    credential_schema_format::Column::SchemaId.eq(schema_id),
+                                    credential_schema_format::Column::EcosystemSchemaId
+                                        .eq(schema_id),
                                 )
                                 .to_owned(),
                         ),

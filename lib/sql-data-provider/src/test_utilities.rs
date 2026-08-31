@@ -115,6 +115,7 @@ pub async fn insert_credential(
         webhook_url: Set(None),
         embedded_disclosure_policy: Set(None),
         subscriber_information: Set(None),
+        format: Set(None),
     }
     .insert(db)
     .await?;
@@ -149,6 +150,7 @@ pub async fn insert_credential(
         embedded_disclosure_policy: credential.embedded_disclosure_policy,
         subscriber_information: credential.subscriber_information,
         parent: None,
+        format: None,
     })
 }
 
@@ -218,7 +220,7 @@ pub async fn insert_credential_schema_with_revocation_to_database(
         last_modified: Set(get_dummy_date()),
         credential_schema_id: Set(credential_schema_id),
         format: Set(format.into()),
-        schema_id: Set(credential_schema_id.to_string()),
+        ecosystem_schema_id: Set(credential_schema_id.to_string()),
     }
     .insert(database)
     .await?;

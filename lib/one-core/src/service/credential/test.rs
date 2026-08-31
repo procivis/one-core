@@ -142,6 +142,15 @@ async fn generic_credential() -> Credential {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -206,17 +215,7 @@ async fn generic_credential() -> Credential {
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
-
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
             },
             "en",
         )
@@ -233,6 +232,7 @@ async fn generic_credential() -> Credential {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }
 
@@ -241,6 +241,15 @@ async fn generic_credential_list_entity() -> Credential {
 
     let credential_schema_id = Uuid::new_v4().into();
     let organisation = dummy_organisation(None);
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -303,16 +312,7 @@ async fn generic_credential_list_entity() -> Credential {
                 last_modified: now,
                 name: "schema".to_string(),
                 key_storage_security: None,
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 claim_schemas: Default::default(),
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
@@ -337,6 +337,7 @@ async fn generic_credential_list_entity() -> Credential {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }
 
@@ -1778,7 +1779,7 @@ async fn test_create_credential_namespace_optional() {
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id: schema.id,
                 format: "MDOC".into(),
-                schema_id: "doctype".to_owned(),
+                ecosystem_schema_id: "doctype".to_owned(),
                 claim_mappings: vec![CredentialSchemaFormatClaimSchema {
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
@@ -3171,7 +3172,7 @@ fn generate_credential_schema_with_claim_schemas(
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "".into(),
-            schema_id: "".to_owned(),
+            ecosystem_schema_id: "".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -3688,6 +3689,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential = Credential {
         expires_at: None,
         ecosystem: None,
@@ -3765,16 +3775,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                 last_modified: now,
                 name: "schema".to_string(),
                 key_storage_security: None,
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
                 layout_properties: None,
@@ -3799,6 +3800,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: Some(format.into()),
     };
 
     {
@@ -4472,6 +4474,15 @@ async fn test_get_credential_success_array_index_sorting() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential = Credential {
         expires_at: None,
         ecosystem: None,
@@ -4549,16 +4560,7 @@ async fn test_get_credential_success_array_index_sorting() {
                 last_modified: now,
                 name: "schema".to_string(),
                 key_storage_security: None,
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
                 layout_properties: None,
@@ -4583,6 +4585,7 @@ async fn test_get_credential_success_array_index_sorting() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: Some(format.into()),
     };
 
     {
@@ -4893,6 +4896,15 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "MDOC".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential = Credential {
         expires_at: None,
         ecosystem: None,
@@ -4970,16 +4982,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                 last_modified: now,
                 name: "schema".to_string(),
                 key_storage_security: None,
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "MDOC".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
                 layout_properties: None,
@@ -5004,6 +5007,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: Some(format.into()),
     };
 
     {
@@ -5169,6 +5173,15 @@ async fn test_get_credential_success_array_single_element() {
     )];
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     let credential = Credential {
         expires_at: None,
         ecosystem: None,
@@ -5246,16 +5259,7 @@ async fn test_get_credential_success_array_single_element() {
                 imported_source_url: "CORE_URL".to_string(),
                 name: "schema".to_string(),
                 key_storage_security: None,
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 claim_schemas: claim_schemas.into(),
                 organisation: organisation.into(),
                 layout_properties: None,
@@ -5280,6 +5284,7 @@ async fn test_get_credential_success_array_single_element() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        format: Some(format.into()),
     };
 
     {
@@ -5426,7 +5431,7 @@ async fn test_create_credential_array(
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "".to_owned(),
+            ecosystem_schema_id: "".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -5826,7 +5831,7 @@ async fn test_create_credential_invalid_certificate_role() {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),

@@ -2177,7 +2177,7 @@ fn generic_credential() -> Credential {
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
                 format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
+                ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                 claim_mappings: Default::default(),
             }]
             .into(),
@@ -2200,7 +2200,7 @@ fn generic_credential() -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: None,
     }
 }

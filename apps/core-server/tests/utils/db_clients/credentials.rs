@@ -169,6 +169,14 @@ impl CredentialsDB {
             None
         };
 
+        let format = credential_schema
+            .formats
+            .as_ref()
+            .await
+            .unwrap()
+            .first()
+            .cloned();
+
         Credential {
             expires_at: params.expires_at,
             ecosystem: params.ecosystem,
@@ -210,6 +218,7 @@ impl CredentialsDB {
             parent: params
                 .parent_id
                 .map(|id| Related::new(id, self.repository.clone())),
+            format: convert_inner(params.format.or(format)),
         }
     }
 

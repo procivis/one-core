@@ -670,7 +670,7 @@ async fn test_extract_credentials_swiyu() {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "".into(),
-            schema_id: "".to_owned(),
+            ecosystem_schema_id: "".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),

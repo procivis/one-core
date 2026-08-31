@@ -630,6 +630,15 @@ impl CredentialFormatter for MdocFormatter {
         }
 
         let credential_schema_id = Uuid::new_v4().into();
+        let format = CredentialSchemaFormat {
+            id: credential_format_id,
+            created_date: now,
+            last_modified: now,
+            credential_schema_id,
+            format: self.config_id.clone(),
+            ecosystem_schema_id: doctype.to_owned(),
+            claim_mappings: mappings.into(),
+        };
         let credential_schema = crate::model::credential_schema::CredentialSchema {
             expiration: None,
             ecosystem: None,
@@ -637,7 +646,7 @@ impl CredentialFormatter for MdocFormatter {
             deleted_at: None,
             created_date: now,
             last_modified: now,
-            name: doctype.to_owned(),
+            name: doctype,
             key_storage_security: None,
             layout_properties: None,
             imported_source_url: "".to_string(),
@@ -646,16 +655,7 @@ impl CredentialFormatter for MdocFormatter {
             organisation: organisation.clone().into(),
             claim_schemas: claim_schemas.into(),
             transaction_code: None,
-            formats: vec![CredentialSchemaFormat {
-                id: credential_format_id,
-                created_date: now,
-                last_modified: now,
-                credential_schema_id,
-                format: self.config_id.clone(),
-                schema_id: doctype,
-                claim_mappings: mappings.into(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             batch_size: None,
             allow_revocation: mso.status.is_some(),
             translations: Default::default(),
@@ -707,6 +707,7 @@ impl CredentialFormatter for MdocFormatter {
             parent: None,
             embedded_disclosure_policy: None,
             subscriber_information: None,
+            format: Some(format.into()),
         })
     }
 

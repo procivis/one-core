@@ -681,7 +681,7 @@ pub async fn create_credential_schema(
             last_modified: one_core::clock::now_utc(),
             credential_schema_id: id,
             format: params.format.unwrap_or("JWT".into()),
-            schema_id: params.schema_id.unwrap_or(id.to_string()),
+            ecosystem_schema_id: params.schema_id.unwrap_or(id.to_string()),
             claim_mappings: vec![claim_schema_mapping].into(),
         }]
         .into(),
@@ -750,7 +750,7 @@ pub async fn create_credential_schema_with_claims(
             last_modified: one_core::clock::now_utc(),
             credential_schema_id: id.into(),
             format: "JWT".into(),
-            schema_id: id.to_string(),
+            ecosystem_schema_id: id.to_string(),
             claim_mappings: claim_schemas
                 .iter()
                 .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -926,6 +926,7 @@ pub struct TestingCredentialParams {
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+    pub format: Option<CredentialSchemaFormat>,
 }
 
 pub async fn create_credential(
@@ -957,6 +958,14 @@ pub async fn create_credential(
             selectively_disclosable: false,
         })
         .collect();
+
+    let format = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .cloned();
 
     let credential = Credential {
         expires_at: params.expires_at,
@@ -990,6 +999,7 @@ pub async fn create_credential(
         parent: params
             .parent_id
             .map(|id| Related::new(id, data_layer.get_credential_repository())),
+        format: convert_inner(params.format.or(format)),
     };
 
     data_layer

@@ -33,7 +33,7 @@ impl From<CredentialSchemaFormat> for credential_schema_format::ActiveModel {
             last_modified: Set(value.last_modified),
             credential_schema_id: Set(value.credential_schema_id),
             format: Set(value.format),
-            schema_id: Set(value.schema_id),
+            ecosystem_schema_id: Set(value.ecosystem_schema_id),
         }
     }
 }
@@ -65,7 +65,7 @@ pub(crate) fn credential_schema_format_from_model(
         last_modified: model.last_modified,
         credential_schema_id: model.credential_schema_id,
         format: model.format,
-        schema_id: model.schema_id,
+        ecosystem_schema_id: model.ecosystem_schema_id,
         claim_mappings: RelatedVec::new(ClaimMappingsLoader {
             credential_schema_format_id: id,
             db,

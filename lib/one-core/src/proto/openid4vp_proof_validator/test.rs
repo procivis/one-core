@@ -348,7 +348,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         last_modified: crate::clock::now_utc(),
         credential_schema_id: credential_schema.id,
         format: "format".into(),
-        schema_id: "CredentialSchemaId".to_owned(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: claim_schemas
             .iter()
             .map(|cs| CredentialSchemaFormatClaimSchema {

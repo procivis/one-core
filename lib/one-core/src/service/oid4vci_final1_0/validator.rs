@@ -40,7 +40,7 @@ pub(crate) async fn validate_credential_request_format(
     let formats = schema.formats.as_ref().await?;
     let format = formats
         .into_iter()
-        .find(|format| &format.schema_id == credential_configuration_id);
+        .find(|format| &format.ecosystem_schema_id == credential_configuration_id);
 
     Ok(format
         .cloned()

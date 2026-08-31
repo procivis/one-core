@@ -307,6 +307,15 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
     let credential_schema_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
         .unwrap()
         .into();
+    let format = CredentialSchemaFormat {
+        id: credential_schema_format_id,
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: vec![claim_schema_mapping].into(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -351,16 +360,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
-            formats: vec![CredentialSchemaFormat {
-                id: credential_schema_format_id,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: vec![claim_schema_mapping].into(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema].into(),
             layout_properties: None,
             organisation: dummy_organisation(None).into(),
@@ -396,8 +396,8 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }
 

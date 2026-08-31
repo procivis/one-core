@@ -234,7 +234,7 @@ fn generic_credential_schema() -> CredentialSchema {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: claim_schemas
                 .iter()
                 .map(|cs| CredentialSchemaFormatClaimSchema {
@@ -338,8 +338,8 @@ fn dummy_credential(
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: None,
     }
 }
 
@@ -538,7 +538,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
         let mut formats = schema.formats.as_mut().await.unwrap();
         let format = formats.first_mut().unwrap();
         format.format = "SD_JWT".into();
-        format.schema_id = "test-vct".to_string();
+        format.ecosystem_schema_id = "test-vct".to_string();
     }
 
     {
@@ -697,7 +697,7 @@ async fn test_get_issuer_metadata_mdoc() {
         last_modified: crate::clock::now_utc(),
         credential_schema_id: schema.id,
         format: "MDOC".into(),
-        schema_id: "doctype".to_owned(),
+        ecosystem_schema_id: "doctype".to_owned(),
         claim_mappings: vec![CredentialSchemaFormatClaimSchema {
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
@@ -1634,7 +1634,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         last_modified: crate::clock::now_utc(),
         credential_schema_id: schema.id,
         format: "SD_JWT_VC".into(),
-        schema_id: "CredentialSchemaId".to_owned(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     }]
     .into();
@@ -1835,7 +1835,7 @@ async fn test_create_credential_success_mdoc() {
             last_modified: crate::clock::now_utc(),
             credential_schema_id: Uuid::new_v4().into(),
             format: "MDOC".into(),
-            schema_id: "test.doctype".to_owned(),
+            ecosystem_schema_id: "test.doctype".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -2712,7 +2712,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         last_modified: crate::clock::now_utc(),
         credential_schema_id: schema.id,
         format: "MDOC".into(),
-        schema_id: "CredentialSchemaId".to_owned(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     }]
     .into();

@@ -418,7 +418,7 @@ async fn test_create_proof_schema_success() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
                     format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -556,7 +556,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id: credential_schema_software_id,
                     format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -700,7 +700,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
                     format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -858,7 +858,7 @@ async fn test_create_proof_schema_array_object_fail() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
                     format: "SD_JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -1028,7 +1028,7 @@ async fn test_create_proof_schema_array_success() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
                     format: "SD_JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -1186,7 +1186,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
                     format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -2007,7 +2007,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id: existing_schema_id,
                     format: "MDOC".into(),
-                    schema_id: "iso-org-test123".to_owned(),
+                    ecosystem_schema_id: "iso-org-test123".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -2198,7 +2198,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id: existing_schema_id,
                     format: "MDOC".into(),
-                    schema_id: "iso-org-test123".to_owned(),
+                    ecosystem_schema_id: "iso-org-test123".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),
@@ -2821,7 +2821,7 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
                 format: "".into(),
-                schema_id: "".to_owned(),
+                ecosystem_schema_id: "".to_owned(),
                 claim_mappings: Default::default(),
             }]
             .into(),
@@ -3068,7 +3068,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
                     format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
+                    ecosystem_schema_id: "CredentialSchemaId".to_owned(),
                     claim_mappings: Default::default(),
                 }]
                 .into(),

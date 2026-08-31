@@ -535,6 +535,7 @@ pub(super) fn from_create_request(
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: request.subscriber_information,
+        format: None,
     }
 }
 

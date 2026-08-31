@@ -514,7 +514,7 @@ fn credential_schema(
             last_modified: now,
             credential_schema_id: id,
             format: format.into(),
-            schema_id: "schemaId".to_owned(),
+            ecosystem_schema_id: "schemaId".to_owned(),
             claim_mappings: mappings.into(),
         }]
         .into(),
@@ -554,5 +554,6 @@ fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Credential
         key: None,
         parent: None,
         subscriber_information: None,
+        format: None,
     }
 }

@@ -50,6 +50,15 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
     let claim_schema_id = Uuid::new_v4().into();
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     UnexportableEntities {
         credentials: vec![Credential {
             expires_at: None,
@@ -105,16 +114,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                     last_modified: crate::clock::now_utc(),
                     key_storage_security: Some(KeyStorageSecurity::Basic),
                     name: "name".into(),
-                    formats: vec![CredentialSchemaFormat {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        credential_schema_id,
-                        format: "JWT".into(),
-                        schema_id: "CredentialSchemaId".to_owned(),
-                        claim_mappings: Default::default(),
-                    }]
-                    .into(),
+                    formats: vec![format.clone()].into(),
                     claim_schemas: vec![ClaimSchema {
                         id: claim_schema_id,
                         key: "key".into(),
@@ -149,6 +149,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
             parent: None,
             embedded_disclosure_policy: None,
             subscriber_information: None,
+            format: Some(format.into()),
         }],
         keys: vec![dummy_key()],
         dids: vec![dummy_did()],

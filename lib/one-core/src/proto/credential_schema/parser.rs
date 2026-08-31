@@ -449,7 +449,7 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn parse_format_with_claim_mappings(
         &self,
         credential_schema_id: CredentialSchemaId,
-        schema_id: String,
+        ecosystem_schema_id: String,
         format: CredentialFormat,
         now: OffsetDateTime,
         claim_schemas_to_mappings: &[(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)],
@@ -517,7 +517,7 @@ impl CredentialSchemaImportParserImpl {
             last_modified: now,
             credential_schema_id,
             format,
-            schema_id,
+            ecosystem_schema_id,
             claim_mappings: RelatedVec::from(mappings),
         })
     }

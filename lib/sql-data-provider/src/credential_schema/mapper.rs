@@ -47,10 +47,11 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             Self::Name(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)
             }
-            Self::SchemaId(string_match) => {
-                get_string_match_condition(credential_schema_format::Column::SchemaId, string_match)
-            }
-            Self::SchemaIds(schema_ids) => credential_schema_format::Column::SchemaId
+            Self::SchemaId(string_match) => get_string_match_condition(
+                credential_schema_format::Column::EcosystemSchemaId,
+                string_match,
+            ),
+            Self::SchemaIds(schema_ids) => credential_schema_format::Column::EcosystemSchemaId
                 .is_in(&schema_ids)
                 .into_condition(),
             Self::Formats(formats) => credential_schema_format::Column::Format

@@ -340,6 +340,7 @@ pub(crate) fn extracted_credential_to_model(
             parent: None,
             embedded_disclosure_policy: None,
             subscriber_information: None,
+            format: None,
         },
         issuer_details,
         holder_details,

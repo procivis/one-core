@@ -5,15 +5,16 @@ use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
 };
 use one_core::model::credential_schema::{CredentialSchema, TransactionCode};
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::relation::{Related, RelatedVec};
+use one_core::model::relation::{AsyncModelLoader, Related, RelatedVec};
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::claim_repository::{ClaimRepository, CredentialClaimsLoader};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::did_repository::DidRepository;
-use one_core::repository::error::DataLayerError;
+use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
@@ -22,13 +23,20 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, Query, SelectStatement, SimpleExpr};
-use sea_orm::{ActiveValue, ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set, Value};
-use shared_types::{BlobId, CertificateId, CredentialId, IdentifierId, InteractionId, KeyId};
+use sea_orm::{
+    ActiveValue, ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, RelationTrait,
+    Set, Value,
+};
+use shared_types::{
+    BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, IdentifierId, InteractionId,
+    KeyId,
+};
 use time::Duration;
 
 use crate::TransactionManagerImpl;
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential_schema::mapper::{ClaimSchemasLoader, CredentialSchemaFormatsLoader};
+use crate::credential_schema_format::mapper::credential_schema_format_from_model;
 use crate::entity::{claim, credential, credential_schema, credential_schema_format, identifier};
 use crate::identifier::mapper::{identifier_data_from_ids, identifier_trust_information};
 use crate::list_query_generic::{
@@ -37,6 +45,7 @@ use crate::list_query_generic::{
     get_string_match_condition,
 };
 use crate::localized_text::LocalizedTextLoader;
+use crate::mapper::to_data_layer_error;
 
 pub(super) fn from_clearable<T>(clearable: Clearable<Option<T>>) -> ActiveValue<Option<T>>
 where
@@ -103,7 +112,7 @@ impl IntoFilterCondition for CredentialFilterValue {
                         .column(credential_schema_format::Column::CredentialSchemaId)
                         .from(credential_schema_format::Entity)
                         .cond_where(get_equals_condition(
-                            credential_schema_format::Column::SchemaId,
+                            credential_schema_format::Column::EcosystemSchemaId,
                             schema_id,
                         ))
                         .to_owned(),
@@ -220,6 +229,7 @@ pub(crate) fn model_to_credential(
     identifier_repository: &Arc<dyn IdentifierRepository>,
     certificate_repository: &Arc<dyn CertificateRepository>,
     interaction_repository: &Arc<dyn InteractionRepository>,
+    db: &TransactionManagerImpl,
 ) -> Credential {
     Credential {
         claims: credential_claims(credential.id, claim_repository),
@@ -266,6 +276,9 @@ pub(crate) fn model_to_credential(
         parent: credential
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),
+        format: credential
+            .format
+            .map(|id| Related::new(id, CredentialSchemaFormatLoader { db: db.clone() })),
     }
 }
 
@@ -310,6 +323,7 @@ pub(super) fn request_to_active_model(
         subscriber_information: Set(request.subscriber_information.clone()),
         ecosystem: Set(request.ecosystem.clone()),
         r#type: Set(request.r#type.into()),
+        format: Set(request.format.as_ref().map(|format| format.id())),
     }
 }
 
@@ -470,6 +484,9 @@ pub(super) fn credential_list_model_to_repository_model(
         parent: credential
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),
+        format: credential
+            .format
+            .map(|id| Related::new(id, CredentialSchemaFormatLoader { db: db.clone() })),
     })
 }
 
@@ -505,4 +522,28 @@ pub(super) fn credentials_to_repository(
     }
 
     Ok(result)
+}
+
+pub(crate) struct CredentialSchemaFormatLoader {
+    pub db: TransactionManagerImpl,
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<CredentialSchemaFormat> for CredentialSchemaFormatLoader {
+    async fn load(
+        &self,
+        id: &CredentialSchemaFormatId,
+    ) -> Result<CredentialSchemaFormat, DataLayerError> {
+        let model = credential_schema_format::Entity::find()
+            .filter(credential_schema_format::Column::Id.eq(id.to_string()))
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?
+            .ok_or_else(|| DataLayerError::EntityNotFound {
+                kind: EntityKind::CredentialSchemaFormat,
+                id: (*id).into(),
+            })?;
+
+        Ok(credential_schema_format_from_model(model, self.db.clone()))
+    }
 }

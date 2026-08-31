@@ -111,7 +111,7 @@ fn generic_credential_schema() -> CredentialSchema {
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),

@@ -255,7 +255,7 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
             last_modified: crate::clock::now_utc(),
             credential_schema_id: Uuid::new_v4().into(),
             format: CredentialFormat::from("MDOC"),
-            schema_id: "CredentialSchemaId".to_owned(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
@@ -736,6 +736,15 @@ async fn dummy_credential() -> Credential {
     let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -789,16 +798,7 @@ async fn dummy_credential() -> Credential {
                 last_modified: crate::clock::now_utc(),
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 name: "schema".to_string(),
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "JWT".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
+                formats: vec![format.clone()].into(),
                 claim_schemas: vec![ClaimSchema {
                     id: claim_schema_id,
                     key: "key".to_string(),
@@ -847,8 +847,8 @@ async fn dummy_credential() -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }
 

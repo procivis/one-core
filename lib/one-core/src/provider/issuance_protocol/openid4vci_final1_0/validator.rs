@@ -244,7 +244,7 @@ pub(super) async fn validate_batch_consistency(
     for credential in credentials.iter().skip(1) {
         let schema_format = single_schema_format(&credential.credential).await?;
         if schema_format.format != reference_schema_format.format
-            || schema_format.schema_id != reference_schema_format.schema_id
+            || schema_format.ecosystem_schema_id != reference_schema_format.ecosystem_schema_id
         {
             return Err(IssuanceProtocolError::Failed(
                 "Batch credentials have inconsistent schema formats".to_string(),

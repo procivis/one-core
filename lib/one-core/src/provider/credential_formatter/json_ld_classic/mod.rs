@@ -354,7 +354,7 @@ impl CredentialFormatter for JsonLdClassic {
             claim_schemas: claim_schemas.into(),
             organisation: organisation.clone().into(),
             transaction_code: None,
-            formats: vec![format].into(),
+            formats: vec![format.clone()].into(),
             batch_size: None,
             allow_revocation: revocation_method.is_some(),
             translations: Default::default(),
@@ -417,6 +417,7 @@ impl CredentialFormatter for JsonLdClassic {
             parent: None,
             embedded_disclosure_policy: None,
             subscriber_information: None,
+            format: Some(format.into()),
         })
     }
 

@@ -1,7 +1,9 @@
 use one_core::model::credential_schema::CredentialSchemaName;
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
-use shared_types::{BlobId, CredentialId, CredentialSchemaId, OrganisationId};
+use shared_types::{
+    BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId,
+};
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState, CredentialType};
@@ -27,6 +29,7 @@ pub struct UnexportableCredentialModel {
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
     pub subscriber_information: Option<String>,
+    pub format: Option<CredentialSchemaFormatId>,
 
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,

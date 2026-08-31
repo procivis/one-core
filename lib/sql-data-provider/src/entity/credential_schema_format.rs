@@ -12,7 +12,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub credential_schema_id: CredentialSchemaId,
     pub format: CredentialFormat,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

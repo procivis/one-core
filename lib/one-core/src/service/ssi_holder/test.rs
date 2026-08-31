@@ -1164,6 +1164,24 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         translations: Default::default(),
     };
     let credential_schema_format_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: credential_schema_format_id,
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: vec![CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_format_id,
+            claim_schema_id: claim_schema.id,
+            technical_key: "key1".to_string(),
+            namespace: None,
+        }]
+        .into(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -1225,25 +1243,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
-            formats: vec![CredentialSchemaFormat {
-                id: credential_schema_format_id,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: vec![CredentialSchemaFormatClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_format_id,
-                    claim_schema_id: claim_schema.id,
-                    technical_key: "key1".to_string(),
-                    namespace: None,
-                }]
-                .into(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema].into(),
             organisation: dummy_organisation(organisation_id).into(),
             deleted_at: None,
@@ -1277,8 +1277,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
-
         subscriber_information: None,
+        format: Some(format.into()),
     }
 }
 

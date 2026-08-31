@@ -54,7 +54,7 @@ async fn test_create_and_get_credential_schema_format() {
         last_modified: now,
         credential_schema_id,
         format: "SD_JWT_VC".into(),
-        schema_id: "https://example.com/schemas/example".to_string(),
+        ecosystem_schema_id: "https://example.com/schemas/example".to_string(),
         claim_mappings: RelatedVec::from(vec![CredentialSchemaFormatClaimSchema {
             id: mapping_id,
             created_date: now,
@@ -77,7 +77,10 @@ async fn test_create_and_get_credential_schema_format() {
         .await
         .expect("get should succeed");
     assert_eq!(fetched.id, format_id);
-    assert_eq!(fetched.schema_id, "https://example.com/schemas/example");
+    assert_eq!(
+        fetched.ecosystem_schema_id,
+        "https://example.com/schemas/example"
+    );
 
     let mappings = fetched.claim_mappings.as_ref().await.unwrap();
     assert_eq!(mappings.len(), 1);
@@ -118,7 +121,7 @@ async fn test_unique_credential_schema_id_format() {
         last_modified: now,
         credential_schema_id,
         format: "SD_JWT_VC".into(),
-        schema_id: "https://example.com/schemas/a".to_string(),
+        ecosystem_schema_id: "https://example.com/schemas/a".to_string(),
         claim_mappings: RelatedVec::from(vec![]),
     };
 
@@ -128,7 +131,7 @@ async fn test_unique_credential_schema_id_format() {
         last_modified: now,
         credential_schema_id,
         format: "SD_JWT_VC".into(), // duplicate (credential_schema_id, format)
-        schema_id: "https://example.com/schemas/b".to_string(),
+        ecosystem_schema_id: "https://example.com/schemas/b".to_string(),
         claim_mappings: RelatedVec::from(vec![]),
     };
 
@@ -201,7 +204,7 @@ async fn test_unique_format_claim_schema_mapping() {
             last_modified: now,
             credential_schema_id,
             format: "SD_JWT_VC".into(),
-            schema_id: "https://example.com/schemas/example".to_string(),
+            ecosystem_schema_id: "https://example.com/schemas/example".to_string(),
             claim_mappings: RelatedVec::from(vec![
                 mapping(Uuid::new_v4().into()),
                 mapping(Uuid::new_v4().into()),

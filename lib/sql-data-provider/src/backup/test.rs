@@ -103,6 +103,7 @@ async fn insert_credential_to_database(
         webhook_url: Set(None),
         embedded_disclosure_policy: Set(None),
         subscriber_information: Set(None),
+        format: Set(None),
     }
     .insert(database)
     .await
