@@ -30,7 +30,7 @@ See the [key features][key] and complete solution [architecture][archi].
 
 ### Prerequisites
 
-- Rust 1.92+ - [Install via rustup.rs][rust]
+- Rust 1.95+ - [Install via rustup.rs][rust]
 - Docker with Docker Compose - [Docker Desktop][dock] recommended for
   easiest setup
 - Install cargo-make: `cargo install cargo-make`
@@ -45,7 +45,7 @@ See the [key features][key] and complete solution [architecture][archi].
 
 4. Start the server: `makers run`
 
-5. Open http://localhost:3000/swagger-ui/index.html  
+5. Open http://localhost:3000/swagger-ui/index.html
   *You should see the Swagger UI interface*
 
 6. Click the green "Authorize" button and set the authorization bearer
