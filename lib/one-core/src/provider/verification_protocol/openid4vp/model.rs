@@ -248,7 +248,12 @@ pub(crate) struct OpenID4VPHolderInteractionData {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub enum HolderTxData {
     Unvalidated(Vec<String>),
-    Validated(IndexMap<TransactionDataId, ValidatedHolderTxData>),
+    // stored as a sequence: the interaction data passes through `serde_json::Value`,
+    // which sorts object keys and would lose the order of the authorization request
+    Validated(
+        #[serde(with = "indexmap::map::serde_seq")]
+        IndexMap<TransactionDataId, ValidatedHolderTxData>,
+    ),
 }
 
 impl Default for HolderTxData {
@@ -298,4 +303,47 @@ pub(crate) struct OpenID4VCRedirectUriParams {
 pub(crate) struct OpenID4VCVerifierAttestationPayload {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub redirect_uris: Vec<String>,
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn validated_tx_data(ids: &[&str]) -> HolderTxData {
+        HolderTxData::Validated(
+            ids.iter()
+                .map(|id| {
+                    (
+                        TransactionDataId::from(Uuid::parse_str(id).unwrap()),
+                        ValidatedHolderTxData {
+                            raw: id.to_string(),
+                            credential_query_ids: vec![],
+                            transaction_data_type: "QES_APPROVAL".into(),
+                        },
+                    )
+                })
+                .collect(),
+        )
+    }
+
+    // keys in descending order, so that `serde_json::Value` sorting them would show
+    const IDS: [&str; 2] = [
+        "ffffffff-0000-4000-8000-000000000000",
+        "00000000-0000-4000-8000-000000000000",
+    ];
+
+    #[test]
+    fn test_validated_tx_data_keeps_order_through_serde_json_value() {
+        let value = serde_json::to_value(validated_tx_data(&IDS)).unwrap();
+
+        let HolderTxData::Validated(tx_data) = serde_json::from_value(value).unwrap() else {
+            panic!("expected validated transaction data");
+        };
+
+        let ids: Vec<String> = tx_data.keys().map(ToString::to_string).collect();
+        assert_eq!(ids, IDS);
+    }
 }

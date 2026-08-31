@@ -66,6 +66,9 @@ pub struct ConfigBindingDTO {
     pub wallet_provider: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub verifier_provider: HashMap<String, String>,
+    /// Transaction data types and their capabilities.
+    #[from(with_fn = serialize_config_entity)]
+    pub transaction_data_provider: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub ecosystem: HashMap<String, String>,
     /// Deployment-wide settings that are not tied to a specific config entity.

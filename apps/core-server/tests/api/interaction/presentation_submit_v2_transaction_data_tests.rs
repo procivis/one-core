@@ -237,21 +237,20 @@ async fn setup_submittable_mdoc_with_transaction_data(
     let transaction_data_ids: Vec<Uuid> = (0..transaction_data_count)
         .map(|_| Uuid::new_v4())
         .collect();
-    let validated_transaction_data: serde_json::Map<String, serde_json::Value> =
-        transaction_data_ids
-            .iter()
-            .enumerate()
-            .map(|(idx, id)| {
-                (
-                    id.to_string(),
-                    json!({
-                        "raw": qes_approval_transaction_data(&format!("Example Contract {idx}")),
-                        "credential_query_ids": ["input_0"],
-                        "transaction_data_type": "QES_APPROVAL"
-                    }),
-                )
-            })
-            .collect();
+    let validated_transaction_data: Vec<serde_json::Value> = transaction_data_ids
+        .iter()
+        .enumerate()
+        .map(|(idx, id)| {
+            json!([
+                id,
+                {
+                    "raw": qes_approval_transaction_data(&format!("Example Contract {idx}")),
+                    "credential_query_ids": ["input_0"],
+                    "transaction_data_type": "QES_APPROVAL"
+                }
+            ])
+        })
+        .collect();
     let verifier_url = context.server_mock.uri();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
