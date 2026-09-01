@@ -19,6 +19,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::credential_validity_manager::dto::{
     ChangeCredentialState, ChangeType, ExpirationState,
 };
@@ -189,14 +190,7 @@ impl CredentialValidityManagerImpl {
             }
             CredentialType::BatchItem => {
                 // only batch members can be individually updated, not MDOC MSO's
-                let parent = credential
-                    .parent
-                    .as_ref()
-                    .ok_or(Error::MappingError(
-                        "Missing parent of batch item".to_string(),
-                    ))?
-                    .as_ref()
-                    .await?;
+                let parent = credential.parent.as_required_ref().await?;
                 if parent.r#type != CredentialType::BatchParent {
                     return Err(Error::InvalidCredentialType(credential.r#type));
                 }
@@ -496,12 +490,7 @@ impl CredentialValidityManagerImpl {
             }
         };
 
-        let issuer_identifier = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(Error::MappingError("issuer_identifier is None".to_string()))?
-            .as_ref()
-            .await?;
+        let issuer_identifier = credential.issuer_identifier.as_required_ref().await?;
 
         let credential_data_by_role = match credential.role {
             CredentialRole::Holder => {
@@ -873,12 +862,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     .await?;
 
                 if result.success {
-                    let parent = credential
-                        .parent
-                        .as_ref()
-                        .ok_or(Error::MappingError("Missing batch item parent".to_string()))?
-                        .as_ref()
-                        .await?;
+                    let parent = credential.parent.as_required_ref().await?;
 
                     if parent.r#type == CredentialType::BatchParent {
                         let batch_items = self

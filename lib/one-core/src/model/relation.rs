@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use tokio::sync::{OnceCell, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use crate::error::{ContextWithErrorCode, NestedError};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::repository::error::DataLayerError;
 
 pub trait Model {
@@ -183,6 +183,59 @@ pub trait AsyncModelsLoader<M: Model>: Send + Sync {
 pub trait AsyncVecLoader<T>: Send + Sync {
     /// Loads collection of relations
     async fn load(&self) -> Result<Vec<T>, DataLayerError>;
+}
+
+#[async_trait::async_trait]
+pub trait OptionalRelatedExt<M: Model> {
+    /// access id on the optional relation
+    fn id_opt(&self) -> Option<M::Id>;
+    /// access id reference on the optional relation
+    fn id_opt_ref(&self) -> Option<&M::Id>;
+
+    /// fetches the relation, fails if missing
+    async fn as_required_ref(&self) -> Result<RoLoadedRelated<'_, M>, NestedError>;
+    /// fetches the relation for modification, fails if missing
+    async fn as_required_mut(&mut self) -> Result<RwLoadedRelated<'_, M>, NestedError>;
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum OptionalRelatedExtError {
+    #[error("Missing relation: {0}")]
+    MissingRelation(&'static str),
+}
+
+impl ErrorCodeMixin for OptionalRelatedExtError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0047
+    }
+}
+
+#[async_trait::async_trait]
+impl<M: Model + Send + Sync> OptionalRelatedExt<M> for Option<Related<M>>
+where
+    M::Id: Copy + Send + Sync,
+{
+    fn id_opt(&self) -> Option<M::Id> {
+        self.as_ref().map(|related| related.id())
+    }
+
+    fn id_opt_ref(&self) -> Option<&M::Id> {
+        self.as_ref().map(|related| related.id_ref())
+    }
+
+    async fn as_required_ref(&self) -> Result<RoLoadedRelated<'_, M>, NestedError> {
+        self.as_ref()
+            .ok_or_else(|| OptionalRelatedExtError::MissingRelation(std::any::type_name::<M>()))?
+            .as_ref()
+            .await
+    }
+
+    async fn as_required_mut(&mut self) -> Result<RwLoadedRelated<'_, M>, NestedError> {
+        self.as_mut()
+            .ok_or_else(|| OptionalRelatedExtError::MissingRelation(std::any::type_name::<M>()))?
+            .as_mut()
+            .await
+    }
 }
 
 #[derive(Clone, Debug)]

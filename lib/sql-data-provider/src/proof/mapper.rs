@@ -7,7 +7,7 @@ use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::proof::{GetProofList, Proof, ProofClaim, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
-use one_core::model::relation::{AsyncVecLoader, Related, RelatedVec};
+use one_core::model::relation::{AsyncVecLoader, OptionalRelatedExt, Related, RelatedVec};
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::credential_repository::CredentialRepository;
@@ -304,15 +304,11 @@ impl TryFrom<Proof> for proof::ActiveModel {
             role: Set(value.role.into()),
             requested_date: Set(value.requested_date),
             completed_date: Set(value.completed_date),
-            verifier_identifier_id: Set(value
-                .verifier_identifier
-                .map(|identifier| identifier.id())),
-            proof_schema_id: Set(value.schema.map(|schema| schema.id())),
-            verifier_key_id: Set(value.verifier_key.map(|key| key.id())),
-            verifier_certificate_id: Set(value
-                .verifier_certificate
-                .map(|certificate| certificate.id())),
-            interaction_id: Set(value.interaction.map(|interaction| interaction.id())),
+            verifier_identifier_id: Set(value.verifier_identifier.id_opt()),
+            proof_schema_id: Set(value.schema.id_opt()),
+            verifier_key_id: Set(value.verifier_key.id_opt()),
+            verifier_certificate_id: Set(value.verifier_certificate.id_opt()),
+            interaction_id: Set(value.interaction.id_opt()),
             profile: Set(value.profile),
             proof_blob_id: Set(value.proof_blob_id),
             engagement: Set(value.engagement),

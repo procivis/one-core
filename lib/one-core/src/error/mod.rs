@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumMessage, IntoStaticStr};
 
+use crate::model::relation::OptionalRelatedExtError;
 use crate::provider::provider_directory::ProviderError;
 
 #[derive(
@@ -1106,6 +1107,16 @@ impl<T, E: ErrorCodeMixin> ContextWithErrorCode<T, E> for Result<T, E> {
 // ProviderError already describes the context, no need for nesting
 impl From<ProviderError> for NestedError {
     fn from(error: ProviderError) -> Self {
+        Self {
+            context: None,
+            source: Box::new(error),
+        }
+    }
+}
+
+// OptionalRelatedExtError already describes the context, no need for nesting
+impl From<OptionalRelatedExtError> for NestedError {
+    fn from(error: OptionalRelatedExtError) -> Self {
         Self {
             context: None,
             source: Box::new(error),
