@@ -22,7 +22,9 @@ use crate::service::credential::dto::{
     DetailCredentialSchemaResponseDTO,
 };
 use crate::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialClaimSchemaTranslationsDTO, CredentialSchemaTranslationsDTO,
+    CredentialClaimSchemaDTO, CredentialClaimSchemaTranslationsDTO,
+    CredentialSchemaFormatResponseDTO, CredentialSchemaListItemV2ResponseDTO,
+    CredentialSchemaTranslationsDTO,
 };
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
@@ -41,24 +43,32 @@ fn generate_credential_detail_response(
         state: CredentialStateEnum::Created,
         last_modified: now,
         schema: DetailCredentialSchemaResponseDTO {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            imported_source_url: "CORE_URL".to_string(),
-            deleted_at: None,
-            name: "".to_string(),
-            format: "JWT".into(),
-            revocation_method: None,
             organisation_id: Uuid::new_v4().into(),
-            key_storage_security: None,
-            schema_id: "".to_string(),
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: CredentialSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
-                description: None,
+            schema: CredentialSchemaListItemV2ResponseDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                imported_source_url: "CORE_URL".to_string(),
+                deleted_at: None,
+                name: "".to_string(),
+                formats: vec![CredentialSchemaFormatResponseDTO {
+                    format: "JWT".into(),
+                    ecosystem_schema_id: "".to_string(),
+                    dcql: None,
+                }],
+                key_storage_security: None,
+                layout_properties: None,
+                allow_suspension: true,
+                requires_wallet_instance_attestation: false,
+                translations: Some(CredentialSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                    description: None,
+                }),
+                allow_revocation: None,
+                batch_size: None,
+                expiration: None,
+                ecosystem: None,
+                revocation_method: None,
             },
         },
         issuer: None,
@@ -81,6 +91,7 @@ fn generate_credential_detail_response(
         parent_id: None,
         subscriber_information: None,
         ecosystem: None,
+        offered_formats: None,
     }
 }
 
@@ -88,13 +99,14 @@ fn generate_credential_matching_detail(
     detail: &CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
 ) -> Credential {
     let detail = detail.clone();
+    let detail_format = detail.schema.schema.formats.first().unwrap().to_owned();
     let format = CredentialSchemaFormat {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        credential_schema_id: detail.schema.id,
-        format: detail.schema.format,
-        ecosystem_schema_id: detail.schema.schema_id,
+        credential_schema_id: detail.schema.schema.id,
+        format: detail_format.format,
+        ecosystem_schema_id: detail_format.ecosystem_schema_id,
         claim_mappings: Default::default(),
     };
     Credential {
@@ -180,17 +192,17 @@ fn generate_credential_matching_detail(
             expiration: None,
             ecosystem: None,
             batch_size: None,
-            allow_revocation: detail.schema.revocation_method.is_some(),
-            id: detail.schema.id,
+            allow_revocation: detail.schema.schema.allow_revocation.unwrap_or_default(),
+            id: detail.schema.schema.id,
             deleted_at: None,
-            created_date: detail.schema.created_date,
-            last_modified: detail.schema.last_modified,
-            name: detail.schema.name,
+            created_date: detail.schema.schema.created_date,
+            last_modified: detail.schema.schema.last_modified,
+            name: detail.schema.schema.name,
             formats: vec![format.clone()].into(),
-            key_storage_security: detail.schema.key_storage_security,
+            key_storage_security: detail.schema.schema.key_storage_security,
             layout_properties: None,
-            imported_source_url: detail.schema.imported_source_url,
-            allow_suspension: detail.schema.allow_suspension,
+            imported_source_url: detail.schema.schema.imported_source_url,
+            allow_suspension: detail.schema.schema.allow_suspension,
             requires_wallet_instance_attestation: false,
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),

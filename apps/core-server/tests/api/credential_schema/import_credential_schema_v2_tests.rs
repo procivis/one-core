@@ -60,7 +60,7 @@ async fn test_import_credential_schema_v2_with_translations() {
       "formats": [
         {
           "format": "JWT",
-          "schemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
         }
       ],
       "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
@@ -195,7 +195,7 @@ async fn test_import_credential_schema_v2_imports_claim_translations() {
       "formats": [
         {
           "format": "JWT",
-          "schemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
         }
       ],
       "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
@@ -280,7 +280,7 @@ async fn test_import_credential_schema_v2_with_expiration() {
       "formats": [
         {
           "format": "JWT",
-          "schemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
         }
       ],
       "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
@@ -349,11 +349,11 @@ async fn test_import_credential_schema_v2_multiple_formats_with_shared_metadata_
       "formats": [
         {
           "format": "JWT",
-          "schemaId": "http://example.com/schema/jwt"
+          "ecosystemSchemaId": "http://example.com/schema/jwt"
         },
         {
           "format": "SD_JWT",
-          "schemaId": "http://example.com/schema/sd-jwt"
+          "ecosystemSchemaId": "http://example.com/schema/sd-jwt"
         }
       ],
       "id": "efced6c9-7257-424c-be4e-c68554509540",
@@ -459,7 +459,7 @@ async fn test_import_credential_schema_v2_without_translation() {
       "formats": [
         {
           "format": "JWT",
-          "schemaId": "ab3f4837-0a50-4218-bd90-6d0e60671946"
+          "ecosystemSchemaId": "ab3f4837-0a50-4218-bd90-6d0e60671946"
         }
       ],
       "id": "ab3f4837-0a50-4218-bd90-6d0e60671946",

@@ -10,14 +10,14 @@ use super::dto::{
     CredentialFilterParamsDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
     CredentialSearchTypeDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, TrustInformation, WalletInstanceAttestationDTO,
-    WalletUnitAttestationDTO,
+    MdocMsoValidityResponseDTO, OfferedFormatDTO, OfferedFormatStateEnum, TrustInformation,
+    WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::mapper::credential_schema_claim::{claim_schema_to_dto, translations_to_i18n};
+use crate::mapper::credential_schema_claim::claim_schema_to_dto;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
@@ -28,6 +28,7 @@ use crate::model::credential::{
     ExactCredentialFilterColumn, SortableCredentialColumn,
 };
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -36,17 +37,16 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
-use crate::model::localized_text::LocalizedTextField;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::ecosystem::model::TrustDetailInfo;
+use crate::provider::issuance_protocol::deserialize_interaction_data;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
-use crate::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialSchemaTranslationsDTO,
-};
-use crate::service::credential_schema::mapper::to_credential_schema_list_response;
+use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::credential_schema::mapper::to_credential_schema_list_v2_response;
 
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
@@ -60,7 +60,7 @@ pub(crate) async fn credential_detail_response_from_model(
     let schema_model = value.schema.as_ref().await?;
 
     let schema_dto: DetailCredentialSchemaResponseDTO =
-        to_credential_schema_detail_response(schema_model.clone(), formatter_provider)
+        to_credential_schema_detail_response(schema_model.clone(), config, formatter_provider)
             .await
             .map_err(|e: NestedError| CredentialServiceError::MappingError(e.to_string()))?;
 
@@ -166,6 +166,8 @@ pub(crate) async fn credential_detail_response_from_model(
         Some(issuer_identifier) => Some(issuer_identifier.as_ref().await?.to_owned().into()),
     };
 
+    let offered_formats = get_offered_formats(&value, credential_repository).await?;
+
     Ok(CredentialDetailResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -202,6 +204,7 @@ pub(crate) async fn credential_detail_response_from_model(
         parent_id: value.parent.map(|parent| parent.id()),
         subscriber_information: value.subscriber_information,
         ecosystem: value.ecosystem,
+        offered_formats,
     })
 }
 
@@ -435,9 +438,82 @@ fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
     });
 }
 
+async fn get_offered_formats(
+    value: &Credential,
+    credential_repository: &dyn CredentialRepository,
+) -> Result<Option<Vec<OfferedFormatDTO>>, CredentialServiceError> {
+    if value.role != CredentialRole::Issuer
+        || value.r#type != CredentialType::BatchParent
+        || value.state == CredentialStateEnum::Error
+    {
+        return Ok(None);
+    }
+
+    let schema = value.schema.as_ref().await?;
+    let mut formats = schema.formats.as_ref().await?.to_vec();
+
+    if let Some(interaction) = &value.interaction {
+        let interaction = interaction.as_ref().await?;
+        let data: OpenID4VCIIssuerInteractionDataDTO =
+            deserialize_interaction_data(interaction.data.as_ref())
+                .error_while("deserializing interaction data")?;
+        if let Some(selected_formats) = &data.formats {
+            formats.retain(|f| selected_formats.contains(&f.id));
+        }
+    }
+
+    let mut result = vec![];
+    for format in formats {
+        let state = match value.state {
+            CredentialStateEnum::Created
+            | CredentialStateEnum::Pending
+            | CredentialStateEnum::Offered
+            | CredentialStateEnum::InteractionExpired
+            | CredentialStateEnum::Error => OfferedFormatStateEnum::Pending,
+            CredentialStateEnum::Accepted
+            | CredentialStateEnum::Rejected
+            | CredentialStateEnum::Revoked
+            | CredentialStateEnum::Suspended
+            | CredentialStateEnum::Expiring
+            | CredentialStateEnum::Expired => {
+                let items = credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(value.id).condition()
+                                & CredentialFilterValue::Formats(vec![format.id]),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("listing batch items")?
+                    .values;
+
+                if items.is_empty() {
+                    OfferedFormatStateEnum::Pending
+                } else if items
+                    .iter()
+                    .all(|item| item.state == CredentialStateEnum::Rejected)
+                {
+                    OfferedFormatStateEnum::Rejected
+                } else {
+                    OfferedFormatStateEnum::Accepted
+                }
+            }
+        };
+
+        result.push(OfferedFormatDTO {
+            format: format.format,
+            state,
+        });
+    }
+
+    Ok(Some(result))
+}
+
 pub(super) async fn to_credential_list_response(
     credential: Credential,
     include_translations: bool,
+    config: &CoreConfig,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
     let schema = credential.schema.as_ref().await?.to_owned();
@@ -456,9 +532,10 @@ pub(super) async fn to_credential_list_response(
         consumed_at: credential.consumed_at,
         state: credential.state.into(),
         last_modified: credential.last_modified,
-        schema: to_credential_schema_list_response(
+        schema: to_credential_schema_list_v2_response(
             schema,
             include_translations,
+            config,
             formatter_provider,
         )
         .await?,
@@ -495,18 +572,32 @@ pub(super) fn from_create_request(
     issuer_certificate: Option<Certificate>,
     schema: CredentialSchema,
     key: Key,
-    format_type: FormatType,
-) -> Credential {
+    mut formats: Vec<CredentialSchemaFormat>,
+    config: &CoreConfig,
+) -> Result<Credential, CredentialServiceError> {
     let now = crate::clock::now_utc();
-    let r#type = if format_type == FormatType::Mdoc || schema.batch_size.is_some_and(|s| s >= 2) {
-        CredentialType::BatchParent
+    let (r#type, format) = if formats.len() > 1 || schema.batch_size.is_some_and(|s| s >= 2) {
+        (CredentialType::BatchParent, None)
     } else {
-        CredentialType::Single
+        let Some(format) = formats.pop() else {
+            return Err(CredentialServiceError::InvalidFormatSelection);
+        };
+
+        let format_type = config
+            .format
+            .get_type(&format.format)
+            .error_while("getting credential schema format type")?;
+
+        let r#type = if format_type == FormatType::Mdoc {
+            CredentialType::BatchParent
+        } else {
+            CredentialType::Single
+        };
+        (r#type, Some(format))
     };
     let expires_at = schema.expiration.map(|e| now + e);
 
-    Credential {
-        ecosystem: request.ecosystem,
+    Ok(Credential {
         id: credential_id,
         created_date: now,
         issuance_date: None,
@@ -535,8 +626,9 @@ pub(super) fn from_create_request(
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: request.subscriber_information,
-        format: None,
-    }
+        ecosystem: request.ecosystem,
+        format: convert_inner(format),
+    })
 }
 
 pub(super) fn claims_from_create_request(
@@ -643,42 +735,18 @@ fn insert_array_parent(
 
 async fn to_credential_schema_detail_response(
     credential_schema: CredentialSchema,
+    config: &CoreConfig,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<DetailCredentialSchemaResponseDTO, NestedError> {
-    let format = credential_schema.format().await?.to_owned();
-    let schema_id = credential_schema.schema_id().await?;
-    let raw_translations = credential_schema.translations.as_ref().await?;
-    let translations = CredentialSchemaTranslationsDTO {
-        name: translations_to_i18n(&raw_translations, LocalizedTextField::Name).ok_or(
-            CredentialServiceError::MappingError(format!(
-                "No translations for `name` of credential schema {}",
-                credential_schema.id
-            ))
-            .error_while("mapping credential schema"),
-        )?,
-        description: translations_to_i18n(&raw_translations, LocalizedTextField::Description),
-    };
-
-    let formatter = formatter_provider.get_credential_formatter(&format)?;
-
     Ok(DetailCredentialSchemaResponseDTO {
-        id: credential_schema.id,
-        created_date: credential_schema.created_date,
-        deleted_at: credential_schema.deleted_at,
-        last_modified: credential_schema.last_modified,
-        imported_source_url: credential_schema.imported_source_url,
-        name: credential_schema.name,
-        format,
-        revocation_method: formatter.revocation_method_id().cloned(),
-        key_storage_security: credential_schema.key_storage_security,
         organisation_id: credential_schema.organisation.id(),
-        schema_id,
-        layout_properties: credential_schema.layout_properties.map(Into::into),
-        allow_suspension: credential_schema.allow_suspension,
-        requires_wallet_instance_attestation: credential_schema
-            .requires_wallet_instance_attestation,
-        transaction_code: convert_inner(credential_schema.transaction_code),
-        translations,
+        schema: to_credential_schema_list_v2_response(
+            credential_schema,
+            true,
+            config,
+            formatter_provider,
+        )
+        .await?,
     })
 }
 

@@ -34,7 +34,7 @@ async fn test_ssi_get_credential_schema_v2_success() {
         .expect("formats should be an array");
     assert!(!formats.is_empty(), "formats should not be empty");
     assert!(formats[0]["format"].is_string());
-    assert!(formats[0]["schemaId"].is_string());
+    assert!(formats[0]["ecosystemSchemaId"].is_string());
 
     assert!(
         resp["format"].is_null(),
@@ -243,7 +243,7 @@ async fn test_ssi_get_credential_schema_v2_by_format_returns_only_requested_form
             organisation_id: organisation.id.into(),
             formats: vec![
                 serde_json::json!({ "format": "JWT" }),
-                serde_json::json!({ "format": "MDOC", "schemaId": "org.example.test" }),
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: vec![TestClaim {
                 datatype: "OBJECT".to_string(),

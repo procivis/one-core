@@ -86,6 +86,9 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
@@ -102,6 +105,8 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub translations: Option<CredentialSchemaTranslationsRestDTO>,
     /// Administrative lifetime, in seconds, applied to credentials issued
     /// from this schema.
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
@@ -204,6 +209,13 @@ pub(crate) enum CredentialSchemasExactColumn {
     SchemaId,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(CredentialSchemaExactColumn)]
+pub(crate) enum CredentialSchemasV2ExactColumn {
+    Name,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
 #[try_into(T = CredentialSchemaFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialSchemaQuery
@@ -234,7 +246,7 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     /// Return only credential schemas which use one of the specified credential formats.
     #[param(rename = "formats[]", inline, nullable = false)]
     #[try_into(infallible)]
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
 
     #[param(rename = "ecosystems[]", inline, nullable = false)]
     #[try_into(infallible)]
@@ -715,11 +727,11 @@ pub(crate) struct ImportCredentialSchemaLayoutPropertiesRestDTO {
 pub(crate) struct CredentialSchemaFormatRequestRestDTO {
     /// Credential format identifier from the system configuration.
     #[modify_schema(field = format)]
-    pub format: CredentialFormat,
+    pub format: String,
     /// Optional schema identifier for this format (e.g. DocType for mdoc, vct for SD-JWT VC).
     #[serde(default)]
     #[into(with_fn = convert_inner)]
-    pub schema_id: Option<String>,
+    pub ecosystem_schema_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
@@ -739,7 +751,7 @@ pub(crate) struct CredentialSchemasV2FilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     #[param(rename = "exact[]", inline, nullable = false)]
-    pub exact: Option<Vec<CredentialSchemasExactColumn>>,
+    pub exact: Option<Vec<CredentialSchemasV2ExactColumn>>,
     /// Filter by specific UUIDs.
     #[try_into(rename = "credential_schema_ids", infallible)]
     #[param(rename = "ids[]", inline, nullable = false)]
@@ -747,7 +759,7 @@ pub(crate) struct CredentialSchemasV2FilterQueryParamsRest {
     /// Return only credential schemas which use one of the specified credential formats.
     #[param(rename = "formats[]", inline, nullable = false)]
     #[try_into(infallible)]
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
 
     #[param(rename = "ecosystems[]", inline, nullable = false)]
     #[try_into(infallible)]
@@ -801,8 +813,8 @@ pub(crate) struct CredentialSchemasV2FilterQueryParamsRest {
     /// Return credential schemas associated with any of the specified schema IDs.
     /// Works across all format entries of a credential schema.
     #[try_into(infallible)]
-    #[param(rename = "schemaIds[]", inline, nullable = false)]
-    pub schema_ids: Option<Vec<String>>,
+    #[param(rename = "ecosystemSchemaIds[]", inline, nullable = false)]
+    pub ecosystem_schema_ids: Option<Vec<String>>,
 
     /// Return only credential schemas with an expiration (in seconds) greater than this value.
     #[serde(default, deserialize_with = "deserialize_duration_seconds")]
@@ -927,7 +939,7 @@ pub(crate) struct DisclosurePolicyCreateRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaFormatResponseRestDTO {
     pub format: CredentialFormat,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
     #[from(with_fn = convert_inner)]
     pub dcql: Option<CredentialSchemaDcqlResponseRestDTO>,
 }
@@ -1037,7 +1049,7 @@ pub(crate) struct ImportCredentialSchemaV2FormatRestDTO {
     /// Credential format identifier from the system configuration.
     pub format: CredentialFormat,
     /// Schema identifier for this format (e.g. DocType for mdoc, vct for SD-JWT VC).
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
 }
 
 #[options_not_nullable]

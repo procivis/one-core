@@ -161,7 +161,7 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub ids: Option<Vec<String>>,
     pub exact: Option<Vec<CredentialSchemaListQueryExactColumnBindingEnum>>,
     pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
-    pub schema_ids: Option<Vec<String>>,
+    pub ecosystem_schema_ids: Option<Vec<String>>,
     pub formats: Option<Vec<String>>,
     pub ecosystems: Option<Vec<String>>,
     pub uses_batch_issuance: Option<bool>,
@@ -347,7 +347,7 @@ pub struct CredentialClaimSchemaTranslationsBindingDTO {
 pub struct CredentialSchemaFormatResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub format: String,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Record)]
@@ -460,7 +460,7 @@ pub struct CredentialSchemaListV2BindingDTO {
 #[uniffi(name = "CredentialSchemaFormatRequest")]
 pub struct CredentialSchemaFormatRequestBindingDTO {
     pub format: String,
-    pub schema_id: Option<String>,
+    pub ecosystem_schema_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
@@ -531,7 +531,7 @@ pub struct CreateCredentialSchemaV2RequestBindingDTO {
 #[uniffi(name = "ImportCredentialSchemaFormat")]
 pub struct ImportCredentialSchemaV2FormatBindingDTO {
     pub format: String,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

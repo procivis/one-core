@@ -139,17 +139,17 @@ pub(crate) async fn get_presentation_definition_v2(
         }
 
         if filtered_credential_candidates.is_empty() {
-            let schema_ids = credential_filters
+            let ecosystem_schema_ids = credential_filters
                 .iter()
                 .flat_map(|filter| {
                     filter
-                        .schema_ids
+                        .ecosystem_schema_ids
                         .iter()
-                        .map(|schema_id| map_schema_id(filter, schema_id))
+                        .map(|ecosystem_schema_id| map_schema_id(filter, ecosystem_schema_id))
                 })
                 .collect::<Vec<_>>();
             let credential_schema = find_schema_by_schema_ids(
-                &schema_ids,
+                &ecosystem_schema_ids,
                 organisation_id,
                 credential_schema_repository,
             )
@@ -398,6 +398,7 @@ fn map_to_filtered_dto(
         parent_id: full_dto.parent_id,
         subscriber_information: full_dto.subscriber_information,
         ecosystem: full_dto.ecosystem,
+        offered_formats: None,
     }
 }
 
@@ -807,13 +808,13 @@ async fn fetch_credentials_for_schema_ids(
         ));
     };
 
-    for schema_id in &filter.schema_ids {
-        let schema_id = map_schema_id(filter, schema_id);
+    for ecosystem_schema_id in &filter.ecosystem_schema_ids {
+        let ecosystem_schema_id = map_schema_id(filter, ecosystem_schema_id);
 
         credentials.append(
             &mut get_presentation_credentials_by_schema_id(
                 credential_repository,
-                schema_id,
+                ecosystem_schema_id,
                 organisation_id,
             )
             .await
@@ -823,19 +824,19 @@ async fn fetch_credentials_for_schema_ids(
     Ok(credentials)
 }
 
-fn map_schema_id(filter: &CredentialFilter, schema_id: &str) -> String {
+fn map_schema_id(filter: &CredentialFilter, ecosystem_schema_id: &str) -> String {
     match filter.format {
         CredentialFormat::JwtVc(_) | CredentialFormat::LdpVc(_) | CredentialFormat::W3cSdJwt(_) => {
-            schema_id
+            ecosystem_schema_id
                 // Make use of the fact that Procivis One issuers put the schema id into the context,
                 // hence we can potentially parse it out of the supplied types.
                 // Note: This will most likely fail with third party issuers. Improve the logic,
                 // once we need to interop with such issuers.
                 .split_once("#")
                 .map(|(first, _)| first)
-                .unwrap_or(schema_id)
+                .unwrap_or(ecosystem_schema_id)
         }
-        CredentialFormat::MsoMdoc(_) | CredentialFormat::SdJwt(_) => schema_id,
+        CredentialFormat::MsoMdoc(_) | CredentialFormat::SdJwt(_) => ecosystem_schema_id,
     }
     .to_string()
 }
@@ -1047,7 +1048,7 @@ async fn find_schema_by_schema_ids(
 ) -> Result<Option<CredentialSchema>, DataLayerError> {
     let schema_ids_filter_cond = schema_ids
         .iter()
-        .map(|id| CredentialSchemaFilterValue::SchemaId(StringMatch::equals(id)))
+        .map(|id| CredentialSchemaFilterValue::EcosystemSchemaId(StringMatch::equals(id)))
         .fold(ListFilterCondition::default(), |acc, cond| acc | cond);
     let candidates = credential_schema_repository
         .get_credential_schema_list(CredentialSchemaListQuery {

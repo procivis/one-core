@@ -131,19 +131,7 @@ pub(crate) async fn create_open_id_for_vp_presentation_definition(
     let mut requested_credentials: Vec<(CredentialSchema, Vec<ProofInputClaimSchema>)> = vec![];
     for input in &proof_schema_inputs {
         let credential_schema = input.credential_schema.as_ref().await?;
-
-        let claims = input
-            .claim_schemas
-            .as_ref()
-            .await?
-            .iter()
-            .map(|claim_schema| ProofInputClaimSchema {
-                order: claim_schema.order,
-                required: claim_schema.required,
-                schema: claim_schema.schema.to_owned(),
-            })
-            .collect();
-
+        let claims = input.claim_schemas.as_ref().await?.to_vec();
         requested_credentials.push((credential_schema.to_owned(), claims));
     }
 

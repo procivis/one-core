@@ -222,7 +222,7 @@ async fn test_get_list_credential_schema_v2_filter_batch_issuance_success() {
         organisation_id: organisation.id.into(),
         formats: vec![
             json!({"format": "JWT"}),
-            json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "multi-swiyu"}),
+            json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "multi-swiyu"}),
         ],
         claims: vec![TestClaim {
             datatype: "STRING".to_string(),
@@ -332,7 +332,7 @@ async fn test_get_list_credential_schema_v2_filter_ids_success() {
 }
 
 #[tokio::test]
-async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
+async fn test_get_list_credential_schema_v2_filter_ecosystem_schema_ids_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -342,7 +342,7 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
         .create_v2(CreateSchemaV2Params {
             name: "schema-a".to_string(),
             organisation_id: organisation.id.into(),
-            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "schema-id-a"})],
+            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "schema-id-a"})],
             claims: default_claim(),
             ..Default::default()
         })
@@ -354,7 +354,7 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
         .create_v2(CreateSchemaV2Params {
             name: "schema-b".to_string(),
             organisation_id: organisation.id.into(),
-            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "schema-id-b"})],
+            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "schema-id-b"})],
             claims: default_claim(),
             ..Default::default()
         })
@@ -366,7 +366,7 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
         .create_v2(CreateSchemaV2Params {
             name: "schema-c".to_string(),
             organisation_id: organisation.id.into(),
-            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "schema-id-c"})],
+            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "schema-id-c"})],
             claims: default_claim(),
             ..Default::default()
         })
@@ -381,7 +381,7 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
             10,
             &organisation.id,
             None,
-            Some("schemaIds[]=schema-id-a&schemaIds[]=schema-id-b"),
+            Some("ecosystemSchemaIds[]=schema-id-a&ecosystemSchemaIds[]=schema-id-b"),
         )
         .await;
 
@@ -401,8 +401,8 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
 }
 
 #[tokio::test]
-async fn test_get_list_credential_schema_v2_filter_schema_ids_multiformat_success() {
-    // GIVEN - a multi-format schema where schemaId belongs to one of its formats
+async fn test_get_list_credential_schema_v2_filter_ecosystem_schema_ids_multiformat_success() {
+    // GIVEN - a multi-format schema where ecosystemSchemaId belongs to one of its formats
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     context
@@ -413,7 +413,7 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_multiformat_succes
             organisation_id: organisation.id.into(),
             formats: vec![
                 json!({"format": "JWT"}),
-                json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "schema-multi-swiyu"}),
+                json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "schema-multi-swiyu"}),
             ],
             claims: default_claim(),
             ..Default::default()
@@ -441,7 +441,7 @@ async fn test_get_list_credential_schema_v2_filter_schema_ids_multiformat_succes
             10,
             &organisation.id,
             None,
-            Some("schemaIds[]=schema-multi-swiyu"),
+            Some("ecosystemSchemaIds[]=schema-multi-swiyu"),
         )
         .await;
 
@@ -475,7 +475,9 @@ async fn test_get_list_credential_schema_v2_filter_formats_success() {
         .create_v2(CreateSchemaV2Params {
             name: "swiyu-schema".to_string(),
             organisation_id: organisation.id.into(),
-            formats: vec![json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "swiyu-only-id"})],
+            formats: vec![
+                json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "swiyu-only-id"}),
+            ],
             claims: default_claim(),
             ..Default::default()
         })
@@ -489,7 +491,7 @@ async fn test_get_list_credential_schema_v2_filter_formats_success() {
             organisation_id: organisation.id.into(),
             formats: vec![
                 json!({"format": "JWT"}),
-                json!({"format": "SD_JWT_VC_SWIYU", "schemaId": "multi-swiyu-id"}),
+                json!({"format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "multi-swiyu-id"}),
             ],
             claims: default_claim(),
             ..Default::default()

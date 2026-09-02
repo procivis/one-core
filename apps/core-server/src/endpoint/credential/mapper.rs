@@ -1,11 +1,14 @@
 use one_core::service::common_dto::TrustInformationDetailResponseDTO;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
+    DetailCredentialSchemaResponseDTO,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner};
+use one_core::service::credential_schema::dto::CredentialSchemaListItemV2ResponseDTO;
+use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 
 use super::dto::{
-    CredentialDetailClaimValueResponseRestDTO, CredentialTrustInformationDetailResponseRestDTO,
+    CredentialDetailClaimValueResponseRestDTO, CredentialDetailSchemaResponseRestDTO,
+    CredentialListItemSchemaRestDTO, CredentialTrustInformationDetailResponseRestDTO,
     GetCredentialResponseRestDTO,
 };
 use crate::dto::common::trust_detail::TrustInformationDetailResponseRestEnum;
@@ -47,6 +50,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             parent_id: value.parent_id,
             subscriber_information: value.subscriber_information,
             ecosystem: value.ecosystem,
+            offered_formats: convert_inner_of_inner(value.offered_formats),
         })
     }
 }
@@ -83,6 +87,43 @@ impl From<TrustInformationDetailResponseDTO> for CredentialTrustInformationDetai
             eudi_ecosystem,
             ecosystem: value.ecosystem,
             issuer,
+        }
+    }
+}
+
+impl From<CredentialSchemaListItemV2ResponseDTO> for CredentialListItemSchemaRestDTO {
+    fn from(value: CredentialSchemaListItemV2ResponseDTO) -> Self {
+        let single_format = if value.formats.len() == 1 {
+            value.formats.first()
+        } else {
+            None
+        };
+
+        Self {
+            #[expect(deprecated)]
+            revocation_method: value.revocation_method.to_owned(),
+            #[expect(deprecated)]
+            format: single_format.map(|f| f.format.to_owned()),
+            #[expect(deprecated)]
+            schema_id: single_format.map(|f| f.ecosystem_schema_id.to_owned()),
+            schema: value.into(),
+        }
+    }
+}
+
+impl From<DetailCredentialSchemaResponseDTO> for CredentialDetailSchemaResponseRestDTO {
+    fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
+        let list_item: CredentialListItemSchemaRestDTO = value.schema.into();
+
+        Self {
+            organisation_id: value.organisation_id,
+            #[expect(deprecated)]
+            revocation_method: list_item.revocation_method,
+            #[expect(deprecated)]
+            format: list_item.format,
+            #[expect(deprecated)]
+            schema_id: list_item.schema_id,
+            schema: list_item.schema,
         }
     }
 }

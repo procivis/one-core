@@ -15,7 +15,7 @@ pub struct CredentialFilter {
     ///   - mso_mdoc -> `doctype_value`
     ///   - dc+sd-jwt -> `vct_values`
     ///   - W3C VCs (jwt_vc_json and ldp_vc): Most specific (i.e. last) element of each array in `type_values`
-    pub schema_ids: Vec<String>,
+    pub ecosystem_schema_ids: Vec<String>,
     /// If non-empty, filter based on claims.
     pub claims: Vec<ClaimFilter>,
 }
@@ -40,7 +40,7 @@ impl DcqlQuery {
     ) -> Result<HashMap<CredentialQueryId, Vec<CredentialFilter>>, DcqlError> {
         let mut result: HashMap<CredentialQueryId, Vec<CredentialFilter>> = HashMap::new();
         for credential_query in &self.credentials {
-            let schema_ids = match &credential_query.format {
+            let ecosystem_schema_ids = match &credential_query.format {
                 CredentialFormat::MsoMdoc(meta) => vec![meta.doctype_value.clone()],
                 CredentialFormat::SdJwt(meta) => meta.vct_values.clone(),
                 CredentialFormat::W3cSdJwt(meta)
@@ -55,7 +55,7 @@ impl DcqlQuery {
 
             let base_filter = CredentialFilter {
                 format: credential_query.format.clone(),
-                schema_ids,
+                ecosystem_schema_ids,
                 claims: vec![],
             };
 

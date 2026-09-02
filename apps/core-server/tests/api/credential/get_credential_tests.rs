@@ -534,3 +534,84 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
     assert_eq!(expires_at, returned_expires_at);
     assert_eq!(expires_at, mso_expiration);
 }
+
+#[tokio::test]
+async fn test_get_credential_success_offered_formats() {
+    // GIVEN
+    let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Simple batch schema",
+            &org,
+            TestingCreateSchemaParams {
+                format: Some("JWT".into()),
+                batch_size: Some(2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                role: Some(CredentialRole::Issuer),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+
+    let item_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                role: Some(CredentialRole::Issuer),
+                parent_id: Some(parent_credential.id),
+                format: Some(format),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.get(&parent_credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["offeredFormats"].as_array().unwrap().len(), 1);
+    assert_eq!(resp["offeredFormats"][0]["format"], "JWT".to_string());
+    assert_eq!(resp["offeredFormats"][0]["state"], "ACCEPTED".to_string());
+
+    // WHEN
+    let resp = context.api.credentials.get(&item_credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert!(!resp.as_object().unwrap().contains_key("offeredFormats"));
+}

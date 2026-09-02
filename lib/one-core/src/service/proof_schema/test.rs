@@ -1653,7 +1653,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
                             "name": "test-credential-schema",
                             "formats": [{
                                 "format": "JWT",
-                                "schemaId": "iso-org-test123"
+                                "ecosystemSchemaId": "iso-org-test123"
                             }],
                             "organisationId": Uuid::new_v4(),
                             "claims": [{

@@ -47,13 +47,15 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             Self::Name(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)
             }
-            Self::SchemaId(string_match) => get_string_match_condition(
+            Self::EcosystemSchemaId(string_match) => get_string_match_condition(
                 credential_schema_format::Column::EcosystemSchemaId,
                 string_match,
             ),
-            Self::SchemaIds(schema_ids) => credential_schema_format::Column::EcosystemSchemaId
-                .is_in(&schema_ids)
-                .into_condition(),
+            Self::EcosystemSchemaIds(schema_ids) => {
+                credential_schema_format::Column::EcosystemSchemaId
+                    .is_in(&schema_ids)
+                    .into_condition()
+            }
             Self::Formats(formats) => credential_schema_format::Column::Format
                 .is_in(&formats)
                 .into_condition(),
@@ -128,8 +130,8 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
 impl IntoJoinRelations for CredentialSchemaFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
         match self {
-            CredentialSchemaFilterValue::SchemaId(_)
-            | CredentialSchemaFilterValue::SchemaIds(_)
+            CredentialSchemaFilterValue::EcosystemSchemaId(_)
+            | CredentialSchemaFilterValue::EcosystemSchemaIds(_)
             | CredentialSchemaFilterValue::Formats(_) => vec![JoinRelation {
                 join_type: JoinType::InnerJoin,
                 relation_def: credential_schema::Relation::CredentialSchemaFormat.def(),

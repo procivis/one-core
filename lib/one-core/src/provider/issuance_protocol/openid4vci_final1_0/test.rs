@@ -453,7 +453,8 @@ async fn test_generate_offer() {
 
 #[tokio::test]
 async fn test_generate_share_credentials() {
-    let credential = generic_credential_did();
+    let mut credential = generic_credential_did();
+    credential.interaction = None;
     let protocol = setup_protocol(Default::default());
 
     let result = protocol.issuer_share_credential(&credential).await.unwrap();
@@ -465,7 +466,8 @@ async fn test_generate_share_credentials() {
 
 #[tokio::test]
 async fn test_generate_share_credentials_offer_by_value() {
-    let credential = generic_credential_did();
+    let mut credential = generic_credential_did();
+    credential.interaction = None;
 
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params("openid-credential-offer")),
@@ -2859,7 +2861,9 @@ async fn test_can_handle_issuance_fail_with_custom_url_scheme() {
 
 #[tokio::test]
 async fn test_generate_share_credentials_custom_scheme() {
-    let credential = generic_credential_did();
+    let mut credential = generic_credential_did();
+    credential.interaction = None;
+
     let url_scheme = "my-custom-scheme";
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params(url_scheme)),

@@ -75,9 +75,7 @@ pub(super) async fn extract_claims_from_credential_schema(
         let credential_schema = schemas
             .iter()
             .find(|schema| schema.id == proof_input.credential_schema_id)
-            .ok_or_else(|| {
-                ProofSchemaServiceError::MappingError("Missing credential schema".into())
-            })?;
+            .ok_or(ProofSchemaServiceError::MissingCredentialSchema)?;
 
         let schema_format = credential_schema.format().await?;
         let formatter = formatter_provider.get_credential_formatter(&schema_format)?;

@@ -960,6 +960,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -1068,6 +1069,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -1130,6 +1132,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -1244,6 +1247,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -1361,6 +1365,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -1460,6 +1465,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -1585,6 +1591,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         webhook_destination_url: None,
         subscriber_information: None,
         ecosystem: None,
+        formats: None,
     };
 
     // create a credential with required claims only succeeds
@@ -1714,6 +1721,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         webhook_destination_url: None,
         subscriber_information: None,
         ecosystem: None,
+        formats: None,
     };
 
     // create a credential with only an optional claim fails
@@ -1877,6 +1885,7 @@ async fn test_create_credential_namespace_optional() {
         webhook_destination_url: None,
         subscriber_information: None,
         ecosystem: None,
+        formats: None,
     };
 
     // not mentioning namespace
@@ -2015,6 +2024,7 @@ async fn test_create_credential_schema_deleted() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2148,6 +2158,7 @@ async fn test_create_credential_key_with_issuer_key() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2303,6 +2314,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2431,6 +2443,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2540,6 +2553,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2668,6 +2682,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2796,6 +2811,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -2909,6 +2925,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -3033,6 +3050,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -3136,6 +3154,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
             webhook_destination_url: Some("http://webhook.url".to_string()),
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -5525,6 +5544,7 @@ async fn test_create_credential_array(
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await
 }
@@ -5796,6 +5816,7 @@ async fn test_create_credential_session_org_mismatch() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 
@@ -5929,6 +5950,7 @@ async fn test_create_credential_invalid_certificate_role() {
             webhook_destination_url: None,
             subscriber_information: None,
             ecosystem: None,
+            formats: None,
         })
         .await;
 

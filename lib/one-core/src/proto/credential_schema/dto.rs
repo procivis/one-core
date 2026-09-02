@@ -73,7 +73,7 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
 #[derive(Clone, Debug)]
 pub struct ImportCredentialSchemaV2FormatDTO {
     pub format: CredentialFormat,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
 }
 
 #[derive(Clone, Debug)]

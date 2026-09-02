@@ -18,9 +18,9 @@ use one_core::service::credential::dto::{
     MdocMsoValidityResponseDTO,
 };
 use one_core::service::credential_schema::dto::{
-    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
-    CredentialSchemaV2FilterParamsDTO, DisclosurePolicyCreateRequest,
-    ImportCredentialSchemaClaimSchemaDTO,
+    CredentialSchemaFormatResponseDTO, CredentialSchemaListIncludeEntityTypeEnum,
+    CredentialSchemaListItemResponseDTO, CredentialSchemaV2FilterParamsDTO,
+    DisclosurePolicyCreateRequest, ImportCredentialSchemaClaimSchemaDTO,
 };
 use one_core::service::did::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidFilterParamsDTO,
@@ -115,7 +115,7 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             holder: value.holder.map(Into::into),
             state: value.state.into(),
             r#type: value.r#type.into(),
-            schema: value.schema.into(),
+            schema: value.schema.schema.into(),
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
@@ -219,21 +219,28 @@ impl From<TransactionDataResponseDTO> for TransactionDataResponseBindingDTO {
 }
 
 impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
-    fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
+    fn from(mut value: DetailCredentialSchemaResponseDTO) -> Self {
+        value.schema.formats.sort_by_key(|f| f.format.to_string());
+        let format = value.schema.formats.first().cloned().unwrap_or_else(|| {
+            CredentialSchemaFormatResponseDTO {
+                format: "".into(),
+                ecosystem_schema_id: Default::default(),
+                dcql: None,
+            }
+        });
         Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            name: value.name,
-            format: value.format.to_string(),
-            revocation_method: value.revocation_method.map(|v| v.to_string()),
-            key_storage_security: convert_inner(value.key_storage_security),
-            schema_id: value.schema_id,
-            imported_source_url: value.imported_source_url,
-            layout_properties: convert_inner(value.layout_properties),
-            allow_suspension: value.allow_suspension,
-            requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
-            translations: Some(value.translations.into()),
+            id: value.schema.id.to_string(),
+            created_date: value.schema.created_date.format_timestamp(),
+            last_modified: value.schema.last_modified.format_timestamp(),
+            name: value.schema.name,
+            format: format.format.to_string(),
+            key_storage_security: convert_inner(value.schema.key_storage_security),
+            schema_id: format.ecosystem_schema_id,
+            imported_source_url: value.schema.imported_source_url,
+            layout_properties: convert_inner(value.schema.layout_properties),
+            allow_suspension: value.schema.allow_suspension,
+            requires_wallet_instance_attestation: value.schema.requires_wallet_instance_attestation,
+            translations: convert_inner(value.schema.translations),
         }
     }
 }
@@ -425,7 +432,6 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             name: value.name,
             format: value.format.to_string(),
             imported_source_url: value.imported_source_url,
-            revocation_method: value.revocation_method.map(|v| v.to_string()),
             key_storage_security: convert_inner(value.key_storage_security),
             schema_id: value.schema_id,
             layout_properties: convert_inner(value.layout_properties),
@@ -955,8 +961,8 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
                 name: value.name,
                 exact: convert_inner_of_inner(value.exact),
                 organisation_id: into_id(value.organisation_id)?,
-                schema_ids: value.schema_ids,
-                formats: value.formats,
+                ecosystem_schema_ids: value.ecosystem_schema_ids,
+                formats: convert_inner_of_inner(value.formats),
                 ecosystems: convert_inner_of_inner(value.ecosystems),
                 requires_wallet_instance_attestation: None,
                 key_storage_security: None,

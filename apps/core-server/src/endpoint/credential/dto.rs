@@ -5,8 +5,8 @@ use one_core::service::credential::dto::{
     ChangeCredentialStateDTO, CreateCredentialRequestDTO, CredentialFilterParamsDTO,
     CredentialListItemResponseDTO, CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO,
     CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
-    DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
+    DetailCredentialClaimResponseDTO, MdocMsoValidityResponseDTO, OfferedFormatDTO,
+    OfferedFormatStateEnum, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
     TrustInformation, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use one_core::service::error::ServiceError;
@@ -29,9 +29,7 @@ use crate::dto::common::trust_detail::{
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
-    CredentialClaimSchemaResponseRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
-    CredentialSchemaListItemResponseRestDTO, CredentialSchemaTranslationsRestDTO,
-    KeyStorageSecurityRestEnum,
+    CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemV2ResponseRestDTO,
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
@@ -63,7 +61,7 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    pub schema: CredentialSchemaListItemResponseRestDTO,
+    pub schema: CredentialListItemSchemaRestDTO,
     #[from(with_fn = convert_inner)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
     pub role: CredentialRoleRestEnum,
@@ -78,6 +76,23 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     /// URI holder is redirected to after credential issuance.
     pub redirect_uri: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialListItemSchemaRestDTO {
+    /// Deprecated: will be removed
+    #[deprecated]
+    pub revocation_method: Option<RevocationMethodId>,
+    /// Deprecated: use `formats`
+    #[deprecated]
+    pub format: Option<CredentialFormat>,
+    /// Deprecated: use `formats`
+    #[deprecated]
+    pub schema_id: Option<String>,
+    #[serde(flatten)]
+    pub schema: CredentialSchemaListItemV2ResponseRestDTO,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -194,6 +209,25 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     /// Optional subscriber information associated with this credential.
     pub subscriber_information: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+
+    pub offered_formats: Option<Vec<OfferedFormatRestDTO>>,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(OfferedFormatDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct OfferedFormatRestDTO {
+    pub format: CredentialFormat,
+    pub state: OfferedFormatStateRestEnum,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(OfferedFormatStateEnum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OfferedFormatStateRestEnum {
+    Pending,
+    Accepted,
+    Rejected,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
@@ -250,34 +284,21 @@ pub(crate) enum CredentialRoleRestEnum {
 
 /// Credential schema used to issue the credential.
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[from(DetailCredentialSchemaResponseDTO)]
 pub(crate) struct CredentialDetailSchemaResponseRestDTO {
-    pub id: CredentialSchemaId,
-    #[serde(serialize_with = "front_time")]
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
-    pub deleted_at: Option<OffsetDateTime>,
-    pub name: String,
-    pub format: CredentialFormat,
-    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
-    /// Storage security requirements the wallet's key storage must meet.
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
-    /// Part of the `credentialSchema` property.
-    pub schema_id: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-    pub allow_suspension: bool,
-    pub requires_wallet_instance_attestation: bool,
-    pub translations: CredentialSchemaTranslationsRestDTO,
+    /// Deprecated: will be removed
+    #[deprecated]
+    pub revocation_method: Option<RevocationMethodId>,
+    /// Deprecated: use `formats`
+    #[deprecated]
+    pub format: Option<CredentialFormat>,
+    /// Deprecated: use `formats`
+    #[deprecated]
+    pub schema_id: Option<String>,
+    #[serde(flatten)]
+    pub schema: CredentialSchemaListItemV2ResponseRestDTO,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -555,6 +576,11 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     #[schema(nullable = false)]
     #[into(with_fn = convert_inner)]
     pub ecosystem: Option<String>,
+    /// Optional selection of formats to be issued.
+    #[modify_schema(field = format)]
+    #[schema(nullable = false)]
+    #[into(with_fn = convert_inner_of_inner)]
+    pub formats: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

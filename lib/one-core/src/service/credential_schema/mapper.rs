@@ -284,7 +284,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         .iter()
         .map(|f| CredentialSchemaFormatResponseDTO {
             format: f.format.clone(),
-            schema_id: f.ecosystem_schema_id.clone(),
+            ecosystem_schema_id: f.ecosystem_schema_id.clone(),
             dcql: map_dcql_format_meta(f, config),
         })
         .collect();
@@ -466,7 +466,7 @@ fn w3c_meta_from_format(format: &CredentialSchemaFormat) -> W3cVcMeta {
 
 pub(super) fn create_unique_name_check_request(
     name: &str,
-    schema_ids: Vec<String>,
+    ecosystem_schema_ids: Vec<String>,
     organisation_id: OrganisationId,
 ) -> Result<CredentialSchemaListQuery, CredentialSchemaServiceError> {
     Ok(CredentialSchemaListQuery {
@@ -481,7 +481,7 @@ pub(super) fn create_unique_name_check_request(
                     value: name.to_owned(),
                 })
                 .condition()
-                    | CredentialSchemaFilterValue::SchemaIds(schema_ids)),
+                    | CredentialSchemaFilterValue::EcosystemSchemaIds(ecosystem_schema_ids)),
         ),
         ..Default::default()
     })
@@ -720,24 +720,47 @@ pub(crate) async fn to_credential_schema_list_response(
 
 pub(crate) async fn to_credential_schema_list_v2_response(
     credential_schema: CredentialSchema,
+    include_translations: bool,
     config: &CoreConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialSchemaListItemV2ResponseDTO, NestedError> {
     let formats = credential_schema.formats.as_ref().await?;
-    let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
+
+    let revocation_method = if formats.len() == 1
+        && let Some(format) = formats.first()
+    {
+        let formatter = formatter_provider.get_credential_formatter(&format.format)?;
+        credential_schema.revocation_method_id(&*formatter).cloned()
+    } else {
+        None
+    };
+
+    let formats = formats
         .iter()
         .map(|f| CredentialSchemaFormatResponseDTO {
             format: f.format.clone(),
-            schema_id: f.ecosystem_schema_id.clone(),
+            ecosystem_schema_id: f.ecosystem_schema_id.clone(),
             dcql: map_dcql_format_meta(f, config),
         })
         .collect();
 
+    let translations = if include_translations {
+        Some(
+            map_translations(&credential_schema)
+                .await
+                .error_while("mapping translations")?,
+        )
+    } else {
+        None
+    };
+
     Ok(CredentialSchemaListItemV2ResponseDTO {
         id: credential_schema.id,
         created_date: credential_schema.created_date,
+        deleted_at: credential_schema.deleted_at,
         last_modified: credential_schema.last_modified,
         name: credential_schema.name,
-        formats: format_responses,
+        formats,
         ecosystem: credential_schema.ecosystem,
         key_storage_security: credential_schema.key_storage_security,
         imported_source_url: credential_schema.imported_source_url,
@@ -747,7 +770,9 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         batch_size: credential_schema.batch_size,
         requires_wallet_instance_attestation: credential_schema
             .requires_wallet_instance_attestation,
+        translations,
         expiration: credential_schema.expiration,
+        revocation_method,
     })
 }
 
@@ -983,7 +1008,7 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
         });
 
         let schema_id = value.schema_id.map(|schema_id| {
-            CredentialSchemaFilterValue::SchemaId(StringMatch {
+            CredentialSchemaFilterValue::EcosystemSchemaId(StringMatch {
                 r#match: get_string_match_type(CredentialSchemaExactColumn::SchemaId),
                 value: schema_id,
             })
@@ -1041,7 +1066,9 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
             .is_multiformat_schema
             .map(CredentialSchemaFilterValue::IsMultiformatSchema);
 
-        let schema_ids = value.schema_ids.map(CredentialSchemaFilterValue::SchemaIds);
+        let schema_ids = value
+            .schema_ids
+            .map(CredentialSchemaFilterValue::EcosystemSchemaIds);
 
         organisation_id
             & name
@@ -1134,7 +1161,9 @@ impl From<CredentialSchemaV2FilterParamsDTO> for ListFilterCondition<CredentialS
             .is_multiformat_schema
             .map(CredentialSchemaFilterValue::IsMultiformatSchema);
 
-        let schema_ids = value.schema_ids.map(CredentialSchemaFilterValue::SchemaIds);
+        let ecosystem_schema_ids = value
+            .ecosystem_schema_ids
+            .map(CredentialSchemaFilterValue::EcosystemSchemaIds);
 
         let expiration_greater_than = value.expiration_greater_than.map(|expiration| {
             CredentialSchemaFilterValue::Expiration(ValueComparison {
@@ -1151,7 +1180,7 @@ impl From<CredentialSchemaV2FilterParamsDTO> for ListFilterCondition<CredentialS
 
         organisation_id
             & name
-            & schema_ids
+            & ecosystem_schema_ids
             & formats
             & ecosystems
             & key_storage_security

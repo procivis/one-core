@@ -15,6 +15,8 @@ pub enum CredentialServiceError {
     InvalidType(CredentialType),
     #[error("Invalid Credential role: {0}")]
     InvalidRole(CredentialRole),
+    #[error("Invalid format selection")]
+    InvalidFormatSelection,
 
     #[error("No issuer specified")]
     NoIssuer,
@@ -68,6 +70,7 @@ impl ErrorCodeMixin for CredentialServiceError {
             Self::InvalidState(_) => ErrorCode::BR_0002,
             Self::InvalidType(_) => ErrorCode::BR_0442,
             Self::InvalidRole(_) => ErrorCode::BR_0197,
+            Self::InvalidFormatSelection => ErrorCode::BR_0482,
             Self::MissingClaimSchema(_) => ErrorCode::BR_0003,
             Self::MissingDid(_) => ErrorCode::BR_0024,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,

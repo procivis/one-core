@@ -10,7 +10,7 @@ use uuid::Uuid;
 use uuid::fmt::Urn;
 
 use super::common::map_claims;
-use super::model::{CredentialData, CredentialSchema, PublishedClaim};
+use super::model::{CredentialData, CredentialSchema, FormatterCapabilities, PublishedClaim};
 use super::nest_claims;
 use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::{CoreConfig, FormatType};
@@ -34,6 +34,74 @@ pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
 
 pub(super) fn default_2_years() -> Duration {
     Duration::days(365 * 2)
+}
+
+impl FormatterCapabilities {
+    /// adjusts capabilities to also match constraints set by another format
+    pub(crate) fn combine_constraints(&mut self, other: &Self) {
+        let Self {
+            features,
+            selective_disclosure,
+            issuance_did_methods,
+            issuance_exchange_protocols,
+            proof_exchange_protocols,
+            revocation_methods,
+            signing_key_algorithms,
+            verification_key_algorithms,
+            verification_key_storages,
+            datatypes,
+            forbidden_claim_names,
+            issuance_identifier_types,
+            verification_identifier_types,
+            holder_identifier_types,
+            holder_key_algorithms,
+            holder_did_methods,
+            ecosystem_schema_ids: _,
+            pid_schema_ids: _,
+        } = other;
+
+        fn intersect<T: PartialEq>(s: &mut Vec<T>, o: &[T]) {
+            s.retain(|x| o.contains(x));
+        }
+
+        intersect(&mut self.features, features);
+        intersect(&mut self.selective_disclosure, selective_disclosure);
+        intersect(&mut self.issuance_did_methods, issuance_did_methods);
+        intersect(
+            &mut self.issuance_exchange_protocols,
+            issuance_exchange_protocols,
+        );
+        intersect(&mut self.proof_exchange_protocols, proof_exchange_protocols);
+        intersect(&mut self.revocation_methods, revocation_methods);
+        intersect(&mut self.signing_key_algorithms, signing_key_algorithms);
+        intersect(
+            &mut self.verification_key_algorithms,
+            verification_key_algorithms,
+        );
+        intersect(
+            &mut self.verification_key_storages,
+            verification_key_storages,
+        );
+        intersect(&mut self.datatypes, datatypes);
+
+        for name in forbidden_claim_names {
+            if !self.forbidden_claim_names.contains(name) {
+                self.forbidden_claim_names.push(name.to_owned());
+            }
+        }
+
+        intersect(
+            &mut self.issuance_identifier_types,
+            issuance_identifier_types,
+        );
+        intersect(
+            &mut self.verification_identifier_types,
+            verification_identifier_types,
+        );
+        intersect(&mut self.holder_identifier_types, holder_identifier_types);
+        intersect(&mut self.holder_key_algorithms, holder_key_algorithms);
+        intersect(&mut self.holder_did_methods, holder_did_methods);
+    }
 }
 
 pub(crate) async fn first_certificate(

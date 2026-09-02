@@ -531,11 +531,11 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         id: CredentialSchemaId,
         _organisation_id: OrganisationId,
-        schema_id: Option<&'a str>,
+        ecosystem_schema_id: Option<&'a str>,
         _core_base_url: &'a str,
         _format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
-        Ok(schema_id
+        Ok(ecosystem_schema_id
             .map(ToOwned::to_owned)
             .unwrap_or_else(|| id.to_string()))
     }

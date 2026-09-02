@@ -65,7 +65,7 @@ async fn test_get_credential_schema_v2_success() {
         .expect("formats should be an array");
     assert!(!formats.is_empty(), "formats should not be empty");
     assert!(formats[0]["format"].is_string());
-    assert!(formats[0]["schemaId"].is_string());
+    assert!(formats[0]["ecosystemSchemaId"].is_string());
 
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["claims"][0]["translations"]["name"]["en"], "firstName");
@@ -207,7 +207,7 @@ async fn test_get_credential_schema_v2_multiple_formats() {
             organisation_id: organisation.id.into(),
             formats: vec![
                 serde_json::json!({ "format": "JWT" }),
-                serde_json::json!({ "format": "MDOC", "schemaId": "org.example.test" }),
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: default_claims(),
             ..Default::default()
@@ -237,7 +237,7 @@ async fn test_get_credential_schema_v2_multiple_formats() {
     assert!(format_names.contains(&"MDOC"));
 
     let mdoc_format = formats.iter().find(|f| f["format"] == "MDOC").unwrap();
-    assert_eq!(mdoc_format["schemaId"], "org.example.test");
+    assert_eq!(mdoc_format["ecosystemSchemaId"], "org.example.test");
 }
 
 #[tokio::test]

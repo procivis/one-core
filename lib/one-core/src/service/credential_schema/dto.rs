@@ -49,11 +49,12 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub ecosystem: Option<EcosystemId>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaFormatResponseDTO {
     pub format: CredentialFormat,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
+    #[serde(skip_serializing)]
     pub dcql: Option<CredentialSchemaDcqlResponseDTO>,
 }
 
@@ -189,9 +190,9 @@ pub enum CredentialSchemaListIncludeEntityTypeEnum {
 pub enum CredentialSchemaFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
-    SchemaId(StringMatch),
-    SchemaIds(Vec<String>),
-    Formats(Vec<String>),
+    EcosystemSchemaId(StringMatch),
+    EcosystemSchemaIds(Vec<String>),
+    Formats(Vec<CredentialFormat>),
     Ecosystems(Vec<EcosystemId>),
     RequiresWalletInstanceAttestation(bool),
     KeyStorageSecurity(Vec<KeyStorageSecurity>),
@@ -211,7 +212,7 @@ pub struct CredentialSchemaFilterParamsDTO {
     pub exact: Option<Vec<CredentialSchemaExactColumn>>,
     pub organisation_id: OrganisationId,
     pub schema_id: Option<String>,
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
     pub ecosystems: Option<Vec<EcosystemId>>,
     pub requires_wallet_instance_attestation: Option<bool>,
     pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
@@ -230,7 +231,7 @@ pub struct CredentialSchemaV2FilterParamsDTO {
     pub name: Option<String>,
     pub exact: Option<Vec<CredentialSchemaExactColumn>>,
     pub organisation_id: OrganisationId,
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
     pub ecosystems: Option<Vec<EcosystemId>>,
     pub requires_wallet_instance_attestation: Option<bool>,
     pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
@@ -241,7 +242,7 @@ pub struct CredentialSchemaV2FilterParamsDTO {
     pub last_modified_before: Option<OffsetDateTime>,
     pub uses_batch_issuance: Option<bool>,
     pub is_multiformat_schema: Option<bool>,
-    pub schema_ids: Option<Vec<String>>,
+    pub ecosystem_schema_ids: Option<Vec<String>>,
     pub expiration_greater_than: Option<Duration>,
     pub expiration_less_than: Option<Duration>,
 }
@@ -250,8 +251,9 @@ pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaLi
 pub type GetCredentialSchemaListV2ResponseDTO =
     GetListResponse<CredentialSchemaListItemV2ResponseDTO>;
 
+#[skip_serializing_none]
 #[serde_as]
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaListItemV2ResponseDTO {
     pub id: CredentialSchemaId,
@@ -259,6 +261,8 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
+    #[serde(skip)]
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub formats: Vec<CredentialSchemaFormatResponseDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -268,9 +272,11 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: Option<CredentialSchemaTranslationsDTO>,
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
     pub ecosystem: Option<EcosystemId>,
+    pub revocation_method: Option<RevocationMethodId>,
 }
 
 #[derive(Clone, Debug)]
@@ -302,7 +308,7 @@ pub struct DisclosurePolicyCreateRequest {
 #[derive(Clone, Debug)]
 pub struct CredentialSchemaFormatRequestDTO {
     pub format: CredentialFormat,
-    pub schema_id: Option<String>,
+    pub ecosystem_schema_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]
@@ -310,7 +316,7 @@ pub struct CredentialSchemaFormatRequestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaV2FormatDTO {
     pub format: CredentialFormat,
-    pub schema_id: String,
+    pub ecosystem_schema_id: String,
 }
 
 #[derive(Clone, Debug)]

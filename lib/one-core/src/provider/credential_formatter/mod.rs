@@ -119,7 +119,7 @@ pub trait CredentialFormatter: Provider + Send + Sync {
         &self,
         id: CredentialSchemaId,
         _organisation_id: OrganisationId,
-        _schema_id: Option<&'a str>,
+        _ecosystem_schema_id: Option<&'a str>,
         core_base_url: &'a str,
         format: &CredentialFormat,
     ) -> Result<String, FormatterError> {

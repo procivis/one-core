@@ -13,7 +13,8 @@ use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCore;
 use crate::binding::credential_schema::{
     CredentialClaimSchemaTranslationsBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
-    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum,
+    CredentialSchemaListItemV2BindingDTO, CredentialSchemaTranslationsBindingDTO,
+    KeyStorageSecurityBindingEnum,
 };
 use crate::binding::history::TrustResolutionResultBindingEnum;
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
@@ -83,7 +84,6 @@ pub struct CredentialSchemaBindingDTO {
     pub last_modified: String,
     pub name: String,
     pub format: String,
-    pub revocation_method: Option<String>,
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
@@ -109,7 +109,7 @@ pub struct CredentialDetailBindingDTO {
     /// State representation of the credential in the system.
     pub state: CredentialStateBindingEnum,
     /// Schema of the credential.
-    pub schema: CredentialSchemaBindingDTO,
+    pub schema: CredentialSchemaListItemV2BindingDTO,
     pub claims: Vec<ClaimBindingDTO>,
     pub redirect_uri: Option<String>,
     /// The role the system has in relation to the credential. For example,
@@ -356,7 +356,7 @@ pub struct CredentialListItemBindingDTO {
     /// State representation of the credential in the system.
     pub state: CredentialStateBindingEnum,
     /// Schema of the credential.
-    pub schema: CredentialSchemaBindingDTO,
+    pub schema: CredentialSchemaListItemV2BindingDTO,
     /// The role the system has in relation to the credential. For example,
     /// if the system received the credential as a wallet this value will
     /// be `HOLDER`. If the system verified this credential during a presentation,

@@ -30,19 +30,24 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 pub(crate) async fn credential_schema_already_exists(
     repository: &dyn CredentialSchemaRepository,
     name: &str,
-    schema_ids: Vec<String>,
+    ecosystem_schema_ids: Vec<String>,
     organisation_id: OrganisationId,
 ) -> Result<UniquenessCheckResult, CredentialSchemaServiceError> {
     let credential_schemas = repository
         .get_credential_schema_list(create_unique_name_check_request(
             name,
-            schema_ids.clone(),
+            ecosystem_schema_ids.clone(),
             organisation_id,
         )?)
         .await
         .error_while("getting credential schemas")?;
 
-    if exists_credential_schema_with_same_schema_id(&credential_schemas, &schema_ids).await? {
+    if exists_credential_schema_with_same_ecosystem_schema_id(
+        &credential_schemas,
+        &ecosystem_schema_ids,
+    )
+    .await?
+    {
         return Ok(UniquenessCheckResult::SchemaIdConflict);
     }
     if credential_schemas.values.iter().any(|cs| cs.name == name) {
@@ -52,12 +57,12 @@ pub(crate) async fn credential_schema_already_exists(
     }
 }
 
-async fn exists_credential_schema_with_same_schema_id(
+async fn exists_credential_schema_with_same_ecosystem_schema_id(
     credential_schemas: &GetCredentialSchemaList,
-    schema_ids: &[String],
+    ecosystem_schema_ids: &[String],
 ) -> Result<bool, NestedError> {
     for value in &credential_schemas.values {
-        if value.matches_schema_id(schema_ids).await? {
+        if value.matches_schema_id(ecosystem_schema_ids).await? {
             return Ok(true);
         }
     }

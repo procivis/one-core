@@ -6,7 +6,7 @@ use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::OrganisationId;
+use shared_types::{CredentialSchemaFormatId, OrganisationId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
@@ -147,6 +147,8 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     pub notification_id: Option<String>,
     pub transaction_code: Option<String>,
+    #[serde(default)]
+    pub formats: Option<Vec<CredentialSchemaFormatId>>,
 }
 
 #[skip_serializing_none]

@@ -2,8 +2,9 @@ use std::borrow::Cow;
 use std::fmt::Display;
 
 use one_core::model::credential::CredentialListIncludeEntityTypeEnum;
+use one_dto_mapper::convert_inner;
 use serde_json::{Value, json};
-use shared_types::{CredentialId, IdentifierId};
+use shared_types::{CredentialFormat, CredentialId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -69,6 +70,7 @@ pub struct CreateCredentialTestParams {
     pub issuer_certificate: Option<Cow<'static, str>>,
     pub profile: Option<&'static str>,
     pub webhook_destination_url: Option<&'static str>,
+    pub formats: Option<Vec<CredentialFormat>>,
 }
 
 impl CredentialsApi {
@@ -111,6 +113,11 @@ impl CredentialsApi {
 
         if let Some(webhook_destination_url) = params.webhook_destination_url {
             body["webhookDestinationUrl"] = webhook_destination_url.into();
+        }
+
+        if let Some(formats) = params.formats {
+            let formats: Vec<String> = convert_inner(formats);
+            body["formats"] = formats.into();
         }
 
         self.client.post("/api/credential/v1", body).await

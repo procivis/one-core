@@ -258,7 +258,7 @@ async fn test_vct_metadata_v2_simple() {
         .create_v2(CreateSchemaV2Params {
             name: schema_name.to_string(),
             organisation_id: organisation.id.into(),
-            formats: vec![json!({ "format": "SD_JWT_VC", "schemaId": vct.clone() })],
+            formats: vec![json!({ "format": "SD_JWT_VC", "ecosystemSchemaId": vct.clone() })],
             claims: vec![
                 TestClaim {
                     datatype: "STRING".to_string(),

@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
-use shared_types::CredentialId;
+use shared_types::{CredentialFormat, CredentialId};
 use uuid::Uuid;
 
 use super::CredentialService;
@@ -16,8 +18,8 @@ use super::mapper::{
     get_credential_trust_information, get_remaining_batch_item_count, to_credential_list_response,
 };
 use super::validator::{
-    throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
-    validate_redirect_uri, validate_webhook_url,
+    throw_if_credential_state_eq, validate_create_request,
+    validate_format_and_did_method_compatibility, validate_redirect_uri, validate_webhook_url,
 };
 use crate::config::core_config::BlobStorageType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
@@ -32,8 +34,12 @@ use crate::model::identifier::{IdentifierState, IdentifierType};
 use crate::model::interaction::InteractionType;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
+use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::model::ShareResponse;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
+use crate::provider::issuance_protocol::serialize_interaction_data;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::BusinessLogicError;
@@ -82,16 +88,31 @@ impl CredentialService {
         validate_key_storage_security_supported(schema.key_storage_security, &self.config)
             .error_while("validating key storage security")?;
 
-        let schema_format = schema.format().await?;
-        let format_type = self
-            .config
-            .format
-            .get_type(&schema_format)
-            .error_while("getting credential schema format type")?;
-        let formatter_capabilities = self
-            .formatter_provider
-            .get_credential_formatter(&schema_format)?
-            .get_capabilities();
+        let mut formats = schema.formats.as_ref().await?.to_vec();
+        if let Some(selected_formats) = &request.formats {
+            let selected_formats =
+                HashSet::<&CredentialFormat>::from_iter(selected_formats.as_slice());
+            formats.retain(|f| selected_formats.contains(&f.format));
+            if formats.len() != selected_formats.len() {
+                return Err(CredentialServiceError::InvalidFormatSelection);
+            }
+        }
+
+        let mut common_formatter_capabilities: Option<FormatterCapabilities> = None;
+        for format in &formats {
+            let capabilities = self
+                .formatter_provider
+                .get_credential_formatter(&format.format)?
+                .get_capabilities();
+
+            if let Some(previous_capabilities) = common_formatter_capabilities.as_mut() {
+                previous_capabilities.combine_constraints(&capabilities);
+            } else {
+                common_formatter_capabilities = Some(capabilities);
+            };
+        }
+        let formatter_capabilities =
+            common_formatter_capabilities.ok_or(CredentialServiceError::InvalidFormatSelection)?;
 
         let exchange_capabilities = self
             .protocol_provider
@@ -133,7 +154,7 @@ impl CredentialService {
             }
         };
 
-        super::validator::validate_create_request(
+        validate_create_request(
             &request.protocol,
             &mut request.claim_values,
             &schema,
@@ -181,7 +202,39 @@ impl CredentialService {
         );
 
         let ecosystem = request.ecosystem.clone();
-        let credential = from_create_request(
+        let interaction = if request.formats.is_some() {
+            let interaction_data = Some(
+                serialize_interaction_data(&OpenID4VCIIssuerInteractionDataDTO {
+                    pre_authorized_code_used: false,
+                    access_token_hash: vec![],
+                    access_token_expires_at: None,
+                    refresh_token_hash: None,
+                    refresh_token_expires_at: None,
+                    notification_id: None,
+                    transaction_code: None,
+                    formats: Some(formats.iter().map(|f| f.id).collect()),
+                })
+                .error_while("serializing interaction data")?,
+            );
+
+            Some(
+                add_new_interaction(
+                    Uuid::new_v4().into(),
+                    &*self.interaction_repository,
+                    interaction_data,
+                    schema.organisation.to_owned(),
+                    InteractionType::Issuance,
+                    None,
+                    ecosystem.clone(),
+                )
+                .await
+                .error_while("adding interaction")?,
+            )
+        } else {
+            None
+        };
+
+        let mut credential = from_create_request(
             request,
             credential_id,
             claims,
@@ -189,8 +242,10 @@ impl CredentialService {
             issuer_certificate,
             schema,
             issuer_key,
-            format_type,
-        );
+            formats,
+            &self.config,
+        )?;
+        credential.interaction = convert_inner(interaction);
 
         if let Some(ecosystem) = &ecosystem {
             let ecosystem = self.ecosystem_provider.get(ecosystem)?;
@@ -409,8 +464,13 @@ impl CredentialService {
         let mut response_dtos = Vec::with_capacity(result.values.len());
         for value in result.values {
             response_dtos.push(
-                to_credential_list_response(value, include_translations, &*self.formatter_provider)
-                    .await?,
+                to_credential_list_response(
+                    value,
+                    include_translations,
+                    &self.config,
+                    self.formatter_provider.as_ref(),
+                )
+                .await?,
             );
         }
         Ok(GetCredentialListResponseDTO {
@@ -590,7 +650,7 @@ impl CredentialService {
             .error_while("updating credential")?;
         clear_previous_interaction(
             &*self.interaction_repository,
-            credential.interaction.as_ref().map(|i| i.id_ref()),
+            credential.interaction.id_opt_ref(),
         )
         .await
         .error_while("clearing interaction")?;

@@ -155,7 +155,7 @@ async fn test_create_credential_schema_v2_success_multiple_formats() {
             organisation_id: organisation.id.into(),
             formats: vec![
                 jwt_format(),
-                serde_json::json!({ "format": "MDOC", "schemaId": "org.example.test" }),
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: default_claims(),
             ..Default::default()
@@ -205,7 +205,7 @@ async fn test_create_credential_schema_v2_mdoc_with_jwt_without_root_object_succ
             organisation_id: organisation.id.into(),
             formats: vec![
                 jwt_format(),
-                serde_json::json!({ "format": "MDOC", "schemaId": "org.example.test" }),
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: flat_claims,
             ..Default::default()
@@ -474,7 +474,7 @@ async fn test_fail_create_credential_schema_v2_schema_id_not_allowed_for_jwt() {
         .create_v2(CreateSchemaV2Params {
             name: "v2 schema".into(),
             organisation_id: organisation.id.into(),
-            formats: vec![serde_json::json!({ "format": "JWT", "schemaId": "some-id" })],
+            formats: vec![serde_json::json!({ "format": "JWT", "ecosystemSchemaId": "some-id" })],
             claims: default_claims(),
             ..Default::default()
         })
@@ -568,7 +568,7 @@ async fn test_create_credential_schema_v2_mdoc_with_schema_id() {
             name: "v2 mdoc schema".into(),
             organisation_id: organisation.id.into(),
             formats: vec![
-                serde_json::json!({ "format": "MDOC", "schemaId": "org.iso.18013.5.1.mDL" }),
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.iso.18013.5.1.mDL" }),
             ],
             claims: default_claims(),
             ..Default::default()
@@ -592,7 +592,7 @@ async fn test_create_credential_schema_v2_mdoc_with_nesting_and_namespace() {
             name: "v2 mdoc schema".into(),
             organisation_id: organisation.id.into(),
             formats: vec![
-                serde_json::json!({ "format": "MDOC", "schemaId": "org.iso.18013.5.1.mDL" }),
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.iso.18013.5.1.mDL" }),
             ],
             claims: vec![TestClaim {
                 datatype: "OBJECT".to_string(),
@@ -679,7 +679,9 @@ async fn test_fail_create_credential_schema_v2_duplicate_schema_id() {
         .create_v2(CreateSchemaV2Params {
             name: "v2 mdoc schema 1".into(),
             organisation_id: organisation.id.into(),
-            formats: vec![serde_json::json!({ "format": "MDOC", "schemaId": "org.example.foo" })],
+            formats: vec![
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.foo" }),
+            ],
             claims: default_claims(),
             ..Default::default()
         })
@@ -693,7 +695,9 @@ async fn test_fail_create_credential_schema_v2_duplicate_schema_id() {
         .create_v2(CreateSchemaV2Params {
             name: "v2 mdoc schema 2".into(),
             organisation_id: organisation.id.into(),
-            formats: vec![serde_json::json!({ "format": "MDOC", "schemaId": "org.example.foo" })],
+            formats: vec![
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.foo" }),
+            ],
             claims: default_claims(),
             ..Default::default()
         })
@@ -806,7 +810,9 @@ async fn test_fail_create_credential_schema_v2_unsupported_data_type() {
         .create_v2(CreateSchemaV2Params {
             name: "v2 schema".into(),
             organisation_id: organisation.id.into(),
-            formats: vec![serde_json::json!({ "format": "SD_JWT_VC_SWIYU", "schemaId": "ID" })],
+            formats: vec![
+                serde_json::json!({ "format": "SD_JWT_VC_SWIYU", "ecosystemSchemaId": "ID" }),
+            ],
             claims: vec![TestClaim {
                 datatype: "PICTURE".to_string(),
                 key: "firstName".to_string(),

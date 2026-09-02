@@ -1,7 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::join_all;
 use one_core::model::certificate::CertificateRole;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialStateEnum, CredentialType};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
 use shared_types::CredentialId;
@@ -10,6 +10,7 @@ use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
+use crate::utils::api_clients::credential_schemas::{CreateSchemaV2Params, TestClaim};
 use crate::utils::api_clients::credentials::CreateCredentialTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
@@ -1438,6 +1439,184 @@ async fn test_create_credential_success_with_webhook_url() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(credential.webhook_url.unwrap(), webhook_url);
+}
+
+#[tokio::test]
+async fn test_create_credential_success_with_multiformat_schema() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+
+    let flat_claims = vec![TestClaim {
+        datatype: "STRING".to_string(),
+        key: "firstName".to_string(),
+        required: true,
+        claims: vec![],
+        array: None,
+        translations: None,
+        mappings: None,
+    }];
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "multiformat schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![
+                serde_json::json!({ "format": "JWT" }),
+                serde_json::json!({ "format": "SD_JWT" }),
+            ],
+            claims: flat_claims,
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(resp.status(), 201);
+    let credential_schema_id = resp.json_value().await["id"].parse();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .get(&credential_schema_id)
+        .await;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_FINAL1",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                }
+            ]),
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(credential.r#type, CredentialType::BatchParent);
+    assert!(credential.format.is_none());
+}
+
+#[tokio::test]
+async fn test_create_credential_success_with_format_selection() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
+
+    let format = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .format
+        .to_owned();
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_FINAL1",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
+                    "path": "isOver18"
+                }
+            ]),
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                formats: Some(vec![format.clone()]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(
+        credential.format.unwrap().as_ref().await.unwrap().format,
+        format
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_failed_wrong_format_selection() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                format: Some("JWT".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_FINAL1",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
+                    "path": "isOver18"
+                }
+            ]),
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                formats: Some(vec!["MDOC".into()]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0482", resp.error_code().await);
 }
 
 #[tokio::test]

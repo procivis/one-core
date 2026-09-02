@@ -72,6 +72,7 @@ impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
                 .transpose()?,
             notification_id: None,
             transaction_code: None,
+            formats: None,
         })
     }
 }

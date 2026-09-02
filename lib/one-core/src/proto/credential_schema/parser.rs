@@ -111,7 +111,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             organisation_id: dto.schema.organisation_id,
             formats: vec![ImportCredentialSchemaV2FormatDTO {
                 format: dto.schema.format,
-                schema_id: dto.schema.schema_id,
+                ecosystem_schema_id: dto.schema.schema_id,
             }],
             transaction_code: dto.schema.transaction_code,
             batch_size: None,
@@ -182,7 +182,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 .get_credential_formatter(&format_req.format)?;
 
             let schema_id =
-                self.parse_schema_id(format_req.schema_id.clone(), formatter.as_ref())?;
+                self.parse_schema_id(format_req.ecosystem_schema_id.clone(), formatter.as_ref())?;
             let format = self.parse_format_with_claim_mappings(
                 credential_schema_id,
                 schema_id,
@@ -349,18 +349,18 @@ impl CredentialSchemaImportParserImpl {
 
     pub(super) fn parse_schema_id(
         &self,
-        schema_id: String,
+        ecosystem_schema_id: String,
         formatter: &dyn CredentialFormatter,
     ) -> Result<String, Error> {
         let FormatterCapabilities { features, .. } = formatter.get_capabilities();
 
         // Supports -> required here because the system that the schema is parsed from is supposed
-        // to have generated the schema_id if it was not set manually.
+        // to have generated the ecosystem_schema_id if it was not set manually.
         let is_schema_id_required = features.contains(&Features::SupportsSchemaId);
-        if is_schema_id_required && schema_id.is_empty() {
+        if is_schema_id_required && ecosystem_schema_id.is_empty() {
             return Err(Error::MissingSchemaId);
         }
-        Ok(schema_id)
+        Ok(ecosystem_schema_id)
     }
 
     pub(super) fn parse_format(&self, format: CredentialFormat) -> Result<CredentialFormat, Error> {

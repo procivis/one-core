@@ -166,6 +166,9 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::ExpiresAt(value) => {
                 get_comparison_condition(credential::Column::ExpiresAt, value)
             }
+            Self::Formats(formats) => credential::Column::Format
+                .is_in(formats.iter().map(ToString::to_string))
+                .into_condition(),
             Self::HasUnconsumedBatchItems(true) => credential::Column::Id
                 .in_subquery(unconsumed_item_select())
                 .into_condition(),

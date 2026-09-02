@@ -1030,6 +1030,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Ecosystem enforcement mandated by provider, cannot be disabled")]
     BR_0481,
+
+    #[strum(message = "Invalid format selection")]
+    BR_0482,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

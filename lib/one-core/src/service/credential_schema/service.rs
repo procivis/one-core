@@ -106,7 +106,7 @@ impl CredentialSchemaService {
             name: request.name,
             formats: vec![CredentialSchemaFormatRequestDTO {
                 format: request.format,
-                schema_id: request.schema_id,
+                ecosystem_schema_id: request.schema_id,
             }],
             organisation_id: request.organisation_id,
             claims,
@@ -142,10 +142,10 @@ impl CredentialSchemaService {
             CredentialSchemaServiceError::MappingError("Missing core base_url".to_string())
         })?;
 
-        let schema_ids = request
+        let ecosystem_schema_ids = request
             .formats
             .iter()
-            .flat_map(|format| format.schema_id.clone())
+            .flat_map(|format| format.ecosystem_schema_id.clone())
             .collect();
 
         super::validator::validate_create_v2_request(
@@ -167,7 +167,7 @@ impl CredentialSchemaService {
 
         self.validate_credential_schema_already_exists(
             &request.name,
-            schema_ids,
+            ecosystem_schema_ids,
             request.organisation_id,
         )
         .await?;
@@ -201,7 +201,7 @@ impl CredentialSchemaService {
                     .credential_schema_id(
                         credential_schema_id,
                         organisation.id,
-                        format.schema_id.as_deref(),
+                        format.ecosystem_schema_id.as_deref(),
                         core_base_url,
                         &format.format,
                     )
@@ -243,7 +243,7 @@ impl CredentialSchemaService {
                 .credential_schema_id(
                     credential_schema_id,
                     organisation.id,
-                    format_req.schema_id.as_deref(),
+                    format_req.ecosystem_schema_id.as_deref(),
                     core_base_url,
                     &format_req.format,
                 )
@@ -331,13 +331,13 @@ impl CredentialSchemaService {
     async fn validate_credential_schema_already_exists(
         &self,
         name: &str,
-        schema_ids: Vec<String>,
+        ecosystem_schema_ids: Vec<String>,
         organisation_id: OrganisationId,
     ) -> Result<(), CredentialSchemaServiceError> {
         match super::validator::credential_schema_already_exists(
             &*self.credential_schema_repository,
             name,
-            schema_ids,
+            ecosystem_schema_ids,
             organisation_id,
         )
         .await?
@@ -514,6 +514,10 @@ impl CredentialSchemaService {
         )
         .error_while("checking session")?;
 
+        let include_translations = filter_params
+            .include
+            .as_ref()
+            .is_some_and(|i| i.contains(&CredentialSchemaListIncludeEntityTypeEnum::Translations));
         let result = self
             .credential_schema_repository
             .get_credential_schema_list(filter_params.into())
@@ -524,9 +528,14 @@ impl CredentialSchemaService {
             Vec::with_capacity(result.values.len());
         for credential_schema in result.values {
             items.push(
-                to_credential_schema_list_v2_response(credential_schema, &self.config)
-                    .await
-                    .error_while("mapping credential schemas")?,
+                to_credential_schema_list_v2_response(
+                    credential_schema,
+                    include_translations,
+                    &self.config,
+                    self.formatter_provider.as_ref(),
+                )
+                .await
+                .error_while("mapping credential schemas")?,
             );
         }
 

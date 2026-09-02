@@ -448,12 +448,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         id: CredentialSchemaId,
         organisation_id: OrganisationId,
-        schema_id: Option<&'a str>,
+        ecosystem_schema_id: Option<&'a str>,
         core_base_url: &'a str,
         format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
-        Ok(match schema_id {
-            Some(schema_id) => schema_id.to_string(),
+        Ok(match ecosystem_schema_id {
+            Some(ecosystem_schema_id) => ecosystem_schema_id.to_string(),
             None => format!("{core_base_url}/ssi/vct/v2/{organisation_id}/{id}/{format}"),
         })
     }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
-    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
+    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId,
 };
 use strum::AsRefStr;
 use time::OffsetDateTime;
@@ -11,13 +11,12 @@ use time::OffsetDateTime;
 use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
 use crate::model::credential::ExactCredentialFilterColumn;
-use crate::model::credential_schema::{KeyStorageSecurity, TransactionCode, TransactionCodeType};
+use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::history::TrustResolutionResult;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
-    CredentialSchemaListItemResponseDTO, CredentialSchemaTranslationsDTO,
+    CredentialClaimSchemaDTO, CredentialSchemaListItemV2ResponseDTO,
 };
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
@@ -32,7 +31,7 @@ pub struct CredentialListItemResponseDTO {
     pub state: CredentialStateEnum,
     pub r#type: CredentialTypeEnum,
     pub last_modified: OffsetDateTime,
-    pub schema: CredentialSchemaListItemResponseDTO,
+    pub schema: CredentialSchemaListItemV2ResponseDTO,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
@@ -84,6 +83,21 @@ pub struct CredentialDetailResponseDTO<T> {
     pub parent_id: Option<CredentialId>,
     pub subscriber_information: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+    #[serde(skip)]
+    pub offered_formats: Option<Vec<OfferedFormatDTO>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct OfferedFormatDTO {
+    pub format: CredentialFormat,
+    pub state: OfferedFormatStateEnum,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum OfferedFormatStateEnum {
+    Pending,
+    Accepted,
+    Rejected,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -119,29 +133,12 @@ pub struct MdocMsoValidityResponseDTO {
     pub last_update: OffsetDateTime,
 }
 
-#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialSchemaResponseDTO {
-    pub id: CredentialSchemaId,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    #[serde(skip)]
-    pub deleted_at: Option<OffsetDateTime>,
-    pub name: String,
-    pub format: CredentialFormat,
-    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
-    pub key_storage_security: Option<KeyStorageSecurity>,
-    pub schema_id: String,
-    pub imported_source_url: String,
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
-    pub allow_suspension: bool,
-    pub requires_wallet_instance_attestation: bool,
-    pub transaction_code: Option<DetailCredentialSchemaTransactionCodeDTO>,
-    pub translations: CredentialSchemaTranslationsDTO,
+    #[serde(flatten)]
+    pub schema: CredentialSchemaListItemV2ResponseDTO,
 }
 
 #[skip_serializing_none]
@@ -274,6 +271,7 @@ pub struct CreateCredentialRequestDTO {
     pub webhook_destination_url: Option<String>,
     pub subscriber_information: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+    pub formats: Option<Vec<CredentialFormat>>,
 }
 
 #[derive(Clone, Debug)]

@@ -19,7 +19,6 @@ use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::model::credential_schema::CredentialSchemaListQuery;
 use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListPagination;
 use crate::model::proof_schema::SortableProofSchemaColumn;
 use crate::proto::proof_schema::validator::proof_schema_name_already_exists;
 use crate::repository::error::DataLayerError;
@@ -132,10 +131,6 @@ impl ProofSchemaService {
         let credential_schemas = self
             .credential_schema_repository
             .get_credential_schema_list(CredentialSchemaListQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: expected_credential_schemas as u32,
-                }),
                 filtering: Some(
                     CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
                         .condition()

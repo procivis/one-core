@@ -128,7 +128,7 @@ impl CredentialSchemaImporterProto {
                         value: name,
                     })
                     .condition()
-                        | CredentialSchemaFilterValue::SchemaIds(schema_ids)),
+                        | CredentialSchemaFilterValue::EcosystemSchemaIds(schema_ids)),
             ),
             ..Default::default()
         };

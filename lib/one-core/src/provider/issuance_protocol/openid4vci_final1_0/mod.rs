@@ -1733,18 +1733,26 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: &Credential,
     ) -> Result<ShareResponse, IssuanceProtocolError> {
-        let interaction_id: InteractionId = Uuid::new_v4().into();
-
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let credential_schema = credential.schema.as_ref().await?;
+
+        let formats = if let Some(previous_interaction) = &credential.interaction {
+            let previous_interaction = previous_interaction.as_ref().await?;
+            let previous_data: OpenID4VCIIssuerInteractionDataDTO =
+                deserialize_interaction_data(previous_interaction.data.as_ref())?;
+            previous_data.formats
+        } else {
+            None
+        };
 
         let protocol_base_url = self
             .protocol_base_url
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
+        let interaction_id: InteractionId = Uuid::new_v4().into();
         let mut query = if self.params.credential_offer_by_value {
             let identifier_id = credential
                 .issuer_identifier
@@ -1790,6 +1798,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 refresh_token_expires_at: None,
                 notification_id: None,
                 transaction_code: transaction_code.to_owned(),
+                formats,
             },
         )?);
 

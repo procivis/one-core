@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::macros::{impl_display, impl_from};
+use crate::macros::{impl_display, impl_from, impl_into};
 
 /// Identifier of a formatter based in CoreConfig.format
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -34,6 +34,7 @@ impl AsRef<str> for CredentialFormat {
 
 impl_display!(CredentialFormat);
 impl_from!(CredentialFormat; String);
+impl_into!(CredentialFormat; String);
 
 #[cfg(feature = "sea-orm")]
 use crate::macros::impls_for_seaorm_newtype;

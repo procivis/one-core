@@ -1,7 +1,7 @@
 use proc_macros::Model;
 use shared_types::{
-    BlobId, CertificateId, CredentialId, CredentialSchemaId, EcosystemId, IdentifierId,
-    InteractionId, KeyId, OrganisationId,
+    BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, EcosystemId,
+    IdentifierId, InteractionId, KeyId, OrganisationId,
 };
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
@@ -167,6 +167,7 @@ pub enum CredentialFilterValue {
     IssuanceDate(ValueComparison<OffsetDateTime>),
     RevocationDate(ValueComparison<OffsetDateTime>),
     ExpiresAt(ValueComparison<OffsetDateTime>),
+    Formats(Vec<CredentialSchemaFormatId>),
     HasUnconsumedBatchItems(bool),
     Deleted(bool),
 }

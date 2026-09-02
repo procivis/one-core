@@ -217,7 +217,7 @@ impl SSIIssuerService {
                 sorting: None,
                 filtering: Some(
                     CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                        & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct))
+                        & CredentialSchemaFilterValue::EcosystemSchemaId(StringMatch::equals(&vct))
                             .condition(),
                 ),
                 include: Some(vec![
@@ -265,8 +265,8 @@ impl SSIIssuerService {
         };
 
         let filter = CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-            & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct)).condition()
-            & CredentialSchemaFilterValue::Formats(vec![format.to_string()]).condition();
+            & CredentialSchemaFilterValue::EcosystemSchemaId(StringMatch::equals(&vct)).condition()
+            & CredentialSchemaFilterValue::Formats(vec![format.to_owned()]).condition();
 
         let mut schema_list = self
             .credential_schema_repository
