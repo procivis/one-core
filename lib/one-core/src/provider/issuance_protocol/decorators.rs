@@ -70,7 +70,7 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
+    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         self.inner()
             .holder_refresh_credential(interaction, update_credential)
             .await
@@ -180,7 +180,7 @@ impl IssuanceProtocol for CapabilityChecked {
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
+    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         self.0
             .holder_refresh_credential(interaction, update_credential)
             .await

@@ -456,6 +456,7 @@ impl OneCore {
             session_provider.clone(),
             data_provider.get_credential_schema_repository(),
             data_provider.get_interaction_repository(),
+            data_provider.get_identifier_repository(),
         )?;
 
         let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(

@@ -251,6 +251,7 @@ impl IdentifierService {
                 &organisation,
                 &details,
                 IdentifierName::Name(name.clone()),
+                false,
             )
             .await
             .error_while("creating remote identifier")?;
@@ -315,6 +316,7 @@ impl IdentifierService {
                                     request.name,
                                     CreateLocalIdentifierRequest::Did(did_request),
                                     organisation,
+                                    false,
                                 )
                                 .await
                                 .error_while("creating local did identifier")?
@@ -340,6 +342,7 @@ impl IdentifierService {
                                     request.name,
                                     CreateLocalIdentifierRequest::Key(key),
                                     organisation,
+                                    false,
                                 )
                                 .await
                                 .error_while("creating local key identifier")?
@@ -366,6 +369,7 @@ impl IdentifierService {
                                     request.name,
                                     CreateLocalIdentifierRequest::Key(key),
                                     organisation,
+                                    false,
                                 )
                                 .await
                                 .error_while("creating local key identifier")?
@@ -382,6 +386,7 @@ impl IdentifierService {
                                     request.name,
                                     CreateLocalIdentifierRequest::Certificate(certificate_requests),
                                     organisation,
+                                    false,
                                 )
                                 .await
                                 .error_while("creating local certificate identifier")?
@@ -398,6 +403,7 @@ impl IdentifierService {
                                     request.name,
                                     CreateLocalIdentifierRequest::CertificateAuthority(ca_requests),
                                     organisation,
+                                    false,
                                 )
                                 .await
                                 .error_while("creating local CA identifier")?

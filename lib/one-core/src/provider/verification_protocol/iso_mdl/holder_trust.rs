@@ -73,6 +73,7 @@ pub(super) async fn resolve_verifier_and_trust(
                 interaction.organisation.as_ref().await?.as_ref(),
                 &verifier_details,
                 IdentifierName::PrefixForId("ReaderAuth".to_string()),
+                true,
             )
             .await
             .error_while("creating remote identifier")?;

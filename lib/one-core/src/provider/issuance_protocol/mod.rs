@@ -94,7 +94,7 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<CredentialId>, IssuanceProtocolError>;
+    ) -> Result<Vec<Credential>, IssuanceProtocolError>;
 
     /// Generates QR-code content to start the credential issuance flow.
     async fn issuer_share_credential(

@@ -30,6 +30,9 @@ pub trait IdentifierRepository: Send + Sync {
         request: UpdateIdentifierRequest,
     ) -> Result<(), DataLayerError>;
     async fn delete(&self, id: &IdentifierId) -> Result<(), DataLayerError>;
+
+    async fn hard_delete(&self, id: &IdentifierId) -> Result<(), DataLayerError>;
+
     async fn get_identifier_list(
         &self,
         query_params: IdentifierListQuery,

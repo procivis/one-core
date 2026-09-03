@@ -494,6 +494,7 @@ impl InstanceService {
                             },
                         ]),
                         organisation,
+                        false,
                     )
                     .await
                     .error_while("creating local identifier")?;

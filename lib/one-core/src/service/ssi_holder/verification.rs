@@ -450,6 +450,7 @@ impl SSIHolderService {
                         &organisation,
                         &details,
                         IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
+                        true,
                     )
                     .await
                     .error_while("creating remote verifier identifier")?;

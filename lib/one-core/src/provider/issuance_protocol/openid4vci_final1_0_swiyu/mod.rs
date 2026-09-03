@@ -51,6 +51,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -132,6 +133,7 @@ impl OpenID4VCISwiyu {
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
     ) -> Result<Self, InitializationError> {
         let params: OpenID4VCISwiyuParams =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -170,6 +172,7 @@ impl OpenID4VCISwiyu {
                 history_repository,
                 session_provider,
                 interaction_repository,
+                identifier_repository,
             ),
             config,
         })
@@ -328,7 +331,7 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
+    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         self.inner
             .holder_refresh_credential(interaction, update_credential)
             .await

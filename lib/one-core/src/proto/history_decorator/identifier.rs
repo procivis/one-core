@@ -119,4 +119,8 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
 
         Ok(())
     }
+
+    async fn hard_delete(&self, id: &IdentifierId) -> Result<(), DataLayerError> {
+        self.inner.hard_delete(id).await
+    }
 }

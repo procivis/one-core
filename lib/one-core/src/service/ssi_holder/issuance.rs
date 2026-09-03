@@ -336,10 +336,13 @@ impl SSIHolderService {
             .issuance_protocol_provider
             .get_protocol(&data.protocol)?;
 
-        let credential_ids = protocol
+        let credential_ids: Vec<_> = protocol
             .holder_refresh_credential(&interaction, None)
             .await
-            .error_while("refreshing credential batch")?;
+            .error_while("refreshing credential batch")?
+            .into_iter()
+            .map(|c| c.id)
+            .collect();
 
         if let Some(ecosystem_id) = &interaction.ecosystem {
             let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;

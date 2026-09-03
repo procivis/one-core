@@ -235,11 +235,11 @@ impl OpenID4VCIFinal1_0 {
         organisation: &Organisation,
         updated_credential: Option<Credential>,
         interaction: &Interaction,
-    ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
+    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         if let Some(credential) = updated_credential {
             self.process_mso_refresh(&credential, response).await?;
 
-            Ok(vec![credential.id])
+            Ok(vec![credential])
         } else {
             self.process_batch_refresh(
                 response,
@@ -309,7 +309,7 @@ impl OpenID4VCIFinal1_0 {
         mut holder_bindings: Vec<HolderBindingInput>,
         organisation: &Organisation,
         interaction: &Interaction,
-    ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
+    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         let batch_parent = self
             .credential_repository
             .get_credentials_by_interaction_id(&interaction.id)
@@ -441,16 +441,16 @@ impl OpenID4VCIFinal1_0 {
                 None
             };
 
-            let id = self
-                .credential_repository
-                .create_credential(Credential {
-                    state: CredentialStateEnum::Accepted,
-                    credential_blob_id,
-                    ..credential
-                })
+            let new_credential = Credential {
+                state: CredentialStateEnum::Accepted,
+                credential_blob_id,
+                ..credential
+            };
+            self.credential_repository
+                .create_credential(new_credential.clone())
                 .await
                 .error_while("creating credential")?;
-            result.push(id)
+            result.push(new_credential)
         }
 
         Ok(result)
@@ -532,6 +532,7 @@ impl OpenID4VCIFinal1_0 {
                 organisation,
                 &identifier_details,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
+                true,
             )
             .await
             .error_while("creating issuer identifier")?;
