@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialStateEnum, CredentialType};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
@@ -13,6 +13,7 @@ use crate::fixtures::{
     TestingCredentialParams, TestingDidParams, TestingIdentifierParams, assert_history_count,
 };
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
@@ -349,4 +350,85 @@ async fn test_revoke_credential_fails_when_expired() {
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(CredentialStateEnum::Expired, credential.state);
+}
+
+#[tokio::test]
+async fn test_revoke_multi_format_batch_parent_with_rejected_format() {
+    // GIVEN a multi-format batch parent where the holder rejected one format
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                formats: Some(vec![
+                    ("JWT".into(), "jwt-schema-id".to_string()),
+                    ("SD_JWT_VC".into(), "sd-jwt-vc-schema-id".to_string()),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let formats = credential_schema.formats.as_ref().await.unwrap().to_owned();
+    let parent = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issued_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                format: Some(formats[0].clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let rejected_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Rejected,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                format: Some(formats[1].clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context.db.revocation_lists.create(identifier, None).await;
+
+    // WHEN
+    let resp = context.api.credentials.revoke(&parent.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    let parent = context.db.credentials.get(&parent.id).await;
+    assert_eq!(CredentialStateEnum::Revoked, parent.state);
+    let issued_item = context.db.credentials.get(&issued_item.id).await;
+    assert_eq!(CredentialStateEnum::Revoked, issued_item.state);
+    let rejected_item = context.db.credentials.get(&rejected_item.id).await;
+    assert_eq!(CredentialStateEnum::Rejected, rejected_item.state);
 }
