@@ -53,6 +53,14 @@ pub(crate) fn der_chain_into_pem_chain(der_chain: Vec<Vec<u8>>) -> String {
     encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF))
 }
 
+pub(crate) fn pem_chain_into_der_chain(
+    pem_chain: &str,
+) -> Result<Vec<Vec<u8>>, CertificateParsingError> {
+    Pem::iter_from_buffer(pem_chain.as_bytes())
+        .map(|pem| Ok(pem?.contents))
+        .collect()
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum CertificateParsingError {
     #[error("Unexpected extension")]

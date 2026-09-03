@@ -2,8 +2,10 @@ use indexmap::IndexMap;
 
 use super::model::PublishedClaimValue;
 use crate::error::ContextWithErrorCode;
+use crate::mapper::x509::der_chain_into_pem_chain;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 use crate::provider::credential_formatter::model::PublishedClaim;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -12,15 +14,50 @@ use crate::service::credential::dto::{
 /// Resolves the certificate (chain) referenced by the `x5u` header parameter
 /// (IETF RFC 7515 clause 4.1.5 for JOSE, IETF RFC 9360 for COSE). ETSI TS 119 472-1
 /// requires QEAA/PuB-EAA to make their signing certificate available this way
-/// (QEAA-5.6.2-02, QEAA-6.6.2-02). The referenced resource is a PEM-encoded certificate
-/// chain, leaf first.
+/// (QEAA-5.6.2-02, QEAA-6.6.2-02).
+///
+/// # Returns
+/// The referenced resource as a PEM-encoded certificate chain, leaf first.
 pub async fn resolve_x5u(
     url: &str,
     http_client: &dyn HttpClient,
 ) -> Result<String, FormatterError> {
-    let response = async { http_client.get(url).send().await?.error_for_status() }
-        .await
-        .error_while("fetching x5u certificate")?;
+    let response = async {
+        http_client
+            .get(url)
+            .header(
+                "Accept",
+                "application/pem-certificate-chain, application/x-pem-file, application/cose-x509",
+            )
+            .send()
+            .await?
+            .error_for_status()
+    }
+    .await
+    .error_while("fetching x5u certificate")?;
+
+    let content_type = response.header_get("content-type");
+    match content_type {
+        Some(content_type) if content_type.contains("application/cose-x509") => {
+            let cbor: Vec<Bstr> = ciborium::from_reader(response.body.as_slice())?;
+            let der_chain = cbor.into_iter().map(|bstr| bstr.0).collect();
+            return Ok(der_chain_into_pem_chain(der_chain));
+        }
+        Some(content_type)
+            if content_type.contains("application/pem-certificate-chain")
+                || content_type.contains("application/x-pem-file") =>
+        {
+            // recognized PEM chain - proceed
+        }
+        Some(unknown_content_type) => {
+            tracing::warn!("x5u: unknown Content-Type provided: `{unknown_content_type}`");
+            // try fallback to PEM
+        }
+        None => {
+            tracing::warn!("x5u: no Content-Type provided");
+            // try fallback to PEM
+        }
+    };
 
     String::from_utf8(response.body).map_err(|e| {
         FormatterError::CouldNotExtractCredentials(format!("x5u response is not valid PEM: {e}"))

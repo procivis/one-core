@@ -9,6 +9,7 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::Mime;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
+use one_core::service::certificate::dto::CertificateFormatEnum;
 use one_core::service::did::error::DidServiceError;
 use one_core::service::ssi_issuer::error::IssuerServiceError;
 use one_core::service::trust_list_publication::dto::TrustListContentTypeDTO;
@@ -32,14 +33,25 @@ use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
 use crate::extractor::Accept;
 use crate::router::AppState;
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used)]
 static APPLICATION_JWT: LazyLock<Mime> = LazyLock::new(|| {
     Mime::from_str("application/jwt").expect("application/jwt is valid mime type")
 });
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used)]
 static APPLICATION_XML: LazyLock<Mime> = LazyLock::new(|| {
     Mime::from_str("application/xml").expect("application/xml is valid mime type")
+});
+
+#[expect(clippy::expect_used)]
+static APPLICATION_PEM_CHAIN: LazyLock<Mime> = LazyLock::new(|| {
+    Mime::from_str("application/pem-certificate-chain")
+        .expect("application/pem-certificate-chain is valid mime type")
+});
+
+#[expect(clippy::expect_used)]
+static APPLICATION_COSE_X509: LazyLock<Mime> = LazyLock::new(|| {
+    Mime::from_str("application/cose-x509").expect("application/cose-x509 is valid mime type")
 });
 
 #[endpoint(
@@ -574,7 +586,10 @@ pub(crate) async fn ssi_get_certificate_authority(
         ("id" = CertificateId, Path, description = "Certificate id")
     ),
     responses(
-        (status = 200, description = "OK", content_type = "application/x-pem-file"),
+        (status = 200, description = "OK", content(
+            (String = "application/pem-certificate-chain", example = "-----BEGIN CERTIFICATE-----\nMIICY...\n-----END CERTIFICATE-----"),
+            ([u8] = "application/cose-x509")
+        )),
         (status = 404, description = "Certificate not found"),
         (status = 500, description = "Server error"),
     ),
@@ -585,18 +600,43 @@ pub(crate) async fn ssi_get_certificate_authority(
     "},
 )]
 pub(crate) async fn ssi_get_certificate(
+    accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CertificateId>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state.core.certificate_service.get_certificate_pem(id).await;
+    // fallback to PEM format if no accept header recognized
+    let format = if let Some(TypedHeader(accept)) = accept {
+        if accept.contains(&APPLICATION_PEM_CHAIN) {
+            CertificateFormatEnum::Pem
+        } else if accept.contains(&APPLICATION_COSE_X509) {
+            CertificateFormatEnum::CoseX509
+        } else {
+            CertificateFormatEnum::Pem
+        }
+    } else {
+        CertificateFormatEnum::Pem
+    };
+
+    let result = state
+        .core
+        .certificate_service
+        .get_certificate_content(id, format)
+        .await;
 
     match result {
-        Ok(result) => (
-            StatusCode::OK,
-            [(header::CONTENT_TYPE, "application/x-pem-file")],
-            result,
-        )
-            .into_response(),
+        Ok(content) => {
+            let content_type = match format {
+                CertificateFormatEnum::Pem => APPLICATION_PEM_CHAIN.as_ref(),
+                CertificateFormatEnum::CoseX509 => "application/cose-x509; usage=chain",
+            };
+
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, content_type)],
+                content,
+            )
+                .into_response()
+        }
         Err(error) if error.error_code() == ErrorCode::BR_0223 => {
             tracing::warn!("Missing certificate");
             StatusCode::NOT_FOUND.into_response()

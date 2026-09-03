@@ -66,3 +66,9 @@ pub struct CertificateResponseDTO {
     pub organisation_id: Option<OrganisationId>,
     pub roles: Vec<CertificateRole>,
 }
+
+#[derive(Clone, Copy, Debug)]
+pub enum CertificateFormatEnum {
+    Pem,
+    CoseX509,
+}

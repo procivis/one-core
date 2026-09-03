@@ -8,9 +8,11 @@ use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::relation::RelatedVec;
 use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::service::certificate::CertificateService;
+use crate::service::certificate::dto::CertificateFormatEnum;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, get_dummy_date};
 
 #[tokio::test]
@@ -95,7 +97,7 @@ GsPNAYTwQu1egNMnoBk0k0cwNJCBJmS3zEGaDw==
 -----END CERTIFICATE-----";
 
 #[tokio::test]
-async fn test_get_certificate_pem_success() {
+async fn test_get_certificate_content_pem_success() {
     let id = Uuid::new_v4().into();
 
     let mut certificate_repository = MockCertificateRepository::new();
@@ -131,12 +133,60 @@ async fn test_get_certificate_pem_success() {
         session_provider: Arc::new(StaticSessionProvider::new_random()),
     };
 
-    let result = service.get_certificate_pem(id).await.unwrap();
-    assert_eq!(result, TEST_CERTIFICATE_PEM);
+    let result = service
+        .get_certificate_content(id, CertificateFormatEnum::Pem)
+        .await
+        .unwrap();
+    assert_eq!(String::from_utf8(result).unwrap(), TEST_CERTIFICATE_PEM);
 }
 
 #[tokio::test]
-async fn test_get_certificate_pem_invalid_identifier() {
+async fn test_get_certificate_content_cose_x509_success() {
+    let id = Uuid::new_v4().into();
+
+    let mut certificate_repository = MockCertificateRepository::new();
+    certificate_repository.expect_get().returning(|id| {
+        Ok(Certificate {
+            id,
+            identifier_id: Uuid::new_v4().into(),
+            organisation: dummy_organisation(None).into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            expiry_date: get_dummy_date(),
+            deleted_at: None,
+            name: "".to_string(),
+            chain: TEST_CERTIFICATE_PEM.to_string(),
+            fingerprint: "".to_string(),
+            state: CertificateState::Active,
+            roles: vec![],
+            key: None,
+        })
+    });
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().returning(|_| {
+        Ok(Identifier {
+            data: IdentifierData::Certificate(RelatedVec::from(vec![])),
+            ..dummy_identifier()
+        })
+    });
+
+    let service = CertificateService {
+        certificate_repository: Arc::new(certificate_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service
+        .get_certificate_content(id, CertificateFormatEnum::CoseX509)
+        .await
+        .unwrap();
+
+    let _unused: Vec<Bstr> = ciborium::from_reader(result.as_slice()).unwrap();
+}
+
+#[tokio::test]
+async fn test_get_certificate_content_invalid_identifier() {
     let id = Uuid::new_v4().into();
 
     let mut certificate_repository = MockCertificateRepository::new();
@@ -172,6 +222,8 @@ async fn test_get_certificate_pem_invalid_identifier() {
         session_provider: Arc::new(StaticSessionProvider::new_random()),
     };
 
-    let result = service.get_certificate_pem(id).await;
+    let result = service
+        .get_certificate_content(id, CertificateFormatEnum::Pem)
+        .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0223);
 }

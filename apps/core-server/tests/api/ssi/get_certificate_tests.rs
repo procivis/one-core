@@ -15,7 +15,7 @@ async fn test_get_certificate_success() {
     assert_eq!(resp.status(), 200);
     assert_eq!(
         resp.headers().get("content-type").unwrap(),
-        "application/x-pem-file"
+        "application/pem-certificate-chain"
     );
 
     let content = resp.text().await;

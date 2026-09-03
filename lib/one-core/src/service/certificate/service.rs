@@ -1,13 +1,15 @@
+use coset::CborSerializable;
 use ct_codecs::{Base64, Decoder};
 use shared_types::CertificateId;
 
 use super::CertificateService;
-use super::dto::CertificateResponseDTO;
+use super::dto::{CertificateFormatEnum, CertificateResponseDTO};
 use super::error::CertificateServiceError;
 use super::mapper::certificate_to_response_dto;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::x509::pem_chain_into_x5c;
+use crate::mapper::x509::{pem_chain_into_der_chain, pem_chain_into_x5c};
 use crate::model::identifier::IdentifierType;
+use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 use crate::repository::error::{DataLayerError, EntityKind};
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -81,10 +83,11 @@ impl CertificateService {
             .map_err(|e| CertificateServiceError::MappingError(e.to_string()))
     }
 
-    pub async fn get_certificate_pem(
+    pub async fn get_certificate_content(
         &self,
         id: CertificateId,
-    ) -> Result<String, CertificateServiceError> {
+        format: CertificateFormatEnum,
+    ) -> Result<Vec<u8>, CertificateServiceError> {
         let certificate = self
             .certificate_repository
             .get(id)
@@ -105,6 +108,22 @@ impl CertificateService {
             tracing::info!("Invalid identifier type: {}", identifier.data.r#type());
             return Err(certificate_not_found(id));
         }
-        Ok(certificate.chain)
+
+        Ok(match format {
+            CertificateFormatEnum::Pem => certificate.chain.as_bytes().to_vec(),
+            CertificateFormatEnum::CoseX509 => {
+                let der_chain = pem_chain_into_der_chain(&certificate.chain)
+                    .error_while("coverting PEM chain")?;
+                let result = ciborium::Value::Array(
+                    der_chain
+                        .into_iter()
+                        .map(|der| ciborium::Value::from(Bstr(der)))
+                        .collect(),
+                );
+                result
+                    .to_vec()
+                    .map_err(|e| CertificateServiceError::MappingError(e.to_string()))?
+            }
+        })
     }
 }

@@ -737,7 +737,7 @@ mod tests {
     fn verify_x5t_rejects_non_sha256_algorithm() {
         let fingerprint = "0102030405060708090a0b0c0d0e0f10";
         let x5t = cose_cert_hash(
-            iana::Algorithm::ES256.to_i64(),
+            iana::Algorithm::SHA_1.to_i64(),
             hex::decode(fingerprint).unwrap(),
         );
 
