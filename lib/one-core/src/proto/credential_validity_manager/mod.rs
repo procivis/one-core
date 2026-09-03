@@ -30,7 +30,6 @@ use crate::provider::credential_formatter::model::{CertificateDetails, Identifie
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
-use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::mapper::revocation_state_from_credential_state;
 use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -167,34 +166,14 @@ impl CredentialValidityManagerImpl {
             credential.r#type,
             &revocation_state,
         )?;
-        let format = credential_schema.format().await?;
-        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
-
-        let revocation_method_id = credential_schema
-            .revocation_method_id(formatter.as_ref())
-            .ok_or(Error::NoRevocationMethod(credential_schema.id.to_owned()))?;
-        verify_suspension_support(&credential_schema, revocation_method_id, &revocation_state)?;
-
-        let revocation_method = self
-            .revocation_method_provider
-            .get_revocation_method(revocation_method_id)?;
 
         match credential.r#type {
             CredentialType::Single => {
-                self.change_revocation_state(
-                    credential.id,
-                    revocation_state,
-                    revocation_method.as_ref(),
-                )
-                .await?;
+                self.change_revocation_state(&credential, &credential_schema, revocation_state)
+                    .await?;
             }
             CredentialType::BatchItem => {
-                // only batch members can be individually updated, not MDOC MSO's
                 let parent = credential.parent.as_required_ref().await?;
-                if parent.r#type != CredentialType::BatchParent {
-                    return Err(Error::InvalidCredentialType(credential.r#type));
-                }
-
                 let parent_status =
                     revocation_state_from_credential_state(parent.state, parent.suspend_end_date)
                         .error_while("parsing status")?;
@@ -202,9 +181,9 @@ impl CredentialValidityManagerImpl {
                 self.tx_manager
                     .tx(async {
                         self.change_revocation_state(
-                            credential.id,
+                            &credential,
+                            &credential_schema,
                             revocation_state,
-                            revocation_method.as_ref(),
                         )
                         .await?;
 
@@ -247,7 +226,7 @@ impl CredentialValidityManagerImpl {
             }
             CredentialType::BatchParent => {
                 // all underlying batch items must be updated
-                let credentials = self
+                let batch_items = self
                     .credential_repository
                     .get_credential_list(ListQuery {
                         filtering: Some(
@@ -261,37 +240,60 @@ impl CredentialValidityManagerImpl {
                     .values;
 
                 let mut batch_items_to_update = vec![];
-                for credential in credentials {
+                for batch_item in batch_items {
                     // skipping items with the target state
                     // except Suspension, since there might be change in `suspend_end_date`
-                    if credential.state != CredentialStateEnum::Suspended
-                        && credential.state == revocation_state.into()
+                    if batch_item.state != CredentialStateEnum::Suspended
+                        && batch_item.state == revocation_state.into()
                     {
                         continue;
                     }
 
                     validate_revocation_state_transition(
-                        credential.state,
-                        credential.r#type,
+                        batch_item.state,
+                        batch_item.r#type,
                         &revocation_state,
                     )
-                    .error_while(format!(
-                        "checking state of batch credential `{}`",
-                        credential.id
-                    ))?;
+                    .error_while(format!("checking state of batch item `{}`", batch_item.id))?;
 
-                    batch_items_to_update.push(credential.id);
+                    batch_items_to_update.push(batch_item);
                 }
 
                 self.tx_manager
                     .tx(async {
-                        for batch_item_id in batch_items_to_update {
-                            self.change_revocation_state(
-                                batch_item_id,
-                                revocation_state,
-                                revocation_method.as_ref(),
-                            )
-                            .await?;
+                        let mut all_items_not_supported = true;
+                        let mut items_error = None;
+                        for batch_item in &batch_items_to_update {
+                            match self
+                                .change_revocation_state(
+                                    batch_item,
+                                    &credential_schema,
+                                    revocation_state,
+                                )
+                                .await
+                            {
+                                Ok(_) => {
+                                    all_items_not_supported = false;
+                                }
+                                Err(err)
+                                    if matches!(
+                                        err.error_code(),
+                                        ErrorCode::BR_0162 | ErrorCode::BR_0098
+                                    ) =>
+                                {
+                                    tracing::debug!(%err, "Batch item ({}) does not support revocation state {revocation_state}", batch_item.id);
+                                    items_error = Some(err);
+                                }
+                                Err(err) => {
+                                    tracing::info!(%err, "Updating batch_item ({}) state failed", batch_item.id);
+                                    return Err(err);
+                                }
+                            };
+                        }
+
+                        if all_items_not_supported && let Some(items_error) = items_error {
+                            tracing::info!("No batch item supports revocation state {revocation_state}");
+                            return Err(items_error.error_while("changing batch items state").into());
                         }
 
                         // batch parent not linked directly with any technical credential, only update state
@@ -345,22 +347,30 @@ impl CredentialValidityManagerImpl {
 
     async fn change_revocation_state(
         &self,
-        credential_id: CredentialId,
+        credential: &Credential,
+        credential_schema: &CredentialSchema,
         revocation_state: RevocationState,
-        revocation_method: &dyn RevocationMethod,
     ) -> Result<(), Error> {
-        let credential = self
-            .credential_repository
-            .get_credential(&credential_id)
-            .await
-            .error_while("getting credential")?;
+        let format = credential.format.as_required_ref().await?;
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&format.format)?;
+
+        let revocation_method_id = credential_schema
+            .revocation_method_id(formatter.as_ref())
+            .ok_or(Error::NoRevocationMethod(credential_schema.id))?;
+        verify_suspension_support(credential_schema, revocation_method_id, &revocation_state)?;
+
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method(revocation_method_id)?;
 
         revocation_method
-            .mark_credential_as(&credential, revocation_state.to_owned())
+            .mark_credential_as(credential, revocation_state.to_owned())
             .await
             .error_while("marking credential status")?;
 
-        self.update_credential_state(credential_id, revocation_state)
+        self.update_credential_state(credential.id, revocation_state)
             .await?;
 
         Ok(())

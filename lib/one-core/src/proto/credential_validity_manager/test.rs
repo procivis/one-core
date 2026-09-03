@@ -38,6 +38,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::revocation::MockRevocationMethod;
+use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -1378,7 +1379,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
-        .times(2)
+        .once()
         .with(eq(clone.id))
         .returning(move |_| Ok(clone.clone()));
 
@@ -1463,7 +1464,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
-        .times(2)
+        .once()
         .with(eq(clone.id))
         .returning(move |_| Ok(clone.clone()));
 
@@ -1553,7 +1554,7 @@ async fn test_suspend_credential_success() {
         let clone = credential.clone();
         credential_repository
             .expect_get_credential()
-            .times(2)
+            .once()
             .with(eq(clone.id))
             .returning(move |_| Ok(clone.clone()));
     }
@@ -1630,7 +1631,7 @@ async fn test_reactivate_credential_success() {
     let cred_clone = credential.clone();
     credential_repository
         .expect_get_credential()
-        .times(2)
+        .once()
         .returning(move |_| Ok(cred_clone.clone()));
 
     let mut formatter = MockCredentialFormatter::default();
@@ -1746,75 +1747,6 @@ async fn test_revoke_credential_invalid_role() {
 }
 
 #[tokio::test]
-async fn test_suspend_credential_failed_mdoc_batch_item() {
-    let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.state = CredentialStateEnum::Accepted;
-    credential.r#type = CredentialType::BatchItem;
-    credential.parent = Some(
-        {
-            let mut parent = generic_credential();
-            parent.r#type = CredentialType::Single;
-            parent
-        }
-        .into(),
-    );
-
-    let mut credential_repository = MockCredentialRepository::default();
-    let clone = credential.clone();
-    credential_repository
-        .expect_get_credential()
-        .times(1)
-        .with(eq(clone.id))
-        .returning(move |_| Ok(clone.clone()));
-
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
-
-    let mut formatter = MockCredentialFormatter::default();
-    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
-    formatter
-        .expect_revocation_method_id()
-        .returning(|| Some(&*REVOCATION_METHOD));
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
-    let revocation_method = Arc::new(revocation_method);
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq((*REVOCATION_METHOD).clone()))
-        .times(1)
-        .returning(move |_| Ok(revocation_method.clone()));
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let validity_manager = setup_validity_manager(Repositories {
-        credential_repository,
-        revocation_method_provider,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = validity_manager
-        .change_credential_state(
-            &credential.id,
-            ChangeCredentialState::Suspended {
-                suspend_end_date: None,
-            },
-        )
-        .await
-        .unwrap_err();
-
-    assert!(matches!(result, Error::InvalidCredentialType(_)));
-}
-
-#[tokio::test]
 async fn test_revoke_credential_batch_parent() {
     let mut parent_credential = generic_credential();
     parent_credential.role = CredentialRole::Issuer;
@@ -1834,13 +1766,6 @@ async fn test_revoke_credential_batch_parent() {
             .expect_get_credential()
             .once()
             .with(eq(parent_credential.id))
-            .returning(move |_| Ok(clone.clone()));
-
-        let clone = child_credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .once()
-            .with(eq(child_credential.id))
             .returning(move |_| Ok(clone.clone()));
 
         let clone = child_credential.clone();
@@ -1942,7 +1867,7 @@ async fn test_revoke_credential_batch_item() {
 
     credential_repository
         .expect_get_credential()
-        .times(2)
+        .once()
         .with(eq(child_credential.id))
         .returning({
             let clone = child_credential.clone();
@@ -2041,6 +1966,312 @@ async fn test_revoke_credential_batch_item() {
 }
 
 #[tokio::test]
+async fn test_suspend_multiformat_credential_one_format_unsupported() {
+    let mut base_credential = generic_credential();
+    base_credential.role = CredentialRole::Issuer;
+    base_credential.state = CredentialStateEnum::Accepted;
+
+    let sdjwtvc_format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: base_credential.schema.id(),
+        format: "SD_JWT_VC".into(),
+        ecosystem_schema_id: "sdjwtvc".to_owned(),
+        claim_mappings: Default::default(),
+    };
+    let mdoc_format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: base_credential.schema.id(),
+        format: "MDOC".into(),
+        ecosystem_schema_id: "mdoc".to_owned(),
+        claim_mappings: Default::default(),
+    };
+    base_credential.schema.as_mut().await.unwrap().formats =
+        vec![sdjwtvc_format.clone(), mdoc_format.clone()].into();
+
+    let mut parent_credential = base_credential.clone();
+    parent_credential.r#type = CredentialType::BatchParent;
+
+    let mut sdjwtvc_credential = base_credential.clone();
+    sdjwtvc_credential.r#type = CredentialType::BatchItem;
+    sdjwtvc_credential.parent = Some(parent_credential.clone().into());
+    sdjwtvc_credential.format = Some(sdjwtvc_format.clone().into());
+
+    let mut mdoc_credential = base_credential.clone();
+    mdoc_credential.r#type = CredentialType::BatchItem;
+    mdoc_credential.parent = Some(parent_credential.clone().into());
+    mdoc_credential.format = Some(mdoc_format.clone().into());
+
+    let mut credential_repository = MockCredentialRepository::default();
+
+    credential_repository
+        .expect_get_credential()
+        .once()
+        .with(eq(parent_credential.id))
+        .returning({
+            let clone = parent_credential.clone();
+            move |_| Ok(clone.clone())
+        });
+
+    credential_repository
+        .expect_get_credential_list()
+        .once()
+        .returning({
+            let _parent_credential_id = parent_credential.id;
+            let values = vec![sdjwtvc_credential.clone(), mdoc_credential.clone()];
+            move |query| {
+                assert!(query.filtering.unwrap().contains(&|fv| matches!(
+                    fv,
+                    CredentialFilterValue::ParentCredential(_parent_credential_id)
+                )));
+                Ok(GetCredentialList {
+                    total_items: 2,
+                    total_pages: 1,
+                    values: values.clone(),
+                })
+            }
+        });
+
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(parent_credential.id), always())
+        .returning(move |_, request| {
+            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
+            Ok(())
+        });
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(sdjwtvc_credential.id), always())
+        .returning(move |_, request| {
+            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
+            Ok(())
+        });
+
+    static REVOCATION_METHOD_WITH_SUSPENSION: LazyLock<RevocationMethodId> =
+        LazyLock::new(|| "WITH_SUSPENSION".into());
+    let mut revocation_method_with_suspension = MockRevocationMethod::default();
+    revocation_method_with_suspension
+        .expect_mark_credential_as()
+        .once()
+        .with(
+            always(),
+            eq(RevocationState::Suspended {
+                suspend_end_date: None,
+            }),
+        )
+        .return_once({
+            let credential_id = sdjwtvc_credential.id;
+            move |credential, _| {
+                assert_eq!(credential.id, credential_id);
+                Ok(())
+            }
+        });
+    let revocation_method_with_suspension = Arc::new(revocation_method_with_suspension);
+
+    static REVOCATION_METHOD_WITHOUT_SUSPENSION: LazyLock<RevocationMethodId> =
+        LazyLock::new(|| "WITHOUT_SUSPENSION".into());
+    let mut revocation_method_without_suspension = MockRevocationMethod::default();
+    revocation_method_without_suspension
+        .expect_mark_credential_as()
+        .once()
+        .with(
+            always(),
+            eq(RevocationState::Suspended {
+                suspend_end_date: None,
+            }),
+        )
+        .return_once({
+            let credential_id = mdoc_credential.id;
+            move |credential, _| {
+                assert_eq!(credential.id, credential_id);
+                Err(RevocationError::OperationNotSupported("test".to_string()))
+            }
+        });
+    let revocation_method_without_suspension = Arc::new(revocation_method_without_suspension);
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq((*REVOCATION_METHOD_WITH_SUSPENSION).clone()))
+        .once()
+        .returning(move |_| Ok(revocation_method_with_suspension.clone()));
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq((*REVOCATION_METHOD_WITHOUT_SUSPENSION).clone()))
+        .once()
+        .returning(move |_| Ok(revocation_method_without_suspension.clone()));
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .with(eq(sdjwtvc_format.format))
+        .return_once(move |_| {
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_revocation_method_id()
+                .returning(|| Some(&*REVOCATION_METHOD_WITH_SUSPENSION));
+            Ok(Arc::new(formatter))
+        });
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .with(eq(mdoc_format.format))
+        .return_once(move |_| {
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_revocation_method_id()
+                .returning(|| Some(&*REVOCATION_METHOD_WITHOUT_SUSPENSION));
+            Ok(Arc::new(formatter))
+        });
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    validity_manager
+        .change_credential_state(
+            &parent_credential.id,
+            ChangeCredentialState::Suspended {
+                suspend_end_date: None,
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_suspend_multiformat_credential_all_formats_unsupported() {
+    let mut base_credential = generic_credential();
+    base_credential.role = CredentialRole::Issuer;
+    base_credential.state = CredentialStateEnum::Accepted;
+
+    let sdjwtvc_format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: base_credential.schema.id(),
+        format: "SD_JWT_VC".into(),
+        ecosystem_schema_id: "sdjwtvc".to_owned(),
+        claim_mappings: Default::default(),
+    };
+    let mdoc_format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: base_credential.schema.id(),
+        format: "MDOC".into(),
+        ecosystem_schema_id: "mdoc".to_owned(),
+        claim_mappings: Default::default(),
+    };
+    base_credential.schema.as_mut().await.unwrap().formats =
+        vec![sdjwtvc_format.clone(), mdoc_format.clone()].into();
+
+    let mut parent_credential = base_credential.clone();
+    parent_credential.r#type = CredentialType::BatchParent;
+
+    let mut sdjwtvc_credential = base_credential.clone();
+    sdjwtvc_credential.r#type = CredentialType::BatchItem;
+    sdjwtvc_credential.parent = Some(parent_credential.clone().into());
+    sdjwtvc_credential.format = Some(sdjwtvc_format.clone().into());
+
+    let mut mdoc_credential = base_credential.clone();
+    mdoc_credential.r#type = CredentialType::BatchItem;
+    mdoc_credential.parent = Some(parent_credential.clone().into());
+    mdoc_credential.format = Some(mdoc_format.clone().into());
+
+    let mut credential_repository = MockCredentialRepository::default();
+    credential_repository
+        .expect_get_credential()
+        .once()
+        .with(eq(parent_credential.id))
+        .returning({
+            let clone = parent_credential.clone();
+            move |_| Ok(clone.clone())
+        });
+
+    credential_repository
+        .expect_get_credential_list()
+        .once()
+        .returning({
+            let _parent_credential_id = parent_credential.id;
+            let values = vec![sdjwtvc_credential.clone(), mdoc_credential.clone()];
+            move |query| {
+                assert!(query.filtering.unwrap().contains(&|fv| matches!(
+                    fv,
+                    CredentialFilterValue::ParentCredential(_parent_credential_id)
+                )));
+                Ok(GetCredentialList {
+                    total_items: 2,
+                    total_pages: 1,
+                    values: values.clone(),
+                })
+            }
+        });
+
+    static REVOCATION_METHOD_WITHOUT_SUSPENSION: LazyLock<RevocationMethodId> =
+        LazyLock::new(|| "WITHOUT_SUSPENSION".into());
+    let mut revocation_method_without_suspension = MockRevocationMethod::default();
+    revocation_method_without_suspension
+        .expect_mark_credential_as()
+        .times(2)
+        .with(
+            always(),
+            eq(RevocationState::Suspended {
+                suspend_end_date: None,
+            }),
+        )
+        .returning(|_, _| Err(RevocationError::OperationNotSupported("test".to_string())));
+    let revocation_method_without_suspension = Arc::new(revocation_method_without_suspension);
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq((*REVOCATION_METHOD_WITHOUT_SUSPENSION).clone()))
+        .times(2)
+        .returning(move |_| Ok(revocation_method_without_suspension.clone()));
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .times(2)
+        .returning(move |_| {
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_revocation_method_id()
+                .returning(|| Some(&*REVOCATION_METHOD_WITHOUT_SUSPENSION));
+            Ok(Arc::new(formatter))
+        });
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = validity_manager
+        .change_credential_state(
+            &parent_credential.id,
+            ChangeCredentialState::Suspended {
+                suspend_end_date: None,
+            },
+        )
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0098);
+}
+
+#[tokio::test]
 async fn test_credential_ops_session_org_mismatch() {
     let mut credential_repository = MockCredentialRepository::default();
     credential_repository
@@ -2117,6 +2348,15 @@ fn generic_credential() -> Credential {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
+    let format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id,
+        format: "JWT".into(),
+        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    };
     Credential {
         expires_at: None,
         ecosystem: None,
@@ -2173,16 +2413,7 @@ fn generic_credential() -> Credential {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_properties: None,
@@ -2203,6 +2434,6 @@ fn generic_credential() -> Credential {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
-        format: None,
+        format: Some(format.into()),
     }
 }
