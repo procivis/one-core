@@ -5,12 +5,15 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use futures::future::join_all;
 use maplit::hashmap;
 use one_core::model::certificate::{Certificate, CertificateState};
-use one_core::model::credential::{CredentialStateEnum, CredentialType, UpdateCredentialRequest};
+use one_core::model::credential::{
+    CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
+use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
 use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::proto::jwt::Jwt;
@@ -1121,6 +1124,7 @@ async fn test_post_issuer_credential_with(
         &access_token,
         IssuerInteractionDataParams {
             access_token_expired,
+            ..Default::default()
         },
     );
     let interaction = context
@@ -1208,6 +1212,304 @@ async fn test_post_issuer_credential_with(
     }
 
     (context, credential.id)
+}
+
+struct MultiFormatIssuerSetup {
+    context: TestContext,
+    interaction_id: InteractionId,
+    credential_schema: CredentialSchema,
+    credential_id: CredentialId,
+}
+
+/// JWT + SD_JWT_VC schema, BATCH_PARENT credential, interaction offering the given formats
+async fn multi_format_issuer_setup(
+    batch_size: Option<i32>,
+    offered_formats: &[&str],
+) -> MultiFormatIssuerSetup {
+    let setup = issuer_setup(None).await;
+
+    let credential_schema = setup
+        .context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &setup.organisation,
+            TestingCreateSchemaParams {
+                formats: Some(vec![
+                    ("JWT".into(), "jwt-schema-id".to_string()),
+                    ("SD_JWT_VC".into(), "sd-jwt-vc-schema-id".to_string()),
+                ]),
+                batch_size,
+                ..Default::default()
+            },
+        )
+        .await;
+    let offered_formats = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|format| offered_formats.contains(&format.format.to_string().as_str()))
+        .map(|format| format.id)
+        .collect();
+
+    let interaction = setup
+        .context
+        .db
+        .interactions
+        .create(
+            &setup.organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(setup.interaction_id),
+                data: Some(dummy_issuer_interaction_data(
+                    &setup.access_token,
+                    IssuerInteractionDataParams {
+                        offered_formats,
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = setup
+        .context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &setup.issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                key: Some(setup.key.clone()),
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    MultiFormatIssuerSetup {
+        context: setup.context,
+        interaction_id: setup.interaction_id,
+        credential_schema,
+        credential_id: credential.id,
+    }
+}
+
+async fn fresh_proof_jwt(context: &TestContext) -> String {
+    let nonce = context
+        .api
+        .ssi
+        .generate_nonce("OPENID4VCI_FINAL1")
+        .await
+        .json_value()
+        .await["c_nonce"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    proof_jwt(true, Some(&nonce)).await
+}
+
+/// Requests issuance of one offered configuration, returns the notification id
+async fn issue_offered_format(
+    context: &TestContext,
+    credential_schema: &CredentialSchema,
+    credential_configuration_id: &str,
+) -> String {
+    let jwt = fresh_proof_jwt(context).await;
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential(credential_schema.id, credential_configuration_id, &jwt)
+        .await;
+    assert_eq!(200, resp.status());
+    resp.json_value().await["notification_id"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_format() {
+    // GIVEN
+    let MultiFormatIssuerSetup {
+        context,
+        interaction_id,
+        credential_schema,
+        credential_id,
+    } = multi_format_issuer_setup(None, &["JWT", "SD_JWT_VC"]).await;
+
+    // WHEN
+    let jwt_notification_id =
+        issue_offered_format(&context, &credential_schema, "jwt-schema-id").await;
+    let sd_jwt_vc_notification_id =
+        issue_offered_format(&context, &credential_schema, "sd-jwt-vc-schema-id").await;
+
+    // THEN
+    assert_ne!(jwt_notification_id, sd_jwt_vc_notification_id);
+
+    let credential = context.db.credentials.get(&credential_id).await;
+    assert_eq!(credential.state, CredentialStateEnum::Accepted);
+
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+        .await;
+    assert_eq!(2, batch_items.len());
+    let mut issued_formats: Vec<String> = vec![];
+    for item in &batch_items {
+        assert_eq!(item.state, CredentialStateEnum::Accepted);
+        assert!(item.credential_blob_id.is_some());
+        issued_formats.push(
+            item.format
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .format
+                .to_string(),
+        );
+    }
+    issued_formats.sort();
+    assert_eq!(issued_formats, ["JWT", "SD_JWT_VC"]);
+
+    let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
+    let interaction_data: serde_json::Value =
+        serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let mut notification_ids: Vec<&str> = interaction_data["notification_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| {
+            assert!(entry["format"].is_string());
+            entry["notification_id"].as_str().unwrap()
+        })
+        .collect();
+    notification_ids.sort();
+    let mut expected = [
+        jwt_notification_id.as_str(),
+        sd_jwt_vc_notification_id.as_str(),
+    ];
+    expected.sort();
+    assert_eq!(notification_ids, expected);
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_fails_for_format_not_offered() {
+    // GIVEN
+    let MultiFormatIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = multi_format_issuer_setup(None, &["JWT"]).await;
+
+    // WHEN
+    let jwt = fresh_proof_jwt(&context).await;
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential(credential_schema.id, "sd-jwt-vc-schema-id", &jwt)
+        .await;
+
+    // THEN
+    assert_eq!(400, resp.status());
+    let credential = context.db.credentials.get(&credential_id).await;
+    assert_eq!(credential.state, CredentialStateEnum::Offered);
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_refresh_fails_for_non_mdoc_format() {
+    // GIVEN
+    let MultiFormatIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = multi_format_issuer_setup(None, &["JWT", "SD_JWT_VC"]).await;
+    issue_offered_format(&context, &credential_schema, "jwt-schema-id").await;
+
+    // WHEN
+    let jwt = fresh_proof_jwt(&context).await;
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential(credential_schema.id, "jwt-schema-id", &jwt)
+        .await;
+
+    // THEN
+    assert_eq!(400, resp.status());
+    let body = resp.json_value().await;
+    assert_eq!(body["error"], "invalid_request");
+    assert!(
+        body["error_description"]
+            .as_str()
+            .unwrap()
+            .starts_with("BR_0483")
+    );
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+        .await;
+    assert_eq!(1, batch_items.len());
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_refresh_issues_new_batch_for_batch_schema() {
+    // GIVEN
+    let MultiFormatIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = multi_format_issuer_setup(Some(2), &["JWT", "SD_JWT_VC"]).await;
+    let first_batch = [
+        fresh_proof_jwt(&context).await,
+        fresh_proof_jwt(&context).await,
+    ];
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential_with_proofs(
+            credential_schema.id,
+            "jwt-schema-id",
+            &[&first_batch[0], &first_batch[1]],
+        )
+        .await;
+    assert_eq!(200, resp.status());
+
+    // WHEN
+    let second_batch = [
+        fresh_proof_jwt(&context).await,
+        fresh_proof_jwt(&context).await,
+    ];
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential_with_proofs(
+            credential_schema.id,
+            "jwt-schema-id",
+            &[&second_batch[0], &second_batch[1]],
+        )
+        .await;
+
+    // THEN
+    assert_eq!(200, resp.status());
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+        .await;
+    assert_eq!(4, batch_items.len());
 }
 
 #[tokio::test]

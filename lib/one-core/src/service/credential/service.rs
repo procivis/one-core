@@ -210,7 +210,7 @@ impl CredentialService {
                     access_token_expires_at: None,
                     refresh_token_hash: None,
                     refresh_token_expires_at: None,
-                    notification_id: None,
+                    notification_ids: Default::default(),
                     transaction_code: None,
                     formats: Some(formats.iter().map(|f| f.id).collect()),
                 })

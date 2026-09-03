@@ -1,12 +1,15 @@
-use one_core::model::credential::{CredentialStateEnum, CredentialType};
-use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
+use one_core::model::credential::{Credential, CredentialStateEnum, CredentialType};
+use one_core::model::credential_schema::{CredentialSchema, TransactionCode, TransactionCodeType};
 use one_core::model::interaction::InteractionType;
+use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
+use crate::fixtures::interaction::{IssuerInteractionDataParams, dummy_issuer_interaction_data};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -23,7 +26,14 @@ async fn test_get_credential_offer_success_jwt() {
     let interaction = context
         .db
         .interactions
-        .create(&organisation, InteractionType::Issuance, Default::default())
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_issuer_interaction_data("token", Default::default())),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential = context
@@ -95,7 +105,14 @@ async fn test_get_credential_offer_success_with_tx_code() {
     let interaction = context
         .db
         .interactions
-        .create(&organisation, InteractionType::Issuance, Default::default())
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_issuer_interaction_data("token", Default::default())),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential = context
@@ -164,7 +181,14 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let interaction = context
         .db
         .interactions
-        .create(&organisation, InteractionType::Issuance, Default::default())
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_issuer_interaction_data("token", Default::default())),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential = context
@@ -232,7 +256,14 @@ async fn test_get_credential_offer_success_mdoc() {
     let interaction = context
         .db
         .interactions
-        .create(&organisation, InteractionType::Issuance, Default::default())
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_issuer_interaction_data("token", Default::default())),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential = context
@@ -280,6 +311,114 @@ async fn test_get_credential_offer_success_mdoc() {
     );
 }
 
+/// BATCH_PARENT credential of a SD_JWT_VC + MDOC schema, interaction offering the given formats
+async fn multi_format_setup(
+    offered_formats: &[&str],
+) -> (TestContext, CredentialSchema, Credential) {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let credential_schema_id = context
+        .db
+        .credential_schemas
+        .create_with_multiformat("test", &organisation, None)
+        .await
+        .unwrap();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .get(&credential_schema_id)
+        .await;
+    let offered_formats = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|format| offered_formats.contains(&format.format.to_string().as_str()))
+        .map(|format| format.id)
+        .collect();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_issuer_interaction_data(
+                    "token",
+                    IssuerInteractionDataParams {
+                        offered_formats,
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    (context, credential_schema, credential)
+}
+
+#[tokio::test]
+async fn test_get_credential_offer_multi_format_offers_selected_formats() {
+    // GIVEN
+    let (context, credential_schema, credential) = multi_format_setup(&["SD_JWT_VC"]).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_credential_offer(credential_schema.id, credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let offer = resp.json_value().await;
+    assert_eq!(offer["credential_configuration_ids"], json!(["sd-jwt_vct"]));
+}
+
+#[tokio::test]
+async fn test_get_credential_offer_multi_format_offers_all_formats_without_selection() {
+    // GIVEN
+    let (context, credential_schema, credential) = multi_format_setup(&[]).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_credential_offer(credential_schema.id, credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let offer = resp.json_value().await;
+    let mut ids: Vec<&str> = offer["credential_configuration_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|id| id.as_str().unwrap())
+        .collect();
+    ids.sort();
+    assert_eq!(ids, ["mdoc_doctype", "sd-jwt_vct"]);
+}
+
 #[tokio::test]
 async fn test_get_credential_offer_not_found() {
     // GIVEN
@@ -311,7 +450,14 @@ async fn test_get_credential_offer_not_found_batch_item() {
     let interaction = context
         .db
         .interactions
-        .create(&organisation, InteractionType::Issuance, Default::default())
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_issuer_interaction_data("token", Default::default())),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential = context

@@ -37,6 +37,8 @@ pub struct TestingCreateSchemaParams {
     pub embedded_disclosure_policy: Option<String>,
     pub expiration: Option<Duration>,
     pub ecosystem: Option<EcosystemId>,
+    /// (format, ecosystem_schema_id) pairs, overrides `format` and `schema_id`
+    pub formats: Option<Vec<(CredentialFormat, String)>>,
 }
 
 fn claim_name_translation(id: ClaimSchemaId, key: &str) -> LocalizedText {
@@ -67,7 +69,6 @@ impl CredentialSchemasDB {
         organisation: &Organisation,
         params: TestingCreateSchemaParams,
     ) -> Result<CredentialSchema, DataLayerError> {
-        let credential_schema_format_id = Uuid::new_v4().into();
         let claim_schemas = params.claim_schemas.unwrap_or_else(|| {
             let claim_schema = ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -94,40 +95,45 @@ impl CredentialSchemasDB {
             vec![claim_schema, claim_schema1]
         });
 
-        let claim_mappings = if let Some(claim_mappings) = params.claim_mappings {
-            let mut cm = vec![];
-            for claim_schema in &claim_schemas {
-                let technical_key = claim_mappings
-                    .get(&claim_schema.key)
-                    .unwrap_or(&claim_schema.key)
-                    .clone();
-                cm.push(CredentialSchemaFormatClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    credential_schema_format_id,
-                    claim_schema_id: claim_schema.id,
-                    technical_key,
-                    namespace: None,
-                })
-            }
-            cm
-        } else {
-            claim_schemas
-                .iter()
-                .map(|cs| CredentialSchemaFormatClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    credential_schema_format_id,
-                    claim_schema_id: cs.id,
-                    technical_key: cs.key.to_owned(),
-                    namespace: None,
-                })
-                .collect::<Vec<_>>()
-        };
-
         let id = params.id.unwrap_or(Uuid::new_v4().into());
+        let claim_mappings = params.claim_mappings.unwrap_or_default();
+        let formats = params.formats.unwrap_or_else(|| {
+            vec![(
+                params.format.unwrap_or("JWT".into()),
+                params.schema_id.unwrap_or_else(|| id.to_string()),
+            )]
+        });
+        let formats = formats
+            .into_iter()
+            .map(|(format, ecosystem_schema_id)| {
+                let format_id = Uuid::new_v4().into();
+                CredentialSchemaFormat {
+                    id: format_id,
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    credential_schema_id: id,
+                    format,
+                    ecosystem_schema_id,
+                    claim_mappings: claim_schemas
+                        .iter()
+                        .map(|cs| CredentialSchemaFormatClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            created_date: get_dummy_date(),
+                            last_modified: get_dummy_date(),
+                            credential_schema_format_id: format_id,
+                            claim_schema_id: cs.id,
+                            technical_key: claim_mappings
+                                .get(&cs.key)
+                                .unwrap_or(&cs.key)
+                                .to_owned(),
+                            namespace: None,
+                        })
+                        .collect::<Vec<_>>()
+                        .into(),
+                }
+            })
+            .collect::<Vec<_>>();
+
         let mut credential_schema = CredentialSchema {
             expiration: params.expiration,
             ecosystem: params.ecosystem,
@@ -141,16 +147,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: organisation.clone().into(),
             deleted_at: params.deleted_at,
-            formats: vec![CredentialSchemaFormat {
-                id: credential_schema_format_id,
-                created_date: one_core::clock::now_utc(),
-                last_modified: one_core::clock::now_utc(),
-                credential_schema_id: id,
-                format: params.format.unwrap_or("JWT".into()),
-                ecosystem_schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
-                claim_mappings: claim_mappings.into(),
-            }]
-            .into(),
+            formats: formats.into(),
             claim_schemas: claim_schemas.into(),
             layout_properties: Some(LayoutProperties {
                 primary_attribute: Some("firstName".to_owned()),

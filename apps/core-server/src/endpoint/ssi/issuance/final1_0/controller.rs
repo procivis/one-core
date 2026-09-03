@@ -382,6 +382,17 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
             }),
         )
             .into_response(),
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0483) => {
+            tracing::warn!("Unsupported credential refresh: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: Some(format!("{} | {error}", error.error_code())),
+                }),
+            )
+                .into_response()
+        }
         Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()

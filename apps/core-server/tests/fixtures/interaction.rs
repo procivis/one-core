@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use one_core::model::credential_schema::CredentialSchema;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
+use shared_types::CredentialSchemaFormatId;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use time::Duration;
 use time::macros::format_description;
@@ -122,6 +125,8 @@ pub fn dummy_interaction_data(
 #[derive(Default)]
 pub struct IssuerInteractionDataParams {
     pub access_token_expired: bool,
+    pub offered_formats: Vec<CredentialSchemaFormatId>,
+    pub notification_ids: HashMap<CredentialSchemaFormatId, String>,
 }
 
 /// Returns interaction_data_bytes.
@@ -140,6 +145,14 @@ pub fn dummy_issuer_interaction_data(
         "pre_authorized_code_used": true,
         "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
         "access_token_expires_at": at_expiry.format(&format).unwrap(),
+        "formats": (!params.offered_formats.is_empty()).then_some(&params.offered_formats),
+        "notification_ids": params
+            .notification_ids
+            .iter()
+            .map(|(format, notification_id)| {
+                json!({ "notification_id": notification_id, "format": format })
+            })
+            .collect::<Vec<_>>(),
     });
     serde_json::to_vec(&data).unwrap()
 }

@@ -28,7 +28,7 @@ use super::dto::{
     OpenID4VCICredentialResponseDTO,
 };
 use super::error::OID4VCIFinal1_0ServiceError;
-use super::mapper::interaction_data_to_dto;
+use super::mapper::{interaction_data_to_dto, offered_formats};
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
@@ -46,13 +46,15 @@ use crate::mapper::exchange::{
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::credential::{
-    Credential, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::relation::Related;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
@@ -65,7 +67,7 @@ use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
+    FormatNotification, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::{
     OpenID4VCIProofHolderBinding, OpenID4VCIProofJWTFormatter, OpenID4VCIVerifiedProof,
@@ -256,13 +258,16 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
-        let interaction =
-            credential
-                .interaction
-                .as_ref()
-                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                    "interaction missing".to_string(),
-                ))?;
+        let interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "interaction missing".to_string(),
+            ))?
+            .as_ref()
+            .await?;
+        let interaction_data = interaction_data_to_dto(&interaction)?;
+        let formats = offered_formats(&credential_schema, &interaction_data).await?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -282,11 +287,11 @@ impl OID4VCIFinal1_0Service {
         Ok(create_credential_offer(
             protocol_base_url,
             &credential.protocol,
-            &interaction.id().to_string(),
+            &interaction.id.to_string(),
             &credential_schema,
+            &formats,
             identifier_id,
-        )
-        .await?)
+        )?)
     }
 
     pub async fn create_credential(
@@ -317,6 +322,14 @@ impl OID4VCIFinal1_0Service {
 
         let interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
+
+        if !offered_formats(&schema, &interaction_data)
+            .await?
+            .iter()
+            .any(|offered| offered.id == format.id)
+        {
+            return Err(OpenID4VCIError::UnsupportedCredentialType.into());
+        }
 
         let credentials = self
             .credential_repository
@@ -699,7 +712,7 @@ impl OID4VCIFinal1_0Service {
             }
             CredentialType::BatchParent => {
                 let batch_item_template = self
-                    .prepare_batch_item(credential.id, batch_item_expires_at)
+                    .prepare_batch_item(credential.id, batch_item_expires_at, &format)
                     .await?;
                 let mut credentials = vec![];
                 for holder_identifier in holder_identifiers {
@@ -747,11 +760,22 @@ impl OID4VCIFinal1_0Service {
             }
         };
 
-        let notification_id = match &interaction_data.notification_id {
-            Some(notification_id) => notification_id.to_owned(),
+        // interactions created before multi-format support have a single entry without format
+        let entry = interaction_data
+            .notification_ids
+            .iter_mut()
+            .find(|entry| entry.format.is_none_or(|id| id == format.id));
+        let notification_id = match entry {
+            Some(entry) => {
+                entry.format = Some(format.id);
+                entry.notification_id.to_owned()
+            }
             None => {
                 let notification_id = generate_alphanumeric(32);
-                interaction_data.notification_id = Some(notification_id.to_owned());
+                interaction_data.notification_ids.push(FormatNotification {
+                    notification_id: notification_id.to_owned(),
+                    format: Some(format.id),
+                });
                 let data = serde_json::to_vec(&interaction_data)
                     .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
 
@@ -824,6 +848,7 @@ impl OID4VCIFinal1_0Service {
                     issuance_date: Some(issuance_date),
                     holder_identifier_id: Some(holder_identifier_id),
                     wallet_unit_attestation_blob_id: wua_blob_id,
+                    format: Some(format_id),
                     ..Default::default()
                 },
             )
@@ -833,6 +858,46 @@ impl OID4VCIFinal1_0Service {
         Ok(CredentialResponseEntry {
             credential: issued_credential.into(),
         })
+    }
+
+    async fn format_already_issued(
+        &self,
+        parent_credential_id: CredentialId,
+        format_id: CredentialSchemaFormatId,
+    ) -> Result<bool, OID4VCIFinal1_0ServiceError> {
+        Ok(self
+            .credential_repository
+            .get_credential_list(ListQuery {
+                filtering: Some(
+                    CredentialFilterValue::ParentCredential(parent_credential_id).condition()
+                        & CredentialFilterValue::Formats(vec![format_id])
+                        & CredentialFilterValue::Deleted(false),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("listing batch items")?
+            .total_items
+            > 0)
+    }
+
+    async fn get_batch_items(
+        &self,
+        parent_credential_id: CredentialId,
+    ) -> Result<Vec<Credential>, OID4VCIFinal1_0ServiceError> {
+        Ok(self
+            .credential_repository
+            .get_credential_list(ListQuery {
+                filtering: Some(
+                    CredentialFilterValue::ParentCredential(parent_credential_id).condition()
+                        & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                        & CredentialFilterValue::Deleted(false),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting batch items")?
+            .values)
     }
 
     pub async fn handle_notification(
@@ -856,9 +921,13 @@ impl OID4VCIFinal1_0Service {
         let interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
 
-        if Some(&request.notification_id) != interaction_data.notification_id.as_ref() {
-            return Err(OpenID4VCIError::InvalidNotificationId.into());
-        }
+        // interactions created before multi-format support have a single entry without format
+        let format_id = interaction_data
+            .notification_ids
+            .iter()
+            .find(|entry| entry.notification_id == request.notification_id)
+            .ok_or(OpenID4VCIError::InvalidNotificationId)?
+            .format;
 
         let credentials = self
             .credential_repository
@@ -882,7 +951,7 @@ impl OID4VCIFinal1_0Service {
         );
 
         for credential in credentials {
-            self.process_notification_for_credential(credential, &request)
+            self.process_notification_for_credential(credential, format_id, &request)
                 .await?;
         }
 
@@ -1054,24 +1123,29 @@ impl OID4VCIFinal1_0Service {
                 }
             }
 
-            let schema_format = credential_schema.format().await?;
-            let credential_format_type = self
-                .config
-                .format
-                .get_fields(&schema_format)
-                .error_while("getting format config")?
-                .r#type;
+            let mut offered_format_types = vec![];
+            for format in offered_formats(&credential_schema, &interaction_data).await? {
+                offered_format_types.push(
+                    self.config
+                        .format
+                        .get_type(&format.format)
+                        .error_while("getting format config")?,
+                );
+            }
 
             // we add refresh token for mdoc and batches
-            if credential_format_type == FormatType::Mdoc || credential_schema.batch_size.is_some()
+            if offered_format_types.contains(&FormatType::Mdoc)
+                || credential_schema.batch_size.is_some()
             {
                 response.refresh_token = Some(generate_new_token());
                 response.refresh_token_expires_in =
                     Some(ExpiresIn((now + refresh_token_expires_in).unix_timestamp()));
             }
 
-            let interaction_data: OpenID4VCIIssuerInteractionDataDTO = (&response).try_into()?;
-            let data = serde_json::to_vec(&interaction_data)
+            let mut new_interaction_data: OpenID4VCIIssuerInteractionDataDTO =
+                (&response).try_into()?;
+            new_interaction_data.formats = interaction_data.formats;
+            let data = serde_json::to_vec(&new_interaction_data)
                 .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             interaction.data = Some(data);
 
@@ -1250,6 +1324,7 @@ impl OID4VCIFinal1_0Service {
         &self,
         parent_credential_id: CredentialId,
         expires_at: OffsetDateTime,
+        format: &CredentialSchemaFormat,
     ) -> Result<Credential, OID4VCIFinal1_0ServiceError> {
         let now = crate::clock::now_utc();
         let parent_credential = self
@@ -1257,6 +1332,18 @@ impl OID4VCIFinal1_0Service {
             .get_credential(&parent_credential_id)
             .await
             .error_while("loading credential")?;
+
+        // the issuance protocol decides by the item state (`validate_credential_issuable`):
+        // Offered -> initial issuance, Accepted -> refresh (MSO refresh for mdoc, new batch with batch size, otherwise BR_0483)
+        // the parent is Accepted once any format was issued, so the first item of a format starts as Offered
+        let state = if self
+            .format_already_issued(parent_credential_id, format.id)
+            .await?
+        {
+            parent_credential.state
+        } else {
+            CredentialStateEnum::Offered
+        };
 
         Ok(Credential {
             id: Uuid::new_v4().into(),
@@ -1271,9 +1358,11 @@ impl OID4VCIFinal1_0Service {
             interaction: None,
             claims: Default::default(),
             expires_at: Some(expires_at),
-            // state and last_modified are reused from the parent credential,
-            // so that they can be checked in the issuance protocol (e.g. MSO refresh rate limiting)
-            // they will be updated inside the issuance protocol logic
+            format: Some(format.to_owned().into()),
+            state,
+            // last_modified is reused from the parent credential,
+            // so that it can be checked in the issuance protocol (e.g. MSO refresh rate limiting)
+            // it will be updated inside the issuance protocol logic
             ..parent_credential
         })
     }
@@ -1281,6 +1370,7 @@ impl OID4VCIFinal1_0Service {
     async fn process_notification_for_credential(
         &self,
         credential: Credential,
+        format_id: Option<CredentialSchemaFormatId>,
         notification: &NotificationRequest,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
@@ -1315,6 +1405,89 @@ impl OID4VCIFinal1_0Service {
             NotificationEvent::CredentialDeleted => CredentialStateEnum::Rejected,
         };
 
+        match (credential.r#type, format_id) {
+            (CredentialType::BatchParent, Some(format_id)) => {
+                self.process_notification_for_batch_format(credential, format_id, new_state)
+                    .await
+            }
+            _ => self.update_notified_credential(credential, new_state).await,
+        }
+    }
+
+    async fn process_notification_for_batch_format(
+        &self,
+        parent: Credential,
+        format_id: CredentialSchemaFormatId,
+        new_state: CredentialStateEnum,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let (affected, others): (Vec<_>, Vec<_>) = self
+            .get_batch_items(parent.id)
+            .await?
+            .into_iter()
+            .partition(|item| item.format.as_ref().is_some_and(|f| f.id() == format_id));
+
+        if affected.is_empty() {
+            // placeholder so that the rejection of this format is visible in the credential detail
+            let format = parent
+                .schema
+                .as_ref()
+                .await?
+                .formats
+                .as_ref()
+                .await?
+                .iter()
+                .find(|format| format.id == format_id)
+                .cloned()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "credential_schema format missing".to_string(),
+                ))?;
+            let placeholder = self
+                .prepare_batch_item(parent.id, now_utc(), &format)
+                .await?;
+            self.credential_repository
+                .create_credential(Credential {
+                    issuance_date: None,
+                    expires_at: None,
+                    state: new_state,
+                    ..placeholder
+                })
+                .await
+                .error_while("creating placeholder batch item")?;
+        }
+
+        for item in affected {
+            if item.state != new_state {
+                self.update_notified_credential(item, new_state).await?;
+            }
+        }
+
+        let other_format_active = others.iter().any(|item| {
+            matches!(
+                item.state,
+                CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
+            )
+        });
+        if !other_format_active && parent.state != new_state {
+            self.credential_repository
+                .update_credential(
+                    parent.id,
+                    UpdateCredentialRequest {
+                        state: Some(new_state),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating parent credential")?;
+        }
+
+        Ok(())
+    }
+
+    async fn update_notified_credential(
+        &self,
+        credential: Credential,
+        new_state: CredentialStateEnum,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         if credential.state == new_state {
             // nothing to do
             return Ok(());
@@ -1322,7 +1495,10 @@ impl OID4VCIFinal1_0Service {
 
         let schema = credential.schema.as_ref().await?;
 
-        let format = schema.format().await?;
+        let format = match credential.format.as_ref() {
+            Some(format) => format.as_ref().await?.format.to_owned(),
+            None => schema.format().await?,
+        };
         let formatter = self.formatter_provider.get_credential_formatter(&format)?;
         let revocation_method = match schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => Some(

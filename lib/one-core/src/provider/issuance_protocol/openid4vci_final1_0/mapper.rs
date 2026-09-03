@@ -70,7 +70,7 @@ impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
                         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
                 })
                 .transpose()?,
-            notification_id: None,
+            notification_ids: Default::default(),
             transaction_code: None,
             formats: None,
         })

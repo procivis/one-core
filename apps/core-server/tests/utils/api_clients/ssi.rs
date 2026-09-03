@@ -68,13 +68,27 @@ impl SSIApi {
         credential_configuration_id: &str,
         jwt: &str,
     ) -> Response {
+        self.issuer_create_credential_with_proofs(
+            credential_schema_id,
+            credential_configuration_id,
+            &[jwt],
+        )
+        .await
+    }
+
+    pub async fn issuer_create_credential_with_proofs(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        credential_configuration_id: &str,
+        jwts: &[&str],
+    ) -> Response {
         let credential_schema_id = credential_schema_id.into();
         let url = format!("/ssi/openid4vci/final-1.0/{credential_schema_id}/credential");
 
         let body = json!({
             "credential_configuration_id": credential_configuration_id,
             "proofs": {
-                "jwt": [jwt]
+                "jwt": jwts
             },
         });
 

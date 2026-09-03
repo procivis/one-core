@@ -1,17 +1,26 @@
+use std::collections::HashMap;
+
+use assert2::let_assert;
 use one_core::model::certificate::CertificateRole;
-use one_core::model::credential::{Credential, CredentialStateEnum};
+use one_core::model::credential::{
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType,
+};
 use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
+use one_core::model::list_filter::ListFilterValue;
 use one_core::model::revocation_list::{RevocationListPurpose, StatusListCredentialFormat};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
+use shared_types::CredentialSchemaFormatId;
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::NotificationEvent;
 use time::macros::format_description;
 use uuid::Uuid;
 
+use crate::fixtures::interaction::{IssuerInteractionDataParams, dummy_issuer_interaction_data};
 use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
@@ -77,6 +86,257 @@ async fn test_post_notification_credential_deleted() {
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(credential.state, CredentialStateEnum::Rejected);
+}
+
+struct MultiFormatBatch {
+    context: TestContext,
+    credential_schema: CredentialSchema,
+    parent: Credential,
+    sd_jwt_vc_format: CredentialSchemaFormat,
+    mdoc_format: CredentialSchemaFormat,
+}
+
+/// Accepted BATCH_PARENT with one accepted batch item per issued format.
+/// Notification ids: `n-sd-jwt-vc` and `n-mdoc`.
+async fn setup_multi_format_batch(issued_formats: &[&str]) -> MultiFormatBatch {
+    let interaction_id = Uuid::new_v4().into();
+    let access_token = format!("{interaction_id}.test");
+    let context = TestContext::new_with_token(&access_token, None).await;
+    let organisation = context.db.organisations.create().await;
+    let did = context
+        .db
+        .dids
+        .create(organisation.clone(), Default::default())
+        .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did),
+                r#type: Some(IdentifierType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema_id = context
+        .db
+        .credential_schemas
+        .create_with_multiformat("schema-1", &organisation, None)
+        .await
+        .unwrap();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .get(&credential_schema_id)
+        .await;
+    let formats = credential_schema.formats.as_ref().await.unwrap().to_owned();
+    let format_by_name = |name: &str| {
+        formats
+            .iter()
+            .find(|format| format.format.to_string() == name)
+            .unwrap()
+            .clone()
+    };
+    let sd_jwt_vc_format = format_by_name("SD_JWT_VC");
+    let mdoc_format = format_by_name("MDOC");
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(dummy_issuer_interaction_data(
+                    &access_token,
+                    IssuerInteractionDataParams {
+                        notification_ids: HashMap::from([
+                            (sd_jwt_vc_format.id, "n-sd-jwt-vc".to_string()),
+                            (mdoc_format.id, "n-mdoc".to_string()),
+                        ]),
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let parent = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    for format in issued_formats {
+        context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &issuer_identifier,
+                "OPENID4VCI_FINAL1",
+                TestingCredentialParams {
+                    r#type: Some(CredentialType::BatchItem),
+                    parent_id: Some(parent.id),
+                    format: Some(format_by_name(format)),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
+
+    MultiFormatBatch {
+        context,
+        credential_schema,
+        parent,
+        sd_jwt_vc_format,
+        mdoc_format,
+    }
+}
+
+async fn batch_item_states(
+    context: &TestContext,
+    parent: &Credential,
+) -> HashMap<CredentialSchemaFormatId, Vec<CredentialStateEnum>> {
+    let mut states: HashMap<_, Vec<_>> = HashMap::new();
+    for item in context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(parent.id).condition())
+        .await
+    {
+        states
+            .entry(item.format.as_ref().unwrap().id())
+            .or_default()
+            .push(item.state);
+    }
+    states
+}
+
+#[tokio::test]
+async fn test_post_notification_credential_deleted_for_one_format_keeps_other_format() {
+    let MultiFormatBatch {
+        context,
+        credential_schema,
+        parent,
+        sd_jwt_vc_format,
+        mdoc_format,
+    } = setup_multi_format_batch(&["SD_JWT_VC", "MDOC"]).await;
+
+    let resp = context
+        .api
+        .ssi
+        .openid4vci_notification(
+            credential_schema.id,
+            "n-sd-jwt-vc",
+            NotificationEvent::CredentialDeleted,
+        )
+        .await;
+    assert_eq!(204, resp.status());
+
+    let states = batch_item_states(&context, &parent).await;
+    assert_eq!(
+        states[&sd_jwt_vc_format.id],
+        [CredentialStateEnum::Rejected]
+    );
+    assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Accepted]);
+    let parent = context.db.credentials.get(&parent.id).await;
+    assert_eq!(parent.state, CredentialStateEnum::Accepted);
+
+    // rejecting the last active format rejects the parent
+    let resp = context
+        .api
+        .ssi
+        .openid4vci_notification(
+            credential_schema.id,
+            "n-mdoc",
+            NotificationEvent::CredentialDeleted,
+        )
+        .await;
+    assert_eq!(204, resp.status());
+
+    let states = batch_item_states(&context, &parent).await;
+    assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Rejected]);
+    let parent = context.db.credentials.get(&parent.id).await;
+    assert_eq!(parent.state, CredentialStateEnum::Rejected);
+}
+
+#[tokio::test]
+async fn test_post_notification_credential_deleted_creates_placeholder_for_format_without_items() {
+    let MultiFormatBatch {
+        context,
+        credential_schema,
+        parent,
+        sd_jwt_vc_format,
+        mdoc_format,
+    } = setup_multi_format_batch(&["SD_JWT_VC"]).await;
+
+    let resp = context
+        .api
+        .ssi
+        .openid4vci_notification(
+            credential_schema.id,
+            "n-mdoc",
+            NotificationEvent::CredentialDeleted,
+        )
+        .await;
+    assert_eq!(204, resp.status());
+
+    let states = batch_item_states(&context, &parent).await;
+    assert_eq!(
+        states[&sd_jwt_vc_format.id],
+        [CredentialStateEnum::Accepted]
+    );
+    assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Rejected]);
+    let rejected_items = context
+        .db
+        .credentials
+        .list(
+            CredentialFilterValue::ParentCredential(parent.id).condition()
+                & CredentialFilterValue::States(vec![CredentialStateEnum::Rejected]),
+        )
+        .await;
+    let_assert!([placeholder] = rejected_items.as_slice());
+    assert!(placeholder.credential_blob_id.is_none());
+    assert!(placeholder.issuance_date.is_none());
+    let parent = context.db.credentials.get(&parent.id).await;
+    assert_eq!(parent.state, CredentialStateEnum::Accepted);
+}
+
+#[tokio::test]
+async fn test_post_notification_unknown_notification_id() {
+    let MultiFormatBatch {
+        context,
+        credential_schema,
+        ..
+    } = setup_multi_format_batch(&["SD_JWT_VC"]).await;
+
+    let resp = context
+        .api
+        .ssi
+        .openid4vci_notification(
+            credential_schema.id,
+            "unknown",
+            NotificationEvent::CredentialDeleted,
+        )
+        .await;
+    assert_eq!(400, resp.status());
 }
 
 async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSchema) {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
+use assert2::let_assert;
 use mockall::predicate::eq;
 use serde_json::json;
 use shared_types::{CredentialFormat, CredentialId, RevocationMethodId};
@@ -249,6 +250,10 @@ async fn test_issuer_submit_succeeds() {
 }
 
 async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
+    generic_credential_with_format(state, "MDOC").await
+}
+
+async fn generic_credential_with_format(state: CredentialStateEnum, format: &str) -> Credential {
     let key = dummy_key();
 
     let credential_schema = CredentialSchema {
@@ -257,7 +262,7 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id: Uuid::new_v4().into(),
-            format: CredentialFormat::from("MDOC"),
+            format: CredentialFormat::from(format),
             ecosystem_schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
@@ -696,6 +701,105 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             .await,
         Err(IssuanceProtocolError::RefreshTooSoon),
     ));
+}
+
+#[tokio::test]
+async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
+    let credential_id: CredentialId = Uuid::new_v4().into();
+
+    let credential = generic_credential_with_format(CredentialStateEnum::Accepted, "JWT").await;
+
+    let credential_copy = credential.clone();
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credential()
+        .withf(move |_credential_id| {
+            assert_eq!(_credential_id, &credential_id);
+            true
+        })
+        .once()
+        .returning(move |_| Ok(credential_copy.clone()));
+
+    let mut config = dummy_config();
+    config.format.insert(
+        "JWT".into(),
+        Fields {
+            r#type: FormatType::Jwt,
+            display: "display".into(),
+            order: None,
+            priority: None,
+            enabled: true,
+            capabilities: None,
+            params: None,
+        },
+    );
+
+    let service = OpenID4VCIFinal1_0::new(
+        Arc::new(MockHttpClient::new()),
+        Arc::new(MockOpenIDMetadataFetcher::new()),
+        Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockIdentifierCreator::new()),
+        Arc::new(MockCredentialSchemaImporter::new()),
+        Arc::new(MockCredentialSchemaRepository::new()),
+        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockRevocationMethodProvider::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(MockKeySecurityLevelProvider::new()),
+        Arc::new(MockBlobStorageProvider::new()),
+        Some("base_url".to_string()),
+        Arc::new(config),
+        json!({
+            "preAuthorizedCodeExpiresInSeconds": 10,
+            "tokenExpiresInSeconds": 10,
+            "refreshExpiresInSeconds": 1000,
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
+            "redirectUri": {
+                "enabled": true,
+                "allowedSchemes": ["https"]
+            },
+            "urlScheme": "openid-credential-offer",
+            "oauthAttestationLeewaySeconds": 60,
+            "keyAttestationLeewaySeconds": 60,
+        }),
+        "OPENID4VCI_FINAL1".to_string(),
+        Arc::new(MockHolderWalletUnitProto::new()),
+        Arc::new(MockInstanceRepository::new()),
+        Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockHistoryRepository::new()),
+        Arc::new(NoSessionProvider),
+        Arc::new(MockInteractionRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
+    )
+    .unwrap();
+
+    let format_id = credential
+        .schema
+        .as_ref()
+        .await
+        .unwrap()
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .id;
+    let_assert!(
+        Err(IssuanceProtocolError::FormatRefreshNotSupported(
+            unsupported_format
+        )) = service
+            .issuer_issue_credential(
+                &credential_id,
+                format_id,
+                dummy_identifier(),
+                format!("{}#0", dummy_did().did)
+            )
+            .await
+    );
+    assert_eq!(unsupported_format, "JWT".into());
 }
 
 fn dummy_config() -> CoreConfig {

@@ -453,13 +453,21 @@ pub(crate) fn get_protocol_base_url(base_url: &str) -> String {
     format!("{base_url}/ssi/openid4vci/final-1.0")
 }
 
-pub(crate) async fn create_credential_offer(
+pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
     protocol_id: &str,
     pre_authorized_code: &str,
     credential_schema: &CredentialSchema,
+    offered_formats: &[CredentialSchemaFormat],
     identifier_id: IdentifierId,
 ) -> Result<CredentialOffer, OpenIDIssuanceError> {
+    if offered_formats.is_empty() {
+        return Err(OpenIDIssuanceError::ValidationError(format!(
+            "Credential schema {} has no offered credential schema format",
+            credential_schema.id
+        )));
+    }
+
     let tx_code = credential_schema
         .transaction_code
         .as_ref()
@@ -476,12 +484,10 @@ pub(crate) async fn create_credential_offer(
 
     Ok(CredentialOffer {
         credential_issuer,
-        credential_configuration_ids: vec![
-            credential_schema
-                .schema_id()
-                .await
-                .map_err(|e| OpenIDIssuanceError::ValidationError(e.to_string()))?,
-        ],
+        credential_configuration_ids: offered_formats
+            .iter()
+            .map(|format| format.ecosystem_schema_id.to_owned())
+            .collect(),
         grants: Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),
             tx_code,

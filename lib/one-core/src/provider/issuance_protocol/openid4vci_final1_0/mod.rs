@@ -323,6 +323,11 @@ impl OpenID4VCIFinal1_0 {
             (CredentialStateEnum::Accepted, _) if supports_batch_issuance => {
                 // batch re-issuance -> OK
             }
+            (CredentialStateEnum::Accepted, _) => {
+                return Err(IssuanceProtocolError::FormatRefreshNotSupported(
+                    format.to_owned(),
+                ));
+            }
             _ => {
                 return Err(IssuanceProtocolError::InvalidRequest(
                     "invalid state".to_string(),
@@ -1780,6 +1785,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         } else {
             None
         };
+        let mut offered_formats = credential_schema.formats.as_ref().await?.to_owned();
+        if let Some(formats) = &formats {
+            offered_formats.retain(|format| formats.contains(&format.id));
+        }
 
         let protocol_base_url = self
             .protocol_base_url
@@ -1801,9 +1810,9 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &credential.protocol,
                 &interaction_id.to_string(),
                 &credential_schema,
+                &offered_formats,
                 identifier_id,
-            )
-            .await?;
+            )?;
 
             let offer_string = serde_json::to_string(&offer)?;
 
@@ -1830,7 +1839,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 access_token_expires_at: None,
                 refresh_token_hash: None,
                 refresh_token_expires_at: None,
-                notification_id: None,
+                notification_ids: Default::default(),
                 transaction_code: transaction_code.to_owned(),
                 formats,
             },

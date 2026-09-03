@@ -1033,6 +1033,11 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid format selection")]
     BR_0482,
+
+    #[strum(
+        message = "Credential already issued, refresh is only supported for mdoc and batch credentials"
+    )]
+    BR_0483,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

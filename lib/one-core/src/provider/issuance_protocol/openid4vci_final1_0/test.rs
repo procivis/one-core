@@ -29,7 +29,7 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VCIFinal1_0;
-use super::model::HolderInteractionData;
+use super::model::{HolderInteractionData, OpenID4VCIIssuerInteractionDataDTO};
 use super::service::create_credential_offer;
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
@@ -435,14 +435,15 @@ async fn test_generate_offer() {
     let credential = generic_credential_did();
     let issuer_identifier_id = credential.issuer_identifier.as_ref().unwrap().id();
 
+    let credential_schema = credential.schema.as_ref().await.unwrap();
     let offer = create_credential_offer(
         &protocol_base_url,
         &credential.protocol,
         &interaction_id.to_string(),
-        &credential.schema.as_ref().await.unwrap(),
+        &credential_schema,
+        &credential_schema.formats.as_ref().await.unwrap(),
         issuer_identifier_id,
     )
-    .await
     .unwrap();
 
     assert_eq!(
@@ -457,6 +458,21 @@ async fn test_generate_offer() {
             }
         })
     )
+}
+
+#[test]
+fn test_issuer_interaction_data_deserializes_legacy_notification_id() {
+    let data: OpenID4VCIIssuerInteractionDataDTO = serde_json::from_value(json!({
+        "pre_authorized_code_used": true,
+        "access_token_hash": [1, 2, 3],
+        "transaction_code": null,
+        "notification_id": "notification"
+    }))
+    .unwrap();
+
+    let_assert!([entry] = data.notification_ids.as_slice());
+    assert_eq!(entry.notification_id, "notification");
+    assert!(entry.format.is_none());
 }
 
 #[tokio::test]

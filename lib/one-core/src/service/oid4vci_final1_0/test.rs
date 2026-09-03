@@ -6,7 +6,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::{CredentialFormat, DidId, InteractionId};
+use shared_types::{CredentialFormat, CredentialSchemaFormatId, DidId, InteractionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::oauth2::TokenType;
@@ -20,7 +20,9 @@ use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -1830,9 +1832,10 @@ async fn test_create_credential_success_mdoc() {
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
+    let format_id: CredentialSchemaFormatId = Uuid::new_v4().into();
     let schema = CredentialSchema {
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: format_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id: Uuid::new_v4().into(),
@@ -1916,17 +1919,36 @@ async fn test_create_credential_success_mdoc() {
             .withf(|_, request| request.state == Some(CredentialStateEnum::Accepted))
             .returning(|_, _| Ok(()));
 
+        // no batch items issued yet
+        credential_repository
+            .expect_get_credential_list()
+            .once()
+            .returning(|_| {
+                Ok(GetCredentialList {
+                    values: vec![],
+                    total_pages: 0,
+                    total_items: 0,
+                })
+            });
+
         let batch_item_credential_id = Uuid::new_v4().into();
         credential_repository
             .expect_create_credential()
             .once()
-            .withf(|request| request.r#type == CredentialType::BatchItem)
+            .withf(move |request| {
+                request.r#type == CredentialType::BatchItem
+                    && request.state == CredentialStateEnum::Offered
+                    && request.format.as_ref().map(|f| f.id()) == Some(format_id)
+            })
             .returning(move |_| Ok(batch_item_credential_id));
         credential_repository
             .expect_update_credential()
             .once()
             .with(eq(batch_item_credential_id), always())
-            .withf(move |_, request| request.holder_identifier_id == Some(holder_identifier_id))
+            .withf(move |_, request| {
+                request.holder_identifier_id == Some(holder_identifier_id)
+                    && request.format == Some(format_id)
+            })
             .returning(|_, _| Ok(()));
     }
 

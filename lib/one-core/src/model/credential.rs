@@ -120,6 +120,7 @@ pub struct UpdateCredentialRequest {
 
     pub claims: Option<Vec<Claim>>,
     pub credential_blob_id: Option<BlobId>,
+    pub format: Option<CredentialSchemaFormatId>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Display)]

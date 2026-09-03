@@ -445,6 +445,11 @@ impl CredentialRepository for CredentialProvider {
             Some(blob_id) => Set(Some(blob_id)),
         };
 
+        let format = match request.format {
+            None => Unchanged(Default::default()),
+            Some(format_id) => Set(Some(format_id)),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(credential_id),
             last_modified: Set(one_core::clock::now_utc()),
@@ -462,6 +467,7 @@ impl CredentialRepository for CredentialProvider {
             credential_blob_id,
             wallet_unit_attestation_blob_id,
             wallet_instance_attestation_blob_id,
+            format,
             ..Default::default()
         };
 

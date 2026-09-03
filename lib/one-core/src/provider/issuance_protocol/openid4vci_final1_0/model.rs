@@ -145,10 +145,47 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub refresh_token_hash: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
-    pub notification_id: Option<String>,
+    #[serde(
+        default,
+        alias = "notification_id",
+        deserialize_with = "deserialize_format_notifications"
+    )]
+    pub notification_ids: Vec<FormatNotification>,
     pub transaction_code: Option<String>,
     #[serde(default)]
     pub formats: Option<Vec<CredentialSchemaFormatId>>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct FormatNotification {
+    pub notification_id: String,
+    /// missing on interactions created before multi-format support
+    #[serde(default)]
+    pub format: Option<CredentialSchemaFormatId>,
+}
+
+// interactions created before multi-format support store a single `notification_id` without format
+fn deserialize_format_notifications<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<FormatNotification>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Repr {
+        Entries(Vec<FormatNotification>),
+        LegacyNotificationId(Option<String>),
+    }
+
+    Ok(match Repr::deserialize(deserializer)? {
+        Repr::Entries(entries) => entries,
+        Repr::LegacyNotificationId(notification_id) => notification_id
+            .map(|notification_id| FormatNotification {
+                notification_id,
+                format: None,
+            })
+            .into_iter()
+            .collect(),
+    })
 }
 
 #[skip_serializing_none]
