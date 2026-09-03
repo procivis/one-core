@@ -61,11 +61,16 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
         ErrorResponseRestDTO,
     >,
 ) -> Response {
-    let response_type = if accept.contains(&mime::APPLICATION_JSON) {
-        OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model
-    } else if accept.contains(&APPLICATION_JWT) {
-        OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Jwt
-    } else {
+    let Some(response_type) = accept.negotiate(&[
+        (
+            &mime::APPLICATION_JSON,
+            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+        ),
+        (
+            &APPLICATION_JWT,
+            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Jwt,
+        ),
+    ]) else {
         return StatusCode::NOT_ACCEPTABLE.into_response();
     };
 

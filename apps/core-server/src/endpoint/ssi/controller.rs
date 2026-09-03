@@ -583,13 +583,12 @@ pub(crate) async fn ssi_get_certificate(
 ) -> Response {
     // fallback to PEM format if no accept header recognized
     let format = if let Some(TypedHeader(accept)) = accept {
-        if accept.contains(&APPLICATION_PEM_CHAIN) {
-            CertificateFormatEnum::Pem
-        } else if accept.contains(&APPLICATION_COSE_X509) {
-            CertificateFormatEnum::CoseX509
-        } else {
-            CertificateFormatEnum::Pem
-        }
+        accept
+            .negotiate(&[
+                (&APPLICATION_PEM_CHAIN, CertificateFormatEnum::Pem),
+                (&APPLICATION_COSE_X509, CertificateFormatEnum::CoseX509),
+            ])
+            .unwrap_or(CertificateFormatEnum::Pem)
     } else {
         CertificateFormatEnum::Pem
     };
@@ -653,24 +652,27 @@ pub(crate) async fn ssi_get_trust_list_publication(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustListPublicationId>, ErrorResponseRestDTO>,
 ) -> Response {
-    let content_type = if let Some(TypedHeader(accept)) = accept {
-        if accept.contains(&mime::STAR_STAR) {
-            None
-        } else if accept.contains(&APPLICATION_JWT) {
-            Some(TrustListContentTypeDTO::Jwt)
-        } else if accept.contains(&APPLICATION_XML) {
-            Some(TrustListContentTypeDTO::Xml)
-        } else {
+    // an absent Accept header leaves the content type up to the publisher, as does a
+    // wildcard, which matches both of the content types offered below
+    let accepted_content_types = if let Some(TypedHeader(accept)) = accept {
+        let accepted_content_types = accept.negotiate_all(&[
+            (&APPLICATION_JWT, TrustListContentTypeDTO::Jwt),
+            (&APPLICATION_XML, TrustListContentTypeDTO::Xml),
+        ]);
+
+        if accepted_content_types.is_empty() {
             return StatusCode::NOT_ACCEPTABLE.into_response();
         }
+
+        accepted_content_types
     } else {
-        None
+        vec![]
     };
 
     let result = state
         .core
         .trust_list_publication_service
-        .get_trust_list_publication_content(id, content_type)
+        .get_trust_list_publication_content(id, &accepted_content_types)
         .await;
 
     match result {

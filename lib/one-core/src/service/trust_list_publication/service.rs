@@ -212,10 +212,12 @@ impl TrustListPublicationService {
         GetTrustListPublicationResponseDTO::try_from(trust_list).await
     }
 
+    /// `accepted_content_types` holds the content types the caller accepts, ordered by
+    /// descending preference. An empty list means that any content type is acceptable.
     pub async fn get_trust_list_publication_content(
         &self,
         id: TrustListPublicationId,
-        content_type: Option<TrustListContentTypeDTO>,
+        accepted_content_types: &[TrustListContentTypeDTO],
     ) -> Result<TrustListContent, TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
         throw_if_org_id_not_matching_session(
@@ -225,9 +227,7 @@ impl TrustListPublicationService {
         .error_while("validating organisation")?;
 
         let provider = self.fetch_trust_list_provider(&trust_list.r#type).await?;
-        if let Some(content_type) = content_type {
-            validate_provider_content_type(provider.get_capabilities(), content_type)?;
-        }
+        validate_provider_content_type(provider.get_capabilities(), accepted_content_types)?;
 
         let trust_list_content = provider
             .generate_trust_list_content(trust_list)
@@ -338,14 +338,29 @@ impl TrustListPublicationService {
 
 fn validate_provider_content_type(
     capabilities: TrustListPublisherCapabilities,
-    requested_content_type: TrustListContentTypeDTO,
+    accepted_content_types: &[TrustListContentTypeDTO],
 ) -> Result<(), TrustListPublicationServiceError> {
-    let supported_content_type = capabilities.content_type;
-    let requested = LoteContentType::from(requested_content_type);
+    if accepted_content_types.is_empty() {
+        return Ok(());
+    }
 
-    if !supported_content_type.contains(&requested) {
+    let supported_content_type = capabilities.content_type;
+    let accepted: Vec<LoteContentType> = accepted_content_types
+        .iter()
+        .cloned()
+        .map(LoteContentType::from)
+        .collect();
+
+    if !accepted
+        .iter()
+        .any(|accepted| supported_content_type.contains(accepted))
+    {
         return Err(TrustListPublicationServiceError::UnsupportedAcceptType(
-            requested.to_string(),
+            accepted
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", "),
         ));
     }
 
