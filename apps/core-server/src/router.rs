@@ -654,16 +654,8 @@ fn get_external_endpoints(
                 get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_get_issuer_metadata),
             )
             .route(
-                "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{id}/.well-known/openid-credential-issuer",
-                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_get_issuer_metadata_legacy),
-            )
-            .route(
                 "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{id}",
                 get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_oauth_authorization_server),
-            )
-            .route(
-                "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{id}/.well-known/oauth-authorization-server",
-                get(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_oauth_authorization_server_legacy),
             )
             .route(
                 "/ssi/openid4vci/final-1.0-swiyu/{credential_schema_id}/offer/{credential_id}",

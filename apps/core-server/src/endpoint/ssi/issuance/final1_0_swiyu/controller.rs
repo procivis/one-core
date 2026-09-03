@@ -1,11 +1,14 @@
-use axum::Json;
 use axum::extract::{Path, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
+use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
+use one_core::service::oid4vci_final1_0::dto::{
+    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+};
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
@@ -18,12 +21,12 @@ use standardized_types::openid4vci::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO;
 use crate::endpoint::ssi::issuance::final1_0::dto::{
-    OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCITokenRequestRestDTO,
+    OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCITokenRequestRestDTO,
 };
-use crate::endpoint::ssi::issuance::final1_0_swiyu::dto::{
-    OpenID4VCISwiyuIssuerMetadataResponseRestDTO, SwiyuOpenID4VCITokenResponseRestDTO,
-};
-use crate::extractor::QsOrForm;
+use crate::endpoint::ssi::issuance::final1_0_swiyu::dto::SwiyuOpenID4VCITokenResponseRestDTO;
+use crate::extractor::Accept;
+use crate::headers::APPLICATION_JWT;
 use crate::router::AppState;
 
 #[endpoint(
@@ -36,7 +39,10 @@ use crate::router::AppState;
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VCISwiyuIssuerMetadataResponseRestDTO),
+        (status = 200, description = "OK", content(
+            (OpenID4VCIIssuerMetadataResponseRestDTO = "application/json"),
+            (String = "application/jwt")
+        )),
         (status = 404, description = "Credential schema not found"),
         (status = 500, description = "Server error"),
     ),
@@ -48,27 +54,51 @@ use crate::router::AppState;
     "},
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
+    accept: TypedHeader<Accept>,
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
         Path<(String, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
+    let response_type = if accept.contains(&mime::APPLICATION_JSON) {
+        OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model
+    } else if accept.contains(&APPLICATION_JWT) {
+        OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Jwt
+    } else {
+        return StatusCode::NOT_ACCEPTABLE.into_response();
+    };
+
     let result = state
         .core
         .oid4vci_final1_0_swiyu_service
-        .get_issuer_metadata(&protocol_id, &identifier_id, &credential_schema_id)
+        .get_issuer_metadata(
+            &protocol_id,
+            &identifier_id,
+            &credential_schema_id,
+            response_type,
+        )
         .await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(OpenID4VCISwiyuIssuerMetadataResponseRestDTO::from(value)),
-        )
-            .into_response(),
+        Ok(value) => {
+            let response_body = match value {
+                OID4VCIFinal1_0IssuerMetadataResponseEnum::Model(model) => {
+                    Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(*model)).into_response()
+                }
+                OID4VCIFinal1_0IssuerMetadataResponseEnum::Jwt(jwt) => {
+                    ([(header::CONTENT_TYPE, APPLICATION_JWT.as_ref())], jwt).into_response()
+                }
+            };
+            (StatusCode::OK, response_body).into_response()
+        }
         Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
+        }
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0418) => {
+            tracing::error!("Invalid certificate type error: {error}");
+            StatusCode::BAD_REQUEST.into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
@@ -79,36 +109,6 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
 
 #[endpoint(
     permissions = [],
-    get,
-    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}/.well-known/openid-credential-issuer",
-    params(
-        ("protocol_id" = String, Path, description = "Issuance protocol id"),
-        ("identifier_id" = IdentifierId, Path, description = "Issuer identifier id"),
-        ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
-    ),
-    responses(
-        (status = 200, description = "OK", body = OpenID4VCISwiyuIssuerMetadataResponseRestDTO),
-        (status = 404, description = "Credential schema not found"),
-        (status = 500, description = "Server error"),
-    ),
-    tag = "openid4vci-final1_0-swiyu",
-    summary = "OID4VC - Retrieve issuer metadata",
-    description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
-    "},
-)]
-pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata_legacy(
-    state: State<AppState>,
-    path_args: WithRejection<
-        Path<(String, IdentifierId, CredentialSchemaId)>,
-        ErrorResponseRestDTO,
-    >,
-) -> Response {
-    oid4vci_final1_0_swiyu_get_issuer_metadata(state, path_args).await
-}
-
-#[utoipa::path(
     get,
     path = "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}",
     params(
@@ -156,36 +156,6 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
 
 #[endpoint(
     permissions = [],
-    get,
-    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}/.well-known/oauth-authorization-server",
-    params(
-        ("protocol_id" = String, Path, description = "Issuance protocol id"),
-         ("identifier_id" = IdentifierId, Path, description = "Issuer identifier id"),
-        ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
-    ),
-    responses(
-        (status = 200, description = "OK", body = AuthorizationServerMetadata),
-        (status = 404, description = "Credential schema not found"),
-        (status = 500, description = "Server error"),
-    ),
-    tag = "openid4vci-final1_0-swiyu",
-    summary = "OID4VC - OAuth authorization server",
-    description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
-    "},
-)]
-pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server_legacy(
-    state: State<AppState>,
-    path_args: WithRejection<
-        Path<(String, IdentifierId, CredentialSchemaId)>,
-        ErrorResponseRestDTO,
-    >,
-) -> Response {
-    oid4vci_final1_0_swiyu_oauth_authorization_server(state, path_args).await
-}
-
-#[utoipa::path(
     get,
     path = "/ssi/openid4vci/final-1.0-swiyu/{credential_schema_id}/offer/{credential_id}",
     params(
@@ -267,8 +237,8 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
     headers: HeaderMap,
-    WithRejection(QsOrForm(request), _): WithRejection<
-        QsOrForm<OpenID4VCITokenRequestRestDTO>,
+    WithRejection(Form(request), _): WithRejection<
+        Form<OpenID4VCITokenRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
@@ -425,7 +395,8 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
     }
 }
 
-#[utoipa::path(
+#[endpoint(
+    permissions = [],
     post,
     path = "/ssi/openid4vci/final-1.0-swiyu/{id}/notification",
     request_body(content = NotificationRequest, description = "Notification request"),

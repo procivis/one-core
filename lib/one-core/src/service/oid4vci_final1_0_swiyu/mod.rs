@@ -26,7 +26,6 @@ use crate::service::oid4vci_final1_0::resolver::CredentialIssuerMetadataFetcher;
 
 #[derive(Clone)]
 pub struct OID4VCIFinal1_0SwiyuService {
-    protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     inner: OID4VCIFinal1_0Service,
 }
 
@@ -78,7 +77,6 @@ impl OID4VCIFinal1_0SwiyuService {
                 formatter_provider,
                 ecosystem_provider,
             ),
-            protocol_provider,
         }
     }
 }

@@ -101,7 +101,6 @@ pub(crate) fn get_presentation_formatter_provider(
                     client.clone(),
                     crypto.clone(),
                     certificate_validator.clone(),
-                    false,
                 )) as _,
             ),
         ]);

@@ -95,7 +95,6 @@ async fn test_extract_presentation() {
         Arc::new(http_client),
         Arc::new(crypto),
         Arc::new(MockCertificateValidator::new()),
-        false,
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -228,7 +227,6 @@ async fn test_extract_presentation_with_holder_binding() {
         Arc::new(http_client),
         Arc::new(crypto),
         Arc::new(MockCertificateValidator::new()),
-        false,
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -341,7 +339,6 @@ async fn test_extract_presentation_with_wrong_nonce() {
         Arc::new(http_client),
         Arc::new(crypto),
         Arc::new(MockCertificateValidator::new()),
-        false,
     );
 
     let mut verify_mock = MockTokenVerifier::new();

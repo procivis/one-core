@@ -2,13 +2,14 @@ use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::token::{TokenRequest, TokenResponse};
 use standardized_types::openid4vci::{
-    CredentialIssuerMetadata, CredentialOffer, CredentialRequest, NonceResponse,
-    NotificationRequest,
+    CredentialOffer, CredentialRequest, NonceResponse, NotificationRequest,
 };
 
 use super::OID4VCIFinal1_0SwiyuService;
-use crate::error::ContextWithErrorCode;
-use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
+use crate::service::oid4vci_final1_0::dto::{
+    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    OpenID4VCICredentialResponseDTO,
+};
 use crate::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 
 impl OID4VCIFinal1_0SwiyuService {
@@ -27,16 +28,16 @@ impl OID4VCIFinal1_0SwiyuService {
         protocol_id: &str,
         identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
-    ) -> Result<CredentialIssuerMetadata, OID4VCIFinal1_0ServiceError> {
-        let issuance_protocol = self.protocol_provider.get_protocol(protocol_id)?;
-
-        let issuer_identifier = self.inner.get_issuer_identifier(identifier_id).await?;
-
-        issuance_protocol
-            .issuer_metadata(protocol_id, credential_schema_id, &issuer_identifier)
+        response_type: OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    ) -> Result<OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0ServiceError> {
+        self.inner
+            .get_issuer_metadata(
+                protocol_id,
+                identifier_id,
+                credential_schema_id,
+                response_type,
+            )
             .await
-            .error_while("getting issuer metadata")
-            .map_err(Into::into)
     }
 
     pub async fn get_credential_offer(

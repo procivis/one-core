@@ -38,10 +38,6 @@ mod test;
 pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway_seconds: Duration,
-
-    // Toggles SWIYU quirks, specifically the malformed `cnf` claim
-    #[serde(default)]
-    pub swiyu_mode: bool,
 }
 
 pub struct SdjwtVCPresentationFormatter {
@@ -56,7 +52,6 @@ impl SdjwtVCPresentationFormatter {
         client: Arc<dyn HttpClient>,
         crypto: Arc<dyn CryptoProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
-        swiyu_mode: bool,
     ) -> Self {
         Self {
             client,
@@ -64,7 +59,6 @@ impl SdjwtVCPresentationFormatter {
             certificate_validator,
             params: Params {
                 leeway_seconds: Duration::seconds(60),
-                swiyu_mode,
             },
         }
     }

@@ -1,49 +1,10 @@
-use indexmap::IndexMap;
 use one_core::mapper::opt_secret_string;
 use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::Serialize;
 use standardized_types::mapper::secret_string;
 use standardized_types::oauth2::token::ExpiresIn;
-use standardized_types::openid4vci::{
-    ClaimMetadata, CredentialDefinition, IssuerDisplay, ProofTypeSupported, SigningAlgValue,
-};
 use utoipa::ToSchema;
-
-use crate::endpoint::ssi::issuance::final1_0::dto::{
-    OpenID4VCICredentialMetadataResponseRestDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO,
-};
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema)]
-pub(crate) struct OpenID4VCISwiyuIssuerMetadataResponseRestDTO {
-    pub credential_issuer: String,
-    pub authorization_servers: Option<Vec<String>>,
-    pub credential_endpoint: String,
-    pub nonce_endpoint: Option<String>,
-    pub notification_endpoint: Option<String>,
-    pub credential_configurations_supported:
-        IndexMap<String, OpenID4VCISwiyuIssuerMetadataCredentialSupportedResponseRestDTO>,
-    pub display: Option<Vec<IssuerDisplay>>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema)]
-pub(crate) struct OpenID4VCISwiyuIssuerMetadataCredentialSupportedResponseRestDTO {
-    pub format: String,
-    pub doctype: Option<String>,
-    pub vct: Option<String>,
-    pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseRestDTO>,
-    pub display: Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>,
-    pub claims: IndexMap<String, ClaimMetadata>,
-    pub scope: Option<String>,
-    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    pub credential_signing_alg_values_supported: Option<Vec<SigningAlgValue>>,
-    #[schema(value_type = Object)]
-    pub proof_types_supported: Option<IndexMap<String, ProofTypeSupported>>,
-    pub credential_definition: Option<CredentialDefinition>,
-}
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]

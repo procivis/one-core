@@ -1,13 +1,9 @@
-use std::str::FromStr;
-use std::sync::LazyLock;
-
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::Mime;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::certificate::dto::CertificateFormatEnum;
 use one_core::service::did::error::DidServiceError;
@@ -31,29 +27,10 @@ use crate::endpoint::credential_schema::dto::{
 use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
 use crate::extractor::Accept;
+use crate::headers::{
+    APPLICATION_COSE_X509, APPLICATION_JWT, APPLICATION_PEM_CHAIN, APPLICATION_XML,
+};
 use crate::router::AppState;
-
-#[expect(clippy::expect_used)]
-static APPLICATION_JWT: LazyLock<Mime> = LazyLock::new(|| {
-    Mime::from_str("application/jwt").expect("application/jwt is valid mime type")
-});
-
-#[expect(clippy::expect_used)]
-static APPLICATION_XML: LazyLock<Mime> = LazyLock::new(|| {
-    Mime::from_str("application/xml").expect("application/xml is valid mime type")
-});
-
-#[expect(clippy::expect_used)]
-static APPLICATION_PEM_CHAIN: LazyLock<Mime> = LazyLock::new(|| {
-    Mime::from_str("application/pem-certificate-chain")
-        .expect("application/pem-certificate-chain is valid mime type")
-});
-
-#[expect(clippy::expect_used)]
-static APPLICATION_COSE_X509: LazyLock<Mime> = LazyLock::new(|| {
-    Mime::from_str("application/cose-x509").expect("application/cose-x509 is valid mime type")
-});
-
 #[endpoint(
     permissions = [],
     get,

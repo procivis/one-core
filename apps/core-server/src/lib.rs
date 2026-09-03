@@ -22,6 +22,7 @@ pub mod build_info {
     pub use build::*;
 }
 mod authentication;
+mod headers;
 mod middleware;
 mod permissions;
 mod session;

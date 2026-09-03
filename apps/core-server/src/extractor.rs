@@ -1,5 +1,4 @@
-use axum::body::to_bytes;
-use axum::extract::{FromRequest, FromRequestParts, Request};
+use axum::extract::FromRequestParts;
 use axum::http;
 use axum::http::request::Parts;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
@@ -38,49 +37,6 @@ where
             return Ok(Self(Default::default()));
         };
         Ok(Self(deserialize(query)?))
-    }
-}
-
-pub struct QsOrForm<T>(pub T);
-
-impl<S, T> FromRequest<S> for QsOrForm<T>
-where
-    S: Send + Sync,
-    T: serde::de::DeserializeOwned,
-{
-    type Rejection = (StatusCode, String);
-
-    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
-        const MB: usize = 1024 * 1024;
-
-        let (parts, body) = req.into_parts();
-        if let Some(query) = parts.uri.query() {
-            Ok(Self(deserialize(query)?))
-        } else {
-            let bytes = to_bytes(body, 10 * MB)
-                .await
-                .map_err(|err| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        format!("Failed to read request body bytes: {err}"),
-                    )
-                })?
-                .to_vec();
-            if bytes.is_empty() {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    "Invalid request, query and body cannot be both empty".to_string(),
-                ));
-            };
-
-            let request = serde_qs::from_bytes(bytes.as_slice()).map_err(|err| {
-                (
-                    StatusCode::BAD_REQUEST,
-                    format!("Query extraction error: {err}"),
-                )
-            })?;
-            Ok(Self(request))
-        }
     }
 }
 

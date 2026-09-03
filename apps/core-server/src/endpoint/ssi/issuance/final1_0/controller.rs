@@ -1,13 +1,9 @@
-use std::str::FromStr;
-use std::sync::LazyLock;
-
 use axum::extract::{Path, State};
-use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::Mime;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
@@ -29,12 +25,8 @@ use super::dto::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use crate::extractor::Accept;
+use crate::headers::APPLICATION_JWT;
 use crate::router::AppState;
-
-#[allow(clippy::expect_used)]
-static APPLICATION_JWT: LazyLock<Mime> = LazyLock::new(|| {
-    Mime::from_str("application/jwt").expect("application/jwt is valid mime type")
-});
 
 #[endpoint(
     permissions = [],
@@ -93,14 +85,9 @@ pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
                 OID4VCIFinal1_0IssuerMetadataResponseEnum::Model(model) => {
                     Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(*model)).into_response()
                 }
-                OID4VCIFinal1_0IssuerMetadataResponseEnum::Jwt(jwt) => (
-                    [(
-                        header::CONTENT_TYPE,
-                        HeaderValue::from_static("application/jwt"),
-                    )],
-                    jwt,
-                )
-                    .into_response(),
+                OID4VCIFinal1_0IssuerMetadataResponseEnum::Jwt(jwt) => {
+                    ([(header::CONTENT_TYPE, APPLICATION_JWT.as_ref())], jwt).into_response()
+                }
             };
             (StatusCode::OK, response_body).into_response()
         }
