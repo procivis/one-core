@@ -77,7 +77,7 @@ pub(crate) struct OpenID4VCISwiyuParams {
     pub key_attestation_leeway_seconds: Duration,
 
     #[serde(default)]
-    pub credential_encryption: CredentialEndpointEncryptionParams,
+    pub credential_endpoint_encryption: CredentialEndpointEncryptionParams,
 
     #[serde(flatten)]
     pub common: CommonParams,
@@ -96,7 +96,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
             nonce: value.nonce,
             oauth_attestation_leeway_seconds: value.oauth_attestation_leeway_seconds,
             key_attestation_leeway_seconds: value.key_attestation_leeway_seconds,
-            credential_endpoint_encryption: value.credential_encryption,
+            credential_endpoint_encryption: value.credential_endpoint_encryption,
             common: value.common,
         }
     }

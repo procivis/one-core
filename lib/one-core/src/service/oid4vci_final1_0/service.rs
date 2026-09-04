@@ -27,7 +27,7 @@ use super::OID4VCIFinal1_0Service;
 use super::dto::{
     CredentialRequestPayload, CredentialResponsePayload,
     OID4VCIFinal1_0IssuerMetadataResponseEnum as IssuerMetadataResponseEnum,
-    OID4VCIFinal1_0IssuerMetadataResponseTypeEnum as IssuerMetadataResponseTypeEnum,
+    OID4VCIFinal1_0MetadataResponseTypeEnum as IssuerMetadataResponseTypeEnum,
     OpenID4VCICredentialResponseDTO,
 };
 use super::error::OID4VCIFinal1_0ServiceError;
@@ -184,7 +184,7 @@ impl OID4VCIFinal1_0Service {
 
         let credential_issuer =
             format!("{protocol_base_url}/{protocol_id}/{identifier_id}/{credential_schema_id}");
-        Ok(AuthorizationServerMetadata {
+        let metadata = AuthorizationServerMetadata {
             issuer: credential_issuer.parse().map_err(|e| {
                 OID4VCIFinal1_0ServiceError::MappingError(format!("Invalid issuer URL: {e}"))
             })?,
@@ -221,6 +221,38 @@ impl OID4VCIFinal1_0Service {
             client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported,
             dpop_signing_alg_values_supported: Some(vec!["ES256".to_string()]), // necessary for the EUDI wallet to work
+            signed_metadata: None,
+        };
+
+        let metadata_result = async {
+            let issuer_identifier = self.get_issuer_identifier(identifier_id).await?;
+            self.issuer_metadata_cache
+                .get_authorization_server_metadata_jwt(
+                    protocol_id,
+                    credential_schema_id,
+                    issuer_identifier,
+                    metadata.clone(),
+                )
+                .await
+        }
+        .await;
+        let signed_metadata = match metadata_result {
+            Ok(jwt) => Some(jwt),
+            Err(OID4VCIFinal1_0ServiceError::MissingAuthenticationCapableKey(identifier_id)) => {
+                tracing::debug!(
+                    "Omitting signed authorization server metadata: identifier {identifier_id} has no Authentication capable key"
+                );
+                None
+            }
+            Err(error) => {
+                tracing::warn!("Failed to sign authorization server metadata: {error}");
+                None
+            }
+        };
+
+        Ok(AuthorizationServerMetadata {
+            signed_metadata,
+            ..metadata
         })
     }
 

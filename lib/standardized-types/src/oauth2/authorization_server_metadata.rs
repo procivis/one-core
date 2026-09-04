@@ -15,9 +15,13 @@ use super::dynamic_client_registration::TokenEndpointAuthMethod;
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct AuthorizationServerMetadata {
     pub issuer: Url,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization_endpoint: Option<Url>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_endpoint: Option<Url>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pushed_authorization_request_endpoint: Option<Url>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub jwks_uri: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub code_challenge_methods_supported: Vec<CodeChallengeMethod>,
@@ -32,6 +36,7 @@ pub struct AuthorizationServerMetadata {
 
     /// Attestation-Based Client Authentication challenge endpoint
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-13.1>
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub challenge_endpoint: Option<Url>,
 
     /// Attestation-Based Client Authentication - supported signing algorithms for client attestation
@@ -46,6 +51,13 @@ pub struct AuthorizationServerMetadata {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dpop_signing_alg_values_supported: Option<Vec<String>>,
+
+    /// A JWT carrying the metadata parameters of this document as claims, signed by the
+    /// authorization server.
+    ///
+    /// Spec: <https://datatracker.ietf.org/doc/html/rfc8414#section-2.1>
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signed_metadata: Option<String>,
 }
 
 /// PKCE code challenge method.

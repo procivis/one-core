@@ -88,7 +88,7 @@ use crate::service::key::KeyService;
 use crate::service::managed_instance::ManagedInstanceService;
 use crate::service::nfc::NfcService;
 use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
-use crate::service::oid4vci_final1_0::resolver::initialize_credential_issuer_metadata_cache_from_config;
+use crate::service::oid4vci_final1_0::resolver::initialize_issuer_metadata_cache_from_config;
 use crate::service::oid4vci_final1_0_swiyu::OID4VCIFinal1_0SwiyuService;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::oid4vp_final1_0_swiyu::OID4VPFinal1_0SwiyuService;
@@ -583,13 +583,12 @@ impl OneCore {
             transaction_data_provider.clone(),
         ));
 
-        let credential_issuer_metadata_cache =
-            initialize_credential_issuer_metadata_cache_from_config(
-                &config,
-                data_provider.get_remote_entity_cache_repository(),
-                key_provider.clone(),
-                key_algorithm_provider.clone(),
-            )?;
+        let credential_issuer_metadata_cache = initialize_issuer_metadata_cache_from_config(
+            &config,
+            data_provider.get_remote_entity_cache_repository(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+        )?;
         Ok(OneCore {
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),

@@ -6,7 +6,7 @@ use standardized_types::openid4vci::{CredentialOffer, NonceResponse, Notificatio
 use super::OID4VCIFinal1_0SwiyuService;
 use crate::service::oid4vci_final1_0::dto::{
     CredentialRequestPayload, CredentialResponsePayload, OID4VCIFinal1_0IssuerMetadataResponseEnum,
-    OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
 use crate::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 
@@ -26,7 +26,7 @@ impl OID4VCIFinal1_0SwiyuService {
         protocol_id: &str,
         identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
-        response_type: OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+        response_type: OID4VCIFinal1_0MetadataResponseTypeEnum,
     ) -> Result<OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0ServiceError> {
         self.inner
             .get_issuer_metadata(

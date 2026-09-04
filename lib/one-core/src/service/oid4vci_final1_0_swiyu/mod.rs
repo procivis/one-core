@@ -23,7 +23,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
-use crate::service::oid4vci_final1_0::resolver::CredentialIssuerMetadataFetcher;
+use crate::service::oid4vci_final1_0::resolver::IssuerMetadataFetcher;
 
 #[derive(Clone)]
 pub struct OID4VCIFinal1_0SwiyuService {
@@ -49,7 +49,7 @@ impl OID4VCIFinal1_0SwiyuService {
         transaction_manager: Arc<dyn TransactionManager>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
-        credential_issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+        credential_issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {

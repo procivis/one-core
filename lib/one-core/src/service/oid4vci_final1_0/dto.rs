@@ -34,7 +34,7 @@ pub enum CredentialResponsePayload {
 }
 
 #[derive(Clone, Debug)]
-pub enum OID4VCIFinal1_0IssuerMetadataResponseTypeEnum {
+pub enum OID4VCIFinal1_0MetadataResponseTypeEnum {
     Model,
     Jwt,
 }

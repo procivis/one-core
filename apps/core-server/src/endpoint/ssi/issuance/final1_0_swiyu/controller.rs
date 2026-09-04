@@ -1,14 +1,15 @@
 use axum::body::Bytes;
 use axum::extract::{Path, State};
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
+use mime::APPLICATION_JSON;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
-    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
@@ -46,6 +47,7 @@ use crate::router::AppState;
             (String = "application/jwt")
         )),
         (status = 404, description = "Credential schema not found"),
+        (status = 406, description = "Unsupported Accept content type"),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-final1_0-swiyu",
@@ -65,12 +67,12 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
 ) -> Response {
     let Some(response_type) = accept.negotiate(&[
         (
-            &mime::APPLICATION_JSON,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            &APPLICATION_JSON,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         ),
         (
             &APPLICATION_JWT,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Jwt,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Jwt,
         ),
     ]) else {
         return StatusCode::NOT_ACCEPTABLE.into_response();
@@ -124,8 +126,12 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = AuthorizationServerMetadata),
+        (status = 200, description = "OK", content(
+            (AuthorizationServerMetadata = "application/json"),
+            (String = "application/jwt")
+        )),
         (status = 404, description = "Credential schema not found"),
+        (status = 406, description = "Unsupported Accept content type"),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-final1_0-swiyu",
@@ -136,12 +142,25 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
     "},
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
+    accept: TypedHeader<Accept>,
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
         Path<(String, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
+    let Some(response_type) = accept.negotiate(&[
+        (
+            &APPLICATION_JSON,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
+        ),
+        (
+            &APPLICATION_JWT,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Jwt,
+        ),
+    ]) else {
+        return StatusCode::NOT_ACCEPTABLE.into_response();
+    };
     let result = state
         .core
         .oid4vci_final1_0_swiyu_service
@@ -149,7 +168,31 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
         .await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Ok(value) => match response_type {
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model => {
+                (StatusCode::OK, Json(value)).into_response()
+            }
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Jwt => {
+                let Some(signed) = value.signed_metadata else {
+                    tracing::warn!(
+                        "Signed authorization server metadata is requested but not available"
+                    );
+                    return StatusCode::NOT_ACCEPTABLE.into_response();
+                };
+                // swiyu requires signed OAuth 2.0 authorization server metadata as application/jwt
+                // thus deviates from RFC 8414.
+                // See https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#123-oauth-20-authorization-server-metadata
+                let response_body = (
+                    [(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/jwt"),
+                    )],
+                    signed,
+                )
+                    .into_response();
+                (StatusCode::OK, response_body).into_response()
+            }
+        },
         Err(error) if matches!(error.error_code(), ErrorCode::BR_0006 | ErrorCode::BR_0089) => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()

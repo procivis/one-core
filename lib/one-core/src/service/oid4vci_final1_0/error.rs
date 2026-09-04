@@ -33,8 +33,8 @@ pub enum OID4VCIFinal1_0ServiceError {
     #[error(transparent)]
     Nested(#[from] NestedError),
 
-    #[error("Identifier missing Authentication capable certificate: {0}")]
-    MissingAuthenticationCapableCertificate(IdentifierId),
+    #[error("Identifier missing Authentication capable key or certificate: {0}")]
+    MissingAuthenticationCapableKey(IdentifierId),
 }
 
 impl ErrorCodeMixin for OID4VCIFinal1_0ServiceError {
@@ -47,7 +47,7 @@ impl ErrorCodeMixin for OID4VCIFinal1_0ServiceError {
             Self::FromUtf8Error(_) | Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCIError(_) => ErrorCode::BR_0048,
             Self::Nested(nested) => nested.error_code(),
-            Self::MissingAuthenticationCapableCertificate(_) => ErrorCode::BR_0418,
+            Self::MissingAuthenticationCapableKey(_) => ErrorCode::BR_0418,
             Self::UnsupportedCredentialType { .. } => ErrorCode::BR_0442,
         }
     }

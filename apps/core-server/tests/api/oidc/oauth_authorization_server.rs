@@ -1,5 +1,9 @@
+use one_core::model::certificate::CertificateRole;
+use one_core::proto::jwt::Jwt;
+use serde_json::Value;
 use similar_asserts::assert_eq;
 
+use crate::fixtures::{TestingCertIdentifierParams, create_cert_identifier};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
@@ -89,6 +93,68 @@ async fn test_oauth_authorization_server_metadata() {
     // These fields should also be absent when attest_jwt_client_auth is not supported
     assert!(resp["client_attestation_signing_alg_values_supported"].is_null());
     assert!(resp["client_attestation_pop_signing_alg_values_supported"].is_null());
+
+    // The signed metadata carries the same parameters as claims
+    // https://datatracker.ietf.org/doc/html/rfc8414#section-2.1
+    let signed_metadata = resp["signed_metadata"].as_str().unwrap();
+    let jwt = Jwt::<Value>::decompose_token(signed_metadata).unwrap();
+
+    assert_eq!(jwt.header.r#type.as_deref(), Some("JWT"));
+    assert_eq!(jwt.payload.issuer.as_deref(), resp["issuer"].as_str());
+    assert_eq!(jwt.payload.custom["issuer"], resp["issuer"]);
+    assert_eq!(jwt.payload.custom["token_endpoint"], resp["token_endpoint"]);
+    assert_eq!(
+        jwt.payload.custom["token_endpoint_auth_methods_supported"],
+        resp["token_endpoint_auth_methods_supported"]
+    );
+    // "A signed_metadata metadata value SHOULD NOT appear as a claim in the JWT"
+    assert!(jwt.payload.custom.get("signed_metadata").is_none());
+
+    // and it is cached
+    let cache_entry = context
+        .db
+        .remote_entities
+        .get_by_key(&format!(
+            "oauth-authorization-server:OPENID4VCI_FINAL1:{}:{}",
+            identifier.id, credential_schema.id
+        ))
+        .await;
+    assert_eq!(cache_entry.unwrap().value, signed_metadata.as_bytes());
+}
+
+#[tokio::test]
+async fn test_oauth_authorization_server_metadata_omits_signed_metadata_without_authentication_key()
+{
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let identifier = create_cert_identifier(
+        &context,
+        &organisation,
+        Some(TestingCertIdentifierParams {
+            roles: vec![CertificateRole::AssertionMethod],
+            ..Default::default()
+        }),
+        None,
+    )
+    .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .oauth_authorization_server("OPENID4VCI_FINAL1", identifier.id, credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert!(resp["signed_metadata"].is_null());
+    assert!(!resp["token_endpoint"].is_null());
 }
 
 #[tokio::test]

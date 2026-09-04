@@ -19,7 +19,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::service::oid4vci_final1_0::resolver::CredentialIssuerMetadataFetcher;
+use crate::service::oid4vci_final1_0::resolver::IssuerMetadataFetcher;
 
 pub mod dto;
 pub mod error;
@@ -48,7 +48,7 @@ pub struct OID4VCIFinal1_0Service {
     transaction_manager: Arc<dyn TransactionManager>,
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     identifier_creator: Arc<dyn IdentifierCreator>,
-    issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+    issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
@@ -72,7 +72,7 @@ impl OID4VCIFinal1_0Service {
         transaction_manager: Arc<dyn TransactionManager>,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         identifier_creator: Arc<dyn IdentifierCreator>,
-        issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+        issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
@@ -121,7 +121,7 @@ impl OID4VCIFinal1_0Service {
         transaction_manager: Arc<dyn TransactionManager>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
-        issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+        issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {

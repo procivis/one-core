@@ -72,9 +72,9 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::service::oid4vci_final1_0::dto::{
     CredentialRequestPayload, CredentialResponsePayload, OID4VCIFinal1_0IssuerMetadataResponseEnum,
-    OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
-use crate::service::oid4vci_final1_0::resolver::MockCredentialIssuerMetadataFetcher;
+use crate::service::oid4vci_final1_0::resolver::MockIssuerMetadataFetcher;
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -93,7 +93,7 @@ struct Mocks {
     pub blob_storage_provider: MockBlobStorageProvider,
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
     pub identifier_creator: MockIdentifierCreator,
-    pub credential_issuer_metadata_cache: MockCredentialIssuerMetadataFetcher,
+    pub credential_issuer_metadata_cache: MockIssuerMetadataFetcher,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub ecosystem_provider: MockEcosystemDirectory,
 }
@@ -392,6 +392,113 @@ fn expect_key_agreement_capability(key_algorithm_provider: &mut MockKeyAlgorithm
 }
 
 #[tokio::test]
+async fn test_oauth_authorization_server_metadata_contains_signed_metadata() {
+    let schema = generic_credential_schema();
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    {
+        let schema = schema.clone();
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .once()
+            .with(eq(schema.id))
+            .returning(move |_| Ok(schema.clone()));
+    }
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .with(eq(identifier_id))
+        .returning(move |_| Ok(identifier.clone()));
+
+    let mut issuer_metadata_cache = MockIssuerMetadataFetcher::default();
+    issuer_metadata_cache
+        .expect_get_authorization_server_metadata_jwt()
+        .once()
+        .withf(
+            move |protocol_id, credential_schema_id, identifier, metadata| {
+                protocol_id == "OPENID4VCI_FINAL1"
+                && credential_schema_id == &schema.id
+                && identifier.id == identifier_id
+                // the JWT must not contain the `signed_metadata` claim itself
+                && metadata.signed_metadata.is_none()
+                && metadata.issuer.as_str().ends_with(&format!(
+                    "/OPENID4VCI_FINAL1/{identifier_id}/{}",
+                    credential_schema_id
+                ))
+            },
+        )
+        .return_once(|_, _, _, _| Ok("signed.metadata.jwt".to_string()));
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        identifier_repository,
+        credential_issuer_metadata_cache: issuer_metadata_cache,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .oauth_authorization_server("OPENID4VCI_FINAL1", &identifier_id, &schema.id)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        Some("signed.metadata.jwt".to_string()),
+        result.signed_metadata
+    );
+}
+
+#[tokio::test]
+async fn test_oauth_authorization_server_metadata_omits_signed_metadata_without_signing_key() {
+    let schema = generic_credential_schema();
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    {
+        let schema = schema.clone();
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .once()
+            .returning(move |_| Ok(schema.clone()));
+    }
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+
+    let mut issuer_metadata_cache = MockIssuerMetadataFetcher::default();
+    issuer_metadata_cache
+        .expect_get_authorization_server_metadata_jwt()
+        .once()
+        .return_once(move |_, _, _, _| {
+            Err(OID4VCIFinal1_0ServiceError::MissingAuthenticationCapableKey(identifier_id))
+        });
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        identifier_repository,
+        credential_issuer_metadata_cache: issuer_metadata_cache,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .oauth_authorization_server("OPENID4VCI_FINAL1", &identifier_id, &schema.id)
+        .await
+        .unwrap();
+
+    assert!(result.signed_metadata.is_none());
+    assert!(result.token_endpoint.is_some());
+}
+
+#[tokio::test]
 async fn test_get_issuer_metadata_jwt() {
     let mut did_method_provider = MockDidMethodProvider::default();
     did_method_provider
@@ -473,7 +580,7 @@ async fn test_get_issuer_metadata_jwt() {
             "OPENID4VCI_FINAL1",
             &identifier_id,
             &schema.id,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         )
         .await;
     assert!(result.is_ok());
@@ -617,7 +724,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
             "OPENID4VCI_FINAL1",
             &identifier_id,
             &schema.id,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         )
         .await
         .unwrap();
@@ -787,7 +894,7 @@ async fn test_get_issuer_metadata_mdoc() {
             "OPENID4VCI_FINAL1",
             &identifier_id,
             &schema.id,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         )
         .await
         .unwrap();
@@ -946,7 +1053,7 @@ async fn test_get_issuer_metadata_includes_schema_translations() {
             "OPENID4VCI_FINAL1",
             &identifier_id,
             &schema.id,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         )
         .await
         .unwrap();
@@ -1108,7 +1215,7 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
             "OPENID4VCI_FINAL1",
             &identifier_id,
             &schema.id,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         )
         .await
         .unwrap();

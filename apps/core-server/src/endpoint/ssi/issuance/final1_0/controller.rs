@@ -8,7 +8,7 @@ use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
-    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
@@ -45,6 +45,7 @@ use crate::router::AppState;
             (String = "application/jwt")
         )),
         (status = 404, description = "Credential schema not found"),
+        (status = 406, description = "Unsupported Accept content type"),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-final1_0",
@@ -65,11 +66,11 @@ pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
     let Some(response_type) = accept.negotiate(&[
         (
             &mime::APPLICATION_JSON,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
         ),
         (
             &APPLICATION_JWT,
-            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Jwt,
+            OID4VCIFinal1_0MetadataResponseTypeEnum::Jwt,
         ),
     ]) else {
         return StatusCode::NOT_ACCEPTABLE.into_response();

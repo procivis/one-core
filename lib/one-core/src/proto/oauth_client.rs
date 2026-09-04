@@ -240,6 +240,7 @@ mod tests {
                     client_attestation_signing_alg_values_supported: None,
                     client_attestation_pop_signing_alg_values_supported: None,
                     dpop_signing_alg_values_supported: None,
+                    signed_metadata: None,
                 }),
             )
             .expect(1)
@@ -311,6 +312,7 @@ mod tests {
                     client_attestation_signing_alg_values_supported: None,
                     client_attestation_pop_signing_alg_values_supported: None,
                     dpop_signing_alg_values_supported: None,
+                    signed_metadata: None,
                 }),
             )
             .expect(1)
@@ -382,6 +384,7 @@ mod tests {
                     client_attestation_signing_alg_values_supported: None,
                     client_attestation_pop_signing_alg_values_supported: None,
                     dpop_signing_alg_values_supported: None,
+                    signed_metadata: None,
                 }),
             )
             .expect(1)
@@ -470,6 +473,7 @@ mod tests {
                     client_attestation_signing_alg_values_supported: None,
                     client_attestation_pop_signing_alg_values_supported: None,
                     dpop_signing_alg_values_supported: None,
+                    signed_metadata: None,
                 }),
             )
             .expect(1)
