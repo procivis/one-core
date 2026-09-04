@@ -593,6 +593,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             did_methods,
             verifier_identifier_types: vec![IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
+            supported_encryption_algorithms: vec![],
         }
     }
 

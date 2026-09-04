@@ -2272,6 +2272,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -2406,6 +2407,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -2545,6 +2547,7 @@ async fn test_create_proof_using_identifier() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -2688,6 +2691,7 @@ async fn test_create_proof_without_related_key() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -2829,6 +2833,7 @@ async fn test_create_proof_with_related_key() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -2987,6 +2992,7 @@ async fn test_create_proof_fail_duplicit_transaction_data() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -3126,6 +3132,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -3237,6 +3244,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -3414,6 +3422,7 @@ async fn test_create_proof_did_deactivated_error() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
@@ -3596,6 +3605,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
 
         protocol.expect_get_capabilities().times(1).returning(|| {
             VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
                 features: vec![],
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 use shared_types::i18n::I18nString;
 use shared_types::{InteractionId, TransactionDataId, TransactionDataType};
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
@@ -28,6 +29,7 @@ pub(crate) struct VerificationProtocolCapabilities {
     pub did_methods: Vec<DidType>,
     pub verifier_identifier_types: Vec<IdentifierType>,
     pub supported_presentation_definition: Vec<PresentationDefinitionVersion>,
+    pub supported_encryption_algorithms: Vec<EncryptionAlgorithm>,
 }
 
 #[derive(Debug, Serialize, Clone, Eq, PartialEq)]

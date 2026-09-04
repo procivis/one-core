@@ -1,5 +1,6 @@
 //! Selection of the keys an identifier can use for ECDH-ES key agreement.
 
+use shared_types::KeyId;
 use standardized_types::jwk::{JwkUse, PublicJwk};
 
 use crate::error::{ContextWithErrorCode, NestedError};
@@ -19,8 +20,11 @@ pub(crate) struct KeyAgreementKey {
 
 /// Lists the keys of `identifier` that can actually perform ECDH.
 /// Returns an empty list rather than an error when the identifier has no such key.
+///
+/// When `preferred_key_id` names a key that qualifies, it is returned first.
 pub(crate) async fn key_agreement_keys(
     identifier: &Identifier,
+    preferred_key_id: Option<KeyId>,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<Vec<KeyAgreementKey>, NestedError> {
@@ -75,6 +79,10 @@ pub(crate) async fn key_agreement_keys(
             key: key.to_owned(),
             jwk,
         });
+    }
+
+    if let Some(preferred_key_id) = preferred_key_id {
+        result.sort_by_key(|candidate| candidate.key.id != preferred_key_id);
     }
 
     Ok(result)

@@ -6,6 +6,7 @@ pub mod openid4vp;
 pub mod rdf_canonization;
 pub mod vcdm_jsonld_contexts;
 
+pub mod jwe;
 pub mod key_agreement;
 pub mod sign8;
 #[cfg(any(test, feature = "mock"))]

@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
+use one_crypto::encryption::EncryptionError;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumMessage, IntoStaticStr};
 
@@ -1129,6 +1130,12 @@ impl From<OptionalRelatedExtError> for NestedError {
             context: None,
             source: Box::new(error),
         }
+    }
+}
+
+impl ErrorCodeMixin for EncryptionError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0062
     }
 }
 

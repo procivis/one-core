@@ -26,6 +26,7 @@ use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supporte
 
 pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
     key_agreement_key: Option<PublicJwk>,
+    supported_encryption_algorithms: Vec<EncryptionAlgorithm>,
 ) -> Result<ClientMetadata, VerificationProtocolError> {
     let vp_formats_supported = generate_vp_formats_supported();
 
@@ -34,16 +35,13 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
         ..Default::default()
     };
 
-    if let Some(key_agreement_key) = key_agreement_key {
+    if let Some(key_agreement_key) = key_agreement_key
+        && !supported_encryption_algorithms.is_empty()
+    {
         metadata.jwks = Some(Jwks {
             keys: vec![key_agreement_key],
         });
-        metadata.encrypted_response_enc_values_supported = Some(vec![
-            EncryptionAlgorithm::A128GCM,
-            EncryptionAlgorithm::A256GCM,
-            EncryptionAlgorithm::A128CBCHS256,
-            EncryptionAlgorithm::A256CBCHS512,
-        ]);
+        metadata.encrypted_response_enc_values_supported = Some(supported_encryption_algorithms);
     }
 
     Ok(metadata)

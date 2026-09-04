@@ -20,7 +20,6 @@ pub(crate) mod disclosure_policy;
 pub mod error;
 pub mod final1_0;
 pub mod final1_0_swiyu;
-pub(crate) mod jwe_presentation;
 pub(crate) mod mapper;
 pub(crate) mod mdoc;
 pub mod model;

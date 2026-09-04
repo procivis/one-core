@@ -4,7 +4,7 @@ use std::str::FromStr;
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use itertools::Itertools;
-use one_crypto::jwe::extract_jwe_header;
+use one_crypto::jwe::{Header as JweHeader, extract_jwe_header};
 use one_crypto::utilities::{self, generate_alphanumeric};
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
@@ -70,7 +70,6 @@ use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
-use crate::provider::issuance_protocol::openid4vci_final1_0::jwe::{build_jwe, decrypt_jwe};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     FormatNotification, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
 };
@@ -87,6 +86,7 @@ use crate::service::managed_instance::dto::{
     WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
 };
 use crate::service::ssi_validator::validate_issuance_protocol_type;
+use crate::util::jwe::{build_jwe, decrypt_jwe};
 use crate::util::key_agreement::key_agreement_keys;
 use crate::validator::throw_if_credential_state_not_eq;
 
@@ -547,6 +547,7 @@ impl OID4VCIFinal1_0Service {
 
         let candidates = key_agreement_keys(
             &issuer_identifier,
+            None,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )
@@ -612,12 +613,23 @@ impl OID4VCIFinal1_0Service {
                 "Failed serializing credential response: {error}"
             ))
         })?;
-        let jwe = build_jwe(&payload, jwk, enc, zip, &*self.key_algorithm_provider)
-            .await
-            .map_err(|error| {
-                tracing::info!("Failed encrypting credential response: {error}");
-                OpenID4VCIError::InvalidEncryptionParameters
-            })?;
+        let jwe = build_jwe(
+            &payload,
+            &jwk,
+            JweHeader {
+                key_id: jwk.kid().map(String::from),
+                zip,
+                partyuinfo_data: None,
+                partyvinfo_data: None,
+            },
+            enc,
+            &*self.key_algorithm_provider,
+        )
+        .await
+        .map_err(|error| {
+            tracing::info!("Failed encrypting credential response: {error}");
+            OpenID4VCIError::InvalidEncryptionParameters
+        })?;
 
         Ok(CredentialResponsePayload::Encrypted(jwe))
     }

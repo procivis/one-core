@@ -347,6 +347,7 @@ impl VerificationProtocol for IsoMdl {
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web],
             verifier_identifier_types: vec![IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
+            supported_encryption_algorithms: vec![],
         }
     }
 

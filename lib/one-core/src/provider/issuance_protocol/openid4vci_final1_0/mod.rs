@@ -18,7 +18,7 @@ use model::{
     PreparedMetadata, TokenRequestWalletAttestationRequest, WalletAttestationResult,
 };
 use one_crypto::encryption::{decrypt_string, encrypt_string};
-use one_crypto::jwe::decrypt_jwe_payload;
+use one_crypto::jwe::{Header as JweHeader, decrypt_jwe_payload};
 use proc_macros::Provider;
 use proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use secrecy::{ExposeSecret, SecretString};
@@ -99,7 +99,6 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::model::ProtocolArtifact;
-use crate::provider::issuance_protocol::openid4vci_final1_0::jwe::build_jwe;
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper_v2::credential_to_credential_detail_v2;
 use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -119,13 +118,13 @@ use crate::repository::key_repository::KeyRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
+use crate::util::jwe::{build_jwe, select_recipient_jwk};
 use crate::util::key_agreement::{KeyAgreementKey, key_agreement_keys};
 use crate::util::key_selection::KeyFilter;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 mod attestations;
 mod holder_credentials;
-pub(crate) mod jwe;
 pub(crate) mod mapper;
 mod mapper_v2;
 pub mod model;
@@ -784,16 +783,23 @@ impl OpenID4VCIFinal1_0 {
                 ))?;
             let selected_compression_alg = request_encryption.zip_values_supported.first().cloned();
             let payload = serde_json::to_vec(&body)?;
-            let issuer_key = request_encryption.jwks.keys.first().cloned().ok_or(
-                IssuanceProtocolError::Failed(
-                    "credential_request_encryption contains empty jwks".to_string(),
-                ),
-            )?;
+            let issuer_key = select_recipient_jwk(
+                request_encryption.jwks.keys.iter().cloned(),
+                &*self.key_algorithm_provider,
+            )
+            .ok_or(IssuanceProtocolError::Failed(
+                "credential_request_encryption contains no usable key agreement key".to_string(),
+            ))?;
             let encrypted = build_jwe(
                 &payload,
-                issuer_key,
+                &issuer_key,
+                JweHeader {
+                    key_id: issuer_key.kid().map(String::from),
+                    zip: selected_compression_alg,
+                    partyuinfo_data: None,
+                    partyvinfo_data: None,
+                },
                 selected_encryption_alg,
-                selected_compression_alg,
                 &*self.key_algorithm_provider,
             )
             .await?;
@@ -1479,6 +1485,7 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<Vec<KeyAgreementKey>, IssuanceProtocolError> {
         Ok(key_agreement_keys(
             issuer_identifier,
+            None,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )

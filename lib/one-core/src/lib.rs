@@ -699,6 +699,7 @@ impl OneCore {
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
                 ecosystem_provider.clone(),
+                verification_provider.clone(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
@@ -713,6 +714,7 @@ impl OneCore {
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
                 ecosystem_provider.clone(),
+                verification_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

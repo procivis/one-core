@@ -117,6 +117,7 @@ mod test {
     fn test_selects_first_in_order_transport_from_config_if_transport_is_none() {
         let config = config(&["BLE", "MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
+            supported_encryption_algorithms: vec![],
             features: vec![],
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
@@ -136,6 +137,7 @@ mod test {
     fn test_selects_one_transport() {
         let config = config(&["MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
+            supported_encryption_algorithms: vec![],
             features: vec![],
             supported_transports: vec![TransportType::Mqtt],
             did_methods: vec![],
@@ -159,6 +161,7 @@ mod test {
     fn test_selects_multiple_transports() {
         let config = config(&["BLE", "MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
+            supported_encryption_algorithms: vec![],
             features: vec![],
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
@@ -183,6 +186,7 @@ mod test {
     fn test_fails_if_capability_is_missing() {
         let config = config(&["MQTT"]);
         let capabilities = VerificationProtocolCapabilities {
+            supported_encryption_algorithms: vec![],
             features: vec![],
             supported_transports: vec![],
             did_methods: vec![],
@@ -206,6 +210,7 @@ mod test {
     fn test_fails_when_transport_combination_is_not_allowed() {
         let config = config(&["BLE", "MQTT", "HTTP"]);
         let capabilities = VerificationProtocolCapabilities {
+            supported_encryption_algorithms: vec![],
             features: vec![],
             supported_transports: vec![
                 TransportType::Ble,

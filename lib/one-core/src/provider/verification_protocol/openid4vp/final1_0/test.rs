@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
+use one_crypto::jwe::MockPrivateKeyAgreementHandle;
 use serde_json::json;
 use shared_types::{CredentialFormat, TransactionDataId};
 use similar_asserts::assert_eq;
@@ -396,6 +397,18 @@ fn setup_key_agreement_mocks(
     key_storage
         .expect_get_capabilities()
         .returning(KeyStorageCapabilities::default);
+    // the key has to expose a private key agreement handle, otherwise it is not offered
+    key_storage.expect_key_handle().returning(|_| {
+        Ok(KeyHandle::SignatureAndKeyAgreement {
+            signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                MockSignaturePublicKeyHandle::default(),
+            )),
+            key_agreement: KeyAgreementHandle::WithPrivateKey {
+                private: Arc::new(MockPrivateKeyAgreementHandle::default()),
+                public: Arc::new(MockPublicKeyAgreementHandle::default()),
+            },
+        })
+    });
 
     let mut key_provider = MockKeyProvider::new();
     let arc = Arc::new(key_storage);

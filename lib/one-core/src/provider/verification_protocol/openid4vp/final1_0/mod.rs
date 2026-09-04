@@ -7,6 +7,7 @@ use futures::future::BoxFuture;
 use indexmap::IndexMap;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
 use model::Params;
+use one_crypto::jwe::Header as JweHeader;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
@@ -23,7 +24,6 @@ use url::Url;
 use utils::validate_interaction_data;
 use uuid::Uuid;
 
-use super::jwe_presentation::{self, encryption_key_from_metadata};
 use super::mapper::{format_to_type, unencrypted_params};
 use super::mdoc::mdoc_presentation_context;
 use crate::config::core_config::{
@@ -85,6 +85,7 @@ use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
+use crate::util::jwe::{build_jwe, select_recipient_jwk};
 
 pub(super) mod dcql;
 pub mod mappers;
@@ -205,9 +206,10 @@ impl OpenID4VPFinal1_0 {
 
             client_metadata.jwks = jwks.json().error_while("parsing JWKs")?;
         }
-        let Some(verifier_key) =
-            encryption_key_from_metadata(client_metadata, self.key_algorithm_provider.as_ref())
-        else {
+        let Some(verifier_key) = select_recipient_jwk(
+            client_metadata.jwks.into_iter().flat_map(|jwks| jwks.keys),
+            self.key_algorithm_provider.as_ref(),
+        ) else {
             return Ok(None);
         };
         Ok(Some(EncryptionInfo {
@@ -530,6 +532,12 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             did_methods,
             verifier_identifier_types: verifier_identifier_types.into_iter().collect(),
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
+            supported_encryption_algorithms: vec![
+                EncryptionAlgorithm::A128GCM,
+                EncryptionAlgorithm::A256GCM,
+                EncryptionAlgorithm::A128CBCHS256,
+                EncryptionAlgorithm::A256CBCHS512,
+            ],
         }
     }
 
@@ -731,11 +739,17 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .as_ref()
             .await?;
 
-        let key_agreement_key =
-            select_key_agreement_key_from_proof(proof, &*self.key_algorithm_provider, &self.config)
-                .await?;
+        let key_agreement_key = select_key_agreement_key_from_proof(
+            proof,
+            &*self.key_provider,
+            &*self.key_algorithm_provider,
+        )
+        .await?;
 
-        let client_metadata = create_open_id_for_vp_client_metadata_final1_0(key_agreement_key)?;
+        let client_metadata = create_open_id_for_vp_client_metadata_final1_0(
+            key_agreement_key,
+            self.get_capabilities().supported_encryption_algorithms,
+        )?;
         let encryption_key = client_metadata
             .jwks
             .as_ref()
@@ -935,16 +949,23 @@ async fn encrypted_params(
                 "metadata contains no encrypted_response_enc_values_supported entries".to_string(),
             ))?;
 
-    let response = jwe_presentation::build_jwe(
-        payload,
-        verifier_key,
-        holder_nonce,
-        &verifier_nonce,
+    let payload = payload
+        .try_into_json()
+        .map_err(VerificationProtocolError::Other)?;
+
+    let response = build_jwe(
+        &payload,
+        &verifier_key,
+        JweHeader {
+            key_id: verifier_key.kid().map(String::from),
+            zip: None,
+            partyuinfo_data: Some(holder_nonce.as_bytes().to_vec()),
+            partyvinfo_data: Some(verifier_nonce.as_bytes().to_vec()),
+        },
         selected_encryption_alg,
         key_algorithm_provider,
     )
-    .await
-    .map_err(VerificationProtocolError::Other)?;
+    .await?;
     Ok(HashMap::from_iter([("response".to_owned(), response)]))
 }
 

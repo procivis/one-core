@@ -5,6 +5,7 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as};
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::{
     AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix,
 };
@@ -145,6 +146,10 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
             did_methods: vec![DidType::WebVh],
             verifier_identifier_types: vec![IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
+            supported_encryption_algorithms: vec![
+                EncryptionAlgorithm::A128GCM,
+                EncryptionAlgorithm::A256GCM,
+            ],
         }
     }
 

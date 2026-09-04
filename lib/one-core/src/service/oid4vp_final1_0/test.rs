@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use maplit::hashmap;
 use mockall::predicate::eq;
+use one_crypto::jwe::MockPrivateKeyAgreementHandle;
 use shared_types::{EcosystemId, InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
@@ -16,7 +17,7 @@ use uuid::Uuid;
 
 use super::OID4VPFinal1_0Service;
 use super::error::OID4VPFinal1_0ServiceError;
-use crate::config::core_config::{CoreConfig, VerificationProtocolType};
+use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -45,8 +46,11 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::verification_protocol::MockVerificationProtocol;
+use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
+use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -66,6 +70,7 @@ struct Mocks {
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
     pub ecosystem_provider: MockEcosystemDirectory,
+    pub protocol_provider: MockVerificationProtocolProvider,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
@@ -82,6 +87,7 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(NoTransactionManager),
         Arc::new(mocks.proof_validator),
         Arc::new(mocks.ecosystem_provider),
+        Arc::new(mocks.protocol_provider),
     )
 }
 
@@ -545,7 +551,7 @@ async fn test_get_client_metadata_success() {
             .expect_key_algorithm_from_key()
             .return_once(|_| Ok(Arc::new(key_algorithm)));
     }
-    key_provider.expect_get_key_storage().return_once(|_| {
+    key_provider.expect_get_key_storage().returning(|_| {
         let mut key_storage = MockKeyStorage::default();
         key_storage
             .expect_get_capabilities()
@@ -553,13 +559,46 @@ async fn test_get_client_metadata_success() {
                 features: vec![],
                 algorithms: vec![],
             });
+        // the key has to expose a private key agreement handle, otherwise it is not offered
+        key_storage.expect_key_handle().returning(|_| {
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                )),
+                key_agreement: KeyAgreementHandle::WithPrivateKey {
+                    private: Arc::new(MockPrivateKeyAgreementHandle::default()),
+                    public: Arc::new(MockPublicKeyAgreementHandle::default()),
+                },
+            })
+        });
 
         Ok(Arc::new(key_storage))
     });
+    // the advertised algorithms come from the protocol capabilities, not a hardcoded list
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+        protocol
+            .expect_get_capabilities()
+            .return_once(|| VerificationProtocolCapabilities {
+                features: vec![],
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![],
+                verifier_identifier_types: vec![],
+                supported_presentation_definition: vec![],
+                supported_encryption_algorithms: vec![
+                    EncryptionAlgorithm::A128GCM,
+                    EncryptionAlgorithm::A256GCM,
+                ],
+            });
+        Ok(Arc::new(protocol))
+    });
+
     let service = setup_service(Mocks {
         key_algorithm_provider,
         key_provider,
         proof_repository,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -611,9 +650,7 @@ async fn test_get_client_metadata_success() {
             ]),
             encrypted_response_enc_values_supported: Some(vec![
                 EncryptionAlgorithm::A128GCM,
-                EncryptionAlgorithm::A256GCM,
-                EncryptionAlgorithm::A128CBCHS256,
-                EncryptionAlgorithm::A256CBCHS512
+                EncryptionAlgorithm::A256GCM
             ]),
             ..Default::default()
         },

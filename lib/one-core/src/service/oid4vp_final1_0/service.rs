@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::str::FromStr;
 
-use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
+use one_crypto::jwe::extract_jwe_header;
 use shared_types::{BlobId, EcosystemId, KeyId, ProofId};
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::{
     ClientIdPrefix, ClientMetadata, DirectPostResponse, EncryptedResponse, VerifierInfoAttestation,
     VerifierInfoAttestationFormat,
@@ -41,6 +42,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::repository::error::DataLayerError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
+use crate::util::jwe::decrypt_jwe;
 use crate::util::openid4vp::persist_accepted_proof;
 use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
 use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
@@ -106,8 +108,8 @@ impl OID4VPFinal1_0Service {
 
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
+            &*self.key_provider,
             &*self.key_algorithm_provider,
-            &self.config,
         )
         .await
         .error_while("selecting agreement key")?;
@@ -141,8 +143,11 @@ impl OID4VPFinal1_0Service {
             client_id.clone(),
             response_uri.clone(),
             &interaction.id,
-            create_open_id_for_vp_client_metadata_final1_0(key_handle)
-                .error_while("creating metadata")?,
+            create_open_id_for_vp_client_metadata_final1_0(
+                key_handle,
+                self.supported_encryption_algorithms(&proof.protocol)?,
+            )
+            .error_while("creating metadata")?,
             verifier_info,
         )
         .error_while("generating authorization request")?;
@@ -218,14 +223,17 @@ impl OID4VPFinal1_0Service {
 
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
+            &*self.key_provider,
             &*self.key_algorithm_provider,
-            &self.config,
         )
         .await
         .error_while("selecting agreement key")?;
 
-        Ok(create_open_id_for_vp_client_metadata_final1_0(key_handle)
-            .error_while("creating metadata")?)
+        Ok(create_open_id_for_vp_client_metadata_final1_0(
+            key_handle,
+            self.supported_encryption_algorithms(&proof.protocol)?,
+        )
+        .error_while("creating metadata")?)
     }
 
     pub async fn direct_post(
@@ -478,28 +486,14 @@ impl OID4VPFinal1_0Service {
                             error => error.error_while("getting key").into(),
                         })?;
 
-                let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
-
-                let key = key_storage
-                    .key_handle(&key)
-                    .error_while("getting key handle")?;
-
-                let key = key
-                    .key_agreement()
-                    .and_then(|k| k.private())
-                    .ok_or_else(|| {
-                        OID4VPFinal1_0ServiceError::ValidationError(
-                            "Unsupported JWE key".to_string(),
-                        )
-                    })?;
-
-                let payload = decrypt_jwe_payload(&jwe, key.as_ref())
-                    .await
-                    .map_err(|err| {
-                        OID4VPFinal1_0ServiceError::ValidationError(format!(
-                            "Failed decrypting JWE payload: {err}"
-                        ))
-                    })?;
+                let payload =
+                    decrypt_jwe(&jwe, &key, &*self.key_provider)
+                        .await
+                        .map_err(|err| {
+                            OID4VPFinal1_0ServiceError::ValidationError(format!(
+                                "Failed decrypting JWE payload: {err}"
+                            ))
+                        })?;
 
                 let payload = JwePayload::try_from_json(&payload).map_err(|err| {
                     OID4VPFinal1_0ServiceError::ValidationError(format!(
@@ -535,6 +529,22 @@ impl OID4VPFinal1_0Service {
             }
             _ => Err(OpenID4VCError::InvalidRequest.into()),
         }
+    }
+
+    /// Content encryption algorithms the protocol handling this proof supports.
+    ///
+    /// The protocol capabilities are the source of truth, so a variant narrowing the list -
+    /// swiyu does - is honoured by the endpoints too.
+    fn supported_encryption_algorithms(
+        &self,
+        protocol_id: &str,
+    ) -> Result<Vec<EncryptionAlgorithm>, OID4VPFinal1_0ServiceError> {
+        Ok(self
+            .protocol_provider
+            .get_protocol(protocol_id)
+            .error_while("getting verification protocol")?
+            .get_capabilities()
+            .supported_encryption_algorithms)
     }
 
     /// Resolves all IdentifierTrustInformation entries for an identifier
