@@ -1,8 +1,9 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vci::{
-    CredentialRequest, CredentialRequestIdentifier, KeyStorageSecurityLevel,
+    CredentialRequest, CredentialRequestIdentifier, KeyStorageSecurityLevel, ResponseEncryption,
 };
 use time::Duration;
 
@@ -15,6 +16,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
@@ -256,4 +258,48 @@ pub(super) fn get_config_entity(
             "No exchange method with type OPENID4VCI_FINAL1".to_string(),
         ))
     }
+}
+
+pub(crate) fn validate_response_encryption(
+    response_encryption: Option<&ResponseEncryption>,
+    params: &OpenID4VCIFinal1Params,
+    protocol: &dyn IssuanceProtocol,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<(), OID4VCIFinal1_0ServiceError> {
+    let Some(ResponseEncryption { jwk, enc, zip }) = response_encryption else {
+        if params.credential_endpoint_encryption.response_required {
+            tracing::info!(
+                "Rejecting credential request without credential_response_encryption: encryption required"
+            );
+            return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+        }
+        return Ok(());
+    };
+
+    if !protocol
+        .get_capabilities()
+        .supported_encryption_algorithms
+        .contains(enc)
+    {
+        tracing::info!("Unsupported credential response encryption enc value: {enc}");
+        return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+    }
+    if let Some(zip) = zip
+        && *zip != CompressionAlgorithm::DEF
+    {
+        tracing::info!("Unsupported credential response encryption zip value: {zip}");
+        return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+    }
+
+    // the key has to be usable for key agreement here, as failing to encrypt the response after
+    // the credential was issued would burn it
+    let key_agreement_possible = key_algorithm_provider
+        .parse_jwk(jwk)
+        .is_ok_and(|parsed| parsed.key.key_agreement().is_some());
+    if !key_agreement_possible {
+        tracing::info!("Credential response encryption JWK cannot be used for key agreement");
+        return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+    }
+
+    Ok(())
 }

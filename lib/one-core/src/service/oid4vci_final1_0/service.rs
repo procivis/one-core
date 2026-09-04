@@ -4,6 +4,7 @@ use std::str::FromStr;
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use itertools::Itertools;
+use one_crypto::jwe::extract_jwe_header;
 use one_crypto::utilities::{self, generate_alphanumeric};
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
@@ -11,18 +12,20 @@ use shared_types::{
     CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId, InteractionId,
     NonceId,
 };
+use standardized_types::iana::EncryptionKeyManagementAlgorithm;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::oauth2::token::{ExpiresIn, TokenRequest, TokenResponse};
 use standardized_types::openid4vci::{
     CredentialOffer, CredentialRequest, CredentialResponse, CredentialResponseEntry, NonceResponse,
-    NotificationEvent, NotificationRequest, Proofs,
+    NotificationEvent, NotificationRequest, Proofs, ResponseEncryption,
 };
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
 use super::dto::{
+    CredentialRequestPayload, CredentialResponsePayload,
     OID4VCIFinal1_0IssuerMetadataResponseEnum as IssuerMetadataResponseEnum,
     OID4VCIFinal1_0IssuerMetadataResponseTypeEnum as IssuerMetadataResponseTypeEnum,
     OpenID4VCICredentialResponseDTO,
@@ -32,8 +35,9 @@ use super::mapper::{interaction_data_to_dto, offered_formats};
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
-    validate_credential_request_format, validate_pop_audience, validate_timestamps,
-    verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match, wia_key_source,
+    validate_credential_request_format, validate_pop_audience, validate_response_encryption,
+    validate_timestamps, verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match,
+    wia_key_source,
 };
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
@@ -66,6 +70,7 @@ use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::openid4vci_final1_0::jwe::{build_jwe, decrypt_jwe};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     FormatNotification, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
 };
@@ -82,6 +87,7 @@ use crate::service::managed_instance::dto::{
     WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
 };
 use crate::service::ssi_validator::validate_issuance_protocol_type;
+use crate::util::key_agreement::key_agreement_keys;
 use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIFinal1_0Service {
@@ -298,15 +304,13 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
-        request: CredentialRequest,
-    ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
+        request: CredentialRequestPayload,
+    ) -> Result<CredentialResponsePayload, OID4VCIFinal1_0ServiceError> {
         let schema = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
-
-        let format = validate_credential_request_format(&schema, &request).await?;
 
         let interaction_id = parse_access_token(access_token)?;
         let interaction = self
@@ -322,14 +326,6 @@ impl OID4VCIFinal1_0Service {
 
         let interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
-
-        if !offered_formats(&schema, &interaction_data)
-            .await?
-            .iter()
-            .any(|offered| offered.id == format.id)
-        {
-            return Err(OpenID4VCIError::UnsupportedCredentialType.into());
-        }
 
         let credentials = self
             .credential_repository
@@ -351,6 +347,35 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
             .error_while("validating protocol type")?;
 
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(&credential.protocol)
+            .error_while("getting protocol params")?;
+
+        // decrypting needs the issuer identity, so it can only happen once the access token
+        // resolved the credential this request belongs to
+        let request = self
+            .decrypt_credential_request(request, credential, &params)
+            .await?;
+
+        let format = validate_credential_request_format(&schema, &request).await?;
+        if !offered_formats(&schema, &interaction_data)
+            .await?
+            .iter()
+            .any(|offered| offered.id == format.id)
+        {
+            return Err(OpenID4VCIError::UnsupportedCredentialType.into());
+        }
+
+        let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
+        validate_response_encryption(
+            request.credential_response_encryption.as_ref(),
+            &params,
+            &*issuance_protocol,
+            &*self.key_algorithm_provider,
+        )?;
+
         let Some(Proofs::Jwt(jwts)) = request.proofs.as_ref() else {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         };
@@ -371,12 +396,6 @@ impl OID4VCIFinal1_0Service {
                 tracing::debug!("#proofs submitted: {num_proofs}");
             }
         };
-
-        let params: OpenID4VCIFinal1Params = self
-            .config
-            .issuance_protocol
-            .get(&credential.protocol)
-            .error_while("getting protocol params")?;
 
         let mut holder_identifiers = vec![];
         let mut used_nonce_ids = HashSet::new();
@@ -440,11 +459,13 @@ impl OID4VCIFinal1_0Service {
         match result {
             Ok(result) => {
                 tracing::info!("Issued credential {}", credential.id);
-                Ok(result)
+                // errors stay plain JSON, only the successful response is encrypted
+                self.encrypt_credential_response(result, request.credential_response_encryption)
+                    .await
             }
             Err(error) => {
                 if credential.state == CredentialStateEnum::Offered {
-                    // initial issuance failed, mark as Error
+                    // issuance failed, mark as Error
                     self.credential_repository
                         .update_credential(
                             credential.id,
@@ -460,6 +481,113 @@ impl OID4VCIFinal1_0Service {
                 Err(error.error_while("issuing credential").into())
             }
         }
+    }
+
+    /// Unwraps the Credential Request body, decrypting it when it arrived as a JWE.
+    ///
+    /// The JWE is addressed to one of the issuer keys published in the
+    /// `credential_request_encryption` metadata parameter, selected by the `kid` header.
+    async fn decrypt_credential_request(
+        &self,
+        request: CredentialRequestPayload,
+        credential: &Credential,
+        params: &OpenID4VCIFinal1Params,
+    ) -> Result<CredentialRequest, OID4VCIFinal1_0ServiceError> {
+        let jwe = match request {
+            CredentialRequestPayload::Plain(request) => {
+                if params.credential_endpoint_encryption.request_required {
+                    tracing::info!("Rejecting unencrypted credential request: encryption required");
+                    return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+                }
+                return Ok(*request);
+            }
+            CredentialRequestPayload::Encrypted(jwe) => jwe,
+        };
+
+        let issuer_identifier = credential
+            .issuer_identifier
+            .as_ref()
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "Missing issuer_identifier".to_string(),
+            ))?
+            .as_ref()
+            .await?;
+
+        let candidates = key_agreement_keys(
+            &issuer_identifier,
+            &*self.key_provider,
+            &*self.key_algorithm_provider,
+        )
+        .await?;
+
+        let requested_key_id = extract_jwe_header(&jwe)
+            .map_err(|error| {
+                tracing::info!("Failed parsing credential request JWE header: {error}");
+                OpenID4VCIError::InvalidEncryptionParameters
+            })?
+            .key_id;
+
+        let key = match &requested_key_id {
+            Some(key_id) => candidates
+                .into_iter()
+                .find(|candidate| candidate.key.id.to_string() == *key_id),
+            // the wallet did not name a key, so there must be no ambiguity about which one it used
+            None => candidates.into_iter().exactly_one().ok(),
+        }
+        .ok_or_else(|| {
+            tracing::info!(
+                "No issuer key agreement key matching credential request JWE kid {requested_key_id:?}"
+            );
+            OpenID4VCIError::InvalidEncryptionParameters
+        })?;
+
+        let payload = decrypt_jwe(&jwe, &key.key, &*self.key_provider)
+            .await
+            .map_err(|error| {
+                tracing::info!("Failed decrypting credential request: {error}");
+                OpenID4VCIError::InvalidEncryptionParameters
+            })?;
+
+        serde_json::from_slice(&payload).map_err(|error| {
+            tracing::info!("Failed parsing decrypted credential request: {error}");
+            OpenID4VCIError::InvalidRequest.into()
+        })
+    }
+
+    /// Encrypts the Credential Response when the wallet asked for it.
+    ///
+    /// The parameters were already checked by [`validate_response_encryption`].
+    async fn encrypt_credential_response(
+        &self,
+        response: OpenID4VCICredentialResponseDTO,
+        response_encryption: Option<ResponseEncryption>,
+    ) -> Result<CredentialResponsePayload, OID4VCIFinal1_0ServiceError> {
+        let Some(ResponseEncryption { jwk, enc, zip }) = response_encryption else {
+            return Ok(CredentialResponsePayload::Plain(Box::new(response)));
+        };
+
+        let Some(alg) = jwk.alg() else {
+            tracing::info!("Missing response encryption jwk alg value");
+            return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+        };
+        if alg != EncryptionKeyManagementAlgorithm::EcdhEs.to_string() {
+            tracing::info!("Unsupported response encryption jwk alg value: `{alg}`",);
+            return Err(OpenID4VCIError::InvalidEncryptionParameters.into());
+        }
+
+        let payload = serde_json::to_vec(&response).map_err(|error| {
+            OID4VCIFinal1_0ServiceError::MappingError(format!(
+                "Failed serializing credential response: {error}"
+            ))
+        })?;
+        let jwe = build_jwe(&payload, jwk, enc, zip, &*self.key_algorithm_provider)
+            .await
+            .map_err(|error| {
+                tracing::info!("Failed encrypting credential response: {error}");
+                OpenID4VCIError::InvalidEncryptionParameters
+            })?;
+
+        Ok(CredentialResponsePayload::Encrypted(jwe))
     }
 
     async fn prepare_holder_identifier_for_proof(

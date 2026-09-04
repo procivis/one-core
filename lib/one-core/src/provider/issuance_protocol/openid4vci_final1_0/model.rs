@@ -47,8 +47,20 @@ pub(crate) struct OpenID4VCIFinal1Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub key_attestation_leeway_seconds: Duration,
 
+    #[serde(default)]
+    pub credential_endpoint_encryption: CredentialEndpointEncryptionParams,
+
     #[serde(flatten)]
     pub common: CommonParams,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialEndpointEncryptionParams {
+    #[serde(default)]
+    pub request_required: bool,
+    #[serde(default)]
+    pub response_required: bool,
 }
 
 #[serde_as]

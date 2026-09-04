@@ -31,7 +31,9 @@ use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
     IdentifierId, InteractionId, OrganisationId, SerializedCredential,
 };
-use standardized_types::jwk::JwkUse;
+use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwe::CompressionAlgorithm;
+use standardized_types::jwk::{JwkUse, Jwks};
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::token::{
@@ -39,9 +41,10 @@ use standardized_types::oauth2::token::{
 };
 use standardized_types::openid4vci::{
     AuthorizationCodeGrant, AuthorizationDetail, CredentialConfiguration, CredentialIssuerMetadata,
-    CredentialOffer, CredentialRequest, CredentialRequestIdentifier, Grants, IssuerInfoAttestation,
-    IssuerInfoAttestationFormat, NonceResponse, NotificationEvent, NotificationRequest,
-    ProofTypeSupported, Proofs, ResponseEncryption,
+    CredentialOffer, CredentialRequest, CredentialRequestEncryption, CredentialRequestIdentifier,
+    CredentialResponseEncryption, Grants, IssuerInfoAttestation, IssuerInfoAttestationFormat,
+    NonceResponse, NotificationEvent, NotificationRequest, ProofTypeSupported, Proofs,
+    ResponseEncryption,
 };
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::{Duration, OffsetDateTime};
@@ -100,6 +103,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::jwe::build_jwe;
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper_v2::credential_to_credential_detail_v2;
 use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
 use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::key_algorithm::model::Features as KeyAlgorithmFeatures;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -115,12 +119,13 @@ use crate::repository::key_repository::KeyRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
+use crate::util::key_agreement::{KeyAgreementKey, key_agreement_keys};
 use crate::util::key_selection::KeyFilter;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 mod attestations;
 mod holder_credentials;
-mod jwe;
+pub(crate) mod jwe;
 pub(crate) mod mapper;
 mod mapper_v2;
 pub mod model;
@@ -1379,6 +1384,107 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
+    /// Credential Request encryption to advertise, or `None` when we cannot decrypt.
+    ///
+    /// Requires a static key of the issuer that can perform ECDH, so this is only advertised when
+    /// the issuer identifier actually owns such a key.
+    pub(super) async fn credential_request_encryption(
+        &self,
+        issuer_identifier: &Identifier,
+        enc_values_supported: Vec<EncryptionAlgorithm>,
+    ) -> Result<Option<CredentialRequestEncryption>, IssuanceProtocolError> {
+        let keys = self.issuer_key_agreement_keys(issuer_identifier).await?;
+        if keys.is_empty() {
+            if self.params.credential_endpoint_encryption.request_required {
+                tracing::warn!(
+                    "Credential request encryption is required, but issuer identifier {} has no key supporting key agreement",
+                    issuer_identifier.id
+                );
+            }
+            return Ok(None);
+        }
+
+        Ok(Some(CredentialRequestEncryption {
+            jwks: Jwks {
+                keys: keys.into_iter().map(|key| key.jwk).collect(),
+            },
+            enc_values_supported,
+            zip_values_supported: vec![CompressionAlgorithm::DEF],
+            encryption_required: self.params.credential_endpoint_encryption.request_required,
+        }))
+    }
+
+    /// Credential Response encryption to advertise, or `None` when we cannot encrypt.
+    ///
+    /// The key agreement uses an ephemeral key generated for the wallet's key algorithm, so this
+    /// only depends on a key-agreement capable key algorithm being configured.
+    pub(super) fn credential_response_encryption(
+        &self,
+        enc_values_supported: Vec<EncryptionAlgorithm>,
+    ) -> Option<CredentialResponseEncryption> {
+        let supported = self
+            .key_algorithm_provider
+            .algorithms()
+            .iter()
+            .any(|(_, alg)| {
+                alg.enabled()
+                    && alg
+                        .get_capabilities()
+                        .features
+                        .contains(&KeyAlgorithmFeatures::KeyAgreement)
+            });
+        if !supported {
+            return None;
+        }
+
+        Some(CredentialResponseEncryption {
+            alg_values_supported: vec![EncryptionKeyManagementAlgorithm::EcdhEs],
+            enc_values_supported,
+            zip_values_supported: vec![CompressionAlgorithm::DEF],
+            encryption_required: self.params.credential_endpoint_encryption.response_required,
+        })
+    }
+
+    pub(super) async fn issuer_metadata_inner(
+        &self,
+        protocol_id: &str,
+        credential_schema_id: &CredentialSchemaId,
+        issuer_identifier: &Identifier,
+        // Passed in, so that swiyu can deviate despite delegating to this protocol.
+        // This is required because the iOS app fails on parsing encryption algorithms it does not support.
+        enc_values_supported: Vec<EncryptionAlgorithm>,
+    ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
+        let prepared_metadata = self.prepare_issuer_metadata(credential_schema_id).await?;
+        let issuer_info = self
+            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
+            .await?;
+
+        create_issuer_metadata_response(
+            protocol_id,
+            issuer_identifier,
+            prepared_metadata,
+            issuer_info,
+            self.credential_request_encryption(issuer_identifier, enc_values_supported.clone())
+                .await?,
+            self.credential_response_encryption(enc_values_supported),
+        )
+        .map_err(OpenIDIssuanceError::OpenID4VCI)
+        .map_err(Into::into)
+    }
+
+    /// Keys of the issuer identifier usable as the static side of an ECDH-ES key agreement.
+    pub(super) async fn issuer_key_agreement_keys(
+        &self,
+        issuer_identifier: &Identifier,
+    ) -> Result<Vec<KeyAgreementKey>, IssuanceProtocolError> {
+        Ok(key_agreement_keys(
+            issuer_identifier,
+            &*self.key_provider,
+            &*self.key_algorithm_provider,
+        )
+        .await?)
+    }
+
     async fn map_to_credential_data(
         &self,
         format_id: CredentialSchemaFormatId,
@@ -2090,6 +2196,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 ConfigDidType::Web,
                 ConfigDidType::WebVh,
             ],
+            supported_encryption_algorithms: vec![
+                EncryptionAlgorithm::A128GCM,
+                EncryptionAlgorithm::A256GCM,
+                EncryptionAlgorithm::A128CBCHS256,
+                EncryptionAlgorithm::A256CBCHS512,
+            ],
         }
     }
 
@@ -2099,19 +2211,13 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
-        let prepared_metadata = self.prepare_issuer_metadata(credential_schema_id).await?;
-        let issuer_info = self
-            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
-            .await?;
-
-        create_issuer_metadata_response(
+        self.issuer_metadata_inner(
             protocol_id,
+            credential_schema_id,
             issuer_identifier,
-            prepared_metadata,
-            issuer_info,
+            self.get_capabilities().supported_encryption_algorithms,
         )
-        .map_err(OpenIDIssuanceError::OpenID4VCI)
-        .map_err(Into::into)
+        .await
     }
 
     async fn holder_refresh_credential(

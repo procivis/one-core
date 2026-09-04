@@ -95,6 +95,18 @@ impl SSIApi {
         self.client.post(&url, body).await
     }
 
+    /// Sends a JWE encrypted Credential Request, as `application/jwt`.
+    pub async fn issuer_create_credential_encrypted(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        jwe: String,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!("/ssi/openid4vci/final-1.0/{credential_schema_id}/credential");
+
+        self.client.post_raw(&url, "application/jwt", jwe).await
+    }
+
     pub async fn openid4vci_notification(
         &self,
         credential_schema_id: impl Into<Uuid>,

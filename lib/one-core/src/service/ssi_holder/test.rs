@@ -786,6 +786,7 @@ async fn test_reject_credential() {
         .returning(|| IssuanceProtocolCapabilities {
             features: vec![Features::SupportsRejection],
             did_methods: vec![],
+            supported_encryption_algorithms: vec![],
         });
     exchange_protocol_mock
         .expect_holder_reject_credential()
@@ -833,6 +834,7 @@ async fn test_reject_credential_failed_issuer_notification() {
         .returning(|| IssuanceProtocolCapabilities {
             features: vec![Features::SupportsRejection],
             did_methods: vec![],
+            supported_encryption_algorithms: vec![],
         });
     exchange_protocol_mock
         .expect_holder_reject_credential()

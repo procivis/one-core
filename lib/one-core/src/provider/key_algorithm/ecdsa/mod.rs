@@ -36,7 +36,7 @@ impl KeyAlgorithm for Ecdsa {
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
         KeyAlgorithmCapabilities {
-            features: vec![Features::GenerateCSR],
+            features: vec![Features::GenerateCSR, Features::KeyAgreement],
         }
     }
 

@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use mockall::predicate::{always, eq};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -53,6 +54,9 @@ use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
+use crate::provider::key_algorithm::model::{
+    Features as KeyAlgorithmFeatures, KeyAlgorithmCapabilities,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
@@ -67,7 +71,8 @@ use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::service::oid4vci_final1_0::dto::{
-    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
+    CredentialRequestPayload, CredentialResponsePayload, OID4VCIFinal1_0IssuerMetadataResponseEnum,
+    OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
 };
 use crate::service::oid4vci_final1_0::resolver::MockCredentialIssuerMetadataFetcher;
 use crate::service::test_utilities::*;
@@ -82,6 +87,7 @@ struct Mocks {
     pub exchange_provider: MockIssuanceProtocolProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
+    pub key_provider: MockKeyProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
@@ -103,6 +109,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.exchange_provider),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
+        Arc::new(mocks.key_provider),
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.certificate_validator),
         Arc::new(mocks.blob_storage_provider),
@@ -362,6 +369,28 @@ fn mock_key_algorithm() -> Arc<dyn KeyAlgorithm> {
     Arc::new(algorithm)
 }
 
+/// Answers the key algorithm capability lookup done while assembling the issuer metadata, so that
+/// `credential_response_encryption` is advertised.
+fn expect_key_agreement_capability(key_algorithm_provider: &mut MockKeyAlgorithmProvider) {
+    let mut algorithm = MockKeyAlgorithm::new();
+    algorithm
+        .expect_get_capabilities()
+        .returning(|| KeyAlgorithmCapabilities {
+            features: vec![KeyAlgorithmFeatures::KeyAgreement],
+        });
+    algorithm.expect_enabled().returning(|| true);
+    let algorithm: Arc<dyn KeyAlgorithm> = Arc::new(algorithm);
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning({
+            let algorithm = algorithm.clone();
+            move |_| Ok(algorithm.clone())
+        });
+    key_algorithm_provider
+        .expect_algorithms()
+        .returning(move || vec![(KeyAlgorithmType::Eddsa, algorithm.clone())]);
+}
+
 #[tokio::test]
 async fn test_get_issuer_metadata_jwt() {
     let mut did_method_provider = MockDidMethodProvider::default();
@@ -382,6 +411,7 @@ async fn test_get_issuer_metadata_jwt() {
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(move |_| Ok(Arc::new(key_algorithm)));
+    expect_key_agreement_capability(&mut key_algorithm_provider);
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -520,6 +550,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(move |_| Ok(Arc::new(key_algorithm)));
+    expect_key_agreement_capability(&mut key_algorithm_provider);
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -652,6 +683,7 @@ async fn test_get_issuer_metadata_mdoc() {
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(move |_| Ok(Arc::new(key_algorithm)));
+    expect_key_agreement_capability(&mut key_algorithm_provider);
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -819,6 +851,7 @@ async fn test_get_issuer_metadata_includes_schema_translations() {
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(move |_| Ok(Arc::new(key_algorithm)));
+    expect_key_agreement_capability(&mut key_algorithm_provider);
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -969,6 +1002,7 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
         .return_once(move |_| Ok(Arc::new(key_algorithm)));
+    expect_key_agreement_capability(&mut key_algorithm_provider);
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -1492,10 +1526,12 @@ async fn test_create_credential_success() {
             .expect_issuer_issue_credential()
             .once()
             .return_once(|_, _, _, _| Ok("xyz".into()));
+        // once for the response encryption validation, once for the actual issuance
+        let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
             .expect_get_protocol()
-            .once()
-            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
+            .times(2)
+            .returning(move |_| Ok(issuance_protocol.clone()));
 
         credential_repository
             .expect_update_credential()
@@ -1601,17 +1637,17 @@ async fn test_create_credential_success() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
-    let result = result.unwrap();
+    let_assert!(CredentialResponsePayload::Plain(result) = result.unwrap());
     assert_eq!(
         result
             .standard
@@ -1693,10 +1729,12 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .expect_issuer_issue_credential()
             .once()
             .return_once(|_, _, _, _| Ok("xyz".into()));
+        // once for the response encryption validation, once for the actual issuance
+        let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
             .expect_get_protocol()
-            .once()
-            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
+            .times(2)
+            .returning(move |_| Ok(issuance_protocol.clone()));
 
         credential_repository
             .expect_update_credential()
@@ -1802,17 +1840,17 @@ async fn test_create_credential_success_sd_jwt_vc() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
-    let result = result.unwrap();
+    let_assert!(CredentialResponsePayload::Plain(result) = result.unwrap());
     assert_eq!(
         result
             .standard
@@ -1907,10 +1945,12 @@ async fn test_create_credential_success_mdoc() {
             .expect_issuer_issue_credential()
             .once()
             .return_once(|_, _, _, _| Ok("xyz".into()));
+        // once for the response encryption validation, once for the actual issuance
+        let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
             .expect_get_protocol()
-            .once()
-            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
+            .times(2)
+            .returning(move |_| Ok(issuance_protocol.clone()));
 
         credential_repository
             .expect_update_credential()
@@ -2046,18 +2086,18 @@ async fn test_create_credential_success_mdoc() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
     assert!(result.is_ok());
-    let result = result.unwrap();
+    let_assert!(CredentialResponsePayload::Plain(result) = result.unwrap());
     assert_eq!(
         result
             .standard
@@ -2073,8 +2113,13 @@ async fn test_create_credential_success_mdoc() {
 #[tokio::test]
 async fn test_create_credential_configuration_id_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let schema = generic_credential_schema();
+    let interaction_id: InteractionId = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        .unwrap()
+        .into();
     {
         let clone = schema.clone();
         repository
@@ -2083,8 +2128,36 @@ async fn test_create_credential_configuration_id_invalid() {
             .with(eq(schema.id.to_owned()))
             .returning(move |_| Ok(clone.clone()));
     }
+
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .returning(move |_, _| {
+            Ok(dummy_interaction(
+                Some(interaction_id),
+                true,
+                None,
+                None,
+                None,
+            ))
+        });
+
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Pending,
+        true,
+        schema.clone(),
+        CredentialType::Single,
+    );
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_| Ok(vec![credential]));
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
+        credential_repository,
+        interaction_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2093,13 +2166,13 @@ async fn test_create_credential_configuration_id_invalid() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     "invalid".to_string(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2135,13 +2208,13 @@ async fn test_create_credential_format_invalid_bearer_token() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2188,13 +2261,13 @@ async fn test_create_credential_pre_authorized_code_not_used() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2241,13 +2314,13 @@ async fn test_create_credential_interaction_data_invalid() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2302,13 +2375,13 @@ async fn test_create_credential_access_token_expired() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2376,13 +2449,13 @@ async fn test_create_credential_fails_when_credential_is_expiring() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2451,10 +2524,12 @@ async fn test_create_credential_issuer_failed() {
             .return_once(|_, _, _, _| {
                 Err(IssuanceProtocolError::Failed("issuing failed".to_string()))
             });
+        // once for the response encryption validation, once for the actual issuance
+        let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
             .expect_get_protocol()
-            .once()
-            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
+            .times(2)
+            .returning(move |_| Ok(issuance_protocol.clone()));
 
         credential_repository
             .expect_update_credential()
@@ -2559,13 +2634,13 @@ async fn test_create_credential_issuer_failed() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 
@@ -2690,11 +2765,17 @@ async fn test_create_credential_nonce_reused() {
             ))
         });
 
+    let mut exchange_provider = MockIssuanceProtocolProvider::default();
+    exchange_provider
+        .expect_get_protocol()
+        .return_once(|_| Ok(Arc::new(MockIssuanceProtocol::default())));
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
         config: generic_config().core,
+        exchange_provider,
         key_algorithm_provider,
         did_method_provider,
         identifier_creator,
@@ -2705,13 +2786,13 @@ async fn test_create_credential_nonce_reused() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            CredentialRequest {
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
-            },
+            })),
         )
         .await;
 

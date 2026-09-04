@@ -10,9 +10,9 @@ use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::token::{ExpiresIn, TokenRequest, TokenResponse};
 use standardized_types::openid4vci::{
     BatchCredentialIssuance, ClaimDisplay, ClaimMetadata, CredentialConfiguration,
-    CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata, CredentialOffer, Grants,
-    Image, IssuerDisplay, IssuerInfoAttestation, PreAuthorizedCodeGrant, ProofTypeSupported,
-    SigningAlgValue, TxCode,
+    CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata, CredentialOffer,
+    CredentialRequestEncryption, CredentialResponseEncryption, Grants, Image, IssuerDisplay,
+    IssuerInfoAttestation, PreAuthorizedCodeGrant, ProofTypeSupported, SigningAlgValue, TxCode,
 };
 use time::Duration;
 use uuid::Uuid;
@@ -46,6 +46,8 @@ pub(crate) fn create_issuer_metadata_response(
         credential_configurations_supported,
     }: PreparedMetadata,
     issuer_info: Vec<IssuerInfoAttestation>,
+    credential_request_encryption: Option<CredentialRequestEncryption>,
+    credential_response_encryption: Option<CredentialResponseEncryption>,
 ) -> Result<CredentialIssuerMetadata, OpenID4VCIError> {
     let credential_schema_id = schema.id;
     let credential_issuer = format!(
@@ -79,8 +81,8 @@ pub(crate) fn create_issuer_metadata_response(
         }]),
         issuer_info,
         batch_credential_issuance,
-        credential_request_encryption: None,
-        credential_response_encryption: None,
+        credential_request_encryption,
+        credential_response_encryption,
     })
 }
 

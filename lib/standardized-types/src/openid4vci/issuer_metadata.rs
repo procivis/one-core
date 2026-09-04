@@ -90,6 +90,7 @@ pub struct BatchCredentialIssuance {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct CredentialRequestEncryption {
     pub jwks: Jwks,
     #[serde_as(as = "VecSkipError<_>")]
@@ -104,6 +105,7 @@ pub struct CredentialRequestEncryption {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct CredentialResponseEncryption {
     #[serde_as(as = "VecSkipError<_>")]
     pub alg_values_supported: Vec<EncryptionKeyManagementAlgorithm>,

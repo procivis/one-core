@@ -17,11 +17,11 @@ async fn test_capabilities_are_present_in_config() {
 
     assert_eq!(
         resp["keyAlgorithm"]["EDDSA"]["capabilities"],
-        json!({ "features": ["GENERATE_CSR"] })
+        json!({ "features": ["GENERATE_CSR", "KEY_AGREEMENT"] })
     );
     assert_eq!(
         resp["keyAlgorithm"]["ECDSA"]["capabilities"],
-        json!({ "features": ["GENERATE_CSR"] })
+        json!({ "features": ["GENERATE_CSR", "KEY_AGREEMENT"] })
     );
     assert_eq!(
         resp["keyAlgorithm"]["ML_DSA"]["capabilities"],

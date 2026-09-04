@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use standardized_types::iana::EncryptionAlgorithm;
 
 use crate::config::core_config::DidType;
 
@@ -7,6 +8,7 @@ use crate::config::core_config::DidType;
 pub(crate) struct IssuanceProtocolCapabilities {
     pub features: Vec<Features>,
     pub did_methods: Vec<DidType>,
+    pub supported_encryption_algorithms: Vec<EncryptionAlgorithm>,
 }
 
 #[derive(Copy, Clone, Debug, Serialize, PartialEq, Eq)]

@@ -1,5 +1,3 @@
-pub mod mapper;
-
 use std::sync::Arc;
 
 use proc_macros::Provider;
@@ -9,24 +7,24 @@ use serde_with::{DurationSeconds, serde_as};
 use shared_types::{
     CredentialId, CredentialSchemaFormatId, CredentialSchemaId, SerializedCredential,
 };
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use time::Duration;
 use url::Url;
 
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
-use super::error::{IssuanceProtocolError, OpenIDIssuanceError};
+use super::error::IssuanceProtocolError;
 use super::model::{
     CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResponse,
     OpenID4VCRedirectUriParams, ShareResponse,
 };
 use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
-use super::openid4vci_final1_0::model::{OpenID4VCIFinal1Params, OpenID4VCNonceParams};
-use super::openid4vci_final1_0::service::create_issuer_metadata_response;
-use super::openid4vci_final1_0_swiyu::mapper::to_swiyu_data_type;
+use super::openid4vci_final1_0::model::{
+    CredentialEndpointEncryptionParams, OpenID4VCIFinal1Params, OpenID4VCNonceParams,
+};
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::config::core_config::CoreConfig;
 use crate::config::core_config::DidType::WebVh;
-use crate::error::ContextWithErrorCode;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
@@ -78,6 +76,9 @@ pub(crate) struct OpenID4VCISwiyuParams {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub key_attestation_leeway_seconds: Duration,
 
+    #[serde(default)]
+    pub credential_encryption: CredentialEndpointEncryptionParams,
+
     #[serde(flatten)]
     pub common: CommonParams,
 }
@@ -95,6 +96,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
             nonce: value.nonce,
             oauth_attestation_leeway_seconds: value.oauth_attestation_leeway_seconds,
             key_attestation_leeway_seconds: value.key_attestation_leeway_seconds,
+            credential_endpoint_encryption: value.credential_encryption,
             common: value.common,
         }
     }
@@ -103,7 +105,6 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
 #[derive(Provider)]
 pub(crate) struct OpenID4VCISwiyu {
     inner: OpenID4VCIFinal1_0,
-    config: Arc<CoreConfig>,
 }
 
 impl OpenID4VCISwiyu {
@@ -163,7 +164,7 @@ impl OpenID4VCISwiyu {
                 key_security_level_provider,
                 blob_storage_provider,
                 base_url,
-                config.clone(),
+                config,
                 params.into(),
                 config_id,
                 holder_wallet_unit_proto,
@@ -174,7 +175,6 @@ impl OpenID4VCISwiyu {
                 interaction_repository,
                 identifier_repository,
             ),
-            config,
         })
     }
 }
@@ -249,65 +249,14 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
-        let mut prepared_metadata = self
-            .inner
-            .prepare_issuer_metadata(credential_schema_id)
-            .await?;
-
-        let credential_schema_schema_id = prepared_metadata.schema.schema_id().await?;
-
-        // make formats compatible to the swiyu wallet
-        for (key, credential_config) in prepared_metadata
-            .credential_configurations_supported
-            .iter_mut()
-        {
-            if *key != credential_schema_schema_id {
-                // only adjust the schema referenced in the id
-                continue;
-            }
-            if credential_config.format == "dc+sd-jwt" {
-                credential_config.format = "vc+sd-jwt".to_string();
-            }
-            let Some(meta) = credential_config.credential_metadata.as_mut() else {
-                continue;
-            };
-            let Some(claims) = meta.claims.as_mut() else {
-                continue;
-            };
-
-            let credential_schema_claims = prepared_metadata.schema.claim_schemas.as_ref().await?;
-            for claim in claims {
-                let Some(schema) = credential_schema_claims
-                    .iter()
-                    .find(|cs| cs.key == claim.path.join("/"))
-                else {
-                    continue;
-                };
-                let data_type = self
-                    .config
-                    .datatype
-                    .get_type(&schema.data_type)
-                    .error_while("getting claim data type")?;
-                if let Some(value_type) = to_swiyu_data_type(data_type, schema.array)? {
-                    claim
-                        .additional_values
-                        .insert("value_type".to_string(), serde_json::json!(value_type));
-                }
-            }
-        }
-        let issuer_info = self
-            .inner
-            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
-            .await?;
-
-        create_issuer_metadata_response(
-            protocol_id,
-            issuer_identifier,
-            prepared_metadata,
-            issuer_info,
-        )
-        .map_err(OpenIDIssuanceError::OpenID4VCI)
-        .map_err(Into::into)
+        self.inner
+            .issuer_metadata_inner(
+                protocol_id,
+                credential_schema_id,
+                issuer_identifier,
+                self.get_capabilities().supported_encryption_algorithms,
+            )
+            .await
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
@@ -324,6 +273,10 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         IssuanceProtocolCapabilities {
             features,
             did_methods: vec![WebVh],
+            supported_encryption_algorithms: vec![
+                EncryptionAlgorithm::A128GCM,
+                EncryptionAlgorithm::A256GCM,
+            ],
         }
     }
 

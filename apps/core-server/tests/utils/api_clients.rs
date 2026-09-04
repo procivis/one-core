@@ -119,6 +119,22 @@ impl HttpClient {
         Response { resp }
     }
 
+    /// Posts a body verbatim, for the endpoints that accept something other than JSON.
+    pub async fn post_raw(&self, url: &str, content_type: &str, body: String) -> Response {
+        let url = format!("{}{url}", self.base_url);
+
+        let resp = http_client()
+            .post(url)
+            .bearer_auth(&self.token)
+            .header(reqwest::header::CONTENT_TYPE, content_type)
+            .body(body)
+            .send()
+            .await
+            .unwrap();
+
+        Response { resp }
+    }
+
     pub async fn post_form(&self, url: &str, form: &[(&str, &str)]) -> Response {
         let url = format!("{}{url}", self.base_url);
 

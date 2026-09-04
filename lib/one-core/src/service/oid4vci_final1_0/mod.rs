@@ -13,6 +13,7 @@ use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::get_protocol_base_url;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -39,6 +40,7 @@ pub struct OID4VCIFinal1_0Service {
     protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_provider: Arc<dyn KeyProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
@@ -63,6 +65,7 @@ impl OID4VCIFinal1_0Service {
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_provider: Arc<dyn KeyProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -85,6 +88,7 @@ impl OID4VCIFinal1_0Service {
             protocol_provider,
             did_method_provider,
             key_algorithm_provider,
+            key_provider,
             revocation_method_provider,
             certificate_validator,
             base_url: core_base_url,
@@ -110,6 +114,7 @@ impl OID4VCIFinal1_0Service {
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_provider: Arc<dyn KeyProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         identifier_creator: Arc<dyn IdentifierCreator>,
@@ -131,6 +136,7 @@ impl OID4VCIFinal1_0Service {
             protocol_provider,
             did_method_provider,
             key_algorithm_provider,
+            key_provider,
             revocation_method_provider,
             certificate_validator,
             base_url: core_base_url,

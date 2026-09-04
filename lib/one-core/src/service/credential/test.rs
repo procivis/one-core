@@ -3295,6 +3295,7 @@ fn generic_capabilities() -> IssuanceProtocolCapabilities {
     IssuanceProtocolCapabilities {
         features: vec![crate::provider::issuance_protocol::dto::Features::SupportsRejection],
         did_methods: vec![crate::config::core_config::DidType::Key],
+        supported_encryption_algorithms: vec![],
     }
 }
 

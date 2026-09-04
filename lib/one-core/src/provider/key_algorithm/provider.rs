@@ -58,6 +58,9 @@ pub trait KeyAlgorithmProvider: Send + Sync {
 
     fn supported_verification_jose_alg_ids(&self) -> Vec<String>;
     fn ordered_by_holder_priority(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)>;
+
+    /// All configured key algorithms, including the disabled ones.
+    fn algorithms(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)>;
 }
 
 struct KeyAlgorithmProviderImpl {
@@ -173,6 +176,13 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
             .iter()
             .sorted_by_key(|(k, _)| Reverse(get_holder_priority(k)))
             .map(|(k, v)| (*k, v.to_owned()))
+            .collect()
+    }
+
+    fn algorithms(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)> {
+        self.directory
+            .iter()
+            .map(|(r#type, algorithm)| (*r#type, algorithm.to_owned()))
             .collect()
     }
 }

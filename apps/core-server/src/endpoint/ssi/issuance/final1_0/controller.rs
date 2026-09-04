@@ -1,3 +1,4 @@
+use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
@@ -24,6 +25,7 @@ use super::dto::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
+use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
 use crate::extractor::Accept;
 use crate::headers::APPLICATION_JWT;
 use crate::router::AppState;
@@ -310,15 +312,16 @@ pub(crate) async fn oid4vci_final1_0_create_token(
     permissions = [],
     post,
     path = "/ssi/openid4vci/final-1.0/{id}/credential",
-    request_body(content = CredentialRequest, description = "Credential request"),
+    request_body(content = CredentialRequest, description = "Credential request. May alternatively be sent JWE encrypted as `application/jwt`, see `credential_request_encryption` of the issuer metadata"),
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VCIFinal1CredentialResponseRestDTO),
+        (status = 200, description = "OK. Returns JWE encrypted as `application/jwt` when using encryption", body = OpenID4VCIFinal1CredentialResponseRestDTO),
         (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
         (status = 404, description = "Credential schema not found"),
         (status = 409, description = "Wrong credential state"),
+        (status = 415, description = "Unsupported request content type"),
         (status = 500, description = "Server error"),
     ),
     security(
@@ -341,8 +344,14 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
         TypedHeader<headers::Authorization<Bearer>>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(Json(request), _): WithRejection<Json<CredentialRequest>, ErrorResponseRestDTO>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> Response {
+    let request = match parse_credential_request(&headers, body) {
+        Ok(request) => request,
+        Err(response) => return *response,
+    };
+
     let access_token = token.token();
     let result = state
         .core
@@ -351,11 +360,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
         .await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(OpenID4VCIFinal1CredentialResponseRestDTO::from(value)),
-        )
-            .into_response(),
+        Ok(value) => credential_response(value),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (

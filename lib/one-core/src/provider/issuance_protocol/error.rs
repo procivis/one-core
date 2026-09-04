@@ -138,6 +138,8 @@ pub enum OpenID4VCIError {
     InvalidNotificationId,
     #[error("invalid_notification_request")]
     InvalidNotificationRequest,
+    #[error("invalid_encryption_parameters")]
+    InvalidEncryptionParameters,
     #[error("oidc runtime error: `{0}`")]
     RuntimeError(String),
 }

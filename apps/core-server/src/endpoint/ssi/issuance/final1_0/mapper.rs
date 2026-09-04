@@ -27,6 +27,8 @@ impl From<CredentialIssuerMetadata> for OpenID4VCIIssuerMetadataResponseRestDTO 
             nonce_endpoint: value.nonce_endpoint,
             issuer_info: value.issuer_info,
             batch_credential_issuance: convert_inner(value.batch_credential_issuance),
+            credential_request_encryption: value.credential_request_encryption,
+            credential_response_encryption: value.credential_response_encryption,
         }
     }
 }
@@ -93,6 +95,49 @@ impl From<OpenID4VCICredentialResponseDTO> for OpenID4VCIFinal1CredentialRespons
             transaction_id: value.transaction_id,
             interval: value.interval,
             notification_id: value.notification_id,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+    use standardized_types::openid4vci::{CredentialResponse, CredentialResponseEntry};
+
+    use super::*;
+
+    /// The plaintext credential response is serialized from the REST mirror, the JWE encrypted one
+    /// from `OpenID4VCICredentialResponseDTO` itself, so the two must not drift apart.
+    #[test]
+    fn test_credential_response_rest_mirror_serializes_like_the_service_dto() {
+        for response in [
+            OpenID4VCICredentialResponseDTO {
+                redirect_uri: Some("https://example.com/redirect".to_string()),
+                standard: CredentialResponse {
+                    credentials: Some(vec![CredentialResponseEntry {
+                        credential: "credential-token".to_string(),
+                    }]),
+                    transaction_id: Some("transaction-id".to_string()),
+                    interval: Some(5),
+                    notification_id: Some("notification-id".to_string()),
+                },
+            },
+            OpenID4VCICredentialResponseDTO {
+                redirect_uri: None,
+                standard: CredentialResponse {
+                    credentials: None,
+                    transaction_id: None,
+                    interval: None,
+                    notification_id: None,
+                },
+            },
+        ] {
+            let mirror = OpenID4VCIFinal1CredentialResponseRestDTO::from(response.clone());
+
+            assert_eq!(
+                serde_json::to_value(&response).unwrap(),
+                serde_json::to_value(&mirror).unwrap()
+            );
         }
     }
 }

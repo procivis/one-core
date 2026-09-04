@@ -30,4 +30,5 @@ pub struct KeyAlgorithmCapabilities {
 pub enum Features {
     #[serde(rename = "GENERATE_CSR")]
     GenerateCSR,
+    KeyAgreement,
 }

@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::str::FromStr;
 
+use axum::http::header;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use futures::future::join_all;
 use maplit::hashmap;
@@ -21,9 +22,12 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use one_crypto::jwe::{Header as JweHeader, build_jwe, decrypt_jwe_payload};
 use serde_json::json;
 use shared_types::{CredentialFormat, CredentialId, DidValue, InteractionId};
 use similar_asserts::assert_eq;
+use standardized_types::iana::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
@@ -1002,6 +1006,13 @@ struct TestIssuerSetup {
 }
 
 async fn issuer_setup(additional_config: Option<String>) -> TestIssuerSetup {
+    issuer_setup_with_key_roles(additional_config, &[KeyRole::AssertionMethod]).await
+}
+
+async fn issuer_setup_with_key_roles(
+    additional_config: Option<String>,
+    key_roles: &[KeyRole],
+) -> TestIssuerSetup {
     let interaction_id = Uuid::new_v4().into();
     let access_token = format!("{interaction_id}.test");
     let context = TestContext::new_with_token(&access_token, additional_config).await;
@@ -1020,11 +1031,16 @@ async fn issuer_setup(additional_config: Option<String>) -> TestIssuerSetup {
         .create(
             organisation.clone(),
             TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: key.clone(),
-                    reference: "1".to_string(),
-                }]),
+                keys: Some(
+                    key_roles
+                        .iter()
+                        .map(|role| RelatedKey {
+                            role: *role,
+                            key: key.clone(),
+                            reference: "1".to_string(),
+                        })
+                        .collect(),
+                ),
                 did: Some(
                     DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
                         .unwrap(),
@@ -1804,4 +1820,175 @@ impl MdocIssuerAuthHeaders {
             x5c_der,
         }
     }
+}
+
+/// Full encrypted exchange: the wallet encrypts the Credential Request to the issuer key
+/// advertised in the metadata and gets the Credential Response back as a JWE.
+#[tokio::test]
+async fn test_post_issuer_credential_encrypted_request_and_response() {
+    // GIVEN
+    let TestIssuerSetup {
+        interaction_id,
+        access_token,
+        organisation,
+        context,
+        key,
+        issuer_identifier,
+    } = issuer_setup_with_key_roles(None, &[KeyRole::AssertionMethod, KeyRole::KeyAgreement]).await;
+    let issuer_key_id = key.id;
+
+    let schema_id = "test-schema-id".to_string();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &organisation,
+            TestingCreateSchemaParams {
+                schema_id: Some(schema_id.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(dummy_issuer_interaction_data(
+                    &access_token,
+                    Default::default(),
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                key: Some(key),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // the wallet learns the key to encrypt to from the issuer metadata
+    let metadata = context
+        .api
+        .ssi
+        .openid_credential_issuer_final1(
+            "OPENID4VCI_FINAL1",
+            issuer_identifier.id,
+            credential_schema.id,
+            mime::APPLICATION_JSON.into(),
+        )
+        .await;
+    assert_eq!(200, metadata.status());
+    let metadata = metadata.json_value().await;
+
+    let issuer_jwk: PublicJwk = serde_json::from_value(
+        metadata["credential_request_encryption"]["jwks"]["keys"][0].clone(),
+    )
+    .unwrap();
+    assert_eq!(issuer_key_id.to_string(), issuer_jwk.kid().unwrap());
+    assert_eq!(
+        "ECDH-ES",
+        metadata["credential_response_encryption"]["alg_values_supported"][0]
+    );
+
+    // WHEN
+    let nonce = context
+        .api
+        .ssi
+        .generate_nonce("OPENID4VCI_FINAL1")
+        .await
+        .json_value()
+        .await["c_nonce"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let proof = proof_jwt(true, Some(&nonce)).await;
+
+    // ephemeral wallet key, used both to encrypt the request and to decrypt the response
+    let wallet_key = Eddsa.generate_key().unwrap();
+    let wallet_key_agreement = wallet_key.key.key_agreement().unwrap();
+    let wallet_jwk = wallet_key_agreement.public().as_jwk().unwrap();
+
+    let request = json!({
+        "credential_configuration_id": schema_id,
+        "proofs": {
+            "jwt": [proof]
+        },
+        "credential_response_encryption": {
+            "jwk": wallet_jwk,
+            "enc": "A128GCM",
+        },
+    });
+
+    let shared_secret = wallet_key_agreement
+        .private()
+        .unwrap()
+        .shared_secret(&issuer_jwk)
+        .await
+        .unwrap();
+    let request_jwe = build_jwe(
+        &serde_json::to_vec(&request).unwrap(),
+        JweHeader {
+            key_id: issuer_jwk.kid().map(str::to_string),
+            zip: None,
+            partyuinfo_data: None,
+            partyvinfo_data: None,
+        },
+        shared_secret,
+        wallet_jwk,
+        EncryptionAlgorithm::A128GCM,
+    )
+    .unwrap();
+
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential_encrypted(credential_schema.id, request_jwe)
+        .await;
+
+    // THEN
+    assert_eq!(200, resp.status());
+    assert_eq!(
+        "application/jwt",
+        resp.headers()
+            .get(header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
+
+    let response_jwe = resp.text().await;
+    let payload = decrypt_jwe_payload(
+        &response_jwe,
+        wallet_key_agreement.private().unwrap().as_ref(),
+    )
+    .await
+    .unwrap();
+    let response: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+    assert!(
+        response["credentials"][0]["credential"]
+            .as_str()
+            .is_some_and(|credential| !credential.is_empty())
+    );
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert!(credential.issuance_date.is_some());
+    assert!(credential.holder_identifier.is_some());
 }

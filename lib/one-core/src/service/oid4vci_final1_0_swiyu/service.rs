@@ -1,14 +1,12 @@
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::token::{TokenRequest, TokenResponse};
-use standardized_types::openid4vci::{
-    CredentialOffer, CredentialRequest, NonceResponse, NotificationRequest,
-};
+use standardized_types::openid4vci::{CredentialOffer, NonceResponse, NotificationRequest};
 
 use super::OID4VCIFinal1_0SwiyuService;
 use crate::service::oid4vci_final1_0::dto::{
-    OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
-    OpenID4VCICredentialResponseDTO,
+    CredentialRequestPayload, CredentialResponsePayload, OID4VCIFinal1_0IssuerMetadataResponseEnum,
+    OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
 };
 use crate::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 
@@ -71,8 +69,8 @@ impl OID4VCIFinal1_0SwiyuService {
         &self,
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
-        request: CredentialRequest,
-    ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
+        request: CredentialRequestPayload,
+    ) -> Result<CredentialResponsePayload, OID4VCIFinal1_0ServiceError> {
         self.inner
             .create_credential(credential_schema_id, access_token, request)
             .await

@@ -90,6 +90,7 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     CredentialRequestDenied,
     InvalidNotificationId,
     InvalidNotificationRequest,
+    InvalidEncryptionParameters,
     RuntimeError(String),
 }
 

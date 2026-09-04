@@ -32,6 +32,14 @@ pub enum PublicJwk {
 }
 
 impl PublicJwk {
+    pub fn alg(&self) -> Option<&str> {
+        match self {
+            PublicJwk::Ec(ec) | PublicJwk::Okp(ec) => ec.alg.as_deref(),
+            PublicJwk::Rsa(rsa) => rsa.alg.as_deref(),
+            PublicJwk::Oct(oct) => oct.alg.as_deref(),
+            PublicJwk::Akp(akp) => Some(&akp.alg),
+        }
+    }
     pub fn r#use(&self) -> Option<&JwkUse> {
         match self {
             Self::Ec(val) => val.r#use.as_ref(),

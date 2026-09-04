@@ -17,8 +17,9 @@ use serde::{Deserialize, Serialize};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::openid4vci::{
     BatchCredentialIssuance, ClaimMetadata, CredentialDefinition, CredentialDisplay,
-    CredentialMetadata, CredentialResponseEntry, Image, IssuerDisplay, IssuerInfoAttestation,
-    ProofTypeSupported, SigningAlgValue,
+    CredentialMetadata, CredentialRequestEncryption, CredentialResponseEncryption,
+    CredentialResponseEntry, Image, IssuerDisplay, IssuerInfoAttestation, ProofTypeSupported,
+    SigningAlgValue,
 };
 use utoipa::ToSchema;
 
@@ -37,6 +38,8 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub issuer_info: Vec<IssuerInfoAttestation>,
     pub batch_credential_issuance: Option<BatchCredentialIssuance>,
+    pub credential_request_encryption: Option<CredentialRequestEncryption>,
+    pub credential_response_encryption: Option<CredentialResponseEncryption>,
 }
 
 #[options_not_nullable]
