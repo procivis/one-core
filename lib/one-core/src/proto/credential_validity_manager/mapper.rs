@@ -1,5 +1,5 @@
 use crate::model::credential::CredentialStateEnum;
-use crate::proto::credential_validity_manager::dto::{ChangeCredentialState, ExpirationState};
+use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 
 impl From<ChangeCredentialState> for CredentialStateEnum {
     fn from(value: ChangeCredentialState) -> CredentialStateEnum {
@@ -8,15 +8,6 @@ impl From<ChangeCredentialState> for CredentialStateEnum {
             ChangeCredentialState::Revoked => CredentialStateEnum::Revoked,
             ChangeCredentialState::Suspended { .. } => CredentialStateEnum::Suspended,
             ChangeCredentialState::Expiring => CredentialStateEnum::Expiring,
-        }
-    }
-}
-
-impl From<ExpirationState> for CredentialStateEnum {
-    fn from(value: ExpirationState) -> Self {
-        match value {
-            ExpirationState::Accepted => CredentialStateEnum::Accepted,
-            ExpirationState::Expiring => CredentialStateEnum::Expiring,
         }
     }
 }

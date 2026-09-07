@@ -1,12 +1,13 @@
 use std::collections::HashMap;
-use std::ops::Add;
-use std::sync::{Arc, LazyLock};
+use std::ops::{Add, Sub};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
+use rstest::rstest;
 use shared_types::{CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
@@ -14,8 +15,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
-    GetCredentialList, UpdateCredentialRequest,
+    Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    CredentialType, GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -24,7 +25,7 @@ use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::Key;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
-    CredentialValidityManager, CredentialValidityManagerImpl, Error,
+    CredentialValidityManager, CredentialValidityManagerImpl, Error, validate_transition,
 };
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
@@ -1966,6 +1967,100 @@ async fn test_revoke_credential_batch_item() {
 }
 
 #[tokio::test]
+async fn test_reactivate_credential_batch_item_with_expiring_parent() {
+    reactivate_batch_item_leaves_parent_untouched(CredentialStateEnum::Expiring).await;
+}
+
+#[tokio::test]
+async fn test_reactivate_credential_batch_item_with_expired_parent() {
+    reactivate_batch_item_leaves_parent_untouched(CredentialStateEnum::Expired).await;
+}
+
+/// `Expiring`/`Expired` have no revocation equivalent, so the parent is not an aggregation of its
+/// items and must be left alone - it must neither fail the mapping nor get overwritten.
+async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialStateEnum) {
+    let mut parent_credential = generic_credential();
+    parent_credential.role = CredentialRole::Issuer;
+    parent_credential.state = parent_state;
+    parent_credential.r#type = CredentialType::BatchParent;
+
+    let mut child_credential = generic_credential();
+    child_credential.role = CredentialRole::Issuer;
+    child_credential.state = CredentialStateEnum::Suspended;
+    child_credential.suspend_end_date = Some(crate::clock::now_utc().sub(Duration::hours(1)));
+    child_credential.r#type = CredentialType::BatchItem;
+    child_credential.parent = Some(parent_credential.clone().into());
+
+    let mut credential_repository = MockCredentialRepository::default();
+
+    credential_repository
+        .expect_get_credential()
+        .once()
+        .with(eq(child_credential.id))
+        .returning({
+            let clone = child_credential.clone();
+            move |_| Ok(clone.clone())
+        });
+
+    // only the item is updated - no expectation is registered for the parent id, so any attempt
+    // to recompute or overwrite the parent's state fails the test
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(child_credential.id), always())
+        .returning(move |_, request| {
+            assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap());
+            Ok(())
+        });
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_mark_credential_as()
+        .once()
+        .with(always(), eq(RevocationState::Valid))
+        .return_once({
+            let child_credential_id = child_credential.id;
+            move |credential, _| {
+                assert_eq!(credential.id, child_credential_id);
+                Ok(())
+            }
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq((*REVOCATION_METHOD).clone()))
+        .once()
+        .returning(move |_| Ok(revocation_method.clone()));
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(move |_| Ok(Arc::new(formatter)));
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    validity_manager
+        .change_credential_state(&child_credential.id, ChangeCredentialState::Accepted)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn test_suspend_multiformat_credential_one_format_unsupported() {
     let mut base_credential = generic_credential();
     base_credential.role = CredentialRole::Issuer;
@@ -2438,4 +2533,580 @@ fn generic_credential() -> Credential {
         subscriber_information: None,
         format: Some(format.into()),
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Issuer state changes
+// ---------------------------------------------------------------------------------------------
+
+/// Every transition the issuer may perform, as `(current state, target state)` data. A target of
+/// `Expiring` is additionally restricted to batch parents.
+///
+/// Anything not listed here has to be rejected: `test_transition_matrix` walks the full
+/// cross-product of states, credential types and targets and asserts exactly that, so the allowed
+/// and the forbidden set cannot drift apart.
+const ALLOWED_TRANSITIONS: &[(CredentialStateEnum, CredentialStateEnum)] = &[
+    // reactivating a suspension, clearing the `Expiring` flag, re-applying `Accepted`
+    (
+        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Accepted,
+    ),
+    (CredentialStateEnum::Expiring, CredentialStateEnum::Accepted),
+    (CredentialStateEnum::Accepted, CredentialStateEnum::Accepted),
+    // suspending, including re-suspending to update `suspend_end_date`
+    (
+        CredentialStateEnum::Accepted,
+        CredentialStateEnum::Suspended,
+    ),
+    (
+        CredentialStateEnum::Expiring,
+        CredentialStateEnum::Suspended,
+    ),
+    (
+        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended,
+    ),
+    // revoking, including an expiring batch and an already revoked credential
+    (CredentialStateEnum::Accepted, CredentialStateEnum::Revoked),
+    (CredentialStateEnum::Suspended, CredentialStateEnum::Revoked),
+    (CredentialStateEnum::Expiring, CredentialStateEnum::Revoked),
+    (CredentialStateEnum::Revoked, CredentialStateEnum::Revoked),
+    // flagging a batch as expiring
+    (CredentialStateEnum::Accepted, CredentialStateEnum::Expiring),
+    (
+        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Expiring,
+    ),
+    (CredentialStateEnum::Expiring, CredentialStateEnum::Expiring),
+];
+
+/// Compile-time reminder: a new `CredentialStateEnum` variant breaks this match and has to be
+/// added to the `#[values(..)]` list of `test_transition_matrix` - and to `ALLOWED_TRANSITIONS`
+/// if the issuer may move to or from it.
+fn _every_state_is_in_the_matrix(state: CredentialStateEnum) {
+    match state {
+        CredentialStateEnum::Created
+        | CredentialStateEnum::Pending
+        | CredentialStateEnum::Offered
+        | CredentialStateEnum::Accepted
+        | CredentialStateEnum::Rejected
+        | CredentialStateEnum::Revoked
+        | CredentialStateEnum::Suspended
+        | CredentialStateEnum::Error
+        | CredentialStateEnum::InteractionExpired
+        | CredentialStateEnum::Expiring
+        | CredentialStateEnum::Expired => (),
+    }
+}
+
+#[rstest]
+fn test_transition_matrix(
+    #[values(
+        CredentialStateEnum::Created,
+        CredentialStateEnum::Pending,
+        CredentialStateEnum::Offered,
+        CredentialStateEnum::Accepted,
+        CredentialStateEnum::Rejected,
+        CredentialStateEnum::Revoked,
+        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Error,
+        CredentialStateEnum::InteractionExpired,
+        CredentialStateEnum::Expiring,
+        CredentialStateEnum::Expired
+    )]
+    current_state: CredentialStateEnum,
+    #[values(
+        CredentialType::Single,
+        CredentialType::BatchItem,
+        CredentialType::BatchParent
+    )]
+    current_type: CredentialType,
+    #[values(
+        ChangeCredentialState::Accepted,
+        ChangeCredentialState::Suspended {
+            suspend_end_date: None
+        },
+        ChangeCredentialState::Revoked,
+        ChangeCredentialState::Expiring
+    )]
+    change: ChangeCredentialState,
+) {
+    let target_state = CredentialStateEnum::from(change);
+    let result = validate_transition(current_state, current_type, change);
+
+    if !ALLOWED_TRANSITIONS.contains(&(current_state, target_state)) {
+        assert_eq!(
+            ErrorCode::BR_0366,
+            result.unwrap_err().error_code(),
+            "{current_type}: {current_state} -> {target_state} must be rejected"
+        );
+    } else if target_state == CredentialStateEnum::Expiring
+        && current_type != CredentialType::BatchParent
+    {
+        // the transition itself is fine, but only a batch parent can carry the flag
+        assert_eq!(
+            ErrorCode::BR_0442,
+            result.unwrap_err().error_code(),
+            "{current_type}: {current_state} -> {target_state} must be rejected as an unsupported type"
+        );
+    } else {
+        assert!(
+            result.is_ok(),
+            "{current_type}: {current_state} -> {target_state} must be allowed, got {:?}",
+            result.err()
+        );
+    }
+}
+
+/// Collects what the mocks below were asked to do, so a test can assert on the whole interaction
+/// instead of on per-call expectations.
+struct Recorder<T>(Arc<Mutex<Vec<T>>>);
+
+impl<T> Recorder<T> {
+    fn push(&self, value: T) {
+        self.0.lock().unwrap().push(value);
+    }
+
+    fn take(&self) -> Vec<T> {
+        std::mem::take(&mut self.0.lock().unwrap())
+    }
+}
+
+impl<T> Clone for Recorder<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T> Default for Recorder<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+/// `(credential id, new state, new suspend end date)` of every `update_credential` call.
+type StateUpdates = Recorder<(CredentialId, CredentialStateEnum, Option<OffsetDateTime>)>;
+/// `(credential id, state)` of every state published to a revocation method.
+type MarkedStates = Recorder<(CredentialId, RevocationState)>;
+
+static MOCK_REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+
+/// An issuer-role batch parent in `parent_state`, with one item per entry in `item_states`.
+fn issuer_batch(
+    parent_state: CredentialStateEnum,
+    item_states: &[CredentialStateEnum],
+) -> (Credential, Vec<Credential>) {
+    let parent = Credential {
+        role: CredentialRole::Issuer,
+        state: parent_state,
+        r#type: CredentialType::BatchParent,
+        ..generic_credential()
+    };
+
+    let items = item_states
+        .iter()
+        .map(|state| Credential {
+            role: CredentialRole::Issuer,
+            state: *state,
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            ..generic_credential()
+        })
+        .collect();
+
+    (parent, items)
+}
+
+/// Serves `parent` and its `items`, recording every state update.
+fn batch_repository(
+    parent: &Credential,
+    items: &[Credential],
+    updates: StateUpdates,
+) -> MockCredentialRepository {
+    let mut credential_repository = MockCredentialRepository::default();
+
+    credential_repository
+        .expect_get_credential()
+        .with(eq(parent.id))
+        .returning({
+            let parent = parent.clone();
+            move |_| Ok(parent.clone())
+        });
+
+    credential_repository
+        .expect_get_credential_list()
+        .returning({
+            let items = items.to_vec();
+            let parent_id = parent.id;
+            move |query| {
+                assert!(
+                    query
+                        .filtering
+                        .unwrap()
+                        .contains(&|filter: &CredentialFilterValue| *filter
+                            == CredentialFilterValue::ParentCredential(parent_id))
+                );
+                Ok(GetCredentialList {
+                    total_items: items.len() as u64,
+                    total_pages: 1,
+                    values: items.clone(),
+                })
+            }
+        });
+
+    record_updates(&mut credential_repository, updates);
+    credential_repository
+}
+
+/// Serves `credential` alone, recording every state update - loading batch items fails the test.
+fn single_credential_repository(
+    credential: &Credential,
+    updates: StateUpdates,
+) -> MockCredentialRepository {
+    let mut credential_repository = MockCredentialRepository::default();
+
+    credential_repository
+        .expect_get_credential()
+        .with(eq(credential.id))
+        .returning({
+            let credential = credential.clone();
+            move |_| Ok(credential.clone())
+        });
+
+    credential_repository.expect_get_credential_list().never();
+
+    record_updates(&mut credential_repository, updates);
+    credential_repository
+}
+
+fn record_updates(credential_repository: &mut MockCredentialRepository, updates: StateUpdates) {
+    credential_repository
+        .expect_update_credential()
+        .returning(move |credential_id, request| {
+            updates.push((
+                credential_id,
+                request.state.unwrap(),
+                match request.suspend_end_date {
+                    Clearable::ForceSet(suspend_end_date) => suspend_end_date,
+                    Clearable::DontTouch => None,
+                },
+            ));
+            Ok(())
+        });
+}
+
+/// Every credential resolves to a formatter carrying `MOCK_REVOCATION_METHOD`.
+fn any_formatter_provider() -> MockCredentialFormatterProvider {
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_revocation_method_id()
+                .returning(|| Some(&*MOCK_REVOCATION_METHOD));
+            Ok(Arc::new(formatter))
+        });
+    formatter_provider
+}
+
+/// A revocation method that supports every state and records what it published.
+fn recording_revocation_method_provider(marked: MarkedStates) -> MockRevocationMethodProvider {
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_mark_credential_as()
+        .returning(move |credential, state| {
+            marked.push((credential.id, state));
+            Ok(())
+        });
+
+    let revocation_method = Arc::new(revocation_method);
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .returning(move |_| Ok(revocation_method.clone()));
+    revocation_method_provider
+}
+
+fn batch_validity_manager(
+    credential_repository: MockCredentialRepository,
+    marked: MarkedStates,
+) -> CredentialValidityManagerImpl {
+    setup_validity_manager(Repositories {
+        credential_repository,
+        formatter_provider: any_formatter_provider(),
+        revocation_method_provider: recording_revocation_method_provider(marked),
+        config: generic_config().core,
+        ..Default::default()
+    })
+}
+
+#[tokio::test]
+async fn test_revoke_expiring_batch_parent() {
+    // `Expiring` is not terminal - the batch can still be revoked, and the items follow
+    let (parent, items) = issuer_batch(
+        CredentialStateEnum::Expiring,
+        &[CredentialStateEnum::Accepted],
+    );
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        batch_repository(&parent, &items, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(&parent.id, ChangeCredentialState::Revoked)
+        .await
+        .unwrap();
+
+    assert_eq!(vec![(items[0].id, RevocationState::Revoked)], marked.take());
+    assert_eq!(
+        vec![
+            (items[0].id, CredentialStateEnum::Revoked, None),
+            (parent.id, CredentialStateEnum::Revoked, None),
+        ],
+        updates.take()
+    );
+}
+
+#[tokio::test]
+async fn test_suspend_batch_parent_with_already_suspended_item() {
+    // re-suspending an item is how its `suspend_end_date` gets updated, so an item that already
+    // carries the target state must not make the parent's change fail
+    let (parent, mut items) = issuer_batch(
+        CredentialStateEnum::Accepted,
+        &[
+            CredentialStateEnum::Accepted,
+            CredentialStateEnum::Suspended,
+        ],
+    );
+    let previous_end_date = crate::clock::now_utc().add(Duration::days(1));
+    items[1].suspend_end_date = Some(previous_end_date);
+
+    let new_end_date = crate::clock::now_utc().add(Duration::days(7));
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        batch_repository(&parent, &items, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(
+            &parent.id,
+            ChangeCredentialState::Suspended {
+                suspend_end_date: Some(new_end_date),
+            },
+        )
+        .await
+        .unwrap();
+
+    let suspended = RevocationState::Suspended {
+        suspend_end_date: Some(new_end_date),
+    };
+    assert_eq!(
+        vec![(items[0].id, suspended), (items[1].id, suspended)],
+        marked.take()
+    );
+    assert_eq!(
+        vec![
+            (
+                items[0].id,
+                CredentialStateEnum::Suspended,
+                Some(new_end_date)
+            ),
+            (
+                items[1].id,
+                CredentialStateEnum::Suspended,
+                Some(new_end_date)
+            ),
+            (
+                parent.id,
+                CredentialStateEnum::Suspended,
+                Some(new_end_date)
+            ),
+        ],
+        updates.take()
+    );
+}
+
+#[tokio::test]
+async fn test_suspend_batch_parent_skips_items_that_cannot_follow() {
+    // terminal items keep their state, and they do not block the items that can still follow
+    let (parent, items) = issuer_batch(
+        CredentialStateEnum::Accepted,
+        &[
+            CredentialStateEnum::Accepted,
+            CredentialStateEnum::Revoked,
+            CredentialStateEnum::Expired,
+            CredentialStateEnum::Pending,
+        ],
+    );
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        batch_repository(&parent, &items, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(
+            &parent.id,
+            ChangeCredentialState::Suspended {
+                suspend_end_date: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        vec![(
+            items[0].id,
+            RevocationState::Suspended {
+                suspend_end_date: None
+            }
+        )],
+        marked.take()
+    );
+    assert_eq!(
+        vec![
+            (items[0].id, CredentialStateEnum::Suspended, None),
+            (parent.id, CredentialStateEnum::Suspended, None),
+        ],
+        updates.take()
+    );
+}
+
+#[tokio::test]
+async fn test_suspend_batch_parent_with_only_terminal_items() {
+    // the parent's state is the issuer's decision, not an aggregation of its items: it moves even
+    // when no item can follow it
+    let (parent, items) = issuer_batch(
+        CredentialStateEnum::Accepted,
+        &[CredentialStateEnum::Revoked],
+    );
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        batch_repository(&parent, &items, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(
+            &parent.id,
+            ChangeCredentialState::Suspended {
+                suspend_end_date: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    assert!(marked.take().is_empty());
+    assert_eq!(
+        vec![(parent.id, CredentialStateEnum::Suspended, None)],
+        updates.take()
+    );
+}
+
+#[tokio::test]
+async fn test_flagging_a_batch_parent_as_expiring_leaves_items_untouched() {
+    // no revocation list can express `Expiring`, so it is a flag on the parent alone
+    let parent = Credential {
+        role: CredentialRole::Issuer,
+        state: CredentialStateEnum::Accepted,
+        r#type: CredentialType::BatchParent,
+        ..generic_credential()
+    };
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        single_credential_repository(&parent, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(&parent.id, ChangeCredentialState::Expiring)
+        .await
+        .unwrap();
+
+    assert!(marked.take().is_empty());
+    assert_eq!(
+        vec![(parent.id, CredentialStateEnum::Expiring, None)],
+        updates.take()
+    );
+}
+
+#[tokio::test]
+async fn test_clearing_the_expiring_flag_leaves_items_untouched() {
+    // the items were never marked when the flag was raised, so there is nothing to restore
+    let parent = Credential {
+        role: CredentialRole::Issuer,
+        state: CredentialStateEnum::Expiring,
+        r#type: CredentialType::BatchParent,
+        ..generic_credential()
+    };
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        single_credential_repository(&parent, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(&parent.id, ChangeCredentialState::Accepted)
+        .await
+        .unwrap();
+
+    assert!(marked.take().is_empty());
+    assert_eq!(
+        vec![(parent.id, CredentialStateEnum::Accepted, None)],
+        updates.take()
+    );
+}
+
+#[tokio::test]
+async fn test_reapplying_the_current_state_is_a_noop() {
+    let credential = Credential {
+        role: CredentialRole::Issuer,
+        state: CredentialStateEnum::Revoked,
+        ..generic_credential()
+    };
+    let updates = StateUpdates::default();
+    let marked = MarkedStates::default();
+    let validity_manager = batch_validity_manager(
+        single_credential_repository(&credential, updates.clone()),
+        marked.clone(),
+    );
+
+    validity_manager
+        .change_credential_state(&credential.id, ChangeCredentialState::Revoked)
+        .await
+        .unwrap();
+
+    assert!(marked.take().is_empty());
+    assert!(updates.take().is_empty());
+}
+
+#[tokio::test]
+async fn test_expiring_is_not_supported_for_single_credentials() {
+    let credential = Credential {
+        role: CredentialRole::Issuer,
+        state: CredentialStateEnum::Accepted,
+        ..generic_credential()
+    };
+    let updates = StateUpdates::default();
+    let validity_manager = batch_validity_manager(
+        single_credential_repository(&credential, updates.clone()),
+        MarkedStates::default(),
+    );
+
+    let error = validity_manager
+        .change_credential_state(&credential.id, ChangeCredentialState::Expiring)
+        .await
+        .unwrap_err();
+
+    assert_eq!(ErrorCode::BR_0442, error.error_code());
+    assert!(updates.take().is_empty());
 }

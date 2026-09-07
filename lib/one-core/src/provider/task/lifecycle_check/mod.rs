@@ -61,19 +61,21 @@ impl LifecycleCheckProvider {
             .await
             .error_while("getting credentials")?;
 
+        let mut reactivated_ids = vec![];
         for credential in &credential_list.values {
-            self.credential_validity_manager
+            match self
+                .credential_validity_manager
                 .change_credential_state(&credential.id, ChangeCredentialState::Accepted)
                 .await
-                .error_while("reactivating credential")?;
+            {
+                Ok(()) => reactivated_ids.push(credential.id),
+                Err(error) => {
+                    tracing::warn!(%error, "failed to reactivate credential {}", credential.id)
+                }
+            }
         }
 
         let total_checks = credential_list.total_items;
-        let reactivated_ids = credential_list
-            .values
-            .iter()
-            .map(|credential| credential.id)
-            .collect();
 
         Ok((reactivated_ids, total_checks))
     }
@@ -134,8 +136,12 @@ impl LifecycleCheckProvider {
         let mut expired_ids = vec![];
 
         for credential in stale_credentials.values {
-            if self.expire_if_stale(&credential, now).await? {
-                expired_ids.push(credential.id);
+            match self.expire_if_stale(&credential, now).await {
+                Ok(true) => expired_ids.push(credential.id),
+                Ok(false) => {}
+                Err(error) => {
+                    tracing::warn!(%error, "failed to expire credential {}", credential.id)
+                }
             }
         }
 
@@ -170,36 +176,63 @@ impl LifecycleCheckProvider {
             for credential in batch_parents.values {
                 let all_items_expired = !parents_with_remaining_items.contains(&credential.id);
 
-                // the parent is only expired once every item has individually expired, and
-                // its own business-level `expires_at` has passed or the shared OAuth refresh
-                // token has already expired - a still-valid refresh token past `expires_at`
-                // does not keep the batch alive, but a single still-valid item does
-                if all_items_expired && !credential.state.is_terminal() {
-                    let interaction = match credential.interaction.as_ref() {
-                        Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
-                        None => None,
-                    };
-
-                    if is_batch_parent_expired(&credential, interaction.as_ref(), now)
-                        .error_while("checking batch parent expiry")?
-                    {
-                        self.credential_repository
-                            .update_credential(
-                                credential.id,
-                                UpdateCredentialRequest {
-                                    state: Some(CredentialStateEnum::Expired),
-                                    ..Default::default()
-                                },
-                            )
-                            .await
-                            .error_while("updating batch parent credential")?;
-                        expired_ids.push(credential.id);
+                match self
+                    .expire_batch_parent_if_stale(&credential, all_items_expired, now)
+                    .await
+                {
+                    Ok(true) => expired_ids.push(credential.id),
+                    Ok(false) => {}
+                    Err(error) => {
+                        tracing::warn!(
+                            %error,
+                            "failed to expire batch parent credential {}",
+                            credential.id
+                        )
                     }
                 }
             }
         }
 
         Ok((expired_ids, total_checks))
+    }
+
+    /// The parent is only expired once every item has individually expired, and its own
+    /// business-level `expires_at` has passed or the shared OAuth refresh token has already
+    /// expired - a still-valid refresh token past `expires_at` does not keep the batch alive,
+    /// but a single still-valid item does.
+    async fn expire_batch_parent_if_stale(
+        &self,
+        credential: &Credential,
+        all_items_expired: bool,
+        now: OffsetDateTime,
+    ) -> Result<bool, ServiceError> {
+        if !all_items_expired || credential.state.is_terminal() {
+            return Ok(false);
+        }
+
+        let interaction = match credential.interaction.as_ref() {
+            Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
+            None => None,
+        };
+
+        if !is_batch_parent_expired(credential, interaction.as_ref(), now)
+            .error_while("checking batch parent expiry")?
+        {
+            return Ok(false);
+        }
+
+        self.credential_repository
+            .update_credential(
+                credential.id,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Expired),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating batch parent credential")?;
+
+        Ok(true)
     }
 
     async fn expire_if_stale(

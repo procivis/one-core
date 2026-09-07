@@ -146,6 +146,99 @@ async fn test_run_task_lifecycle_check_reactivates_suspended() {
     assert_eq!(credential.suspend_end_date, None);
 }
 
+/// A batch parent can be flagged `Expiring` while its items stay `Suspended` - `Expiring` has no
+/// revocation equivalent, so reading it as one used to fail the whole task run.
+#[tokio::test]
+async fn test_run_task_lifecycle_check_reactivates_suspended_batch_item_of_expiring_parent() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
+
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let item_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(one_core::model::credential::CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                suspend_end_date: Some(a_while_ago),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                purpose: Some(RevocationListPurpose::Suspension),
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, item_credential.id, 0)
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("LIFECYCLE_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalReactivationChecks"], 1);
+    let credentials = resp["reactivatedCredentialIds"]
+        .as_array()
+        .unwrap()
+        .to_owned();
+    assert_eq!(credentials.len(), 1);
+    assert_eq!(
+        credentials.first().unwrap().as_str().unwrap(),
+        item_credential.id.to_string()
+    );
+
+    let item_credential = context.db.credentials.get(&item_credential.id).await;
+    assert_eq!(item_credential.state, CredentialStateEnum::Accepted);
+    assert_eq!(item_credential.suspend_end_date, None);
+
+    // the parent's `Expiring` flag is preserved - only an explicit transition back to `ACCEPTED`
+    // clears it
+    let parent_credential = context.db.credentials.get(&parent_credential.id).await;
+    assert_eq!(parent_credential.state, CredentialStateEnum::Expiring);
+}
+
 #[tokio::test]
 async fn test_run_task_lifecycle_check_expires_single_credential_both_roles() {
     // GIVEN
@@ -258,6 +351,55 @@ async fn test_run_task_lifecycle_check_expires_non_accepted_non_terminal_credent
 
     let offered_credential = context.db.credentials.get(&offered_credential.id).await;
     assert_eq!(offered_credential.state, CredentialStateEnum::Expired);
+}
+
+/// A suspended credential expires like any other: `Suspended` is non-terminal, so a past
+/// `expires_at` moves it to `Expired` even while the suspension itself is still running.
+#[tokio::test]
+async fn test_run_task_lifecycle_check_expires_suspended_credential() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let now = one_core::clock::now_utc();
+    let suspended_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Issuer),
+                expires_at: Some(now.sub(Duration::seconds(1))),
+                // still running, so the reactivation pass leaves this credential alone
+                suspend_end_date: Some(now.add(Duration::days(1))),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("LIFECYCLE_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let expired_ids: Vec<String> = resp["expiredCredentialIds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(expired_ids.contains(&suspended_credential.id.to_string()));
+
+    let suspended_credential = context.db.credentials.get(&suspended_credential.id).await;
+    assert_eq!(suspended_credential.state, CredentialStateEnum::Expired);
 }
 
 #[tokio::test]

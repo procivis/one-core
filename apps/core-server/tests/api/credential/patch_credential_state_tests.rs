@@ -717,8 +717,8 @@ async fn test_patch_credential_state_fails_credential_deleted() {
 async fn test_patch_credential_state_expiring_from_accepted_success() {
     // GIVEN a normally valid batch-parent credential - moving to EXPIRING never touches the
     // revocation method (it's a pure state-flag transition), so no revocation list is needed
-    // here. Only batch-parent (mdoc) credentials can transition to EXPIRING; single credentials
-    // are rejected by `change_credential_expiration_state`.
+    // here. Only batch-parent credentials can transition to EXPIRING; for any other type the
+    // transition is rejected as an unsupported credential type.
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
@@ -871,16 +871,16 @@ async fn test_patch_credential_state_expiring_fails_from_revoked() {
 }
 
 #[tokio::test]
-async fn test_patch_credential_state_revoke_fails_from_expiring() {
-    // GIVEN an EXPIRING credential can only go back to ACCEPTED - it cannot be revoked or
-    // suspended directly
+async fn test_patch_credential_state_revoke_from_expiring_success() {
+    // GIVEN an EXPIRING batch parent - EXPIRING is not terminal, so the batch can still be
+    // revoked, and its items follow
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
         .create("test", &organisation, Default::default())
         .await;
-    let credential = context
+    let parent = context
         .db
         .credentials
         .create(
@@ -888,28 +888,230 @@ async fn test_patch_credential_state_revoke_fails_from_expiring() {
             CredentialStateEnum::Expiring,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            TestingCredentialParams::default(),
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
         )
+        .await;
+    let item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                ..Default::default()
+            },
+        )
+        .await;
+    context.db.revocation_lists.create(identifier, None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(&parent.id, json!({"state": "REVOKED"}), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    assert_eq!(
+        CredentialStateEnum::Revoked,
+        context.db.credentials.get(&parent.id).await.state
+    );
+    assert_eq!(
+        CredentialStateEnum::Revoked,
+        context.db.credentials.get(&item.id).await.state
+    );
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_suspend_from_expiring_success() {
+    // GIVEN an EXPIRING batch parent - it can be suspended directly, without first being moved
+    // back to ACCEPTED
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let parent = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Expiring,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+    let item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                ..Default::default()
+            },
+        )
+        .await;
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                purpose: Some(RevocationListPurpose::Suspension),
+                ..Default::default()
+            }),
+        )
+        .await;
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, item.id, 0)
         .await;
 
     // WHEN
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.id, json!({"state": "REVOKED"}), None)
+        .patch_state(&parent.id, json!({"state": "SUSPENDED"}), None)
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 400);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0366");
-
-    let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(CredentialStateEnum::Expiring, credential.state);
+    assert_eq!(resp.status(), 204);
+    assert_eq!(
+        CredentialStateEnum::Suspended,
+        context.db.credentials.get(&parent.id).await.state
+    );
+    assert_eq!(
+        CredentialStateEnum::Suspended,
+        context.db.credentials.get(&item.id).await.state
+    );
 }
 
 #[tokio::test]
-async fn test_patch_credential_state_suspend_fails_from_expiring() {
+async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended_item() {
+    // GIVEN a batch parent whose items disagree: the parent aggregates its items optimistically,
+    // so one suspended item leaves it ACCEPTED. Suspending the batch must re-suspend that item
+    // with the new end date rather than fail on it.
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let parent = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+    let accepted_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                ..Default::default()
+            },
+        )
+        .await;
+    let suspended_item = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                suspend_end_date: Some(
+                    OffsetDateTime::parse("2023-06-09T14:19:57.000Z", &Rfc3339).unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                purpose: Some(RevocationListPurpose::Suspension),
+                ..Default::default()
+            }),
+        )
+        .await;
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, accepted_item.id, 0)
+        .await;
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, suspended_item.id, 1)
+        .await;
+
+    let new_end_date_str = "2024-06-09T14:19:57.000Z";
+    let new_end_date = OffsetDateTime::parse(new_end_date_str, &Rfc3339).unwrap();
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .patch_state(
+            &parent.id,
+            json!({"state": "SUSPENDED", "suspendEndDate": new_end_date_str}),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    for credential_id in [parent.id, accepted_item.id, suspended_item.id] {
+        let credential = context.db.credentials.get(&credential_id).await;
+        assert_eq!(CredentialStateEnum::Suspended, credential.state);
+        assert_eq!(Some(new_end_date), credential.suspend_end_date);
+    }
+}
+
+#[tokio::test]
+async fn test_patch_credential_state_reapplying_the_current_state_is_a_noop() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential_schema = context
@@ -922,7 +1124,7 @@ async fn test_patch_credential_state_suspend_fails_from_expiring() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Expiring,
+            CredentialStateEnum::Accepted,
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -933,14 +1135,13 @@ async fn test_patch_credential_state_suspend_fails_from_expiring() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.id, json!({"state": "SUSPENDED"}), None)
+        .patch_state(&credential.id, json!({"state": "ACCEPTED"}), None)
         .await;
 
-    // THEN
-    assert_eq!(resp.status(), 400);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0366");
+    // THEN the call succeeds without moving the credential or recording anything
+    assert_eq!(resp.status(), 204);
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(CredentialStateEnum::Expiring, credential.state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    assert_history_count(&context, &credential.id.into(), HistoryAction::Accepted, 0).await;
 }
