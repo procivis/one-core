@@ -550,6 +550,7 @@ impl OID4VCIFinal1_0Service {
         let candidates = key_agreement_keys(
             &issuer_identifier,
             None,
+            params.swiyu_mode,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )

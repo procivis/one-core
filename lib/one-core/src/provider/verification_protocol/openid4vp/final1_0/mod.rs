@@ -741,6 +741,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
         let key_agreement_key = select_key_agreement_key_from_proof(
             proof,
+            self.params.swiyu_mode,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )

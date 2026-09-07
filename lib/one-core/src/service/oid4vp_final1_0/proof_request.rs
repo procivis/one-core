@@ -97,6 +97,7 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, PresentationFor
 /// proof was created with.
 pub(crate) async fn select_key_agreement_key_from_proof(
     proof: &Proof,
+    swiyu_mode: bool,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<Option<PublicJwk>, VerificationProtocolError> {
@@ -117,6 +118,7 @@ pub(crate) async fn select_key_agreement_key_from_proof(
     let candidates = key_agreement_keys(
         &verifier_identifier,
         Some(verifier_key.id),
+        swiyu_mode,
         key_provider,
         key_algorithm_provider,
     )

@@ -108,6 +108,7 @@ impl OID4VPFinal1_0Service {
 
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
+            self.swiyu_mode(&proof.protocol)?,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )
@@ -223,6 +224,7 @@ impl OID4VPFinal1_0Service {
 
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
+            self.swiyu_mode(&proof.protocol)?,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )
@@ -529,6 +531,19 @@ impl OID4VPFinal1_0Service {
             }
             _ => Err(OpenID4VCError::InvalidRequest.into()),
         }
+    }
+
+    /// swiyu DIDs do not support a key agreement verification relationship, so the swiyu protocol
+    /// deviates from the standard by using the authentication keys for key agreement.
+    fn swiyu_mode(&self, protocol_id: &str) -> Result<bool, OID4VPFinal1_0ServiceError> {
+        let protocol_type = self
+            .config
+            .verification_protocol
+            .get_fields(protocol_id)
+            .error_while("getting verification protocol config")?
+            .r#type;
+
+        Ok(protocol_type == VerificationProtocolType::OpenId4VpFinal1_0Swiyu)
     }
 
     /// Content encryption algorithms the protocol handling this proof supports.

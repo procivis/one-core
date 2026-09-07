@@ -32,6 +32,9 @@ pub(crate) struct Params {
     /// is why this option is supported here.
     pub predefined_vp_formats_supported: Option<HashMap<String, PresentationFormat>>,
 
+    #[serde(default)]
+    pub swiyu_mode: bool,
+
     #[serde(flatten)]
     pub common: CommonParams,
 }

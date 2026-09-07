@@ -22,14 +22,25 @@ pub(crate) struct KeyAgreementKey {
 /// Returns an empty list rather than an error when the identifier has no such key.
 ///
 /// When `preferred_key_id` names a key that qualifies, it is returned first.
+///
+/// In `swiyu_mode` the keys are taken from the authentication verification relationship, since
+/// swiyu DIDs do not support a key agreement relationship.
+/// See https://swiyu-admin-ch.github.io/specifications/swiss-profile-anchor/#533-key-agreement
 pub(crate) async fn key_agreement_keys(
     identifier: &Identifier,
     preferred_key_id: Option<KeyId>,
+    swiyu_mode: bool,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<Vec<KeyAgreementKey>, NestedError> {
+    let key_role = if swiyu_mode {
+        KeyRole::Authentication
+    } else {
+        KeyRole::KeyAgreement
+    };
+
     let candidates = match identifier
-        .list_keys(Some(KeyFilter::did_role(KeyRole::KeyAgreement)), None)
+        .list_keys(Some(KeyFilter::did_role(key_role)), None)
         .await
     {
         Ok(keys) => keys,

@@ -1408,6 +1408,7 @@ impl OpenID4VCIFinal1_0 {
         Ok(key_agreement_keys(
             issuer_identifier,
             None,
+            self.params.swiyu_mode,
             &*self.key_provider,
             &*self.key_algorithm_provider,
         )
