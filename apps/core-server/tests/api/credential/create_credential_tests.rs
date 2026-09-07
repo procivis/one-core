@@ -317,6 +317,53 @@ async fn test_create_credential_with_array_success() {
 }
 
 #[tokio::test]
+async fn test_fail_create_credential_claim_id_not_matching_path() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_array_claims("test", &organisation, Default::default())
+        .await;
+
+    let claim_id_root_field = credential_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|claim| claim.key == "namespace/root_field")
+        .unwrap()
+        .id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VCI_FINAL1",
+            serde_json::json!([
+                {
+                    "claimId": claim_id_root_field.to_string(),
+                    "value": "foo",
+                    "path": "namespace/root_array/0/nested/0/field"
+                }
+            ]),
+            CreateCredentialTestParams {
+                issuer_did: Some(did.id.to_string().into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0485", resp.error_code().await);
+}
+
+#[tokio::test]
 async fn test_create_credential_success_with_nested_claims() {
     // GIVEN
     let (context, organisation, did, ..) = TestContext::new_with_did(None).await;

@@ -235,9 +235,9 @@ impl PathNode {
             let is_array = array_claim_paths.is_match(key);
             if is_array {
                 if subkeys.first().is_some_and(|key| *key != "0") {
-                    return Err(CredentialServiceError::MappingError(
-                        "Array indexes need to start at 0".to_string(),
-                    ));
+                    return Err(CredentialServiceError::InvalidClaimPath(format!(
+                        "array indexes under `{key}` must start at 0"
+                    )));
                 }
 
                 let indexes = subkeys
@@ -257,9 +257,9 @@ impl PathNode {
                     .tuple_windows()
                     .all(|(i1, i2)| i1 < i2 && i2 - i1 == 1);
                 if !continuous {
-                    return Err(CredentialServiceError::MappingError(
-                        "indexes are not continuous".to_string(),
-                    ));
+                    return Err(CredentialServiceError::InvalidClaimPath(format!(
+                        "array indexes under `{key}` are not continuous"
+                    )));
                 }
             }
         }
@@ -406,8 +406,9 @@ async fn validate_path(
             try_strip_namespace_from_path(claim, schema, credential_schema).await?;
             segments.remove(0);
         } else {
-            return Err(CredentialServiceError::MappingError(format!(
-                "invalid segments [{segments_len} vs {expected_segments}]"
+            return Err(CredentialServiceError::InvalidClaimPath(format!(
+                "path `{}` has {segments_len} segments, claim schema `{}` expects {expected_segments}",
+                claim.path, schema.key
             )));
         }
     }
@@ -422,21 +423,24 @@ async fn validate_path(
         })?;
         let key_segment = get_nth_segment_of_key(&related_schema.key, schema_index)?;
         let segment = segments.get(segment_index).ok_or_else(|| {
-            CredentialServiceError::MappingError(format!(
-                "Could not find segment index: {segment_index}"
+            CredentialServiceError::InvalidClaimPath(format!(
+                "path `{}` is missing segment {segment_index}",
+                claim.path
             ))
         })?;
         if key_segment != *segment {
-            return Err(CredentialServiceError::MappingError(format!(
-                "expected: {key_segment}, found: {segment}"
+            return Err(CredentialServiceError::InvalidClaimPath(format!(
+                "path `{}` does not match claim schema `{}`: expected `{key_segment}`, found `{segment}`",
+                claim.path, schema.key
             )));
         }
 
         if related_schema.array {
             segment_index += 1;
             let segment = segments.get(segment_index).ok_or_else(|| {
-                CredentialServiceError::MappingError(format!(
-                    "Could not find segment index: {segment_index}"
+                CredentialServiceError::InvalidClaimPath(format!(
+                    "path `{}` is missing array index for claim schema `{}`",
+                    claim.path, related_schema.key
                 ))
             })?;
             segment
@@ -478,9 +482,10 @@ async fn try_strip_namespace_from_path(
         ))?;
 
     let Some(namespace) = &mapping.namespace else {
-        return Err(CredentialServiceError::MappingError(
-            "Invalid claim path".to_string(),
-        ));
+        return Err(CredentialServiceError::InvalidClaimPath(format!(
+            "path `{}` has too many segments for claim schema `{}`",
+            claim.path, claim_schema.key
+        )));
     };
 
     let namespace_prefix = format!("{namespace}{NESTED_CLAIM_MARKER}");
@@ -488,9 +493,10 @@ async fn try_strip_namespace_from_path(
         claim.path = claim.path[namespace_prefix.len()..].to_string();
         Ok(())
     } else {
-        Err(CredentialServiceError::MappingError(
-            "Invalid claim path".to_string(),
-        ))
+        Err(CredentialServiceError::InvalidClaimPath(format!(
+            "path `{}` does not start with namespace `{namespace}` of claim schema `{}`",
+            claim.path, claim_schema.key
+        )))
     }
 }
 

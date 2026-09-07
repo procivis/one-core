@@ -557,3 +557,69 @@ fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Credential
         format: None,
     }
 }
+
+#[tokio::test]
+async fn relinks_claims_of_new_root_array_claim_schema() {
+    let format: CredentialFormat = "JWT".into();
+
+    let parsed_name = claim_schema("name", "STRING");
+    let mut parsed_addresses = claim_schema("addresses", "OBJECT");
+    parsed_addresses.array = true;
+    let parsed_street = claim_schema("addresses/street", "STRING");
+
+    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_schema = credential_schema(
+        Uuid::new_v4().into(),
+        parsed_format_id,
+        "JWT",
+        vec![
+            parsed_name.clone(),
+            parsed_addresses.clone(),
+            parsed_street.clone(),
+        ],
+        vec![
+            mapping(parsed_format_id, parsed_name.id, "name", None),
+            mapping(parsed_format_id, parsed_addresses.id, "addresses", None),
+            mapping(parsed_format_id, parsed_street.id, "addresses/street", None),
+        ],
+    );
+
+    // stored: only `name` known (first accepted credential had no `addresses`)
+    let stored_name = claim_schema("name", "STRING");
+    let stored_format_id = Uuid::new_v4().into();
+    let mut stored_schema = credential_schema(
+        Uuid::new_v4().into(),
+        stored_format_id,
+        "JWT",
+        vec![stored_name.clone()],
+        vec![mapping(stored_format_id, stored_name.id, "name", None)],
+    );
+
+    let mut credential = credential(
+        parsed_schema,
+        vec![
+            claim("name", &parsed_name),
+            claim("addresses", &parsed_addresses),
+            claim("addresses/0", &parsed_addresses),
+            claim("addresses/0/street", &parsed_street),
+        ],
+    );
+
+    let (new_claim_schemas, _) = validate_existing_and_find_new_claim_schemas(
+        &mut stored_schema,
+        &mut credential,
+        &format,
+        "en",
+        true,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(new_claim_schemas.len(), 2);
+    let claims = credential.claims.as_ref().await.unwrap();
+    let paths: Vec<_> = claims.iter().map(|c| c.path.as_str()).collect();
+    assert_eq!(
+        paths,
+        vec!["addresses", "addresses/0", "addresses/0/street", "name"]
+    );
+}

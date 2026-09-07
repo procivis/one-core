@@ -1039,6 +1039,9 @@ pub enum ErrorCode {
         message = "Credential already issued, refresh is only supported for mdoc and batch credentials"
     )]
     BR_0483,
+
+    #[strum(message = "Invalid claim path")]
+    BR_0485,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

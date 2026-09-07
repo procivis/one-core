@@ -1929,7 +1929,7 @@ async fn test_create_credential_namespace_optional() {
         })
         .await;
 
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0047);
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0485);
 }
 
 #[tokio::test]

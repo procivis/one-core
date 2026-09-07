@@ -769,12 +769,19 @@ async fn validate_existing_and_find_new_claim_schemas(
                 )
                 .await?;
             } else {
-                // This is a new root claim, no parent path translations / relinking. Store the key
-                // translation for potential child claims of this new root claim.
+                // This is a new root claim, the parsed key and paths are kept.
                 key_translations.insert(
                     parsed_claim_schema.key.clone(),
                     parsed_claim_schema.key.clone(),
                 );
+                // Child claims look up their parent path here, so the paths of the root claim
+                // (including array items) must be registered even though they do not change.
+                for claim in claims
+                    .iter()
+                    .filter(|claim| claim.schema.id() == parsed_claim_schema.id)
+                {
+                    claim_path_translations.insert(claim.path.clone(), claim.path.clone());
+                }
             }
             let mut new_mapping = parsed_mapping.clone();
             new_mapping.credential_schema_format_id = stored_format.id;

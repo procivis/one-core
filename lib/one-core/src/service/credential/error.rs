@@ -56,6 +56,9 @@ pub enum CredentialServiceError {
     #[error("Missing parent claim schema for: {claim_schema_id}")]
     MissingParentClaimSchema { claim_schema_id: ClaimSchemaId },
 
+    #[error("Invalid claim path: {0}")]
+    InvalidClaimPath(String),
+
     #[error("Mapping error: `{0}`")]
     MappingError(String),
 
@@ -86,6 +89,7 @@ impl ErrorCodeMixin for CredentialServiceError {
             Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
             Self::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
             Self::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
+            Self::InvalidClaimPath(_) => ErrorCode::BR_0485,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
