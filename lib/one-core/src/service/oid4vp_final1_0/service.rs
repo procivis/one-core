@@ -493,13 +493,13 @@ impl OID4VPFinal1_0Service {
                         .await
                         .map_err(|err| {
                             OID4VPFinal1_0ServiceError::ValidationError(format!(
-                                "Failed decrypting JWE payload: {err}"
+                                "Failed decrypting JWE payload: {err:#}"
                             ))
                         })?;
 
                 let payload = JwePayload::try_from_json(&payload).map_err(|err| {
                     OID4VPFinal1_0ServiceError::ValidationError(format!(
-                        "Failed deserializing JWE payload: {err}"
+                        "Failed deserializing JWE payload: {err:#}"
                     ))
                 })?;
 

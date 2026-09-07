@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Context;
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId, TransactionDataType};
 use standardized_types::jwk::PublicJwk;
@@ -59,10 +59,29 @@ pub struct PexSubmission {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum VpSubmissionData {
-    Dcql(VpTokenResponse),
+    Dcql(#[serde(deserialize_with = "deserialize_lenient_vp_token_response")] VpTokenResponse),
     DcqlEudi(DcqlSubmissionEudi),
     Pex(PexSubmission),
     EncryptedResponse(EncryptedResponse),
+}
+
+/// Accepts `vp_token` both as a JSON object and as a JSON-encoded string.
+///
+/// This is required for the swiyu wallet because it submits the JSON object as string, i.e. `{"vp_token": "{\"<query id>\":[\"<vp>\"]}"}`.
+fn deserialize_lenient_vp_token_response<'de, D>(
+    deserializer: D,
+) -> Result<VpTokenResponse, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct LenientVpTokenResponse {
+        #[serde(deserialize_with = "deserialize_with_serde_json")]
+        vp_token: HashMap<String, Vec<String>>,
+    }
+
+    let LenientVpTokenResponse { vp_token } = LenientVpTokenResponse::deserialize(deserializer)?;
+    Ok(VpTokenResponse { vp_token })
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -345,5 +364,83 @@ mod test {
 
         let ids: Vec<String> = tx_data.keys().map(ToString::to_string).collect();
         assert_eq!(ids, IDS);
+    }
+
+    const VP: &str = "eyJhbGciOiJFUzI1NiJ9.payload.signature";
+
+    fn expected_dcql_submission() -> HashMap<String, Vec<String>> {
+        HashMap::from([("credential_query_1".to_string(), vec![VP.to_string()])])
+    }
+
+    /// The swiyu wallet JSON-encodes `vp_token` as a string inside the JWE payload.
+    #[test]
+    fn test_jwe_payload_accepts_json_string_vp_token() {
+        let payload = format!(
+            r#"{{"vp_token":"{{\"credential_query_1\":[\"{VP}\"]}}","state":"the-state"}}"#
+        );
+
+        let payload = JwePayload::try_from_json(payload.as_bytes()).unwrap();
+
+        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = payload.submission_data else {
+            panic!("expected a DCQL submission");
+        };
+        assert_eq!(expected_dcql_submission(), vp_token);
+        assert_eq!(Some("the-state".to_string()), payload.state);
+    }
+
+    #[test]
+    fn test_jwe_payload_accepts_object_vp_token() {
+        let payload =
+            format!(r#"{{"vp_token":{{"credential_query_1":["{VP}"]}},"state":"the-state"}}"#);
+
+        let payload = JwePayload::try_from_json(payload.as_bytes()).unwrap();
+
+        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = payload.submission_data else {
+            panic!("expected a DCQL submission");
+        };
+        assert_eq!(expected_dcql_submission(), vp_token);
+    }
+
+    /// A PEX `vp_token` is a bare presentation string, so the lenient DCQL variant must not claim it.
+    #[test]
+    fn test_jwe_payload_keeps_matching_pex_submissions() {
+        let payload = format!(
+            r#"{{"vp_token":"{VP}","presentation_submission":{{"id":"id","definition_id":"definition_id","descriptor_map":[]}}}}"#
+        );
+
+        let payload = JwePayload::try_from_json(payload.as_bytes()).unwrap();
+
+        let VpSubmissionData::Pex(submission) = payload.submission_data else {
+            panic!("expected a PEX submission");
+        };
+        assert_eq!(vec![VP.to_string()], submission.vp_token);
+    }
+
+    #[test]
+    fn test_jwe_payload_round_trip_serializes_vp_token_as_object() {
+        let payload = JwePayload {
+            aud: Some("https://verifier.example/response".parse().unwrap()),
+            exp: Some(OffsetDateTime::from_unix_timestamp(1757000000).unwrap()),
+            submission_data: VpSubmissionData::Dcql(VpTokenResponse {
+                vp_token: expected_dcql_submission(),
+            }),
+            state: Some("the-state".to_string()),
+        };
+
+        let json = payload.try_into_json().unwrap();
+        assert!(
+            serde_json::from_slice::<serde_json::Value>(&json).unwrap()["vp_token"].is_object(),
+            "vp_token must stay a JSON object on the wire"
+        );
+
+        let deserialized = JwePayload::try_from_json(&json).unwrap();
+        assert_eq!(payload.aud, deserialized.aud);
+        assert_eq!(payload.exp, deserialized.exp);
+        assert_eq!(payload.state, deserialized.state);
+        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = deserialized.submission_data
+        else {
+            panic!("expected a DCQL submission");
+        };
+        assert_eq!(expected_dcql_submission(), vp_token);
     }
 }
