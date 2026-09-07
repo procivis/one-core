@@ -695,6 +695,16 @@ trustListSubscriber:
         delegateSubscribers: ["LOTE_SUBSCRIBER"]
         # root LOTL signer cert(s), base64 DER; empty = trust-on-first-use
         trustAnchors: []
+signer:
+  SWIYU_PROOF_OF_POSSESSION:
+    display:
+      en: "Swiyu Proof of Possession"
+      de: "Swiyu Proof of Possession"
+    order: 3
+    type: SWIYU_PROOF_OF_POSSESSION
+    params:
+      public:
+        maxValidityDurationSeconds: 300 # 5 minutes
 blobStorage:
   DB:
     enabled: true

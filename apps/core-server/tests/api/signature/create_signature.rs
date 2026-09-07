@@ -1,7 +1,15 @@
+use std::str::FromStr;
+
 use assert2::let_assert;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use indoc::indoc;
+use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
+use one_core::model::key::Key;
 use one_core::provider::signer::registration_certificate::model::WRPRegistrationCertificate;
+use one_core::provider::signer::swiyu_proof_of_possession::ProofOfPossession;
 use rcgen::{CertificateParams, KeyUsagePurpose, SanType};
+use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use x509_parser::extensions::{GeneralName, ParsedExtension};
 use x509_parser::oid_registry::{OID_X509_EXT_CRL_DISTRIBUTION_POINTS, OID_X509_EXT_KEY_USAGE};
@@ -13,8 +21,10 @@ use crate::fixtures::signature::{
     test_csr_payload,
 };
 use crate::fixtures::sts::{StsSetup, setup_sts};
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams};
 use crate::utils::api_clients::signatures::TestCreateSignatureRequest;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_sign_wrprc_success() {
@@ -626,4 +636,240 @@ async fn test_create_signature_access_certificate_invalid_policy_attribute_combi
 
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0332")
+}
+
+/// Creates a local DID identifier of the given `did_method` with a single assertion method key.
+async fn setup_did_identifier(
+    additional_config: Option<String>,
+    did_method: &str,
+    did: &str,
+) -> (TestContext, Identifier, Key) {
+    let (context, organisation) = TestContext::new_with_organisation(additional_config).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+    let did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_method: Some(did_method.into()),
+                did: Some(DidValue::from_str(did).unwrap()),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                    reference: format!("key-{}", key.id),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    (context, identifier, key)
+}
+
+const TEST_WEBVH_DID: &str = "did:tdw:QmdSU7F2rF7YnRRJLpQeYbxtEnwHWReNRSGCJ4Y5cGxrRK:example.com";
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_signature_swiyu_proof_of_possession_success() {
+    let (context, identifier, key) = setup_did_identifier(None, "WEBVH", TEST_WEBVH_DID).await;
+
+    let exp =
+        one_core::clock::now_utc().replace_millisecond(0).unwrap() + time::Duration::minutes(2);
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "SWIYU_PROOF_OF_POSSESSION".to_string(),
+                data: serde_json::json!({ "nonce": "Your Nonce" }),
+                validity_start: None,
+                validity_end: Some(exp),
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let token = resp["result"].as_str().unwrap();
+
+    let decomposed = ProofOfPossession::decompose_token(token).unwrap();
+    assert_eq!(decomposed.header.algorithm, "EdDSA");
+    assert_eq!(decomposed.header.r#type.as_deref(), Some("JWT"));
+    assert_eq!(
+        decomposed.header.key_id.as_deref(),
+        Some(format!("{TEST_WEBVH_DID}#key-{}", key.id).as_str())
+    );
+    assert_eq!(decomposed.payload.expires_at.unwrap(), exp);
+    assert_eq!(decomposed.payload.custom.nonce, "Your Nonce");
+
+    // only `exp` and `nonce` are part of the payload
+    let raw_payload = token.split('.').nth(1).unwrap();
+    let raw_payload: serde_json::Value =
+        serde_json::from_slice(&Base64UrlSafeNoPadding::decode_to_vec(raw_payload, None).unwrap())
+            .unwrap();
+    let mut claims = raw_payload
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    claims.sort();
+    assert_eq!(claims, vec!["exp".to_string(), "nonce".to_string()]);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_signature_swiyu_proof_of_possession_fail_on_other_did_method() {
+    let (context, identifier, _key) = setup_did_identifier(
+        None,
+        "KEY",
+        "did:key:z6MktdAr3iUReU7HsCf7JnoCjQ5urpKTxZSC49KnjEVsA5CA",
+    )
+    .await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "SWIYU_PROOF_OF_POSSESSION".to_string(),
+                data: serde_json::json!({ "nonce": "Your Nonce" }),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0330");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_signature_swiyu_proof_of_possession_fail_on_certificate_identifier() {
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "SWIYU_PROOF_OF_POSSESSION".to_string(),
+                data: serde_json::json!({ "nonce": "Your Nonce" }),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0330");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_signature_swiyu_proof_of_possession_fail_on_missing_nonce() {
+    let (context, identifier, _key) = setup_did_identifier(None, "WEBVH", TEST_WEBVH_DID).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "SWIYU_PROOF_OF_POSSESSION".to_string(),
+                data: serde_json::json!({}),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0332");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_signature_swiyu_proof_of_possession_fail_on_validity_too_long() {
+    let (context, identifier, _key) = setup_did_identifier(None, "WEBVH", TEST_WEBVH_DID).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "SWIYU_PROOF_OF_POSSESSION".to_string(),
+                data: serde_json::json!({ "nonce": "Your Nonce" }),
+                validity_start: None,
+                validity_end: Some(one_core::clock::now_utc() + time::Duration::hours(1)),
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0324");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_signature_swiyu_proof_of_possession_fail_on_missing_permission() {
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["X509_CERTIFICATE_SIGN"]).await;
+    let (context, identifier, _key) =
+        setup_did_identifier(Some(config), "WEBVH", TEST_WEBVH_DID).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "SWIYU_PROOF_OF_POSSESSION".to_string(),
+                data: serde_json::json!({ "nonce": "Your Nonce" }),
+                validity_start: None,
+                validity_end: None,
+            },
+            Some(token),
+        )
+        .await;
+
+    assert_eq!(resp.status(), 403);
 }

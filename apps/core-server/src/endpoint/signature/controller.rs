@@ -15,7 +15,7 @@ use crate::endpoint::signature::dto::{
 use crate::router::AppState;
 
 #[endpoint(
-    permissions = [Permission::AccessCertificateSign, Permission::RegistrationCertificateSign, Permission::X509CertificateSign],
+    permissions = [Permission::AccessCertificateSign, Permission::RegistrationCertificateSign, Permission::X509CertificateSign, Permission::SwiyuProofOfPossessionSign],
     post,
     path = "/api/signature/v1",
     request_body = CreateSignatureRequestRestDTO,

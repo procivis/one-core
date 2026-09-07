@@ -17,6 +17,7 @@ pub mod error;
 pub mod model;
 pub mod provider;
 pub mod registration_certificate;
+pub mod swiyu_proof_of_possession;
 mod validity;
 pub mod x509_certificate;
 mod x509_utils;

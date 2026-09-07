@@ -884,6 +884,9 @@ pub enum SignerType {
     #[serde(rename = "X509_CERTIFICATE")]
     #[strum(serialize = "X509_CERTIFICATE")]
     X509Certificate,
+    #[serde(rename = "SWIYU_PROOF_OF_POSSESSION")]
+    #[strum(serialize = "SWIYU_PROOF_OF_POSSESSION")]
+    SwiyuProofOfPossession,
 }
 
 #[derive(

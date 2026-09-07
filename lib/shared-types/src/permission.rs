@@ -87,6 +87,7 @@ pub enum Permission {
     X509CertificateRevoke,
     X509CertificateSign,
     QesDocumentSign,
+    SwiyuProofOfPossessionSign,
     #[serde(untagged)]
     Unknown(String),
 }

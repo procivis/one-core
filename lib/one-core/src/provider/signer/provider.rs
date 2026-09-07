@@ -5,7 +5,10 @@ use shared_types::{RevocationMethodId, SignerId};
 use uuid::Uuid;
 
 use super::decorators::{CapabilityChecked, PermissionChecked};
-use super::{Signer, access_certificate, registration_certificate, x509_certificate};
+use super::{
+    Signer, access_certificate, registration_certificate, swiyu_proof_of_possession,
+    x509_certificate,
+};
 use crate::config::core_config::{
     ConfigBlock, ConfigExt, CoreConfig, Fields, RevocationConfig, RevocationType, SignerType,
 };
@@ -13,6 +16,7 @@ use crate::config::{ConfigValidationError, ProviderReference};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::model::revocation_list::RevocationListEntityInfo;
 use crate::proto::session_provider::SessionProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
@@ -67,6 +71,7 @@ impl SignerProvider for SignerProviderImpl {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn initialize_provider(
     name: &SignerId,
     fields: &Fields<SignerType>,
@@ -75,6 +80,7 @@ fn initialize_provider(
     key_provider: &Arc<dyn KeyProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<Arc<dyn Signer>, InitializationError> {
     let provider: Arc<dyn Signer> = match fields.r#type {
         SignerType::RegistrationCertificate => {
@@ -154,10 +160,30 @@ fn initialize_provider(
             }
             Arc::new(signer)
         }
+        SignerType::SwiyuProofOfPossession => {
+            let params: swiyu_proof_of_possession::Params =
+                fields
+                    .deserialize()
+                    .map_err(|e| InitializationError::InvalidParams {
+                        key: name.to_string(),
+                        source: e,
+                    })?;
+
+            Arc::new(
+                swiyu_proof_of_possession::SwiyuProofOfPossessionSigner::new(
+                    name.to_owned(),
+                    params,
+                    key_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    did_method_provider.clone(),
+                ),
+            )
+        }
     };
     Ok(provider)
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn signer_provider_from_config(
     core_base_url: Option<String>,
     config: &mut CoreConfig,
@@ -166,6 +192,7 @@ pub(crate) fn signer_provider_from_config(
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     session_provider: Arc<dyn SessionProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
 ) -> Result<Arc<dyn SignerProvider>, ConfigValidationError> {
     let revocation_config = &config.revocation;
 
@@ -180,6 +207,7 @@ pub(crate) fn signer_provider_from_config(
                 &key_provider,
                 &key_algorithm_provider,
                 &revocation_method_provider,
+                &did_method_provider,
             )?;
 
             let provider = Arc::new(PermissionChecked {

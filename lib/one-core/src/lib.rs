@@ -349,6 +349,7 @@ impl OneCore {
             revocation_method_provider.clone(),
             data_provider.get_revocation_list_repository(),
             session_provider.clone(),
+            did_method_provider.clone(),
         )?;
 
         let verifier_provider = verifier_provider_from_config(&config)?;

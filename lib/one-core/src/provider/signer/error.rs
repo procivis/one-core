@@ -4,7 +4,7 @@ use shared_types::{IdentifierId, RevocationMethodId};
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{DidType, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error)]
@@ -13,6 +13,8 @@ pub enum SignerError {
     InvalidIssuerIdentifier(IdentifierId),
     #[error("Invalid issuer key algorithm {0}")]
     UnsupportedKeyAlgorithm(KeyAlgorithmType),
+    #[error("Unsupported DID method `{0}` of issuer identifier {1}")]
+    UnsupportedDidMethod(DidType, IdentifierId),
     #[error("Key issuer not supported, use identifier instead")]
     KeyIssuerNotSupported,
     #[error("Invalid signature payload: {0}")]
@@ -70,9 +72,9 @@ impl ErrorCodeMixin for SignerError {
             | Self::ValidityStartAfterEnd { .. }
             | Self::ValidityPeriodTooLong { .. } => ErrorCode::BR_0324,
             Self::SigningError(_) => ErrorCode::BR_0329,
-            Self::InvalidIssuerIdentifier(_) | Self::UnsupportedKeyAlgorithm(_) => {
-                ErrorCode::BR_0330
-            }
+            Self::InvalidIssuerIdentifier(_)
+            | Self::UnsupportedKeyAlgorithm(_)
+            | Self::UnsupportedDidMethod(..) => ErrorCode::BR_0330,
             Self::KeyIssuerNotSupported => ErrorCode::BR_0336,
             Self::Nested(nested) => nested.error_code(),
         }
