@@ -6,7 +6,6 @@ use url::Url;
 use super::IssuanceProtocol;
 use super::decorators::CapabilityChecked;
 use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
-use super::openid4vci_final1_0_swiyu::OpenID4VCISwiyu;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, IssuanceProtocolType};
 use crate::error::{ContextWithErrorCode, NestedError};
@@ -97,33 +96,6 @@ fn initialize_provider(
 ) -> Result<Arc<dyn IssuanceProtocol>, InitializationError> {
     let provider: Arc<dyn IssuanceProtocol> = match fields.r#type {
         IssuanceProtocolType::OpenId4VciFinal1_0 => Arc::new(OpenID4VCIFinal1_0::new(
-            client.clone(),
-            openid_metadata_cache.clone(),
-            credential_repository.clone(),
-            key_repository.clone(),
-            identifier_creator.clone(),
-            credential_schema_importer.clone(),
-            credential_schema_repository.clone(),
-            formatter_provider.clone(),
-            revocation_provider.clone(),
-            did_method_provider.clone(),
-            key_algorithm_provider.clone(),
-            key_provider.clone(),
-            key_security_level_provider.clone(),
-            blob_storage_provider.clone(),
-            core_base_url.clone(),
-            core_config.clone(),
-            fields.merge_fields(),
-            name.to_owned(),
-            wallet_unit_proto.clone(),
-            holder_wallet_unit_repository.clone(),
-            certificate_validator.clone(),
-            history_repository.clone(),
-            session_provider.clone(),
-            interaction_repository.clone(),
-            identifier_repository.clone(),
-        )?),
-        IssuanceProtocolType::OpenId4vciFinal1_0Swiyu => Arc::new(OpenID4VCISwiyu::new(
             client.clone(),
             openid_metadata_cache.clone(),
             credential_repository.clone(),

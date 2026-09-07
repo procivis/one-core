@@ -356,9 +356,6 @@ pub type IssuanceProtocolConfig = ConfigBlock<String, IssuanceProtocolType>;
     AsRefStr,
 )]
 pub enum IssuanceProtocolType {
-    #[serde(rename = "OPENID4VCI_FINAL1_SWIYU")]
-    #[strum(serialize = "OPENID4VCI_FINAL1_SWIYU")]
-    OpenId4vciFinal1_0Swiyu,
     #[serde(rename = "OPENID4VCI_FINAL1")]
     #[strum(serialize = "OPENID4VCI_FINAL1")]
     OpenId4VciFinal1_0,

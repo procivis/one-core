@@ -8,8 +8,6 @@ use standardized_types::openid4vci::{
 use time::Duration;
 
 use super::error::OID4VCIFinal1_0ServiceError;
-use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -236,28 +234,6 @@ pub(crate) fn verify_wua_wia_issuers_match(
     }
 
     Ok(())
-}
-
-pub(super) fn get_config_entity(
-    config: &CoreConfig,
-) -> Result<OpenID4VCIFinal1Params, ConfigValidationError> {
-    if let Some((key, fields)) = config
-        .issuance_protocol
-        .iter()
-        .find(|(_, v)| v.r#type == IssuanceProtocolType::OpenId4VciFinal1_0)
-    {
-        let params = fields
-            .deserialize::<OpenID4VCIFinal1Params>()
-            .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                key: key.to_owned(),
-                source,
-            })?;
-        Ok(params)
-    } else {
-        Err(ConfigValidationError::EntryNotFound(
-            "No exchange method with type OPENID4VCI_FINAL1".to_string(),
-        ))
-    }
 }
 
 pub(crate) fn validate_response_encryption(

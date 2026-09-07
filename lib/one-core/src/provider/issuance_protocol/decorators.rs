@@ -108,6 +108,10 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         self.inner().get_capabilities()
     }
 
+    fn protocol_base_url(&self) -> Option<String> {
+        self.inner().protocol_base_url()
+    }
+
     fn config_name(&self) -> &str {
         self.inner().config_name()
     }
@@ -218,6 +222,10 @@ impl IssuanceProtocol for CapabilityChecked {
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
         self.0.get_capabilities()
+    }
+
+    fn protocol_base_url(&self) -> Option<String> {
+        self.0.protocol_base_url()
     }
 
     fn config_name(&self) -> &str {

@@ -88,6 +88,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::swiyu_http_client::ProxySwiyuHttpClient;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
@@ -198,13 +199,20 @@ impl OpenID4VCIFinal1_0 {
         interaction_repository: Arc<dyn InteractionRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
     ) -> Result<Self, InitializationError> {
-        let params =
+        let params: OpenID4VCIFinal1Params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
                 key: config_id.to_string(),
                 source: err,
             })?;
 
-        let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
+        let protocol_base_url = base_url
+            .as_ref()
+            .map(|url| get_protocol_base_url(url, params.swiyu_mode));
+        let client = if params.swiyu_mode {
+            Arc::new(ProxySwiyuHttpClient { client }) as _
+        } else {
+            client
+        };
         Ok(Self {
             client,
             metadata_cache,
@@ -233,65 +241,6 @@ impl OpenID4VCIFinal1_0 {
             interaction_repository,
             identifier_repository,
         })
-    }
-
-    #[expect(clippy::too_many_arguments)]
-    pub fn new_with_custom_protocol_base_url(
-        protocol_base_url: Option<String>,
-        client: Arc<dyn HttpClient>,
-        metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
-        credential_repository: Arc<dyn CredentialRepository>,
-        key_repository: Arc<dyn KeyRepository>,
-        identifier_creator: Arc<dyn IdentifierCreator>,
-        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        revocation_provider: Arc<dyn RevocationMethodProvider>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        key_provider: Arc<dyn KeyProvider>,
-        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
-        blob_storage_provider: Arc<dyn BlobStorageProvider>,
-        base_url: Option<String>,
-        config: Arc<CoreConfig>,
-        params: OpenID4VCIFinal1Params,
-        config_id: String,
-        holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
-        holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-        history_repository: Arc<dyn HistoryRepository>,
-        session_provider: Arc<dyn SessionProvider>,
-        interaction_repository: Arc<dyn InteractionRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
-    ) -> Self {
-        Self {
-            client,
-            metadata_cache,
-            credential_repository,
-            key_repository,
-            identifier_creator,
-            credential_schema_importer,
-            credential_schema_repository,
-            formatter_provider,
-            revocation_provider,
-            did_method_provider,
-            key_algorithm_provider,
-            key_provider,
-            base_url,
-            protocol_base_url,
-            config,
-            params,
-            blob_storage_provider,
-            config_id,
-            holder_wallet_unit_proto,
-            holder_wallet_unit_repository,
-            key_security_level_provider,
-            certificate_validator,
-            history_repository,
-            session_provider,
-            interaction_repository,
-            identifier_repository,
-        }
     }
 
     async fn validate_credential_issuable(
@@ -1451,33 +1400,6 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    pub(super) async fn issuer_metadata_inner(
-        &self,
-        protocol_id: &str,
-        credential_schema_id: &CredentialSchemaId,
-        issuer_identifier: &Identifier,
-        // Passed in, so that swiyu can deviate despite delegating to this protocol.
-        // This is required because the iOS app fails on parsing encryption algorithms it does not support.
-        enc_values_supported: Vec<EncryptionAlgorithm>,
-    ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
-        let prepared_metadata = self.prepare_issuer_metadata(credential_schema_id).await?;
-        let issuer_info = self
-            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
-            .await?;
-
-        create_issuer_metadata_response(
-            protocol_id,
-            issuer_identifier,
-            prepared_metadata,
-            issuer_info,
-            self.credential_request_encryption(issuer_identifier, enc_values_supported.clone())
-                .await?,
-            self.credential_response_encryption(enc_values_supported),
-        )
-        .map_err(OpenIDIssuanceError::OpenID4VCI)
-        .map_err(Into::into)
-    }
-
     /// Keys of the issuer identifier usable as the static side of an ECDH-ES key agreement.
     pub(super) async fn issuer_key_agreement_keys(
         &self,
@@ -2190,26 +2112,46 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
-        let mut features = vec![Features::SupportsRejection];
+        let mut features = vec![];
+        if !self.params.swiyu_mode {
+            features.push(Features::SupportsRejection);
+        }
         if self.params.common.webhook_task.is_some() {
             features.push(Features::SupportsWebhooks);
         }
 
+        let (did_methods, supported_encryption_algorithms) = if self.params.swiyu_mode {
+            (
+                vec![ConfigDidType::WebVh],
+                // the swiyu iOS app fails on parsing encryption algorithms it does not support
+                vec![EncryptionAlgorithm::A128GCM, EncryptionAlgorithm::A256GCM],
+            )
+        } else {
+            (
+                vec![
+                    ConfigDidType::Key,
+                    ConfigDidType::Jwk,
+                    ConfigDidType::Web,
+                    ConfigDidType::WebVh,
+                ],
+                vec![
+                    EncryptionAlgorithm::A128GCM,
+                    EncryptionAlgorithm::A256GCM,
+                    EncryptionAlgorithm::A128CBCHS256,
+                    EncryptionAlgorithm::A256CBCHS512,
+                ],
+            )
+        };
+
         IssuanceProtocolCapabilities {
             features,
-            did_methods: vec![
-                ConfigDidType::Key,
-                ConfigDidType::Jwk,
-                ConfigDidType::Web,
-                ConfigDidType::WebVh,
-            ],
-            supported_encryption_algorithms: vec![
-                EncryptionAlgorithm::A128GCM,
-                EncryptionAlgorithm::A256GCM,
-                EncryptionAlgorithm::A128CBCHS256,
-                EncryptionAlgorithm::A256CBCHS512,
-            ],
+            did_methods,
+            supported_encryption_algorithms,
         }
+    }
+
+    fn protocol_base_url(&self) -> Option<String> {
+        self.protocol_base_url.clone()
     }
 
     async fn issuer_metadata(
@@ -2218,13 +2160,24 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
-        self.issuer_metadata_inner(
+        let enc_values_supported = self.get_capabilities().supported_encryption_algorithms;
+
+        let prepared_metadata = self.prepare_issuer_metadata(credential_schema_id).await?;
+        let issuer_info = self
+            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
+            .await?;
+
+        create_issuer_metadata_response(
             protocol_id,
-            credential_schema_id,
             issuer_identifier,
-            self.get_capabilities().supported_encryption_algorithms,
+            prepared_metadata,
+            issuer_info,
+            self.credential_request_encryption(issuer_identifier, enc_values_supported.clone())
+                .await?,
+            self.credential_response_encryption(enc_values_supported),
         )
-        .await
+        .map_err(OpenIDIssuanceError::OpenID4VCI)
+        .map_err(Into::into)
     }
 
     async fn holder_refresh_credential(

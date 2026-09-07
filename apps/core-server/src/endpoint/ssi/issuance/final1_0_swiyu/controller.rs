@@ -80,7 +80,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
 
     let result = state
         .core
-        .oid4vci_final1_0_swiyu_service
+        .oid4vci_final1_0_service
         .get_issuer_metadata(
             &protocol_id,
             &identifier_id,
@@ -163,7 +163,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
     };
     let result = state
         .core
-        .oid4vci_final1_0_swiyu_service
+        .oid4vci_final1_0_service
         .oauth_authorization_server(&protocol_id, &identifier_id, &credential_schema_id)
         .await;
 
@@ -234,7 +234,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_credential_offer(
 ) -> Response {
     let result = state
         .core
-        .oid4vci_final1_0_swiyu_service
+        .oid4vci_final1_0_service
         .get_credential_offer(credential_schema_id, credential_id)
         .await;
 
@@ -303,7 +303,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
     let result = async {
         state
             .core
-            .oid4vci_final1_0_swiyu_service
+            .oid4vci_final1_0_service
             .create_token(
                 &id,
                 request.try_into()?,
@@ -386,7 +386,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
     let access_token = token.token();
     let result = state
         .core
-        .oid4vci_final1_0_swiyu_service
+        .oid4vci_final1_0_service
         .create_credential(&credential_schema_id, access_token, request)
         .await;
 
@@ -435,7 +435,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
 ) -> Response {
     let result = state
         .core
-        .oid4vci_final1_0_swiyu_service
+        .oid4vci_final1_0_service
         .generate_nonce(&issuance_protocol_id)
         .await;
 
@@ -488,7 +488,7 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
     let access_token = token.token();
     let result = state
         .core
-        .oid4vci_final1_0_swiyu_service
+        .oid4vci_final1_0_service
         .handle_notification(credential_schema_id, access_token, request)
         .await;
 

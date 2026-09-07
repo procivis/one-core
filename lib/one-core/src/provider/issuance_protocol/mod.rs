@@ -26,7 +26,6 @@ pub mod error;
 mod mapper;
 pub mod model;
 pub mod openid4vci_final1_0;
-pub mod openid4vci_final1_0_swiyu;
 pub(crate) mod provider;
 use model::{ContinueIssuanceResponseDTO, IssuanceAcceptResponse, ShareResponse};
 
@@ -119,6 +118,10 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError>;
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities;
+
+    /// Base URL under which this protocol instance serves its issuer endpoints,
+    /// or `None` when no core base URL is configured.
+    fn protocol_base_url(&self) -> Option<String>;
 
     fn config_name(&self) -> &str;
 }

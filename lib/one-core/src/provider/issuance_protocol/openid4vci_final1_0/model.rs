@@ -50,6 +50,13 @@ pub(crate) struct OpenID4VCIFinal1Params {
     #[serde(default)]
     pub credential_endpoint_encryption: CredentialEndpointEncryptionParams,
 
+    /// Enables the deviations required by the swiyu ecosystem: the credential offer is always
+    /// embedded by value, the issuer endpoints are served under a dedicated URL path, outgoing
+    /// requests carry the swiyu API version header and the advertised capabilities are narrowed
+    /// down to what the swiyu wallet supports.
+    #[serde(default)]
+    pub swiyu_mode: bool,
+
     #[serde(flatten)]
     pub common: CommonParams,
 }

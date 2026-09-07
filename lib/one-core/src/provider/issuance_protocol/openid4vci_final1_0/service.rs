@@ -451,8 +451,13 @@ fn mdoc_configuration(
     }
 }
 
-pub(crate) fn get_protocol_base_url(base_url: &str) -> String {
-    format!("{base_url}/ssi/openid4vci/final-1.0")
+pub(crate) fn get_protocol_base_url(base_url: &str, swiyu_mode: bool) -> String {
+    let version = if swiyu_mode {
+        "final-1.0-swiyu"
+    } else {
+        "final-1.0"
+    };
+    format!("{base_url}/ssi/openid4vci/{version}")
 }
 
 pub(crate) fn create_credential_offer(

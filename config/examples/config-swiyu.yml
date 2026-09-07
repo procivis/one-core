@@ -41,9 +41,12 @@ issuanceProtocol:
       en: "OpenID4VCI (SWIYU)"
       de: "OpenID4VCI (SWIYU)"
     order: 2
-    type: "OPENID4VCI_FINAL1_SWIYU"
+    type: "OPENID4VCI_FINAL1"
     params:
       public:
+        swiyuMode: true
+        credentialOfferByValue: true
+        urlScheme: swiyu
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300

@@ -383,7 +383,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "OBJECT".to_string(),
             "ARRAY".to_string(),
         ];
-        let mut issuance_exchange_protocols = vec![];
+        let issuance_exchange_protocols = vec![IssuanceProtocolType::OpenId4VciFinal1_0];
         let mut issuance_did_methods = vec![DidType::WebVh];
         let mut issuance_identifier_types = vec![IdentifierType::Did];
         let mut proof_exchange_protocols =
@@ -404,12 +404,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
-            issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4vciFinal1_0Swiyu);
             proof_exchange_protocols.push(VerificationProtocolType::OpenId4VpFinal1_0Swiyu)
         } else {
             datatypes.extend_from_slice(&["PICTURE".to_string()]);
             issuance_did_methods.extend_from_slice(&[DidType::Key, DidType::Web, DidType::Jwk]);
-            issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciFinal1_0);
             issuance_identifier_types.push(IdentifierType::Certificate);
             proof_exchange_protocols
                 .extend_from_slice(&[VerificationProtocolType::OpenId4VpFinal1_0]);

@@ -16,7 +16,6 @@ pub mod key;
 pub mod managed_instance;
 pub mod nfc;
 pub mod oid4vci_final1_0;
-pub mod oid4vci_final1_0_swiyu;
 pub mod oid4vp_final1_0;
 pub mod oid4vp_final1_0_swiyu;
 pub mod organisation;

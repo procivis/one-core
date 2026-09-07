@@ -89,7 +89,6 @@ use crate::service::managed_instance::ManagedInstanceService;
 use crate::service::nfc::NfcService;
 use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
 use crate::service::oid4vci_final1_0::resolver::initialize_issuer_metadata_cache_from_config;
-use crate::service::oid4vci_final1_0_swiyu::OID4VCIFinal1_0SwiyuService;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::oid4vp_final1_0_swiyu::OID4VPFinal1_0SwiyuService;
 use crate::service::organisation::OrganisationService;
@@ -133,7 +132,6 @@ pub struct OneCore {
     pub proof_service: ProofService,
     pub config_service: ConfigService,
     pub revocation_list_service: RevocationListService,
-    pub oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService,
     pub oid4vci_final1_0_service: OID4VCIFinal1_0Service,
     pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
     pub oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService,
@@ -662,27 +660,6 @@ impl OneCore {
                 wallet_unit_proto.clone(),
                 identifier_creator.clone(),
                 credential_issuer_metadata_cache.clone(),
-                credential_formatter_provider.clone(),
-                ecosystem_provider.clone(),
-            ),
-            oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService::new(
-                core_base_url.clone(),
-                data_provider.get_credential_schema_repository(),
-                data_provider.get_credential_repository(),
-                data_provider.get_interaction_repository(),
-                data_provider.get_identifier_repository(),
-                config.clone(),
-                issuance_provider.clone(),
-                did_method_provider.clone(),
-                key_algorithm_provider.clone(),
-                key_provider.clone(),
-                revocation_method_provider.clone(),
-                certificate_validator.clone(),
-                identifier_creator.clone(),
-                data_provider.get_tx_manager(),
-                blob_storage_provider.clone(),
-                wallet_unit_proto.clone(),
-                credential_issuer_metadata_cache,
                 credential_formatter_provider.clone(),
                 ecosystem_provider.clone(),
             ),

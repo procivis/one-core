@@ -433,10 +433,17 @@ async fn test_oauth_authorization_server_metadata_contains_signed_metadata() {
         )
         .return_once(|_, _, _, _| Ok("signed.metadata.jwt".to_string()));
 
+    let issuance_protocol = setup_protocol(ProtocolMocks::default());
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
+
     let service = setup_service(Mocks {
         credential_schema_repository,
         identifier_repository,
         credential_issuer_metadata_cache: issuer_metadata_cache,
+        exchange_provider: issuance_protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -481,10 +488,17 @@ async fn test_oauth_authorization_server_metadata_omits_signed_metadata_without_
             Err(OID4VCIFinal1_0ServiceError::MissingAuthenticationCapableKey(identifier_id))
         });
 
+    let issuance_protocol = setup_protocol(ProtocolMocks::default());
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
+
     let service = setup_service(Mocks {
         credential_schema_repository,
         identifier_repository,
         credential_issuer_metadata_cache: issuer_metadata_cache,
+        exchange_provider: issuance_protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
