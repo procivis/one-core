@@ -29,10 +29,6 @@ impl OID4VPFinal1_0SwiyuService {
             "client_id_scheme".to_string(),
             Value::String("did".to_string()),
         );
-        payload.insert(
-            "response_mode".to_string(),
-            Value::String("direct_post".to_string()),
-        );
         remove_required_flag_from_claims(payload);
 
         let adjusted_request = format_authorization_request_client_id_scheme_did(
