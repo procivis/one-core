@@ -443,6 +443,8 @@ pub struct CredentialSchemaListItemV2BindingDTO {
     pub expiration: Option<i64>,
     #[from(with_fn = convert_inner)]
     pub ecosystem: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
