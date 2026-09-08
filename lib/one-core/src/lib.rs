@@ -412,7 +412,6 @@ impl OneCore {
             certificate_validator.clone(),
             client.clone(),
             revocation_method_provider.clone(),
-            credential_formatter_provider.clone(),
         ));
 
         let trust_collection_manager = Arc::new(TrustCollectionManagerImpl::new(

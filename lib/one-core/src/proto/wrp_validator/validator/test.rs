@@ -34,7 +34,6 @@ use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::proto::wrp_validator::model::{TrustScope, WRPPayload, WRPPayloadData};
 use crate::provider::credential_formatter::model::{PublicKeySource, X5References};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -59,7 +58,6 @@ fn make_validator() -> WRPValidatorImpl {
         Arc::new(MockCertificateValidator::default()),
         Arc::new(MockHttpClient::default()),
         Arc::new(MockRevocationMethodProvider::default()),
-        Arc::new(MockCredentialFormatterProvider::default()),
     )
 }
 
@@ -73,7 +71,6 @@ fn make_validator_with_client(client: Arc<dyn HttpClient>) -> WRPValidatorImpl {
         Arc::new(MockCertificateValidator::default()),
         client,
         Arc::new(MockRevocationMethodProvider::default()),
-        Arc::new(MockCredentialFormatterProvider::default()),
     )
 }
 
@@ -147,7 +144,6 @@ fn make_validator_with_subscription(
         Arc::new(MockCertificateValidator::default()),
         Arc::new(MockHttpClient::default()),
         Arc::new(MockRevocationMethodProvider::default()),
-        Arc::new(MockCredentialFormatterProvider::default()),
     )
 }
 
@@ -326,7 +322,6 @@ async fn test_trust_collections_are_filtered_by_the_scoped_ecosystem() {
         Arc::new(MockCertificateValidator::default()),
         Arc::new(MockHttpClient::default()),
         Arc::new(MockRevocationMethodProvider::default()),
-        Arc::new(MockCredentialFormatterProvider::default()),
     );
 
     // when
@@ -387,6 +382,7 @@ async fn test_qeaa_issuer_trusted_when_in_tsl_with_full_x5_references() {
         .validate_credential_issuer(
             Some("pem"),
             &dummy_credential_schema(),
+            &[],
             Some(QUALIFIED_EAA_CATEGORY),
             all_x5_references(),
             &trust_scope(TEST_ECOSYSTEM),
@@ -409,6 +405,7 @@ async fn test_qeaa_issuer_trusted_without_x5c() {
         .validate_credential_issuer(
             Some("pem"),
             &dummy_credential_schema(),
+            &[],
             Some(QUALIFIED_EAA_CATEGORY),
             X5References {
                 x5c: false,
@@ -436,6 +433,7 @@ async fn test_qeaa_issuer_rejected_when_x5_reference_missing() {
         .validate_credential_issuer(
             Some("pem"),
             &dummy_credential_schema(),
+            &[],
             Some(QUALIFIED_EAA_CATEGORY),
             X5References {
                 x5u: false,
@@ -462,6 +460,7 @@ async fn test_non_qualified_category_skips_issuer_trust_check() {
         .validate_credential_issuer(
             Some("pem"),
             &dummy_credential_schema(),
+            &[],
             Some("urn:etsi:esi:eaa:eu:pub"),
             all_x5_references(),
             &trust_scope(TEST_ECOSYSTEM),

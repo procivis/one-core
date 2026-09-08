@@ -34,7 +34,6 @@ use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialStatus, IdentifierDetails, PublicKeySource, VerificationFn,
     X5References,
 };
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::model::RevocationState;
@@ -56,7 +55,6 @@ pub(crate) struct WRPValidatorImpl {
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
 }
 
 #[async_trait::async_trait]
@@ -247,6 +245,7 @@ impl WRPValidator for WRPValidatorImpl {
         &self,
         issuer_certificate_pem_chain: Option<&'a str>,
         credential_schema: &CredentialSchema,
+        pid_schema_ids: &'a [String],
         credential_category: Option<&'a str>,
         issuer_x5_references: X5References,
         trust_scope: &TrustScope,
@@ -264,17 +263,8 @@ impl WRPValidator for WRPValidatorImpl {
                 .await;
         }
 
-        let credential_schema_format = credential_schema.format().await?;
-        let formatter_capabilities = self
-            .credential_formatter_provider
-            .get_credential_formatter(&credential_schema_format)?
-            .get_capabilities();
-
         let credential_schema_schema_id = credential_schema.schema_id().await?;
-        if !formatter_capabilities
-            .pid_schema_ids
-            .contains(&credential_schema_schema_id)
-        {
+        if !pid_schema_ids.contains(&credential_schema_schema_id) {
             tracing::debug!("Credential not a PID, skipping issuer trust checks");
             return Ok(None);
         }
@@ -351,7 +341,6 @@ impl WRPValidatorImpl {
         certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         Self {
             trust_collection_repository,
@@ -362,7 +351,6 @@ impl WRPValidatorImpl {
             certificate_validator,
             client,
             revocation_method_provider,
-            credential_formatter_provider,
         }
     }
 

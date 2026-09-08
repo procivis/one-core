@@ -108,10 +108,6 @@ pub(crate) struct Params {
     pub mso_minimum_refresh_seconds: Duration,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway_seconds: Duration,
-    #[serde(default)]
-    pub ecosystem_schema_ids: Vec<String>,
-    #[serde(default)]
-    pub pid_schema_ids: Vec<String>,
     pub revocation_method: Option<RevocationMethodId>,
 }
 
@@ -489,8 +485,6 @@ impl CredentialFormatter for MdocFormatter {
                 Features::RequiresNamespaces,
                 Features::SupportsTransactionData,
             ],
-            ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
-            pid_schema_ids: self.params.pid_schema_ids.to_owned(),
             selective_disclosure: vec![SelectiveDisclosure::FirstLevel],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],

@@ -56,8 +56,6 @@ impl FormatterCapabilities {
             holder_identifier_types,
             holder_key_algorithms,
             holder_did_methods,
-            ecosystem_schema_ids: _,
-            pid_schema_ids: _,
         } = other;
 
         fn intersect<T: PartialEq>(s: &mut Vec<T>, o: &[T]) {

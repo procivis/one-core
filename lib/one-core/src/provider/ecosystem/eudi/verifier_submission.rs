@@ -1,7 +1,7 @@
 use shared_types::OrganisationId;
 
-use super::EudiEcosystem;
 use super::mapper::formatter_requires_namespaces;
+use super::{EudiEcosystem, pid_schema_ids};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
 use crate::proto::wrp_validator::credential_category;
@@ -31,6 +31,7 @@ impl EudiEcosystem {
             .validate_credential_issuer(
                 Some(&issuer_certificate.chain),
                 &schema,
+                &pid_schema_ids(&self.params.credential_schemas, &format),
                 category,
                 issuer_certificate.x5_references,
                 &self.trust_scope(organisation_id),

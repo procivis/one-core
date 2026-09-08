@@ -68,6 +68,18 @@ pub(crate) struct CredentialSchemaParams {
     pub pid_schema_ids: Vec<String>,
 }
 
+/// The schema ids this ecosystem considers a PID for the given credential format.
+pub(super) fn pid_schema_ids(
+    credential_schemas: &[CredentialSchemaParams],
+    format: &CredentialFormat,
+) -> Vec<String> {
+    credential_schemas
+        .iter()
+        .filter(|schema| &schema.format == format)
+        .flat_map(|schema| schema.pid_schema_ids.iter().cloned())
+        .collect()
+}
+
 #[derive(Provider)]
 pub struct EudiEcosystem {
     config_id: EcosystemId,
@@ -208,6 +220,7 @@ impl Ecosystem for EudiEcosystem {
                         serialized,
                         credential_configuration_id,
                         interaction,
+                        &self.params.credential_schemas,
                     )
                     .await
                     .error_while("resolving holder issuance trust")?;

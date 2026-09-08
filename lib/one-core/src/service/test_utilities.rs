@@ -603,8 +603,6 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
     FormatterCapabilities {
         signing_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         features: vec![Features::SupportsTxCode],
-        ecosystem_schema_ids: vec![],
-        pid_schema_ids: vec![],
         selective_disclosure: vec![],
         issuance_did_methods: vec![
             crate::config::core_config::DidType::Key,

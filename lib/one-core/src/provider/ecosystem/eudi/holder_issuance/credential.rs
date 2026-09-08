@@ -17,6 +17,7 @@ use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::{IdentifierDetails, X5References};
 use crate::provider::ecosystem::eudi::mapper::formatter_requires_namespaces;
+use crate::provider::ecosystem::eudi::{CredentialSchemaParams, pid_schema_ids};
 
 impl HolderIssuanceResolver {
     #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
@@ -26,6 +27,7 @@ impl HolderIssuanceResolver {
         serialized: &SerializedCredential,
         credential_configuration_id: &String,
         interaction: &Interaction,
+        credential_schemas: &[CredentialSchemaParams],
     ) -> Result<(), HolderIssuanceError> {
         let schema = credential.schema.as_ref().await?;
         let format = schema.format().await?;
@@ -55,6 +57,7 @@ impl HolderIssuanceResolver {
             .validate_credential_issuer(
                 chain,
                 &schema,
+                &pid_schema_ids(credential_schemas, &format),
                 credential_category,
                 x5_references,
                 &self.trust_scope(organisation_id),

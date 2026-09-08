@@ -416,8 +416,6 @@ pub struct FormatterCapabilities {
     pub holder_identifier_types: Vec<IdentifierType>,
     pub holder_key_algorithms: Vec<KeyAlgorithmType>,
     pub holder_did_methods: Vec<DidType>,
-    pub ecosystem_schema_ids: Vec<String>,
-    pub pid_schema_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]

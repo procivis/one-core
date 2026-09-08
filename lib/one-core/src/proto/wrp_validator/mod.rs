@@ -66,6 +66,7 @@ pub(crate) trait WRPValidator: Send + Sync {
         &self,
         issuer_certificate_pem_chain: Option<&'a str>,
         credential_schema: &CredentialSchema,
+        pid_schema_ids: &'a [String],
         credential_category: Option<&'a str>,
         issuer_x5_references: X5References,
         trust_scope: &TrustScope,
