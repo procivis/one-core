@@ -45,4 +45,6 @@ pub enum BlobType {
     RegistrationCertificate,
     #[sea_orm(string_value = "HISTORY_METADATA")]
     HistoryMetadata,
+    #[sea_orm(string_value = "IDENTIFIER_LOGO")]
+    IdentifierLogo,
 }

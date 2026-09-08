@@ -37,6 +37,8 @@ pub enum LocalizedTextField {
     Name,
     #[sea_orm(string_value = "DESCRIPTION")]
     Description,
+    #[sea_orm(string_value = "LOGO_ALT_TEXT")]
+    LogoAltText,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
@@ -48,4 +50,6 @@ pub enum LocalizedTextEntityType {
     CredentialSchema,
     #[sea_orm(string_value = "CLAIM_SCHEMA")]
     ClaimSchema,
+    #[sea_orm(string_value = "IDENTIFIER")]
+    Identifier,
 }

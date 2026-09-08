@@ -15,6 +15,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::MockIdentifierTrustInformationRepository;
 use one_core::repository::key_repository::MockKeyRepository;
+use one_core::repository::localized_text_repository::MockLocalizedTextRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
@@ -120,6 +121,7 @@ async fn setup() -> TestSetup {
             trust_information_repository: Arc::new(
                 MockIdentifierTrustInformationRepository::default(),
             ),
+            localized_text_repository: Arc::new(MockLocalizedTextRepository::default()),
         },
         db,
         trust_list_publication_id,
@@ -577,6 +579,7 @@ async fn test_get_trust_entry_with_publication_relation() {
         certificate_repository: Arc::new(MockCertificateRepository::default()),
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         trust_information_repository: Arc::new(MockIdentifierTrustInformationRepository::default()),
+        localized_text_repository: Arc::new(MockLocalizedTextRepository::default()),
     };
 
     let entry = dummy_trust_entry(trust_list_publication_id, identifier_id);

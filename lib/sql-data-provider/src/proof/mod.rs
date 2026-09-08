@@ -8,6 +8,7 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 
@@ -29,6 +30,7 @@ pub(crate) struct ProofProvider {
     pub key_repository: Arc<dyn KeyRepository>,
     pub organisation_repository: Arc<dyn OrganisationRepository>,
     pub trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
+    pub localized_text_repository: Arc<dyn LocalizedTextRepository>,
 }
 
 #[cfg(test)]

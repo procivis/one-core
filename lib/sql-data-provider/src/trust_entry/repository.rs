@@ -109,6 +109,7 @@ impl TrustEntryRepository for TrustEntryProvider {
                         &self.certificate_repository,
                         &self.trust_list_publication_repository,
                         &self.trust_information_repository,
+                        &self.localized_text_repository,
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?,

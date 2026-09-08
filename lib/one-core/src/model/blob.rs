@@ -38,4 +38,5 @@ pub enum BlobType {
     WalletUnitAttestation,
     RegistrationCertificate,
     HistoryMetadata,
+    IdentifierLogo,
 }

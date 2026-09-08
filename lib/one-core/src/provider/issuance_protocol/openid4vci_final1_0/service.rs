@@ -322,6 +322,11 @@ async fn create_display_dtos_from_schema(
         match translation.field {
             LocalizedTextField::Name => entry.0 = Some(translation.value.clone()),
             LocalizedTextField::Description => entry.1 = Some(translation.value.clone()),
+            _ => {
+                return Err(OpenID4VCIError::RuntimeError(
+                    "invalid localized text field".to_string(),
+                ));
+            }
         }
     }
 

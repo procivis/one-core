@@ -13,10 +13,12 @@ use crate::model::identifier::{
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListSorting;
+use crate::model::localized_text::LocalizedText;
 use crate::model::relation::{AsyncModelLoader, AsyncVecLoader};
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
+use crate::repository::localized_text_repository::LocalizedTextRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
@@ -82,5 +84,17 @@ impl AsyncVecLoader<IdentifierTrustInformation> for IdentifierTrustInformationLo
         self.trust_information_repository
             .get_by_identifier_id(&self.id)
             .await
+    }
+}
+
+pub struct IdentifierLocalizedTextLoader {
+    pub id: IdentifierId,
+    pub localized_text_repository: Arc<dyn LocalizedTextRepository>,
+}
+
+#[async_trait::async_trait]
+impl AsyncVecLoader<LocalizedText> for IdentifierLocalizedTextLoader {
+    async fn load(&self) -> Result<Vec<LocalizedText>, DataLayerError> {
+        self.localized_text_repository.get(&self.id.into()).await
     }
 }

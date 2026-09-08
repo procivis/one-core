@@ -208,6 +208,7 @@ impl DataLayer {
             key_repository: key_repository.clone(),
             certificate_repository: certificate_repository.clone(),
             trust_information_repository: identifier_trust_information_repository.clone(),
+            localized_text_repository: localized_text_repository.clone(),
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {
@@ -245,6 +246,7 @@ impl DataLayer {
             certificate_repository: certificate_repository.clone(),
             organisation_repository: organisation_repository.clone(),
             trust_information_repository: identifier_trust_information_repository.clone(),
+            localized_text_repository: localized_text_repository.clone(),
         });
 
         let trust_list_subscription_repository = Arc::new(TrustListSubscriptionProvider {
@@ -277,6 +279,7 @@ impl DataLayer {
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
             trust_information_repository: identifier_trust_information_repository.clone(),
+            localized_text_repository: localized_text_repository.clone(),
         });
 
         let backup_repository = Arc::new(BackupProvider::new(
@@ -288,6 +291,7 @@ impl DataLayer {
             key_repository.clone(),
             certificate_repository.clone(),
             identifier_trust_information_repository.clone(),
+            localized_text_repository.clone(),
         ));
 
         let blob_repository = Arc::new(BlobProvider {

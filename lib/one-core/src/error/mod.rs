@@ -1040,6 +1040,9 @@ pub enum ErrorCode {
     )]
     BR_0483,
 
+    #[strum(message = "Missing logo blob")]
+    BR_0484,
+
     #[strum(message = "Invalid claim path")]
     BR_0485,
 }

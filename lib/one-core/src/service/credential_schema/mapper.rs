@@ -24,9 +24,9 @@ use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::credential_schema_claim::{
-    claim_schema_from_metadata_claim_schema, claim_schema_to_dto, translations_to_i18n,
+    claim_schema_from_metadata_claim_schema, claim_schema_to_dto,
 };
-use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
+use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer, translations_to_i18n};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaExactColumn, CredentialSchemaListQuery,
@@ -552,7 +552,7 @@ pub(crate) fn schema_translations_from_dto(
     now: time::OffsetDateTime,
 ) -> Vec<LocalizedText> {
     let mut result = Vec::new();
-    for (lang, value) in translations.name.0 {
+    for (lang, value) in translations.name {
         result.push(LocalizedText {
             entity_id: id.into(),
             field: LocalizedTextField::Name,
@@ -564,7 +564,7 @@ pub(crate) fn schema_translations_from_dto(
         });
     }
     if let Some(description) = translations.description {
-        for (lang, value) in description.0 {
+        for (lang, value) in description {
             result.push(LocalizedText {
                 entity_id: id.into(),
                 field: LocalizedTextField::Description,

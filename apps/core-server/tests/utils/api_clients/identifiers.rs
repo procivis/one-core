@@ -265,6 +265,30 @@ impl IdentifiersApi {
         self.client.post("/api/identifier/v1/remote", body).await
     }
 
+    /// Create a key identifier, optionally with a `logo` (base64 data URI) and
+    /// `translations` (`{ "name": {..}, "logoAltText": {..} }`) block.
+    pub async fn create_key_identifier_with_options(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+        logo: Option<&str>,
+        translations: Option<serde_json::Value>,
+    ) -> Response {
+        let mut body = json!({
+            "name": name,
+            "key": { "keyId": key_id },
+            "organisationId": organisation_id,
+        });
+        if let Some(logo) = logo {
+            body["logo"] = json!(logo);
+        }
+        if let Some(translations) = translations {
+            body["translations"] = translations;
+        }
+        self.client.post("/api/identifier/v1", body).await
+    }
+
     pub async fn get(&self, id: &IdentifierId) -> Response {
         self.client.get(&format!("/api/identifier/v1/{id}")).await
     }

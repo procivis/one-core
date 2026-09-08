@@ -17,10 +17,12 @@ pub struct LocalizedText {
 pub enum LocalizedTextEntityType {
     CredentialSchema,
     ClaimSchema,
+    Identifier,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LocalizedTextField {
     Name,
     Description,
+    LogoAltText,
 }

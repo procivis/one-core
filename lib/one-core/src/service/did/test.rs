@@ -240,7 +240,7 @@ async fn test_create_did_success() {
     identifier_creator
         .expect_create_local_identifier()
         .once()
-        .return_once(|_, _, _, _| {
+        .return_once(|_, _| {
             Ok(Identifier {
                 data: IdentifierData::Did((dummy_did()).into()),
                 ..dummy_identifier()

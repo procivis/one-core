@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use one_dto_mapper::convert_inner;
+use shared_types::i18n::I18nString;
 use shared_types::{CredentialSchemaId, EcosystemId, OrganisationId, ProofSchemaId};
 use standardized_types::etsi_119_475::Credential;
 use standardized_types::openid4vp::dcql;
@@ -6,26 +9,29 @@ use standardized_types::openid4vp::dcql;
 use super::dto::{
     CertificateRolesMatchMode, CreateIdentifierDidRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO, IdentifierFilterParamsDTO,
-    IdentifierTrustInformationResponseDTO, IdentifierTrustInformationType,
-    ResolvedTrustEntrySourceResponseDTO,
+    IdentifierLogo, IdentifierTranslationsDTO, IdentifierTrustInformationResponseDTO,
+    IdentifierTrustInformationType, ResolvedTrustEntrySourceResponseDTO,
 };
 use super::error::IdentifierServiceError;
 use crate::config::core_config::{BlobStorageType, CoreConfig};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
+use crate::mapper::translations_to_i18n;
 use crate::model::blob::BlobType;
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{
     ExactIdentifierFilterColumn, GetIdentifierList, Identifier, IdentifierData,
-    IdentifierFilterValue, IdentifierListQuery, SortableIdentifierColumn,
+    IdentifierFilterValue, IdentifierListIncludeEntity, IdentifierListQuery,
+    SortableIdentifierColumn,
 };
-use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
+use crate::model::identifier_trust_information::SchemaFormat;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
+use crate::model::localized_text::LocalizedTextField;
 use crate::model::relation::RelatedVec;
 use crate::model::trust_list_subscription::TrustListSubscription;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
@@ -36,7 +42,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::certificate::mapper::certificate_to_response_dto;
-use crate::service::common_dto::ListQueryDTO;
+use crate::service::common_dto::{BoundedB64Image, ListQueryDTO};
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::response_from_did;
 
@@ -57,6 +63,7 @@ async fn map_certificates(
 pub(super) async fn identifier_to_response_dto(
     value: Identifier,
     blob_storage_provider: &dyn BlobStorageProvider,
+    default_language: &str,
 ) -> Result<GetIdentifierResponseDTO, IdentifierServiceError> {
     let organisation_id = Some(value.organisation.id());
     let r#type = value.data.r#type();
@@ -83,9 +90,9 @@ pub(super) async fn identifier_to_response_dto(
             certificate_authorities = Some(map_certificates(certs).await?);
         }
     }
-    let trust_information = value.trust_information.as_ref().await?.to_owned();
-    let trust_information = map_trust_information(blob_storage_provider, trust_information).await?;
-
+    let trust_information = map_trust_information(&value, blob_storage_provider).await?;
+    let logo = map_logo(&value, blob_storage_provider).await?;
+    let translations = map_translations(&value, default_language).await?;
     Ok(GetIdentifierResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -101,13 +108,72 @@ pub(super) async fn identifier_to_response_dto(
         certificates,
         certificate_authorities,
         trust_information,
+        logo,
+        translations,
+    })
+}
+
+pub(super) async fn identifiers_to_list_response_dto(
+    identifiers_list: GetIdentifierList,
+    blob_storage_provider: &dyn BlobStorageProvider,
+    includes: &[IdentifierListIncludeEntity],
+    default_language: &str,
+) -> Result<GetIdentifierListResponseDTO, IdentifierServiceError> {
+    let mut mapped_identifiers = Vec::with_capacity(identifiers_list.values.len());
+    for identifier in identifiers_list.values.into_iter() {
+        mapped_identifiers.push(
+            identifier_to_list_item_response_dto(
+                identifier,
+                blob_storage_provider,
+                includes,
+                default_language,
+            )
+            .await?,
+        );
+    }
+    Ok(GetIdentifierListResponseDTO {
+        values: mapped_identifiers,
+        total_pages: identifiers_list.total_pages,
+        total_items: identifiers_list.total_items,
+    })
+}
+
+pub(super) async fn identifier_to_list_item_response_dto(
+    identifier: Identifier,
+    blob_storage_provider: &dyn BlobStorageProvider,
+    includes: &[IdentifierListIncludeEntity],
+    default_language: &str,
+) -> Result<GetIdentifierListItemResponseDTO, IdentifierServiceError> {
+    let logo = if includes.contains(&IdentifierListIncludeEntity::Logo) {
+        map_logo(&identifier, blob_storage_provider).await?
+    } else {
+        None
+    };
+    let translations = if includes.contains(&IdentifierListIncludeEntity::Translations) {
+        Some(map_translations(&identifier, default_language).await?)
+    } else {
+        None
+    };
+    Ok(GetIdentifierListItemResponseDTO {
+        id: identifier.id,
+        created_date: identifier.created_date,
+        last_modified: identifier.last_modified,
+        name: identifier.name,
+        r#type: identifier.data.r#type(),
+        is_remote: identifier.is_remote,
+        autogenerated: identifier.autogenerated,
+        state: identifier.state,
+        organisation_id: Some(identifier.organisation.id()),
+        logo,
+        translations,
     })
 }
 
 async fn map_trust_information(
+    identifier: &Identifier,
     blob_storage_provider: &dyn BlobStorageProvider,
-    trust_information: Vec<IdentifierTrustInformation>,
 ) -> Result<Vec<IdentifierTrustInformationResponseDTO>, IdentifierServiceError> {
+    let trust_information = identifier.trust_information.as_ref().await?.to_owned();
     let blob_storage = blob_storage_provider.get_blob_storage(BlobStorageType::Db)?;
     let mut trust_info_dtos = vec![];
     for entry in trust_information {
@@ -128,6 +194,45 @@ async fn map_trust_information(
         })
     }
     Ok(trust_info_dtos)
+}
+
+async fn map_logo(
+    identifier: &Identifier,
+    blob_storage_provider: &dyn BlobStorageProvider,
+) -> Result<Option<IdentifierLogo>, IdentifierServiceError> {
+    let Some(logo_id) = identifier.logo else {
+        return Ok(None);
+    };
+    let blob_storage = blob_storage_provider.get_blob_storage(BlobStorageType::Db)?;
+    let blob = blob_storage
+        .get(&logo_id)
+        .await
+        .error_while("retrieving blob")?
+        .ok_or(IdentifierServiceError::MissingLogoBlob(logo_id))?;
+    let image_string = std::str::from_utf8(&blob.value)
+        .map_err(|e| IdentifierServiceError::MappingError(e.to_string()))?
+        .to_string();
+    Ok(Some(BoundedB64Image(image_string)))
+}
+
+async fn map_translations(
+    identifier: &Identifier,
+    default_language: &str,
+) -> Result<IdentifierTranslationsDTO, IdentifierServiceError> {
+    let texts = identifier.translations.as_ref().await?;
+    // `name` is mandatory in the response; identifiers created before this
+    // feature (and some remote identifiers) have no localized text, so fall
+    // back to the plain identifier name under the configured default language.
+    let name = translations_to_i18n(&texts, LocalizedTextField::Name).unwrap_or_else(|| {
+        I18nString(HashMap::from([(
+            default_language.to_owned(),
+            identifier.name.clone(),
+        )]))
+    });
+    Ok(IdentifierTranslationsDTO {
+        name,
+        logo_alt_text: translations_to_i18n(&texts, LocalizedTextField::LogoAltText),
+    })
 }
 
 impl TryFrom<BlobType> for IdentifierTrustInformationType {
@@ -166,6 +271,8 @@ impl From<Identifier> for GetIdentifierListItemResponseDTO {
             autogenerated: value.autogenerated,
             state: value.state,
             organisation_id: Some(value.organisation.id()),
+            logo: None,
+            translations: None,
         }
     }
 }
@@ -213,7 +320,11 @@ impl ResolvedTrustEntrySourceResponseDTO {
 }
 
 pub(super) async fn params_to_query(
-    filter_params: ListQueryDTO<SortableIdentifierColumn, IdentifierFilterParamsDTO>,
+    filter_params: ListQueryDTO<
+        SortableIdentifierColumn,
+        IdentifierFilterParamsDTO,
+        IdentifierListIncludeEntity,
+    >,
     credential_schema_repository: &dyn CredentialSchemaRepository,
     proof_schema_repository: &dyn ProofSchemaRepository,
     ecosystem_provider: &dyn EcosystemDirectory,

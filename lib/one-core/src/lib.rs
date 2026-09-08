@@ -841,6 +841,7 @@ impl OneCore {
                 data_provider.get_trust_collection_repository(),
                 data_provider.get_trust_list_subscription_repository(),
                 data_provider.get_identifier_trust_information_repository(),
+                data_provider.get_localized_text_repository(),
                 blob_storage_provider.clone(),
                 identifier_creator.clone(),
                 config.clone(),

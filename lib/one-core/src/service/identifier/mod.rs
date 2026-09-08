@@ -15,6 +15,7 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use crate::repository::key_repository::KeyRepository;
+use crate::repository::localized_text_repository::LocalizedTextRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -40,6 +41,9 @@ pub struct IdentifierService {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     identifier_trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
+    // used by upcoming identifier translation editing/reading logic
+    #[expect(dead_code)]
+    localized_text_repository: Arc<dyn LocalizedTextRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config: Arc<core_config::CoreConfig>,
     identifier_creator: Arc<dyn IdentifierCreator>,
@@ -63,6 +67,7 @@ impl IdentifierService {
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
         identifier_trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
+        localized_text_repository: Arc<dyn LocalizedTextRepository>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         config: Arc<core_config::CoreConfig>,
@@ -81,6 +86,7 @@ impl IdentifierService {
             credential_schema_repository,
             trust_list_subscription_repository,
             trust_collection_repository,
+            localized_text_repository,
             blob_storage_provider,
             identifier_creator,
             config,

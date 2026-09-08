@@ -5,6 +5,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 
 use crate::transaction_context::TransactionManagerImpl;
@@ -23,6 +24,7 @@ pub(crate) struct BackupProvider {
     key_repository: Arc<dyn KeyRepository>,
     certificate_repository: Arc<dyn CertificateRepository>,
     trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
+    localized_text_repository: Arc<dyn LocalizedTextRepository>,
 }
 
 #[cfg(test)]

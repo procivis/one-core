@@ -138,6 +138,7 @@ impl ProofRepository for ProofProvider {
             &self.trust_information_repository,
             &self.claim_repository,
             &self.credential_repository,
+            &self.localized_text_repository,
             &self.db,
         )
     }
@@ -312,6 +313,7 @@ fn get_proof_list_query(query_params: &ProofListQuery) -> Select<crate::entity::
         )
         .column_as(identifier::Column::DidId, "verifier_identifier_did_id")
         .column_as(identifier::Column::KeyId, "verifier_identifier_key_id")
+        .column_as(identifier::Column::Logo, "verifier_identifier_logo")
         // add related proof schema
         .join(
             sea_orm::JoinType::LeftJoin,

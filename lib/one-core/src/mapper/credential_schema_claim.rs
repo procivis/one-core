@@ -1,12 +1,13 @@
 use std::collections::{HashMap, VecDeque};
 
 use shared_types::ClaimSchemaId;
-use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
-use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR, paths_to_leafs};
+use crate::mapper::{
+    NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR, paths_to_leafs, translations_to_i18n,
+};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
@@ -80,21 +81,6 @@ pub(crate) fn from_request_claim_schema(
         required: request.required,
         translations,
     }
-}
-
-pub(crate) fn translations_to_i18n(
-    texts: &[LocalizedText],
-    field: LocalizedTextField,
-) -> Option<I18nString> {
-    let translations: HashMap<_, _> = texts
-        .iter()
-        .filter(|t| t.field == field)
-        .map(|t| (t.lang.clone(), t.value.clone()))
-        .collect();
-    if translations.is_empty() {
-        return None;
-    }
-    Some(I18nString(translations))
 }
 
 pub(crate) async fn claim_schema_to_dto(

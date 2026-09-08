@@ -4,7 +4,7 @@ use one_core::model::credential::{CredentialListIncludeEntityTypeEnum, SortableC
 use one_core::model::credential_schema::SortableCredentialSchemaColumn;
 use one_core::model::did::SortableDidColumn;
 use one_core::model::history::SortableHistoryColumn;
-use one_core::model::identifier::SortableIdentifierColumn;
+use one_core::model::identifier::{IdentifierListIncludeEntity, SortableIdentifierColumn};
 use one_core::model::proof::SortableProofColumn;
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
@@ -800,7 +800,11 @@ impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailu
 }
 
 impl TryFrom<IdentifierListQueryBindingDTO>
-    for ListQueryDTO<SortableIdentifierColumn, IdentifierFilterParamsDTO>
+    for ListQueryDTO<
+        SortableIdentifierColumn,
+        IdentifierFilterParamsDTO,
+        IdentifierListIncludeEntity,
+    >
 {
     type Error = ErrorResponseBindingDTO;
 
@@ -837,7 +841,7 @@ impl TryFrom<IdentifierListQueryBindingDTO>
                 last_modified_after: into_timestamp_opt(value.last_modified_after)?,
                 last_modified_before: into_timestamp_opt(value.last_modified_before)?,
             },
-            include: None,
+            include: convert_inner_of_inner(value.include),
         })
     }
 }

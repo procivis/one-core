@@ -22,6 +22,8 @@ pub enum IdentifierServiceError {
     OrganisationDeactivated(OrganisationId),
     #[error("Trust information blob `{0}` not found")]
     MissingTrustInformationBlob(BlobId),
+    #[error("Logo blob `{0}` not found")]
+    MissingLogoBlob(BlobId),
     #[error("Invalid trust information: {0}")]
     InvalidTrustInformation(String),
 
@@ -54,6 +56,7 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::MissingTrustInformationBlob(_) => ErrorCode::BR_0415,
             Self::InvalidTrustInformation(_) => ErrorCode::BR_0416,
             Self::InvalidEcosystemQuery(_) => ErrorCode::BR_0479,
+            Self::MissingLogoBlob(_) => ErrorCode::BR_0484,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

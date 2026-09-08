@@ -12,6 +12,7 @@ use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::{Into, try_convert_inner};
 use sea_orm::prelude::Expr;
@@ -50,6 +51,7 @@ impl BackupProvider {
         key_repository: Arc<dyn KeyRepository>,
         certificate_repository: Arc<dyn CertificateRepository>,
         trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
+        localized_text_repository: Arc<dyn LocalizedTextRepository>,
     ) -> Self {
         Self {
             db,
@@ -60,6 +62,7 @@ impl BackupProvider {
             key_repository,
             certificate_repository,
             trust_information_repository,
+            localized_text_repository,
         }
     }
 
@@ -462,6 +465,7 @@ impl BackupRepository for BackupProvider {
                         &self.key_repository,
                         &self.certificate_repository,
                         &self.trust_information_repository,
+                        &self.localized_text_repository,
                     )
                 })
                 .collect::<Result<Vec<_>, DataLayerError>>()?,

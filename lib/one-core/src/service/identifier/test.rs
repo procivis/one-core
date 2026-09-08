@@ -47,6 +47,7 @@ use crate::repository::error::{DataLayerError, EntityKind};
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::identifier_trust_information_repository::MockIdentifierTrustInformationRepository;
 use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::localized_text_repository::MockLocalizedTextRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
@@ -80,6 +81,7 @@ struct Mocks {
     session_provider: StaticSessionProvider,
     trust_list_subscriber_provider: MockTrustListSubscriberProvider,
     identifier_trust_information_repository: MockIdentifierTrustInformationRepository,
+    localized_text_repository: MockLocalizedTextRepository,
     blob_storage_provider: MockBlobStorageProvider,
     wrp_validator: MockWRPValidator,
     ecosystem_provider: MockEcosystemDirectory,
@@ -99,6 +101,7 @@ fn setup_service(mocks: Mocks) -> IdentifierService {
         identifier_trust_information_repository: Arc::new(
             mocks.identifier_trust_information_repository,
         ),
+        localized_text_repository: Arc::new(mocks.localized_text_repository),
         blob_storage_provider: Arc::new(mocks.blob_storage_provider),
         config: Arc::new(generic_config().core),
         identifier_creator: Arc::new(mocks.identifier_creator),
@@ -211,6 +214,8 @@ async fn test_create_identifier_session_org_mismatch() {
             key_id: None,
             certificates: None,
             certificate_authorities: None,
+            translations: None,
+            logo: None,
             organisation_id: Uuid::new_v4().into(),
             trust_information: vec![],
         })
@@ -706,7 +711,7 @@ async fn test_create_identifier_with_trust_information() {
 
     identifier_creator
         .expect_create_local_identifier()
-        .returning(move |_, _, _, _| Ok(identifier.clone()));
+        .returning(move |_, _| Ok(identifier.clone()));
     let mut wrp_validator = MockWRPValidator::new();
     wrp_validator
         .expect_validate_access_certificate()
@@ -748,6 +753,8 @@ async fn test_create_identifier_with_trust_information() {
             key_id: None,
             certificates: None,
             certificate_authorities: None,
+            translations: None,
+            logo: None,
             organisation_id,
             trust_information: vec![CreateIdentifierTrustInformationRequestDTO {
                 data: "dummy reg cert".to_string(),
@@ -800,7 +807,7 @@ async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
 
     identifier_creator
         .expect_create_local_identifier()
-        .returning(move |_, _, _, _| Ok(identifier.clone()));
+        .returning(move |_, _| Ok(identifier.clone()));
 
     let mut wrp_validator = MockWRPValidator::new();
     wrp_validator
@@ -853,6 +860,8 @@ async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
             key_id: None,
             certificates: None,
             certificate_authorities: None,
+            translations: None,
+            logo: None,
             organisation_id,
             trust_information: vec![
                 CreateIdentifierTrustInformationRequestDTO {
