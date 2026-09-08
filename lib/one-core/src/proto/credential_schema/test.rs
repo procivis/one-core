@@ -103,6 +103,7 @@ async fn test_parse_import_credential_schema_success() {
                 description: None,
             }),
             expiration: None,
+            ecosystem: None,
         },
     };
 
@@ -185,6 +186,7 @@ async fn test_parse_import_with_nested_claims_success() {
             requires_wallet_instance_attestation: Some(true),
             transaction_code: None,
             expiration: None,
+            ecosystem: None,
         },
     };
 

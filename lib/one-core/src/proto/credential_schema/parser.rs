@@ -118,6 +118,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             translations: None,
             embedded_disclosure_policy: None,
             expiration: dto.schema.expiration,
+            ecosystem: dto.schema.ecosystem,
         };
 
         self.parse_import_credential_schema_v2(ImportCredentialSchemaV2RequestDTO {
@@ -198,7 +199,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         claim_schemas.extend(metadata_claim_schemas.into_values());
 
         Ok(CredentialSchema {
-            ecosystem: None,
+            ecosystem: dto.schema.ecosystem,
             id: credential_schema_id,
             deleted_at: None,
             created_date: now,

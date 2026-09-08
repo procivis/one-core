@@ -591,6 +591,8 @@ pub struct ImportCredentialSchemaV2RequestSchemaBindingDTO {
     pub embedded_disclosure_policy: Option<DisclosurePolicyBindingDTO>,
     #[try_into(infallible, with_fn = duration_from_seconds)]
     pub expiration: Option<i64>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

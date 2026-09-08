@@ -2813,6 +2813,7 @@ async fn test_import_credential_schema_success() {
                 requires_wallet_instance_attestation: Some(true),
                 transaction_code: None,
                 expiration: None,
+                ecosystem: None,
             },
         })
         .await
@@ -2912,6 +2913,7 @@ async fn test_import_credential_schema_rehosts_source_url_when_enabled() {
                 requires_wallet_instance_attestation: Some(true),
                 transaction_code: None,
                 expiration: None,
+                ecosystem: None,
             },
         })
         .await
@@ -3242,6 +3244,7 @@ async fn test_credential_schema_ops_session_org_mismatch() {
                 requires_wallet_instance_attestation: None,
                 transaction_code: None,
                 expiration: None,
+                ecosystem: None,
             },
         })
         .await;

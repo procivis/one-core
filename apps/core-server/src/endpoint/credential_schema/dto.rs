@@ -652,6 +652,8 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[schema(value_type = Option<i64>)]
     #[try_into(infallible)]
     pub expiration: Option<Duration>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -1141,6 +1143,8 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     #[schema(value_type = Option<i64>)]
     #[try_into(infallible)]
     pub expiration: Option<Duration>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[cfg(test)]
@@ -1210,7 +1214,7 @@ mod test {
                 description: None,
             },
             expiration: Some(Duration::seconds(63072000)),
-            ecosystem: None,
+            ecosystem: Some("EUDI".into()),
         };
 
         let serialized = serde_json::to_value(shared).unwrap();

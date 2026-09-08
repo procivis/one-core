@@ -495,6 +495,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]
@@ -595,4 +596,5 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }

@@ -1,7 +1,9 @@
 use one_dto_mapper::{From, Into, TryFrom, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId, RevocationMethodId,
+};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -46,6 +48,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -107,6 +110,7 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
         Option<crate::service::credential_schema::dto::CredentialSchemaTranslationsDTO>,
     pub embedded_disclosure_policy: Option<DisclosurePolicy>,
     pub expiration: Option<Duration>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize, TryFrom, Into)]
