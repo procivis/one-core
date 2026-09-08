@@ -30,7 +30,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
-use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
+use crate::validator::ecosystem::{SelectionRole, resolve_credential_ecosystems};
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 pub(super) struct ValidatedProofCredential {
@@ -367,11 +367,12 @@ pub(crate) async fn accept_proof(
             )
             .collect::<Vec<_>>();
 
-        resolve_verifier_submission_ecosystems(
+        resolve_credential_ecosystems(
             interaction.id,
             &artifacts,
             interaction_repository,
             ecosystem_provider.as_ref(),
+            SelectionRole::Verifier,
         )
         .await
         .error_while("resolving ecosystems")?

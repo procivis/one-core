@@ -4,7 +4,7 @@ use std::vec;
 
 use mockall::predicate::{always, eq};
 use regex::Regex;
-use shared_types::{CredentialFormat, OrganisationId};
+use shared_types::{CredentialFormat, EcosystemId, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::oauth2::authorization_server_metadata::{
     AuthorizationServerMetadata, CodeChallengeMethod,
@@ -36,15 +36,18 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::ecosystem::model::{IssuerMetadataRepresentation, ProtocolArtifact};
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse,
+    ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse, IssuanceAcceptResult,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    HolderCredentialConfiguration, HolderInteractionData,
+};
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -312,13 +315,17 @@ async fn test_accept_credential() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _| {
-            Ok(IssuanceAcceptResponse {
-                main_credential: CredentialWithBlob {
-                    credential: dummy_credential(None),
-                    serialized: Some("credential".into()),
-                },
-                batch_items: vec![],
+        .returning(|_, _, _, _| {
+            Ok(IssuanceAcceptResult {
+                issued: vec![IssuanceAcceptResponse {
+                    credential_configuration_id: String::new(),
+                    main_credential: CredentialWithBlob {
+                        credential: dummy_credential(None),
+                        serialized: Some("credential".into()),
+                    },
+                    batch_items: vec![],
+                }],
+                failed: vec![],
             })
         });
 
@@ -386,10 +393,10 @@ async fn test_accept_credential() {
             })
         });
 
-    // no ecosystem applies: the narrowing persists the empty candidate set, the commit the selection
+    // no ecosystem applies: the narrowing persists the empty candidate set
     interaction_repository
         .expect_update_interaction()
-        .times(2)
+        .once()
         .returning(|_, _| Ok(()));
 
     let service = SSIHolderService {
@@ -408,6 +415,166 @@ async fn test_accept_credential() {
         .accept_credential(interaction_id, None, Some(identifier_id), None, None)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_accept_credential_validates_every_configuration_against_the_ecosystem() {
+    let ecosystem_id = EcosystemId::from("ecosystem");
+    let identifier_id = Uuid::new_v4().into();
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().returning(move |_| {
+        Ok(Identifier {
+            id: identifier_id,
+            data: IdentifierData::Did(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: dummy_key(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    did_method: "KEY".into(),
+                    ..dummy_did()
+                })
+                .into(),
+            ),
+            organisation: dummy_organisation(None).into(),
+            ..dummy_identifier()
+        })
+    });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .returning(|_| Ok(Arc::new(Ecdsa)));
+
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_create_credential()
+        .times(2)
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut exchange_protocol_mock = MockIssuanceProtocol::default();
+    exchange_protocol_mock
+        .expect_holder_accept_credential()
+        .once()
+        .returning(|_, _, _, _| {
+            let issued = |credential_configuration_id: &str| IssuanceAcceptResponse {
+                credential_configuration_id: credential_configuration_id.to_string(),
+                main_credential: CredentialWithBlob {
+                    credential: dummy_credential(None),
+                    serialized: Some("credential".into()),
+                },
+                batch_items: vec![],
+            };
+            Ok(IssuanceAcceptResult {
+                issued: vec![issued("first"), issued("second")],
+                failed: vec![],
+            })
+        });
+
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .returning(generic_formatter_capabilities);
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| {
+            Some((
+                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
+                formatter.clone(),
+            ))
+        });
+
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_create().times(2).returning(|_| Ok(()));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .returning(|_| {
+            Ok(Arc::new(Basic::new(Params {
+                holder: HolderParams {
+                    priority: 0,
+                    key_storages: vec!["foo".to_string()],
+                },
+            })))
+        });
+
+    // two offered configurations, the interaction is committed to an ecosystem
+    let mut interaction_data = dummy_interaction();
+    let mut second = interaction_data.credential_configurations[0].clone();
+    second.credential_configuration_id = "second".to_string();
+    interaction_data.credential_configurations.push(second);
+    let mut organisation = dummy_organisation(None);
+    organisation.configuration.selected_ecosystems = vec![ecosystem_id.clone()];
+
+    let interaction_id = Uuid::new_v4().into();
+    let mut interaction_repository = MockInteractionRepository::new();
+    let committed = ecosystem_id.clone();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |_, _| {
+            Ok(Interaction {
+                id: interaction_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+                organisation: organisation.clone().into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: Some(committed.clone()),
+                ecosystem_data: Default::default(),
+            })
+        });
+
+    // every issued configuration is validated against the committed ecosystem
+    let mut ecosystem = MockEcosystem::new();
+    ecosystem
+        .expect_validate_interaction()
+        .times(2)
+        .returning(|_, _| Ok(()));
+    let ecosystem = Arc::new(ecosystem);
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_get()
+        .with(eq(ecosystem_id))
+        .returning(move |_| Ok(ecosystem.clone()));
+
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
+        identifier_repository: Arc::new(identifier_repository),
+        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        formatter_provider: Arc::new(formatter_provider),
+        blob_storage_provider: Arc::new(blob_storage_provider),
+        key_security_level_provider: Arc::new(key_security_level_provider),
+        interaction_repository: Arc::new(interaction_repository),
+        ecosystem_provider: Arc::new(ecosystem_provider),
+        ..mock_ssi_holder_service()
+    };
+
+    let response = service
+        .accept_credential(interaction_id, None, Some(identifier_id), None, None)
+        .await
+        .unwrap();
+    assert_eq!(response.credential_ids.len(), 2);
 }
 
 #[tokio::test]
@@ -454,13 +621,17 @@ async fn test_accept_credential_with_did() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _| {
-            Ok(IssuanceAcceptResponse {
-                main_credential: CredentialWithBlob {
-                    credential: dummy_credential(None),
-                    serialized: Some("credential".into()),
-                },
-                batch_items: vec![],
+        .returning(|_, _, _, _| {
+            Ok(IssuanceAcceptResult {
+                issued: vec![IssuanceAcceptResponse {
+                    credential_configuration_id: String::new(),
+                    main_credential: CredentialWithBlob {
+                        credential: dummy_credential(None),
+                        serialized: Some("credential".into()),
+                    },
+                    batch_items: vec![],
+                }],
+                failed: vec![],
             })
         });
 
@@ -529,10 +700,10 @@ async fn test_accept_credential_with_did() {
             })
         });
 
-    // no ecosystem applies: the narrowing persists the empty candidate set, the commit the selection
+    // no ecosystem applies: the narrowing persists the empty candidate set
     interaction_repository
         .expect_update_interaction()
-        .times(2)
+        .once()
         .returning(|_, _| Ok(()));
 
     let service = SSIHolderService {
@@ -567,23 +738,27 @@ async fn test_accept_credential_batch() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .with(always(), eq(None), always())
-        .returning(move |_, _, _| {
-            Ok(IssuanceAcceptResponse {
-                main_credential: CredentialWithBlob {
-                    credential: cred_clone.clone(),
-                    serialized: None,
-                },
-                batch_items: vec![
-                    CredentialWithBlob {
-                        credential: dummy_credential(None),
-                        serialized: Some("credential1".into()),
+        .with(always(), eq(None), always(), always())
+        .returning(move |_, _, _, _| {
+            Ok(IssuanceAcceptResult {
+                issued: vec![IssuanceAcceptResponse {
+                    credential_configuration_id: String::new(),
+                    main_credential: CredentialWithBlob {
+                        credential: cred_clone.clone(),
+                        serialized: None,
                     },
-                    CredentialWithBlob {
-                        credential: dummy_credential(None),
-                        serialized: Some("credential2".into()),
-                    },
-                ],
+                    batch_items: vec![
+                        CredentialWithBlob {
+                            credential: dummy_credential(None),
+                            serialized: Some("credential1".into()),
+                        },
+                        CredentialWithBlob {
+                            credential: dummy_credential(None),
+                            serialized: Some("credential2".into()),
+                        },
+                    ],
+                }],
+                failed: vec![],
             })
         });
 
@@ -639,10 +814,10 @@ async fn test_accept_credential_batch() {
             })
         });
 
-    // no ecosystem applies: the narrowing persists the empty candidate set, the commit the selection
+    // no ecosystem applies: the narrowing persists the empty candidate set
     interaction_repository
         .expect_update_interaction()
-        .times(2)
+        .once()
         .returning(|_, _| Ok(()));
 
     let service = SSIHolderService {
@@ -654,12 +829,12 @@ async fn test_accept_credential_batch() {
         ..mock_ssi_holder_service()
     };
 
-    let credential_id = service
+    let response = service
         .accept_credential(interaction_id, None, None, None, None)
         .await
         .unwrap();
 
-    assert_eq!(credential_id, main_credential.id);
+    assert_eq!(response.credential_ids, vec![main_credential.id]);
 }
 
 #[tokio::test]
@@ -701,7 +876,7 @@ async fn test_accept_credential_wrong_tx_code() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .return_once(|_, _, _| Err(TxCodeError::IncorrectCode.error_while("").into()));
+        .return_once(|_, _, _, _| Err(TxCodeError::IncorrectCode.error_while("").into()));
 
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
@@ -806,7 +981,10 @@ async fn test_reject_credential() {
     };
 
     let interaction_id = Uuid::new_v4().into();
-    service.reject_credential(&interaction_id).await.unwrap();
+    service
+        .reject_credential(&interaction_id, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -854,7 +1032,10 @@ async fn test_reject_credential_failed_issuer_notification() {
     };
 
     let interaction_id = Uuid::new_v4().into();
-    service.reject_credential(&interaction_id).await.unwrap();
+    service
+        .reject_credential(&interaction_id, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -1466,7 +1647,9 @@ async fn test_reject_credential_credential_org_mismatch() {
         ..mock_ssi_holder_service()
     };
 
-    let result = service.reject_credential(&Uuid::new_v4().into()).await;
+    let result = service
+        .reject_credential(&Uuid::new_v4().into(), None)
+        .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
@@ -1513,18 +1696,21 @@ fn dummy_interaction() -> HolderInteractionData {
         access_token_expires_at: None,
         refresh_token: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: None,
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
-        credential_metadata: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
-        credential_configuration_id: "".to_string(),
-        notification_id: None,
         protocol: "".to_string(),
-        format: "dc+sd-jwt".to_string(),
-        disclosure_policy: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: "".to_string(),
+            format: "dc+sd-jwt".to_string(),
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     }
 }

@@ -4,9 +4,9 @@ use indexmap::IndexMap;
 use one_dto_mapper::{Into, convert_inner};
 use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialSchemaFormatId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaFormatId, OrganisationId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
@@ -111,33 +111,106 @@ pub(crate) struct HolderInteractionData {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
+    pub token_endpoint_auth_methods_supported: Option<Vec<TokenEndpointAuthMethod>>,
+    #[serde(default)]
+    pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+    #[serde(default)]
+    pub credential_request_encryption: Option<CredentialRequestEncryption>,
+    #[serde(default)]
+    pub credential_response_encryption: Option<CredentialResponseEncryption>,
+
+    /// selected issuance protocol (config identifier)
+    pub protocol: String,
+
+    /// offered credential configurations, in the order of the credential offer
+    #[serde(
+        flatten,
+        serialize_with = "serialize_credential_configurations",
+        deserialize_with = "deserialize_credential_configurations"
+    )]
+    pub credential_configurations: Vec<HolderCredentialConfiguration>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CredentialConfigurations<T> {
+    credential_configurations: T,
+}
+
+// interactions created before multi-format support store the single configuration at the top level
+fn deserialize_credential_configurations<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<HolderCredentialConfiguration>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Repr {
+        Entries(CredentialConfigurations<Vec<HolderCredentialConfiguration>>),
+        Legacy(Box<HolderCredentialConfiguration>),
+    }
+
+    Ok(match Repr::deserialize(deserializer)? {
+        Repr::Entries(entries) => entries.credential_configurations,
+        Repr::Legacy(configuration) => vec![*configuration],
+    })
+}
+
+// a flattened field serializes as a map, not as a sequence
+fn serialize_credential_configurations<S: Serializer>(
+    credential_configurations: &[HolderCredentialConfiguration],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    CredentialConfigurations {
+        credential_configurations,
+    }
+    .serialize(serializer)
+}
+
+impl HolderInteractionData {
+    pub fn configuration_mut(
+        &mut self,
+        credential_configuration_id: &str,
+    ) -> Option<&mut HolderCredentialConfiguration> {
+        self.credential_configurations
+            .iter_mut()
+            .find(|c| c.credential_configuration_id == credential_configuration_id)
+    }
+
+    /// configuration the (main) credential was issued for
+    pub fn configuration_for_credential(
+        &self,
+        credential_id: CredentialId,
+    ) -> Option<&HolderCredentialConfiguration> {
+        self.credential_configurations
+            .iter()
+            .find(|c| c.credential_id == Some(credential_id))
+            // interactions created before multi-format support have a single configuration without credential id
+            .or(match self.credential_configurations.as_slice() {
+                [single] => Some(single),
+                _ => None,
+            })
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct HolderCredentialConfiguration {
+    pub credential_configuration_id: String,
+    /// OpenID4VCI credential format
+    pub format: String,
+    #[serde(default)]
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<SigningAlgValue>>,
     #[serde(default)]
     pub proof_types_supported: Option<IndexMap<String, ProofTypeSupported>>,
     #[serde(default)]
-    pub token_endpoint_auth_methods_supported: Option<Vec<TokenEndpointAuthMethod>>,
-    #[serde(default)]
-    pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
-    #[serde(default)]
     pub credential_metadata: Option<CredentialMetadata>,
     #[serde(default)]
-    pub credential_request_encryption: Option<CredentialRequestEncryption>,
-    #[serde(default)]
-    pub credential_response_encryption: Option<CredentialResponseEncryption>,
-    pub credential_configuration_id: String,
+    pub disclosure_policy: Option<DisclosurePolicy>,
     #[serde(default)]
     pub notification_id: Option<String>,
-
-    /// selected issuance protocol (config identifier)
-    pub protocol: String,
-
-    /// OpenID4VCI credential format (of the offered credential)
-    pub format: String,
-
+    /// main credential created for this configuration
     #[serde(default)]
-    pub disclosure_policy: Option<DisclosurePolicy>,
+    pub credential_id: Option<CredentialId>,
 }
 
 // procivis extension under CredentialDisplay

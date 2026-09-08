@@ -4,8 +4,8 @@ use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMe
 use time::Duration;
 use uuid::Uuid;
 
-use super::mapper::interaction_data_to_accepted_key_storage_security;
-use super::model::TokenRequestWalletAttestationRequest;
+use super::mapper::configuration_to_accepted_key_storage_security;
+use super::model::{HolderCredentialConfiguration, TokenRequestWalletAttestationRequest};
 use super::{
     HolderInteractionData, IssuanceProtocolError, OpenID4VCIFinal1_0, WalletAttestationResult,
 };
@@ -32,6 +32,7 @@ impl OpenID4VCIFinal1_0 {
     pub(super) async fn prepare_wallet_attestations(
         &self,
         interaction_data: &HolderInteractionData,
+        configuration: Option<&HolderCredentialConfiguration>,
         attested_keys: &[&Key],
         organisation_id: OrganisationId,
         attestation_types: &[AttestationType],
@@ -77,7 +78,7 @@ impl OpenID4VCIFinal1_0 {
         let required_key_storage_security_level =
             if attestation_types.contains(&AttestationType::WUA) {
                 let issuer_accepted_levels =
-                    interaction_data_to_accepted_key_storage_security(interaction_data);
+                    configuration.and_then(configuration_to_accepted_key_storage_security);
 
                 issuer_accepted_levels
                     .map(|accepted_levels| {

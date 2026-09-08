@@ -20,6 +20,120 @@ use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstancePa
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
+async fn test_handle_invitation_multi_format_offer() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/final-1.0/{credential_schema_id}",
+        mock_server.uri()
+    );
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": ["doctype", "vct"],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
+            }
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .and(header("Accept", "application/json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credential_endpoint": format!("{credential_issuer}/credential"),
+            "credential_issuer": credential_issuer,
+            "credential_configurations_supported": {
+                "doctype": {
+                    "format": "mso_mdoc",
+                    "doctype": "doctype",
+                    "claims": {
+                        "namespace": {
+                            "field": { "value_type": "string", "mandatory": true }
+                        }
+                    },
+                    "proof_types_supported": {
+                        "jwt": {
+                            "proof_signing_alg_values_supported": ["ES256", "EdDSA"]
+                        }
+                    }
+                },
+                "vct": {
+                    "format": "dc+sd-jwt",
+                    "vct": "vct",
+                    "claims": {
+                        "field": { "value_type": "string", "mandatory": true }
+                    },
+                    "proof_types_supported": {
+                        "jwt": {
+                            "proof_signing_alg_values_supported": ["ES256"]
+                        }
+                    }
+                }
+            }
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "issuer": credential_issuer,
+            "token_endpoint": format!("{credential_issuer}/token"),
+            "grant_types_supported": ["urn:ietf:params:oauth:grant-type:pre-authorized_code"],
+            "response_types_supported": ["token"],
+            "subject_types_supported": ["public"],
+            "id_token_signing_alg_values_supported": [],
+            "jwks_uri": format!("{credential_issuer}/jwks"),
+            "authorization_endpoint": format!("{credential_issuer}/authorize"),
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    // only the algorithms accepted by every offered configuration
+    assert_eq!(resp["keyAlgorithms"], json!(["ECDSA"]));
+
+    let interaction = context
+        .db
+        .interactions
+        .get(&resp["interactionId"].parse())
+        .await
+        .unwrap();
+    let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let configurations = data["credential_configurations"].as_array().unwrap();
+    assert_eq!(configurations.len(), 2);
+    assert_eq!(configurations[0]["credential_configuration_id"], "doctype");
+    assert_eq!(configurations[0]["format"], "mso_mdoc");
+    assert_eq!(configurations[1]["credential_configuration_id"], "vct");
+    assert_eq!(configurations[1]["format"], "dc+sd-jwt");
+}
+
+#[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;

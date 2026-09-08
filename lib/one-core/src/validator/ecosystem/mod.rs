@@ -195,28 +195,27 @@ pub(crate) async fn resolve_ecosystem(
     Ok(committed)
 }
 
-/// The ecosystems a proof submission resolves to, on the verifier side.
+/// The ecosystems an interaction resolves to from its credentials.
 #[derive(Debug)]
-pub(crate) struct VerifierSubmissionEcosystems {
-    /// the ecosystem the interaction ends up committed to: it validated every submitted credential
+pub(crate) struct ResolvedEcosystems {
+    /// the ecosystem the interaction ends up committed to: it validated every credential
     pub committed: Option<EcosystemId>,
-    /// per submitted credential (indexed as the artifacts): the ecosystem providing its trust
-    /// information
+    /// per credential (indexed as the artifacts): the ecosystem providing its trust information
     pub per_credential: Vec<Option<EcosystemId>>,
 }
 
-/// As verifier, resolve the ecosystems of a received proof submission, one artifact per
-/// submitted credential.
+/// Resolve the ecosystems of an interaction from its credentials, one artifact per credential.
 ///
 /// The interaction commits to the first ecosystem that validates every credential. If none
 /// does, nothing is committed, and each credential individually keeps the trust of the first
 /// ecosystem that validates it.
-pub(crate) async fn resolve_verifier_submission_ecosystems(
+pub(crate) async fn resolve_credential_ecosystems(
     interaction_id: InteractionId,
     artifacts: &[ProtocolArtifact<'_>],
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
-) -> Result<VerifierSubmissionEcosystems, EcosystemValidationError> {
+    role: SelectionRole,
+) -> Result<ResolvedEcosystems, EcosystemValidationError> {
     let interaction = load(interaction_id, interaction_repository).await?;
 
     // if ecosystem is commited, all credentials must match
@@ -227,14 +226,14 @@ pub(crate) async fn resolve_verifier_submission_ecosystems(
             validate_committed(&interaction, &committed, artifact, ecosystem_provider).await?;
         }
 
-        return Ok(VerifierSubmissionEcosystems {
+        return Ok(ResolvedEcosystems {
             per_credential: vec![Some(committed.to_owned()); artifacts.len()],
             committed: Some(committed),
         });
     }
 
     if artifacts.is_empty() {
-        return Ok(VerifierSubmissionEcosystems {
+        return Ok(ResolvedEcosystems {
             committed: None,
             per_credential: vec![],
         });
@@ -263,7 +262,7 @@ pub(crate) async fn resolve_verifier_submission_ecosystems(
         }
     }
 
-    if applicable.is_empty() && ecosystem_enforced(&configuration, SelectionRole::Verifier) {
+    if applicable.is_empty() && ecosystem_enforced(&configuration, role) {
         return Err(EcosystemValidationError::NoEcosystemDetected);
     }
 
@@ -283,7 +282,7 @@ pub(crate) async fn resolve_verifier_submission_ecosystems(
             .error_while("committing ecosystem")?;
 
         // the interaction runs under this ecosystem, and it validated every credential
-        return Ok(VerifierSubmissionEcosystems {
+        return Ok(ResolvedEcosystems {
             per_credential: vec![Some(committed.to_owned()); artifacts.len()],
             committed: Some(committed),
         });
@@ -303,7 +302,7 @@ pub(crate) async fn resolve_verifier_submission_ecosystems(
         per_credential.push(detected);
     }
 
-    Ok(VerifierSubmissionEcosystems {
+    Ok(ResolvedEcosystems {
         committed: None,
         per_credential,
     })
@@ -355,7 +354,7 @@ impl ValidationOutcomes<'_> {
                 match ecosystem.validate_interaction(artifact, &interaction).await {
                     Ok(()) => true,
                     Err(err) => {
-                        tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the submitted credential");
+                        tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the credential");
                         false
                     }
                 }

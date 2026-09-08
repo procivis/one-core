@@ -29,7 +29,9 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VCIFinal1_0;
-use super::model::{HolderInteractionData, OpenID4VCIIssuerInteractionDataDTO};
+use super::model::{
+    HolderCredentialConfiguration, HolderInteractionData, OpenID4VCIIssuerInteractionDataDTO,
+};
 use super::service::create_credential_offer;
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
@@ -483,6 +485,42 @@ fn test_issuer_interaction_data_deserializes_legacy_notification_id() {
     assert!(entry.format.is_none());
 }
 
+#[test]
+fn test_holder_interaction_data_deserializes_legacy_single_configuration() {
+    let data: HolderInteractionData = serde_json::from_value(json!({
+        "issuer_url": "https://issuer.example.com",
+        "credential_endpoint": "https://issuer.example.com/credential",
+        "protocol": "OPENID4VCI_FINAL1",
+        "credential_configuration_id": "configuration",
+        "format": "dc+sd-jwt",
+        "notification_id": "notification"
+    }))
+    .unwrap();
+
+    let_assert!([configuration] = data.credential_configurations.as_slice());
+    assert_eq!(configuration.credential_configuration_id, "configuration");
+    assert_eq!(configuration.format, "dc+sd-jwt");
+    assert_eq!(
+        configuration.notification_id.as_deref(),
+        Some("notification")
+    );
+    assert!(configuration.credential_id.is_none());
+    assert!(
+        data.configuration_for_credential(Uuid::new_v4().into())
+            .is_some()
+    );
+
+    let serialized = serde_json::to_value(&data).unwrap();
+    assert!(serialized.get("credential_configuration_id").is_none());
+    assert_eq!(
+        serialized["credential_configurations"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
 #[tokio::test]
 async fn test_generate_share_credentials() {
     let mut credential = generic_credential_did();
@@ -553,25 +591,28 @@ async fn test_holder_accept_credential_success() {
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -749,6 +790,7 @@ async fn test_holder_accept_credential_success() {
         config: dummy_config(),
         ..Default::default()
     });
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
@@ -760,8 +802,12 @@ async fn test_holder_accept_credential_success() {
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
     assert_eq!(
         issuer_response.main_credential.serialized,
@@ -808,25 +854,28 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -1007,6 +1056,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         id: Uuid::new_v4().into(),
         ..dummy_key()
     };
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
@@ -1029,8 +1079,12 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     assert_eq!(
@@ -1073,25 +1127,28 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -1322,9 +1379,13 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         ..Default::default()
     });
 
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
-        .holder_accept_credential(interaction, None, None)
+        .holder_accept_credential(interaction, None, None, configuration_ids)
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     assert_eq!(
@@ -1372,25 +1433,28 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -1660,9 +1724,13 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
         ..Default::default()
     });
 
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
-        .holder_accept_credential(interaction, None, None)
+        .holder_accept_credential(interaction, None, None, configuration_ids)
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
     let main_credential = &issuer_response.main_credential;
     assert_eq!(
@@ -1747,18 +1815,21 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential_configuration_id.clone(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential_configuration_id.clone(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -1994,6 +2065,7 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         ..Default::default()
     });
 
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
@@ -2005,8 +2077,12 @@ async fn test_holder_accept_credential_batch_manual_binding() {
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     assert_eq!(
@@ -2057,25 +2133,28 @@ async fn test_holder_reject_credential() {
             refresh_token_expires_at: None,
             token_endpoint_auth_methods_supported: None,
             client_attestation_pop_signing_alg_values_supported: None,
-            cryptographic_binding_methods_supported: None,
-            proof_types_supported: None,
-            credential_signing_alg_values_supported: None,
             continue_issuance: None,
-            credential_configuration_id: credential
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .schema_id()
-                .await
-                .unwrap(),
-            credential_metadata: None,
-            notification_id: Some("notification_id".to_string()),
             protocol: "OPENID4VCI_FINAL1".to_string(),
-            format: "jwt_vc_json".to_string(),
-            disclosure_policy: None,
             credential_request_encryption: None,
             credential_response_encryption: None,
+            credential_configurations: vec![HolderCredentialConfiguration {
+                credential_configuration_id: credential
+                    .schema
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .schema_id()
+                    .await
+                    .unwrap(),
+                format: "jwt_vc_json".to_string(),
+                cryptographic_binding_methods_supported: None,
+                credential_signing_alg_values_supported: None,
+                proof_types_supported: None,
+                credential_metadata: None,
+                disclosure_policy: None,
+                notification_id: Some("notification_id".to_string()),
+                credential_id: None,
+            }],
         };
 
         credential.interaction = Some(
@@ -2673,7 +2752,10 @@ async fn test_handle_invitation_signed_metadata() {
                 serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 
             assert_eq!(
-                data.disclosure_policy.unwrap(),
+                data.credential_configurations[0]
+                    .disclosure_policy
+                    .clone()
+                    .unwrap(),
                 DisclosurePolicy {
                     id: "policy-id".to_string(),
                     policy: PolicyType::None,
@@ -2947,25 +3029,28 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         refresh_token_expires_at: None,
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
-        cryptographic_binding_methods_supported: None,
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: Some(proof_types),
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: Some(proof_types),
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -3023,6 +3108,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         storage_type: "INTERNAL".to_string(),
         ..dummy_key()
     };
+    let configuration_ids = configuration_ids(&interaction);
     let result = openid_provider
         .holder_accept_credential(
             interaction,
@@ -3034,6 +3120,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await;
 
@@ -3099,25 +3186,28 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         refresh_token_expires_at: None,
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: Some(proof_types),
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: Some(proof_types),
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -3347,6 +3437,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         ..Default::default()
     });
 
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
@@ -3358,8 +3449,12 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     assert_eq!(
@@ -3392,18 +3487,21 @@ async fn interaction_with_metadata(
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: "CredentialSchemaId".to_owned(),
-        credential_metadata: Some(credential_metadata),
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: "CredentialSchemaId".to_owned(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: Some(credential_metadata),
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     Interaction {
@@ -3601,6 +3699,7 @@ async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
 
     // WHEN
     let key = dummy_key();
+    let configuration_ids = configuration_ids(&interaction);
     openid_provider
         .holder_accept_credential(
             interaction,
@@ -3612,6 +3711,7 @@ async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
         .unwrap();
@@ -3815,6 +3915,7 @@ async fn test_holder_accept_credential_uses_default_language_for_display_without
 
     // WHEN
     let key = dummy_key();
+    let configuration_ids = configuration_ids(&interaction);
     openid_provider
         .holder_accept_credential(
             interaction,
@@ -3826,6 +3927,7 @@ async fn test_holder_accept_credential_uses_default_language_for_display_without
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
         .unwrap();
@@ -4025,6 +4127,7 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
 
     // WHEN
     let key = dummy_key();
+    let configuration_ids = configuration_ids(&interaction);
     openid_provider
         .holder_accept_credential(
             interaction,
@@ -4036,6 +4139,7 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
         .unwrap();
@@ -4111,18 +4215,21 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: "CredentialSchemaId".to_owned(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: Some(disclosure_policy.to_owned()),
         credential_request_encryption: None,
         credential_response_encryption: None,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: "CredentialSchemaId".to_owned(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: Some(disclosure_policy.to_owned()),
+            notification_id: None,
+            credential_id: None,
+        }],
     };
 
     let interaction = Interaction {
@@ -4280,6 +4387,7 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
 
     // WHEN
     let key = dummy_key();
+    let configuration_ids = configuration_ids(&interaction);
     let result = openid_provider
         .holder_accept_credential(
             interaction,
@@ -4291,8 +4399,12 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
                 key,
             }),
             None,
+            configuration_ids,
         )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     // THEN
@@ -4350,25 +4462,28 @@ async fn encryption_interaction_data(
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
-        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-        credential_signing_alg_values_supported: None,
-        proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .schema_id()
-            .await
-            .unwrap(),
-        credential_metadata: None,
-        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
-        format: "jwt_vc_json".to_string(),
-        disclosure_policy: None,
         credential_request_encryption,
         credential_response_encryption,
+        credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
+            credential_metadata: None,
+            disclosure_policy: None,
+            notification_id: None,
+            credential_id: None,
+        }],
     }
 }
 
@@ -4623,9 +4738,18 @@ async fn test_holder_accept_credential_request_encryption() {
         .await;
 
     let openid_provider = provider_with_encryption(&credential).await;
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
-        .holder_accept_credential(interaction, Some(holder_binding_input(key)), None)
+        .holder_accept_credential(
+            interaction,
+            Some(holder_binding_input(key)),
+            None,
+            configuration_ids,
+        )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
     assert_eq!(
         issuer_response.main_credential.serialized,
@@ -4657,7 +4781,10 @@ async fn test_holder_accept_credential_request_encryption() {
         CredentialRequestIdentifier::CredentialConfigurationId(config_id) =
             &decrypted_request.credential
     );
-    assert_eq!(config_id, &interaction_data.credential_configuration_id);
+    assert_eq!(
+        config_id,
+        &interaction_data.credential_configurations[0].credential_configuration_id
+    );
     let_assert!(Some(Proofs::Jwt(proofs)) = &decrypted_request.proofs);
     assert_eq!(proofs.len(), 1);
 }
@@ -4722,9 +4849,18 @@ async fn test_holder_accept_credential_response_encryption() {
         .await;
 
     let openid_provider = provider_with_encryption(&credential).await;
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
-        .holder_accept_credential(interaction, Some(holder_binding_input(key)), None)
+        .holder_accept_credential(
+            interaction,
+            Some(holder_binding_input(key)),
+            None,
+            configuration_ids,
+        )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     // The credential could only be returned if the encrypted response decrypted.
@@ -4820,9 +4956,18 @@ async fn test_holder_accept_credential_request_and_response_encryption_with_comp
         .await;
 
     let openid_provider = provider_with_encryption(&credential).await;
+    let configuration_ids = configuration_ids(&interaction);
     let issuer_response = openid_provider
-        .holder_accept_credential(interaction, Some(holder_binding_input(key)), None)
+        .holder_accept_credential(
+            interaction,
+            Some(holder_binding_input(key)),
+            None,
+            configuration_ids,
+        )
         .await
+        .unwrap()
+        .issued
+        .pop()
         .unwrap();
 
     assert_eq!(
@@ -4836,4 +4981,13 @@ fn test_parse_eudi_issuer_metadata() {
     // Taken from https://issuer.eudiw.dev/.well-known/openid-credential-issuer on 03.07.2026
     let metadata = include_str!("fixtures/eudi_issuer_metadata.json");
     assert!(serde_json::from_str::<CredentialIssuerMetadata>(metadata).is_ok());
+}
+
+fn configuration_ids(interaction: &Interaction) -> Vec<String> {
+    let data: HolderInteractionData =
+        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+    data.credential_configurations
+        .into_iter()
+        .map(|c| c.credential_configuration_id)
+        .collect()
 }

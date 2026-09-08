@@ -20,6 +20,16 @@ pub struct HandleInvitationRequestDTO {
 }
 
 #[derive(Clone, Debug)]
+pub struct IssuanceAcceptResponseDTO {
+    /// first accepted credential, kept for the single credential API
+    pub id: CredentialId,
+    /// one main credential per accepted credential configuration
+    pub credential_ids: Vec<CredentialId>,
+    /// some of the offered credential configurations could not be issued, only set when several were offered
+    pub partially_successful: Option<bool>,
+}
+
+#[derive(Clone, Debug)]
 pub struct PresentationSubmitV2RequestDTO {
     pub interaction_id: InteractionId,
     pub submission: HashMap<String, Vec<PresentationSubmitV2CredentialRequestDTO>>,

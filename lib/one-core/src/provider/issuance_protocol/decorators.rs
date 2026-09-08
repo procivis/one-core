@@ -10,7 +10,7 @@ use url::Url;
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::IssuanceProtocolError;
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResponse, ShareResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResult, ShareResponse,
 };
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::model::credential::Credential;
@@ -47,7 +47,8 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         _interaction: Interaction,
         _holder_binding: Option<HolderBindingInput>,
         _tx_code: Option<String>,
-    ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
+        _credential_configuration_ids: Vec<String>,
+    ) -> Result<IssuanceAcceptResult, IssuanceProtocolError> {
         self.disabled_error()
     }
 
@@ -148,9 +149,15 @@ impl IssuanceProtocol for CapabilityChecked {
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
+        credential_configuration_ids: Vec<String>,
+    ) -> Result<IssuanceAcceptResult, IssuanceProtocolError> {
         self.0
-            .holder_accept_credential(interaction, holder_binding, tx_code)
+            .holder_accept_credential(
+                interaction,
+                holder_binding,
+                tx_code,
+                credential_configuration_ids,
+            )
             .await
     }
 

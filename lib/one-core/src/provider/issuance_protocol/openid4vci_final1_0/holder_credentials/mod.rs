@@ -12,6 +12,7 @@ use shared_types::{
 use uuid::Uuid;
 
 use super::mapper::{convert_metadata_to_layout_properties, remap_claim_credential_ids};
+use super::model::HolderCredentialConfiguration;
 use super::validator::validate_batch_consistency;
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
@@ -49,12 +50,13 @@ impl OpenID4VCIFinal1_0 {
         &self,
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
+        configuration: &HolderCredentialConfiguration,
         mut holder_bindings: Vec<HolderBindingInput>,
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         let format_type = map_from_oidc_format_to_core_detailed(
-            &interaction_data.format,
+            &configuration.format,
             issuer_response
                 .credentials
                 .first()
@@ -131,7 +133,7 @@ impl OpenID4VCIFinal1_0 {
             ))?
         };
 
-        if let Some(disclosure_policy) = &interaction_data.disclosure_policy {
+        if let Some(disclosure_policy) = &configuration.disclosure_policy {
             main_credential.credential.embedded_disclosure_policy =
                 Some(serde_json::to_string(disclosure_policy)?);
         }
@@ -143,6 +145,7 @@ impl OpenID4VCIFinal1_0 {
                 &mut main_credential.credential,
                 organisation,
                 interaction_data,
+                configuration,
                 &format,
             )
             .await?;
@@ -156,6 +159,7 @@ impl OpenID4VCIFinal1_0 {
 
         // Add main credential to the front so that the batch_parent already exists when the batch_items are created.
         Ok(IssuanceAcceptResponse {
+            credential_configuration_id: configuration.credential_configuration_id.to_owned(),
             main_credential,
             batch_items: credentials,
         })
@@ -186,10 +190,11 @@ impl OpenID4VCIFinal1_0 {
         credential: &mut Credential,
         organisation: &Organisation,
         interaction_data: &HolderInteractionData,
+        configuration: &HolderCredentialConfiguration,
         format: &CredentialFormat,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
         let (mut schema, conflicting_format) = self
-            .prepare_credential_schema(interaction_data, credential, organisation)
+            .prepare_credential_schema(interaction_data, configuration, credential, organisation)
             .await?;
 
         // Adjust format if it was replaced by a different one of the same type.
@@ -229,7 +234,7 @@ impl OpenID4VCIFinal1_0 {
 
     pub(super) async fn holder_process_refresh(
         &self,
-        interaction_data: &HolderInteractionData,
+        configuration: &HolderCredentialConfiguration,
         holder_bindings: Vec<HolderBindingInput>,
         response: SubmitIssuerResponse,
         organisation: &Organisation,
@@ -243,7 +248,7 @@ impl OpenID4VCIFinal1_0 {
         } else {
             self.process_batch_refresh(
                 response,
-                interaction_data,
+                configuration,
                 holder_bindings,
                 organisation,
                 interaction,
@@ -305,7 +310,7 @@ impl OpenID4VCIFinal1_0 {
     async fn process_batch_refresh(
         &self,
         issuer_response: SubmitIssuerResponse,
-        interaction_data: &HolderInteractionData,
+        configuration: &HolderCredentialConfiguration,
         mut holder_bindings: Vec<HolderBindingInput>,
         organisation: &Organisation,
         interaction: &Interaction,
@@ -316,7 +321,11 @@ impl OpenID4VCIFinal1_0 {
             .await
             .error_while("getting credentials")?
             .into_iter()
-            .next()
+            .find(|credential| {
+                configuration
+                    .credential_id
+                    .is_none_or(|credential_id| credential_id == credential.id)
+            })
             .ok_or(IssuanceProtocolError::Failed(
                 "No credentials found".to_string(),
             ))?;
@@ -328,7 +337,7 @@ impl OpenID4VCIFinal1_0 {
         let mut schema = batch_parent.schema.as_ref().await?.to_owned();
 
         let format_type = map_from_oidc_format_to_core_detailed(
-            &interaction_data.format,
+            &configuration.format,
             issuer_response
                 .credentials
                 .first()
@@ -557,6 +566,7 @@ impl OpenID4VCIFinal1_0 {
     async fn prepare_credential_schema(
         &self,
         interaction_data: &HolderInteractionData,
+        configuration: &HolderCredentialConfiguration,
         parsed_credential: &Credential,
         organisation: &Organisation,
     ) -> Result<(CredentialSchema, Option<CredentialFormat>), IssuanceProtocolError> {
@@ -564,13 +574,13 @@ impl OpenID4VCIFinal1_0 {
 
         apply_issuer_metadata_to_schema(
             &mut schema,
-            interaction_data.credential_metadata.as_ref(),
+            configuration.credential_metadata.as_ref(),
             &self.config.global_settings.default_language,
         )
         .await?;
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);
         schema.organisation = organisation.to_owned().into();
-        schema.key_storage_security = interaction_data
+        schema.key_storage_security = configuration
             .proof_types_supported
             .as_ref()
             .and_then(|map| map.get("jwt"))

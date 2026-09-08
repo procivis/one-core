@@ -4,7 +4,7 @@ use one_core::model::credential_schema::CredentialSchema;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
-use shared_types::CredentialSchemaFormatId;
+use shared_types::{CredentialId, CredentialSchemaFormatId};
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use time::Duration;
 use time::macros::format_description;
@@ -22,6 +22,15 @@ pub struct InteractionDataParams {
     pub notification_id: Option<String>,
     pub notification_endpoint: Option<String>,
     pub batch_size: Option<u32>,
+    /// credential configurations offered next to the default one
+    pub additional_configurations: Vec<ConfigurationParams>,
+}
+
+pub struct ConfigurationParams {
+    pub credential_configuration_id: String,
+    pub format: String,
+    pub notification_id: Option<String>,
+    pub credential_id: Option<CredentialId>,
 }
 
 impl InteractionDataParams {
@@ -54,6 +63,49 @@ pub fn dummy_interaction_data(
         context.server_mock.uri(),
         credential_schema.id,
     );
+    let mut configuration = json!({
+        "credential_configuration_id": "01ee2044-2e75-4a3b-a575-b48669bd8254",
+        "format": params.format.unwrap_or("jwt_vc_json".to_string()),
+        "cryptographic_binding_methods_supported": [
+            "jwk",
+            "cose_key"
+        ],
+        "proof_types_supported": {
+            "jwt": {
+                "proof_signing_alg_values_supported": [
+                    "EdDSA",
+                    "ES256",
+                ]
+            }
+        },
+        "credential_metadata": {
+            "display": [
+                {
+                    "lang": "en",
+                    "name": "test"
+                }
+            ]
+        },
+    });
+    if let Some(key_security_level) = credential_schema.key_storage_security {
+        configuration["proof_types_supported"]["jwt"]["key_attestations_required"] = json!({
+            "key_storage": [KeyStorageSecurityLevel::from(key_security_level)]
+        });
+    }
+    if let Some(notification_id) = params.notification_id {
+        configuration["notification_id"] = json!(notification_id);
+    }
+    let mut configurations = vec![configuration];
+    for configuration in params.additional_configurations {
+        configurations.push(json!({
+            "credential_configuration_id": configuration.credential_configuration_id,
+            "format": configuration.format,
+            "cryptographic_binding_methods_supported": ["jwk", "cose_key"],
+            "notification_id": configuration.notification_id,
+            "credential_id": configuration.credential_id,
+        }));
+    }
+
     let mut value = json!({
     "issuer_url": issuer_url,
     "credential_endpoint": format!("{}/credential", issuer_url),
@@ -68,32 +120,11 @@ pub fn dummy_interaction_data(
     "access_token_expires_at": at_expiry.format(&format).unwrap(),
     "refresh_token": encrypted_token("123"),
     "refresh_token_expires_at": rt_expiry.format(&format).unwrap(),
-    "cryptographic_binding_methods_supported": [
-        "jwk",
-        "cose_key"
-    ],
-    "proof_types_supported": {
-        "jwt": {
-            "proof_signing_alg_values_supported": [
-                "EdDSA",
-                "ES256",
-            ]
-        }
-    },
     "token_endpoint_auth_methods_supported": [
         "none"
     ],
-    "credential_metadata": {
-        "display": [
-            {
-                "lang": "en",
-                "name": "test"
-            }
-        ]
-    },
-    "credential_configuration_id": "01ee2044-2e75-4a3b-a575-b48669bd8254",
     "protocol": "OPENID4VCI_FINAL1",
-    "format": params.format.unwrap_or("jwt_vc_json".to_string()),
+    "credential_configurations": configurations,
     "trust_resolution": "UNTRUSTED",
     "trust_mode": "TRUST_OPTIONAL"
     });
@@ -105,16 +136,8 @@ pub fn dummy_interaction_data(
         value["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["tx_code"] =
             json!({"input_mode":"numeric","length":5,"description":"code"});
     }
-    if let Some(key_security_level) = credential_schema.key_storage_security {
-        value["proof_types_supported"]["jwt"]["key_attestations_required"] = json!({
-            "key_storage": [KeyStorageSecurityLevel::from(key_security_level)]
-        });
-    }
     if let Some(notification_endpoint) = params.notification_endpoint {
         value["notification_endpoint"] = json!(notification_endpoint);
-    }
-    if let Some(notification_id) = params.notification_id {
-        value["notification_id"] = json!(notification_id);
     }
     if let Some(batch_size) = params.batch_size {
         value["batch_size"] = json!(batch_size);

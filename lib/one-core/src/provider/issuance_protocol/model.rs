@@ -3,6 +3,7 @@ use shared_types::{InteractionId, OrganisationId, SerializedCredential, TaskId};
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use time::OffsetDateTime;
 
+use super::error::IssuanceProtocolError;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::ecosystem::model::ProtocolArtifact;
@@ -50,8 +51,22 @@ pub(crate) enum InvitationResponseEnum<'a> {
 
 #[derive(Clone, Debug)]
 pub(crate) struct IssuanceAcceptResponse {
+    pub credential_configuration_id: String,
     pub main_credential: CredentialWithBlob,
     pub batch_items: Vec<CredentialWithBlob>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct IssuanceAcceptResult {
+    pub issued: Vec<IssuanceAcceptResponse>,
+    /// configurations the issuer did not issue a credential for
+    pub failed: Vec<IssuanceAcceptFailure>,
+}
+
+#[derive(Debug)]
+pub(crate) struct IssuanceAcceptFailure {
+    pub credential_configuration_id: String,
+    pub error: IssuanceProtocolError,
 }
 
 #[derive(Clone, Debug)]

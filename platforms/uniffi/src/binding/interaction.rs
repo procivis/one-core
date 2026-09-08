@@ -7,7 +7,7 @@ use standardized_types::openid4vci::{AuthorizationDetail, TxCode, TxCodeInputMod
 use super::credential_schema::KeyStorageSecurityBindingEnum;
 use crate::OneCore;
 use crate::error::BindingError;
-use crate::utils::{into_id, into_id_opt};
+use crate::utils::{into_id, into_id_opt, into_id_opt_vec};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
@@ -35,9 +35,9 @@ impl OneCore {
     pub async fn holder_accept_credential(
         &self,
         request: HolderAcceptCredentialRequestBindingDTO,
-    ) -> Result<String, BindingError> {
+    ) -> Result<HolderAcceptCredentialResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
-        let id = core
+        let response = core
             .ssi_holder_service
             .accept_credential(
                 into_id(request.interaction_id)?,
@@ -47,19 +47,30 @@ impl OneCore {
                 request.tx_code,
             )
             .await?;
-        Ok(id.to_string())
+        Ok(HolderAcceptCredentialResponseBindingDTO {
+            credential_ids: response
+                .credential_ids
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+            partially_successful: response.partially_successful,
+        })
     }
 
-    /// Rejects an offered credential.
+    /// Rejects offered credentials. Without `credential_ids`, all credentials of the interaction are rejected.
     #[uniffi::method]
     pub async fn holder_reject_credential(
         &self,
         interaction_id: String,
+        credential_ids: Option<Vec<String>>,
     ) -> Result<(), BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .ssi_holder_service
-            .reject_credential(&into_id(&interaction_id)?)
+            .reject_credential(
+                &into_id(&interaction_id)?,
+                into_id_opt_vec(&credential_ids)?,
+            )
             .await?)
     }
 
@@ -267,4 +278,14 @@ pub struct HolderAcceptCredentialRequestBindingDTO {
 #[uniffi(name = "HolderRefreshCredentialResponse")]
 pub struct HolderRefreshCredentialResponseBindingDTO {
     pub credential_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HolderAcceptCredentialResponse")]
+pub struct HolderAcceptCredentialResponseBindingDTO {
+    /// One credential per accepted credential configuration.
+    pub credential_ids: Vec<String>,
+    /// Some of the offered credential configurations could not be issued.
+    /// Only set when several configurations were offered.
+    pub partially_successful: Option<bool>,
 }

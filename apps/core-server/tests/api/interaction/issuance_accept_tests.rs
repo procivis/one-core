@@ -14,13 +14,15 @@ use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
-use shared_types::DidValue;
+use shared_types::{DidValue, InteractionId};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
+use crate::fixtures::interaction::{
+    ConfigurationParams, InteractionDataParams, dummy_interaction_data,
+};
 use crate::fixtures::presentation::w3c_jwt_vc;
 use crate::fixtures::wallet_provider::create_wallet_unit_attestation_issuer_identifier;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
@@ -194,6 +196,7 @@ async fn test_issuance_accept_openid4vc() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+    assert!(resp.get("partiallySuccessful").is_none());
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     let holder_identifier = credential
@@ -231,6 +234,193 @@ async fn test_issuance_accept_openid4vc() {
         actions,
         HashSet::from([HistoryAction::Accepted, HistoryAction::Issued])
     );
+}
+
+/// Accepts an offer of two `jwt_vc_json` configurations (`01ee2044-…` and `second`).
+/// With `fail_second`, the issuer rejects the credential request of the second configuration.
+async fn accept_multi_configuration_offer(
+    fail_second: bool,
+) -> (TestContext, InteractionId, serde_json::Value) {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            notification_id: Some("notification".to_string()),
+            notification_endpoint: Some(format!(
+                "{}/ssi/openid4vci/final-1.0/{}/notification",
+                context.server_mock.uri(),
+                credential_schema.id
+            )),
+            additional_configurations: vec![ConfigurationParams {
+                credential_configuration_id: "second".to_string(),
+                format: "jwt_vc_json".to_string(),
+                notification_id: None,
+                credential_id: None,
+            }],
+            ..Default::default()
+        },
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"firstName":"John"}),
+    )
+    .await;
+
+    let issued = if fail_second {
+        context
+            .server_mock
+            .ssi_credential_endpoint_failure(credential_schema.id, "123", "second")
+            .await;
+        1
+    } else {
+        2
+    };
+    context
+        .server_mock
+        .ssi_credential_endpoint(
+            credential_schema.id,
+            "123",
+            &[jwt_credential],
+            issued,
+            Some("notification"),
+        )
+        .await;
+    context
+        .server_mock
+        .ssi_notification_endpoint(credential_schema.id, "notification", "123", issued)
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 2)
+        .await;
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
+        .await;
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    (context, interaction.id, resp)
+}
+
+#[tokio::test]
+async fn test_issuance_accept_multiple_configurations() {
+    let (context, interaction_id, resp) = accept_multi_configuration_offer(false).await;
+
+    assert_eq!(resp["partiallySuccessful"], false);
+    let credential_ids = resp["credentialIds"].as_array().unwrap();
+    assert_eq!(credential_ids.len(), 2);
+    assert_eq!(resp["id"], credential_ids[0]);
+    for credential_id in credential_ids {
+        let credential = context.db.credentials.get(&credential_id.parse()).await;
+        assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    }
+
+    let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
+    let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let configurations = data["credential_configurations"].as_array().unwrap();
+    assert_eq!(configurations.len(), 2);
+    for (configuration, credential_id) in configurations.iter().zip(credential_ids) {
+        assert_eq!(configuration["notification_id"], "notification");
+        assert_eq!(&configuration["credential_id"], credential_id);
+    }
+}
+
+#[tokio::test]
+async fn test_issuance_accept_partially_successful() {
+    let (context, interaction_id, resp) = accept_multi_configuration_offer(true).await;
+
+    assert_eq!(resp["partiallySuccessful"], true);
+    let credential_ids = resp["credentialIds"].as_array().unwrap();
+    assert_eq!(credential_ids.len(), 1);
+    assert_eq!(resp["id"], credential_ids[0]);
+
+    let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
+    let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let configurations = data["credential_configurations"].as_array().unwrap();
+    assert_eq!(&configurations[0]["credential_id"], &credential_ids[0]);
+    assert_eq!(configurations[1]["credential_id"], serde_json::Value::Null);
 }
 
 #[tokio::test]
@@ -414,7 +604,8 @@ async fn accept_batch_issuance(
     // only issuers that don't support jwk/cose_key binding force the wallet to auto-generate a
     // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
     // (bound via `sub`) need
-    interaction_data["cryptographic_binding_methods_supported"] = json!(["did:key"]);
+    interaction_data["credential_configurations"][0]["cryptographic_binding_methods_supported"] =
+        json!(["did:key"]);
     let interaction_data = serde_json::to_vec(&interaction_data).unwrap();
 
     let interaction = context
@@ -437,6 +628,7 @@ async fn accept_batch_issuance(
             "123",
             issuer_key.to_owned(),
             issuer_did.to_owned(),
+            1,
         )
         .await;
     context

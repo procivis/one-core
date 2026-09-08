@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use futures_util::FutureExt;
@@ -11,7 +12,8 @@ use uuid::Uuid;
 use super::SSIHolderService;
 use super::dto::{
     ContinueIssuanceResponseDTO, HandleInvitationResultDTO, InitiateIssuanceRequestDTO,
-    InitiateIssuanceResponseDTO, OpenIDAuthorizationCodeFlowInteractionData,
+    InitiateIssuanceResponseDTO, IssuanceAcceptResponseDTO,
+    OpenIDAuthorizationCodeFlowInteractionData,
 };
 use super::error::HolderServiceError;
 use super::mapper::select_holder_key;
@@ -22,23 +24,29 @@ use super::validator::{
 use crate::config::core_config::{BlobStorageType, FormatType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
-use crate::model::credential::{Credential, CredentialStateEnum, UpdateCredentialRequest};
+use crate::model::credential::{
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+};
 use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::proto::oauth_client::OAuthClientProvider;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::blob_storage::BlobStorage;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::{CredentialWithBlob, InvitationResponseEnum};
-use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::interaction_data_to_accepted_key_storage_security;
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::configuration_to_accepted_key_storage_security;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderCredentialConfiguration;
 use crate::provider::issuance_protocol::{
     self, HolderBindingInput, IssuanceProtocol, deserialize_interaction_data,
     serialize_interaction_data,
 };
 use crate::service::error::MissingProviderError;
 use crate::validator::ecosystem::{
-    SelectionRole, commit_selected_ecosystem, resolve_ecosystem,
+    SelectionRole, commit_selected_ecosystem, resolve_credential_ecosystems,
     validate_ecosystem_selection_allow_not_set, validate_ecosystem_step,
 };
 use crate::validator::key_security::match_key_security_level;
@@ -55,7 +63,7 @@ impl SSIHolderService {
         identifier_id: Option<IdentifierId>,
         key_id: Option<KeyId>,
         tx_code: Option<String>,
-    ) -> Result<CredentialId, HolderServiceError> {
+    ) -> Result<IssuanceAcceptResponseDTO, HolderServiceError> {
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => Some(
                 self.identifier_repository
@@ -91,14 +99,15 @@ impl SSIHolderService {
             None
         };
 
-        let credential_id = self
+        let response = self
             .accept_credential_final1(interaction_id, holder_binding_input, tx_code)
             .await?;
 
         tracing::info!(
-            "Accepted issuance of credential {credential_id} for interaction {interaction_id}"
+            "Accepted issuance of credentials {:?} for interaction {interaction_id}",
+            response.credential_ids
         );
-        Ok(credential_id)
+        Ok(response)
     }
 
     /// specific handling for the final-1 protocol, credential gets created after issued
@@ -107,7 +116,7 @@ impl SSIHolderService {
         interaction_id: InteractionId,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<CredentialId, HolderServiceError> {
+    ) -> Result<IssuanceAcceptResponseDTO, HolderServiceError> {
         let interaction = self
             .interaction_repository
             .get_interaction(&interaction_id, None)
@@ -129,9 +138,158 @@ impl SSIHolderService {
             deserialize_interaction_data(interaction.data.as_ref())
                 .error_while("parsing holder interaction data")?;
 
-        if let Some(holder_binding) = &holder_binding
+        // a configuration the holder binding does not satisfy is skipped, unless none is left
+        let mut accepted_configuration_ids = vec![];
+        let mut skip_error = None;
+        for configuration in &data.credential_configurations {
+            match self
+                .validate_credential_configuration(holder_binding.as_ref(), configuration)
+                .await
+            {
+                Ok(()) => accepted_configuration_ids
+                    .push(configuration.credential_configuration_id.clone()),
+                Err(error) => {
+                    tracing::warn!(
+                        "Skipping credential configuration {}: {error}",
+                        configuration.credential_configuration_id
+                    );
+                    skip_error = Some(error);
+                }
+            }
+        }
+        if accepted_configuration_ids.is_empty() {
+            return Err(skip_error.unwrap_or(
+                HolderServiceError::MissingCredentialsForInteraction(interaction_id),
+            ));
+        }
+
+        let protocol = self
+            .issuance_protocol_provider
+            .get_protocol(&data.protocol)?;
+
+        let result = protocol
+            .holder_accept_credential(
+                interaction.clone(),
+                holder_binding,
+                tx_code,
+                accepted_configuration_ids,
+            )
+            .await
+            .error_while("accepting credential")?;
+
+        for failure in &result.failed {
+            tracing::warn!(
+                "Credential configuration {} not issued: {}",
+                failure.credential_configuration_id,
+                failure.error
+            );
+        }
+        let Some(first_response) = result.issued.first() else {
+            let error = result
+                .failed
+                .into_iter()
+                .next()
+                .map(|failure| failure.error)
+                .unwrap_or(IssuanceProtocolError::Failed(
+                    "No credential configuration issued".to_string(),
+                ));
+            return Err(error.error_while("accepting credential").into());
+        };
+        // the single credential API returns the first issued credential
+        let id = first_response.main_credential.credential.id;
+        // a single configuration offer succeeds or fails as a whole
+        let partially_successful = (data.credential_configurations.len() > 1)
+            .then_some(!result.failed.is_empty() || skip_error.is_some());
+
+        // the credentials are the last artifacts of the issuance, so the ecosystem is final here
+        let artifacts = result
+            .issued
+            .iter()
+            .map(|issuer_response| {
+                // either the main credential blob or a batch item
+                let serialized = issuer_response
+                    .main_credential
+                    .serialized
+                    .as_ref()
+                    .or(issuer_response
+                        .batch_items
+                        .first()
+                        .and_then(|item| item.serialized.as_ref()))
+                    .ok_or(HolderServiceError::MappingError(
+                        "missing serialized credential".to_string(),
+                    ))?
+                    .to_owned();
+                Ok(ProtocolArtifact::HolderIssuanceCredential {
+                    credential: Cow::Borrowed(&issuer_response.main_credential.credential),
+                    serialized,
+                    credential_configuration_id: issuer_response
+                        .credential_configuration_id
+                        .clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, HolderServiceError>>()?;
+        let ecosystems = resolve_credential_ecosystems(
+            interaction.id,
+            &artifacts,
+            self.interaction_repository.as_ref(),
+            self.ecosystem_provider.as_ref(),
+            SelectionRole::Holder,
+        )
+        .await
+        .error_while("resolving ecosystems")?;
+
+        let mut credential_ids = vec![];
+        let mut credentials = vec![];
+        for (mut issuer_response, ecosystem) in
+            result.issued.into_iter().zip(ecosystems.per_credential)
+        {
+            issuer_response.main_credential.credential.ecosystem = ecosystem.to_owned();
+            credential_ids.push(issuer_response.main_credential.credential.id);
+            // the batch parent must exist before the batch items are created
+            credentials.push(issuer_response.main_credential);
+            for mut item in issuer_response.batch_items {
+                item.credential.ecosystem = ecosystem.to_owned();
+                credentials.push(item);
+            }
+        }
+
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+
+        self.transaction_manager
+            .tx_with_config(
+                async {
+                    for credential in credentials {
+                        self.create_credential(credential, db_blob_storage.as_ref())
+                            .await?;
+                    }
+                    Ok::<_, HolderServiceError>(())
+                }
+                .boxed(),
+                // `CredentialRepository::create_credential` opens a READ COMMITTED
+                // transaction to avoid InnoDB gap-lock deadlocks (ONES-54). Nesting
+                // requires the enclosing transaction to use the same isolation level.
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await
+            .error_while("creating credentials")??;
+        Ok(IssuanceAcceptResponseDTO {
+            id,
+            credential_ids,
+            partially_successful,
+        })
+    }
+
+    async fn validate_credential_configuration(
+        &self,
+        holder_binding: Option<&HolderBindingInput>,
+        configuration: &HolderCredentialConfiguration,
+    ) -> Result<(), HolderServiceError> {
+        if let Some(holder_binding) = holder_binding
             && let Some(accepted_security_levels) =
-                interaction_data_to_accepted_key_storage_security(&data)
+                configuration_to_accepted_key_storage_security(configuration)
         {
             match_key_security_level(
                 &holder_binding.key.storage_type,
@@ -141,14 +299,15 @@ impl SSIHolderService {
             .error_while("matching key security")?;
         }
 
-        let format_type = match data.format.as_str() {
+        let format_type = match configuration.format.as_str() {
             "jwt_vc_json" => FormatType::Jwt,
             "dc+sd-jwt" => FormatType::SdJwtVc,
             "vc+sd-jwt" => FormatType::SdJwt,
             "mso_mdoc" => FormatType::Mdoc,
             "ldp_vc" => {
-                if data
+                if configuration
                     .credential_signing_alg_values_supported
+                    .as_ref()
                     .is_some_and(|values| {
                         values
                             .iter()
@@ -163,7 +322,7 @@ impl SSIHolderService {
             _ => {
                 return Err(HolderServiceError::MappingError(format!(
                     "Unknown format: {}",
-                    data.format
+                    configuration.format
                 )));
             }
         };
@@ -174,7 +333,7 @@ impl SSIHolderService {
             .ok_or(MissingProviderError::FormatterType(format_type))
             .error_while("getting formatter")?;
 
-        if let Some(holder_binding) = &holder_binding {
+        if let Some(holder_binding) = holder_binding {
             validate_holder_capabilities(
                 &self.config,
                 holder_binding,
@@ -184,78 +343,7 @@ impl SSIHolderService {
             .await?;
         }
 
-        let protocol = self
-            .issuance_protocol_provider
-            .get_protocol(&data.protocol)?;
-
-        let mut issuer_response = protocol
-            .holder_accept_credential(interaction.clone(), holder_binding, tx_code)
-            .await
-            .error_while("accepting credential")?;
-
-        // either the main credential blob or a batch item
-        let serialized = issuer_response
-            .main_credential
-            .serialized
-            .as_ref()
-            .or(issuer_response
-                .batch_items
-                .first()
-                .and_then(|item| item.serialized.as_ref()))
-            .ok_or(HolderServiceError::MappingError(
-                "missing serialized credential".to_string(),
-            ))?
-            .to_owned();
-
-        // the credential is the last artifact of the issuance, so the ecosystem is final here
-        let ecosystem = resolve_ecosystem(
-            interaction.id,
-            &ProtocolArtifact::HolderIssuanceCredential {
-                credential: Cow::Borrowed(&issuer_response.main_credential.credential),
-                serialized,
-                credential_configuration_id: data.credential_configuration_id,
-            },
-            self.interaction_repository.as_ref(),
-            self.ecosystem_provider.as_ref(),
-            SelectionRole::Holder,
-        )
-        .await
-        .error_while("resolving ecosystem")?;
-
-        issuer_response.main_credential.credential.ecosystem = ecosystem.to_owned();
-        for item in &mut issuer_response.batch_items {
-            item.credential.ecosystem = ecosystem.to_owned();
-        }
-
-        let db_blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)?;
-
-        let main_credential_id = issuer_response.main_credential.credential.id;
-        self.transaction_manager
-            .tx_with_config(
-                async {
-                    self.create_credential(
-                        issuer_response.main_credential,
-                        db_blob_storage.as_ref(),
-                    )
-                    .await?;
-                    for batch_item in issuer_response.batch_items {
-                        self.create_credential(batch_item, db_blob_storage.as_ref())
-                            .await?;
-                    }
-                    Ok::<_, HolderServiceError>(())
-                }
-                .boxed(),
-                // `CredentialRepository::create_credential` opens a READ COMMITTED
-                // transaction to avoid InnoDB gap-lock deadlocks (ONES-54). Nesting
-                // requires the enclosing transaction to use the same isolation level.
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
-            .await
-            .error_while("creating credentials")??;
-        Ok(main_credential_id)
+        Ok(())
     }
 
     async fn create_credential(
@@ -336,68 +424,73 @@ impl SSIHolderService {
             .issuance_protocol_provider
             .get_protocol(&data.protocol)?;
 
-        let credential_ids: Vec<_> = protocol
+        let refreshed = protocol
             .holder_refresh_credential(&interaction, None)
             .await
-            .error_while("refreshing credential batch")?
-            .into_iter()
-            .map(|c| c.id)
-            .collect();
+            .error_while("refreshing credential batch")?;
+        let credential_ids: Vec<_> = refreshed.iter().map(|c| c.id).collect();
 
         if let Some(ecosystem_id) = &interaction.ecosystem {
             let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
-
-            let main_credential = self
-                .credential_repository
-                .get_credentials_by_interaction_id(&interaction_id)
-                .await
-                .error_while("getting credential")?
-                .into_iter()
-                .next()
-                .ok_or(HolderServiceError::MappingError(
-                    "Missing main credential".to_string(),
-                ))?;
-
-            // pick one issued credential to check issuer (the protocol makes sure the individual items have consistent issuer)
-            let new_batch_item = self
-                .credential_repository
-                .get_credential(
-                    credential_ids
-                        .first()
-                        .ok_or(HolderServiceError::MappingError("empty batch".to_string()))?,
-                )
-                .await
-                .error_while("getting batch credential")?;
-
             let db_blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)?;
 
-            let blob = db_blob_storage
-                .get(
-                    &new_batch_item
-                        .credential_blob_id
-                        .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?,
-                )
-                .await
-                .error_while("getting batch credential blob")?
-                .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?;
+            // one issued credential per refreshed batch is enough to check the issuer, the
+            // protocol makes sure the items of a batch have a consistent issuer
+            let mut validated_parents = HashSet::new();
+            for batch_item in &refreshed {
+                let parent = batch_item
+                    .parent
+                    .as_ref()
+                    .ok_or(HolderServiceError::MappingError(
+                        "Missing batch parent".to_string(),
+                    ))?;
+                if !validated_parents.insert(parent.id()) {
+                    continue;
+                }
+                let main_credential = parent
+                    .as_ref()
+                    .await
+                    .error_while("getting batch parent")?
+                    .to_owned();
 
-            let serialized = String::from_utf8(blob.value)
-                .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
-                .into();
+                let batch_item = self
+                    .credential_repository
+                    .get_credential(&batch_item.id)
+                    .await
+                    .error_while("getting batch credential")?;
+                let blob = db_blob_storage
+                    .get(
+                        &batch_item
+                            .credential_blob_id
+                            .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?,
+                    )
+                    .await
+                    .error_while("getting batch credential blob")?
+                    .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?;
+                let serialized = String::from_utf8(blob.value)
+                    .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
+                    .into();
 
-            ecosystem
-                .validate_interaction(
-                    &ProtocolArtifact::HolderIssuanceCredential {
-                        credential: Cow::Owned(main_credential),
-                        serialized,
-                        credential_configuration_id: data.credential_configuration_id,
-                    },
-                    &interaction,
-                )
-                .await
-                .error_while("validating ecosystem")?;
+                let credential_configuration_id = data
+                    .configuration_for_credential(main_credential.id)
+                    .map(|configuration| configuration.credential_configuration_id.clone())
+                    .ok_or(HolderServiceError::MappingError(
+                        "Missing credential configuration".to_string(),
+                    ))?;
+                ecosystem
+                    .validate_interaction(
+                        &ProtocolArtifact::HolderIssuanceCredential {
+                            credential: Cow::Owned(main_credential),
+                            serialized,
+                            credential_configuration_id,
+                        },
+                        &interaction,
+                    )
+                    .await
+                    .error_while("validating ecosystem")?;
+            }
         }
 
         tracing::info!(
@@ -409,12 +502,20 @@ impl SSIHolderService {
     pub async fn reject_credential(
         &self,
         interaction_id: &InteractionId,
+        credential_ids: Option<Vec<CredentialId>>,
     ) -> Result<(), HolderServiceError> {
-        let credentials = self
+        let credentials: Vec<_> = self
             .credential_repository
             .get_credentials_by_interaction_id(interaction_id)
             .await
-            .error_while("getting credentials")?;
+            .error_while("getting credentials")?
+            .into_iter()
+            .filter(|credential| {
+                credential_ids
+                    .as_ref()
+                    .is_none_or(|ids| ids.contains(&credential.id))
+            })
+            .collect();
 
         if credentials.is_empty() {
             return Err(HolderServiceError::MissingCredentialsForInteraction(
@@ -448,7 +549,7 @@ impl SSIHolderService {
 
         let mut result: Result<(), HolderServiceError> = Ok(());
         for (credential, protocol) in credential_protocol_pairs {
-            if let Err(err) = self.reject_single_credential(credential, &*protocol).await {
+            if let Err(err) = self.reject_offered_credential(credential, &*protocol).await {
                 result = Err(err);
             };
         }
@@ -456,26 +557,27 @@ impl SSIHolderService {
         result
     }
 
-    async fn reject_single_credential(
+    async fn reject_offered_credential(
         &self,
         credential: Credential,
         protocol: &dyn IssuanceProtocol,
     ) -> Result<(), HolderServiceError> {
-        let credential_id = credential.id;
-
         // Reject locally first; the issuer notification is informational and
         // must not break the rejection.
-        self.credential_repository
-            .update_credential(
-                credential_id,
-                UpdateCredentialRequest {
-                    state: Some(CredentialStateEnum::Rejected),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("updating credential")?;
+        for credential_id in self.credential_and_batch_item_ids(&credential).await? {
+            self.credential_repository
+                .update_credential(
+                    credential_id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Rejected),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating credential")?;
+        }
 
+        let credential_id = credential.id;
         if let Err(error) = protocol.holder_reject_credential(credential).await {
             tracing::warn!(
                 "Failed to notify the issuer about rejected credential {credential_id}: {error}"
@@ -483,6 +585,31 @@ impl SSIHolderService {
         }
 
         Ok(())
+    }
+
+    // the items of a batch follow their parent
+    async fn credential_and_batch_item_ids(
+        &self,
+        credential: &Credential,
+    ) -> Result<Vec<CredentialId>, HolderServiceError> {
+        let batch_items = match credential.r#type {
+            CredentialType::BatchParent => {
+                self.credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(credential.id).condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting batch items")?
+                    .values
+            }
+            _ => vec![],
+        };
+        Ok(std::iter::once(credential.id)
+            .chain(batch_items.into_iter().map(|item| item.id))
+            .collect())
     }
 
     /// Settle the ecosystem of an interaction the protocol has just created: a user selection is

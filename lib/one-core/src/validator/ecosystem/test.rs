@@ -476,11 +476,12 @@ async fn test_submission_committed_ecosystem_covers_every_credential() {
         Some("EUDI"),
     );
 
-    let ecosystems = resolve_verifier_submission_ecosystems(
+    let ecosystems = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0, 1])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap();
@@ -504,11 +505,12 @@ async fn test_submission_committed_ecosystem_rejecting_any_credential_fails() {
         Some("EUDI"),
     );
 
-    let error = resolve_verifier_submission_ecosystems(
+    let error = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap_err();
@@ -524,11 +526,12 @@ async fn test_submission_ecosystem_validating_every_credential_is_committed() {
         None,
     );
 
-    let ecosystems = resolve_verifier_submission_ecosystems(
+    let ecosystems = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0, 1])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap();
@@ -556,11 +559,12 @@ async fn test_submission_partially_validating_ecosystem_is_not_committed() {
         None,
     );
 
-    let ecosystems = resolve_verifier_submission_ecosystems(
+    let ecosystems = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0]), ("OTHER", &[0, 1])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap();
@@ -584,11 +588,12 @@ async fn test_submission_credential_trust_survives_non_complying_other_credentia
         None,
     );
 
-    let ecosystems = resolve_verifier_submission_ecosystems(
+    let ecosystems = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0]), ("OTHER", &[1])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap();
@@ -612,11 +617,12 @@ async fn test_submission_credential_complying_with_no_ecosystem_gets_no_trust() 
         None,
     );
 
-    let ecosystems = resolve_verifier_submission_ecosystems(
+    let ecosystems = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap();
@@ -637,11 +643,12 @@ async fn test_submission_without_credentials_commits_nothing() {
         None,
     );
 
-    let ecosystems = resolve_verifier_submission_ecosystems(
+    let ecosystems = resolve_credential_ecosystems(
         interaction_id,
         &[],
         &interaction_repository,
         &submission_directory(&[]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap();
@@ -659,11 +666,12 @@ async fn test_submission_with_nothing_applicable_fails_when_enforced() {
         None,
     );
 
-    let error = resolve_verifier_submission_ecosystems(
+    let error = resolve_credential_ecosystems(
         interaction_id,
         &[submission_artifact(0), submission_artifact(1)],
         &interaction_repository,
         &submission_directory(&[("EUDI", &[0])]),
+        SelectionRole::Verifier,
     )
     .await
     .unwrap_err();

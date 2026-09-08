@@ -30,7 +30,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::
     MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
 };
 use crate::util::openid4vp::persist_accepted_proof;
-use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
+use crate::validator::ecosystem::{SelectionRole, resolve_credential_ecosystems};
 
 impl ProofService {
     // TODO: This method is used as part of the OID4VP BLE/MQTT flow
@@ -234,11 +234,12 @@ impl ProofService {
                     })
                     .collect::<Vec<_>>();
 
-                resolve_verifier_submission_ecosystems(
+                resolve_credential_ecosystems(
                     interaction.id,
                     &artifacts,
                     self.interaction_repository.as_ref(),
                     self.ecosystem_provider.as_ref(),
+                    SelectionRole::Verifier,
                 )
                 .await
                 .error_while("resolving ecosystems")?

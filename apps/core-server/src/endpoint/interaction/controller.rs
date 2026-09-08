@@ -9,10 +9,10 @@ use shared_types::{InteractionId, Permission};
 use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
-    IssuanceRefreshResponseRestDTO, IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
-    PresentationSubmitV2RequestRestDTO, ProposeProofRequestRestDTO,
+    IssuanceAcceptResponseRestDTO, IssuanceRefreshResponseRestDTO, IssuanceRejectRequestRestDTO,
+    PresentationRejectRequestRestDTO, PresentationSubmitV2RequestRestDTO,
+    ProposeProofRequestRestDTO,
 };
-use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::interaction::dto::{
@@ -66,7 +66,7 @@ pub(crate) async fn handle_invitation(
     post,
     path = "/api/interaction/v1/issuance-accept",
     request_body = IssuanceAcceptRequestRestDTO,
-    responses(OkOrErrorResponse<EntityResponseRestDTO>),
+    responses(OkOrErrorResponse<IssuanceAcceptResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -86,7 +86,7 @@ pub(crate) async fn issuance_accept(
         Json<IssuanceAcceptRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<EntityResponseRestDTO> {
+) -> OkOrErrorResponse<IssuanceAcceptResponseRestDTO> {
     let result = state
         .core
         .ssi_holder_service
@@ -149,7 +149,7 @@ pub(crate) async fn issuance_reject(
     let result = state
         .core
         .ssi_holder_service
-        .reject_credential(&request.interaction_id)
+        .reject_credential(&request.interaction_id, request.credential_ids)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "rejecting credential")
 }

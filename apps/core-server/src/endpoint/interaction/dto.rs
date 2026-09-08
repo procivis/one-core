@@ -5,7 +5,8 @@ use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{ProposeProofRequestDTO, ProposeProofResponseDTO};
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, HandleInvitationRequestDTO, InitiateIssuanceResponseDTO,
-    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
+    IssuanceAcceptResponseDTO, PresentationSubmitV2CredentialRequestDTO,
+    PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -154,10 +155,28 @@ pub struct IssuanceRefreshResponseRestDTO {
     pub ids: Vec<CredentialId>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssuanceRejectRequestRestDTO {
     pub interaction_id: InteractionId,
+    /// Credentials to reject. If not specified, all credentials of the interaction are rejected.
+    pub credential_ids: Option<Vec<CredentialId>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(IssuanceAcceptResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IssuanceAcceptResponseRestDTO {
+    /// Deprecated. Use `credentialIds`.
+    #[schema(deprecated = true)]
+    pub id: CredentialId,
+    /// One credential per accepted credential configuration.
+    pub credential_ids: Vec<CredentialId>,
+    /// Some of the offered credential configurations could not be issued.
+    /// Only present when several configurations were offered.
+    pub partially_successful: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]

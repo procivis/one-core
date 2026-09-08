@@ -44,7 +44,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::jwe::decrypt_jwe;
 use crate::util::openid4vp::persist_accepted_proof;
-use crate::validator::ecosystem::resolve_verifier_submission_ecosystems;
+use crate::validator::ecosystem::{SelectionRole, resolve_credential_ecosystems};
 use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
 
 impl OID4VPFinal1_0Service {
@@ -365,11 +365,12 @@ impl OID4VPFinal1_0Service {
                     })
                     .collect::<Vec<_>>();
 
-                resolve_verifier_submission_ecosystems(
+                resolve_credential_ecosystems(
                     interaction.id,
                     &artifacts,
                     self.interaction_repository.as_ref(),
                     self.ecosystem_provider.as_ref(),
+                    SelectionRole::Verifier,
                 )
                 .await
                 .error_while("resolving ecosystems")?

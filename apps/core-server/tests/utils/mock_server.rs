@@ -151,6 +151,7 @@ impl MockServer {
         bearer_auth: impl Display,
         issuer_key: GeneratedKey,
         issuer_did: DidValue,
+        expected_calls: u64,
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
@@ -199,6 +200,31 @@ impl MockServer {
                     "notification_id": null,
                 }))
             })
+            .expect(expected_calls)
+            .mount(&self.mock)
+            .await;
+    }
+
+    /// Rejects credential requests for the given credential configuration,
+    /// takes precedence over the catch-all credential endpoint mocks.
+    pub async fn ssi_credential_endpoint_failure(
+        &self,
+        schema_id: impl Display,
+        bearer_auth: impl Display,
+        credential_configuration_id: impl Display,
+    ) {
+        Mock::given(method(Method::POST))
+            .and(path(format!(
+                "/ssi/openid4vci/final-1.0/{schema_id}/credential"
+            )))
+            .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
+            .and(body_partial_json(json!({
+                "credential_configuration_id": credential_configuration_id.to_string()
+            })))
+            .respond_with(ResponseTemplate::new(400).set_body_json(json!({
+                "error": "invalid_credential_request"
+            })))
+            .with_priority(1)
             .expect(1)
             .mount(&self.mock)
             .await;

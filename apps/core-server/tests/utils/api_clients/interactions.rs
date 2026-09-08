@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::{DidId, InstanceId, KeyId, OrganisationId};
+use shared_types::{CredentialId, DidId, InstanceId, KeyId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -49,9 +49,14 @@ impl InteractionsApi {
             .await
     }
 
-    pub async fn issuance_reject(&self, interaction_id: impl Into<Uuid>) -> Response {
+    pub async fn issuance_reject(
+        &self,
+        interaction_id: impl Into<Uuid>,
+        credential_ids: Option<Vec<CredentialId>>,
+    ) -> Response {
         let body = json!({
           "interactionId": interaction_id.into(),
+          "credentialIds": credential_ids,
         });
 
         self.client
@@ -59,7 +64,6 @@ impl InteractionsApi {
             .await
     }
 
-    #[expect(unused)]
     pub async fn issuance_refresh(&self, interaction_id: impl Into<Uuid>) -> Response {
         let url = format!(
             "/api/interaction/v1/{}/issuance-refresh",

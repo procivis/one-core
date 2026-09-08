@@ -17,7 +17,7 @@ use super::model::{
     CredentialIssuerParams, CredentialSchemaBackgroundPropertiesRequestDTO,
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    HolderInteractionData, OpenID4VCIIssuerInteractionDataDTO,
+    HolderCredentialConfiguration, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign, PROCIVIS_DESIGN_KEY,
 };
 use crate::config::ConfigValidationError;
@@ -274,18 +274,38 @@ pub(crate) fn convert_metadata_to_layout_properties(
     }
 }
 
-pub(crate) fn interaction_data_to_accepted_key_storage_security(
-    data: &HolderInteractionData,
+pub(crate) fn configuration_to_accepted_key_storage_security(
+    configuration: &HolderCredentialConfiguration,
 ) -> Option<Vec<KeyStorageSecurityLevel>> {
-    data.proof_types_supported.as_ref().and_then(|proof_types| {
-        proof_types.get("jwt").and_then(|proof_type| {
-            proof_type
-                .key_attestations_required
-                .as_ref()
-                .map(|kar| kar.key_storage.clone())
-                .and_then(|levels| (!levels.is_empty()).then_some(levels))
+    configuration
+        .proof_types_supported
+        .as_ref()
+        .and_then(|proof_types| {
+            proof_types.get("jwt").and_then(|proof_type| {
+                proof_type
+                    .key_attestations_required
+                    .as_ref()
+                    .map(|kar| kar.key_storage.clone())
+                    .and_then(|levels| (!levels.is_empty()).then_some(levels))
+            })
         })
-    })
+}
+
+// None means no restriction
+pub(super) fn intersect_supported<T: PartialEq>(
+    current: Option<Vec<T>>,
+    other: Option<Vec<T>>,
+) -> Option<Vec<T>> {
+    match (current, other) {
+        (None, other) => other,
+        (current, None) => current,
+        (Some(current), Some(other)) => Some(
+            current
+                .into_iter()
+                .filter(|value| other.contains(value))
+                .collect(),
+        ),
+    }
 }
 
 pub(super) fn credential_config_to_holder_signing_algs_and_key_storage_security(
