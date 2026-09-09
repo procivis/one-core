@@ -573,7 +573,7 @@ pub(crate) async fn ssi_get_certificate_authority(
     tag = "ssi",
     summary = "Certificate - retrieve certificate",
     description = indoc::formatdoc! {"
-        Retrieve a certificate in PEM format by its UUID.
+        Retrieve a certificate by its UUID.
     "},
 )]
 pub(crate) async fn ssi_get_certificate(
