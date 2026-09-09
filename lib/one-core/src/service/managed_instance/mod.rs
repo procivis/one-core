@@ -32,7 +32,7 @@ mod test;
 #[derive(Clone)]
 pub struct ManagedInstanceService {
     organisation_repository: Arc<dyn OrganisationRepository>,
-    wallet_instance_repository: Arc<dyn ManagedInstanceRepository>,
+    managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -55,7 +55,7 @@ impl ManagedInstanceService {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
-        wallet_instance_repository: Arc<dyn ManagedInstanceRepository>,
+        managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -75,7 +75,7 @@ impl ManagedInstanceService {
     ) -> Self {
         Self {
             organisation_repository,
-            wallet_instance_repository,
+            managed_instance_repository,
             identifier_repository,
             history_repository,
             trust_collection_repository,

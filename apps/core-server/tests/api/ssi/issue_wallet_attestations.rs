@@ -1,5 +1,5 @@
 use one_core::model::history::HistoryAction;
-use one_core::model::instance::InstanceStatus;
+use one_core::model::instance::{InstanceRole, InstanceStatus};
 use one_core::model::managed_instance::UpdateManagedInstanceRequest;
 use one_core::model::managed_instance_attested_key::ManagedInstanceAttestedKey;
 use one_core::proto::jwt::Jwt;
@@ -13,7 +13,8 @@ use uuid::Uuid;
 
 use crate::fixtures::assert_history_count;
 use crate::fixtures::wallet_provider::{
-    create_key_possession_proof, create_wallet_unit_attestation_issuer_identifier,
+    create_key_possession_proof, create_verifier_provider_issuer_identifier,
+    create_wallet_unit_attestation_issuer_identifier,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::managed_instances::TestWalletInstance;
@@ -359,4 +360,42 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
         .await
         .unwrap();
     assert_eq!(wallet_unit.attested_keys.as_ref().await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn test_issue_attestations_verifier_empty_success() {
+    // given
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    create_verifier_provider_issuer_identifier(&context, &org).await;
+
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
+
+    let verifier_instance = context
+        .db
+        .managed_instances
+        .create(
+            org.clone(),
+            TestWalletInstance {
+                role: Some(InstanceRole::Verifier),
+                public_key: Some(holder_public_jwk),
+                ..Default::default()
+            },
+        )
+        .await;
+    let auth_key_pop =
+        create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
+            .await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .issue_attestation(verifier_instance.id, &auth_key_pop, vec![], vec![])
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 200);
+    let resp_json = resp.json_value().await;
+    assert_eq!(resp_json, json!({}));
 }

@@ -70,7 +70,7 @@ const BASE_URL: &str = "https://localhost";
 fn mock_wallet_provider_service() -> ManagedInstanceService {
     ManagedInstanceService {
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
-        wallet_instance_repository: Arc::new(MockManagedInstanceRepository::default()),
+        managed_instance_repository: Arc::new(MockManagedInstanceRepository::default()),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
@@ -172,8 +172,8 @@ async fn test_register_wallet_unit() {
         .once()
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
 
-    let mut wallet_unit_repository = MockManagedInstanceRepository::new();
-    wallet_unit_repository
+    let mut managed_instance_repository = MockManagedInstanceRepository::new();
+    managed_instance_repository
         .expect_create()
         .return_once(|wu| Ok(wu.id));
 
@@ -232,7 +232,7 @@ async fn test_register_wallet_unit() {
     let ssi_wallet_provider_service = ManagedInstanceService {
         organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
-        wallet_instance_repository: Arc::new(wallet_unit_repository),
+        managed_instance_repository: Arc::new(managed_instance_repository),
         identifier_repository: Arc::new(identifier_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
@@ -283,8 +283,8 @@ async fn test_register_wallet_unit_integrity_check() {
             }))
         });
 
-    let mut wallet_unit_repository = MockManagedInstanceRepository::new();
-    wallet_unit_repository
+    let mut managed_instance_repository = MockManagedInstanceRepository::new();
+    managed_instance_repository
         .expect_create()
         .return_once(|wu| Ok(wu.id));
 
@@ -343,7 +343,7 @@ async fn test_register_wallet_unit_integrity_check() {
     let ssi_wallet_provider_service = ManagedInstanceService {
         organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
-        wallet_instance_repository: Arc::new(wallet_unit_repository),
+        managed_instance_repository: Arc::new(managed_instance_repository),
         identifier_repository: Arc::new(identifier_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
@@ -414,8 +414,8 @@ async fn test_register_verifier_unit() {
         .once()
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
 
-    let mut wallet_unit_repository = MockManagedInstanceRepository::new();
-    wallet_unit_repository
+    let mut managed_instance_repository = MockManagedInstanceRepository::new();
+    managed_instance_repository
         .expect_create()
         .return_once(|wu| Ok(wu.id));
 
@@ -427,7 +427,7 @@ async fn test_register_verifier_unit() {
     let service = ManagedInstanceService {
         organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
-        wallet_instance_repository: Arc::new(wallet_unit_repository),
+        managed_instance_repository: Arc::new(managed_instance_repository),
         history_repository: Arc::new(history_repository),
         verifier_provider: Arc::new(verifier_provider),
         ..mock_wallet_provider_service()
@@ -602,14 +602,14 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         organisation: dummy_organisation(None).into(),
         attested_keys: Default::default(),
     };
-    let mut wallet_unit_repository = MockManagedInstanceRepository::new();
-    wallet_unit_repository
+    let mut managed_instance_repository = MockManagedInstanceRepository::new();
+    managed_instance_repository
         .expect_get()
         .returning(move |_| Ok(wallet_unit.clone()));
 
     // given
     let service = ManagedInstanceService {
-        wallet_instance_repository: Arc::new(wallet_unit_repository),
+        managed_instance_repository: Arc::new(managed_instance_repository),
         session_provider: Arc::new(StaticSessionProvider::new_random()),
         config: Arc::new(generic_config().core),
         ..mock_wallet_provider_service()

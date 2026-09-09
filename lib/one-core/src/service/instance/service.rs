@@ -584,23 +584,23 @@ impl InstanceService {
     }
 
     pub async fn holder_instance_status(&self, id: InstanceId) -> Result<(), HolderInstanceError> {
-        let holder_wallet_unit = self
+        let instance = self
             .instance_repository
             .get(&id)
             .await
             .error_while("getting holder wallet unit")?;
 
-        if holder_wallet_unit.status != InstanceStatus::Active {
+        if instance.status != InstanceStatus::Active {
             return Ok(());
         }
 
-        let wallet_unit_status = self
+        let instance_status = self
             .wallet_unit_proto
-            .check_wallet_unit_status(&holder_wallet_unit)
+            .check_wallet_unit_status(&instance)
             .await
             .error_while("checking wallet unit status")?;
 
-        if wallet_unit_status == WalletUnitStatusCheckResponse::Revoked {
+        if instance_status == WalletUnitStatusCheckResponse::Revoked {
             self.instance_repository
                 .update(
                     &id,
@@ -616,14 +616,14 @@ impl InstanceService {
                 .create_history(History {
                     id: Uuid::new_v4().into(),
                     action: HistoryAction::Revoked,
-                    name: holder_wallet_unit.provider_name.clone(),
+                    name: instance.provider_name.clone(),
                     source: HistorySource::Core,
                     target: None,
                     entity_id: Some(id.into()),
                     entity_type: HistoryEntityType::WalletUnit,
                     metadata: None,
                     metadata_blob_id: None,
-                    organisation_id: Some(holder_wallet_unit.organisation.id()),
+                    organisation_id: Some(instance.organisation.id()),
                     user: self.session_provider.session().user(),
                     created_date: crate::clock::now_utc(),
                 })

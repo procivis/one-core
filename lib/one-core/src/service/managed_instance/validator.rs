@@ -15,16 +15,16 @@ use crate::validator::{
 
 /// Validates that `provider` is the organisation's configured provider for `role`, dispatching
 /// to the wallet- or verifier-specific check since those are tracked as separate org fields.
+/// Returns the provider issuer identifier ID
 pub(super) fn validate_org_for_role(
     organisation: &Organisation,
     role: InstanceRole,
     provider: &str,
-) -> Result<(), ManagedInstanceError> {
+) -> Result<IdentifierId, ManagedInstanceError> {
     match role {
         InstanceRole::Wallet => validate_org_wallet_provider(organisation, provider),
         InstanceRole::Verifier => validate_org_verifier_provider(organisation, provider),
     }
-    .map(|_identifier_id| ())
 }
 
 pub(crate) fn validate_org_wallet_provider(

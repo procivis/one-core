@@ -31,10 +31,7 @@ use super::mapper::{
     map_already_exists_error, params_into_display_names, public_key_from_wallet_unit,
     wallet_unit_from_request,
 };
-use super::validator::{
-    validate_org_for_role, validate_org_wallet_provider, validate_proof_payload,
-    validate_revocation_method,
-};
+use super::validator::{validate_org_for_role, validate_proof_payload, validate_revocation_method};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
@@ -86,7 +83,7 @@ impl ManagedInstanceService {
         id: &ManagedInstanceId,
     ) -> Result<GetManagedInstanceResponseDTO, ManagedInstanceError> {
         let result = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .get(id)
             .await
             .error_while("getting wallet unit")?;
@@ -132,7 +129,7 @@ impl ManagedInstanceService {
         };
 
         let result = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .get_list(query)
             .await
             .error_while("getting wallet units")?;
@@ -368,7 +365,7 @@ impl ManagedInstanceService {
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .create(wallet_unit)
             .await
             .error_while("creating wallet unit")?;
@@ -441,7 +438,7 @@ impl ManagedInstanceService {
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .create(wallet_unit)
             .await
             .map_err(map_already_exists_error)?;
@@ -467,7 +464,7 @@ impl ManagedInstanceService {
         request: WalletUnitActivationRequestDTO,
     ) -> Result<WalletUnitActivationResponseDTO, ManagedInstanceError> {
         let wallet_unit = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .get(&wallet_unit_id)
             .await
             .error_while("getting wallet unit")?;
@@ -668,7 +665,7 @@ impl ManagedInstanceService {
             };
 
             // store the userSub + CSR before calling BFF provider
-            self.wallet_instance_repository
+            self.managed_instance_repository
                 .update(
                     &wallet_unit_id,
                     UpdateManagedInstanceRequest {
@@ -707,7 +704,7 @@ impl ManagedInstanceService {
             old_ids.push(ac.signature_id.to_owned());
             old_ids
         });
-        self.wallet_instance_repository
+        self.managed_instance_repository
             .update(
                 &wallet_unit_id,
                 UpdateManagedInstanceRequest {
@@ -796,7 +793,7 @@ impl ManagedInstanceService {
         wallet_unit: &ManagedInstance,
         error_metadata: HistoryErrorMetadata,
     ) -> Result<(), ManagedInstanceError> {
-        self.wallet_instance_repository
+        self.managed_instance_repository
             .update(
                 &wallet_unit.id,
                 UpdateManagedInstanceRequest {
@@ -820,54 +817,53 @@ impl ManagedInstanceService {
 
     pub async fn issue_attestation(
         &self,
-        wallet_unit_id: ManagedInstanceId,
+        instance_id: ManagedInstanceId,
         bearer_token: &str,
         request: IssueWalletUnitAttestationRequestDTO,
     ) -> Result<IssueWalletUnitAttestationResponseDTO, ManagedInstanceError> {
-        let wallet_unit = self
-            .wallet_instance_repository
-            .get(&wallet_unit_id)
+        let managed_instance = self
+            .managed_instance_repository
+            .get(&instance_id)
             .await
             .error_while("getting wallet unit")?;
 
-        if wallet_unit.status != InstanceStatus::Active {
+        if managed_instance.status != InstanceStatus::Active {
             return Err(ManagedInstanceError::WalletUnitRevoked
                 .error_while("validating status")
                 .into());
         }
 
-        let organisation = &wallet_unit.organisation.as_ref().await?;
-        let (_, config_params) = self.get_wallet_provider_config_params(&wallet_unit.provider)?;
-        let issuer_identifier =
-            validate_org_wallet_provider(organisation.as_ref(), &wallet_unit.provider)
-                .error_while("validating provider")?;
+        let organisation = &managed_instance.organisation.as_ref().await?;
 
-        let revocation_method = config_params
-            .wallet_unit_attestation
-            .revocation_method
-            .as_ref()
-            .map(|revocation_method| {
-                self.revocation_method_provider
-                    .get_revocation_method(revocation_method)
-            })
-            .transpose()?;
+        let issuer_identifier = validate_org_for_role(
+            organisation.as_ref(),
+            managed_instance.role,
+            &managed_instance.provider,
+        )
+        .error_while("validating provider")?;
 
-        let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
+        let key = public_key_from_wallet_unit(&managed_instance, &*self.key_algorithm_provider)?;
         let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)
             .error_while("parsing bearer token")?;
-        self.verify_device_signing_proof(
-            &bearer_token,
-            &key,
-            config_params.device_auth_leeway_seconds,
-            None,
-        )
-        .await?;
+
+        let device_auth_leeway = self
+            .get_provider_registration_params(managed_instance.role, &managed_instance.provider)?
+            .device_auth_leeway;
+        self.verify_device_signing_proof(&bearer_token, &key, device_auth_leeway, None)
+            .await?;
 
         let now = crate::clock::now_utc();
         let (public_key_info, auth_fn) = self.get_key_info(issuer_identifier).await?;
 
         let mut instance_attestations = vec![];
         for wia_request in request.wia {
+            if managed_instance.role != InstanceRole::Wallet {
+                return Err(ManagedInstanceError::InvalidRole(managed_instance.role));
+            }
+
+            let (_, config_params) =
+                self.get_wallet_provider_config_params(&managed_instance.provider)?;
+
             let holder_jwk = self
                 .verify_pop(&wia_request.proof, config_params.device_auth_leeway_seconds)
                 .await?;
@@ -884,10 +880,17 @@ impl ManagedInstanceService {
             instance_attestations.push(signed_attestation);
         }
 
-        let mut attested_keys = wallet_unit.attested_keys.as_ref().await?.to_owned();
+        let mut attested_keys = managed_instance.attested_keys.as_ref().await?.to_owned();
 
         let mut key_attestation_inputs = vec![];
         for wua_request in request.wua {
+            if managed_instance.role != InstanceRole::Wallet {
+                return Err(ManagedInstanceError::InvalidRole(managed_instance.role));
+            }
+
+            let (_, config_params) =
+                self.get_wallet_provider_config_params(&managed_instance.provider)?;
+
             let wua_expiration_date =
                 now + config_params.wallet_unit_attestation.expiration_seconds;
 
@@ -908,7 +911,7 @@ impl ManagedInstanceService {
             } else {
                 let key = ManagedInstanceAttestedKey {
                     id: Uuid::new_v4().into(),
-                    instance_id: wallet_unit_id,
+                    instance_id,
                     created_date: now,
                     last_modified: now,
                     expiration_date: wua_expiration_date,
@@ -932,11 +935,24 @@ impl ManagedInstanceService {
 
         // DB update is only necessary if we either issued app or key attestation
         if !instance_attestations.is_empty() || updated_attested_keys.is_some() {
+            let (_, config_params) =
+                self.get_wallet_provider_config_params(&managed_instance.provider)?;
+
+            let revocation_method = config_params
+                .wallet_unit_attestation
+                .revocation_method
+                .as_ref()
+                .map(|revocation_method| {
+                    self.revocation_method_provider
+                        .get_revocation_method(revocation_method)
+                })
+                .transpose()?;
+
             self.tx_manager
                 .tx(async {
-                    self.wallet_instance_repository
+                    self.managed_instance_repository
                         .update(
-                            &wallet_unit_id,
+                            &instance_id,
                             UpdateManagedInstanceRequest {
                                 last_issuance: Some(now),
                                 attested_keys: updated_attested_keys,
@@ -948,8 +964,8 @@ impl ManagedInstanceService {
 
                     if !instance_attestations.is_empty() {
                         self.create_instance_history(
-                            &wallet_unit_id,
-                            wallet_unit.name.clone(),
+                            &instance_id,
+                            managed_instance.name.clone(),
                             HistoryAction::Updated,
                             None,
                             organisation.id,
@@ -960,7 +976,7 @@ impl ManagedInstanceService {
                     for key_attestation_input in key_attestation_inputs {
                         key_attestations.push(
                             self.issue_key_attestation(
-                                &wallet_unit,
+                                &managed_instance,
                                 &config_params,
                                 &auth_fn,
                                 public_key_info.clone(),
@@ -977,7 +993,8 @@ impl ManagedInstanceService {
                 .await
                 .error_while("issuing attestation")??;
         }
-        tracing::info!("Issued attestations for wallet unit {}", wallet_unit_id);
+
+        tracing::info!("Issued attestations for wallet unit {instance_id}");
         Ok(IssueWalletUnitAttestationResponseDTO {
             wia: instance_attestations,
             wua: key_attestations,
@@ -1331,7 +1348,7 @@ impl ManagedInstanceService {
         id: &ManagedInstanceId,
     ) -> Result<(), ManagedInstanceError> {
         let wallet_unit = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .get(id)
             .await
             .error_while("getting wallet unit")?;
@@ -1357,7 +1374,7 @@ impl ManagedInstanceService {
             }
         };
 
-        self.wallet_instance_repository
+        self.managed_instance_repository
             .update(
                 id,
                 UpdateManagedInstanceRequest {
@@ -1444,7 +1461,7 @@ impl ManagedInstanceService {
         id: &ManagedInstanceId,
     ) -> Result<(), ManagedInstanceError> {
         let wallet_unit = self
-            .wallet_instance_repository
+            .managed_instance_repository
             .get(id)
             .await
             .error_while("getting wallet unit")?;
@@ -1462,7 +1479,7 @@ impl ManagedInstanceService {
                 .await?;
         }
 
-        self.wallet_instance_repository
+        self.managed_instance_repository
             .delete(id)
             .await
             .error_while("deleting wallet unit")?;
