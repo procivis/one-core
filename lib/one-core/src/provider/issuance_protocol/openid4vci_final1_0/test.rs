@@ -29,8 +29,10 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VCIFinal1_0;
+use super::attestations::AttestationType;
 use super::model::{
-    HolderCredentialConfiguration, HolderInteractionData, OpenID4VCIIssuerInteractionDataDTO,
+    HolderBinding, HolderCredentialConfiguration, HolderInteractionData,
+    OpenID4VCIIssuerInteractionDataDTO, RequestedCredential,
 };
 use super::service::create_credential_offer;
 use crate::config::core_config::{
@@ -60,7 +62,10 @@ use crate::proto::identifier_creator::{
     RemoteIdentifierRelation,
 };
 use crate::proto::session_provider::NoSessionProvider;
-use crate::proto::wallet_instance::{IssuedWalletUnitAttestations, MockHolderWalletUnitProto};
+use crate::proto::wallet_instance::{
+    IssueWalletAttestationRequest, IssuedWalletUnitAttestations, MockHolderWalletUnitProto,
+    WUARequestParams,
+};
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -4990,4 +4995,159 @@ fn configuration_ids(interaction: &Interaction) -> Vec<String> {
         .into_iter()
         .map(|c| c.credential_configuration_id)
         .collect()
+}
+
+#[tokio::test]
+async fn test_prepare_wallet_attestations_attests_each_key_once() {
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .returning(|_| {
+            let mut security = MockKeySecurityLevel::new();
+            security
+                .expect_get_key_storages()
+                .return_const(vec!["INTERNAL".to_string()]);
+            security.expect_get_priority().return_const(0u64);
+            security
+                .expect_get_capabilities()
+                .returning(|| KeySecurityLevelCapabilities {
+                    openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+                });
+            Ok(Arc::new(security))
+        });
+    let mut holder_wallet_unit_repository = MockInstanceRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_by_role()
+        .with(eq(InstanceRole::Wallet), always())
+        .once()
+        .return_once(|_, _| {
+            Ok(Some(Instance {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                provider_type: WalletProviderType::ProcivisOne,
+                role: InstanceRole::Wallet,
+                provider_name: "provider".to_string(),
+                provider_url: "provider.url".to_string(),
+                provider_instance_id: Uuid::new_v4().into(),
+                status: InstanceStatus::Active,
+                organisation: dummy_organisation(None).into(),
+                authentication_key: None,
+                wallet_unit_attestations: Default::default(),
+                nonce: None,
+                user_nonce: None,
+            }))
+        });
+    let mut holder_wallet_unit_proto = MockHolderWalletUnitProto::new();
+    holder_wallet_unit_proto
+        .expect_issue_wallet_attestations()
+        .once()
+        .withf(|_, request| {
+            // one key, shared by the configurations requiring key attestation
+            matches!(
+                request,
+                IssueWalletAttestationRequest::Wua(WUARequestParams { attested_keys })
+                    if attested_keys.len() == 1
+                        && attested_keys[0].1 == KeyStorageSecurityLevel::Basic
+            )
+        })
+        .returning(|_, _| {
+            Ok(IssuedWalletUnitAttestations {
+                provider_response: IssueWalletUnitAttestationResponseDTO {
+                    wia: vec![],
+                    wua: vec!["wua".to_string()],
+                },
+                wia_pop_key: None,
+            })
+        });
+    let protocol = setup_protocol(TestInputs {
+        key_security_level_provider,
+        holder_wallet_unit_repository,
+        holder_wallet_unit_proto,
+        ..Default::default()
+    });
+
+    let configuration = |id: &str, key_attestation_required: bool| HolderCredentialConfiguration {
+        credential_configuration_id: id.to_string(),
+        format: "jwt_vc_json".to_string(),
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: Some(IndexMap::from([(
+            "jwt".to_string(),
+            ProofTypeSupported {
+                proof_signing_alg_values_supported: vec!["ES256".to_string()],
+                key_attestations_required: key_attestation_required.then(|| {
+                    KeyAttestationsRequired {
+                        key_storage: vec![KeyStorageSecurityLevel::Basic],
+                        user_authentication: vec![],
+                    }
+                }),
+            },
+        )])),
+        credential_metadata: None,
+        disclosure_policy: None,
+        notification_id: None,
+        credential_id: None,
+    };
+    let key = Key {
+        storage_type: "INTERNAL".to_string(),
+        ..dummy_key()
+    };
+    let requested = |id: &str, key_attestation_required: bool| RequestedCredential {
+        configuration: configuration(id, key_attestation_required),
+        holder_bindings: vec![HolderBinding {
+            identifier: dummy_identifier(),
+            key: key.clone(),
+            wua_proof: None,
+        }],
+    };
+    let mut requested_credentials = vec![
+        requested("a", true),
+        requested("b", false),
+        requested("c", true),
+    ];
+    let interaction_data = HolderInteractionData {
+        issuer_url: "http://issuer".to_string(),
+        credential_endpoint: "http://issuer/credential".to_string(),
+        token_endpoint: None,
+        notification_endpoint: None,
+        nonce_endpoint: None,
+        challenge_endpoint: None,
+        grants: None,
+        continue_issuance: None,
+        batch_size: None,
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        refresh_token_expires_at: None,
+        token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
+        credential_request_encryption: None,
+        credential_response_encryption: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        credential_configurations: requested_credentials
+            .iter()
+            .map(|requested| requested.configuration.clone())
+            .collect(),
+    };
+
+    let wia_tokens = protocol
+        .prepare_wallet_attestations(
+            &interaction_data,
+            &mut requested_credentials,
+            Uuid::new_v4().into(),
+            &[AttestationType::WUA],
+        )
+        .await
+        .unwrap();
+
+    assert!(wia_tokens.is_none());
+    assert_eq!(
+        requested_credentials
+            .iter()
+            .flat_map(|requested| &requested.holder_bindings)
+            .map(|binding| binding.wua_proof.clone())
+            .collect::<Vec<_>>(),
+        vec![Some("wua".to_string()), None, Some("wua".to_string())]
+    );
 }

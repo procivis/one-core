@@ -12,7 +12,7 @@ use shared_types::{
 use uuid::Uuid;
 
 use super::mapper::{convert_metadata_to_layout_properties, remap_claim_credential_ids};
-use super::model::HolderCredentialConfiguration;
+use super::model::{HolderBinding, HolderCredentialConfiguration};
 use super::validator::validate_batch_consistency;
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
@@ -39,9 +39,7 @@ use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::CredentialWithBlob;
-use crate::provider::issuance_protocol::{
-    HolderBindingInput, IssuanceAcceptResponse, IssuanceProtocolError,
-};
+use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtocolError};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::validator::validate_issuance_time;
 
@@ -51,7 +49,7 @@ impl OpenID4VCIFinal1_0 {
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
-        mut holder_bindings: Vec<HolderBindingInput>,
+        mut holder_bindings: Vec<HolderBinding>,
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
@@ -235,7 +233,7 @@ impl OpenID4VCIFinal1_0 {
     pub(super) async fn holder_process_refresh(
         &self,
         configuration: &HolderCredentialConfiguration,
-        holder_bindings: Vec<HolderBindingInput>,
+        holder_bindings: Vec<HolderBinding>,
         response: SubmitIssuerResponse,
         organisation: &Organisation,
         updated_credential: Option<Credential>,
@@ -311,7 +309,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         issuer_response: SubmitIssuerResponse,
         configuration: &HolderCredentialConfiguration,
-        mut holder_bindings: Vec<HolderBindingInput>,
+        mut holder_bindings: Vec<HolderBinding>,
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
@@ -468,7 +466,7 @@ impl OpenID4VCIFinal1_0 {
     async fn prepare_issued_credential(
         &self,
         issued_credential: &SerializedCredential,
-        holder_bindings: &mut Vec<HolderBindingInput>,
+        holder_bindings: &mut Vec<HolderBinding>,
         organisation: &Organisation,
         interaction: &Interaction,
         formatter: &dyn CredentialFormatter,
@@ -1044,7 +1042,7 @@ async fn apply_issuer_metadata_to_schema(
 
 async fn attach_matching_holder_binding(
     credential: &mut Credential,
-    holder_bindings: &mut Vec<HolderBindingInput>,
+    holder_bindings: &mut Vec<HolderBinding>,
 ) -> Result<(), IssuanceProtocolError> {
     let parsed_identifier =
         credential
@@ -1077,7 +1075,7 @@ async fn attach_matching_holder_binding(
 }
 
 async fn holder_binding_matching_parsed_identifier(
-    holder_binding: &HolderBindingInput,
+    holder_binding: &HolderBinding,
     parsed_identifier: &Identifier,
 ) -> Result<bool, IssuanceProtocolError> {
     match &parsed_identifier.data {

@@ -44,8 +44,8 @@ pub(crate) struct WIARequestParams {
 
 #[derive(Debug)]
 pub(crate) struct WUARequestParams<'a> {
-    pub attested_keys: &'a [&'a Key],
-    pub security_level: KeyStorageSecurityLevel,
+    /// keys to attest, each with the security level of its storage
+    pub attested_keys: Vec<(&'a Key, KeyStorageSecurityLevel)>,
 }
 
 #[derive(Debug)]
@@ -405,19 +405,10 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         };
 
         let wua_proof = match request {
-            IssueWalletAttestationRequest::WuaAndWia(
-                WUARequestParams {
-                    attested_keys,
-                    security_level,
-                },
-                _,
-            )
-            | IssueWalletAttestationRequest::Wua(WUARequestParams {
-                attested_keys,
-                security_level,
-            }) => {
+            IssueWalletAttestationRequest::WuaAndWia(WUARequestParams { attested_keys }, _)
+            | IssueWalletAttestationRequest::Wua(WUARequestParams { attested_keys }) => {
                 let mut requests = Vec::with_capacity(attested_keys.len());
-                for key in attested_keys {
+                for (key, security_level) in attested_keys {
                     let (key_handle, key_algorithm) = self.get_key_handle(key)?;
                     let proof = self
                         .create_proof_of_key_possesion(

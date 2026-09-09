@@ -15,10 +15,13 @@ use standardized_types::openid4vci::{
 };
 use time::{Duration, OffsetDateTime};
 
+use super::super::HolderBindingInput;
 use super::super::dto::ContinueIssuanceDTO;
 use super::super::model::{CommonParams, OpenID4VCRedirectUriParams, default_issuance_url_scheme};
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, CredentialSchema, LayoutProperties};
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
@@ -520,17 +523,33 @@ pub struct ContinuationIssuanceDTO {
 }
 
 #[derive(Debug)]
-pub(super) struct TokenRequestWalletAttestationRequest {
+pub(super) struct TokenRequestAttestationHeaders {
     pub wallet_attestation: String,
     pub wallet_attestation_pop: String,
 }
 
-#[derive(Debug, Default)]
-pub(super) struct WalletAttestationResult {
-    /// WIA with proof-of-possession for token request (if WIA is used)
-    pub wia_tokens: Option<TokenRequestWalletAttestationRequest>,
-    /// WUA proofs for credential request (if key attestation is required)
-    pub wua_proofs: Option<Vec<String>>,
+/// holder binding of a credential, with the key attestation when the issuer requires one
+#[derive(Debug, Clone)]
+pub(super) struct HolderBinding {
+    pub identifier: Identifier,
+    pub key: Key,
+    pub wua_proof: Option<String>,
+}
+
+impl From<HolderBindingInput> for HolderBinding {
+    fn from(input: HolderBindingInput) -> Self {
+        Self {
+            identifier: input.identifier,
+            key: input.key,
+            wua_proof: None,
+        }
+    }
+}
+
+/// credential requested from the issuer, one holder binding per credential of a batch
+pub(super) struct RequestedCredential {
+    pub configuration: HolderCredentialConfiguration,
+    pub holder_bindings: Vec<HolderBinding>,
 }
 
 #[derive(Debug, Clone)]

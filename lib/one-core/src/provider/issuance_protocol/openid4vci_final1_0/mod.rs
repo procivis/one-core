@@ -14,9 +14,9 @@ use mapper::{
     parse_credential_issuer_params,
 };
 use model::{
-    HolderCredentialConfiguration, HolderInteractionData, OpenID4VCIFinal1Params,
-    OpenID4VCIIssuerInteractionDataDTO, PreparedMetadata, TokenRequestWalletAttestationRequest,
-    WalletAttestationResult,
+    HolderBinding, HolderCredentialConfiguration, HolderInteractionData, OpenID4VCIFinal1Params,
+    OpenID4VCIIssuerInteractionDataDTO, PreparedMetadata, RequestedCredential,
+    TokenRequestAttestationHeaders,
 };
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::jwe::{Header as JweHeader, decrypt_jwe_payload};
@@ -327,7 +327,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_data: &HolderInteractionData,
         tx_code: Option<String>,
-        wallet_attestation_request: Option<TokenRequestWalletAttestationRequest>,
+        wallet_attestation_request: Option<TokenRequestAttestationHeaders>,
     ) -> Result<TokenResponse, IssuanceProtocolError> {
         let token_endpoint =
             interaction_data
@@ -455,11 +455,10 @@ impl OpenID4VCIFinal1_0 {
         // [...]
         // To prove this binding, the Client Instance MUST use the client attestation mechanism when refreshing an access token.
         // The client MUST also use the same key that was present in the "cnf" claim of the client attestation that was used when the refresh token was issued.
-        let attestation_result = self
+        let wia_tokens = self
             .prepare_wallet_attestations(
                 interaction_data,
-                None,
-                &[],
+                &mut [],
                 organisation_id,
                 &[AttestationType::WIA],
             )
@@ -481,10 +480,10 @@ impl OpenID4VCIFinal1_0 {
                         refresh_token: refresh_token.expose_secret().to_string(),
                     })?;
 
-            if let Some(TokenRequestWalletAttestationRequest {
+            if let Some(TokenRequestAttestationHeaders {
                 wallet_attestation,
                 wallet_attestation_pop,
-            }) = attestation_result.wia_tokens
+            }) = wia_tokens
             {
                 request = request
                     .header("OAuth-Client-Attestation", &wallet_attestation)
@@ -599,51 +598,10 @@ impl OpenID4VCIFinal1_0 {
     async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
-        configuration: &HolderCredentialConfiguration,
-        holder_binding_inputs: &[HolderBindingInput],
-        wua_proofs: Option<Vec<String>>,
+        requested: &RequestedCredential,
         access_token: &SecretString,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
-        struct CredentialRequestHolderKey<'a> {
-            pub identifier: &'a Identifier,
-            pub key: &'a Key,
-            pub wua_proof: Option<String>,
-        }
-
-        let holder_bindings: Vec<_> = if let Some(wua_proofs) = wua_proofs {
-            if wua_proofs.len() != holder_binding_inputs.len() {
-                return Err(IssuanceProtocolError::Failed(format!(
-                    "Different number of WUA received: {}, requested: {}",
-                    wua_proofs.len(),
-                    holder_binding_inputs.len()
-                )));
-            }
-
-            // we assume the WUA proofs came in the same order as the requested keys were sent
-            holder_binding_inputs
-                .iter()
-                .zip(wua_proofs)
-                .map(|(HolderBindingInput { identifier, key }, wua_proof)| {
-                    CredentialRequestHolderKey {
-                        identifier,
-                        key,
-                        wua_proof: Some(wua_proof),
-                    }
-                })
-                .collect()
-        } else {
-            holder_binding_inputs
-                .iter()
-                .map(
-                    |HolderBindingInput { identifier, key }| CredentialRequestHolderKey {
-                        identifier,
-                        key,
-                        wua_proof: None,
-                    },
-                )
-                .collect()
-        };
-
+        let configuration = &requested.configuration;
         let nonce = self.holder_fetch_nonce(interaction_data).await?;
 
         let client_id = interaction_data
@@ -651,12 +609,12 @@ impl OpenID4VCIFinal1_0 {
             .as_ref()
             .map(|ci| &ci.client_id);
 
-        let mut proofs = Vec::with_capacity(holder_bindings.len());
-        for CredentialRequestHolderKey {
+        let mut proofs = Vec::with_capacity(requested.holder_bindings.len());
+        for HolderBinding {
             identifier,
             key,
             wua_proof,
-        } in holder_bindings
+        } in &requested.holder_bindings
         {
             let public_key_info = self
                 .public_key_info_from_meta_and_holder_binding(configuration, identifier, key)
@@ -675,7 +633,7 @@ impl OpenID4VCIFinal1_0 {
                 interaction_data.issuer_url.to_owned(),
                 public_key_info,
                 nonce.to_owned(),
-                wua_proof,
+                wua_proof.clone(),
                 auth_fn,
                 client_id,
             )
@@ -982,68 +940,60 @@ impl OpenID4VCIFinal1_0 {
         Ok(credential_blob_id)
     }
 
-    async fn holder_binding_with_attestations(
+    async fn prepare_requested_credentials(
         &self,
         interaction_data: &HolderInteractionData,
-        configuration: &HolderCredentialConfiguration,
+        configurations: Vec<HolderCredentialConfiguration>,
         holder_binding: Option<&HolderBindingInput>,
         organisation: &Organisation,
-        attestation_types: &[AttestationType],
         autogenerated_identifier_ids: &mut Vec<IdentifierId>,
-    ) -> Result<(Vec<HolderBindingInput>, WalletAttestationResult), IssuanceProtocolError> {
-        let holder_binding = match holder_binding {
-            Some(holder_binding) => vec![holder_binding.to_owned()],
-            None => {
-                let holder_binding = self
-                    .create_holder_binding(interaction_data, configuration, organisation)
-                    .await?;
-                // deleted again unless a credential uses them
-                autogenerated_identifier_ids
-                    .extend(holder_binding.iter().map(|binding| binding.identifier.id));
-                holder_binding
-            }
-        };
-        let keys: Vec<_> = holder_binding.iter().map(|binding| &binding.key).collect();
-        let attestations = self
-            .prepare_wallet_attestations(
-                interaction_data,
-                Some(configuration),
-                &keys,
-                organisation.id,
-                attestation_types,
-            )
-            .await?;
-        Ok((holder_binding, attestations))
+    ) -> Result<Vec<RequestedCredential>, IssuanceProtocolError> {
+        let mut requested_credentials = Vec::with_capacity(configurations.len());
+        for configuration in configurations {
+            let holder_bindings = match holder_binding {
+                Some(holder_binding) => vec![holder_binding.to_owned().into()],
+                None => {
+                    let holder_bindings = self
+                        .create_holder_binding(interaction_data, &configuration, organisation)
+                        .await?;
+                    // deleted again unless a credential uses them
+                    autogenerated_identifier_ids
+                        .extend(holder_bindings.iter().map(|binding| binding.identifier.id));
+                    holder_bindings
+                }
+            };
+            requested_credentials.push(RequestedCredential {
+                configuration,
+                holder_bindings,
+            });
+        }
+        Ok(requested_credentials)
     }
 
     async fn holder_accept_configuration(
         &self,
         interaction_data: &mut HolderInteractionData,
-        configuration: &HolderCredentialConfiguration,
-        holder_binding: Vec<HolderBindingInput>,
-        wua_proofs: Option<Vec<String>>,
+        requested: RequestedCredential,
         access_token: &SecretString,
         interaction: &Interaction,
     ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         let organisation = interaction.organisation.as_ref().await?;
         let credential_response = self
-            .holder_request_credential(
-                interaction_data,
-                configuration,
-                &holder_binding,
-                wua_proofs,
-                access_token,
-            )
+            .holder_request_credential(interaction_data, &requested, access_token)
             .await?;
 
         let notification_id = credential_response.notification_id.to_owned();
 
+        let RequestedCredential {
+            configuration,
+            holder_bindings,
+        } = requested;
         let result = self
             .holder_process_accepted_credentials(
                 credential_response,
                 interaction_data,
-                configuration,
-                holder_binding,
+                &configuration,
+                holder_bindings,
                 &organisation,
                 interaction,
             )
@@ -1095,56 +1045,18 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction: &Interaction,
         interaction_data: &mut HolderInteractionData,
-        configuration: &HolderCredentialConfiguration,
+        requested: RequestedCredential,
         updated_credential: Option<&Credential>,
         access_token: &SecretString,
-        autogenerated_identifier_ids: &mut Vec<IdentifierId>,
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         let organisation = interaction.organisation.as_ref().await?;
-
-        // MSO refresh reuses the holder binding of the refreshed credential
-        let reused_holder_binding = match updated_credential {
-            Some(credential) => {
-                let identifier = credential
-                    .holder_identifier
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Missing holder_identifier".to_string(),
-                    ))?
-                    .as_ref()
-                    .await?
-                    .to_owned();
-                let key = credential
-                    .key
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
-                    .as_ref()
-                    .await?
-                    .to_owned();
-                Some(HolderBindingInput { identifier, key })
-            }
-            None => None,
-        };
-        let (holder_binding, attestations) = self
-            .holder_binding_with_attestations(
-                interaction_data,
-                configuration,
-                reused_holder_binding.as_ref(),
-                &organisation,
-                &[AttestationType::WUA],
-                autogenerated_identifier_ids,
-            )
-            .await?;
-
         let response = self
-            .holder_request_credential(
-                interaction_data,
-                configuration,
-                &holder_binding,
-                attestations.wua_proofs,
-                access_token,
-            )
+            .holder_request_credential(interaction_data, &requested, access_token)
             .await?;
+        let RequestedCredential {
+            configuration,
+            holder_bindings,
+        } = requested;
 
         let notification_id = response.notification_id.to_owned();
         if let Some(notification_id) = notification_id.to_owned()
@@ -1166,8 +1078,8 @@ impl OpenID4VCIFinal1_0 {
 
         let refreshed = self
             .holder_process_refresh(
-                configuration,
-                holder_binding,
+                &configuration,
+                holder_bindings,
                 response,
                 &organisation,
                 updated_credential.cloned(),
@@ -1223,7 +1135,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
         organisation: &Organisation,
-    ) -> Result<Vec<HolderBindingInput>, IssuanceProtocolError> {
+    ) -> Result<Vec<HolderBinding>, IssuanceProtocolError> {
         let generate_binding = async || {
             autogenerate_holder_binding(
                 configuration
@@ -1244,11 +1156,11 @@ impl OpenID4VCIFinal1_0 {
         Ok(if let Some(batch_size) = interaction_data.batch_size {
             let mut result = Vec::with_capacity(batch_size as _);
             for _ in 0..batch_size {
-                result.push(generate_binding().await?);
+                result.push(generate_binding().await?.into());
             }
             result
         } else {
-            vec![generate_binding().await?]
+            vec![generate_binding().await?.into()]
         })
     }
 
@@ -1879,105 +1791,89 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .filter(|c| credential_configuration_ids.contains(&c.credential_configuration_id))
             .cloned()
             .collect();
-        let first_configuration = configurations.first().ok_or(IssuanceProtocolError::Failed(
-            "no credential configuration selected".to_string(),
-        ))?;
-
-        // the token is requested once, attested with the keys of the first configuration
-        let mut autogenerated_identifier_ids = vec![];
-        let (first_holder_binding, attestations) = self
-            .holder_binding_with_attestations(
-                &interaction_data,
-                first_configuration,
-                holder_binding.as_ref(),
-                &organisation,
-                &[AttestationType::WIA, AttestationType::WUA],
-                &mut autogenerated_identifier_ids,
-            )
-            .await?;
-
-        let token_response = self
-            .holder_fetch_token(&interaction_data, tx_code, attestations.wia_tokens)
-            .await?;
-
-        let encrypted_access_token =
-            encrypt_string(&token_response.access_token, &self.params.encryption).map_err(
-                |err| {
-                    IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
-                },
-            )?;
-        interaction_data.access_token = Some(encrypted_access_token);
-        interaction_data.access_token_expires_at =
-            OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
-
-        interaction_data.refresh_token = token_response
-            .refresh_token
-            .map(|token| encrypt_string(&token, &self.params.encryption))
-            .transpose()
-            .map_err(|err| {
-                IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
-            })?;
-        interaction_data.refresh_token_expires_at = token_response
-            .refresh_token_expires_in
-            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
-
-        // the first configuration reuses the binding and key attestation of the token request
-        let mut first_holder_binding = Some((first_holder_binding, attestations.wua_proofs));
-        let mut result = IssuanceAcceptResult::default();
-        for configuration in &configurations {
-            let accepted = async {
-                let (configuration_holder_binding, wua_proofs) = match first_holder_binding.take() {
-                    Some(prepared) => prepared,
-                    None => {
-                        let (created, attestations) = self
-                            .holder_binding_with_attestations(
-                                &interaction_data,
-                                configuration,
-                                holder_binding.as_ref(),
-                                &organisation,
-                                &[AttestationType::WUA],
-                                &mut autogenerated_identifier_ids,
-                            )
-                            .await?;
-                        (created, attestations.wua_proofs)
-                    }
-                };
-                self.holder_accept_configuration(
-                    &mut interaction_data,
-                    configuration,
-                    configuration_holder_binding,
-                    wua_proofs,
-                    &token_response.access_token,
-                    &interaction,
-                )
-                .await
-            }
-            .await;
-            match accepted {
-                Ok(response) => result.issued.push(response),
-                Err(error) => result.failed.push(IssuanceAcceptFailure {
-                    credential_configuration_id: configuration
-                        .credential_configuration_id
-                        .to_owned(),
-                    error,
-                }),
-            }
+        if configurations.is_empty() {
+            return Err(IssuanceProtocolError::Failed(
+                "no credential configuration selected".to_string(),
+            ));
         }
 
-        self.interaction_repository
-            .update_interaction(
-                interaction.id,
-                UpdateInteractionRequest {
-                    data: Some(Some(serialize_interaction_data(&interaction_data)?)),
-                    ..Default::default()
-                },
+        let mut autogenerated_identifier_ids = vec![];
+        let result = async {
+            let mut requested_credentials = self
+                .prepare_requested_credentials(
+                    &interaction_data,
+                    configurations,
+                    holder_binding.as_ref(),
+                    &organisation,
+                    &mut autogenerated_identifier_ids,
+                )
+                .await?;
+            // the token is requested once, attested together with the keys of every configuration
+            let wia_tokens = self
+                .prepare_wallet_attestations(
+                    &interaction_data,
+                    &mut requested_credentials,
+                    organisation.id,
+                    &[AttestationType::WIA, AttestationType::WUA],
+                )
+                .await?;
+
+            let token_response = self
+                .holder_fetch_token(&interaction_data, tx_code, wia_tokens)
+                .await?;
+
+            let encrypted_access_token = encrypt_string(
+                &token_response.access_token,
+                &self.params.encryption,
             )
-            .await
-            .error_while("updating interaction")?;
+            .map_err(|err| {
+                IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
+            })?;
+            interaction_data.access_token = Some(encrypted_access_token);
+            interaction_data.access_token_expires_at =
+                OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
+
+            interaction_data.refresh_token = token_response
+                .refresh_token
+                .map(|token| encrypt_string(&token, &self.params.encryption))
+                .transpose()
+                .map_err(|err| {
+                    IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
+                })?;
+            interaction_data.refresh_token_expires_at = token_response
+                .refresh_token_expires_in
+                .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+
+            let mut result = IssuanceAcceptResult::default();
+            for requested in requested_credentials {
+                let credential_configuration_id = requested
+                    .configuration
+                    .credential_configuration_id
+                    .to_owned();
+                let accepted = self
+                    .holder_accept_configuration(
+                        &mut interaction_data,
+                        requested,
+                        &token_response.access_token,
+                        &interaction,
+                    )
+                    .await;
+                match accepted {
+                    Ok(response) => result.issued.push(response),
+                    Err(error) => result.failed.push(IssuanceAcceptFailure {
+                        credential_configuration_id,
+                        error,
+                    }),
+                }
+            }
+
+            Ok::<_, IssuanceProtocolError>(result)
+        }
+        .await;
 
         let used_identifiers = result
-            .issued
             .iter()
+            .flat_map(|accepted| accepted.issued.iter())
             .flat_map(|response| {
                 std::iter::once(&response.main_credential.credential)
                     .chain(response.batch_items.iter().map(|item| &item.credential))
@@ -1990,6 +1886,18 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             used_identifiers,
         )
         .await?;
+        let result = result?;
+
+        self.interaction_repository
+            .update_interaction(
+                interaction.id,
+                UpdateInteractionRequest {
+                    data: Some(Some(serialize_interaction_data(&interaction_data)?)),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating interaction")?;
 
         Ok(result)
     }
@@ -2461,36 +2369,90 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .holder_reuse_or_refresh_token(interaction.id, organisation.id, &mut interaction_data)
             .await?;
 
-        // a configuration that fails does not stop the others, unless none is refreshed
+        // MSO refresh reuses the holder binding of the refreshed credential
+        let reused_holder_binding = match &updated_credential {
+            Some(credential) => {
+                let identifier = credential
+                    .holder_identifier
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Missing holder_identifier".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?
+                    .to_owned();
+                let key = credential
+                    .key
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
+                    .as_ref()
+                    .await?
+                    .to_owned();
+                Some(HolderBindingInput { identifier, key })
+            }
+            None => None,
+        };
+
         let mut autogenerated_identifier_ids = vec![];
-        let mut refreshed = vec![];
-        let mut failures = vec![];
-        for configuration in &configurations {
-            match self
-                .holder_refresh_configuration(
-                    interaction,
-                    &mut interaction_data,
-                    configuration,
-                    updated_credential.as_ref(),
-                    &access_token,
+        let result = async {
+            let mut requested_credentials = self
+                .prepare_requested_credentials(
+                    &interaction_data,
+                    configurations,
+                    reused_holder_binding.as_ref(),
+                    &organisation,
                     &mut autogenerated_identifier_ids,
                 )
-                .await
-            {
-                Ok(credentials) => refreshed.extend(credentials),
-                Err(error) => {
-                    tracing::warn!(
-                        "Credential configuration {} not refreshed: {error}",
-                        configuration.credential_configuration_id
-                    );
-                    failures.push(error);
+                .await?;
+            // the keys of every configuration are attested in one wallet provider round trip
+            self.prepare_wallet_attestations(
+                &interaction_data,
+                &mut requested_credentials,
+                organisation.id,
+                &[AttestationType::WUA],
+            )
+            .await?;
+
+            // a configuration that fails does not stop the others, unless none is refreshed
+            let mut refreshed = vec![];
+            let mut failures = vec![];
+            for requested in requested_credentials {
+                let credential_configuration_id = requested
+                    .configuration
+                    .credential_configuration_id
+                    .to_owned();
+                match self
+                    .holder_refresh_configuration(
+                        interaction,
+                        &mut interaction_data,
+                        requested,
+                        updated_credential.as_ref(),
+                        &access_token,
+                    )
+                    .await
+                {
+                    Ok(credentials) => refreshed.extend(credentials),
+                    Err(error) => {
+                        tracing::warn!(
+                            "Credential configuration {credential_configuration_id} not refreshed: {error}"
+                        );
+                        failures.push(error);
+                    }
                 }
             }
+            if refreshed.is_empty()
+                && let Some(error) = failures.into_iter().next()
+            {
+                return Err(error);
+            }
+            Ok::<_, IssuanceProtocolError>(refreshed)
         }
+        .await;
 
         // the refreshed credentials are persisted already, their identifiers stay
-        let used_identifiers = refreshed
+        let used_identifiers = result
             .iter()
+            .flatten()
             .filter_map(|credential| credential.holder_identifier.as_ref())
             .map(|identifier| identifier.id())
             .collect();
@@ -2500,12 +2462,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        if refreshed.is_empty()
-            && let Some(error) = failures.into_iter().next()
-        {
-            return Err(error);
-        }
-        Ok(refreshed)
+        result
     }
 
     fn config_name(&self) -> &str {
