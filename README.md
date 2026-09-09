@@ -6,7 +6,7 @@
 
 ## Table of Contents
 
-- [Getting started](#getting-started)
+- [Get started](#get-started)
 - [Background](#background)
 - [EU Digital Identity Ecosystem](#eu-digital-identity-ecosystem)
 - [Interoperability and conformance](#interoperability-and-conformance)
@@ -63,7 +63,9 @@ See the [key features][key] and complete solution [architecture][archi].
 
 ### Next steps
 
-See [Getting Started with Credentials][get-started] on the docs.
+See [Getting Started with Credentials][get-started] on the docs. This
+guide walks you through creating your first organizations and a complete
+issuance, presentation, and verification flow.
 
 ### Troubleshooting
 
@@ -97,7 +99,7 @@ cryptographically-secure key.
 
 For more, see [Operations][operations].
 
-### Trial
+### Enterprise
 
 You can use the full enterprise stack when you [join our Trial Environment][trial].
 Here you are given control of an organization in the Procivis One Desk UI.
