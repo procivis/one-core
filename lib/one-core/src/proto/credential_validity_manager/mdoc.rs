@@ -147,10 +147,10 @@ impl CredentialValidityManagerImpl {
             .map_err(|e| Error::MappingError(e.to_string()))?
             .into();
 
-        let credential_schema_format = credential_schema.format().await?;
+        let credential_format = credential.credential_format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema_format)?;
+            .get_credential_formatter(&credential_format)?;
 
         let detail_credential = formatter
             .extract_credentials_unverified(&credential_str, Some(&credential_schema))

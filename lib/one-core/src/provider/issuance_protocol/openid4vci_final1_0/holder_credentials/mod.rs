@@ -276,10 +276,10 @@ impl OpenID4VCIFinal1_0 {
                 ))?;
 
         let schema = credential.schema.as_ref().await?;
-        let credential_schema_format = schema.format().await?;
+        let credential_format = credential.credential_format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema_format)?;
+            .get_credential_formatter(&credential_format)?;
 
         formatter
             .extract_credentials(&updated_credential, Some(&schema), self.verification_fn())

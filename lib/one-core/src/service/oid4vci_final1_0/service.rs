@@ -1686,10 +1686,7 @@ impl OID4VCIFinal1_0Service {
 
         let schema = credential.schema.as_ref().await?;
 
-        let format = match credential.format.as_ref() {
-            Some(format) => format.as_ref().await?.format.to_owned(),
-            None => schema.format().await?,
-        };
+        let format = credential.credential_format().await?;
         let formatter = self.formatter_provider.get_credential_formatter(&format)?;
         let revocation_method = match schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => Some(

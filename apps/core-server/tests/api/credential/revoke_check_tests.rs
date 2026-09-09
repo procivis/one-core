@@ -12,7 +12,7 @@ use one_core::service::test_utilities::dummy_organisation;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
-use shared_types::SerializedCredential;
+use shared_types::{CredentialFormat, SerializedCredential};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -178,7 +178,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
 
     let expected_status_lookups = 1;
     let (context, credential, _, _) =
-        setup_bitstring_status_list_success(&mock_server, expected_status_lookups).await;
+        setup_bitstring_status_list_success(&mock_server, expected_status_lookups, None).await;
 
     // WHEN
     let resp = context
@@ -198,6 +198,35 @@ async fn test_revoke_check_success_bitstring_status_list() {
 }
 
 #[tokio::test]
+async fn test_revoke_check_uses_the_format_of_the_credential() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+
+    // the credential is the second format of its schema
+    let schema_formats = vec![
+        ("JSON_LD_CLASSIC".into(), Uuid::new_v4().to_string()),
+        ("JWT".into(), Uuid::new_v4().to_string()),
+    ];
+    let (context, credential, _, _) =
+        setup_bitstring_status_list_success(&mock_server, 1, Some(schema_formats)).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+}
+
+#[tokio::test]
 async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     // GIVEN
     let mock_server = MockServer::start().await;
@@ -208,7 +237,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     // - third call sends lookup due to cache bypass
     let expected_status_lookups = 2;
     let (context, credential, issuer_did, revocation_list_url) =
-        setup_bitstring_status_list_success(&mock_server, expected_status_lookups).await;
+        setup_bitstring_status_list_success(&mock_server, expected_status_lookups, None).await;
 
     // WHEN
     // inital lookup
@@ -273,6 +302,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
 async fn setup_bitstring_status_list_success(
     mock_server: &MockServer,
     expected_status_lookups: u64,
+    schema_formats: Option<Vec<(CredentialFormat, String)>>,
 ) -> (TestContext, Credential, Did, String) {
     let key_alg = Eddsa;
     let key_pair = EDDSASigner::generate_key_pair();
@@ -375,8 +405,23 @@ async fn setup_bitstring_status_list_success(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, Default::default())
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                formats: schema_formats,
+                ..Default::default()
+            },
+        )
         .await;
+    let jwt_format = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .find(|format| format.format == "JWT".into())
+        .cloned();
 
     let blob = context
         .db
@@ -398,6 +443,7 @@ async fn setup_bitstring_status_list_success(
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 credential_blob_id: Some(blob.id),
+                format: jwt_format,
                 ..Default::default()
             },
         )

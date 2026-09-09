@@ -1,7 +1,7 @@
 use proc_macros::Model;
 use shared_types::{
-    BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, EcosystemId,
-    IdentifierId, InteractionId, KeyId, OrganisationId,
+    BlobId, CertificateId, CredentialFormat, CredentialId, CredentialSchemaFormatId,
+    CredentialSchemaId, EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId,
 };
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
@@ -13,6 +13,7 @@ use super::identifier::Identifier;
 use super::interaction::Interaction;
 use super::key::Key;
 use super::list_query::ListQuery;
+use crate::error::NestedError;
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
@@ -69,6 +70,18 @@ pub enum CredentialStateEnum {
     InteractionExpired,
     Expiring,
     Expired,
+}
+
+impl Credential {
+    /// Returns the format the credential was issued in. Falls back to the first format of
+    /// the schema when no format is stored: batch parents, verifier credentials built from
+    /// presentations, and credentials of multi-format schemas older than the `format` column.
+    pub async fn credential_format(&self) -> Result<CredentialFormat, NestedError> {
+        Ok(match &self.format {
+            Some(format) => format.as_ref().await?.format.to_owned(),
+            None => self.schema.as_ref().await?.format().await?,
+        })
+    }
 }
 
 impl CredentialStateEnum {

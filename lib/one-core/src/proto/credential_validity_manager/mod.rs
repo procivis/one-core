@@ -434,8 +434,8 @@ impl CredentialValidityManagerImpl {
             .map_err(|e| Error::MappingError(e.to_string()))?
             .into();
 
-        let format = credential_schema
-            .format()
+        let format = credential
+            .credential_format()
             .await
             .error_while("getting format")?;
 
