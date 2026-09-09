@@ -8,7 +8,9 @@ use uuid::Uuid;
 use crate::config::core_config::CoreConfig;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::GetListResponse;
-use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
+use crate::model::credential::{
+    Credential, CredentialStateEnum, CredentialType, GetCredentialList,
+};
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
     Error as CredentialValidityManagerError, MockCredentialValidityManager,
@@ -196,8 +198,17 @@ fn batch_item(
     wia_blob_id: Option<BlobId>,
 ) -> Credential {
     Credential {
+        r#type: CredentialType::BatchItem,
         parent: Some(parent.clone().into()),
         ..accepted_pid(wua_blob_id, wia_blob_id)
+    }
+}
+
+fn batch_parent() -> Credential {
+    Credential {
+        id: Uuid::new_v4().into(),
+        r#type: CredentialType::BatchParent,
+        ..dummy_credential()
     }
 }
 
@@ -328,11 +339,8 @@ async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
 
 #[tokio::test]
 async fn test_revoked_wia_revokes_the_whole_batch_once() {
-    let parent_id: CredentialId = Uuid::new_v4().into();
-    let parent = Credential {
-        id: parent_id,
-        ..dummy_credential()
-    };
+    let parent = batch_parent();
+    let parent_id = parent.id;
 
     // the WIA is copied from the parent onto every item, so both items carry the same one
     let wia_blob_id: BlobId = Uuid::new_v4().into();
@@ -359,6 +367,7 @@ async fn test_revoked_wia_revokes_the_whole_batch_once() {
     });
 
     let result = ecosystem.run_lifecycle_check().await.unwrap();
+    // one revocation for the whole batch, published through the parent
     assert_eq!(parent_id, revoked_id(&result));
 }
 
@@ -552,4 +561,89 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
     let result = ecosystem.run_lifecycle_check().await.unwrap();
 
     assert_eq!(json!([credential_id]), result["failedCredentialIds"]);
+}
+
+/// A schema without a revocation method cannot express revocation, so the batch is flagged as
+/// `Expiring` instead - it stays valid, but can never be refreshed.
+#[tokio::test]
+async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
+    let parent = batch_parent();
+    let parent_id = parent.id;
+
+    let wia_blob_id: BlobId = Uuid::new_v4().into();
+    let items = vec![batch_item(&parent, None, Some(wia_blob_id))];
+
+    let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
+    wallet_unit_proto
+        .expect_check_attestation_status()
+        .once()
+        .returning(|_| Ok(WalletUnitStatusCheckResponse::Revoked));
+
+    let mut credential_validity_manager = MockCredentialValidityManager::new();
+    credential_validity_manager
+        .expect_change_credential_state()
+        .once()
+        .withf(move |id, state| *id == parent_id && matches!(state, ChangeCredentialState::Revoked))
+        .returning(|_, _| {
+            Err(CredentialValidityManagerError::NoRevocationMethod(
+                Uuid::new_v4().into(),
+            ))
+        });
+    credential_validity_manager
+        .expect_change_credential_state()
+        .once()
+        .withf(move |id, state| {
+            *id == parent_id && matches!(state, ChangeCredentialState::Expiring)
+        })
+        .returning(|_, _| Ok(()));
+
+    let ecosystem = setup(Mocks {
+        credential_repository: credential_repository_serving(vec![items]),
+        blob_storage_provider: blob_storage_provider(vec![wia_blob(wia_blob_id)]),
+        wallet_unit_proto,
+        credential_validity_manager,
+    });
+
+    let result = ecosystem.run_lifecycle_check().await.unwrap();
+
+    assert_eq!(json!([parent_id]), result["failedCredentialIds"]);
+}
+
+/// `Expiring` is a batch-parent-only flag, so an item revoked through its own WUA has no
+/// fallback - it is reported as failed and left alone. The mock panics on any second state change.
+#[tokio::test]
+async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
+    let parent = batch_parent();
+
+    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let item = batch_item(&parent, Some(wua_blob_id), None);
+    let item_id = item.id;
+
+    let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
+    wallet_unit_proto
+        .expect_check_attestation_status()
+        .once()
+        .returning(|_| Ok(WalletUnitStatusCheckResponse::Revoked));
+
+    let mut credential_validity_manager = MockCredentialValidityManager::new();
+    credential_validity_manager
+        .expect_change_credential_state()
+        .once()
+        .withf(move |id, state| *id == item_id && matches!(state, ChangeCredentialState::Revoked))
+        .returning(|_, _| {
+            Err(CredentialValidityManagerError::NoRevocationMethod(
+                Uuid::new_v4().into(),
+            ))
+        });
+
+    let ecosystem = setup(Mocks {
+        credential_repository: credential_repository_serving(vec![vec![item]]),
+        blob_storage_provider: blob_storage_provider(vec![wua_blob(wua_blob_id)]),
+        wallet_unit_proto,
+        credential_validity_manager,
+    });
+
+    let result = ecosystem.run_lifecycle_check().await.unwrap();
+
+    assert_eq!(json!([item_id]), result["failedCredentialIds"]);
 }

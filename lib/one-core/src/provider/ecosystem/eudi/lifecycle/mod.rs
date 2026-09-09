@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use shared_types::{BlobId, CredentialId};
+use shared_types::{BlobId, CredentialId, CredentialSchemaId};
 
 use self::dto::EudiLifecycleResultDTO;
 use super::EudiEcosystem;
 use crate::config::core_config::BlobStorageType;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
     CredentialType,
@@ -66,7 +66,10 @@ impl EudiEcosystem {
             .get_blob_storage(BlobStorageType::Db)?;
 
         let mut result = EudiLifecycleResultDTO::default();
-        let mut cached_parent_status: HashMap<CredentialId, bool> = HashMap::new();
+        let mut cached_wia_status: HashMap<CredentialId, bool> = HashMap::new();
+        // schemas already reported as not supporting revocation, so that the warning is printed
+        // once per run and schema rather than once per PID
+        let mut schemas_without_revocation: HashSet<CredentialSchemaId> = HashSet::new();
         let mut page = 0;
 
         loop {
@@ -92,25 +95,30 @@ impl EudiEcosystem {
                 result.total_checks += 1;
 
                 // a batch shares one WIA and is revoked as a whole, through its parent
-                let batch_parent = match &credential.parent {
-                    Some(parent) => parent.id(),
-                    None => credential.id,
+                let main_credential = match &credential.parent {
+                    Some(parent) => &parent.as_ref().await?,
+                    None => credential,
                 };
 
-                let wia_revoked = match cached_parent_status.get(&batch_parent) {
+                let wia_revoked = match cached_wia_status.get(&main_credential.id) {
                     Some(revoked) => *revoked,
                     None => {
                         let revoked = self
                             .attestation_revoked(
-                                credential,
+                                main_credential,
                                 blob_storage.as_ref(),
                                 credential.wallet_instance_attestation_blob_id,
                             )
                             .await?;
-                        cached_parent_status.insert(batch_parent, revoked);
+                        cached_wia_status.insert(main_credential.id, revoked);
 
                         if revoked {
-                            self.revoke_pid(batch_parent, &mut result).await;
+                            self.revoke_pid(
+                                main_credential,
+                                &mut result,
+                                &mut schemas_without_revocation,
+                            )
+                            .await;
                         }
                         revoked
                     }
@@ -130,7 +138,8 @@ impl EudiEcosystem {
                     )
                     .await?
                 {
-                    self.revoke_pid(credential.id, &mut result).await;
+                    self.revoke_pid(credential, &mut result, &mut schemas_without_revocation)
+                        .await;
                 }
             }
 
@@ -142,21 +151,50 @@ impl EudiEcosystem {
 
     /// Revokes a PID whose wallet has been revoked. The revocation is published through the
     /// credential's revocation method, which for a batch parent also updates every batch item.
-    /// If that is not possible - no revocation method, a method that cannot revoke (mdoc), or a
-    /// transient failure - the state is forced anyway so the credential can never be refreshed.
-    async fn revoke_pid(&self, credential_id: CredentialId, result: &mut EudiLifecycleResultDTO) {
+    async fn revoke_pid(
+        &self,
+        credential: &Credential,
+        result: &mut EudiLifecycleResultDTO,
+        schemas_without_revocation: &mut HashSet<CredentialSchemaId>,
+    ) {
         let Err(error) = self
             .credential_validity_manager
-            .change_credential_state(&credential_id, ChangeCredentialState::Revoked)
+            .change_credential_state(&credential.id, ChangeCredentialState::Revoked)
             .await
         else {
-            result.revoked_credential_ids.push(credential_id);
+            result.revoked_credential_ids.push(credential.id);
             return;
         };
 
-        tracing::warn!("Failed to revoke PID `{credential_id}`: {error}");
-        result.failed_credential_ids.push(credential_id);
-        // TODO ONE-10592: set credential to `EXPIRING` as fallback, once available
+        result.failed_credential_ids.push(credential.id);
+
+        if error.error_code() == ErrorCode::BR_0098 {
+            let schema_id = credential.schema.id();
+            if schemas_without_revocation.insert(schema_id) {
+                tracing::warn!(
+                    "PIDs of credential schema {schema_id} cannot be revoked because the schema does \
+                     not support revocation - this is not EUDI compliant"
+                );
+            }
+        } else {
+            tracing::warn!("Failed to revoke PID `{}`: {error}", credential.id);
+        }
+
+        if credential.r#type != CredentialType::BatchParent {
+            // Only batch parents can be flagged as expiring
+            return;
+        }
+
+        if let Err(error) = self
+            .credential_validity_manager
+            .change_credential_state(&credential.id, ChangeCredentialState::Expiring)
+            .await
+        {
+            tracing::warn!(
+                "Failed to flag PID `{}` as expiring: {error}",
+                credential.id
+            );
+        }
     }
 
     /// `true` only when the attestation stored in `blob_id` is known to be revoked. A missing
