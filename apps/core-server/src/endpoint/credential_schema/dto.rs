@@ -1044,13 +1044,14 @@ pub(crate) struct CredentialClaimSchemaTranslationsRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
 #[into(ImportCredentialSchemaV2FormatDTO)]
 pub(crate) struct ImportCredentialSchemaV2FormatRestDTO {
     /// Credential format identifier from the system configuration.
     pub format: CredentialFormat,
     /// Schema identifier for this format (e.g. DocType for mdoc, vct for SD-JWT VC).
+    #[serde(alias = "schemaId")]
     pub ecosystem_schema_id: String,
 }
 
