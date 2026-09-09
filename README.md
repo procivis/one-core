@@ -30,10 +30,12 @@ See the [key features][key] and complete solution [architecture][archi].
 
 ### Prerequisites
 
-- Rust 1.95+ - [Install via rustup.rs][rust]
+- Rust - [Install via rustup.rs][rust]. See `rust-version` in `Cargo.toml`
+  for the minimum required version. Any stable release at or above that
+  works fine.
 - Docker with Docker Compose - [Docker Desktop][dock] recommended for
-  easiest setup
-- Install cargo-make: `cargo install cargo-make`
+  easiest setup.
+- cargo-make: `cargo install cargo-make`
 
 ### Quick start
 
@@ -59,13 +61,14 @@ See the [key features][key] and complete solution [architecture][archi].
 - API server: http://localhost:3000
 - Swagger UI: http://localhost:3000/swagger-ui/index.html
 
-If you want some guidance on where to go from here, see
-[Issue your first credential][issue-first] on the docs.
+### Next steps
+
+See [Getting Started with Credentials][get-started] on the docs.
 
 ### Troubleshooting
 
 - Issues compiling - check `rustc --version` and run `rustup update`
-  if your version is <1.88.
+  if your version is below the version specified in `Cargo.toml`.
 - Issues starting the database - make sure Docker is running.
   - Mac: you should see the whale icon in your menu bar.
   - Windows: you should see the whale icon in your system tray.
@@ -92,7 +95,7 @@ Encryption keys must be a 32 byte hex-encoded value. Use
 `openssl rand -hex 32` or another qualified tool to generate a
 cryptographically-secure key.
 
-For more, see the [configuration guide][config].
+For more, see [Operations][operations].
 
 ### Trial
 
@@ -398,12 +401,12 @@ Version 2.0](./LICENSE).
 [apiref]: https://docs.procivis.ch/docs/core-api
 [archi]: https://github.com/procivis#architecture
 [canivc]: https://canivc.com/implementations/procivis-one-core/
-[config]: https://docs.procivis.ch/configure
+[operations]: https://docs.procivis.ch/operations
 [dock]: https://docs.docker.com/get-started/get-docker/
 [docs]: https://docs.procivis.ch/
 [eudiwi]: https://issuer.eudiw.dev/
 [eudiwv]: https://verifier.eudiw.dev/home
-[issue-first]: https://docs.procivis.ch/issue
+[get-started]: https://docs.procivis.ch/getting-started/credentials
 [jld]: https://www.w3.org/TR/json-ld11/
 [key]: https://github.com/procivis#key-features
 [owf]: https://github.com/openwallet-foundation-labs/identity-credential
