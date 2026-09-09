@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use standardized_types::openid4vp::{ClientIdPrefix, PresentationFormat};
+use standardized_types::openid4vp::{ClientIdPrefix, VPFormatsSupported};
 use time::Duration;
 
 use crate::provider::verification_protocol::model::CommonParams;
@@ -30,7 +28,7 @@ pub(crate) struct Params {
     /// `vp_formats_supported` can be omitted if known to the wallet by other means.
     /// One option for other means is to statically define it for an ecosystem (i.e. swiyu), which
     /// is why this option is supported here.
-    pub predefined_vp_formats_supported: Option<HashMap<String, PresentationFormat>>,
+    pub predefined_vp_formats_supported: Option<VPFormatsSupported>,
 
     #[serde(default)]
     pub swiyu_mode: bool,

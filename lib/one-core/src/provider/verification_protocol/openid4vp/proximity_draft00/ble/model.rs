@@ -34,6 +34,7 @@ pub(crate) struct BLEOpenID4VPInteractionDataVerifier {
     pub protocol_data: BLEVerifierProtocolData,
 }
 
+#[expect(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub(crate) enum BLEVerifierProtocolData {

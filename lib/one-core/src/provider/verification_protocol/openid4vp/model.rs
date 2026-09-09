@@ -8,8 +8,8 @@ use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId, Trans
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dcql::{CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
-    ClientIdPrefix, ClientMetadata, EncryptedResponse, PresentationFormat, ResponseMode,
-    VerifierInfoAttestation, VpTokenResponse,
+    ClientIdPrefix, ClientMetadata, EncryptedResponse, ResponseMode, VerifierInfoAttestation,
+    VpTokenResponse,
 };
 use time::OffsetDateTime;
 use url::Url;
@@ -182,6 +182,82 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
     pub purpose: Option<String>,
     pub format: HashMap<String, PresentationFormat>,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
+}
+
+// All format fields are optional,
+// this variant is matched first
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct EmptyEntry {}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum PresentationFormat {
+    Empty(EmptyEntry),
+    SdJwtVcAlgs(SdJwtVcAlgs),
+    LdpVcAlgs(LdpVcAlgs),
+    W3CJwtAlgs(W3CJwtAlgs),
+    W3CLdpAlgs(W3CLdpAlgs),
+    MdocAlgs(MdocAlgs),
+    // TODO: Clean this up
+    GenericAlgList(GenericAlgs),
+    Other(serde_json::Value),
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SdJwtVcAlgs {
+    #[serde(
+        rename = "sd-jwt_alg_values",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub sd_jwt_alg_values: Vec<String>,
+    #[serde(
+        rename = "kb-jwt_alg_values",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub kb_jwt_alg_values: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct GenericAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub alg: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct W3CJwtAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub alg_values: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct W3CLdpAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub proof_type_values: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub cryptosuite_values: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MdocAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub issuerauth_alg_values: Vec<i32>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub deviceauth_alg_values: Vec<i32>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LdpVcAlgs {
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub proof_type: Vec<String>,
 }
 
 #[skip_serializing_none]

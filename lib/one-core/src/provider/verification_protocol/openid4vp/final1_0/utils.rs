@@ -1,10 +1,9 @@
 use core::str;
 use std::collections::BTreeSet;
 
-use serde_json::json;
 use shared_types::DidValue;
 use standardized_types::openid4vp::{
-    AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, PresentationFormat,
+    AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix,
     VerifierAttestationClaims,
 };
 use url::Url;
@@ -534,14 +533,14 @@ pub(super) fn validate_interaction_data(
         ));
     };
 
-    let mso_mdoc = client_metadata.vp_formats_supported.get("mso_mdoc");
-    let jwt_vc_json = client_metadata.vp_formats_supported.get("jwt_vc_json");
-    let ldp_vc = client_metadata.vp_formats_supported.get("ldp_vc");
-    let sd_jwt_vc = client_metadata.vp_formats_supported.get("dc+sd-jwt");
+    let mso_mdoc = client_metadata.vp_formats_supported.mso_mdoc.as_ref();
+    let jwt_vc_json = client_metadata.vp_formats_supported.jwt_vc_json.as_ref();
+    let ldp_vc = client_metadata.vp_formats_supported.ldp_vc.as_ref();
+    let sd_jwt_vc = client_metadata.vp_formats_supported.dc_sd_jwt.as_ref();
 
     if jwt_vc_json.is_none() && sd_jwt_vc.is_none() && mso_mdoc.is_none() && ldp_vc.is_none() {
         Err(VerificationProtocolError::InvalidRequest(
-            "unsupported client_metadata.vp_formats_supported must contain 'jwt_vc_json', 'vc+sd-jwt', 'dc+sd-jwt', 'mso_mdoc', or 'ldp_vc'".to_string(),
+            "unsupported client_metadata.vp_formats_supported must contain 'jwt_vc_json', 'dc+sd-jwt', 'mso_mdoc', or 'ldp_vc'".to_string(),
         ))?;
     }
 
@@ -559,8 +558,8 @@ pub(super) fn validate_interaction_data(
     }
 
     match jwt_vc_json {
-        None | Some(PresentationFormat::Empty(_)) => {}
-        Some(PresentationFormat::W3CJwtAlgs(jwt_vc_json)) => {
+        None => {}
+        Some(jwt_vc_json) => {
             if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "client_metadata.vp_formats_supported entry for 'jwt_vc_json' ({:?}) does not contain a supported algorithm",
@@ -568,16 +567,11 @@ pub(super) fn validate_interaction_data(
                 )));
             }
         }
-        Some(_) => {
-            Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats_supported entry for 'jwt_vc_json'".to_string(),
-            ))?;
-        }
     };
 
     match ldp_vc {
-        None | Some(PresentationFormat::Empty(_)) => {}
-        Some(PresentationFormat::W3CLdpAlgs(ldp_vc)) => {
+        None => {}
+        Some(ldp_vc) => {
             if !is_supported(
                 &ldp_vc.proof_type_values,
                 &["DataIntegrityProof".to_string()],
@@ -602,16 +596,11 @@ pub(super) fn validate_interaction_data(
                 )));
             }
         }
-        Some(_) => {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats_supported entry for 'ldp_vc'".to_string(),
-            ));
-        }
     }
 
     match sd_jwt_vc {
-        None | Some(PresentationFormat::Empty(_)) => {}
-        Some(PresentationFormat::SdJwtVcAlgs(sd_jwt_vc)) => {
+        None => {}
+        Some(sd_jwt_vc) => {
             if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "client_metadata.vp_formats_supported entry for 'dc+sd-jwt' ({:?}) does not contain a supported algorithm",
@@ -626,24 +615,12 @@ pub(super) fn validate_interaction_data(
                 )));
             }
         }
-        Some(_) => {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats_supported[\"dc+sd-jwt\"] structure".to_string(),
-            ));
-        }
     };
 
-    // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed
+    // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed -> will be matched as empty arrays
     match mso_mdoc {
-        None
-        | Some(PresentationFormat::Empty(_))
-        // EUDI compatibility shim: allow null object and null values
-        | Some(PresentationFormat::Other(serde_json::Value::Null)) => {}
-         Some(PresentationFormat::Other(val)) if *val == json!({
-                "issuerauth_alg_values": null,
-                "deviceauth_alg_values": null
-            }) => {}
-        Some(PresentationFormat::MdocAlgs(mso_mdoc)) => {
+        None => {}
+        Some(mso_mdoc) => {
             if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "client_metadata.vp_formats_supported entry for 'mso_mdoc' ({:?}) do not contain supported algorithms",
@@ -657,11 +634,6 @@ pub(super) fn validate_interaction_data(
                     mso_mdoc.deviceauth_alg_values
                 )));
             }
-        }
-        Some(_) => {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "invalid client_metadata.vp_formats_supported entry for 'mso_mdoc'".to_string(),
-            ));
         }
     };
 

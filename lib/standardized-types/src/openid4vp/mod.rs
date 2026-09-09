@@ -5,8 +5,6 @@ pub mod authorization_response;
 pub mod dcql;
 pub mod transaction_data;
 
-use std::collections::HashMap;
-
 pub use authorization_request::*;
 pub use authorization_response::*;
 use serde::{Deserialize, Serialize};
@@ -31,7 +29,7 @@ pub struct ClientMetadata {
     //
     // -> For the DTO this is optional
     #[serde(default)]
-    pub vp_formats_supported: HashMap<String, PresentationFormat>,
+    pub vp_formats_supported: VPFormatsSupported,
     #[serde_as(as = "Option<VecSkipError<_>>")]
     #[serde(default)]
     pub encrypted_response_enc_values_supported: Option<Vec<EncryptionAlgorithm>>,
@@ -43,31 +41,27 @@ pub struct ClientMetadata {
     pub subject_syntax_types_supported: Vec<String>,
 }
 
-// All vp_formats_supported fields are optional,
-// this variant is matched first
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[skip_serializing_none]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct EmptyEntry {}
+pub struct VPFormatsSupported {
+    /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.1.3.1.1>
+    pub jwt_vc_json: Option<W3CJwtAlgs>,
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(untagged)]
-pub enum PresentationFormat {
-    Empty(EmptyEntry),
-    SdJwtVcAlgs(SdJwtVcAlgs),
-    LdpVcAlgs(LdpVcAlgs),
-    W3CJwtAlgs(W3CJwtAlgs),
-    W3CLdpAlgs(W3CLdpAlgs),
-    MdocAlgs(MdocAlgs),
-    // TODO: Clean this up
-    GenericAlgList(GenericAlgs),
-    Other(serde_json::Value),
+    /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.1.3.2.1>
+    pub ldp_vc: Option<W3CLdpAlgs>,
+
+    /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.2>
+    pub mso_mdoc: Option<MdocAlgs>,
+
+    /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.3.1>
+    #[serde(rename = "dc+sd-jwt")]
+    pub dc_sd_jwt: Option<SdJwtVcAlgs>,
 }
 
+/// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.3.4>
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
 pub struct SdJwtVcAlgs {
     #[serde(
         rename = "sd-jwt_alg_values",
@@ -83,25 +77,17 @@ pub struct SdJwtVcAlgs {
     pub kb_jwt_alg_values: Vec<String>,
 }
 
+/// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.1.3.1.3>
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct GenericAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub alg: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
 pub struct W3CJwtAlgs {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub alg_values: Vec<String>,
 }
 
+/// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.1.3.2.3>
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
 pub struct W3CLdpAlgs {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub proof_type_values: Vec<String>,
@@ -109,22 +95,14 @@ pub struct W3CLdpAlgs {
     pub cryptosuite_values: Vec<String>,
 }
 
+/// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.2.2>
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
 pub struct MdocAlgs {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub issuerauth_alg_values: Vec<i32>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub deviceauth_alg_values: Vec<i32>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-#[serde(deny_unknown_fields)]
-pub struct LdpVcAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub proof_type: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

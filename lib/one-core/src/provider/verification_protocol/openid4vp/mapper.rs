@@ -6,17 +6,16 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use shared_types::{ClaimSchemaId, InteractionId, TransactionDataId};
-use standardized_types::openid4vp::{GenericAlgs, LdpVcAlgs, PresentationFormat, SdJwtVcAlgs};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::model::{
-    OpenID4VCVerifierAttestationPayload, OpenID4VPPresentationDefinition,
+    GenericAlgs, LdpVcAlgs, OpenID4VCVerifierAttestationPayload, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
-    ProvedCredential, ValidatedHolderTxData, VpSubmissionData,
+    PresentationFormat, ProvedCredential, SdJwtVcAlgs, ValidatedHolderTxData, VpSubmissionData,
 };
 use super::{JWTSigner, get_jwt_signer};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};

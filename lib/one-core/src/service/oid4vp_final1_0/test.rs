@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -10,7 +9,7 @@ use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{
-    ClientIdPrefix, ClientMetadata, DirectPostResponse, MdocAlgs, PresentationFormat, SdJwtVcAlgs,
+    ClientIdPrefix, ClientMetadata, DirectPostResponse, MdocAlgs, SdJwtVcAlgs, VPFormatsSupported,
     VpTokenResponse, W3CJwtAlgs, W3CLdpAlgs,
 };
 use uuid::Uuid;
@@ -615,39 +614,27 @@ async fn test_get_client_metadata_success() {
                     y: None,
                 }),]
             }),
-            vp_formats_supported: HashMap::from([
-                (
-                    "ldp_vc".to_string(),
-                    PresentationFormat::W3CLdpAlgs(W3CLdpAlgs {
-                        proof_type_values: vec!["DataIntegrityProof".to_string()],
-                        cryptosuite_values: vec![
-                            "bbs-2023".to_string(),
-                            "ecdsa-rdfc-2019".to_string(),
-                            "eddsa-rdfc-2022".to_string(),
-                        ],
-                    })
-                ),
-                (
-                    "mso_mdoc".to_string(),
-                    PresentationFormat::MdocAlgs(MdocAlgs {
-                        issuerauth_alg_values: vec![-7, -8, -9, -19],
-                        deviceauth_alg_values: vec![-7, -8, -9, -19],
-                    })
-                ),
-                (
-                    "dc+sd-jwt".to_string(),
-                    PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
-                        sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
-                        kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
-                    })
-                ),
-                (
-                    "jwt_vc_json".to_string(),
-                    PresentationFormat::W3CJwtAlgs(W3CJwtAlgs {
-                        alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
-                    })
-                ),
-            ]),
+            vp_formats_supported: VPFormatsSupported {
+                ldp_vc: Some(W3CLdpAlgs {
+                    proof_type_values: vec!["DataIntegrityProof".to_string()],
+                    cryptosuite_values: vec![
+                        "bbs-2023".to_string(),
+                        "ecdsa-rdfc-2019".to_string(),
+                        "eddsa-rdfc-2022".to_string(),
+                    ],
+                }),
+                mso_mdoc: Some(MdocAlgs {
+                    issuerauth_alg_values: vec![-7, -8, -9, -19],
+                    deviceauth_alg_values: vec![-7, -8, -9, -19],
+                }),
+                dc_sd_jwt: Some(SdJwtVcAlgs {
+                    sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
+                }),
+                jwt_vc_json: Some(W3CJwtAlgs {
+                    alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
+                })
+            },
             encrypted_response_enc_values_supported: Some(vec![
                 EncryptionAlgorithm::A128GCM,
                 EncryptionAlgorithm::A256GCM

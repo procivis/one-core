@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Encoder};
@@ -7,7 +6,7 @@ use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisatio
 use rcgen::{CertificateParams, SanType};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
-use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, SdJwtVcAlgs};
+use standardized_types::openid4vp::{ClientMetadata, SdJwtVcAlgs, VPFormatsSupported};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -905,13 +904,13 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
 
     let client_metadata = ClientMetadata {
         jwks: Default::default(),
-        vp_formats_supported: HashMap::from([(
-            "dc+sd-jwt".to_string(),
-            PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
+        vp_formats_supported: VPFormatsSupported {
+            dc_sd_jwt: Some(SdJwtVcAlgs {
                 sd_jwt_alg_values: vec!["EdDSA".to_string()],
                 kb_jwt_alg_values: vec!["EdDSA".to_string()],
             }),
-        )]),
+            ..Default::default()
+        },
         ..Default::default()
     };
     let dcql_query = json!({
@@ -991,13 +990,13 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
 
     let client_metadata = ClientMetadata {
         jwks: Default::default(),
-        vp_formats_supported: HashMap::from([(
-            "dc+sd-jwt".to_string(),
-            PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
+        vp_formats_supported: VPFormatsSupported {
+            dc_sd_jwt: Some(SdJwtVcAlgs {
                 sd_jwt_alg_values: vec!["EdDSA".to_string()],
                 kb_jwt_alg_values: vec!["EdDSA".to_string()],
             }),
-        )]),
+            ..Default::default()
+        },
         ..Default::default()
     };
     let dcql_query = json!({

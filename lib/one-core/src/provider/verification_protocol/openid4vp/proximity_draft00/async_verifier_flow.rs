@@ -78,6 +78,7 @@ pub(super) enum HolderSubmission {
     V2(VpTokenResponse),
 }
 
+#[expect(clippy::large_enum_variant)]
 pub(super) enum SubmissionData {
     V1 {
         request: OpenID4VP20AuthorizationRequest,
@@ -158,6 +159,7 @@ pub(super) async fn verifier_flow<C: WithProtocolVersion>(
     }
 }
 
+#[expect(clippy::large_enum_variant)]
 enum Request {
     V1(OpenID4VP20AuthorizationRequest),
     V2(AuthorizationRequest),

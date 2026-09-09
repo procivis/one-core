@@ -12,8 +12,8 @@ use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::dcql::{CredentialQuery, CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
-    AuthorizationRequestQueryParams, ClientIdPrefix, ClientMetadata, MdocAlgs, PresentationFormat,
-    ResponseMode,
+    AuthorizationRequestQueryParams, ClientIdPrefix, ClientMetadata, MdocAlgs, ResponseMode,
+    VPFormatsSupported,
 };
 use url::Url;
 use uuid::Uuid;
@@ -265,13 +265,13 @@ fn test_holder_interaction_data(
         client_id_scheme: ClientIdPrefix::RedirectUri,
         client_id: "https://verifier.example.com".to_string(),
         client_metadata: Some(ClientMetadata {
-            vp_formats_supported: HashMap::from([(
-                "mso_mdoc".to_string(),
-                PresentationFormat::MdocAlgs(MdocAlgs {
+            vp_formats_supported: VPFormatsSupported {
+                mso_mdoc: Some(MdocAlgs {
                     issuerauth_alg_values: vec![],
                     deviceauth_alg_values: vec![],
                 }),
-            )]),
+                ..Default::default()
+            },
             ..Default::default()
         }),
         client_metadata_uri: None,
@@ -1338,13 +1338,13 @@ fn test_assign_transaction_data_auto_assigns_to_explicitly_created_duplicate() {
 
 fn unsigned_request_query(client_id: &str) -> String {
     let client_metadata = ClientMetadata {
-        vp_formats_supported: HashMap::from([(
-            "mso_mdoc".to_string(),
-            PresentationFormat::MdocAlgs(MdocAlgs {
+        vp_formats_supported: VPFormatsSupported {
+            mso_mdoc: Some(MdocAlgs {
                 issuerauth_alg_values: vec![],
                 deviceauth_alg_values: vec![],
             }),
-        )]),
+            ..Default::default()
+        },
         ..Default::default()
     };
 

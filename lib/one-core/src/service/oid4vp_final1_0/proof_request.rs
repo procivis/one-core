@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-
 use shared_types::InteractionId;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{
-    AuthorizationRequest, ClientMetadata, MdocAlgs, PresentationFormat, ResponseMode, SdJwtVcAlgs,
+    AuthorizationRequest, ClientMetadata, MdocAlgs, ResponseMode, SdJwtVcAlgs, VPFormatsSupported,
     VerifierInfoAttestation, W3CJwtAlgs, W3CLdpAlgs,
 };
 use url::Url;
@@ -51,22 +49,15 @@ fn determine_response_mode_final1_0(metadata: &ClientMetadata) -> ResponseMode {
         ResponseMode::DirectPost
     }
 }
-pub(crate) fn generate_vp_formats_supported() -> HashMap<String, PresentationFormat> {
-    let mut formats = HashMap::new();
-
+pub(crate) fn generate_vp_formats_supported() -> VPFormatsSupported {
     let jose_algs = vec!["EdDSA".to_owned(), "ES256".to_owned()];
     let cose_algs = vec![-7, -8, -9, -19];
 
-    // only including the entries specified in the final standard for now
-    formats.insert(
-        "jwt_vc_json".to_owned(),
-        PresentationFormat::W3CJwtAlgs(W3CJwtAlgs {
+    VPFormatsSupported {
+        jwt_vc_json: Some(W3CJwtAlgs {
             alg_values: jose_algs.to_owned(),
         }),
-    );
-    formats.insert(
-        "ldp_vc".to_owned(),
-        PresentationFormat::W3CLdpAlgs(W3CLdpAlgs {
+        ldp_vc: Some(W3CLdpAlgs {
             proof_type_values: vec!["DataIntegrityProof".to_string()],
             cryptosuite_values: vec![
                 "bbs-2023".to_string(),
@@ -74,23 +65,15 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, PresentationFor
                 "eddsa-rdfc-2022".to_string(),
             ],
         }),
-    );
-    formats.insert(
-        "mso_mdoc".to_owned(),
-        PresentationFormat::MdocAlgs(MdocAlgs {
+        mso_mdoc: Some(MdocAlgs {
             issuerauth_alg_values: cose_algs.to_owned(),
             deviceauth_alg_values: cose_algs,
         }),
-    );
-    formats.insert(
-        "dc+sd-jwt".to_owned(),
-        PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
+        dc_sd_jwt: Some(SdJwtVcAlgs {
             sd_jwt_alg_values: jose_algs.to_owned(),
             kb_jwt_alg_values: jose_algs,
         }),
-    );
-
-    formats
+    }
 }
 
 /// Selects the JWK the verifier advertises for ECDH-ES key agreement, preferring the key the
