@@ -15,6 +15,15 @@ impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
     }
 }
 
+impl OpenID4VCIErrorResponseRestDTO {
+    pub(crate) fn with_description(error: OpenID4VCIError, description: String) -> Self {
+        Self {
+            error: error.into(),
+            error_description: Some(description),
+        }
+    }
+}
+
 #[expect(deprecated)]
 impl From<dto::FeatureFlags> for FeatureFlagsRestDTO {
     fn from(value: dto::FeatureFlags) -> Self {

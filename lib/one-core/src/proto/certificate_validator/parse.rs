@@ -9,8 +9,8 @@ use super::x509_extension::{
     validate_ca_signature, validate_critical_extensions, validate_required_cert_key_usage,
 };
 use super::{
-    CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
-    Error, ParsedCertificate, x509_extension,
+    CertContext, CertSelection, CertificatePurpose, CertificateValidationOptions,
+    CertificateValidator, CertificateValidatorImpl, Error, ParsedCertificate, x509_extension,
 };
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
@@ -80,7 +80,7 @@ impl CertificateValidatorImpl {
         validation: CertificateValidationOptions,
     ) -> Result<&'a X509Certificate<'a>, Error> {
         if validation.require_root_termination {
-            self.validate_root_ca_termination(chain)?;
+            self.validate_root_ca_termination(chain, validation.purpose)?;
         }
 
         if validation.integrity_check {
@@ -117,18 +117,24 @@ impl CertificateValidatorImpl {
                 result = Some(current);
             }
 
+            let ctx = CertContext {
+                purpose: validation.purpose,
+                is_ca: current.is_ca(),
+                subject_dn: current.subject.to_string(),
+            };
+
             if validation.integrity_check {
                 if let Some(parent) = chain.peek() {
-                    validate_ca_signature(current, parent)?;
+                    validate_ca_signature(current, parent, &ctx)?;
                 }
 
                 validate_critical_extensions(current)?;
             }
 
             if let Some(crl_mode) = validation.validity_check {
-                self.check_validity_with_leeway(current, self.clock_leeway)?;
+                self.check_validity_with_leeway(current, self.clock_leeway, &ctx)?;
 
-                self.check_revocation(current, chain.peek().copied(), crl_mode)
+                self.check_revocation(current, chain.peek().copied(), crl_mode, ctx)
                     .await?;
             }
 
@@ -217,6 +223,7 @@ impl CertificateValidatorImpl {
     fn validate_root_ca_termination(
         &self,
         certificate_chain: &[X509Certificate],
+        purpose: CertificatePurpose,
     ) -> Result<(), Error> {
         let Some(terminating_certificate) = certificate_chain.last() else {
             return Err(Error::InvalidCaCertificateChain(
@@ -239,7 +246,13 @@ impl CertificateValidatorImpl {
         // Verify the self-signed signature to ensure it's a legitimate root CA
         terminating_certificate
             .verify_signature(Some(terminating_certificate.public_key()))
-            .map_err(|_| Error::CertificateSignatureInvalid)?;
+            .map_err(|_| {
+                Error::CertificateSignatureInvalid(CertContext {
+                    purpose,
+                    is_ca: true,
+                    subject_dn: terminating_certificate.subject.to_string(),
+                })
+            })?;
 
         Ok(())
     }
@@ -248,14 +261,15 @@ impl CertificateValidatorImpl {
         &self,
         cert: &X509Certificate,
         leeway: Duration,
+        ctx: &CertContext,
     ) -> Result<(), Error> {
         let now = crate::clock::now_utc();
         if ASN1Time::from(now + leeway) < cert.validity.not_before {
-            return Err(Error::CertificateNotYetValid);
+            return Err(Error::CertificateNotYetValid(ctx.clone()));
         }
 
         if ASN1Time::from(now - leeway) > cert.validity.not_after {
-            return Err(Error::CertificateExpired);
+            return Err(Error::CertificateExpired(ctx.clone()));
         }
 
         Ok(())

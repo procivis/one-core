@@ -188,6 +188,7 @@ fn interaction_under_test(
 fn issuer_artifact() -> ProtocolArtifact<'static> {
     ProtocolArtifact::IssuerIssuance {
         wallet_provider: PublicKeySource::X5c { x5c: &[] },
+        source: crate::provider::ecosystem::model::WalletProviderAttestationSource::WalletInstanceAttestation,
     }
 }
 

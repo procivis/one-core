@@ -4,13 +4,23 @@ use std::fmt::{Display, Formatter};
 
 use one_crypto::encryption::EncryptionError;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumMessage, IntoStaticStr};
+use strum::{Display, EnumMessage, EnumString, IntoStaticStr};
 
 use crate::model::relation::OptionalRelatedExtError;
 use crate::provider::provider_directory::ProviderError;
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage, Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    IntoStaticStr,
+    EnumMessage,
+    EnumString,
+    Display,
 )]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
@@ -472,7 +482,7 @@ pub enum ErrorCode {
     #[strum(message = "CRL check failure")]
     BR_0233,
 
-    #[strum(message = "CRL outdated")]
+    #[strum(message = "CRL is expired")]
     BR_0234,
 
     #[strum(message = "CRL signature invalid")]
@@ -1045,6 +1055,62 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid claim path")]
     BR_0485,
+
+    #[strum(message = "Access certificate provider not on trust list")]
+    BR_0486,
+
+    #[strum(message = "Access certificate is not valid")]
+    BR_0487,
+
+    #[strum(message = "Issuer not on trust list for the issued credential type")]
+    BR_0488,
+
+    #[strum(message = "Registration certificate provider not on trust list")]
+    BR_0489,
+
+    #[strum(message = "Trust attestation does not cover the issued credential")]
+    BR_0490,
+
+    #[strum(
+        message = "Access certificate does not match the registration certificate or registry response"
+    )]
+    BR_0491,
+
+    #[strum(message = "Registration certificate is not valid")]
+    BR_0492,
+
+    #[strum(message = "National registry signer not on trust list")]
+    BR_0493,
+
+    #[strum(message = "Wallet Instance Attestation issuer not on wallet provider trust list")]
+    BR_0494,
+
+    #[strum(message = "Wallet Instance Attestation is malformed")]
+    BR_0495,
+
+    #[strum(message = "Key Attestation issuer not on wallet provider trust list")]
+    BR_0496,
+
+    #[strum(message = "Key Attestation is malformed")]
+    BR_0497,
+
+    #[strum(message = "Wallet Instance Attestation and Key Attestation issuers do not match")]
+    BR_0498,
+
+    #[strum(message = "Wallet unit attestation is revoked")]
+    BR_0499,
+
+    #[strum(message = "Key storage security level is not attested")]
+    BR_0500,
+
+    #[strum(message = "Required entitlements missing from trust attestation")]
+    BR_0501,
+
+    #[strum(message = "CRL is not yet valid")]
+    BR_0502,
+
+    #[strum(message = "Requested credential is not permitted by the verifier's trust attestation")]
+    BR_0503,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

@@ -1,6 +1,7 @@
 use std::string::FromUtf8Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::proto::certificate_validator::CertContext;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum WRPValidatorError {
@@ -16,14 +17,22 @@ pub(crate) enum WRPValidatorError {
         first_value: String,
         second_value: String,
     },
-    #[error("Credential issuer not trusted")]
-    IssuerNotTrusted,
+    #[error("Issuer not on trust list for {role}")]
+    IssuerNotTrusted { role: &'static str },
     #[error("Registry not trusted")]
     RegistryNotTrusted,
-    #[error("Certificate revoked")]
-    CertificateRevoked,
-    #[error("Invalid organisation identifier")]
-    InvalidOrganisationIdentifier,
+    #[error("Wallet provider not on trust list")]
+    WalletProviderNotTrusted,
+    #[error("{0}: certificate is revoked")]
+    CertificateRevoked(CertContext),
+    #[error(
+        "Access certificate does not match registration certificate: {field} expected `{expected}` got `{actual}`"
+    )]
+    AccessRegistrationCertificateMismatch {
+        field: &'static str,
+        expected: String,
+        actual: String,
+    },
     #[error("Invalid registry URL: `{0}`")]
     InvalidRegistryUrl(String),
     #[error("Missing registry key: `{0:?}`")]
@@ -47,15 +56,16 @@ pub(crate) enum WRPValidatorError {
 impl ErrorCodeMixin for WRPValidatorError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::AccessCertificateNotTrusted
-            | Self::RegistrationCertificateNotTrusted
-            | Self::IssuerNotTrusted
-            | Self::RegistryNotTrusted
-            | Self::CertificateRevoked => ErrorCode::BR_0410,
-            Self::InvalidOrganisationIdentifier
-            | Self::MissingSigningDetails
+            Self::CertificateRevoked(_) => ErrorCode::BR_0212,
+            Self::AccessCertificateNotTrusted => ErrorCode::BR_0486,
+            Self::RegistrationCertificateNotTrusted => ErrorCode::BR_0489,
+            Self::IssuerNotTrusted { .. } => ErrorCode::BR_0488,
+            Self::RegistryNotTrusted => ErrorCode::BR_0493,
+            Self::WalletProviderNotTrusted => ErrorCode::BR_0494,
+            Self::AccessRegistrationCertificateMismatch { .. } => ErrorCode::BR_0491,
+            Self::MissingIssuer => ErrorCode::BR_0492,
+            Self::MissingSigningDetails
             | Self::MissingRegistryKey(_)
-            | Self::MissingIssuer
             | Self::InvalidRegistryUrl(_)
             | Self::InvalidSigningMethod(_)
             | Self::RegistrationCertificateMissmatch { .. } => ErrorCode::BR_0224,

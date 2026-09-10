@@ -16,14 +16,25 @@ use crate::repository::interaction_repository::InteractionRepository;
 mod credential;
 mod metadata;
 
+/// Which trust document was checked when it failed to cover the requested credential.
+#[derive(Debug, Clone, Copy, strum::Display)]
+pub(crate) enum AttestationCoverageSource {
+    #[strum(serialize = "registration certificate")]
+    RegistrationCertificate,
+    #[strum(serialize = "national registry response")]
+    NationalRegistry,
+}
+
 #[derive(Debug, Error)]
 pub(crate) enum HolderIssuanceError {
     #[error("Missing registry URL")]
     MissingRegistryUrl,
     #[error("Missing identifier")]
     MissingIdentifier,
-    #[error("Disallowed credential configuration")]
-    DisallowedCredentialConfiguration,
+    #[error("The {document} does not cover the requested credential")]
+    TrustAttestationDoesNotCoverCredential { document: AttestationCoverageSource },
+    #[error("Required entitlements missing from the {document}")]
+    EntitlementsMissing { document: AttestationCoverageSource },
     #[error("Inconsistent trust info")]
     InconsistentTrustInfo,
     #[error("No credential configuration")]
@@ -45,7 +56,8 @@ impl ErrorCodeMixin for HolderIssuanceError {
             | Self::InconsistentTrustInfo
             | Self::NoCredentialConfiguration
             | Self::InvalidCredentialConfiguration(_) => ErrorCode::BR_0477,
-            Self::DisallowedCredentialConfiguration => ErrorCode::BR_0411,
+            Self::TrustAttestationDoesNotCoverCredential { .. } => ErrorCode::BR_0490,
+            Self::EntitlementsMissing { .. } => ErrorCode::BR_0501,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

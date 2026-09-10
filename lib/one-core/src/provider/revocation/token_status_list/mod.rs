@@ -38,7 +38,8 @@ use crate::model::revocation_list::{
     UpdateRevocationListEntryRequest,
 };
 use crate::proto::certificate_validator::{
-    CertSelection, CertificateValidationOptions, CertificateValidator, EnforceKeyUsage,
+    CertSelection, CertificatePurpose, CertificateValidationOptions, CertificateValidator,
+    EnforceKeyUsage,
 };
 use crate::proto::cose::CoseSign1;
 use crate::proto::http_client::HttpClient;
@@ -968,7 +969,8 @@ impl TokenStatusList {
                     &ca_pem_chain,
                     CertificateValidationOptions::signature_and_revocation(Some(vec![
                         EnforceKeyUsage::DigitalSignature,
-                    ])),
+                    ]))
+                    .with_purpose(CertificatePurpose::Issuer),
                     CertSelection::Leaf,
                 )
                 .await

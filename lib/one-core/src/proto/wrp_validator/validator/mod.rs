@@ -24,7 +24,8 @@ use crate::model::trust_list_subscription::{
     TrustListSubscriptionState,
 };
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+    CertContext, CertificatePurpose, CertificateValidationOptions, CertificateValidator,
+    ParsedCertificate,
 };
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -101,15 +102,17 @@ impl WRPValidator for WRPValidatorImpl {
         let token =
             Jwt::<Payload>::build_from_token(wrprc_jwt, Some(&self.verification_fn()), None)
                 .await
-                .error_while("parsing JWT")?;
+                .error_while("building registration certificate token")?;
 
-        if token
-            .payload
-            .subject
-            .as_ref()
-            .is_none_or(|subject| subject != expected_rp_id)
-        {
-            return Err(WRPValidatorError::InvalidOrganisationIdentifier);
+        match token.payload.subject.as_ref() {
+            Some(subject) if subject == expected_rp_id => {}
+            other => {
+                return Err(WRPValidatorError::AccessRegistrationCertificateMismatch {
+                    field: "subject",
+                    expected: expected_rp_id.to_string(),
+                    actual: other.cloned().unwrap_or_default(),
+                });
+            }
         }
 
         let issuer = token.header.x5c.ok_or(WRPValidatorError::MissingIssuer)?;
@@ -270,7 +273,9 @@ impl WRPValidator for WRPValidatorImpl {
         }
 
         let Some(pem_chain) = issuer_certificate_pem_chain else {
-            return Err(WRPValidatorError::IssuerNotTrusted);
+            return Err(WRPValidatorError::IssuerNotTrusted {
+                role: "PID provider",
+            });
         };
 
         let trusted_entity = self
@@ -280,7 +285,9 @@ impl WRPValidator for WRPValidatorImpl {
                 trust_scope,
             )
             .await?
-            .ok_or(WRPValidatorError::IssuerNotTrusted)?;
+            .ok_or(WRPValidatorError::IssuerNotTrusted {
+                role: "PID provider",
+            })?;
 
         Ok(Some(trusted_entity))
     }
@@ -289,13 +296,14 @@ impl WRPValidator for WRPValidatorImpl {
         &self,
         key_source: PublicKeySource<'a>,
         trust_scope: &TrustScope,
-    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+    ) -> Result<TrustEntityResponse, WRPValidatorError> {
         self.perform_trust_validation(
             key_source.try_into()?,
             TrustListRoleEnum::WalletProvider,
             trust_scope,
         )
-        .await
+        .await?
+        .ok_or(WRPValidatorError::WalletProviderNotTrusted)
     }
 }
 
@@ -312,13 +320,17 @@ impl WRPValidatorImpl {
         trust_scope: &TrustScope,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
         let Some(pem_chain) = issuer_certificate_pem_chain else {
-            return Err(WRPValidatorError::IssuerNotTrusted);
+            return Err(WRPValidatorError::IssuerNotTrusted {
+                role: "QEAA provider",
+            });
         };
         // ETSI TS 119 472-1 QEAA-5.6.2-02: the protected header shall carry x5u and
         // x5t#S256. x5c is only recommended (QEAA-5.6.2-03), so it is not required.
         if !(issuer_x5_references.x5u && issuer_x5_references.x5t_s256) {
             tracing::info!("QEAA issuer signature missing required x5u/x5t#S256 references");
-            return Err(WRPValidatorError::IssuerNotTrusted);
+            return Err(WRPValidatorError::IssuerNotTrusted {
+                role: "QEAA provider",
+            });
         }
         let trusted_entity = self
             .perform_trust_validation(
@@ -327,7 +339,9 @@ impl WRPValidatorImpl {
                 trust_scope,
             )
             .await?
-            .ok_or(WRPValidatorError::IssuerNotTrusted)?;
+            .ok_or(WRPValidatorError::IssuerNotTrusted {
+                role: "QEAA provider",
+            })?;
         Ok(Some(trusted_entity))
     }
 
@@ -465,10 +479,15 @@ impl WRPValidatorImpl {
             .certificate_validator
             .parse_pem_chain(
                 issuer_pem_chain,
-                CertificateValidationOptions::signature_and_revocation(None),
+                CertificateValidationOptions::signature_and_revocation(None)
+                    .with_purpose(CertificatePurpose::RegistrationCertificate),
             )
             .await
             .error_while("parsing issuer certificate")?;
+
+        let issuer_subject_dn = subject_common_name
+            .clone()
+            .unwrap_or_else(|| attributes.subject.clone());
 
         let (revocation_provider, _) = self
             .revocation_method_provider
@@ -504,7 +523,11 @@ impl WRPValidatorImpl {
         match revocation_status {
             RevocationState::Valid => Ok(()),
             RevocationState::Revoked | RevocationState::Suspended { .. } => {
-                Err(WRPValidatorError::CertificateRevoked)
+                Err(WRPValidatorError::CertificateRevoked(CertContext {
+                    purpose: CertificatePurpose::RegistrationCertificate,
+                    is_ca: false,
+                    subject_dn: issuer_subject_dn,
+                }))
             }
         }
     }

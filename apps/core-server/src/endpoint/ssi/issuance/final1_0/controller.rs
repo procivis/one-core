@@ -10,7 +10,9 @@ use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
-use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
+use one_core::service::oid4vci_final1_0::error::{
+    OID4VCIFinal1_0ServiceError, WalletAttestationError,
+};
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
@@ -29,6 +31,21 @@ use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credenti
 use crate::extractor::Accept;
 use crate::headers::APPLICATION_JWT;
 use crate::router::AppState;
+
+/// Renders a wallet-attestation (WIA / KA) validation failure as an OpenID4VCI error
+/// response: HTTP 400 with the OAuth2 `error` code and the reworked message (prefixed
+/// with the stable `BR_xxxx` code) in `errorDescription`.
+fn wallet_attestation_response(wa: &WalletAttestationError) -> Response {
+    tracing::info!("Wallet attestation validation error: {wa}");
+    (
+        StatusCode::BAD_REQUEST,
+        Json(OpenID4VCIErrorResponseRestDTO::with_description(
+            wa.oauth_error(),
+            format!("{} | {}", wa.error_code(), wa),
+        )),
+    )
+        .into_response()
+}
 
 #[endpoint(
     permissions = [],
@@ -283,6 +300,7 @@ pub(crate) async fn oid4vci_final1_0_create_token(
             )
                 .into_response()
         }
+        Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
         Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
             tracing::error!("Invalid credential state state error: {state}");
             (
@@ -370,6 +388,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
             )
                 .into_response()
         }
+        Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
         Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
             tracing::error!("Invalid credential state error: {state}");
             (

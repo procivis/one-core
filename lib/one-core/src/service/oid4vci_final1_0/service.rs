@@ -30,7 +30,7 @@ use super::dto::{
     OID4VCIFinal1_0MetadataResponseTypeEnum as IssuerMetadataResponseTypeEnum,
     OpenID4VCICredentialResponseDTO,
 };
-use super::error::OID4VCIFinal1_0ServiceError;
+use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::{interaction_data_to_dto, offered_formats};
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
@@ -42,7 +42,7 @@ use super::validator::{
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
@@ -67,7 +67,7 @@ use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::ecosystem::model::ProtocolArtifact;
+use crate::provider::ecosystem::model::{ProtocolArtifact, WalletProviderAttestationSource};
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -700,7 +700,7 @@ impl OID4VCIFinal1_0Service {
 
             if wallet_unit_attestation_status == WalletUnitStatusCheckResponse::Revoked {
                 tracing::error!("wallet unit attestation is revoked");
-                return Err(OpenID4VCIError::InvalidOrMissingProof.into());
+                return Err(WalletAttestationError::WuaRevoked.into());
             }
 
             if schema.requires_wallet_instance_attestation {
@@ -736,16 +736,18 @@ impl OID4VCIFinal1_0Service {
 
                 let wia =
                     Jwt::<WalletInstanceAttestationClaims>::decompose_token(&wia_dto.attestation)
-                        .error_while("parsing WIA token")?;
+                        .map_err(|e| {
+                        WalletAttestationError::WiaMalformed(format!("parsing stored WIA: {e}"))
+                    })?;
 
                 verify_wua_wia_issuers_match(key_attestation_jwt, &wia)?;
             }
 
             let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)
-                .error_while("parsing WUA token")?;
-            let key_source = wua
-                .public_key_source(None)
-                .error_while("extracting WUA public key")?;
+                .map_err(|e| WalletAttestationError::KaMalformed(format!("parsing: {e}")))?;
+            let key_source = wua.public_key_source(None).map_err(|e| {
+                WalletAttestationError::KaMalformed(format!("extracting public key: {e}"))
+            })?;
 
             if let Some(ecosystem_id) = &interaction.ecosystem {
                 let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
@@ -753,11 +755,17 @@ impl OID4VCIFinal1_0Service {
                     .validate_interaction(
                         &ProtocolArtifact::IssuerIssuance {
                             wallet_provider: key_source,
+                            source: WalletProviderAttestationSource::KeyAttestation,
                         },
                         interaction,
                     )
                     .await
-                    .error_while("validating ecosystem")?;
+                    .map_err(|e| match e.error_code() {
+                        ErrorCode::BR_0496 => WalletAttestationError::KaIssuerUntrusted.into(),
+                        _ => {
+                            OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem"))
+                        }
+                    })?;
             }
 
             let proof_signing_key = match &holder_binding {
@@ -1401,23 +1409,34 @@ impl OID4VCIFinal1_0Service {
         // If the credential schema does not require client attestation, no tokens are expected
         if !credential_schema.requires_wallet_instance_attestation {
             if oauth_client_attestation.is_some() || oauth_client_attestation_pop.is_some() {
-                return Err(OpenID4VCIError::InvalidRequest.into());
+                return Err(WalletAttestationError::WiaMalformed(
+                    "unexpected OAuth client attestation headers".to_string(),
+                )
+                .into());
             }
             return Ok(None);
         }
 
         // Parse tokens
-        let wallet_instance_attestation_token =
-            oauth_client_attestation.ok_or(OpenID4VCIError::InvalidRequest)?;
-        let proof_of_key_possesion_token =
-            oauth_client_attestation_pop.ok_or(OpenID4VCIError::InvalidRequest)?;
+        let wallet_instance_attestation_token = oauth_client_attestation.ok_or_else(|| {
+            WalletAttestationError::WiaMalformed(
+                "missing OAuth-Client-Attestation header".to_string(),
+            )
+        })?;
+        let proof_of_key_possesion_token = oauth_client_attestation_pop.ok_or_else(|| {
+            WalletAttestationError::WiaMalformed(
+                "missing OAuth-Client-Attestation-PoP header".to_string(),
+            )
+        })?;
 
         let wallet_instance_attestation = Jwt::<WalletInstanceAttestationClaims>::decompose_token(
             wallet_instance_attestation_token,
         )
-        .error_while("parsing WIA token")?;
+        .map_err(|e| WalletAttestationError::WiaMalformed(format!("parsing: {e}")))?;
         let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)
-            .error_while("parsing WUA token")?;
+            .map_err(|e| {
+                WalletAttestationError::WiaMalformed(format!("parsing client attestation PoP: {e}"))
+            })?;
 
         // Validate timestamps for both tokens
         validate_timestamps(&wallet_instance_attestation, leeway)?;
@@ -1468,11 +1487,15 @@ impl OID4VCIFinal1_0Service {
                 .validate_interaction(
                     &ProtocolArtifact::IssuerIssuance {
                         wallet_provider: key_source,
+                        source: WalletProviderAttestationSource::WalletInstanceAttestation,
                     },
                     &interaction,
                 )
                 .await
-                .error_while("validating ecosystem")?;
+                .map_err(|e| match e.error_code() {
+                    ErrorCode::BR_0494 => WalletAttestationError::WiaIssuerUntrusted.into(),
+                    _ => OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem")),
+                })?;
         }
 
         // Extract wallet metadata

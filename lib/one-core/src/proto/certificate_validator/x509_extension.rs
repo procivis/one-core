@@ -6,7 +6,7 @@ use x509_parser::prelude::{
 };
 use x509_parser::x509::X509Name;
 
-use super::Error;
+use super::{CertContext, Error};
 use crate::proto::certificate_validator::EnforceKeyUsage;
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
 
@@ -80,11 +80,12 @@ pub(crate) fn validate_critical_extensions(certificate: &X509Certificate) -> Res
 pub(crate) fn validate_ca_signature(
     certificate: &X509Certificate,
     parent_ca_certificate: &X509Certificate,
+    ctx: &CertContext,
 ) -> Result<(), Error> {
     validate_ca(parent_ca_certificate)?;
     certificate
         .verify_signature(Some(parent_ca_certificate.public_key()))
-        .map_err(|_| Error::CertificateSignatureInvalid)
+        .map_err(|_| Error::CertificateSignatureInvalid(ctx.clone()))
 }
 
 /// Validates certificate has BasicConstraints extension with `ca` set to true and KeyUsage extension with `keyCertSign` set.

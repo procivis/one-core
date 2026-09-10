@@ -12,7 +12,7 @@ use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::instance::Instance;
 use crate::model::key::Key;
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+    CertificatePurpose, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::ephemeral_key::EphemeralKey;
 use crate::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
@@ -247,7 +247,8 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                     .certificate_validator
                     .parse_pem_chain(
                         &chain,
-                        CertificateValidationOptions::signature_and_revocation(None),
+                        CertificateValidationOptions::signature_and_revocation(None)
+                            .with_purpose(CertificatePurpose::WalletProvider),
                     )
                     .await
                     .error_while("parsing PEM chain")?;

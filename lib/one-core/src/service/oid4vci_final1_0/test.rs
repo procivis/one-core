@@ -17,7 +17,7 @@ use time::Duration;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
-use super::error::OID4VCIFinal1_0ServiceError;
+use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
@@ -3251,8 +3251,8 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-            OpenID4VCIError::InvalidRequest
+        Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
+            WalletAttestationError::WiaMalformed(_)
         ))
     ));
 }
@@ -3308,8 +3308,8 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-            OpenID4VCIError::InvalidRequest
+        Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
+            WalletAttestationError::WiaMalformed(_)
         ))
     ));
 }
@@ -3364,8 +3364,8 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-            OpenID4VCIError::InvalidRequest
+        Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
+            WalletAttestationError::WiaMalformed(_)
         ))
     ));
 }

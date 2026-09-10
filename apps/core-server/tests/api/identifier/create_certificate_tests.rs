@@ -477,9 +477,9 @@ async fn test_create_certificate_identifier_crl_not_available() {
         )
         .await;
 
-    // http client error
+    // the CRL distribution point is unreachable, so revocation cannot be checked
     assert_eq!(result.status(), 400);
-    assert_eq!(result.error_code().await, "BR_0395");
+    assert_eq!(result.error_code().await, "BR_0233");
 }
 
 #[tokio::test]

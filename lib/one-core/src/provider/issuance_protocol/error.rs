@@ -84,7 +84,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::KeyRequirementsNotSupported => ErrorCode::BR_0225,
             Self::WalletInstanceRequired => ErrorCode::BR_0081,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
-            Self::DisallowedCredentialConfiguration => ErrorCode::BR_0411,
+            Self::DisallowedCredentialConfiguration => ErrorCode::BR_0490,
             Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,
             Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,

@@ -52,7 +52,7 @@ impl ErrorCodeMixin for AccessCertParsingError {
             | Self::MissingCountry
             | Self::InvalidPhoneNr(_)
             | Self::MissingSubjectAlternativeName
-            | Self::X509ParserError(_) => ErrorCode::BR_0224,
+            | Self::X509ParserError(_) => ErrorCode::BR_0487,
             Self::URLParsing(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

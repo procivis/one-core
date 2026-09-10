@@ -18,7 +18,7 @@ use crate::model::organisation::Organisation;
 use crate::model::relation::{Related, RelatedVec};
 use crate::proto::certificate_validator::x509_extension::validate_ca;
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CrlMode, ParsedCertificate,
+    CertificatePurpose, CertificateValidationOptions, CrlMode, ParsedCertificate,
 };
 use crate::proto::csr_creator::GenerateCsrRequest;
 use crate::proto::identifier_creator::mapper::build_identifier_translations;
@@ -551,6 +551,7 @@ impl IdentifierCreatorProto {
                     required_leaf_cert_key_usage: Default::default(),
                     leaf_only_extensions: Default::default(),
                     leaf_validations: vec![validate_ca],
+                    purpose: CertificatePurpose::Ca,
                 },
             )
             .await

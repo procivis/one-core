@@ -25,7 +25,7 @@ use crate::model::organisation::Organisation;
 use crate::model::relation::RelatedVec;
 use crate::proto::certificate_validator::x509_extension::{validate_ca, validate_not_ca};
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, LeafValidation, ParsedCertificate,
+    CertificatePurpose, CertificateValidationOptions, LeafValidation, ParsedCertificate,
 };
 use crate::proto::csr_creator::CsrCreator;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
@@ -272,6 +272,10 @@ impl IdentifierCreator for IdentifierCreatorProto {
             IdentifierType::CertificateAuthority => vec![validate_ca],
             _ => vec![validate_not_ca],
         };
+        let certificate_purpose = match identifier_type {
+            IdentifierType::CertificateAuthority => CertificatePurpose::Ca,
+            _ => CertificatePurpose::Unspecified,
+        };
 
         self.tx_manager
             .tx_with_config(
@@ -292,6 +296,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                                 CertificateValidationOptions {
                                     leaf_validations: leaf_validations.clone(),
                                     ..CertificateValidationOptions::signature_and_revocation(None)
+                                        .with_purpose(certificate_purpose)
                                 },
                             )
                             .await

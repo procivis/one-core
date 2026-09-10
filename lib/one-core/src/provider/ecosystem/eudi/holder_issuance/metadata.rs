@@ -8,7 +8,7 @@ use standardized_types::openid4vci::{
 use standardized_types::openid4vp::dcql;
 use url::Url;
 
-use super::{HolderIssuanceError, HolderIssuanceResolver};
+use super::{AttestationCoverageSource, HolderIssuanceError, HolderIssuanceResolver};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
@@ -186,7 +186,11 @@ impl HolderIssuanceResolver {
                 credential_config_matches_reg_cert_attestation(credential_config, attestation)
             })
         {
-            return Err(HolderIssuanceError::DisallowedCredentialConfiguration);
+            return Err(
+                HolderIssuanceError::TrustAttestationDoesNotCoverCredential {
+                    document: AttestationCoverageSource::NationalRegistry,
+                },
+            );
         };
 
         Ok((
@@ -217,7 +221,11 @@ impl HolderIssuanceResolver {
             }
         }
 
-        Err(HolderIssuanceError::DisallowedCredentialConfiguration)
+        Err(
+            HolderIssuanceError::TrustAttestationDoesNotCoverCredential {
+                document: AttestationCoverageSource::RegistrationCertificate,
+            },
+        )
     }
 
     async fn credential_config_matches_reg_cert(

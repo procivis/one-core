@@ -78,5 +78,5 @@ pub(crate) trait WRPValidator: Send + Sync {
         &self,
         key_source: PublicKeySource<'a>,
         trust_scope: &TrustScope,
-    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
+    ) -> Result<TrustEntityResponse, WRPValidatorError>;
 }

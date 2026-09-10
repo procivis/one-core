@@ -17,7 +17,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::key::Key;
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+    CertificatePurpose, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::csc::CscClient;
 use crate::proto::csc::model::{CredentialToken, SignHashRequest, TokenRequest};
@@ -234,7 +234,8 @@ impl KeyStorage for Sign8KeyProvider {
             .certificate_validator
             .parse_pem_chain(
                 &chain,
-                CertificateValidationOptions::signature_and_revocation(None),
+                CertificateValidationOptions::signature_and_revocation(None)
+                    .with_purpose(CertificatePurpose::Issuer),
             )
             .await
             .error_while("parsing PEM chain")?;

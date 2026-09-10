@@ -27,26 +27,78 @@ pub(crate) mod x509_extension;
 #[cfg(test)]
 mod test;
 
+/// What a certificate under validation is used for. Included in error messages so the
+/// caller/wallet can tell which certificate (and in which role) failed validation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum CertificatePurpose {
+    #[default]
+    Unspecified,
+    RegistrationCertificate,
+    Issuer,
+    WalletProvider,
+    Ca,
+}
+
+impl std::fmt::Display for CertificatePurpose {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Self::Unspecified => "Certificate",
+            Self::RegistrationCertificate => "Registration certificate",
+            Self::Issuer => "Issuer certificate",
+            Self::WalletProvider => "Wallet provider certificate",
+            Self::Ca => "CA certificate",
+        };
+        f.write_str(name)
+    }
+}
+
+/// Identifies a single certificate within a chain for error reporting.
+#[derive(Clone, Debug)]
+pub(crate) struct CertContext {
+    pub purpose: CertificatePurpose,
+    pub is_ca: bool,
+    pub subject_dn: String,
+}
+
+impl std::fmt::Display for CertContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let position = if self.is_ca {
+            "CA certificate"
+        } else {
+            "end-entity certificate"
+        };
+        write!(
+            f,
+            "{} ({}, subject: {})",
+            self.purpose, position, self.subject_dn
+        )
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum Error {
     #[error("No certificates specified in the chain")]
     EmptyChain,
     #[error("Unsupported algorithm: `{0}`")]
     UnsupportedAlgorithm(String),
-    #[error("CRL check failure: `{0}`")]
-    CRLCheckFailed(String),
-    #[error("Certificate signature invalid")]
-    CertificateSignatureInvalid,
-    #[error("Certificate revoked")]
-    CertificateRevoked,
-    #[error("Certificate is expired")]
-    CertificateExpired,
-    #[error("Certificate is not yet valid")]
-    CertificateNotYetValid,
-    #[error("CRL is not up to date")]
-    CRLOutdated,
-    #[error("CRL signature invalid")]
-    CRLSignatureInvalid,
+    #[error("{ctx}: CRL check failed: {reason}")]
+    CRLCheckFailed { ctx: CertContext, reason: String },
+    #[error("{ctx}: cannot check revocation: {reason}")]
+    RevocationCheckUnavailable { ctx: CertContext, reason: String },
+    #[error("{0}: certificate signature is invalid")]
+    CertificateSignatureInvalid(CertContext),
+    #[error("{0}: certificate is revoked")]
+    CertificateRevoked(CertContext),
+    #[error("{0}: certificate is expired")]
+    CertificateExpired(CertContext),
+    #[error("{0}: certificate is not yet valid")]
+    CertificateNotYetValid(CertContext),
+    #[error("{0}: CRL has expired (current time is past the CRL's nextUpdate)")]
+    CRLExpired(CertContext),
+    #[error("{0}: CRL is not yet valid (the CRL's thisUpdate is in the future)")]
+    CRLNotYetValid(CertContext),
+    #[error("{0}: CRL signature is invalid")]
+    CRLSignatureInvalid(CertContext),
     #[error("Invalid CA chain: {0}")]
     InvalidCaCertificateChain(String),
     #[error("Unknown critical X.509 extension: {0}")]
@@ -84,13 +136,16 @@ impl ErrorCodeMixin for Error {
             | Self::X509NomError(_)
             | Self::X509ParserError(_)
             | Self::Base64Error(_) => ErrorCode::BR_0224,
-            Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
-            Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
-            Self::CertificateRevoked => ErrorCode::BR_0212,
-            Self::CertificateExpired => ErrorCode::BR_0213,
-            Self::CertificateNotYetValid => ErrorCode::BR_0359,
-            Self::CRLOutdated => ErrorCode::BR_0234,
-            Self::CRLSignatureInvalid => ErrorCode::BR_0235,
+            Self::CRLCheckFailed { .. } | Self::RevocationCheckUnavailable { .. } => {
+                ErrorCode::BR_0233
+            }
+            Self::CertificateSignatureInvalid(_) => ErrorCode::BR_0211,
+            Self::CertificateRevoked(_) => ErrorCode::BR_0212,
+            Self::CertificateExpired(_) => ErrorCode::BR_0213,
+            Self::CertificateNotYetValid(_) => ErrorCode::BR_0359,
+            Self::CRLExpired(_) => ErrorCode::BR_0234,
+            Self::CRLNotYetValid(_) => ErrorCode::BR_0502,
+            Self::CRLSignatureInvalid(_) => ErrorCode::BR_0235,
             Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
             Self::UnknownCriticalExtension(_) => ErrorCode::BR_0248,
             Self::KeyUsageViolation(_) => ErrorCode::BR_0249,
@@ -168,9 +223,17 @@ pub(crate) struct CertificateValidationOptions {
     pub leaf_only_extensions: Vec<String>,
     /// Validations applied to the leaf certificate.
     pub leaf_validations: Vec<LeafValidation>,
+    /// What the certificate under validation is used for. Surfaced in error messages.
+    pub purpose: CertificatePurpose,
 }
 
 impl CertificateValidationOptions {
+    /// Sets the certificate purpose surfaced in validation error messages.
+    pub fn with_purpose(mut self, purpose: CertificatePurpose) -> Self {
+        self.purpose = purpose;
+        self
+    }
+
     /// No validation is performed
     pub fn no_validation() -> Self {
         Self {
@@ -180,6 +243,7 @@ impl CertificateValidationOptions {
             required_leaf_cert_key_usage: Default::default(),
             leaf_only_extensions: Default::default(),
             leaf_validations: Default::default(),
+            purpose: CertificatePurpose::Unspecified,
         }
     }
 
@@ -198,6 +262,7 @@ impl CertificateValidationOptions {
             required_leaf_cert_key_usage: required_leaf_cert_key_usage.unwrap_or_default(),
             leaf_only_extensions: Default::default(),
             leaf_validations: Default::default(),
+            purpose: CertificatePurpose::Unspecified,
         }
     }
 
@@ -212,6 +277,7 @@ impl CertificateValidationOptions {
             required_leaf_cert_key_usage: required_leaf_cert_key_usage.unwrap_or_default(),
             leaf_only_extensions: Default::default(),
             leaf_validations: Default::default(),
+            purpose: CertificatePurpose::Unspecified,
         }
     }
 }

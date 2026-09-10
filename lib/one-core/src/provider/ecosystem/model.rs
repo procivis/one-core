@@ -58,12 +58,23 @@ pub enum ProtocolArtifact<'a> {
     /// As issuer, issuance protocol artifacts
     IssuerIssuance {
         wallet_provider: PublicKeySource<'a>,
+        /// Which wallet attestation the `wallet_provider` key was taken from.
+        /// Used to report a trust failure against the right attestation (WIA vs KA).
+        source: WalletProviderAttestationSource,
     },
     /// As verifier, protocol artifacts of a proof-request (after submission)
     VerifierSubmission {
         credential: Cow<'a, Credential>,
         issuer_details: Cow<'a, IdentifierDetails>,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display)]
+pub enum WalletProviderAttestationSource {
+    /// OAuth client attestation at the token endpoint (WIA)
+    WalletInstanceAttestation,
+    /// Key attestation of the holder proof at the credential endpoint (KA/WUA)
+    KeyAttestation,
 }
 
 #[derive(Clone, Debug, Display)]

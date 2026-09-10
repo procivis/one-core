@@ -24,7 +24,7 @@ use super::mapper::{
 use super::validator::validate_identifier_type;
 use crate::config::core_config;
 use crate::config::core_config::BlobStorageType;
-use crate::error::ErrorCode::BR_0224;
+use crate::error::ErrorCode::{BR_0224, BR_0487};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
 use crate::model::identifier::{
@@ -556,7 +556,7 @@ impl IdentifierService {
                 Ok(ac_info) => {
                     rp_ids.insert(ac_info.relying_party_id);
                 }
-                Err(err) if err.error_code() == BR_0224 => {
+                Err(err) if matches!(err.error_code(), BR_0224 | BR_0487) => {
                     // ignore this error, as the identifier might have additional certificates that are not access certificates
                 }
                 Err(err) => return Err(err.error_while("validating access cert").into()),

@@ -22,6 +22,10 @@ pub enum EcosystemError {
     },
     #[error("Untrusted identifier")]
     UntrustedIdentifier,
+    #[error("Wallet Instance Attestation issuer not on wallet provider trust list")]
+    WalletInstanceAttestationIssuerUntrusted,
+    #[error("Key Attestation issuer not on wallet provider trust list")]
+    KeyAttestationIssuerUntrusted,
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -36,6 +40,8 @@ impl ErrorCodeMixin for EcosystemError {
             | Self::UntrustedIdentifier
             | Self::InvalidIdentifier(_)
             | Self::DisallowedSchemaFormat(_) => ErrorCode::BR_0477,
+            Self::WalletInstanceAttestationIssuerUntrusted => ErrorCode::BR_0494,
+            Self::KeyAttestationIssuerUntrusted => ErrorCode::BR_0496,
             Self::UnsupportedRole(_) | Self::InvalidRoleFilter { .. } => ErrorCode::BR_0479,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),

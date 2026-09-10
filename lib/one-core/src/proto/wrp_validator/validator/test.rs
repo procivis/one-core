@@ -444,7 +444,7 @@ async fn test_qeaa_issuer_rejected_when_x5_reference_missing() {
         .await;
 
     assert!(
-        matches!(result, Err(WRPValidatorError::IssuerNotTrusted)),
+        matches!(result, Err(WRPValidatorError::IssuerNotTrusted { .. })),
         "a QEAA issuer missing x5u must be rejected"
     );
 }

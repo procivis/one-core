@@ -7,7 +7,7 @@ use standardized_types::openid4vci::{
 };
 use time::Duration;
 
-use super::error::OID4VCIFinal1_0ServiceError;
+use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -141,7 +141,10 @@ pub(crate) fn wia_key_source(
         (None, Some(x5c)) => Ok(PublicKeySource::X5c { x5c }),
         _ => {
             tracing::info!("WIA issuer not specified");
-            Err(OpenID4VCIError::InvalidRequest.into())
+            Err(WalletAttestationError::WiaMalformed(
+                "issuer key not specified (jwk/x5c header missing or ambiguous)".to_string(),
+            )
+            .into())
         }
     }
 }
@@ -156,7 +159,9 @@ pub(crate) async fn verify_wia_signature(
     wallet_instance_attestation
         .verify_signature(public_key_source, verifier)
         .await
-        .map_err(|_| OpenID4VCIError::InvalidRequest)?;
+        .map_err(|e| {
+            WalletAttestationError::WiaMalformed(format!("signature verification failed: {e}"))
+        })?;
 
     Ok(())
 }
@@ -169,7 +174,9 @@ pub(crate) fn extract_wallet_metadata(
         .custom
         .wallet_name
         .as_ref()
-        .ok_or(OpenID4VCIError::InvalidRequest)?
+        .ok_or_else(|| {
+            WalletAttestationError::WiaMalformed("missing wallet_name claim".to_string())
+        })?
         .clone();
 
     let link = wallet_instance_attestation
@@ -177,7 +184,9 @@ pub(crate) fn extract_wallet_metadata(
         .custom
         .wallet_link
         .as_ref()
-        .ok_or(OpenID4VCIError::InvalidRequest)?
+        .ok_or_else(|| {
+            WalletAttestationError::WiaMalformed("missing wallet_link claim".to_string())
+        })?
         .clone();
 
     Ok((name, link))
@@ -190,7 +199,7 @@ pub(crate) async fn validate_key_attestation(
     leeway: Duration,
 ) -> Result<Vec<PublicJwk>, OID4VCIFinal1_0ServiceError> {
     let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)
-        .error_while("parsing WUA token")?;
+        .map_err(|e| WalletAttestationError::KaMalformed(format!("parsing: {e}")))?;
 
     validate_timestamps(&wua, leeway)?;
 
@@ -204,15 +213,18 @@ pub(crate) async fn validate_key_attestation(
             "key attestation does not list expected key storage security level: {:?}",
             expected_key_storage_security_level
         );
-        return Err(OpenID4VCIError::InvalidRequest.into());
+        return Err(WalletAttestationError::KeyStorageSecurityLevelMismatch(
+            expected_key_storage_security_level,
+        )
+        .into());
     }
 
     let wua_issuer_key = wua
         .public_key_source(None)
-        .error_while("extracting public key from WUA JWT")?;
+        .map_err(|e| WalletAttestationError::KaMalformed(format!("extracting public key: {e}")))?;
     wua.verify_signature(wua_issuer_key, verifier)
         .await
-        .error_while("validating WUA token")?;
+        .map_err(|e| WalletAttestationError::KaMalformed(format!("signature: {e}")))?;
 
     Ok(wua.payload.custom.attested_keys)
 }
@@ -223,14 +235,14 @@ pub(crate) fn verify_wua_wia_issuers_match(
     wia: &DecomposedJwt<WalletInstanceAttestationClaims>,
 ) -> Result<(), OID4VCIFinal1_0ServiceError> {
     let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(wua_jwt)
-        .error_while("parsing WUA token")?;
+        .map_err(|e| WalletAttestationError::KaMalformed(format!("parsing: {e}")))?;
 
     let wia_issuer = (wia.header.jwk.as_ref(), wia.header.x5c.as_ref());
     let wua_issuer = (wua.header.jwk.as_ref(), wua.header.x5c.as_ref());
 
     if wia_issuer != wua_issuer {
         tracing::info!("WUA issuer does not match WIA issuer");
-        return Err(OpenID4VCIError::InvalidRequest.into());
+        return Err(WalletAttestationError::WiaKaIssuerMismatch.into());
     }
 
     Ok(())

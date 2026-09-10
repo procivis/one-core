@@ -13,9 +13,9 @@ use url::Url;
 use uuid::Uuid;
 
 use super::mapper::credential_query_matches_reg_cert_credential;
-use super::{HolderProofError, HolderProofResolver};
+use super::{HolderProofError, HolderProofResolver, ProofTrustSource};
 use crate::config::core_config::BlobStorageType;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
@@ -152,6 +152,10 @@ impl HolderProofResolver {
             Vec<RefCertCredentialInfo>,
         > = HashMap::new();
         let mut last_reg_cert_jwt: Option<registration_certificate::Payload> = None;
+        // Individual registration certificate failures are tolerated (a verifier may present
+        // several, only one has to match). Keep the first concrete reason so that, if *every*
+        // certificate fails, the wallet sees why instead of a generic "query not allowed".
+        let mut first_reg_cert_error: Option<NestedError> = None;
         for reg_cert in verifier_info {
             let trusted = match self
                 .wrp_validator
@@ -166,6 +170,9 @@ impl HolderProofResolver {
                 Ok(trusted) => trusted,
                 Err(err) => {
                     tracing::warn!(%err, "Provided registration certificate validation failure");
+                    first_reg_cert_error.get_or_insert_with(|| {
+                        err.error_while("validating registration certificate")
+                    });
                     continue;
                 }
             };
@@ -179,6 +186,9 @@ impl HolderProofResolver {
                     )
             {
                 tracing::warn!(%err, "validating registration certificates similarity");
+                first_reg_cert_error.get_or_insert_with(|| {
+                    err.error_while("checking registration certificate consistency")
+                });
                 continue;
             }
             last_reg_cert_jwt = Some(trusted.payload.custom.clone());
@@ -215,6 +225,15 @@ impl HolderProofResolver {
             }
         }
 
+        // Every provided registration certificate failed validation - report the underlying
+        // reason (untrusted provider, AC/RC mismatch, invalid fields, ...) rather than the
+        // generic "requested credential not permitted".
+        if allowed_credentials.is_empty()
+            && let Some(err) = first_reg_cert_error
+        {
+            return Err(err.into());
+        }
+
         struct RegCertInfo {
             relying_party_name: String,
             purpose: HashMap<CredentialQueryId, Vec<MultiLangString>>,
@@ -243,9 +262,10 @@ impl HolderProofResolver {
                 },
             )
             else {
-                return Err(HolderProofError::DisallowedQuery(
-                    credential_query.id.to_owned(),
-                ));
+                return Err(HolderProofError::DisallowedQuery {
+                    query: credential_query.id.to_owned(),
+                    document: ProofTrustSource::RegistrationCertificate,
+                });
             };
 
             used_reg_certs
@@ -312,9 +332,10 @@ impl HolderProofResolver {
                 credential_query,
                 &info.payload.custom.data.intended_use,
             ) else {
-                return Err(HolderProofError::DisallowedQuery(
-                    credential_query.id.to_owned(),
-                ));
+                return Err(HolderProofError::DisallowedQuery {
+                    query: credential_query.id.to_owned(),
+                    document: ProofTrustSource::NationalRegistry,
+                });
             };
 
             purpose.insert(credential_query.id.to_owned(), applied_purpose);
