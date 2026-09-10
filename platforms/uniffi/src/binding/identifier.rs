@@ -121,6 +121,9 @@ pub struct GetIdentifierBindingDTO {
     pub certificates: Option<Vec<CertificateResponseBindingDTO>>,
     #[from(with_fn = convert_inner)]
     pub trust_information: Vec<IdentifierTrustInformationResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub logo: Option<String>,
+    pub translations: IdentifierTranslationsResponseBindingDTO,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
