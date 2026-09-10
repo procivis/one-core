@@ -109,7 +109,14 @@ async fn test_issuance_refresh_skips_configuration_the_issuer_refuses() {
     // two credential requests on accept, one more on refresh
     context
         .server_mock
-        .ssi_credential_endpoint_dynamic(credential_schema.id, "123", issuer_key, issuer_did, 3)
+        .ssi_credential_endpoint_dynamic(
+            credential_schema.id,
+            "123",
+            issuer_key,
+            issuer_did,
+            None,
+            3,
+        )
         .await;
     context
         .server_mock

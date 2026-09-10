@@ -41,15 +41,27 @@ impl MockServer {
     }
 
     pub async fn refresh_token(&self, schema_id: impl Display) {
+        let expires_in = one_core::clock::now_utc().unix_timestamp() + 3600;
+        self.refresh_token_with_expiries(schema_id, expires_in, expires_in)
+            .await;
+    }
+
+    /// Token endpoint rotating the refresh token, with the expiries given as unix timestamps
+    pub async fn refresh_token_with_expiries(
+        &self,
+        schema_id: impl Display,
+        expires_in: i64,
+        refresh_token_expires_in: i64,
+    ) {
         Mock::given(method(Method::POST))
             .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                    "access_token": "321",
                    "token_type": "Bearer",
-                   "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
+                   "expires_in": expires_in,
                    "refresh_token": "321",
-                   "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
+                   "refresh_token_expires_in": refresh_token_expires_in,
                 }
             )))
             .expect(1)
@@ -144,13 +156,15 @@ impl MockServer {
     /// the server creates them, they can't be known up front to pre-sign matching credentials.
     /// Instead this mock inspects each incoming request's `proofs.jwt`, recovers the holder DID
     /// each proof was bound to (from its `kid` header), and signs one matching credential per
-    /// proof on the fly, so the response always has as many credentials as proofs were sent.
+    /// proof on the fly, so the response has as many credentials as proofs were sent, unless
+    /// capped by `max_credentials`.
     pub async fn ssi_credential_endpoint_dynamic(
         &self,
         schema_id: impl Display,
         bearer_auth: impl Display,
         issuer_key: GeneratedKey,
         issuer_did: DidValue,
+        max_credentials: Option<usize>,
         expected_calls: u64,
     ) {
         Mock::given(method(Method::POST))
@@ -169,6 +183,7 @@ impl MockServer {
 
                 let credentials: Vec<_> = proofs
                     .iter()
+                    .take(max_credentials.unwrap_or(usize::MAX))
                     .map(|proof| {
                         let proof = proof.as_str().expect("proof must be a JWT string");
                         let decomposed = Jwt::<serde_json::Value>::decompose_token(proof)

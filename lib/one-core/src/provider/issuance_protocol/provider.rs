@@ -14,6 +14,7 @@ use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
@@ -26,6 +27,7 @@ use crate::provider::provider_directory::{InitializationError, ProviderDirectory
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::instance_repository::InstanceRepository;
@@ -93,6 +95,8 @@ fn initialize_provider(
     credential_schema_repository: &Arc<dyn CredentialSchemaRepository>,
     interaction_repository: &Arc<dyn InteractionRepository>,
     identifier_repository: &Arc<dyn IdentifierRepository>,
+    did_repository: &Arc<dyn DidRepository>,
+    tx_manager: &Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn IssuanceProtocol>, InitializationError> {
     let provider: Arc<dyn IssuanceProtocol> = match fields.r#type {
         IssuanceProtocolType::OpenId4VciFinal1_0 => Arc::new(OpenID4VCIFinal1_0::new(
@@ -121,6 +125,8 @@ fn initialize_provider(
             session_provider.clone(),
             interaction_repository.clone(),
             identifier_repository.clone(),
+            did_repository.clone(),
+            tx_manager.clone(),
         )?),
     };
     Ok(provider)
@@ -151,6 +157,8 @@ pub(crate) fn issuance_protocol_provider_from_config(
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
+    did_repository: Arc<dyn DidRepository>,
+    tx_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn IssuanceProtocolProvider>, ConfigValidationError> {
     let core_config = Arc::new(config.to_owned());
 
@@ -183,6 +191,8 @@ pub(crate) fn issuance_protocol_provider_from_config(
                 &credential_schema_repository,
                 &interaction_repository,
                 &identifier_repository,
+                &did_repository,
+                &tx_manager,
             )?;
 
             let provider: Arc<dyn IssuanceProtocol> = Arc::new(CapabilityChecked(provider));

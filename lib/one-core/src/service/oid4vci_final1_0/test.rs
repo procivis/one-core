@@ -64,6 +64,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
@@ -145,6 +146,7 @@ pub struct ProtocolMocks {
     pub session_provider: MockSessionProvider,
     pub interaction_repository: MockInteractionRepository,
     pub identifier_repository: MockIdentifierRepository,
+    pub did_repository: MockDidRepository,
 }
 
 fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
@@ -185,6 +187,8 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
         Arc::new(protocol_mocks.session_provider),
         Arc::new(protocol_mocks.interaction_repository),
         Arc::new(protocol_mocks.identifier_repository),
+        Arc::new(protocol_mocks.did_repository),
+        Arc::new(NoTransactionManager),
     )
     .unwrap()
 }

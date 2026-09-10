@@ -29,6 +29,9 @@ pub trait DidRepository: Send + Sync {
     -> Result<(), DataLayerError>;
 
     async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError>;
+
+    /// Deletes the DID and its `key_did` rows
+    async fn hard_delete(&self, id: &DidId) -> Result<(), DataLayerError>;
 }
 
 #[async_trait::async_trait]

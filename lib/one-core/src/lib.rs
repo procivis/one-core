@@ -455,6 +455,8 @@ impl OneCore {
             data_provider.get_credential_schema_repository(),
             data_provider.get_interaction_repository(),
             data_provider.get_identifier_repository(),
+            data_provider.get_did_repository(),
+            data_provider.get_tx_manager(),
         )?;
 
         let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(

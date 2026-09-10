@@ -170,6 +170,18 @@ fn serialize_credential_configurations<S: Serializer>(
 }
 
 impl HolderInteractionData {
+    /// configurations selected for acceptance, in the order of the offer
+    pub fn selected_configurations(
+        &self,
+        credential_configuration_ids: &[String],
+    ) -> Vec<HolderCredentialConfiguration> {
+        self.credential_configurations
+            .iter()
+            .filter(|c| credential_configuration_ids.contains(&c.credential_configuration_id))
+            .cloned()
+            .collect()
+    }
+
     pub fn configuration_mut(
         &mut self,
         credential_configuration_id: &str,

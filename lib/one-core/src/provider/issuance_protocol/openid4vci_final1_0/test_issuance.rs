@@ -28,6 +28,7 @@ use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
@@ -46,6 +47,7 @@ use crate::provider::revocation::model::CredentialRevocationInfo;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
@@ -222,6 +224,8 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(NoTransactionManager),
     )
     .unwrap();
 
@@ -411,6 +415,8 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(NoTransactionManager),
     )
     .unwrap();
 
@@ -572,6 +578,8 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(NoTransactionManager),
     )
     .unwrap();
 
@@ -675,6 +683,8 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(NoTransactionManager),
     )
     .unwrap();
 
@@ -772,6 +782,8 @@ async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(NoTransactionManager),
     )
     .unwrap();
 

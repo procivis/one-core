@@ -14,6 +14,8 @@ use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
 use shared_types::{CredentialFormat, SerializedCredential};
 use similar_asserts::assert_eq;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
@@ -991,7 +993,7 @@ async fn test_revoke_check_token_update() {
             &organisation,
             InteractionType::Issuance,
             TestingInteractionParams {
-                data: Some(interaction_data.clone()),
+                data: Some(interaction_data),
                 ..Default::default()
             },
         )
@@ -1025,9 +1027,16 @@ async fn test_revoke_check_token_update() {
         )
         .await;
 
+    // the issuer rotates the refresh token, with an expiry different from the access token
+    let access_token_expires_at = one_core::clock::now_utc().unix_timestamp() + 600;
+    let refresh_token_expires_at = one_core::clock::now_utc().unix_timestamp() + 86400;
     context
         .server_mock
-        .refresh_token(&credential_schema.id)
+        .refresh_token_with_expiries(
+            &credential_schema.id,
+            access_token_expires_at,
+            refresh_token_expires_at,
+        )
         .await;
 
     // WHEN
@@ -1055,8 +1064,22 @@ async fn test_revoke_check_token_update() {
         .unwrap()
         .to_owned();
 
-    // Interaction data updated.
-    assert_ne!(interaction.data, Some(interaction_data));
+    // both tokens are stored with their own expiry
+    let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    assert_eq!(
+        access_token_expires_at,
+        stored_expiry(&data["access_token_expires_at"])
+    );
+    assert_eq!(
+        refresh_token_expires_at,
+        stored_expiry(&data["refresh_token_expires_at"])
+    );
+}
+
+fn stored_expiry(value: &Value) -> i64 {
+    OffsetDateTime::parse(value.as_str().unwrap(), &Rfc3339)
+        .unwrap()
+        .unix_timestamp()
 }
 
 #[tokio::test]

@@ -57,4 +57,8 @@ impl KeyRepository for KeyHistoryDecorator {
     async fn get_key_list(&self, query_params: KeyListQuery) -> Result<GetKeyList, DataLayerError> {
         self.inner.get_key_list(query_params).await
     }
+
+    async fn hard_delete(&self, id: &KeyId) -> Result<(), DataLayerError> {
+        self.inner.hard_delete(id).await
+    }
 }

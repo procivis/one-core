@@ -114,4 +114,8 @@ impl DidRepository for DidHistoryDecorator {
         .await;
         Ok(())
     }
+
+    async fn hard_delete(&self, id: &DidId) -> Result<(), DataLayerError> {
+        self.inner.hard_delete(id).await
+    }
 }

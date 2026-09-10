@@ -171,4 +171,21 @@ impl DidRepository for DidProvider {
             .map(|_| ())
             .map_err(to_update_data_layer_error)
     }
+
+    async fn hard_delete(&self, id: &DidId) -> Result<(), DataLayerError> {
+        self.db
+            .tx(async {
+                key_did::Entity::delete_many()
+                    .filter(key_did::Column::DidId.eq(*id))
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+                did::Entity::delete_by_id(*id)
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+                Ok::<_, DataLayerError>(())
+            })
+            .await?
+    }
 }

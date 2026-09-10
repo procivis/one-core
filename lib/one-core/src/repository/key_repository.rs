@@ -13,6 +13,7 @@ pub trait KeyRepository: Send + Sync {
     async fn get_key(&self, id: &KeyId) -> Result<Key, DataLayerError>;
     async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError>;
     async fn get_key_list(&self, query_params: KeyListQuery) -> Result<GetKeyList, DataLayerError>;
+    async fn hard_delete(&self, id: &KeyId) -> Result<(), DataLayerError>;
 }
 
 #[async_trait::async_trait]

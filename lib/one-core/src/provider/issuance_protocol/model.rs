@@ -63,6 +63,22 @@ pub(crate) struct IssuanceAcceptResult {
     pub failed: Vec<IssuanceAcceptFailure>,
 }
 
+impl IssuanceAcceptResult {
+    pub fn record(
+        &mut self,
+        credential_configuration_id: &str,
+        accepted: Result<IssuanceAcceptResponse, IssuanceProtocolError>,
+    ) {
+        match accepted {
+            Ok(response) => self.issued.push(response),
+            Err(error) => self.failed.push(IssuanceAcceptFailure {
+                credential_configuration_id: credential_configuration_id.to_owned(),
+                error,
+            }),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct IssuanceAcceptFailure {
     pub credential_configuration_id: String,

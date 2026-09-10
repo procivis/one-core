@@ -11,7 +11,7 @@ use crate::entity::key;
 use crate::key::KeyProvider;
 use crate::key::mapper::key_from_model;
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -82,5 +82,13 @@ impl KeyRepository for KeyProvider {
             Ok(key_from_model(key, &self.organisation_repository))
         })
         .await
+    }
+
+    async fn hard_delete(&self, id: &KeyId) -> Result<(), DataLayerError> {
+        key::Entity::delete_by_id(*id)
+            .exec(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
+        Ok(())
     }
 }
