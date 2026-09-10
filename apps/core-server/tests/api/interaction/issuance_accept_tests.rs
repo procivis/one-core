@@ -2443,3 +2443,334 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         "WIA 'sub' should be wallet_client_id from config"
     );
 }
+
+#[tokio::test]
+async fn test_issuance_accept_persists_issuer_display_translations_and_logo() {
+    use one_core::model::blob::BlobType;
+    use one_core::model::localized_text::LocalizedTextField;
+
+    const LOGO_URI: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did: DidValue = format!("did:key:{multibase}").parse().unwrap();
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            issuer_display: Some(json!([
+                { "name": "English issuer", "locale": "en" },
+                {
+                    "name": "Deutscher Aussteller",
+                    "locale": "de",
+                    "logo": { "uri": LOGO_URI, "alt_text": "Logo Beschreibung" }
+                }
+            ])),
+            ..Default::default()
+        },
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.clone(),
+        holder_did.did.clone(),
+        json!({ "string": "string" }),
+    )
+    .await;
+    context
+        .server_mock
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 1)
+        .await;
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    let issuer_identifier = credential
+        .issuer_identifier
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap();
+
+    // localized text rows from the issuer display
+    let texts = context.db.localized_text.get(issuer_identifier.id).await;
+    let lookup = |field: LocalizedTextField, lang: &str| {
+        texts
+            .iter()
+            .find(|t| t.field == field && t.lang == lang)
+            .map(|t| t.value.as_str())
+    };
+    assert_eq!(
+        lookup(LocalizedTextField::Name, "en"),
+        Some("English issuer")
+    );
+    assert_eq!(
+        lookup(LocalizedTextField::Name, "de"),
+        Some("Deutscher Aussteller")
+    );
+    assert_eq!(
+        lookup(LocalizedTextField::LogoAltText, "de"),
+        Some("Logo Beschreibung")
+    );
+
+    // logo persisted as an IdentifierLogo blob storing the URI verbatim
+    let logo_blob_id = issuer_identifier
+        .logo
+        .expect("issuer identifier logo should be set");
+    let blob = context.db.blobs.get(&logo_blob_id).await.unwrap();
+    assert_eq!(blob.r#type, BlobType::IdentifierLogo);
+    assert_eq!(blob.value, LOGO_URI.as_bytes());
+}
+
+#[tokio::test]
+async fn test_issuance_accept_refreshes_display_for_existing_issuer_identifier() {
+    use one_core::model::blob::BlobType;
+    use one_core::model::localized_text::LocalizedTextField;
+
+    const SMALL_PNG_DATA_URI: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did_value: DidValue = format!("did:key:{multibase}").parse().unwrap();
+
+    // pre-existing issuer DID + identifier (no translations, no logo)
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(issuer_did_value.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            issuer_display: Some(json!([
+                {
+                    "name": "Deutscher Aussteller",
+                    "locale": "de",
+                    "logo": { "uri": SMALL_PNG_DATA_URI, "alt_text": "alt" }
+                }
+            ])),
+            ..Default::default()
+        },
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(interaction_data),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did_value.clone(),
+        holder_did.did.clone(),
+        json!({ "string": "string" }),
+    )
+    .await;
+    context
+        .server_mock
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 1)
+        .await;
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
+        .await;
+
+    // THEN – the pre-existing identifier is reused and its display is refreshed
+    assert_eq!(resp.status(), 200);
+    let credential = context
+        .db
+        .credentials
+        .get(&resp.json_value().await["id"].parse())
+        .await;
+    let used_issuer = credential
+        .issuer_identifier
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap();
+    assert_eq!(used_issuer.id, issuer_identifier.id);
+
+    let texts = context.db.localized_text.get(issuer_identifier.id).await;
+    let lookup = |field: LocalizedTextField, lang: &str| {
+        texts
+            .iter()
+            .find(|t| t.field == field && t.lang == lang)
+            .map(|t| t.value.as_str())
+    };
+    assert_eq!(
+        lookup(LocalizedTextField::Name, "de"),
+        Some("Deutscher Aussteller")
+    );
+    assert_eq!(lookup(LocalizedTextField::LogoAltText, "de"), Some("alt"));
+
+    let logo_blob_id = used_issuer.logo.expect("issuer logo should now be set");
+    let blob = context.db.blobs.get(&logo_blob_id).await.unwrap();
+    assert_eq!(blob.r#type, BlobType::IdentifierLogo);
+    assert_eq!(blob.value, SMALL_PNG_DATA_URI.as_bytes());
+}

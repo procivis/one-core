@@ -5,10 +5,12 @@ use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::i18n::I18nString;
-use shared_types::{ClaimSchemaId, CredentialId};
+use shared_types::{BlobId, ClaimSchemaId, CredentialId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::BlobStorageType;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -22,9 +24,11 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::identifier::Identifier;
 use crate::model::localized_text::{LocalizedText, LocalizedTextField};
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::identifier::dto::IdentifierTranslationsDTO;
 
 pub(crate) mod credential_schema_claim;
 pub(crate) mod etsi_lote;
@@ -443,6 +447,61 @@ pub(crate) fn translations_to_i18n(
         return None;
     }
     Some(I18nString(translations))
+}
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ResolveLogoError {
+    #[error("Missing logo blob `{0}`")]
+    MissingBlob(BlobId),
+    #[error("Logo blob is not valid UTF-8: {0}")]
+    InvalidUtf8(#[from] std::str::Utf8Error),
+}
+
+impl ErrorCodeMixin for ResolveLogoError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::MissingBlob(_) => ErrorCode::BR_0484,
+            Self::InvalidUtf8(_) => ErrorCode::BR_0047,
+        }
+    }
+}
+
+pub(crate) async fn resolve_identifier_logo(
+    blob_storage_provider: &dyn BlobStorageProvider,
+    logo: Option<BlobId>,
+) -> Result<Option<String>, NestedError> {
+    let Some(logo_id) = logo else {
+        return Ok(None);
+    };
+    let blob_storage = blob_storage_provider.get_blob_storage(BlobStorageType::Db)?;
+    let blob = blob_storage
+        .get(&logo_id)
+        .await
+        .error_while("retrieving logo blob")?
+        .ok_or(ResolveLogoError::MissingBlob(logo_id))
+        .error_while("retrieving logo blob")?;
+    let image_string = std::str::from_utf8(&blob.value)
+        .map_err(ResolveLogoError::from)
+        .error_while("decoding logo blob")?
+        .to_string();
+    Ok(Some(image_string))
+}
+
+pub(crate) fn identifier_translations_dto(
+    texts: &[LocalizedText],
+    identifier_name: &str,
+    default_language: &str,
+) -> IdentifierTranslationsDTO {
+    let name = translations_to_i18n(texts, LocalizedTextField::Name).unwrap_or_else(|| {
+        I18nString(HashMap::from([(
+            default_language.to_owned(),
+            identifier_name.to_owned(),
+        )]))
+    });
+    IdentifierTranslationsDTO {
+        name,
+        logo_alt_text: translations_to_i18n(texts, LocalizedTextField::LogoAltText),
+    }
 }
 
 #[cfg(test)]

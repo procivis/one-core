@@ -16,8 +16,8 @@ use super::dto::{
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::error::{ContextWithErrorCode, NestedError};
-use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::claim_schema_to_dto;
+use crate::mapper::{NESTED_CLAIM_MARKER, identifier_translations_dto, resolve_identifier_logo};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
@@ -37,6 +37,7 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
@@ -45,9 +46,12 @@ use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
+use crate::service::common_dto::BoundedB64Image;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::credential_schema::mapper::to_credential_schema_list_v2_response;
+use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
@@ -56,6 +60,7 @@ pub(crate) async fn credential_detail_response_from_model(
     remaining_batch_item_count: Option<u32>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
+    blob_storage_provider: Option<&dyn BlobStorageProvider>,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     let schema_model = value.schema.as_ref().await?;
 
@@ -163,7 +168,24 @@ pub(crate) async fn credential_detail_response_from_model(
 
     let issuer = match &value.issuer_identifier {
         None => None,
-        Some(issuer_identifier) => Some(issuer_identifier.as_ref().await?.to_owned().into()),
+        Some(issuer_identifier) => {
+            let identifier = issuer_identifier.as_ref().await?.to_owned();
+            let mut dto: GetIdentifierListItemResponseDTO = identifier.clone().into();
+            if value.role == CredentialRole::Holder {
+                let texts = identifier.translations.as_ref().await?.to_owned();
+                dto.translations = Some(identifier_translations_dto(
+                    &texts,
+                    &identifier.name,
+                    &config.global_settings.default_language,
+                ));
+                if let Some(blob_storage_provider) = blob_storage_provider {
+                    dto.logo = resolve_identifier_logo(blob_storage_provider, identifier.logo)
+                        .await?
+                        .map(BoundedB64Image);
+                }
+            }
+            Some(dto)
+        }
     };
 
     let offered_formats = get_offered_formats(&value, credential_repository).await?;

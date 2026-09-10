@@ -21,6 +21,8 @@ pub(crate) async fn credential_from_proved(
             &proved_credential.issuer_details,
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .error_while("creating remote issuer identifier")?;
@@ -38,6 +40,8 @@ pub(crate) async fn credential_from_proved(
             &proved_credential.holder_details,
             IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .error_while("creating remote holder identifier")?;

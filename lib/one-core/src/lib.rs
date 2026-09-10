@@ -357,6 +357,9 @@ impl OneCore {
         let document_signer_provider =
             document_signer_provider_from_config(&mut config, csc_client)?;
 
+        let blob_storage_provider =
+            blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;
+
         let identifier_creator = Arc::new(IdentifierCreatorProto::new(
             did_method_provider.clone(),
             data_provider.get_did_repository(),
@@ -367,6 +370,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             data_provider.get_identifier_repository(),
             signer_provider.clone(),
+            blob_storage_provider.clone(),
             csr_creator.clone(),
             Arc::new(config.clone()),
             data_provider.get_tx_manager(),
@@ -419,10 +423,6 @@ impl OneCore {
             data_provider.get_organisation_repository(),
             data_provider.get_tx_manager(),
         ));
-
-        let blob_storage_provider =
-            blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;
-
         let key_security_level_provider = key_security_level_provider_from_config(&mut config)?;
 
         let openid_metadata_cache = openid_metadata_cache_from_config(

@@ -314,6 +314,8 @@ pub(crate) async fn accept_proof(
                 &credential.issuer,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
                 true,
+                None,
+                None,
             )
             .await
             .error_while("creating remote issuer identifier")?;

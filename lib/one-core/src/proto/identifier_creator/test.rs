@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use mockall::Sequence;
+use shared_types::IdentifierId;
+use shared_types::i18n::I18nString;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::Duration;
@@ -11,17 +13,22 @@ use uuid::Uuid;
 use super::creator::IdentifierCreatorProto;
 use super::{
     CreateLocalIdentifierRequestParams, CreateLocalIdentifierRequestType, IdentifierCreator,
-    IdentifierName, IdentifierRole, RemoteIdentifierRelation,
+    IdentifierName, IdentifierRole, IdentifierTranslations, RemoteIdentifierRelation,
 };
 use crate::config::core_config::{CoreConfig, DidType, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{Certificate, CertificateState, GetCertificateList};
-use crate::model::identifier::{GetIdentifierList, Identifier, IdentifierData};
+use crate::model::identifier::{
+    GetIdentifierList, Identifier, IdentifierData, UpdateIdentifierRequest,
+};
 use crate::model::key::{GetKeyList, Key};
+use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::relation::RelatedVec;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::csr_creator::MockCsrCreator;
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::provider::blob_storage::MockBlobStorage;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::{DidCapabilities, Operation};
@@ -56,6 +63,7 @@ struct Mocks {
     key_algorithm_provider: MockKeyAlgorithmProvider,
     identifier_repository: MockIdentifierRepository,
     signer_provider: MockSignerProvider,
+    blob_storage_provider: MockBlobStorageProvider,
     csr_creator: MockCsrCreator,
     config: CoreConfig,
 }
@@ -71,6 +79,7 @@ fn setup_creator(mocks: Mocks) -> Box<dyn IdentifierCreator> {
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.identifier_repository),
         Arc::new(mocks.signer_provider),
+        Arc::new(mocks.blob_storage_provider),
         Arc::new(mocks.csr_creator),
         Arc::new(mocks.config),
         Arc::new(NoTransactionManager),
@@ -142,6 +151,8 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
             }),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -220,6 +231,8 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
             }),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -306,6 +319,8 @@ async fn test_get_or_create_remote_identifier_key_existing() {
             })),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -315,6 +330,303 @@ async fn test_get_or_create_remote_identifier_key_existing() {
     assert_eq!(identifier_key.id(), key.id);
     let_assert!(RemoteIdentifierRelation::Key(key) = relation);
     assert_eq!(key.id, key_id);
+}
+
+fn expect_existing_key_identifier(
+    key_algorithm_provider: &mut MockKeyAlgorithmProvider,
+    key_repository: &mut MockKeyRepository,
+    identifier_repository: &mut MockIdentifierRepository,
+    identifier: Identifier,
+) {
+    key_algorithm_provider
+        .expect_parse_jwk()
+        .once()
+        .return_once(|_| {
+            let mut public_key = MockSignaturePublicKeyHandle::new();
+            public_key
+                .expect_as_raw()
+                .once()
+                .return_once(|| vec![0x0, 0x1]);
+            Ok(ParsedKey {
+                algorithm_type: KeyAlgorithmType::Eddsa,
+                key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    public_key,
+                ))),
+            })
+        });
+    key_repository
+        .expect_get_key_list()
+        .once()
+        .return_once(|_| {
+            Ok(GetKeyList {
+                values: vec![dummy_key()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+    identifier_repository
+        .expect_get_identifier_list()
+        .once()
+        .return_once(move |_| {
+            Ok(GetIdentifierList {
+                values: vec![identifier],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+}
+
+fn key_jwk() -> IdentifierDetails {
+    IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "Ed25519".to_string(),
+        x: "test".to_string(),
+        y: None,
+    }))
+}
+
+fn name_text(id: IdentifierId, lang: &str, value: &str) -> LocalizedText {
+    let now = crate::clock::now_utc();
+    LocalizedText {
+        entity_id: id.into(),
+        field: LocalizedTextField::Name,
+        created_date: now,
+        last_modified: now,
+        lang: lang.to_string(),
+        value: value.to_string(),
+        entity_type: LocalizedTextEntityType::Identifier,
+    }
+}
+
+#[tokio::test]
+async fn test_get_or_create_remote_identifier_does_not_update_when_translations_unchanged() {
+    let mut identifier = dummy_identifier();
+    identifier.data = IdentifierData::Key(dummy_key().into());
+    // the identifier already has exactly the translation the issuer display would produce
+    identifier.translations = vec![name_text(identifier.id, "en", "English issuer")].into();
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let mut key_repository = MockKeyRepository::new();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    // no `expect_update` / `expect_get`: the creator must not touch the identifier
+    expect_existing_key_identifier(
+        &mut key_algorithm_provider,
+        &mut key_repository,
+        &mut identifier_repository,
+        identifier,
+    );
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider,
+        key_repository,
+        identifier_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    creator
+        .get_or_create_remote_identifier(
+            &dummy_organisation(None),
+            &key_jwk(),
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
+            true,
+            Some(IdentifierTranslations {
+                name: I18nString([("en".to_string(), "English issuer".to_string())].into()),
+                logo_alt_text: None,
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_get_or_create_remote_identifier_updates_when_translations_differ() {
+    let mut identifier = dummy_identifier();
+    identifier.data = IdentifierData::Key(dummy_key().into());
+    let identifier_id = identifier.id;
+    identifier.translations = vec![name_text(identifier_id, "en", "identifier")].into();
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let mut key_repository = MockKeyRepository::new();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    expect_existing_key_identifier(
+        &mut key_algorithm_provider,
+        &mut key_repository,
+        &mut identifier_repository,
+        identifier,
+    );
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(move |id, request: &UpdateIdentifierRequest| {
+            *id == identifier_id
+                && request.logo.is_none()
+                && request.translations.as_ref().is_some_and(|texts| {
+                    texts.iter().any(|t| {
+                        t.field == LocalizedTextField::Name
+                            && t.lang == "de"
+                            && t.value == "Deutscher Aussteller"
+                    })
+                })
+        })
+        .return_once(|_, _| Ok(()));
+    let reloaded = {
+        let mut i = dummy_identifier();
+        i.id = identifier_id;
+        i.data = IdentifierData::Key(dummy_key().into());
+        i
+    };
+    identifier_repository
+        .expect_get()
+        .once()
+        .return_once(move |_| Ok(reloaded));
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider,
+        key_repository,
+        identifier_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    creator
+        .get_or_create_remote_identifier(
+            &dummy_organisation(None),
+            &key_jwk(),
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
+            true,
+            Some(IdentifierTranslations {
+                name: I18nString(
+                    [
+                        ("en".to_string(), "identifier".to_string()),
+                        ("de".to_string(), "Deutscher Aussteller".to_string()),
+                    ]
+                    .into(),
+                ),
+                logo_alt_text: None,
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_get_or_create_remote_identifier_sets_logo_when_identifier_has_none() {
+    let mut identifier = dummy_identifier();
+    identifier.data = IdentifierData::Key(dummy_key().into());
+    let identifier_id = identifier.id;
+    identifier.logo = None;
+    // translations already match -> only the logo triggers the update
+    identifier.translations = vec![name_text(identifier_id, "en", "English issuer")].into();
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let mut key_repository = MockKeyRepository::new();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    expect_existing_key_identifier(
+        &mut key_algorithm_provider,
+        &mut key_repository,
+        &mut identifier_repository,
+        identifier,
+    );
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(move |id, request: &UpdateIdentifierRequest| {
+            *id == identifier_id
+                && request.translations.is_none()
+                && matches!(request.logo, Some(Some(_)))
+        })
+        .return_once(|_, _| Ok(()));
+    identifier_repository
+        .expect_get()
+        .once()
+        .return_once(move |_| {
+            let mut i = dummy_identifier();
+            i.id = identifier_id;
+            i.data = IdentifierData::Key(dummy_key().into());
+            Ok(i)
+        });
+
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage.expect_create().once().returning(|_| Ok(()));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider,
+        key_repository,
+        identifier_repository,
+        blob_storage_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    creator
+        .get_or_create_remote_identifier(
+            &dummy_organisation(None),
+            &key_jwk(),
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
+            true,
+            Some(IdentifierTranslations {
+                name: I18nString([("en".to_string(), "English issuer".to_string())].into()),
+                logo_alt_text: None,
+            }),
+            Some("data:image/png;base64,AAAA".to_string()),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_get_or_create_remote_identifier_does_not_refresh_existing_logo() {
+    let mut identifier = dummy_identifier();
+    identifier.data = IdentifierData::Key(dummy_key().into());
+    let identifier_id = identifier.id;
+    // the identifier already has a logo and matching translations -> nothing to write
+    identifier.logo = Some(Uuid::new_v4().into());
+    identifier.translations = vec![name_text(identifier_id, "en", "English issuer")].into();
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let mut key_repository = MockKeyRepository::new();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    // no `expect_update` / `expect_get`: the existing logo must not be refreshed
+    expect_existing_key_identifier(
+        &mut key_algorithm_provider,
+        &mut key_repository,
+        &mut identifier_repository,
+        identifier,
+    );
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider,
+        key_repository,
+        identifier_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    creator
+        .get_or_create_remote_identifier(
+            &dummy_organisation(None),
+            &key_jwk(),
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
+            true,
+            Some(IdentifierTranslations {
+                name: I18nString([("en".to_string(), "English issuer".to_string())].into()),
+                logo_alt_text: None,
+            }),
+            Some("data:image/png;base64,BBBB".to_string()),
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -401,6 +713,8 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
             })),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -841,6 +1155,8 @@ async fn test_get_or_create_remote_identifier_key_new_is_autogenerated() {
             })),
             IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .unwrap();

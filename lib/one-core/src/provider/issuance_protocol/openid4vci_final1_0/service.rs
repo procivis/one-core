@@ -33,9 +33,48 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
-use crate::model::localized_text::LocalizedTextField;
+use crate::model::localized_text::{LocalizedText, LocalizedTextField};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::PROCIVIS_DESIGN_KEY;
+
+pub(crate) fn build_issuer_display(
+    identifier_name: &str,
+    translations: &[LocalizedText],
+    logo_uri: Option<&str>,
+    default_language: &str,
+) -> Vec<IssuerDisplay> {
+    let logo_for = |lang: &str| {
+        logo_uri.map(|uri| Image {
+            uri: uri.to_owned(),
+            alt_text: translations
+                .iter()
+                .find(|text| text.field == LocalizedTextField::LogoAltText && text.lang == lang)
+                .map(|text| text.value.clone()),
+        })
+    };
+
+    let name_translations: Vec<&LocalizedText> = translations
+        .iter()
+        .filter(|text| text.field == LocalizedTextField::Name)
+        .collect();
+
+    if name_translations.is_empty() {
+        return vec![IssuerDisplay {
+            name: identifier_name.to_owned(),
+            locale: Some(default_language.to_owned()),
+            logo: logo_for(default_language),
+        }];
+    }
+
+    name_translations
+        .into_iter()
+        .map(|text| IssuerDisplay {
+            name: text.value.clone(),
+            locale: Some(text.lang.clone()),
+            logo: logo_for(&text.lang),
+        })
+        .collect()
+}
 
 pub(crate) fn create_issuer_metadata_response(
     protocol_id: &str,
@@ -48,6 +87,7 @@ pub(crate) fn create_issuer_metadata_response(
     issuer_info: Vec<IssuerInfoAttestation>,
     credential_request_encryption: Option<CredentialRequestEncryption>,
     credential_response_encryption: Option<CredentialResponseEncryption>,
+    issuer_display: Vec<IssuerDisplay>,
 ) -> Result<CredentialIssuerMetadata, OpenID4VCIError> {
     let credential_schema_id = schema.id;
     let credential_issuer = format!(
@@ -74,11 +114,7 @@ pub(crate) fn create_issuer_metadata_response(
             "{protocol_base_url}/{credential_schema_id}/notification"
         )),
         credential_configurations_supported,
-        display: Some(vec![IssuerDisplay {
-            name: identifier.name.clone(),
-            locale: Some("en".to_string()),
-            logo: None,
-        }]),
+        display: Some(issuer_display),
         issuer_info,
         batch_credential_issuance,
         credential_request_encryption,

@@ -143,7 +143,7 @@ async fn test_handle_invitation_success() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .once()
-        .returning(|_, did, _, _| {
+        .returning(|_, did, _, _, _, _| {
             let organisation = dummy_organisation(None);
             let verifier_did = Did {
                 deleted_at: None,

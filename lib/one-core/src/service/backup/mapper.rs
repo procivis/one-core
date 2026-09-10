@@ -28,6 +28,7 @@ pub(super) async fn unexportable_entities_to_response_dto(
                 None,
                 credential_repository,
                 formatter_provider,
+                None,
             )
             .await
             .error_while("converting credential")?,

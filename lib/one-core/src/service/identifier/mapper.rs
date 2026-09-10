@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use one_dto_mapper::convert_inner;
-use shared_types::i18n::I18nString;
 use shared_types::{CredentialSchemaId, EcosystemId, OrganisationId, ProofSchemaId};
 use standardized_types::etsi_119_475::Credential;
 use standardized_types::openid4vp::dcql;
@@ -9,14 +6,14 @@ use standardized_types::openid4vp::dcql;
 use super::dto::{
     CertificateRolesMatchMode, CreateIdentifierDidRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO, IdentifierFilterParamsDTO,
-    IdentifierLogo, IdentifierTranslationsDTO, IdentifierTrustInformationResponseDTO,
+    IdentifierTranslationsDTO, IdentifierTrustInformationResponseDTO,
     IdentifierTrustInformationType, ResolvedTrustEntrySourceResponseDTO,
 };
 use super::error::IdentifierServiceError;
 use crate::config::core_config::{BlobStorageType, CoreConfig};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
-use crate::mapper::translations_to_i18n;
+use crate::mapper::{identifier_translations_dto, resolve_identifier_logo};
 use crate::model::blob::BlobType;
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::CredentialSchema;
@@ -31,9 +28,9 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
-use crate::model::localized_text::LocalizedTextField;
 use crate::model::relation::RelatedVec;
 use crate::model::trust_list_subscription::TrustListSubscription;
+use crate::proto::identifier_creator::IdentifierLogo;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::ecosystem::model::{EcosystemRole, SchemaFilter};
@@ -200,19 +197,11 @@ async fn map_logo(
     identifier: &Identifier,
     blob_storage_provider: &dyn BlobStorageProvider,
 ) -> Result<Option<IdentifierLogo>, IdentifierServiceError> {
-    let Some(logo_id) = identifier.logo else {
-        return Ok(None);
-    };
-    let blob_storage = blob_storage_provider.get_blob_storage(BlobStorageType::Db)?;
-    let blob = blob_storage
-        .get(&logo_id)
-        .await
-        .error_while("retrieving blob")?
-        .ok_or(IdentifierServiceError::MissingLogoBlob(logo_id))?;
-    let image_string = std::str::from_utf8(&blob.value)
-        .map_err(|e| IdentifierServiceError::MappingError(e.to_string()))?
-        .to_string();
-    Ok(Some(BoundedB64Image(image_string)))
+    Ok(
+        resolve_identifier_logo(blob_storage_provider, identifier.logo)
+            .await?
+            .map(BoundedB64Image),
+    )
 }
 
 async fn map_translations(
@@ -220,19 +209,11 @@ async fn map_translations(
     default_language: &str,
 ) -> Result<IdentifierTranslationsDTO, IdentifierServiceError> {
     let texts = identifier.translations.as_ref().await?;
-    // `name` is mandatory in the response; identifiers created before this
-    // feature (and some remote identifiers) have no localized text, so fall
-    // back to the plain identifier name under the configured default language.
-    let name = translations_to_i18n(&texts, LocalizedTextField::Name).unwrap_or_else(|| {
-        I18nString(HashMap::from([(
-            default_language.to_owned(),
-            identifier.name.clone(),
-        )]))
-    });
-    Ok(IdentifierTranslationsDTO {
-        name,
-        logo_alt_text: translations_to_i18n(&texts, LocalizedTextField::LogoAltText),
-    })
+    Ok(identifier_translations_dto(
+        &texts,
+        &identifier.name,
+        default_language,
+    ))
 }
 
 impl TryFrom<BlobType> for IdentifierTrustInformationType {

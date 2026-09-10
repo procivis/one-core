@@ -1718,7 +1718,7 @@ async fn test_create_credential_success() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _, _, _, _| {
             Ok((
                 Identifier {
                     id: Uuid::from(holder_did_id).into(),
@@ -1921,7 +1921,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _, _, _, _| {
             Ok((
                 Identifier {
                     id: Uuid::from(holder_did_id).into(),
@@ -2167,7 +2167,7 @@ async fn test_create_credential_success_mdoc() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _, _, _, _| {
             Ok((
                 Identifier {
                     id: holder_identifier_id,
@@ -2715,7 +2715,7 @@ async fn test_create_credential_issuer_failed() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _, _, _, _| {
             Ok((
                 Identifier {
                     id: Uuid::from(holder_did_id).into(),
@@ -2872,7 +2872,7 @@ async fn test_create_credential_nonce_reused() {
     let mut identifier_creator = MockIdentifierCreator::new();
     identifier_creator
         .expect_get_or_create_remote_identifier()
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _, _, _, _| {
             let holder_did_id: DidId = Uuid::new_v4().into();
             Ok((
                 Identifier {

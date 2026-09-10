@@ -25,8 +25,8 @@ use proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use service::{
-    create_credential_offer, create_issuer_metadata_response, credential_configuration_supported,
-    get_protocol_base_url,
+    build_issuer_display, create_credential_offer, create_issuer_metadata_response,
+    credential_configuration_supported, get_protocol_base_url,
 };
 use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
@@ -1354,6 +1354,7 @@ impl OpenID4VCIFinal1_0 {
             refresh_token_expires_at: None,
             token_endpoint_auth_methods_supported,
             client_attestation_pop_signing_alg_values_supported,
+            issuer_display: issuer_metadata.metadata().display.clone(),
             credential_request_encryption: issuer_metadata
                 .metadata()
                 .credential_request_encryption
@@ -1624,6 +1625,7 @@ impl OpenID4VCIFinal1_0 {
             None,
             self.credential_repository.as_ref(),
             self.formatter_provider.as_ref(),
+            None,
         )
         .await
         .error_while("creating credential detail")?;
@@ -2330,6 +2332,25 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
             .await?;
 
+        let translations = issuer_identifier
+            .translations
+            .as_ref()
+            .await
+            .error_while("loading issuer identifier translations")?
+            .to_owned();
+        let logo_uri = crate::mapper::resolve_identifier_logo(
+            &*self.blob_storage_provider,
+            issuer_identifier.logo,
+        )
+        .await
+        .error_while("resolving issuer identifier logo")?;
+        let issuer_display = build_issuer_display(
+            &issuer_identifier.name,
+            &translations,
+            logo_uri.as_deref(),
+            &self.config.global_settings.default_language,
+        );
+
         create_issuer_metadata_response(
             protocol_id,
             issuer_identifier,
@@ -2338,6 +2359,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             self.credential_request_encryption(issuer_identifier, enc_values_supported.clone())
                 .await?,
             self.credential_response_encryption(enc_values_supported),
+            issuer_display,
         )
         .map_err(OpenIDIssuanceError::OpenID4VCI)
         .map_err(Into::into)

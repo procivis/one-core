@@ -1,5 +1,6 @@
 mod create_credential_tests;
 mod delete_credential_tests;
+mod get_credential_issuer_translations_tests;
 mod get_credential_tests;
 mod get_credential_trust_detail;
 mod list_credential_tests;

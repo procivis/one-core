@@ -31,7 +31,9 @@ use super::common::SortDirection;
 use super::did::{DidTypeBindingEnum, KeyRoleBindingEnum};
 use super::key::{KeyGenerateCSRRequestSubjectBindingDTO, KeyListItemBindingDTO};
 use crate::OneCore;
-use crate::binding::mapper::{optional_time, to_i18n_string, to_i18n_string_opt};
+use crate::binding::mapper::{
+    from_i18n_string, from_i18n_string_opt, optional_time, to_i18n_string, to_i18n_string_opt,
+};
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt, into_timestamp_opt};
 
@@ -280,6 +282,20 @@ pub struct GetIdentifierListItemBindingDTO {
     pub state: IdentifierStateBindingEnum,
     #[from(with_fn = "from_id_opt")]
     pub organisation_id: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub logo: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub translations: Option<IdentifierTranslationsResponseBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(IdentifierTranslationsDTO)]
+#[uniffi(name = "IdentifierTranslationsResponse")]
+pub struct IdentifierTranslationsResponseBindingDTO {
+    #[from(with_fn = from_i18n_string)]
+    pub name: HashMap<String, String>,
+    #[from(with_fn = from_i18n_string_opt)]
+    pub logo_alt_text: Option<HashMap<String, String>>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

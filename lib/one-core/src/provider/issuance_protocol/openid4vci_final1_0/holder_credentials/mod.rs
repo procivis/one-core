@@ -1,4 +1,4 @@
-use standardized_types::openid4vci::{CredentialMetadata, KeyStorageSecurityLevel};
+use standardized_types::openid4vci::{CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel};
 #[cfg(test)]
 mod test;
 
@@ -34,7 +34,10 @@ use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, Local
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{
+    IdentifierLogo, IdentifierName, IdentifierRole, RemoteIdentifierRelation,
+    issuer_display_to_identifier_translations,
+};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
@@ -79,6 +82,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction,
                     formatter.as_ref(),
                     issuer_response.redirect_uri.as_ref(),
+                    interaction_data.issuer_display.as_deref(),
                 )
                 .await?;
             credentials.push(CredentialWithBlob {
@@ -377,6 +381,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction,
                     formatter.as_ref(),
                     issuer_response.redirect_uri.as_ref(),
+                    None,
                 )
                 .await?;
             credential.format = Some(parent_format.clone().into());
@@ -463,6 +468,7 @@ impl OpenID4VCIFinal1_0 {
         Ok(result)
     }
 
+    #[expect(clippy::too_many_arguments)]
     async fn prepare_issued_credential(
         &self,
         issued_credential: &SerializedCredential,
@@ -471,6 +477,7 @@ impl OpenID4VCIFinal1_0 {
         interaction: &Interaction,
         formatter: &dyn CredentialFormatter,
         redirect_uri: Option<&String>,
+        issuer_display: Option<&[IssuerDisplay]>,
     ) -> Result<Credential, IssuanceProtocolError> {
         let mut credential = formatter
             .parse_credential(
@@ -533,6 +540,30 @@ impl OpenID4VCIFinal1_0 {
             }
         };
 
+        let issuer_translations = issuer_display.and_then(|display| {
+            issuer_display_to_identifier_translations(
+                display,
+                &self.config.global_settings.default_language,
+            )
+        });
+        let issuer_logo = issuer_display.and_then(|display| {
+            display
+                .iter()
+                .find_map(|entry| entry.logo.as_ref().map(|logo| logo.uri.clone()))
+        });
+
+        // `display[].logo.uri` from the (untrusted for `trustedRpRequired = false`) issuer
+        // metadata may be a plain URL or a base64 `data:` image stored verbatim, so cap it
+        // at the operator-logo limit to stop an issuer bloating the wallet DB / API payloads.
+        let issuer_logo = match issuer_logo {
+            Some(logo) if logo.len() <= IdentifierLogo::max_size() => Some(logo),
+            Some(_) => {
+                tracing::warn!("Issuer logo exceeds the maximum allowed size, dropping it");
+                None
+            }
+            None => None,
+        };
+
         let (issuer_identifier, issuer_identifier_relation) = self
             .identifier_creator
             .get_or_create_remote_identifier(
@@ -540,6 +571,8 @@ impl OpenID4VCIFinal1_0 {
                 &identifier_details,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
                 true,
+                issuer_translations,
+                issuer_logo,
             )
             .await
             .error_while("creating issuer identifier")?;

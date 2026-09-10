@@ -45,6 +45,12 @@ impl<const MAX: usize> From<BoundedB64Image<MAX>> for String {
     }
 }
 
+impl<const MAX: usize> BoundedB64Image<MAX> {
+    pub fn max_size() -> usize {
+        MAX
+    }
+}
+
 impl<Sorting, FilterDTO, Filter, Include> From<ListQueryDTO<Sorting, FilterDTO, Include>>
     for ListQuery<Sorting, Filter, Include>
 where

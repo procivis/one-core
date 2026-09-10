@@ -107,6 +107,8 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
             &verifier_details,
             IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
             true,
+            None,
+            None,
         )
         .await
         .error_while("creating verifier identifier")?;

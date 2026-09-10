@@ -22,6 +22,7 @@ pub struct InteractionDataParams {
     pub notification_id: Option<String>,
     pub notification_endpoint: Option<String>,
     pub batch_size: Option<u32>,
+    pub issuer_display: Option<serde_json::Value>,
     /// credential configurations offered next to the default one
     pub additional_configurations: Vec<ConfigurationParams>,
 }
@@ -141,6 +142,9 @@ pub fn dummy_interaction_data(
     }
     if let Some(batch_size) = params.batch_size {
         value["batch_size"] = json!(batch_size);
+    }
+    if let Some(issuer_display) = params.issuer_display {
+        value["issuer_display"] = issuer_display;
     }
     serde_json::to_vec(&value).unwrap()
 }

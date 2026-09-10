@@ -802,6 +802,8 @@ impl OID4VCIFinal1_0Service {
                         &IdentifierDetails::Did(did),
                         IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                         true,
+                        None,
+                        None,
                     )
                     .await
                     .error_while("creating remote holder identifier")?;
@@ -815,6 +817,8 @@ impl OID4VCIFinal1_0Service {
                         &IdentifierDetails::Key(jwk),
                         IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                         true,
+                        None,
+                        None,
                     )
                     .await
                     .error_while("creating remote holder identifier")?

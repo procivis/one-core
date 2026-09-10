@@ -11,7 +11,7 @@ use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
     AuthorizationDetail, CredentialConfiguration, CredentialMetadata, CredentialRequestEncryption,
-    CredentialResponseEncryption, Grants, ProofTypeSupported, SigningAlgValue,
+    CredentialResponseEncryption, Grants, IssuerDisplay, ProofTypeSupported, SigningAlgValue,
 };
 use time::{Duration, OffsetDateTime};
 
@@ -117,6 +117,8 @@ pub(crate) struct HolderInteractionData {
     pub token_endpoint_auth_methods_supported: Option<Vec<TokenEndpointAuthMethod>>,
     #[serde(default)]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+    #[serde(default)]
+    pub issuer_display: Option<Vec<IssuerDisplay>>,
     #[serde(default)]
     pub credential_request_encryption: Option<CredentialRequestEncryption>,
     #[serde(default)]

@@ -15,16 +15,13 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{ExactIdentifierFilterColumn, IdentifierState, IdentifierType};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::TrustListSubscriptionState;
-use crate::proto::identifier_creator::IdentifierTranslations;
+use crate::proto::identifier_creator::{IdentifierLogo, IdentifierTranslations};
 use crate::provider::ecosystem::model::EcosystemRole;
 use crate::provider::trust_list_subscriber::TrustEntityMetadata;
 use crate::service::certificate::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
-use crate::service::common_dto::{BoundedB64Image, KB};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
 use crate::service::key::dto::{KeyGenerateCSRRequestSubjectDTO, KeyResponseDTO};
 use crate::service::trust_collection::dto::TrustCollectionListItemResponseDTO;
-
-pub type IdentifierLogo = BoundedB64Image<{ 200 * KB }>;
 
 #[derive(Clone, Debug)]
 pub struct GetIdentifierResponseDTO {

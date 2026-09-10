@@ -371,6 +371,7 @@ impl CredentialService {
             remaining_batch_item_count,
             self.credential_repository.as_ref(),
             self.formatter_provider.as_ref(),
+            Some(self.blob_storage_provider.as_ref()),
         )
         .await?;
 
