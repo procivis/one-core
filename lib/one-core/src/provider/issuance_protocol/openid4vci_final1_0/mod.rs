@@ -530,13 +530,14 @@ impl OpenID4VCIFinal1_0 {
         Ok(token_response.access_token)
     }
 
+    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     async fn holder_fetch_nonce(
         &self,
-        interaction_data: &HolderInteractionData,
+        nonce_endpoint: Option<&String>,
     ) -> Result<Option<String>, IssuanceProtocolError> {
         // missing `nonce_endpoint` means the issuer does not require nonce in proofs
         // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.4
-        let Some(nonce_endpoint) = interaction_data.nonce_endpoint.as_ref() else {
+        let Some(nonce_endpoint) = nonce_endpoint else {
             return Ok(None);
         };
 
@@ -555,14 +556,16 @@ impl OpenID4VCIFinal1_0 {
     }
 
     /// Fetches a challenge from the attestation-based client authentication challenge endpoint
-    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-8>
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-11#section-6.3>
+    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     async fn holder_fetch_challenge(
         &self,
         challenge_endpoint: &str,
     ) -> Result<String, IssuanceProtocolError> {
         let response: ChallengeResponse = async {
             self.client
-                .get(challenge_endpoint)
+                .post(challenge_endpoint)
+                .header("Accept", "application/json")
                 .send()
                 .await?
                 .error_for_status()?
@@ -574,6 +577,11 @@ impl OpenID4VCIFinal1_0 {
         Ok(response.attestation_challenge)
     }
 
+    #[tracing::instrument(
+        level = "debug",
+        skip(self, message, access_token),
+        err(level = "info")
+    )]
     async fn send_notification(
         &self,
         message: NotificationRequest,
@@ -602,7 +610,9 @@ impl OpenID4VCIFinal1_0 {
         access_token: &SecretString,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
         let configuration = &requested.configuration;
-        let nonce = self.holder_fetch_nonce(interaction_data).await?;
+        let nonce = self
+            .holder_fetch_nonce(interaction_data.nonce_endpoint.as_ref())
+            .await?;
 
         let client_id = interaction_data
             .continue_issuance
