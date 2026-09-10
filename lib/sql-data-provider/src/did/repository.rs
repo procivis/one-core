@@ -5,7 +5,8 @@ use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::{DidId, DidValue, OrganisationId};
 
@@ -74,7 +75,7 @@ impl DidRepository for DidProvider {
         let query = did::Entity::find()
             .filter(did::Column::DeletedAt.is_null())
             .with_filter_join(&query_params)
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
 

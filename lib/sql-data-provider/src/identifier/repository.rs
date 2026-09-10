@@ -7,8 +7,8 @@ use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::identifier_repository::IdentifierRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Select, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect, Select, Set, Unchanged,
 };
 use shared_types::{DidId, IdentifierId};
 
@@ -156,7 +156,7 @@ impl IdentifierRepository for IdentifierProvider {
         &self,
         query_params: IdentifierListQuery,
     ) -> Result<GetIdentifierList, DataLayerError> {
-        let query = get_identifier_list_query(&query_params);
+        let query = get_identifier_list_query(&query_params, self.db.get_database_backend());
 
         list_query_with_custom_model(query, query_params, &self.db, |model| {
             self.identifier_from_model(model)
@@ -165,7 +165,10 @@ impl IdentifierRepository for IdentifierProvider {
     }
 }
 
-fn get_identifier_list_query(query_params: &IdentifierListQuery) -> Select<identifier::Entity> {
+fn get_identifier_list_query(
+    query_params: &IdentifierListQuery,
+    db_backend: DatabaseBackend,
+) -> Select<identifier::Entity> {
     identifier::Entity::find()
         .select_only()
         .columns([
@@ -185,7 +188,7 @@ fn get_identifier_list_query(query_params: &IdentifierListQuery) -> Select<ident
         ])
         .filter(identifier::Column::DeletedAt.is_null())
         .with_filter_join(query_params)
-        .with_list_query(query_params)
+        .with_list_query(query_params, db_backend)
         .group_by(identifier::Column::Id)
         .group_by(identifier::Column::CreatedDate)
         .group_by(identifier::Column::LastModified)

@@ -6,7 +6,8 @@ use one_core::model::trust_list_subscription::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::TrustListSubscriptionId;
 
@@ -73,7 +74,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     ) -> Result<GetTrustListSubscriptionList, DataLayerError> {
         let db_query = trust_list_subscription::Entity::find()
             .filter(trust_list_subscription::Column::DeactivatedAt.is_null())
-            .with_list_query(&query)
+            .with_list_query(&query, self.db.get_database_backend())
             .order_by_desc(trust_list_subscription::Column::CreatedDate)
             .order_by_desc(trust_list_subscription::Column::Id);
 

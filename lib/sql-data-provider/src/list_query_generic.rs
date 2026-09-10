@@ -8,14 +8,42 @@ use one_core::model::list_filter::{
 use one_core::model::list_query::ListQuery;
 use sea_orm::prelude::Expr;
 use sea_orm::query::*;
-use sea_orm::sea_query::{Func, IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, EntityTrait, RelationDef, RelationType};
+use sea_orm::sea_query::{ColumnRef, Func, IntoColumnRef, IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, DatabaseBackend, EntityTrait, RelationDef, RelationType};
 
 use crate::mapper::order_from_sort_direction;
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum ColumnSortingBehavior {
+    /// will be sorted as a case-insesitive string
+    CaseInsensitive,
+    /// will be sorted by DB default logic
+    #[default]
+    Default,
+}
+
+// utility functions
+impl ColumnSortingBehavior {
+    /// wraps the column with `ColumnSortingBehavior::Default`
+    pub fn default(column: impl ColumnTrait) -> (ColumnRef, ColumnSortingBehavior) {
+        (
+            column.as_column_ref().into_column_ref(),
+            ColumnSortingBehavior::Default,
+        )
+    }
+
+    /// wraps the column with `ColumnSortingBehavior::CaseInsensitive`
+    pub fn case_insensitive(column: impl ColumnTrait) -> (ColumnRef, ColumnSortingBehavior) {
+        (
+            column.as_column_ref().into_column_ref(),
+            ColumnSortingBehavior::CaseInsensitive,
+        )
+    }
+}
+
 pub trait IntoSortingColumn {
-    /// converts declared sorting column into a sea-orm column
-    fn get_column(&self) -> SimpleExpr;
+    /// converts declared sorting column into a sea-orm column + specifies sorting behavior
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior);
 }
 
 pub trait IntoFilterCondition: Clone + ListFilterValue {
@@ -121,7 +149,11 @@ where
     FilterValue: IntoFilterCondition,
 {
     /// applies all `query` declared constrains (filtering, sorting and pagination) on the query
-    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Self;
+    fn with_list_query(
+        self,
+        query: &ListQuery<SortableColumn, FilterValue, Include>,
+        db_backend: DatabaseBackend,
+    ) -> Self;
 }
 
 impl<T, SortableColumn, FilterValue, Include>
@@ -131,7 +163,11 @@ where
     SortableColumn: IntoSortingColumn,
     FilterValue: IntoFilterCondition,
 {
-    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Select<T> {
+    fn with_list_query(
+        self,
+        query: &ListQuery<SortableColumn, FilterValue, Include>,
+        db_backend: DatabaseBackend,
+    ) -> Select<T> {
         let mut result = self;
 
         if let Some(filter) = &query.filtering
@@ -141,8 +177,25 @@ where
         }
 
         if let Some(sorting) = &query.sorting {
+            let (column, behavior) = sorting.column.get_column();
+
+            let column: SimpleExpr = match (db_backend, behavior) {
+                (_, ColumnSortingBehavior::Default) => column.into(),
+
+                // case-insesitive is implicit for Postgres and MariaDB
+                (
+                    DatabaseBackend::MySql | DatabaseBackend::Postgres,
+                    ColumnSortingBehavior::CaseInsensitive,
+                ) => column.into(),
+
+                // wrap with LOWER(<column>) for sqlite to behave as case-insensitive
+                (DatabaseBackend::Sqlite, ColumnSortingBehavior::CaseInsensitive) => {
+                    Expr::expr(Func::lower(column)).into()
+                }
+            };
+
             result = result.order_by(
-                sorting.column.get_column(),
+                column,
                 order_from_sort_direction(sorting.direction.unwrap_or(SortDirection::Ascending)),
             );
         }

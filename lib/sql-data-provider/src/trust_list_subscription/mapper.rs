@@ -8,14 +8,15 @@ use one_core::model::trust_list_subscription::{
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::ColumnTrait;
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
 
 use crate::entity::trust_list_publication::TrustRoleEnum;
 use crate::entity::trust_list_subscription;
 use crate::entity::trust_list_subscription::TrustListSubscriptionState;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_string_match_condition,
 };
 
 pub(crate) fn trust_list_subscription_from_model(
@@ -57,16 +58,23 @@ impl From<TrustListSubscription> for trust_list_subscription::ActiveModel {
 }
 
 impl IntoSortingColumn for SortableTrustListSubscriptionColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Name => trust_list_subscription::Column::Name,
-            Self::Type => trust_list_subscription::Column::Type,
-            Self::Role => trust_list_subscription::Column::Role,
-            Self::CreatedDate => trust_list_subscription::Column::CreatedDate,
-            Self::LastModified => trust_list_subscription::Column::LastModified,
-            Self::Reference => trust_list_subscription::Column::Reference,
+            Self::Name => {
+                ColumnSortingBehavior::case_insensitive(trust_list_subscription::Column::Name)
+            }
+            Self::Type => ColumnSortingBehavior::default(trust_list_subscription::Column::Type),
+            Self::Role => ColumnSortingBehavior::default(trust_list_subscription::Column::Role),
+            Self::CreatedDate => {
+                ColumnSortingBehavior::default(trust_list_subscription::Column::CreatedDate)
+            }
+            Self::LastModified => {
+                ColumnSortingBehavior::default(trust_list_subscription::Column::LastModified)
+            }
+            Self::Reference => {
+                ColumnSortingBehavior::default(trust_list_subscription::Column::Reference)
+            }
         }
-        .into_simple_expr()
     }
 }
 

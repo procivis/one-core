@@ -13,10 +13,8 @@ use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{ExprTrait, Query, SimpleExpr};
-use sea_orm::{
-    ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QueryOrder, RelationTrait,
-};
+use sea_orm::sea_query::{ColumnRef, ExprTrait, Query};
+use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, RelationTrait};
 use shared_types::CredentialSchemaId;
 use time::Duration;
 
@@ -26,17 +24,19 @@ use crate::credential_schema_format::mapper::credential_schema_format_from_model
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema, credential_schema_format};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 use crate::localized_text::LocalizedTextLoader;
 use crate::mapper::to_data_layer_error;
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => credential_schema::Column::CreatedDate.into_simple_expr(),
-            Self::Name => credential_schema::Column::Name.into_simple_expr(),
+            Self::CreatedDate => {
+                ColumnSortingBehavior::default(credential_schema::Column::CreatedDate)
+            }
+            Self::Name => ColumnSortingBehavior::case_insensitive(credential_schema::Column::Name),
         }
     }
 }

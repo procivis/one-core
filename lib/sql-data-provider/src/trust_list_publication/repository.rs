@@ -8,7 +8,9 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::prelude::Expr;
-use sea_orm::{ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder,
+};
 use shared_types::TrustListPublicationId;
 
 use super::TrustListPublicationProvider;
@@ -60,7 +62,7 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
     ) -> Result<GetTrustListPublicationList, DataLayerError> {
         let db_query = trust_list_publication::Entity::find()
             .filter(trust_list_publication::Column::DeletedAt.is_null())
-            .with_list_query(&query)
+            .with_list_query(&query, self.db.get_database_backend())
             .order_by_desc(trust_list_publication::Column::CreatedDate)
             .order_by_desc(trust_list_publication::Column::Id);
 

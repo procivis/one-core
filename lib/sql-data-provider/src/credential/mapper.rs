@@ -22,10 +22,9 @@ use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{ExprTrait, Query, SelectStatement, SimpleExpr};
+use sea_orm::sea_query::{ColumnRef, ExprTrait, Query, SelectStatement};
 use sea_orm::{
-    ActiveValue, ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, RelationTrait,
-    Set, Value,
+    ActiveValue, ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait, Set, Value,
 };
 use shared_types::{
     BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, IdentifierId, InteractionId,
@@ -40,7 +39,7 @@ use crate::credential_schema_format::mapper::credential_schema_format_from_model
 use crate::entity::{claim, credential, credential_schema, credential_schema_format, identifier};
 use crate::identifier::mapper::{identifier_data_from_ids, identifier_trust_information};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
@@ -58,13 +57,15 @@ where
 }
 
 impl IntoSortingColumn for SortableCredentialColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => credential::Column::CreatedDate.into_simple_expr(),
-            Self::SchemaName => credential_schema::Column::Name.into_simple_expr(),
-            Self::Issuer => identifier::Column::Name.into_simple_expr(),
-            Self::State => credential::Column::State.into_simple_expr(),
-            Self::ExpiresAt => credential::Column::ExpiresAt.into_simple_expr(),
+            Self::CreatedDate => ColumnSortingBehavior::default(credential::Column::CreatedDate),
+            Self::SchemaName => {
+                ColumnSortingBehavior::case_insensitive(credential_schema::Column::Name)
+            }
+            Self::Issuer => ColumnSortingBehavior::case_insensitive(identifier::Column::Name),
+            Self::State => ColumnSortingBehavior::default(credential::Column::State),
+            Self::ExpiresAt => ColumnSortingBehavior::default(credential::Column::ExpiresAt),
         }
     }
 }

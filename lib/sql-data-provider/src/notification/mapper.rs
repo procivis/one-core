@@ -3,18 +3,19 @@ use one_core::model::notification::{
     Notification, NotificationFilterValue, SortableNotificationColumn, UpdateNotificationRequest,
 };
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::ColumnTrait;
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
 
 use crate::entity::notification;
-use crate::list_query_generic::{IntoFilterCondition, IntoSortingColumn, get_comparison_condition};
+use crate::list_query_generic::{
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+};
 
 impl IntoSortingColumn for SortableNotificationColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => notification::Column::CreatedDate,
+            Self::CreatedDate => ColumnSortingBehavior::default(notification::Column::CreatedDate),
         }
-        .into_simple_expr()
     }
 }
 

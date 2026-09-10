@@ -7,7 +7,8 @@ use one_core::model::proof_schema::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
@@ -147,7 +148,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
     ) -> Result<GetProofSchemaList, DataLayerError> {
         let query = crate::entity::proof_schema::Entity::find()
             .filter(proof_schema::Column::DeletedAt.is_null())
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(proof_schema::Column::CreatedDate)
             .order_by_desc(proof_schema::Column::Id);
 

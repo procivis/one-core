@@ -22,8 +22,8 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use one_core::service::proof::dto::ProofFilterValue;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, QueryFilter, Set};
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
 use shared_types::{ClaimId, CredentialId, ProofId};
 
 use super::model::ProofListItemModel;
@@ -34,17 +34,18 @@ use crate::identifier::mapper::{
     identifier_data_from_ids, identifier_localized_text, identifier_trust_information,
 };
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_string_match_condition,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
 impl IntoSortingColumn for SortableProofColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
-            Self::SchemaName => proof_schema::Column::Name.into_simple_expr(),
-            Self::Verifier => identifier::Column::Name.into_simple_expr(),
-            Self::State => proof::Column::State.into_simple_expr(),
+            Self::CreatedDate => ColumnSortingBehavior::default(proof::Column::CreatedDate),
+            Self::SchemaName => ColumnSortingBehavior::case_insensitive(proof_schema::Column::Name),
+            Self::Verifier => ColumnSortingBehavior::case_insensitive(identifier::Column::Name),
+            Self::State => ColumnSortingBehavior::default(proof::Column::State),
         }
     }
 }

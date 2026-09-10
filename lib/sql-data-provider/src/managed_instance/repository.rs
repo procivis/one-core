@@ -7,7 +7,7 @@ use one_core::model::managed_instance::{
 use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QueryOrder, Set, Unchanged};
 use shared_types::ManagedInstanceId;
 
 use super::ManagedInstanceProvider;
@@ -62,7 +62,8 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
         &self,
         query_params: ManagedInstanceListQuery,
     ) -> Result<ManagedInstanceList, DataLayerError> {
-        let mut query = managed_instance::Entity::find().with_list_query(&query_params);
+        let mut query = managed_instance::Entity::find()
+            .with_list_query(&query_params, self.db.get_database_backend());
 
         if query_params.sorting.is_some() || query_params.pagination.is_some() {
             // fallback ordering

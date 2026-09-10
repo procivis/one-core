@@ -6,8 +6,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, RelationTrait,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, RelationTrait,
 };
 use shared_types::{TrustEntryId, TrustListPublicationId};
 
@@ -85,7 +85,7 @@ impl TrustEntryRepository for TrustEntryProvider {
             .column_as(identifier::Column::KeyId, "identifier_key_id")
             // list query
             .filter(trust_entry::Column::TrustListPublicationId.eq(trust_list_publication_id))
-            .with_list_query(&query)
+            .with_list_query(&query, self.db.get_database_backend())
             .order_by_desc(trust_entry::Column::CreatedDate)
             .order_by_desc(trust_entry::Column::Id);
 

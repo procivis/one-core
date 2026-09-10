@@ -10,14 +10,14 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::ColumnTrait;
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
 
 use crate::entity::trust_list_publication;
 use crate::entity::trust_list_publication::TrustRoleEnum;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_equals_condition, get_string_match_condition,
 };
 
 pub(crate) fn trust_list_publication_from_model(
@@ -71,13 +71,19 @@ impl From<TrustListPublication> for trust_list_publication::ActiveModel {
 }
 
 impl IntoSortingColumn for SortableTrustListPublicationColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Role => trust_list_publication::Column::Role.into_simple_expr(),
-            Self::Type => trust_list_publication::Column::Type.into_simple_expr(),
-            Self::Name => trust_list_publication::Column::Name.into_simple_expr(),
-            Self::CreatedDate => trust_list_publication::Column::CreatedDate.into_simple_expr(),
-            Self::LastModified => trust_list_publication::Column::LastModified.into_simple_expr(),
+            Self::Role => ColumnSortingBehavior::default(trust_list_publication::Column::Role),
+            Self::Type => ColumnSortingBehavior::default(trust_list_publication::Column::Type),
+            Self::Name => {
+                ColumnSortingBehavior::case_insensitive(trust_list_publication::Column::Name)
+            }
+            Self::CreatedDate => {
+                ColumnSortingBehavior::default(trust_list_publication::Column::CreatedDate)
+            }
+            Self::LastModified => {
+                ColumnSortingBehavior::default(trust_list_publication::Column::LastModified)
+            }
         }
     }
 }

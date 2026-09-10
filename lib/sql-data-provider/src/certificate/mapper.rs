@@ -3,13 +3,13 @@ use one_core::model::certificate::{
     Certificate, CertificateFilterValue, SortableCertificateColumn,
 };
 use one_core::model::list_filter::ListFilterCondition;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
+use sea_orm::{ColumnTrait, Set};
 
 use crate::entity::certificate::{self, ActiveModel};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_equals_condition, get_string_match_condition,
 };
 
 impl From<Certificate> for ActiveModel {
@@ -38,14 +38,13 @@ impl From<Certificate> for ActiveModel {
 }
 
 impl IntoSortingColumn for SortableCertificateColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Name => certificate::Column::Name,
-            Self::CreatedDate => certificate::Column::CreatedDate,
-            Self::State => certificate::Column::State,
-            Self::ExpiryDate => certificate::Column::ExpiryDate,
+            Self::Name => ColumnSortingBehavior::case_insensitive(certificate::Column::Name),
+            Self::CreatedDate => ColumnSortingBehavior::default(certificate::Column::CreatedDate),
+            Self::State => ColumnSortingBehavior::default(certificate::Column::State),
+            Self::ExpiryDate => ColumnSortingBehavior::default(certificate::Column::ExpiryDate),
         }
-        .into_simple_expr()
     }
 }
 

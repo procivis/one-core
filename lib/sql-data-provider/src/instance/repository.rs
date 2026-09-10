@@ -6,7 +6,8 @@ use one_core::model::instance::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::instance_repository::InstanceRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::{InstanceId, OrganisationId};
 
@@ -120,7 +121,7 @@ impl InstanceRepository for InstanceProvider {
 
     async fn list(&self, query_params: InstanceListQuery) -> Result<InstanceList, DataLayerError> {
         let query = instance::Entity::find()
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(instance::Column::CreatedDate)
             .order_by_desc(instance::Column::Id);
 

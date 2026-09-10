@@ -14,14 +14,14 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{Query, SimpleExpr};
-use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
+use sea_orm::sea_query::{ColumnRef, Query};
+use sea_orm::{ColumnTrait, Condition};
 use shared_types::RevocationListEntryId;
 
 use crate::entity::managed_instance::VerifierSignatures;
 use crate::entity::{history, instance, managed_instance};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 
@@ -101,14 +101,20 @@ impl TryFrom<ManagedInstance> for managed_instance::ActiveModel {
 }
 
 impl IntoSortingColumn for SortableManagedInstanceColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => managed_instance::Column::CreatedDate.into_simple_expr(),
-            Self::LastModified => managed_instance::Column::LastModified.into_simple_expr(),
-            Self::Name => managed_instance::Column::Name.into_simple_expr(),
-            Self::Status => managed_instance::Column::Status.into_simple_expr(),
-            Self::Os => managed_instance::Column::Os.into_simple_expr(),
-            Self::UserSub => managed_instance::Column::UserSub.into_simple_expr(),
+            Self::CreatedDate => {
+                ColumnSortingBehavior::default(managed_instance::Column::CreatedDate)
+            }
+            Self::LastModified => {
+                ColumnSortingBehavior::default(managed_instance::Column::LastModified)
+            }
+            Self::Name => ColumnSortingBehavior::case_insensitive(managed_instance::Column::Name),
+            Self::Status => ColumnSortingBehavior::default(managed_instance::Column::Status),
+            Self::Os => ColumnSortingBehavior::default(managed_instance::Column::Os),
+            Self::UserSub => {
+                ColumnSortingBehavior::case_insensitive(managed_instance::Column::UserSub)
+            }
         }
     }
 }

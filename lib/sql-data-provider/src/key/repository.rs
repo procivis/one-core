@@ -3,7 +3,9 @@ use one_core::model::key::{GetKeyList, Key, KeyListQuery};
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::key_repository::KeyRepository;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+};
 use shared_types::KeyId;
 
 use crate::common::list_query_with_custom_model;
@@ -74,7 +76,7 @@ impl KeyRepository for KeyProvider {
     async fn get_key_list(&self, query_params: KeyListQuery) -> Result<GetKeyList, DataLayerError> {
         let query = key::Entity::find()
             .filter(key::Column::DeletedAt.is_null())
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);
 

@@ -12,7 +12,9 @@ use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntity
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::Query;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged,
+};
 use shared_types::{CredentialSchemaId, OrganisationId};
 
 use crate::common::list_query_with_custom_model;
@@ -139,7 +141,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let query = credential_schema::Entity::find()
             .filter(credential_schema::Column::DeletedAt.is_null())
             .with_filter_join(&query_params)
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(credential_schema::Column::CreatedDate)
             .order_by_desc(credential_schema::Column::Id);
 

@@ -519,3 +519,64 @@ async fn test_get_list_credential_schema_v2_filter_formats_success() {
     assert!(names.contains(&"multi-schema"));
     assert!(!names.contains(&"swiyu-schema"));
 }
+
+#[tokio::test]
+async fn test_get_list_credential_schema_v2_sort_case_insensitive() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "first".to_string(),
+            organisation_id: organisation.id.into(),
+            formats: vec![json!({"format": "JWT"})],
+            claims: default_claim(),
+            ..Default::default()
+        })
+        .await;
+    context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "Second".to_string(),
+            organisation_id: organisation.id.into(),
+            formats: vec![json!({"format": "JWT"})],
+            claims: default_claim(),
+            ..Default::default()
+        })
+        .await;
+    context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "THIRD".to_string(),
+            organisation_id: organisation.id.into(),
+            formats: vec![json!({"format": "JWT"})],
+            claims: default_claim(),
+            ..Default::default()
+        })
+        .await;
+
+    // WHEN - sort by name
+    let resp = context
+        .api
+        .credential_schemas
+        .list_v2(0, 10, &organisation.id, None, Some("sort=name"))
+        .await;
+
+    // THEN - the schemas are sorted case-insesitive
+    assert_eq!(resp.status(), 200);
+    let resp_json = resp.json_value().await;
+    assert_eq!(resp_json["totalItems"], 3);
+    let names: Vec<&str> = resp_json["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names[0], "first");
+    assert_eq!(names[1], "Second");
+    assert_eq!(names[2], "THIRD");
+}

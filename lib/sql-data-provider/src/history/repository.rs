@@ -96,7 +96,7 @@ impl HistoryRepository for HistoryProvider {
         };
 
         let query = history::Entity::find()
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .with_filter_join(&query_params)
             .order_by_desc(history::Column::CreatedDate)
             .order_by_desc(history::Column::Id);
@@ -295,8 +295,9 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let current = issuer_stats_query(&current_query);
-        let prev = previous_query.map(|q| issuer_stats_query(&q));
+        let db_backend = self.db.get_database_backend();
+        let current = issuer_stats_query(&current_query, db_backend);
+        let prev = previous_query.map(|q| issuer_stats_query(&q, db_backend));
         let paginated_stats = self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -311,8 +312,9 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let current = verifier_stats_query(&current_query);
-        let prev = previous_query.map(|q| verifier_stats_query(&q));
+        let db_backend = self.db.get_database_backend();
+        let current = verifier_stats_query(&current_query, db_backend);
+        let prev = previous_query.map(|q| verifier_stats_query(&q, db_backend));
         let paginated_stats = self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -327,8 +329,9 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let current = system_interaction_stats_query(&current_query);
-        let prev = previous_query.map(|q| system_interaction_stats_query(&q));
+        let db_backend = self.db.get_database_backend();
+        let current = system_interaction_stats_query(&current_query, db_backend);
+        let prev = previous_query.map(|q| system_interaction_stats_query(&q, db_backend));
         let paginated_stats: PaginatedStats<SystemInteractionStatsRow> =
             self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
@@ -344,8 +347,9 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let current = system_management_stats_query(&current_query);
-        let prev = previous_query.map(|q| system_management_stats_query(&q));
+        let db_backend = self.db.get_database_backend();
+        let current = system_management_stats_query(&current_query, db_backend);
+        let prev = previous_query.map(|q| system_management_stats_query(&q, db_backend));
         let paginated_stats: PaginatedStats<SystemManagementsStatsRow> =
             self.collect_paginated_stats(current, prev).await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);

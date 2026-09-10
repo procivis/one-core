@@ -17,8 +17,8 @@ use one_core::repository::identifier_trust_information_repository::IdentifierTru
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, SimpleExpr};
-use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
+use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden};
+use sea_orm::{ColumnTrait, Condition, JoinType, RelationTrait, Set};
 use shared_types::{DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 
@@ -26,7 +26,7 @@ use crate::entity::identifier::ActiveModel;
 use crate::entity::{certificate, did, identifier, identifier_trust_information, key, key_did};
 use crate::identifier_trust_information::mapper::serialize_schema_format;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 
@@ -153,14 +153,21 @@ pub(crate) fn identifier_from_model(
 }
 
 impl IntoSortingColumn for SortableIdentifierColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            SortableIdentifierColumn::Name => identifier::Column::Name,
-            SortableIdentifierColumn::CreatedDate => identifier::Column::CreatedDate,
-            SortableIdentifierColumn::Type => identifier::Column::Type,
-            SortableIdentifierColumn::State => identifier::Column::State,
+            SortableIdentifierColumn::Name => {
+                ColumnSortingBehavior::case_insensitive(identifier::Column::Name)
+            }
+            SortableIdentifierColumn::CreatedDate => {
+                ColumnSortingBehavior::default(identifier::Column::CreatedDate)
+            }
+            SortableIdentifierColumn::Type => {
+                ColumnSortingBehavior::default(identifier::Column::Type)
+            }
+            SortableIdentifierColumn::State => {
+                ColumnSortingBehavior::default(identifier::Column::State)
+            }
         }
-        .into_simple_expr()
     }
 }
 

@@ -6,13 +6,14 @@ use one_core::model::trust_entry::{SortableTrustEntryColumn, TrustEntry, TrustEn
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{Alias, ColumnRef, IntoCondition, IntoIden, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::ColumnTrait;
+use sea_orm::sea_query::{Alias, ColumnRef, IntoColumnRef, IntoCondition};
 
 use crate::entity::trust_entry;
 use crate::entity::trust_entry::TrustEntryState;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_equals_condition,
 };
 
 pub(crate) fn trust_entry_from_model(
@@ -49,14 +50,15 @@ impl From<TrustEntry> for trust_entry::ActiveModel {
 }
 
 impl IntoSortingColumn for SortableTrustEntryColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => trust_entry::Column::CreatedDate.into_simple_expr(),
-            Self::State => trust_entry::Column::State.into_simple_expr(),
-            Self::LastModified => trust_entry::Column::LastModified.into_simple_expr(),
-            Self::Identifier => {
-                SimpleExpr::Column(ColumnRef::Column(Alias::new("identifier_name").into_iden()))
-            }
+            Self::CreatedDate => ColumnSortingBehavior::default(trust_entry::Column::CreatedDate),
+            Self::State => ColumnSortingBehavior::default(trust_entry::Column::State),
+            Self::LastModified => ColumnSortingBehavior::default(trust_entry::Column::LastModified),
+            Self::Identifier => (
+                Alias::new("identifier_name").into_column_ref(),
+                ColumnSortingBehavior::CaseInsensitive,
+            ),
         }
     }
 }

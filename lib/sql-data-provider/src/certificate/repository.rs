@@ -9,7 +9,8 @@ use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::CertificateId;
 
@@ -83,7 +84,7 @@ impl CertificateRepository for CertificateProvider {
         query_params: CertificateListQuery,
     ) -> Result<GetCertificateList, DataLayerError> {
         let query = certificate::Entity::find()
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);
 

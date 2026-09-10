@@ -8,14 +8,14 @@ use one_core::model::trust_collection::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::ColumnTrait;
+use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
 use url::Url;
 
 use crate::entity::{organisation, trust_collection, trust_list_subscription};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_equals_condition, get_string_match_condition,
 };
 
 pub(crate) fn trust_collection_from_model(
@@ -56,13 +56,16 @@ impl From<TrustCollection> for trust_collection::ActiveModel {
 }
 
 impl IntoSortingColumn for SortableTrustCollectionColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Name => trust_collection::Column::Name,
-            Self::CreatedDate => trust_collection::Column::CreatedDate,
-            Self::LastModified => trust_collection::Column::LastModified,
+            Self::Name => ColumnSortingBehavior::case_insensitive(trust_collection::Column::Name),
+            Self::CreatedDate => {
+                ColumnSortingBehavior::default(trust_collection::Column::CreatedDate)
+            }
+            Self::LastModified => {
+                ColumnSortingBehavior::default(trust_collection::Column::LastModified)
+            }
         }
-        .into_simple_expr()
     }
 }
 

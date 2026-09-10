@@ -18,8 +18,8 @@ use sea_orm::sea_query::{
     IntoTableRef, Query, SelectStatement, SimpleExpr,
 };
 use sea_orm::{
-    ActiveEnum, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult,
-    IntoSimpleExpr, JoinType, Order, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
+    ActiveEnum, ColumnTrait, ConnectionTrait, DatabaseBackend, DbBackend, EntityTrait,
+    FromQueryResult, JoinType, Order, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, IdentifierId, OrganisationId, ProofId,
@@ -35,8 +35,8 @@ use crate::entity::{
 use crate::history::mapper::{ceil, floor};
 use crate::history::model::{EntityIdRow, TimeResolution};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, SelectWithListQuery,
-    get_blob_match_condition, get_comparison_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    SelectWithListQuery, get_blob_match_condition, get_comparison_condition,
 };
 
 const ENTITY_ID: &str = "entity_id";
@@ -58,16 +58,15 @@ pub(super) enum PreprocessedHistoryFilterValue {
 impl ListFilterValue for PreprocessedHistoryFilterValue {}
 
 impl IntoSortingColumn for SortableHistoryColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => history::Column::CreatedDate,
-            Self::Action => history::Column::Action,
-            Self::EntityType => history::Column::EntityType,
-            Self::Source => history::Column::Source,
-            Self::User => history::Column::User,
-            Self::OrganisationId => history::Column::OrganisationId,
+            Self::CreatedDate => ColumnSortingBehavior::default(history::Column::CreatedDate),
+            Self::Action => ColumnSortingBehavior::default(history::Column::Action),
+            Self::EntityType => ColumnSortingBehavior::default(history::Column::EntityType),
+            Self::Source => ColumnSortingBehavior::default(history::Column::Source),
+            Self::User => ColumnSortingBehavior::case_insensitive(history::Column::User),
+            Self::OrganisationId => ColumnSortingBehavior::default(history::Column::OrganisationId),
         }
-        .into_simple_expr()
     }
 }
 
@@ -776,70 +775,92 @@ impl IntoFilterCondition for SystemStatsFilterValue {
 }
 
 impl IntoSortingColumn for SortableIssuerStatisticsColumn {
-    fn get_column(&self) -> SimpleExpr {
-        let col = match self {
-            Self::Issued => Alias::new(history::HistoryAction::Issued.to_value()).into_column_ref(),
-            Self::Revoked => {
-                Alias::new(history::HistoryAction::Revoked.to_value()).into_column_ref()
-            }
-            Self::Suspended => {
-                Alias::new(history::HistoryAction::Suspended.to_value()).into_column_ref()
-            }
-            Self::Reactivated => {
-                Alias::new(history::HistoryAction::Reactivated.to_value()).into_column_ref()
-            }
-            Self::Error => Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref(),
-        };
-        SimpleExpr::Column(col)
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
+        match self {
+            Self::Issued => (
+                Alias::new(history::HistoryAction::Issued.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Revoked => (
+                Alias::new(history::HistoryAction::Revoked.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Suspended => (
+                Alias::new(history::HistoryAction::Suspended.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Reactivated => (
+                Alias::new(history::HistoryAction::Reactivated.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Error => (
+                Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+        }
     }
 }
 
 impl IntoSortingColumn for SortableVerifierStatisticsColumn {
-    fn get_column(&self) -> SimpleExpr {
-        let col = match self {
-            Self::Accepted => {
-                Alias::new(history::HistoryAction::Accepted.to_value()).into_column_ref()
-            }
-            Self::Rejected => {
-                Alias::new(history::HistoryAction::Rejected.to_value()).into_column_ref()
-            }
-            Self::Error => Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref(),
-        };
-        SimpleExpr::Column(col)
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
+        match self {
+            Self::Accepted => (
+                Alias::new(history::HistoryAction::Accepted.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Rejected => (
+                Alias::new(history::HistoryAction::Rejected.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Error => (
+                Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+        }
     }
 }
 
 const CLO_COLUMN: &str = "credential_lifecycle_operation";
 
 impl IntoSortingColumn for SortableSystemInteractionStatisticsColumn {
-    fn get_column(&self) -> SimpleExpr {
-        let col = match self {
-            Self::Issued => Alias::new(history::HistoryAction::Issued.to_value()).into_column_ref(),
-            Self::Verified => {
-                Alias::new(history::HistoryAction::Accepted.to_value()).into_column_ref()
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
+        match self {
+            Self::Issued => (
+                Alias::new(history::HistoryAction::Issued.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Verified => (
+                Alias::new(history::HistoryAction::Accepted.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::CredentialLifecycleOperation => {
+                (Alias::new(CLO_COLUMN).into_column_ref(), Default::default())
             }
-            Self::CredentialLifecycleOperation => Alias::new(CLO_COLUMN).into_column_ref(),
-            Self::Error => Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref(),
-        };
-        SimpleExpr::Column(col)
+            Self::Error => (
+                Alias::new(history::HistoryAction::Errored.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+        }
     }
 }
 
 impl IntoSortingColumn for SortableSystemManagementStatisticsColumn {
-    fn get_column(&self) -> SimpleExpr {
-        let col = match self {
-            Self::CredentialSchema => {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
+        match self {
+            Self::CredentialSchema => (
                 Alias::new(history::HistoryEntityType::CredentialSchema.to_value())
-                    .into_column_ref()
-            }
-            Self::ProofSchema => {
-                Alias::new(history::HistoryEntityType::ProofSchema.to_value()).into_column_ref()
-            }
-            Self::Identifier => {
-                Alias::new(history::HistoryEntityType::Identifier.to_value()).into_column_ref()
-            }
-        };
-        SimpleExpr::Column(col)
+                    .into_column_ref(),
+                Default::default(),
+            ),
+            Self::ProofSchema => (
+                Alias::new(history::HistoryEntityType::ProofSchema.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+            Self::Identifier => (
+                Alias::new(history::HistoryEntityType::Identifier.to_value()).into_column_ref(),
+                Default::default(),
+            ),
+        }
     }
 }
 
@@ -850,8 +871,13 @@ const ISSUER_ACTIONS: [history::HistoryAction; 5] = [
     history::HistoryAction::Revoked,
     history::HistoryAction::Errored,
 ];
-pub(super) fn issuer_stats_query(query: &IssuerStatsQuery) -> SelectStatement {
-    let mut stmt = history::Entity::find().with_list_query(query).into_query();
+pub(super) fn issuer_stats_query(
+    query: &IssuerStatsQuery,
+    db_backend: DatabaseBackend,
+) -> SelectStatement {
+    let mut stmt = history::Entity::find()
+        .with_list_query(query, db_backend)
+        .into_query();
     let group_columns = [
         history::Column::Name.into_column_ref(),
         credential::Column::CredentialSchemaId.into_column_ref(),
@@ -883,8 +909,13 @@ const VERIFIER_ACTIONS: [history::HistoryAction; 3] = [
     history::HistoryAction::Rejected,
     history::HistoryAction::Errored,
 ];
-pub(super) fn verifier_stats_query(query: &VerifierStatsQuery) -> SelectStatement {
-    let mut stmt = history::Entity::find().with_list_query(query).into_query();
+pub(super) fn verifier_stats_query(
+    query: &VerifierStatsQuery,
+    db_backend: DatabaseBackend,
+) -> SelectStatement {
+    let mut stmt = history::Entity::find()
+        .with_list_query(query, db_backend)
+        .into_query();
     let group_columns = [
         history::Column::Name.into_column_ref(),
         proof::Column::ProofSchemaId.into_column_ref(),
@@ -912,8 +943,11 @@ pub(super) fn verifier_stats_query(query: &VerifierStatsQuery) -> SelectStatemen
 
 pub(super) fn system_interaction_stats_query(
     query: &SystemInteractionStatsQuery,
+    db_backend: DatabaseBackend,
 ) -> SelectStatement {
-    let mut stmt = history::Entity::find().with_list_query(query).into_query();
+    let mut stmt = history::Entity::find()
+        .with_list_query(query, db_backend)
+        .into_query();
     stmt.clear_selects()
         .column(history::Column::OrganisationId)
         .group_by_col(history::Column::OrganisationId)
@@ -977,8 +1011,13 @@ pub(super) fn system_interaction_stats_query(
     stmt
 }
 
-pub(super) fn system_management_stats_query(query: &SystemManagementStatsQuery) -> SelectStatement {
-    let mut stmt = history::Entity::find().with_list_query(query).into_query();
+pub(super) fn system_management_stats_query(
+    query: &SystemManagementStatsQuery,
+    db_backend: DatabaseBackend,
+) -> SelectStatement {
+    let mut stmt = history::Entity::find()
+        .with_list_query(query, db_backend)
+        .into_query();
     stmt.clear_selects()
         .column((history::Entity, history::Column::OrganisationId))
         .group_by_col((history::Entity, history::Column::OrganisationId))

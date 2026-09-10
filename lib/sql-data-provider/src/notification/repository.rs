@@ -6,7 +6,7 @@ use one_core::model::notification::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::notification_repository::NotificationRepository;
 use sea_orm::ActiveValue::Unchanged;
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, QuerySelect};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QueryOrder, QuerySelect};
 use shared_types::NotificationId;
 
 use super::NotificationProvider;
@@ -55,7 +55,7 @@ impl NotificationRepository for NotificationProvider {
         query_params: NotificationListQuery,
     ) -> Result<NotificationList, DataLayerError> {
         let query = notification::Entity::find()
-            .with_list_query(&query_params)
+            .with_list_query(&query_params, self.db.get_database_backend())
             .order_by_desc(notification::Column::CreatedDate)
             .order_by_desc(notification::Column::Id);
 

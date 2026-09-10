@@ -8,7 +8,7 @@ use one_core::model::organisation::{
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter};
 use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
@@ -101,7 +101,8 @@ impl OrganisationRepository for OrganisationProvider {
         &self,
         query_params: OrganisationListQuery,
     ) -> Result<GetOrganisationList, DataLayerError> {
-        let query = organisation::Entity::find().with_list_query(&query_params);
+        let query = organisation::Entity::find()
+            .with_list_query(&query_params, self.db.get_database_backend());
 
         let repo = self.cloned();
         list_query_with_custom_model(query, query_params, &self.db, |org| {

@@ -4,13 +4,13 @@ use one_core::model::key::{Key, KeyFilterValue, SortableKeyColumn};
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::Related;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::ColumnTrait;
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
 
 use crate::entity;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_nullability_condition, get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_equals_condition, get_nullability_condition, get_string_match_condition,
 };
 
 pub(crate) fn key_from_model(
@@ -32,15 +32,14 @@ pub(crate) fn key_from_model(
 }
 
 impl IntoSortingColumn for SortableKeyColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Name => entity::key::Column::Name,
-            Self::CreatedDate => entity::key::Column::CreatedDate,
-            Self::PublicKey => entity::key::Column::PublicKey,
-            Self::KeyType => entity::key::Column::KeyType,
-            Self::StorageType => entity::key::Column::StorageType,
+            Self::Name => ColumnSortingBehavior::case_insensitive(entity::key::Column::Name),
+            Self::CreatedDate => ColumnSortingBehavior::default(entity::key::Column::CreatedDate),
+            Self::PublicKey => ColumnSortingBehavior::default(entity::key::Column::PublicKey),
+            Self::KeyType => ColumnSortingBehavior::default(entity::key::Column::KeyType),
+            Self::StorageType => ColumnSortingBehavior::default(entity::key::Column::StorageType),
         }
-        .into_simple_expr()
     }
 }
 

@@ -7,7 +7,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use sea_orm::prelude::Expr;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::TrustCollectionId;
 
@@ -48,7 +49,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
     ) -> Result<GetTrustCollectionList, DataLayerError> {
         let db_query = trust_collection::Entity::find()
             .filter(trust_collection::Column::DeactivatedAt.is_null())
-            .with_list_query(&query)
+            .with_list_query(&query, self.db.get_database_backend())
             .order_by_desc(trust_collection::Column::CreatedDate)
             .order_by_desc(trust_collection::Column::Id);
 

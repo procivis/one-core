@@ -10,12 +10,14 @@ use one_core::repository::instance_repository::InstanceWalletInstanceAttestation
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
 use sea_orm::{ColumnTrait, Condition, Set};
 
 use crate::entity;
 use crate::entity::instance::{ActiveModel, Model};
-use crate::list_query_generic::{IntoFilterCondition, IntoSortingColumn, get_equals_condition};
+use crate::list_query_generic::{
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_equals_condition,
+};
 
 pub(crate) fn instance_from_model(
     value: Model,
@@ -68,7 +70,7 @@ impl From<Instance> for ActiveModel {
 }
 
 impl IntoSortingColumn for SortableInstanceColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match *self {}
     }
 }

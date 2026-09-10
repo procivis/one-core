@@ -8,8 +8,8 @@ use one_core::model::proof::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{InteractionId, ProofId};
 
@@ -117,7 +117,7 @@ impl ProofRepository for ProofProvider {
             .as_ref()
             .map(|pagination| pagination.page_size as _);
 
-        let query = get_proof_list_query(&query_params);
+        let query = get_proof_list_query(&query_params, self.db.get_database_backend());
 
         let (items_count, proofs) = tokio::join!(
             query.to_owned().count(&self.db),
@@ -262,7 +262,10 @@ impl ProofRepository for ProofProvider {
 }
 
 /// produces list query declared to be used together with `into_model::<ProofListItemModel>()`
-fn get_proof_list_query(query_params: &ProofListQuery) -> Select<crate::entity::proof::Entity> {
+fn get_proof_list_query(
+    query_params: &ProofListQuery,
+    db_backend: DatabaseBackend,
+) -> Select<crate::entity::proof::Entity> {
     let mut query = crate::entity::proof::Entity::find()
         .select_only()
         .columns([
@@ -344,7 +347,7 @@ fn get_proof_list_query(query_params: &ProofListQuery) -> Select<crate::entity::
         );
     }
 
-    query = query.with_list_query(query_params);
+    query = query.with_list_query(query_params, db_backend);
 
     if query_params.sorting.is_some() || query_params.pagination.is_some() {
         // fallback ordering

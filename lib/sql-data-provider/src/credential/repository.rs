@@ -13,8 +13,9 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, JoinType, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, JoinType,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
+    Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
@@ -76,7 +77,10 @@ impl CredentialProvider {
     }
 }
 
-fn get_credential_list_query(query_params: CredentialListQuery) -> Select<credential::Entity> {
+fn get_credential_list_query(
+    query_params: CredentialListQuery,
+    db_backend: DatabaseBackend,
+) -> Select<credential::Entity> {
     let mut query = credential::Entity::find()
         .select_only()
         .columns([
@@ -202,7 +206,7 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
         .column_as(identifier::Column::KeyId, "issuer_identifier_key_id")
         // list query
         .with_filter_join(&query_params)
-        .with_list_query(&query_params);
+        .with_list_query(&query_params, db_backend);
 
     if query_params.sorting.is_some() || query_params.pagination.is_some() {
         // fallback ordering
@@ -345,7 +349,7 @@ impl CredentialRepository for CredentialProvider {
             .as_ref()
             .map(|pagination| pagination.page_size as _);
 
-        let query = get_credential_list_query(query_params);
+        let query = get_credential_list_query(query_params, self.db.get_database_backend());
 
         let (items_count, credentials) = tokio::join!(
             query.to_owned().count(&self.db),

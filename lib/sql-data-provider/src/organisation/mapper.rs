@@ -7,13 +7,14 @@ use one_core::model::organisation::{
 };
 use one_core::model::relation::Related;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, Set, Unchanged};
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
+use sea_orm::{ColumnTrait, Set, Unchanged};
 use shared_types::OrganisationId;
 
 use crate::entity::organisation::{self, Configuration};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_nullability_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_nullability_condition,
 };
 
 pub(crate) fn organisation_from_model(
@@ -123,11 +124,10 @@ impl From<OrganisationConfiguration> for Configuration {
 }
 
 impl IntoSortingColumn for SortableOrganisationColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::CreatedDate => organisation::Column::CreatedDate,
+            Self::CreatedDate => ColumnSortingBehavior::default(organisation::Column::CreatedDate),
         }
-        .into_simple_expr()
     }
 }
 

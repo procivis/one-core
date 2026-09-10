@@ -11,16 +11,16 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
-use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QueryOrder, Set};
+use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
+use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, Set};
 use shared_types::ProofSchemaId;
 
 use crate::entity::{
     credential_schema, credential_schema_format, proof_input_schema, proof_schema,
 };
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
+    get_equals_condition, get_string_match_condition,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -51,10 +51,10 @@ pub(super) fn proof_schema_from_models(
 }
 
 impl IntoSortingColumn for SortableProofSchemaColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Name => proof_schema::Column::Name.into_simple_expr(),
-            Self::CreatedDate => proof_schema::Column::CreatedDate.into_simple_expr(),
+            Self::Name => ColumnSortingBehavior::case_insensitive(proof_schema::Column::Name),
+            Self::CreatedDate => ColumnSortingBehavior::default(proof_schema::Column::CreatedDate),
         }
     }
 }

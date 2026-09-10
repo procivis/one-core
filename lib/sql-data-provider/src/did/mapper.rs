@@ -9,28 +9,27 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, RelationTrait};
+use sea_orm::sea_query::{ColumnRef, IntoCondition};
+use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait};
 use shared_types::{DidId, KeyId};
 
 use crate::entity::{did, key, key_did};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, get_equals_condition,
-    get_string_match_condition,
+    ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    get_equals_condition, get_string_match_condition,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
 impl IntoSortingColumn for SortableDidColumn {
-    fn get_column(&self) -> SimpleExpr {
+    fn get_column(&self) -> (ColumnRef, ColumnSortingBehavior) {
         match self {
-            Self::Name => did::Column::Name,
-            Self::CreatedDate => did::Column::CreatedDate,
-            Self::Method => did::Column::Method,
-            Self::Type => did::Column::TypeField,
-            Self::Did => did::Column::Did,
-            Self::Deactivated => did::Column::Deactivated,
+            Self::Name => ColumnSortingBehavior::case_insensitive(did::Column::Name),
+            Self::CreatedDate => ColumnSortingBehavior::default(did::Column::CreatedDate),
+            Self::Method => ColumnSortingBehavior::default(did::Column::Method),
+            Self::Type => ColumnSortingBehavior::default(did::Column::TypeField),
+            Self::Did => ColumnSortingBehavior::case_insensitive(did::Column::Did),
+            Self::Deactivated => ColumnSortingBehavior::default(did::Column::Deactivated),
         }
-        .into_simple_expr()
     }
 }
 
