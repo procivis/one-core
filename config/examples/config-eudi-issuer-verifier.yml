@@ -1,0 +1,367 @@
+# Template for running the core as an EUDI issuer and/or verifier.
+app:
+  coreBaseUrl: "http://localhost:3000"
+  databaseUrl: "sqlite::memory:"
+  traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error,one_core::proto::http_client=trace"
+  enableServerInfo: true
+  enableOpenApi: true
+  enableExternalEndpoints: true
+  enableManagementEndpoints: true
+  auth:
+    mode: UNSAFE_NONE
+format:
+  # JWT formatter required for token status list revocation
+  JWT:
+    type: "JWT"
+    display: "format.jwt"
+    order: 300
+    enabled: false
+    params:
+      public:
+        leewaySeconds: 60
+        embedLayoutProperties: true
+  MDOC:
+    type: "MDOC"
+    display: "format.mdoc"
+    order: 100
+    priority: 100
+    params:
+      public:
+        expirationSeconds: 259200 # 72h in seconds
+        msoExpectedUpdateInSeconds: 86400 # 24h in seconds
+        msoMinimumRefreshSeconds: 300 # 5 min in seconds
+        leewaySeconds: 60
+        revocationMethod: "MDOC_TOKENSTATUSLIST"
+  SD_JWT_VC:
+    type: "SD_JWT_VC"
+    display: "format.sdjwtVc"
+    order: 200
+    priority: 100
+    params:
+      public:
+        expirationSeconds: 63072000 # 2 years in seconds
+        leewaySeconds: 60
+        embedLayoutProperties: true
+        revocationMethod: "TOKENSTATUSLIST"
+identifier:
+  # EUDI issuers and verifiers act under certificates issued by the ecosystem PKI
+  CERTIFICATE:
+    display: "identifier.certificate"
+    enabled: true
+    order: 0
+  CA:
+    display: "identifier.certificate_authority"
+    enabled: true
+    order: 1
+issuanceProtocol:
+  OPENID4VCI_FINAL1_HAIP:
+    display:
+      en: "OpenID4VCI final 1.0 (HAIP)"
+      de: "OpenID4VCI final 1.0 (HAIP)"
+    order: 1
+    type: "OPENID4VCI_FINAL1"
+    params:
+      public:
+        urlScheme: haip-vci
+        oauthAttestationLeewaySeconds: 60
+        keyAttestationLeewaySeconds: 60
+        preAuthorizedCodeExpiresInSeconds: 300
+        tokenExpiresInSeconds: 86400
+        refreshExpiresInSeconds: 7776000 # 90 days in seconds
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+      private:
+        # this is the SHA-256 of "my encryption key"
+        encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        nonce:
+          # Example key only; replace with a deployment-provided signing secret.
+          signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+          expirationSeconds: 300
+          leewaySeconds: 0
+verificationProtocol:
+  OPENID4VP_FINAL1_HAIP:
+    display:
+      en: "OpenID4VP final 1.0 (HAIP)"
+      de: "OpenID4VP final 1.0 (HAIP)"
+    order: 1
+    type: "OPENID4VP_FINAL1"
+    params:
+      public:
+        useRequestUri: true
+        urlScheme: haip-vp
+        verifier:
+          interactionExpiresInSeconds: 3600
+          supportedClientIdSchemes: [x509_hash]
+        holder:
+          supportedClientIdSchemes: [x509_hash]
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+revocation:
+  TOKENSTATUSLIST:
+    display: "revocation.tokenList"
+    order: 0
+    enabled: true
+    type: "TOKENSTATUSLIST"
+    params:
+      public:
+        format: "JWT"
+  MDOC_TOKENSTATUSLIST:
+    display: "revocation.mdocTokenList"
+    order: 1
+    enabled: true
+    type: "TOKENSTATUSLIST"
+    params:
+      public:
+        format: "CWT"
+        operations: ["REVOKE"]
+  CRL:
+    display: "revocation.crl"
+    order: 2
+    type: "CRL"
+    params:
+      public:
+        refreshIntervalSeconds: 86400
+keyAlgorithm:
+  # The key algorithms the EUDI ecosystem accepts for issuer/verifier identifiers
+  EDDSA:
+    display: "keyAlgorithm.eddsa"
+    order: 0
+    params: null
+    holderPriority: 50
+  ECDSA:
+    display: "keyAlgorithm.ecdsa"
+    order: 1
+    params: null
+    holderPriority: 100
+keyStorage:
+  INTERNAL:
+    display: "keyStorage.internal"
+    type: "INTERNAL"
+    order: 0
+    params:
+      private:
+        # this is the SHA-256 of "my encryption key"
+        encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+signer:
+  X509_CERTIFICATE:
+    display:
+      en: "X.509 Certificate Issuer"
+      de: "X.509 Certificate Issuer"
+    order: 0
+    type: X509_CERTIFICATE
+    params:
+      private:
+        payload:
+          maxValidityDurationSeconds: 157680000 # 5 years
+          allowCaSigning: true
+          pathLenConstraint: 0
+          keyIdDerivation: "sha-1" # based on ISO 18013-5
+        revocationMethod: CRL
+datatype:
+  STRING:
+    display: "datatype.string"
+    type: "STRING"
+    order: 100
+    params:
+      public:
+        supportedInputMode: TEXT
+      private:
+        holder:
+          valueExtraction: ENABLED_FALLBACK
+  ARRAY:
+    display: "datatype.array"
+    type: "ARRAY"
+    order: 101
+    params: null
+  NUMBER:
+    display: "datatype.number"
+    type: "NUMBER"
+    order: 200
+    params:
+      public:
+        supportedInputMode: NUMBER_INPUT
+      private:
+        holder:
+          valueExtraction: ENABLED_FALLBACK
+  DATE:
+    display: "datatype.date"
+    type: "DATE"
+    order: 300
+    params:
+      public:
+        formats: ["date", "datetime"]
+        supportedInputMode: DATE_PICKER
+      private:
+        holder:
+          valueExtraction: ENABLED
+  BOOLEAN:
+    display: "datatype.boolean"
+    type: "BOOLEAN"
+    order: 301
+    params:
+      public:
+        supportedInputMode: CHECKBOX
+      private:
+        holder:
+          valueExtraction: ENABLED_FALLBACK
+  BIRTH_DATE:
+    display: "datatype.birthDate"
+    type: "DATE"
+    order: 310
+    params:
+      public:
+        formats: ["date", "datetime"]
+        preferredFormat: "date"
+        min: 1900-01-01
+        max: "NOW"
+        error:
+          de: "Bitte wählen Sie ein Datum zwischen 1900-1-1 und heute"
+          en: "Please choose a date between 1900-1-1 and today"
+        supportedInputMode: DATE_PICKER
+  MDL_PICTURE:
+    display: "datatype.mdlPicture"
+    type: "PICTURE"
+    order: 400
+    params:
+      public:
+        accept:
+          - image/jpeg
+          - image/jp2
+        fileSize: 4194304
+        showAs: IMAGE
+        supportedInputMode: FILE_UPLOAD
+        encodeAsMdlPortrait: true
+      private:
+        holder:
+          valueExtraction: ENABLED
+  OBJECT:
+    display: "datatype.object"
+    type: "OBJECT"
+    order: 500
+    params: null
+transport:
+  HTTP:
+    type: "HTTP"
+    display: "transport.http"
+    enabled: true
+    order: 0
+    params: {}
+keySecurityLevel:
+  BASIC:
+    display: keySecurityLevel.basic
+    order: 10
+    params:
+      public:
+        holder:
+          priority: 40
+          keyStorages: ["INTERNAL"]
+blobStorage:
+  DB:
+    enabled: true
+trustListSubscriber:
+  LOTE_SUBSCRIBER:
+    type: ETSI_LOTE
+    order: 0
+    display: "trustListSubscriber.etsiLote"
+    params:
+      private:
+        accepts: "application/jwt"
+        leewaySeconds: 60
+        # Max depth to follow through chained PointersToOtherLoTE.
+        maxPointerDepth: 5
+  LOTL_SUBSCRIBER:
+    type: ETSI_LOTL
+    order: 1
+    display: "trustListSubscriber.etsiLotlList"
+    params:
+      private:
+        leewaySeconds: 60
+        delegateSubscribers: ["LOTE_SUBSCRIBER"]
+        trustAnchors: []
+ecosystem:
+  EUDI:
+    type: "EUDI"
+    display:
+      en: "EUDI"
+    order: 0
+    params:
+      public:
+        description:
+          en: "EUDI ecosystem"
+        instanceProviderDefaultSelected: true
+        credentialSchemas:
+          - format: SD_JWT_VC
+            pidSchemaIds: ["urn:eudi:pid:1"]
+          - format: MDOC
+            pidSchemaIds: ["eu.europa.ec.eudi.pid.1"]
+task:
+  LIFECYCLE_CHECK:
+    type: "LIFECYCLE_CHECK"
+    display: "task.lifecycleCheck"
+    order: 0
+  CERTIFICATE_CHECK:
+    type: "CERTIFICATE_CHECK"
+    display: "task.certificateCheck"
+    order: 1
+  INTERACTION_EXPIRATION_CHECK:
+    type: "INTERACTION_EXPIRATION_CHECK"
+    display: "task.interactionExpirationCheck"
+    order: 2
+  TRUST_LIST_SUBSCRIPTION_UPDATE:
+    type: "TRUST_LIST_SUBSCRIPTION_UPDATE"
+    display: "task.trustListSubscriptionUpdate"
+    order: 3
+  ECOSYSTEM_SYNC:
+    type: "ECOSYSTEM_SYNC"
+    display: "task.ecosystemSync"
+    order: 4
+  ECOSYSTEM_LIFECYCLE_CHECK:
+    type: "ECOSYSTEM_LIFECYCLE_CHECK"
+    display: "task.ecosystemCheck"
+    order: 5
+cacheEntities:
+  X509_CRL:
+    cacheType: DB
+    refreshAfterSeconds: 86400
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+  STATUS_LIST_CREDENTIAL:
+    cacheType: DB
+    refreshAfterSeconds: 300
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+  VCT_METADATA:
+    cacheType: DB
+    refreshAfterSeconds: 86400
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+  JSON_SCHEMA:
+    cacheType: DB
+    refreshAfterSeconds: 86400
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+  TRUST_LIST:
+    cacheType: DB
+    refreshAfterSeconds: 300
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+  OPENID_METADATA:
+    cacheType: DB
+    refreshAfterSeconds: 300
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+  CREDENTIAL_ISSUER_METADATA:
+    cacheType: DB
+    refreshAfterSeconds: 86400
+    cacheRefreshTimeoutSeconds: 86400
+    cacheSize: 1000
+globalSettings:
+  certificateValidation:
+    leewaySeconds: 60
+verificationEngagement:
+  QR_CODE:
+    display: verificationEngagement.qrCode
+    order: 0
+    enabled: true

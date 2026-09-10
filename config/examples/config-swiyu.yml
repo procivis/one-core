@@ -58,6 +58,11 @@ issuanceProtocol:
       private:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        nonce:
+          # Example key only; replace with a deployment-provided signing secret.
+          signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+          expirationSeconds: 300
+          leewaySeconds: 0
 verificationProtocol:
   OPENID4VP_FINAL1_SWIYU:
     display:
@@ -212,6 +217,16 @@ datatype:
       private:
         holder:
           valueExtraction: ENABLED_FALLBACK
+  ARRAY:
+    display: "datatype.array"
+    type: "ARRAY"
+    order: 101
+    params: null
+  OBJECT:
+    display: "datatype.object"
+    type: "OBJECT"
+    order: 500
+    params: null
 transport:
   HTTP:
     type: "HTTP"
@@ -241,8 +256,3 @@ signer:
     params:
       public:
         maxValidityDurationSeconds: 300 # 5 minutes
-task: {}
-cacheEntities: {}
-walletProvider: {}
-credentialIssuer: {}
-verificationEngagement: {}
