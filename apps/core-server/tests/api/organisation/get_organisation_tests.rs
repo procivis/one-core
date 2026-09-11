@@ -10,6 +10,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
+use crate::utils::db_clients::organisations::TestingOrganisationParams;
 use crate::utils::field_match::FieldHelpers;
 
 fn wallet_provider_metadata() -> serde_json::Value {
@@ -83,7 +84,14 @@ async fn test_get_organisation_success() {
 async fn test_get_organisation_returns_parent_organisation() {
     // GIVEN
     let (context, parent) = TestContext::new_with_organisation(None).await;
-    let child = context.db.organisations.create_with_parent(parent.id).await;
+    let child = context
+        .db
+        .organisations
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(parent.id),
+            ..Default::default()
+        })
+        .await;
 
     // WHEN
     let resp = context.api.organisations.get(&child.id).await;

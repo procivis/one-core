@@ -2,6 +2,7 @@ use similar_asserts::assert_eq;
 
 use crate::utils::api_clients::organisations::OrganisationFilters;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::organisations::TestingOrganisationParams;
 
 #[tokio::test]
 async fn test_list_organisation_success() {
@@ -74,7 +75,14 @@ async fn test_list_organisation_filter_has_parent_organisation() {
     // GIVEN
     let context = TestContext::new(None).await;
     let parent = context.db.organisations.create().await;
-    let child = context.db.organisations.create_with_parent(parent.id).await;
+    let child = context
+        .db
+        .organisations
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(parent.id),
+            ..Default::default()
+        })
+        .await;
 
     // WHEN - filter for organisations that have a parent
     let resp = context
@@ -132,12 +140,18 @@ async fn test_list_organisation_filter_parent_organisations() {
     let child_of_a = context
         .db
         .organisations
-        .create_with_parent(parent_a.id)
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(parent_a.id),
+            ..Default::default()
+        })
         .await;
     let _child_of_b = context
         .db
         .organisations
-        .create_with_parent(parent_b.id)
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(parent_b.id),
+            ..Default::default()
+        })
         .await;
 
     // WHEN

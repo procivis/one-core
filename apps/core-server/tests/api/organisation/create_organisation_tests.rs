@@ -3,6 +3,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::organisations::TestingOrganisationParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -117,7 +118,10 @@ async fn test_create_organisation_fail_parent_already_has_parent() {
     let parent = context
         .db
         .organisations
-        .create_with_parent(grandparent.id)
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(grandparent.id),
+            ..Default::default()
+        })
         .await;
 
     // WHEN

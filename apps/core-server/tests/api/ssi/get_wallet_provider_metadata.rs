@@ -3,6 +3,7 @@ use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::organisations::TestingOrganisationParams;
 use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
@@ -384,7 +385,10 @@ async fn test_wallet_provider_metadata_ecosystems_include_inherited_trust_collec
     let organisation = context
         .db
         .organisations
-        .create_with_parent(parent_organisation.id)
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(parent_organisation.id),
+            ..Default::default()
+        })
         .await;
 
     context

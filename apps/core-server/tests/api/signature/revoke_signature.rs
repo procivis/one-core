@@ -110,7 +110,7 @@ async fn test_fail_on_missing_signer_specific_permission() {
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["X509_CERTIFICATE_REVOKE"]).await;
+    } = setup_sts(vec!["X509_CERTIFICATE_REVOKE"], None).await;
     let (context, _org, identifier, ..) =
         TestContext::new_with_certificate_identifier(Some(config)).await;
     let revocation_list_id = context

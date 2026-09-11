@@ -1,13 +1,27 @@
 use std::sync::Arc;
 
-use one_core::model::organisation::{Organisation, UpdateOrganisationRequest};
+use one_core::model::organisation::{
+    Organisation, OrganisationConfiguration, UpdateOrganisationRequest,
+};
 use one_core::model::relation::Related;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use shared_types::OrganisationId;
 use sql_data_provider::test_utilities::dummy_organisation;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 pub struct OrganisationsDB {
     repository: Arc<dyn OrganisationRepository>,
+}
+
+#[derive(Debug, Default)]
+pub struct TestingOrganisationParams {
+    pub id: Option<OrganisationId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub deactivated_at: Option<OffsetDateTime>,
+    pub parent_organisation: Option<OrganisationId>,
+    pub configuration: Option<OrganisationConfiguration>,
 }
 
 impl OrganisationsDB {
@@ -30,10 +44,20 @@ impl OrganisationsDB {
         self.get(&organisation.id).await
     }
 
-    pub async fn create_with_parent(&self, parent_id: OrganisationId) -> Organisation {
+    pub async fn create_with(&self, params: TestingOrganisationParams) -> Organisation {
         let organisation = Organisation {
-            parent_organisation: Some(Related::new(parent_id, self.repository.clone())),
-            ..dummy_organisation(None)
+            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            parent_organisation: params
+                .parent_organisation
+                .map(|parent_id| Related::new(parent_id, self.repository.clone())),
+            created_date: params.created_date.unwrap_or(one_core::clock::now_utc()),
+            last_modified: params.last_modified.unwrap_or(one_core::clock::now_utc()),
+            deactivated_at: params.deactivated_at,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+            verifier_provider: None,
+            verifier_provider_issuer: None,
+            configuration: params.configuration.unwrap_or_default(),
         };
 
         self.repository

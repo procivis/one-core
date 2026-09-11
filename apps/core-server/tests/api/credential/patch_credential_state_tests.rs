@@ -130,7 +130,7 @@ async fn test_patch_credential_state_fails_forbidden_without_any_state_permissio
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["CREDENTIAL_DETAIL"]).await;
+    } = setup_sts(vec!["CREDENTIAL_DETAIL"], None).await;
     let context = TestContext::new(Some(config)).await;
     let id = random_credential_id();
 
@@ -152,7 +152,7 @@ async fn test_patch_credential_state_fails_unauthorized_on_mismatched_permission
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["CREDENTIAL_SUSPEND"]).await;
+    } = setup_sts(vec!["CREDENTIAL_SUSPEND"], None).await;
     let context = TestContext::new(Some(config)).await;
     let id = random_credential_id();
 
@@ -173,7 +173,7 @@ async fn test_patch_credential_state_allows_accepted_with_reactivate_permission(
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["CREDENTIAL_REACTIVATE"]).await;
+    } = setup_sts(vec!["CREDENTIAL_REACTIVATE"], None).await;
     let context = TestContext::new(Some(config)).await;
     let id = random_credential_id();
 
@@ -194,7 +194,7 @@ async fn test_patch_credential_state_allows_suspended_with_suspend_permission() 
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["CREDENTIAL_SUSPEND"]).await;
+    } = setup_sts(vec!["CREDENTIAL_SUSPEND"], None).await;
     let context = TestContext::new(Some(config)).await;
     let id = random_credential_id();
 
@@ -217,7 +217,7 @@ async fn test_patch_credential_state_allows_revoked_with_revoke_permission() {
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["CREDENTIAL_REVOKE"]).await;
+    } = setup_sts(vec!["CREDENTIAL_REVOKE"], None).await;
     let context = TestContext::new(Some(config)).await;
     let id = random_credential_id();
 
@@ -236,7 +236,7 @@ async fn test_patch_credential_state_allows_expiring_with_expire_permission() {
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["CREDENTIAL_EXPIRE"]).await;
+    } = setup_sts(vec!["CREDENTIAL_EXPIRE"], None).await;
     let context = TestContext::new(Some(config)).await;
     let id = random_credential_id();
 

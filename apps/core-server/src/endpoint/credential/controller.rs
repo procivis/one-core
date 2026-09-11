@@ -1,5 +1,5 @@
-use axum::Json;
 use axum::extract::{Path, State};
+use axum::{Extension, Json};
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
@@ -17,11 +17,12 @@ use crate::dto::response::{
     CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse, VecResponse,
 };
 use crate::endpoint::credential::dto::{
-    CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
-    SuspendCredentialRequestRestDTO,
+    CreateCredentialRequestRestDTO, CredentialRoleRestEnum, GetCredentialQuery,
+    GetCredentialResponseRestDTO, SuspendCredentialRequestRestDTO,
 };
 use crate::extractor::Qs;
-use crate::middleware::Permissions;
+use crate::middleware::{Authorized, Permissions};
+use crate::permissions::permission_check;
 use crate::router::AppState;
 
 #[endpoint(
@@ -86,7 +87,7 @@ pub(crate) async fn get_credential(
 }
 
 #[endpoint(
-    permissions = [Permission::CredentialList],
+    permissions = [Permission::CredentialList, Permission::HolderCredentialList],
     get,
     path = "/api/credential/v1",
     responses(OkOrErrorResponse<GetCredentialsResponseDTO>),
@@ -102,8 +103,36 @@ pub(crate) async fn get_credential(
 )]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,
+    Extension(authorization): Extension<Authorized>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
+    let required_permissions = if let Some(roles) = &query.filter.roles
+        && !roles.is_empty()
+    {
+        let mut permissions = vec![];
+        if roles.contains(&CredentialRoleRestEnum::Holder) {
+            permissions.push(Permission::HolderCredentialList);
+        }
+        if roles.iter().any(|role| {
+            matches!(
+                role,
+                CredentialRoleRestEnum::Issuer | CredentialRoleRestEnum::Verifier
+            )
+        }) {
+            permissions.push(Permission::CredentialList);
+        }
+        permissions
+    } else {
+        // unbounded request, both permissions needed
+        vec![Permission::CredentialList, Permission::HolderCredentialList]
+    };
+
+    for permission in required_permissions {
+        if let Err(permission_error) = permission_check(&authorization, &[permission]) {
+            return permission_error.into();
+        }
+    }
+
     let result = async {
         Ok::<_, ServiceError>(
             state

@@ -82,7 +82,7 @@ pub async fn setup_sts_with_payload<T: Serialize>(payload: JWTPayload<T>) -> Sts
     }
 }
 
-pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
+pub async fn setup_sts(permissions: Vec<&'static str>, organisation_id: Option<Uuid>) -> StsSetup {
     let now = one_core::clock::now_utc();
     setup_sts_with_payload(JWTPayload {
         issued_at: Some(now),
@@ -94,7 +94,7 @@ pub async fn setup_sts(permissions: Vec<&'static str>) -> StsSetup {
         jwt_id: None,
         proof_of_possession_key: None,
         custom: StsToken {
-            organisation_id: None,
+            organisation_id,
             permissions,
         },
     })

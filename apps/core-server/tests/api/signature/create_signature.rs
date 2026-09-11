@@ -448,7 +448,7 @@ async fn test_fail_on_missing_signer_specific_permission() {
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["X509_CERTIFICATE_CREATE"]).await;
+    } = setup_sts(vec!["X509_CERTIFICATE_CREATE"], None).await;
     let (context, _org, identifier, _cert, key) =
         TestContext::new_with_certificate_identifier(Some(config)).await;
 
@@ -850,7 +850,7 @@ async fn test_create_signature_swiyu_proof_of_possession_fail_on_missing_permiss
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(vec!["X509_CERTIFICATE_SIGN"]).await;
+    } = setup_sts(vec!["X509_CERTIFICATE_SIGN"], None).await;
     let (context, identifier, _key) =
         setup_did_identifier(Some(config), "WEBVH", TEST_WEBVH_DID).await;
 

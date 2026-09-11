@@ -10,6 +10,7 @@ use crate::utils::api_clients::organisations::{
     ProviderParams, UpsertOrganisationConfigurationParams, UpsertParams,
 };
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::organisations::TestingOrganisationParams;
 
 #[tokio::test]
 async fn test_upsert_organisation_success_not_existing() {
@@ -473,7 +474,14 @@ async fn test_upsert_organisation_fail_organisation_has_children() {
     // GIVEN
     let context = TestContext::new(None).await;
     let org = context.db.organisations.create().await;
-    context.db.organisations.create_with_parent(org.id).await;
+    context
+        .db
+        .organisations
+        .create_with(TestingOrganisationParams {
+            parent_organisation: Some(org.id),
+            ..Default::default()
+        })
+        .await;
     let new_parent = context.db.organisations.create().await;
 
     // WHEN - try to give `org` a parent while it already has children.

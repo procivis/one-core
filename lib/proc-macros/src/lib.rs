@@ -53,7 +53,7 @@ pub fn options_not_nullable(args: TokenStream, input: TokenStream) -> TokenStrea
     options_not_nullable::options_not_nullable(args, input)
 }
 
-/// Add permission check to request handler. Only usable within the `one-core` crate, as it assumes
+/// Add permission check to request handler. Only usable within the `core_server` crate, as it assumes
 /// the existence of the `permission_check` function.
 ///
 /// # Usage

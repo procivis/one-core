@@ -12,10 +12,13 @@ use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::fixtures::sts::{StsSetup, setup_sts};
 use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::api_clients::credentials::Filters;
+use crate::utils::api_clients::http_client;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::organisations::TestingOrganisationParams;
 use crate::utils::field_match::FieldHelpers;
 
 const CLAIM_NAME: &str = "CLAIM_NAME";
@@ -1574,4 +1577,65 @@ async fn test_get_list_credential_filter_by_states() {
 
     assert_eq!(error_response["code"], "BR_0084");
     assert_eq!(error_response["message"], "General input validation error");
+}
+
+#[tokio::test]
+async fn test_get_list_credential_holder_permission() {
+    // GIVEN
+    let org_id = Uuid::new_v4();
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["HOLDER_CREDENTIAL_LIST"], Some(org_id)).await;
+
+    let context = TestContext::new(Some(config)).await;
+    let base_url = &context.config.app.core_base_url;
+    context
+        .db
+        .organisations
+        .create_with(TestingOrganisationParams {
+            id: Some(org_id.into()),
+            ..Default::default()
+        })
+        .await;
+
+    // WHEN - Filter by Holder role
+    let resp = http_client()
+        .get(format!(
+            "{base_url}/api/credential/v1?page=0&pageSize=1&organisationId={org_id}&roles%5B%5D=HOLDER"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    // WHEN - Filter by Holder & Issuer role
+    let resp = http_client()
+        .get(format!(
+            "{base_url}/api/credential/v1?page=0&pageSize=1&organisationId={org_id}&roles%5B%5D=HOLDER&roles%5B%5D=ISSUER"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 403);
+
+    // WHEN - No role filter
+    let resp = http_client()
+        .get(format!(
+            "{base_url}/api/credential/v1?page=0&pageSize=1&organisationId={org_id}"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 403);
 }

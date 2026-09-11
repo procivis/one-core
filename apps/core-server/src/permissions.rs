@@ -4,6 +4,7 @@ use crate::dto::response::ErrorResponse;
 use crate::middleware::{Authorized, Permissions};
 
 #[expect(clippy::result_large_err)]
+/// checks for presence of at least one of the `required_permissions`
 pub fn permission_check(
     authorized: &Authorized,
     required_permissions: &[Permission],

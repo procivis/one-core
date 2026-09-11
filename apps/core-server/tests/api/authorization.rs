@@ -53,7 +53,7 @@ async fn test_authorization(
         config,
         token,
         mock_server: _mock_server,
-    } = setup_sts(permissions).await;
+    } = setup_sts(permissions, None).await;
     let context = TestContext::new(Some(config)).await;
 
     // when
