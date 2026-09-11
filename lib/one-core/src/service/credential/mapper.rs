@@ -467,7 +467,7 @@ async fn get_offered_formats(
     credential_repository: &dyn CredentialRepository,
 ) -> Result<Option<Vec<OfferedFormatDTO>>, CredentialServiceError> {
     if value.role != CredentialRole::Issuer
-        || value.r#type != CredentialType::BatchParent
+        || value.r#type == CredentialType::BatchItem
         || value.state == CredentialStateEnum::Error
     {
         return Ok(None);
@@ -476,6 +476,38 @@ async fn get_offered_formats(
     let schema = value.schema.as_ref().await?;
     let mut formats = schema.formats.as_ref().await?.to_vec();
 
+    if value.r#type == CredentialType::Single {
+        if formats.len() < 2 {
+            return Ok(None);
+        }
+
+        // single credential based on a multi-format schema (by selecting only one format for issuance)
+        let Some(format) = &value.format else {
+            tracing::error!("Single credential without format set: {}", value.id);
+            return Ok(None);
+        };
+
+        let format = format.as_ref().await?;
+        let state = match value.state {
+            CredentialStateEnum::Created
+            | CredentialStateEnum::Pending
+            | CredentialStateEnum::Offered
+            | CredentialStateEnum::InteractionExpired
+            | CredentialStateEnum::Error => OfferedFormatStateEnum::Pending,
+            CredentialStateEnum::Accepted
+            | CredentialStateEnum::Revoked
+            | CredentialStateEnum::Suspended
+            | CredentialStateEnum::Expiring
+            | CredentialStateEnum::Expired => OfferedFormatStateEnum::Accepted,
+            CredentialStateEnum::Rejected => OfferedFormatStateEnum::Rejected,
+        };
+        return Ok(Some(vec![OfferedFormatDTO {
+            format: format.format.to_owned(),
+            state,
+        }]));
+    }
+
+    // batch parent credential
     if let Some(interaction) = &value.interaction {
         let interaction = interaction.as_ref().await?;
         let data: OpenID4VCIIssuerInteractionDataDTO =
