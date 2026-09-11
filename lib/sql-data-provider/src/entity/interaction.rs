@@ -13,7 +13,6 @@ pub struct Model {
     #[sea_orm(column_type = "Blob")]
     pub data: Option<Vec<u8>>,
     pub organisation_id: OrganisationId,
-    pub nonce_id: Option<NonceId>,
     pub interaction_type: InteractionType,
     pub expires_at: Option<OffsetDateTime>,
     pub ecosystem: Option<EcosystemId>,

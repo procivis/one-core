@@ -868,7 +868,6 @@ pub async fn create_interaction_with_id(
         last_modified: one_core::clock::now_utc(),
         data: Some(data.into()),
         organisation: organisation.to_owned().into(),
-        nonce_id: None,
         interaction_type,
         expires_at: None,
         ecosystem: None,

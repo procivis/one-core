@@ -75,7 +75,6 @@ impl ProofService {
             last_modified: now,
             data: None,
             organisation: schema.organisation.to_owned(),
-            nonce_id: None,
             interaction_type: InteractionType::Verification,
             expires_at: None,
             ecosystem: ecosystem.clone(),

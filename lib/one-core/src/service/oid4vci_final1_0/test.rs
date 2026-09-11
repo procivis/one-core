@@ -315,7 +315,6 @@ fn dummy_interaction(
         last_modified: crate::clock::now_utc(),
         data: Some(data.to_string().into_bytes()),
         organisation: dummy_organisation(None).into(),
-        nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
         ecosystem: None,
@@ -1674,8 +1673,8 @@ async fn test_create_credential_success() {
             .return_once(|history| Ok(history.id));
 
         interaction_repository
-            .expect_mark_nonce_as_used()
-            .return_once(|_, _, _| Ok(()));
+            .expect_mark_nonces_as_used()
+            .return_once(|_, _| Ok(()));
 
         interaction_repository
             .expect_update_interaction()
@@ -1882,8 +1881,8 @@ async fn test_create_credential_success_sd_jwt_vc() {
                 ))
             });
         interaction_repository
-            .expect_mark_nonce_as_used()
-            .return_once(|_, _, _| Ok(()));
+            .expect_mark_nonces_as_used()
+            .return_once(|_, _| Ok(()));
         interaction_repository
             .expect_update_interaction()
             .with(eq(interaction_id), always())
@@ -2101,8 +2100,8 @@ async fn test_create_credential_success_mdoc() {
                 ))
             });
         interaction_repository
-            .expect_mark_nonce_as_used()
-            .return_once(|_, _, _| Ok(()));
+            .expect_mark_nonces_as_used()
+            .return_once(|_, _| Ok(()));
         interaction_repository
             .expect_update_interaction()
             .return_once(|_, _| Ok(()));
@@ -2683,8 +2682,8 @@ async fn test_create_credential_issuer_failed() {
                 ))
             });
         interaction_repository
-            .expect_mark_nonce_as_used()
-            .return_once(|_, _, _| Ok(()));
+            .expect_mark_nonces_as_used()
+            .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -2863,8 +2862,8 @@ async fn test_create_credential_nonce_reused() {
                 ))
             });
         interaction_repository
-            .expect_mark_nonce_as_used()
-            .return_once(|_, _, _| Err(DataLayerError::RecordNotUpdated));
+            .expect_mark_nonces_as_used()
+            .return_once(|_, _| Err(DataLayerError::AlreadyExists));
     }
 
     let key_algorithm = mock_key_algorithm();

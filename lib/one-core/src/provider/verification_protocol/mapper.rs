@@ -30,7 +30,6 @@ pub(crate) fn interaction_from_handle_invitation(
         last_modified: now,
         data,
         organisation: organisation.into(),
-        nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: None,

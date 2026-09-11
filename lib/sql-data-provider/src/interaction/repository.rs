@@ -3,7 +3,7 @@ use one_core::model::common::LockType;
 use one_core::model::interaction::{Interaction, UpdateInteractionRequest};
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::interaction_repository::InteractionRepository;
-use sea_orm::ActiveValue::Unchanged;
+use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::Query;
 use sea_orm::{
@@ -14,7 +14,7 @@ use time::OffsetDateTime;
 
 use super::InteractionProvider;
 use super::mapper::interaction_from_model;
-use crate::entity::{credential, interaction, proof};
+use crate::entity::{credential, interaction, proof, used_nonce};
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
@@ -70,28 +70,30 @@ impl InteractionRepository for InteractionProvider {
         ))
     }
 
-    async fn mark_nonce_as_used(
+    async fn mark_nonces_as_used(
         &self,
         interaction_id: &InteractionId,
-        nonce_id: NonceId,
-        previous_nonce: Option<NonceId>,
+        nonce_ids: Vec<NonceId>,
     ) -> Result<(), DataLayerError> {
-        let nonce_filter = if let Some(previous_nonce) = previous_nonce {
-            Expr::col(interaction::Column::NonceId).eq(previous_nonce)
-        } else {
-            Expr::col(interaction::Column::NonceId).is_null()
-        };
-        let stmt = self.db.get_database_backend().build(
-            Query::update()
-                .table(interaction::Entity)
-                .value(interaction::Column::NonceId, nonce_id)
-                .and_where(Expr::col(interaction::Column::Id).eq(interaction_id.to_string()))
-                .and_where(nonce_filter),
-        );
-        let result = self.db.execute(stmt).await.map_err(to_data_layer_error)?;
-        if result.rows_affected() == 0 {
-            return Err(DataLayerError::RecordNotUpdated);
+        if nonce_ids.is_empty() {
+            tracing::warn!("Empty list of nonces");
+            return Ok(());
         }
+
+        let now = one_core::clock::now_utc();
+        let models = nonce_ids
+            .into_iter()
+            .map(|nonce_id| used_nonce::ActiveModel {
+                id: Set(nonce_id),
+                created_date: Set(now),
+                interaction_id: Set(*interaction_id),
+            });
+
+        used_nonce::Entity::insert_many(models)
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
         Ok(())
     }
 

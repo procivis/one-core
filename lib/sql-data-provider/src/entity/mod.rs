@@ -33,6 +33,7 @@ pub mod trust_collection;
 pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
+pub mod used_nonce;
 pub mod wallet_instance_attestation;
 
 pub use identifier::{

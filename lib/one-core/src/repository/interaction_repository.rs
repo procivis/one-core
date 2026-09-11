@@ -30,11 +30,10 @@ pub trait InteractionRepository: Send + Sync {
         lock: Option<LockType>,
     ) -> Result<Interaction, DataLayerError>;
 
-    async fn mark_nonce_as_used(
+    async fn mark_nonces_as_used(
         &self,
         interaction_id: &InteractionId,
-        nonce_id: NonceId,
-        previous_nonce: Option<NonceId>,
+        nonce_ids: Vec<NonceId>,
     ) -> Result<(), DataLayerError>;
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;

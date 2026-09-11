@@ -953,7 +953,6 @@ async fn dummy_credential() -> Credential {
                 data: Some(b"interaction data".to_vec()),
                 last_modified: crate::clock::now_utc(),
                 organisation: dummy_organisation(None).into(),
-                nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,

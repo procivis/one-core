@@ -856,7 +856,6 @@ impl SSIHolderService {
                 last_modified: now,
                 data: Some(data),
                 organisation: organisation.into(),
-                nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem,

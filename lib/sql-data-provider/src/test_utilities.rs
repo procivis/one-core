@@ -41,7 +41,7 @@ use crate::entity::{
     identifier, instance, interaction, key, key_did, managed_instance,
     managed_instance_attested_key, organisation, proof, proof_claim, proof_input_claim_schema,
     proof_input_schema, proof_schema, revocation_list, revocation_list_entry, trust_collection,
-    trust_list_subscription,
+    trust_list_subscription, used_nonce,
 };
 use crate::{DataLayer, db_conn};
 
@@ -622,7 +622,6 @@ pub async fn insert_interaction(
     database: &DatabaseConnection,
     data: &[u8],
     organisation_id: OrganisationId,
-    nonce_id: Option<NonceId>,
     interaction_type: InteractionType,
 ) -> Result<InteractionId, DbErr> {
     let now = one_core::clock::now_utc();
@@ -633,7 +632,6 @@ pub async fn insert_interaction(
         last_modified: Set(now),
         data: Set(Some(data.to_owned())),
         organisation_id: Set(organisation_id),
-        nonce_id: Set(nonce_id),
         interaction_type: Set(interaction_type),
         expires_at: Set(None),
         ecosystem: Set(None),
@@ -643,6 +641,24 @@ pub async fn insert_interaction(
     .await?;
 
     Ok(interaction.id)
+}
+
+pub async fn insert_used_nonce(
+    database: &DatabaseConnection,
+    nonce_id: NonceId,
+    interaction_id: InteractionId,
+) -> Result<(), DbErr> {
+    let now = one_core::clock::now_utc();
+
+    used_nonce::ActiveModel {
+        id: Set(nonce_id),
+        created_date: Set(now),
+        interaction_id: Set(interaction_id),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(())
 }
 
 pub async fn get_interaction(

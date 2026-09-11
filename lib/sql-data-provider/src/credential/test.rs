@@ -1053,7 +1053,6 @@ async fn test_update_credential_success() {
         &db,
         &[],
         organisation_id,
-        None,
         interaction::InteractionType::Issuance,
     )
     .await
@@ -1143,7 +1142,6 @@ async fn test_update_credential_success_no_claims() {
         &db,
         &[],
         organisation_id,
-        None,
         interaction::InteractionType::Issuance,
     )
     .await

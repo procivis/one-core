@@ -31,7 +31,7 @@ pub(crate) async fn get_ids_batched<T: TryGetable>(
     for (index, chunk) in ids.chunks(1000).enumerate() {
         tracing::debug!(
             "Fetching {table:?}.{id_column:?}, chunk {index}/{}",
-            ids.len() / 1000
+            ids.len().div_ceil(1000)
         );
 
         result.extend(
@@ -82,7 +82,10 @@ where
 
     let ids = unique_ids(entity_ids);
     for (index, chunk) in ids.chunks(1000).enumerate() {
-        tracing::debug!("Deleting {table:?}, chunk {index}/{}", ids.len() / 1000);
+        tracing::debug!(
+            "Deleting {table:?}, chunk {index}/{}",
+            ids.len().div_ceil(1000)
+        );
 
         manager
             .exec_stmt(

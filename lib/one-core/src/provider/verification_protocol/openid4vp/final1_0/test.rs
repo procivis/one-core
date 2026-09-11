@@ -295,7 +295,6 @@ fn test_holder_proof(
         last_modified: crate::clock::now_utc(),
         data: Some(serialize_interaction_data(&interaction_data).unwrap()),
         organisation: dummy_organisation(None).into(),
-        nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
         ecosystem: None,

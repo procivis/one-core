@@ -25,7 +25,6 @@ pub(crate) async fn add_new_interaction(
         last_modified: now,
         data,
         organisation: organisation.into(),
-        nonce_id: None,
         interaction_type,
         expires_at,
         ecosystem,

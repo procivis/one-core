@@ -33,7 +33,6 @@ fn interaction(narrowed_to: EcosystemOutcomes) -> Interaction {
         last_modified: now_utc(),
         data: None,
         organisation: dummy_organisation(None).into(),
-        nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
         ecosystem: None,

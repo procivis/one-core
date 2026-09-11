@@ -4,7 +4,7 @@ use one_core::model::interaction::{Interaction, InteractionEcosystems, Interacti
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
-use shared_types::{EcosystemId, InteractionId, NonceId};
+use shared_types::{EcosystemId, InteractionId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -15,7 +15,6 @@ pub struct TestingInteractionParams {
     pub created_date: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
-    pub nonce_id: Option<NonceId>,
     pub ecosystem: Option<EcosystemId>,
     pub ecosystem_data: InteractionEcosystems,
 }
@@ -41,7 +40,6 @@ impl InteractionsDB {
             last_modified: params.last_modified.unwrap_or(one_core::clock::now_utc()),
             data: params.data,
             organisation: organisation.to_owned().into(),
-            nonce_id: params.nonce_id,
             interaction_type,
             expires_at: params.expires_at,
             ecosystem: params.ecosystem,

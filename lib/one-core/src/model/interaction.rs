@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use proc_macros::Model;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shared_types::{EcosystemId, InteractionId, NonceId};
+use shared_types::{EcosystemId, InteractionId};
 use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
 
@@ -21,7 +21,6 @@ pub struct Interaction {
     /// additional data for the interaction, usually managed by the exchange protocol
     pub data: Option<Vec<u8>>,
     pub organisation: Related<Organisation>,
-    pub nonce_id: Option<NonceId>,
     pub interaction_type: InteractionType,
     pub expires_at: Option<OffsetDateTime>,
     /// the ecosystem this interaction runs under, once committed: either the one the user picked,

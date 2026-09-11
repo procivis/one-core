@@ -384,7 +384,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 last_modified: crate::clock::now_utc(),
                 data: Some(b"interaction data".to_vec()),
                 organisation: dummy_organisation(None).into(),
-                nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: None,

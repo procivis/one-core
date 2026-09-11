@@ -18,7 +18,7 @@ use uuid::Uuid;
 use super::InteractionProvider;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, get_interaction, insert_interaction,
-    insert_organisation_to_database, setup_test_data_layer_and_connection,
+    insert_organisation_to_database, insert_used_nonce, setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -65,7 +65,6 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
         &setup.db,
         &data,
         organisation_id,
-        None,
         crate::entity::interaction::InteractionType::Issuance,
     )
     .await
@@ -89,14 +88,12 @@ async fn test_create_interaction() {
     let organisation = dummy_organisation(Some(organisation_id));
 
     let id = Uuid::new_v4().into();
-    let nonce_id = Uuid::new_v4().into();
     let interaction = Interaction {
         id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(vec![1, 2, 3]),
         organisation: organisation.into(),
-        nonce_id: Some(nonce_id),
         interaction_type: InteractionType::Issuance,
         expires_at: None,
         ecosystem: None,
@@ -110,7 +107,6 @@ async fn test_create_interaction() {
 
     let model = get_interaction(&setup.db, &id).await.unwrap();
     assert_eq!(model.data, Some(vec![1, 2, 3]));
-    assert_eq!(model.nonce_id, Some(nonce_id));
 }
 
 #[tokio::test]
@@ -127,7 +123,7 @@ async fn test_get_interaction() {
 }
 
 #[tokio::test]
-async fn test_mark_nonce_as_used() {
+async fn test_mark_nonces_as_used_success() {
     let setup = setup(Repositories::default()).await;
 
     let organisation_id = insert_organisation_to_database(&setup.db, None)
@@ -137,7 +133,6 @@ async fn test_mark_nonce_as_used() {
         &setup.db,
         &[],
         organisation_id,
-        None,
         crate::entity::interaction::InteractionType::Issuance,
     )
     .await
@@ -146,20 +141,13 @@ async fn test_mark_nonce_as_used() {
     let nonce_id = Uuid::new_v4().into();
     setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id, None)
+        .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await
         .unwrap();
-
-    let interaction = setup
-        .provider
-        .get_interaction(&interaction_id, None)
-        .await
-        .unwrap();
-    assert_eq!(interaction.nonce_id, Some(nonce_id));
 }
 
 #[tokio::test]
-async fn test_mark_nonce_as_used_already_used() {
+async fn test_mark_nonces_as_used_already_used() {
     let setup = setup(Repositories::default()).await;
 
     let organisation_id = insert_organisation_to_database(&setup.db, None)
@@ -170,41 +158,46 @@ async fn test_mark_nonce_as_used_already_used() {
         &setup.db,
         &[],
         organisation_id,
-        Some(nonce_id),
         crate::entity::interaction::InteractionType::Issuance,
     )
     .await
     .unwrap();
 
+    insert_used_nonce(&setup.db, nonce_id, interaction_id)
+        .await
+        .unwrap();
+
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id, None)
+        .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
 }
 
 #[tokio::test]
-async fn test_mark_nonce_as_used_already_used_different_interaction() {
+async fn test_mark_nonces_as_used_already_used_different_interaction() {
     let setup = setup(Repositories::default()).await;
 
     let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
     let nonce_id = Uuid::new_v4().into();
-    insert_interaction(
+    let other_interaction_id = insert_interaction(
         &setup.db,
         &[],
         organisation_id,
-        Some(nonce_id),
         crate::entity::interaction::InteractionType::Issuance,
     )
     .await
     .unwrap();
+    insert_used_nonce(&setup.db, nonce_id, other_interaction_id)
+        .await
+        .unwrap();
+
     let interaction_id = insert_interaction(
         &setup.db,
         &[],
         organisation_id,
-        None,
         crate::entity::interaction::InteractionType::Issuance,
     )
     .await
@@ -212,7 +205,7 @@ async fn test_mark_nonce_as_used_already_used_different_interaction() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id, None)
+        .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await;
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
 }

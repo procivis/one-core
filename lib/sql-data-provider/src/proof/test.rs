@@ -162,7 +162,6 @@ async fn setup(
         &db,
         &[1, 2, 3],
         organisation_id,
-        None,
         interaction::InteractionType::Verification,
     )
     .await

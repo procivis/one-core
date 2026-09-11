@@ -451,32 +451,12 @@ impl OID4VCIFinal1_0Service {
             holder_identifiers.push(holder_identifier);
         }
 
-        // TODO: Properly keep track of _all_ the used nonces
-        // For now we allow the nonce to be rotated on credential refresh
-        let previous_nonce_id = if credential.state == CredentialStateEnum::Accepted
-            && interaction
-                .nonce_id
-                .is_some_and(|prev| !used_nonce_ids.contains(&prev))
-        {
-            interaction.nonce_id
-        } else {
-            None
-        };
-
-        // TODO: correctly handle proofs with multiple nonces, for now only store one
-        if used_nonce_ids.len() > 1 {
-            tracing::warn!("Multiple nonces used within one credential request");
-        }
-        let nonce_id = used_nonce_ids
-            .into_iter()
-            .next()
-            .ok_or(OpenID4VCIError::InvalidRequest)?;
-
+        let used_nonce_ids = used_nonce_ids.into_iter().collect();
         self.interaction_repository
-            .mark_nonce_as_used(&interaction.id, nonce_id, previous_nonce_id)
+            .mark_nonces_as_used(&interaction.id, used_nonce_ids)
             .await
             .map_err(|e| match e {
-                DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
+                DataLayerError::AlreadyExists => {
                     OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
                 }
                 e => e.error_while("marking nonce as used").into(),

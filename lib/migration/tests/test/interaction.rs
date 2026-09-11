@@ -12,13 +12,11 @@ async fn test_db_schema_interaction() {
             "last_modified",
             "data",
             "organisation_id",
-            "nonce_id",
             "interaction_type",
             "expires_at",
             "ecosystem",
             "ecosystem_data",
         ])
-        .index("index-Interaction-NonceId-Unique", true, &["nonce_id"])
         .index("index-Interaction-ExpiresAt", false, &["expires_at"]);
     interaction
         .column("id")
@@ -47,10 +45,6 @@ async fn test_db_schema_interaction() {
         .default(None)
         .foreign_key("fk-interaction-OrganisationId", "organisation", "id");
     interaction
-        .column("nonce_id")
-        .r#type(ColumnType::Uuid)
-        .nullable(true);
-    interaction
         .column("interaction_type")
         .r#type(ColumnType::String(None))
         .nullable(false)
@@ -67,4 +61,30 @@ async fn test_db_schema_interaction() {
         .column("ecosystem_data")
         .r#type(ColumnType::Blob)
         .nullable(true);
+}
+
+#[tokio::test]
+async fn test_db_schema_used_nonce() {
+    let schema = get_schema().await;
+
+    let used_nonce = schema
+        .table("used_nonce")
+        .columns(&["id", "created_date", "interaction_id"]);
+    used_nonce
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    used_nonce
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    used_nonce
+        .column("interaction_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-UsedNonce-InteractionId", "interaction", "id");
 }
