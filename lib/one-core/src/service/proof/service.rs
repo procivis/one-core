@@ -71,6 +71,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::{FormatMapper, deserialize_interaction_data};
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
+use crate::service::common_mapper::recorded_ecosystem_outcomes;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
@@ -127,11 +128,16 @@ impl ProofService {
                 &*self.credential_repository,
                 &*self.credential_formatter_provider,
                 self.ecosystem_provider.as_ref(),
+                &*self.history_repository,
             )
             .await
         } else {
-            let trust_information =
-                get_proof_trust_information(&proof, self.ecosystem_provider.as_ref()).await?;
+            let trust_information = get_proof_trust_information(
+                &proof,
+                self.ecosystem_provider.as_ref(),
+                &*self.history_repository,
+            )
+            .await?;
 
             get_holder_proof_detail(
                 proof,
@@ -1046,7 +1052,12 @@ impl ProofService {
             return Err(ProofServiceError::InvalidRole(proof.role));
         }
 
-        let mut result = TrustInformationDetailResponseDTO::default();
+        let mut result = TrustInformationDetailResponseDTO {
+            // an untrusted verifier is an answer, not a failed request, so this is a 200
+            ecosystem_errors: recorded_ecosystem_outcomes(id.into(), &*self.history_repository)
+                .await?,
+            ..Default::default()
+        };
 
         if let Some(ecosystem_id) = proof.ecosystem {
             let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;

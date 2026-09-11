@@ -1,12 +1,56 @@
 use ct_codecs::{Base64, Decoder};
+use shared_types::EntityId;
 
-use crate::model::list_filter::ListFilterCondition;
+use crate::error::{ContextWithErrorCode, NestedError};
+use crate::model::common::SortDirection;
+use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::history::{
+    HistoryAction, HistoryFilterValue, HistoryMetadata, SortableHistoryColumn,
+};
+use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::provider::ecosystem::model::TrustDetailInfo;
+use crate::repository::history_repository::HistoryRepository;
 use crate::service::common_dto::{
     BoundedB64Image, ListQueryDTO, TrustInformationDetailResponseEnum,
 };
 use crate::service::error::ValidationError;
+
+/// The interaction is long gone by the time an entity's detail is read, so the recorded event
+/// is the only place this survives. Empty when no ecosystem was ever consulted.
+pub(crate) async fn recorded_ecosystem_outcomes(
+    entity_id: EntityId,
+    history_repository: &dyn HistoryRepository,
+) -> Result<EcosystemOutcomes, NestedError> {
+    let history = history_repository
+        .get_history_list(ListQuery {
+            filtering: Some(
+                HistoryFilterValue::EntityIds(vec![entity_id]).condition()
+                    & HistoryFilterValue::Actions(vec![HistoryAction::EcosystemsResolved]),
+            ),
+            sorting: Some(ListSorting {
+                column: SortableHistoryColumn::CreatedDate,
+                direction: Some(SortDirection::Descending),
+            }),
+            // only the newest event is read, so the query must not load the entity's whole history
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            ..Default::default()
+        })
+        .await
+        .error_while("getting the resolved ecosystems")?;
+
+    Ok(history
+        .values
+        .into_iter()
+        .find_map(|entry| match entry.metadata {
+            Some(HistoryMetadata::EcosystemsResolved(outcomes)) => Some(outcomes),
+            _ => None,
+        })
+        .unwrap_or_default())
+}
 
 impl<const MAX: usize> TryFrom<String> for BoundedB64Image<MAX> {
     type Error = ValidationError;

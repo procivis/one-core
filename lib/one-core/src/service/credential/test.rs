@@ -24,6 +24,7 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::common::GetListResponse;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
@@ -50,6 +51,7 @@ use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::{DataLayerError, EntityKind};
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::common_dto::ListQueryDTO;
@@ -72,9 +74,21 @@ struct Repositories {
     pub notification_scheduler: MockNotificationScheduler,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
     pub ecosystem_provider: MockEcosystemDirectory,
+    pub history_repository: MockHistoryRepository,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
+    let mut history_repository = repositories.history_repository;
+    // the detail endpoints look up the recorded ecosystems. Tests that care about them set
+    // their own expectation first, and mockall matches that one.
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetListResponse {
+            values: vec![],
+            total_pages: 0,
+            total_items: 0,
+        })
+    });
+
     CredentialService::new(
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.credential_schema_repository),
@@ -91,6 +105,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.notification_scheduler),
         Arc::new(NoTransactionManager),
         Arc::new(repositories.ecosystem_provider),
+        Arc::new(history_repository),
     )
 }
 

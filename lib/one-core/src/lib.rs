@@ -624,6 +624,7 @@ impl OneCore {
                 notification_scheduler.clone(),
                 data_provider.get_tx_manager(),
                 ecosystem_provider.clone(),
+                data_provider.get_history_repository(),
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),

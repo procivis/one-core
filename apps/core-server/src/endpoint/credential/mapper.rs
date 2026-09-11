@@ -87,6 +87,7 @@ impl From<TrustInformationDetailResponseDTO> for CredentialTrustInformationDetai
             eudi_ecosystem,
             ecosystem: value.ecosystem,
             issuer,
+            ecosystem_errors: value.ecosystem_errors.into(),
         }
     }
 }

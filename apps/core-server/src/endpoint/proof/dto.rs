@@ -35,6 +35,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::ecosystem::EcosystemOutcomesRestDTO;
 use crate::dto::common::trust_detail::{
     EudiTrustInformationResponseRestDTO, TrustInformationDetailResponseRestEnum,
 };
@@ -692,4 +693,7 @@ pub(crate) struct ProofTrustInformationDetailResponseRestDTO {
 
     pub ecosystem: Option<EcosystemId>,
     pub verifier: Option<TrustInformationDetailResponseRestEnum>,
+    /// One entry per ecosystem provider consulted. An untrusted verifier is reported here with
+    /// a 200. It is not a failed request.
+    pub ecosystem_errors: EcosystemOutcomesRestDTO,
 }

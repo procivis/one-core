@@ -39,7 +39,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
     CommonVerifierInteractionContent, TransactionDataRequest,
 };
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
+use crate::service::common_mapper::recorded_ecosystem_outcomes;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     TrustInformation,
@@ -201,6 +203,7 @@ pub(super) async fn get_verifier_proof_detail(
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
     ecosystem_provider: &dyn EcosystemDirectory,
+    history_repository: &dyn HistoryRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
         .schema
@@ -226,9 +229,10 @@ pub(super) async fn get_verifier_proof_detail(
 
     for (credential_schema_id, credential) in credential_for_schema_model {
         // trust is per credential: its own ecosystem, not the one of the proof
-        let trust_information = get_credential_trust_information(&credential, ecosystem_provider)
-            .await
-            .error_while("getting credential trust information")?;
+        let trust_information =
+            get_credential_trust_information(&credential, ecosystem_provider, history_repository)
+                .await
+                .error_while("getting credential trust information")?;
 
         let credential_detail = credential_detail_response_from_model(
             credential,
@@ -901,12 +905,16 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
 pub(super) async fn get_proof_trust_information(
     proof: &Proof,
     ecosystem_provider: &dyn EcosystemDirectory,
+    history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, ProofServiceError> {
+    let ecosystem_errors = recorded_ecosystem_outcomes(proof.id.into(), history_repository).await?;
+
     Ok(match (proof.role, &proof.ecosystem) {
         (ProofRole::Holder, None) => Some(TrustInformation {
             received_at: proof.requested_date.unwrap_or(proof.last_modified),
             name: None,
             result: TrustResolutionResult::Untrusted,
+            ecosystem_errors,
         }),
         (ProofRole::Holder, Some(ecosystem_id)) => {
             let ecosystem = ecosystem_provider.get(ecosystem_id)?;
@@ -922,6 +930,7 @@ pub(super) async fn get_proof_trust_information(
                 received_at: details.received_at,
                 name: Some(name),
                 result: TrustResolutionResult::Trusted,
+                ecosystem_errors,
             })
         }
         (ProofRole::Verifier, None) => None,
@@ -929,6 +938,7 @@ pub(super) async fn get_proof_trust_information(
             received_at: proof.completed_date.unwrap_or(proof.last_modified),
             name: None,
             result: TrustResolutionResult::Trusted,
+            ecosystem_errors,
         }),
     })
 }

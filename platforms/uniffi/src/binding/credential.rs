@@ -143,6 +143,10 @@ pub struct TrustInformationBindingDTO {
     received_at: String,
     name: Option<String>,
     result: TrustResolutionResultBindingEnum,
+    /// One entry per ecosystem provider consulted, keyed by provider id.
+    #[from(with_fn_ref = "crate::binding::mapper::convert_ecosystem_outcomes")]
+    ecosystem_errors:
+        std::collections::HashMap<String, crate::binding::history::EcosystemOutcomeBindingDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]

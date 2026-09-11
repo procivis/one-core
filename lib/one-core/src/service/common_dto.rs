@@ -6,6 +6,7 @@ use standardized_types::etsi_119_475::registration_certificate::SupervisoryAutho
 use url::Url;
 
 use crate::model::common::SortDirection;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::list_query::NoInclude;
 
 pub const KB: usize = 1 << 10;
@@ -31,6 +32,7 @@ pub struct TrustInformationDetailResponseDTO {
     pub ecosystem: Option<EcosystemId>,
     pub issuer: Option<TrustInformationDetailResponseEnum>,
     pub verifier: Option<TrustInformationDetailResponseEnum>,
+    pub ecosystem_errors: EcosystemOutcomes,
 }
 
 #[derive(Clone, Debug)]

@@ -45,8 +45,10 @@ use crate::provider::ecosystem::model::TrustDetailInfo;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::common_dto::BoundedB64Image;
+use crate::service::common_mapper::recorded_ecosystem_outcomes;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::credential_schema::mapper::to_credential_schema_list_v2_response;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
@@ -1032,13 +1034,18 @@ pub(crate) async fn get_remaining_batch_item_count(
 pub(crate) async fn get_credential_trust_information(
     credential: &Credential,
     ecosystem_provider: &dyn EcosystemDirectory,
+    history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
+    let ecosystem_errors =
+        recorded_ecosystem_outcomes(credential.id.into(), history_repository).await?;
+
     Ok(match (credential.role, &credential.ecosystem) {
         (CredentialRole::Issuer, _) => None,
         (CredentialRole::Holder, None) => Some(TrustInformation {
             received_at: credential.issuance_date.unwrap_or(credential.last_modified),
             name: None,
             result: TrustResolutionResult::Untrusted,
+            ecosystem_errors,
         }),
         (CredentialRole::Holder, Some(ecosystem_id)) => {
             let ecosystem = ecosystem_provider.get(ecosystem_id)?;
@@ -1054,6 +1061,7 @@ pub(crate) async fn get_credential_trust_information(
                 received_at: details.received_at,
                 name: Some(name),
                 result: TrustResolutionResult::Trusted,
+                ecosystem_errors,
             })
         }
         (CredentialRole::Verifier, None) => None,
@@ -1061,6 +1069,7 @@ pub(crate) async fn get_credential_trust_information(
             received_at: credential.created_date,
             name: None,
             result: TrustResolutionResult::Trusted,
+            ecosystem_errors,
         }),
     })
 }

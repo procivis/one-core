@@ -12,6 +12,7 @@ use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
 use crate::model::credential::ExactCredentialFilterColumn;
 use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::TrustResolutionResult;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::service::certificate::dto::CertificateResponseDTO;
@@ -106,6 +107,7 @@ pub struct TrustInformation {
     pub received_at: OffsetDateTime,
     pub name: Option<String>,
     pub result: TrustResolutionResult,
+    pub ecosystem_errors: EcosystemOutcomes,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

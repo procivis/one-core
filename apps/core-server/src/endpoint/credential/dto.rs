@@ -22,6 +22,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::ecosystem::EcosystemOutcomesRestDTO;
 use crate::dto::common::trust_detail::{
     EudiTrustInformationResponseRestDTO, TrustInformationDetailResponseRestEnum,
     TrustResolutionResultRestEnum,
@@ -258,6 +259,9 @@ pub(crate) struct CredentialTrustInformationDetailResponseRestDTO {
 
     pub ecosystem: Option<EcosystemId>,
     pub issuer: Option<TrustInformationDetailResponseRestEnum>,
+    /// One entry per ecosystem provider consulted. An untrusted issuer is reported here with a
+    /// 200. It is not a failed request.
+    pub ecosystem_errors: EcosystemOutcomesRestDTO,
 }
 
 #[options_not_nullable]
@@ -269,6 +273,8 @@ pub struct TrustInformationRestDTO {
     received_at: OffsetDateTime,
     name: Option<String>,
     result: TrustResolutionResultRestEnum,
+    #[from(with_fn = "Into::into")]
+    ecosystem_errors: EcosystemOutcomesRestDTO,
 }
 
 /// The role the system has in relation to the credential.

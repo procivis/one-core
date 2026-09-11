@@ -41,6 +41,7 @@ use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::provider::issuance_protocol::serialize_interaction_data;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
+use crate::service::common_mapper::recorded_ecosystem_outcomes;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::BusinessLogicError;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -360,8 +361,12 @@ impl CredentialService {
             get_remaining_batch_item_count(&credential, self.credential_repository.as_ref())
                 .await?;
 
-        let trust_information =
-            get_credential_trust_information(&credential, self.ecosystem_provider.as_ref()).await?;
+        let trust_information = get_credential_trust_information(
+            &credential,
+            self.ecosystem_provider.as_ref(),
+            &*self.history_repository,
+        )
+        .await?;
 
         let response = credential_detail_response_from_model(
             credential,
@@ -682,7 +687,12 @@ impl CredentialService {
             return Err(CredentialServiceError::InvalidRole(credential.role));
         }
 
-        let mut result = TrustInformationDetailResponseDTO::default();
+        let mut result = TrustInformationDetailResponseDTO {
+            // an untrusted issuer is an answer, not a failed request, so this is a 200
+            ecosystem_errors: recorded_ecosystem_outcomes(id.into(), &*self.history_repository)
+                .await?,
+            ..Default::default()
+        };
 
         if let Some(ecosystem_id) = credential.ecosystem {
             let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;

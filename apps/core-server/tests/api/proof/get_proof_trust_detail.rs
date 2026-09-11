@@ -138,6 +138,7 @@ async fn test_get_proof_trust_detail_success() {
         resp,
         json!({
             "ecosystem": "EUDI",
+            "ecosystemErrors": {},
             "eudiEcosystem": rp_data,
             "verifier": rp_data
         })
