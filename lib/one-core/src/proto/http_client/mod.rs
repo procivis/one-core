@@ -102,8 +102,8 @@ pub enum Error {
     HttpError(#[from] reqwest::Error),
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
-    #[error("HTTP status code is error: {0}")]
-    StatusCodeError(StatusCode),
+    #[error("HTTP status code error: {status}, response_body: {body}")]
+    StatusCodeError { status: StatusCode, body: String },
     #[error("Url encoding error: {0}")]
     UrlEncode(#[from] serde_urlencoded::ser::Error),
     #[error("String error: {0}")]
@@ -137,9 +137,9 @@ impl Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Error::StatusCodeError(status) if status.is_client_error() => ErrorCode::BR_0395,
+            Error::StatusCodeError { status, .. } if status.is_client_error() => ErrorCode::BR_0395,
             Error::HttpError(_)
-            | Error::StatusCodeError(_)
+            | Error::StatusCodeError { .. }
             | Error::JsonError(_)
             | Error::InvalidHost(_)
             | Error::ResponseTooLong(_)
@@ -158,8 +158,25 @@ impl Response {
     #[track_caller]
     pub fn error_for_status(self) -> Result<Self, Error> {
         if self.status.is_client_error() || self.status.is_server_error() {
+            let body = if self.body.is_empty() {
+                "<empty>".to_string()
+            } else {
+                let length = self.body.len();
+                if length < 2048
+                    && let Ok(content) = String::from_utf8(self.body)
+                {
+                    format!("`{content}`")
+                } else {
+                    format!("<size:{length}B>")
+                }
+            };
+
             let location = std::panic::Location::caller();
-            Err(Error::StatusCodeError(self.status).log_error(location, &self.request))
+            Err(Error::StatusCodeError {
+                status: self.status,
+                body,
+            }
+            .log_error(location, &self.request))
         } else {
             Ok(self)
         }

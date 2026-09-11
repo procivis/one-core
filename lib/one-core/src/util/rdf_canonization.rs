@@ -264,7 +264,7 @@ _:c14n1 <https://schema.org/name> "Bachelor of Science and Arts" .
 
         if matches!(
             downloaded,
-            Err(crate::proto::http_client::Error::StatusCodeError(_))
+            Err(crate::proto::http_client::Error::StatusCodeError { .. })
         ) {
             // if context download fails (e.g. rate-limit), skip the check
             return;
