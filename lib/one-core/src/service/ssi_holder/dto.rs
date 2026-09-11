@@ -8,6 +8,7 @@ use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use url::Url;
 
 use crate::model::credential_schema::KeyStorageSecurity;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::interaction::InteractionType;
 
 #[derive(Clone, Debug)]
@@ -27,6 +28,7 @@ pub struct IssuanceAcceptResponseDTO {
     pub credential_ids: Vec<CredentialId>,
     /// some of the offered credential configurations could not be issued, only set when several were offered
     pub partially_successful: Option<bool>,
+    pub ecosystem_errors: EcosystemOutcomes,
 }
 
 #[derive(Clone, Debug)]
@@ -57,18 +59,21 @@ pub enum HandleInvitationResultDTO {
         protocol: String,
         requires_wallet_instance_attestation: bool,
         ecosystem: Option<EcosystemId>,
+        ecosystem_errors: EcosystemOutcomes,
     },
     AuthorizationCodeFlow {
         interaction_id: InteractionId,
         authorization_code_flow_url: String,
         protocol: String,
         ecosystem: Option<EcosystemId>,
+        ecosystem_errors: EcosystemOutcomes,
     },
     ProofRequest {
         interaction_id: InteractionId,
         proof_id: ProofId,
         protocol: String,
         ecosystem: Option<EcosystemId>,
+        ecosystem_errors: EcosystemOutcomes,
     },
 }
 

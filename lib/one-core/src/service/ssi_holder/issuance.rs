@@ -27,6 +27,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::HistoryEntityType;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
@@ -284,6 +285,9 @@ impl SSIHolderService {
             id,
             credential_ids,
             partially_successful,
+            // the credentials are the last artifacts of the issuance, so the merged outcome is
+            // final here
+            ecosystem_errors: EcosystemOutcomes::merged(&ecosystems.outcomes),
         })
     }
 
@@ -661,8 +665,8 @@ impl SSIHolderService {
         interaction_id: InteractionId,
         artifact: &ProtocolArtifact<'_>,
         user_selected_ecosystem: Option<&EcosystemId>,
-    ) -> Result<(), HolderServiceError> {
-        match user_selected_ecosystem {
+    ) -> Result<EcosystemOutcomes, HolderServiceError> {
+        let outcomes = match user_selected_ecosystem {
             Some(selection) => commit_selected_ecosystem(
                 interaction_id,
                 artifact,
@@ -683,7 +687,7 @@ impl SSIHolderService {
             .error_while("narrowing ecosystem candidates")?,
         };
 
-        Ok(())
+        Ok(outcomes)
     }
 
     pub(super) async fn handle_issuance_invitation(
@@ -709,12 +713,13 @@ impl SSIHolderService {
                 requires_wallet_instance_attestation,
                 ecosystem_artifact,
             } => {
-                self.start_ecosystem(
-                    interaction_id,
-                    &ecosystem_artifact,
-                    user_selected_ecosystem.as_ref(),
-                )
-                .await?;
+                let ecosystem_errors = self
+                    .start_ecosystem(
+                        interaction_id,
+                        &ecosystem_artifact,
+                        user_selected_ecosystem.as_ref(),
+                    )
+                    .await?;
 
                 Ok(HandleInvitationResultDTO::Credential {
                     interaction_id,
@@ -724,6 +729,7 @@ impl SSIHolderService {
                     protocol: exchange,
                     requires_wallet_instance_attestation,
                     ecosystem: user_selected_ecosystem,
+                    ecosystem_errors,
                 })
             }
             InvitationResponseEnum::AuthorizationFlow {
@@ -756,7 +762,7 @@ impl SSIHolderService {
                     .await?;
 
                 // `initiate_issuance` created the interaction carrying any user selection
-                validate_ecosystem_step(
+                let ecosystem_errors = validate_ecosystem_step(
                     interaction_id,
                     &ecosystem_artifact,
                     self.interaction_repository.as_ref(),
@@ -771,6 +777,7 @@ impl SSIHolderService {
                     authorization_code_flow_url: url,
                     protocol: exchange,
                     ecosystem: user_selected_ecosystem,
+                    ecosystem_errors,
                 })
             }
         }

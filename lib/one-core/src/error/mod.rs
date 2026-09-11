@@ -1113,8 +1113,19 @@ pub enum ErrorCode {
     BR_0503,
 }
 
+/// Extra detail some errors carry into the response body, next to their error code.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ErrorData {
+    EcosystemsResolved(crate::model::ecosystem::EcosystemOutcomes),
+}
+
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
     fn error_code(&self) -> ErrorCode;
+
+    /// Defaults to none. Override it only when the caller can act on the detail.
+    fn error_data(&self) -> Option<ErrorData> {
+        None
+    }
 }
 
 impl ErrorCodeMixin for Infallible {
@@ -1151,6 +1162,11 @@ impl Error for NestedError {
 impl ErrorCodeMixin for NestedError {
     fn error_code(&self) -> ErrorCode {
         self.source.error_code()
+    }
+
+    // nesting adds context, it does not drop what the nested error carries
+    fn error_data(&self) -> Option<ErrorData> {
+        self.source.error_data()
     }
 }
 

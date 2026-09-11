@@ -408,9 +408,9 @@ impl SSIHolderService {
 
         // the proof request carries all the trust information there is, no later step adds to it,
         // so the ecosystem is already final here
-        let ecosystem = match user_selected_ecosystem {
+        let (ecosystem, ecosystem_errors) = match user_selected_ecosystem {
             Some(selection) => {
-                commit_selected_ecosystem(
+                let outcomes = commit_selected_ecosystem(
                     interaction_id,
                     &ecosystem_artifact,
                     &selection,
@@ -419,10 +419,10 @@ impl SSIHolderService {
                 )
                 .await
                 .error_while("committing selected ecosystem")?;
-                Some(selection)
+                (Some(selection), outcomes)
             }
             None => {
-                resolve_ecosystem(
+                let resolution = resolve_ecosystem(
                     interaction_id,
                     &ecosystem_artifact,
                     self.interaction_repository.as_ref(),
@@ -430,8 +430,8 @@ impl SSIHolderService {
                     SelectionRole::Holder,
                 )
                 .await
-                .error_while("resolving ecosystem")?
-                .committed
+                .error_while("resolving ecosystem")?;
+                (resolution.committed, resolution.outcomes)
             }
         };
 
@@ -451,6 +451,7 @@ impl SSIHolderService {
             proof_id,
             protocol,
             ecosystem,
+            ecosystem_errors,
         })
     }
 

@@ -132,6 +132,7 @@ impl<E: ErrorCodeMixin> From<&E> for ErrorResponseRestDTO {
             code: code.into(),
             message: code.get_message().unwrap_or_default().to_string(),
             cause: Some(cause),
+            data: error.error_data().map(Into::into),
             status: None,
         }
     }

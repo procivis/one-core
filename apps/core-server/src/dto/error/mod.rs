@@ -5,10 +5,12 @@ use axum::extract::rejection::{FormRejection, JsonRejection, PathRejection, Quer
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum_extra::typed_header::TypedHeaderRejection;
-use one_core::error::ErrorCode;
+use one_core::error::{ErrorCode, ErrorData};
 use proc_macros::options_not_nullable;
 use serde::Serialize;
 use utoipa::ToSchema;
+
+use crate::dto::common::ecosystem::EcosystemOutcomesRestDTO;
 
 #[options_not_nullable]
 #[derive(Serialize, ToSchema)]
@@ -16,10 +18,29 @@ pub(crate) struct ErrorResponseRestDTO {
     pub code: &'static str,
     pub message: String,
     pub cause: Option<Cause>,
+    /// Only set on BR_0476, where it carries the ecosystem outcomes behind the failure.
+    pub data: Option<ErrorDataRestDTO>,
     /// HTTP status to use with [`IntoResponse`].
     /// `None` falls back to 400
     #[serde(skip)]
     pub status: Option<StatusCode>,
+}
+
+#[options_not_nullable]
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ErrorDataRestDTO {
+    pub ecosystem_errors: Option<EcosystemOutcomesRestDTO>,
+}
+
+impl From<ErrorData> for ErrorDataRestDTO {
+    fn from(value: ErrorData) -> Self {
+        match value {
+            ErrorData::EcosystemsResolved(outcomes) => Self {
+                ecosystem_errors: Some(outcomes.into()),
+            },
+        }
+    }
 }
 
 impl ErrorResponseRestDTO {
@@ -59,6 +80,7 @@ impl From<(StatusCode, String)> for ErrorResponseRestDTO {
             code: ErrorCode::BR_0084.into(),
             message: "General input validation error".to_string(),
             cause: Some(Cause { message: value.1 }),
+            data: None,
             status: Some(value.0),
         }
     }
@@ -72,6 +94,7 @@ impl From<TypedHeaderRejection> for ErrorResponseRestDTO {
             cause: Some(Cause {
                 message: format!("{:?}", value.reason()),
             }),
+            data: None,
             status: None,
         }
     }
@@ -91,6 +114,7 @@ macro_rules! gen_from_rejection {
                     cause: Some(Cause {
                         message: value.body_text(),
                     }),
+                    data: None,
                     status,
                 }
             }

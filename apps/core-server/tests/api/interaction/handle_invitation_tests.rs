@@ -2593,5 +2593,15 @@ async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_tru
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0476");
+    let body = resp.json_value().await;
+    assert_eq!(body["code"], "BR_0476");
+    // the error carries the rejection reason of every consulted ecosystem
+    let ecosystem_errors = &body["data"]["ecosystemErrors"];
+    assert_eq!(ecosystem_errors["EUDI"]["result"], "NOT_TRUSTED");
+    assert!(
+        ecosystem_errors["EUDI"]["error"]["code"]
+            .as_str()
+            .is_some_and(|code| code.starts_with("BR_")),
+        "expected an error code, got {ecosystem_errors}"
+    );
 }

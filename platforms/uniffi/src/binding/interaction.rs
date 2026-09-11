@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, InitiateIssuanceResponseDTO,
 };
@@ -5,6 +7,8 @@ use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode, TxCodeInputMode};
 
 use super::credential_schema::KeyStorageSecurityBindingEnum;
+use super::history::EcosystemOutcomeBindingDTO;
+use super::mapper::convert_ecosystem_outcomes;
 use crate::OneCore;
 use crate::error::BindingError;
 use crate::utils::{into_id, into_id_opt, into_id_opt_vec};
@@ -54,6 +58,7 @@ impl OneCore {
                 .map(ToString::to_string)
                 .collect(),
             partially_successful: response.partially_successful,
+            ecosystem_errors: convert_ecosystem_outcomes(&response.ecosystem_errors),
         })
     }
 
@@ -160,6 +165,8 @@ pub enum HandleInvitationResponseBindingEnum {
         /// Whether a valid WIA is required to complete issuance.
         requires_wallet_instance_attestation: bool,
         ecosystem: Option<String>,
+        /// One entry per ecosystem provider consulted, keyed by provider id.
+        ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
     },
     AuthorizationCodeFlow {
         /// For reference.
@@ -170,6 +177,8 @@ pub enum HandleInvitationResponseBindingEnum {
         /// Protocol used for issuance.
         protocol: String,
         ecosystem: Option<String>,
+        /// One entry per ecosystem provider consulted, keyed by provider id.
+        ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
     },
     ProofRequest {
         /// For reference.
@@ -179,6 +188,8 @@ pub enum HandleInvitationResponseBindingEnum {
         /// Protocol used for issuance.
         protocol: String,
         ecosystem: Option<String>,
+        /// One entry per ecosystem provider consulted, keyed by provider id.
+        ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
     },
 }
 
@@ -288,4 +299,6 @@ pub struct HolderAcceptCredentialResponseBindingDTO {
     /// Some of the offered credential configurations could not be issued.
     /// Only set when several configurations were offered.
     pub partially_successful: Option<bool>,
+    /// One entry per ecosystem provider consulted, keyed by provider id.
+    pub ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
 }

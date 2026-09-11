@@ -3,6 +3,7 @@ use shared_types::Permission;
 use crate::dto::response::ErrorResponse;
 use crate::middleware::{Authorized, Permissions};
 
+#[expect(clippy::result_large_err)]
 pub fn permission_check(
     authorized: &Authorized,
     required_permissions: &[Permission],

@@ -6,7 +6,7 @@ use shared_types::{
 use thiserror::Error;
 
 use crate::config::core_config::FormatType;
-use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::proof::ProofStateEnum;
@@ -200,6 +200,13 @@ impl ErrorCodeMixin for ServiceError {
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::Nested(error) => error.error_code(),
+        }
+    }
+
+    fn error_data(&self) -> Option<ErrorData> {
+        match self {
+            Self::Nested(error) => error.error_data(),
+            _ => None,
         }
     }
 }

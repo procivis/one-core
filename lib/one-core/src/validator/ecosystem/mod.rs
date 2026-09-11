@@ -1,6 +1,6 @@
 use shared_types::{EcosystemId, InteractionId};
 
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
@@ -36,6 +36,16 @@ impl ErrorCodeMixin for EcosystemValidationError {
             Self::EcosystemNotPermitted => ErrorCode::BR_0475,
             Self::EcosystemAlreadyCommitted(_) => ErrorCode::BR_0477,
             Self::Nested(nested) => nested.error_code(),
+        }
+    }
+
+    fn error_data(&self) -> Option<ErrorData> {
+        match self {
+            Self::NoEcosystemDetected(outcomes) => {
+                Some(ErrorData::EcosystemsResolved(outcomes.to_owned()))
+            }
+            Self::Nested(nested) => nested.error_data(),
+            _ => None,
         }
     }
 }
@@ -165,7 +175,6 @@ pub(crate) struct EcosystemResolution {
     /// the ecosystem the interaction ends up committed to
     pub committed: Option<EcosystemId>,
     /// the outcome of each consulted ecosystem
-    #[cfg_attr(not(test), expect(dead_code))]
     pub outcomes: EcosystemOutcomes,
 }
 
@@ -224,7 +233,6 @@ pub(crate) struct ResolvedEcosystems {
     /// per credential (indexed as the artifacts): the ecosystem providing its trust information
     pub per_credential: Vec<Option<EcosystemId>>,
     /// per credential (indexed as the artifacts): the outcome of each consulted ecosystem
-    #[cfg_attr(not(test), expect(dead_code))]
     pub outcomes: Vec<EcosystemOutcomes>,
 }
 

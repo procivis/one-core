@@ -1,7 +1,7 @@
 use shared_types::{CredentialId, DidId, InteractionId, OrganisationId};
 use thiserror::Error;
 
-use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
 use crate::model::credential::CredentialType;
 
 #[derive(Debug, Error)]
@@ -75,6 +75,13 @@ impl ErrorCodeMixin for HolderServiceError {
             Self::BatchExhausted(_) => ErrorCode::BR_0443,
             Self::NoEcosystemDetected => ErrorCode::BR_0476,
             Self::Nested(nested) => nested.error_code(),
+        }
+    }
+
+    fn error_data(&self) -> Option<ErrorData> {
+        match self {
+            Self::Nested(nested) => nested.error_data(),
+            _ => None,
         }
     }
 }

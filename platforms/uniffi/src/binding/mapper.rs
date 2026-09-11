@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use one_core::model::credential::{CredentialListIncludeEntityTypeEnum, SortableCredentialColumn};
 use one_core::model::credential_schema::SortableCredentialSchemaColumn;
 use one_core::model::did::SortableDidColumn;
+use one_core::model::ecosystem::EcosystemOutcomes;
 use one_core::model::history::SortableHistoryColumn;
 use one_core::model::identifier::{IdentifierListIncludeEntity, SortableIdentifierColumn};
 use one_core::model::proof::SortableProofColumn;
@@ -269,6 +270,29 @@ impl<T: Into<ClaimBindingDTO>> From<DetailCredentialClaimValueResponseDTO<T>>
     }
 }
 
+pub(crate) fn convert_ecosystem_outcomes(
+    value: &EcosystemOutcomes,
+) -> HashMap<String, EcosystemOutcomeBindingDTO> {
+    value
+        .iter()
+        .map(|(ecosystem, outcome)| {
+            (
+                ecosystem.to_string(),
+                EcosystemOutcomeBindingDTO {
+                    result: outcome.result.into(),
+                    error: outcome
+                        .error
+                        .to_owned()
+                        .map(|error| HistoryErrorMetadataBindingDTO {
+                            error_code: Into::<&'static str>::into(error.error_code).to_string(),
+                            message: error.message,
+                        }),
+                },
+            )
+        })
+        .collect()
+}
+
 impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
     fn from(value: HandleInvitationResultDTO) -> Self {
         match value {
@@ -280,6 +304,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 protocol,
                 requires_wallet_instance_attestation,
                 ecosystem,
+                ecosystem_errors,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 tx_code: convert_inner(tx_code),
@@ -288,28 +313,33 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 key_algorithms,
                 requires_wallet_instance_attestation,
                 ecosystem: convert_inner(ecosystem),
+                ecosystem_errors: convert_ecosystem_outcomes(&ecosystem_errors),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
                 authorization_code_flow_url,
                 protocol,
                 ecosystem,
+                ecosystem_errors,
             } => Self::AuthorizationCodeFlow {
                 interaction_id: interaction_id.to_string(),
                 authorization_code_flow_url,
                 protocol,
                 ecosystem: convert_inner(ecosystem),
+                ecosystem_errors: convert_ecosystem_outcomes(&ecosystem_errors),
             },
             HandleInvitationResultDTO::ProofRequest {
                 interaction_id,
                 proof_id,
                 protocol,
                 ecosystem,
+                ecosystem_errors,
             } => Self::ProofRequest {
                 interaction_id: interaction_id.to_string(),
                 proof_id: proof_id.to_string(),
                 protocol,
                 ecosystem: convert_inner(ecosystem),
+                ecosystem_errors: convert_ecosystem_outcomes(&ecosystem_errors),
             },
         }
     }
@@ -395,26 +425,7 @@ fn convert_history_metadata(
             }
             HistoryMetadataResponse::EcosystemsResolved(value) => {
                 Some(HistoryMetadataBinding::EcosystemsResolved {
-                    value: value
-                        .iter()
-                        .map(|(ecosystem, outcome)| {
-                            (
-                                ecosystem.to_string(),
-                                EcosystemOutcomeBindingDTO {
-                                    result: outcome.result.into(),
-                                    error: outcome.error.to_owned().map(|error| {
-                                        HistoryErrorMetadataBindingDTO {
-                                            error_code: Into::<&'static str>::into(
-                                                error.error_code,
-                                            )
-                                            .to_string(),
-                                            message: error.message,
-                                        }
-                                    }),
-                                },
-                            )
-                        })
-                        .collect(),
+                    value: convert_ecosystem_outcomes(&value),
                 })
             }
         },
