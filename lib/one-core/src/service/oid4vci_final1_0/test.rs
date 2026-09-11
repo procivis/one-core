@@ -7,7 +7,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialSchemaFormatId, DidId, InteractionId};
+use shared_types::{CredentialFormat, CredentialSchemaFormatId, DidId, EcosystemId, InteractionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::oauth2::TokenType;
@@ -28,6 +28,10 @@ use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::Did;
+use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::history::{
+    HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
@@ -97,6 +101,7 @@ struct Mocks {
     pub credential_issuer_metadata_cache: MockIssuerMetadataFetcher,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub ecosystem_provider: MockEcosystemDirectory,
+    pub history_repository: MockHistoryRepository,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
@@ -120,6 +125,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.credential_issuer_metadata_cache),
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.ecosystem_provider),
+        Arc::new(mocks.history_repository),
     )
 }
 
@@ -1595,6 +1601,7 @@ async fn test_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let mut schema = generic_credential_schema();
@@ -1624,18 +1631,48 @@ async fn test_create_credential_success() {
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
+
+        // an ecosystem rejected the wallet provider during the request
+        let mut untrusted = EcosystemOutcomes::default();
+        untrusted.record(
+            EcosystemId::from("EUDI"),
+            Err(HistoryErrorMetadata {
+                error_code: ErrorCode::BR_0494,
+                message: "wallet provider not on the trust list".to_string(),
+            }),
+        );
+        let carried = untrusted.to_owned();
+
         interaction_repository
             .expect_get_interaction()
-            .times(2)
+            // once for the request, once inside the issuance transaction, once to record the
+            // wallet provider verdict
+            .times(3)
             .returning(move |_, _| {
-                Ok(dummy_interaction(
-                    Some(interaction_id),
-                    true,
-                    None,
-                    None,
-                    None,
-                ))
+                let mut interaction =
+                    dummy_interaction(Some(interaction_id), true, None, None, None);
+                interaction.ecosystem_data.merge_outcomes(&carried);
+                Ok(interaction)
             });
+
+        // the issuance ends here, so that verdict is recorded on the issued credential
+        let recorded_on = credential.id;
+        history_repository
+            .expect_create_history()
+            .once()
+            .withf(move |history| {
+                assert_eq!(HistoryAction::EcosystemsResolved, history.action);
+                assert_eq!(HistoryEntityType::Credential, history.entity_type);
+                assert_eq!(Some(recorded_on.into()), history.entity_id);
+
+                let Some(HistoryMetadata::EcosystemsResolved(recorded)) = &history.metadata else {
+                    panic!("the event carries the wallet provider verdict");
+                };
+                assert_eq!(untrusted, *recorded);
+                true
+            })
+            .return_once(|history| Ok(history.id));
+
         interaction_repository
             .expect_mark_nonce_as_used()
             .return_once(|_, _, _| Ok(()));
@@ -1749,6 +1786,7 @@ async fn test_create_credential_success() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
+        history_repository,
         config: generic_config().core,
         exchange_provider,
         identifier_creator,
@@ -1831,7 +1869,9 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .into();
         interaction_repository
             .expect_get_interaction()
-            .times(2)
+            // once for the request, once inside the issuance transaction, once to record the
+            // wallet provider verdict
+            .times(3)
             .returning(move |_, _| {
                 Ok(dummy_interaction(
                     Some(interaction_id),
@@ -2044,7 +2084,9 @@ async fn test_create_credential_success_mdoc() {
 
         interaction_repository
             .expect_get_interaction()
-            .times(2)
+            // once for the request, once inside the issuance transaction, once to record the
+            // wallet provider verdict
+            .times(3)
             .returning(|_, _| {
                 Ok(dummy_interaction(
                     Some(
@@ -2628,7 +2670,9 @@ async fn test_create_credential_issuer_failed() {
             .into();
         interaction_repository
             .expect_get_interaction()
-            .times(2)
+            // once for the request, once inside the issuance transaction, once to record the
+            // wallet provider verdict
+            .times(3)
             .returning(move |_, _| {
                 Ok(dummy_interaction(
                     Some(interaction_id),

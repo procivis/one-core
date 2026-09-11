@@ -148,6 +148,8 @@ pub struct ProofInputDTO {
     pub claims: Vec<ProofClaimDTO>,
     pub credential: Option<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
+    /// trust of the credential shared for this input, and of its issuer
+    pub trust_information: Option<TrustInformation>,
 }
 
 pub type GetProofListResponseDTO = GetListResponse<ProofListItemResponseDTO>;

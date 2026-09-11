@@ -482,6 +482,10 @@ pub(crate) struct ProofInputRestDTO {
 
     #[try_from(infallible)]
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
+
+    /// Trust of the credential shared for this input, and of its issuer.
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub trust_information: Option<TrustInformationRestDTO>,
 }
 
 #[options_not_nullable]

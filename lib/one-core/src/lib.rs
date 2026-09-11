@@ -665,6 +665,7 @@ impl OneCore {
                 credential_issuer_metadata_cache.clone(),
                 credential_formatter_provider.clone(),
                 ecosystem_provider.clone(),
+                data_provider.get_history_repository(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),
@@ -680,6 +681,7 @@ impl OneCore {
                 openid4vp_proof_validator.clone(),
                 ecosystem_provider.clone(),
                 verification_provider.clone(),
+                data_provider.get_history_repository(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
@@ -695,6 +697,7 @@ impl OneCore {
                 openid4vp_proof_validator.clone(),
                 ecosystem_provider.clone(),
                 verification_provider.clone(),
+                data_provider.get_history_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

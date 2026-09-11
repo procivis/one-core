@@ -10,6 +10,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -33,6 +34,7 @@ pub struct OID4VPFinal1_0Service {
     proof_validator: Arc<dyn OpenId4VpProofValidator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
     protocol_provider: Arc<dyn VerificationProtocolProvider>,
+    history_repository: Arc<dyn HistoryRepository>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -51,6 +53,7 @@ impl OID4VPFinal1_0Service {
         proof_validator: Arc<dyn OpenId4VpProofValidator>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
         protocol_provider: Arc<dyn VerificationProtocolProvider>,
+        history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
             credential_repository,
@@ -66,6 +69,7 @@ impl OID4VPFinal1_0Service {
             proof_validator,
             ecosystem_provider,
             protocol_provider,
+            history_repository,
         }
     }
 }

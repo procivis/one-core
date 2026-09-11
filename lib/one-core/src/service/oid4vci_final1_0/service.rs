@@ -55,6 +55,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
+use crate::model::history::HistoryEntityType;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
@@ -81,6 +82,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
 };
 use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
+use crate::service::common_mapper::{record_ecosystems_resolved, resolved_ecosystems};
 use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
 use crate::service::managed_instance::dto::{
     WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
@@ -88,6 +90,7 @@ use crate::service::managed_instance::dto::{
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::jwe::{build_jwe, decrypt_jwe};
 use crate::util::key_agreement::key_agreement_keys;
+use crate::validator::ecosystem::{SelectionRole, validate_ecosystem_step};
 use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIFinal1_0Service {
@@ -490,6 +493,11 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("issuing credential")?;
 
+        // the issuance ends here, success or not, so this is where the wallet provider verdict
+        // gets recorded
+        self.record_issuer_ecosystems(&interaction.id, credential.id)
+            .await;
+
         match result {
             Ok(result) => {
                 tracing::info!("Issued credential {}", credential.id);
@@ -515,6 +523,29 @@ impl OID4VCIFinal1_0Service {
                 Err(error.error_while("issuing credential").into())
             }
         }
+    }
+
+    /// Records the wallet provider verdict on the issued credential, so the issuer can see why
+    /// a wallet was not trusted.
+    async fn record_issuer_ecosystems(
+        &self,
+        interaction_id: &InteractionId,
+        credential_id: CredentialId,
+    ) {
+        let Some((outcomes, organisation_id)) =
+            resolved_ecosystems(interaction_id, self.interaction_repository.as_ref()).await
+        else {
+            return;
+        };
+
+        record_ecosystems_resolved(
+            &outcomes,
+            organisation_id,
+            &[(credential_id.into(), HistoryEntityType::Credential)],
+            None,
+            &*self.history_repository,
+        )
+        .await;
     }
 
     /// Unwraps the Credential Request body, decrypting it when it arrived as a JWE.
@@ -749,23 +780,23 @@ impl OID4VCIFinal1_0Service {
                 WalletAttestationError::KaMalformed(format!("extracting public key: {e}"))
             })?;
 
-            if let Some(ecosystem_id) = &interaction.ecosystem {
-                let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
-                ecosystem
-                    .validate_interaction(
-                        &ProtocolArtifact::IssuerIssuance {
-                            wallet_provider: key_source,
-                            source: WalletProviderAttestationSource::KeyAttestation,
-                        },
-                        interaction,
-                    )
-                    .await
-                    .map_err(|e| match e.error_code() {
-                        ErrorCode::BR_0496 => WalletAttestationError::KaIssuerUntrusted.into(),
-                        _ => {
-                            OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem"))
-                        }
-                    })?;
+            if interaction.ecosystem.is_some() {
+                // committed, so the step validates the attestation and records the verdict
+                validate_ecosystem_step(
+                    interaction.id,
+                    &ProtocolArtifact::IssuerIssuance {
+                        wallet_provider: key_source,
+                        source: WalletProviderAttestationSource::KeyAttestation,
+                    },
+                    self.interaction_repository.as_ref(),
+                    self.ecosystem_provider.as_ref(),
+                    SelectionRole::Issuer,
+                )
+                .await
+                .map_err(|e| match e.error_code() {
+                    ErrorCode::BR_0496 => WalletAttestationError::KaIssuerUntrusted.into(),
+                    _ => OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem")),
+                })?;
             }
 
             let proof_signing_key = match &holder_binding {
@@ -1481,21 +1512,23 @@ impl OID4VCIFinal1_0Service {
             .get_interaction(&interaction_id, None)
             .await
             .error_while("getting interaction")?;
-        if let Some(ecosystem_id) = &interaction.ecosystem {
-            let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
-            ecosystem
-                .validate_interaction(
-                    &ProtocolArtifact::IssuerIssuance {
-                        wallet_provider: key_source,
-                        source: WalletProviderAttestationSource::WalletInstanceAttestation,
-                    },
-                    &interaction,
-                )
-                .await
-                .map_err(|e| match e.error_code() {
-                    ErrorCode::BR_0494 => WalletAttestationError::WiaIssuerUntrusted.into(),
-                    _ => OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem")),
-                })?;
+        if interaction.ecosystem.is_some() {
+            // committed, so the step validates the attestation and records the verdict
+            validate_ecosystem_step(
+                interaction.id,
+                &ProtocolArtifact::IssuerIssuance {
+                    wallet_provider: key_source,
+                    source: WalletProviderAttestationSource::WalletInstanceAttestation,
+                },
+                self.interaction_repository.as_ref(),
+                self.ecosystem_provider.as_ref(),
+                SelectionRole::Issuer,
+            )
+            .await
+            .map_err(|e| match e.error_code() {
+                ErrorCode::BR_0494 => WalletAttestationError::WiaIssuerUntrusted.into(),
+                _ => OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem")),
+            })?;
         }
 
         // Extract wallet metadata

@@ -1040,7 +1040,19 @@ pub(crate) async fn get_credential_trust_information(
         recorded_ecosystem_outcomes(credential.id.into(), history_repository).await?;
 
     Ok(match (credential.role, &credential.ecosystem) {
-        (CredentialRole::Issuer, _) => None,
+        // the issuer sees the wallet provider. Reported only when an ecosystem was consulted,
+        // so an organisation not using ecosystems still gets nothing
+        (CredentialRole::Issuer, ecosystem) => {
+            (!ecosystem_errors.is_empty()).then(|| TrustInformation {
+                received_at: credential.issuance_date.unwrap_or(credential.last_modified),
+                name: None,
+                result: match ecosystem {
+                    Some(_) => TrustResolutionResult::Trusted,
+                    None => TrustResolutionResult::Untrusted,
+                },
+                ecosystem_errors,
+            })
+        }
         (CredentialRole::Holder, None) => Some(TrustInformation {
             received_at: credential.issuance_date.unwrap_or(credential.last_modified),
             name: None,
@@ -1064,7 +1076,15 @@ pub(crate) async fn get_credential_trust_information(
                 ecosystem_errors,
             })
         }
-        (CredentialRole::Verifier, None) => None,
+        // no ecosystem trusted the issuer, and the verifier gets to see why
+        (CredentialRole::Verifier, None) => {
+            (!ecosystem_errors.is_empty()).then(|| TrustInformation {
+                received_at: credential.created_date,
+                name: None,
+                result: TrustResolutionResult::Untrusted,
+                ecosystem_errors,
+            })
+        }
         (CredentialRole::Verifier, Some(_)) => Some(TrustInformation {
             received_at: credential.created_date,
             name: None,

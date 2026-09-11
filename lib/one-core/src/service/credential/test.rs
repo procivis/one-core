@@ -6,7 +6,7 @@ use assert2::let_assert;
 use mockall::predicate::*;
 use serde_json::json;
 use serde_yaml;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, EcosystemId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -14,9 +14,10 @@ use uuid::Uuid;
 use super::CredentialService;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialRequestClaimDTO,
-    DetailCredentialClaimValueResponseDTO,
+    DetailCredentialClaimValueResponseDTO, TrustInformation,
 };
 use super::error::CredentialServiceError;
+use super::mapper::get_credential_trust_information;
 use super::validator::validate_create_request;
 use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -32,6 +33,11 @@ use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+    HistorySource, TrustResolutionResult,
+};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::Key;
 use crate::model::relation::RelatedVec;
@@ -6199,4 +6205,127 @@ async fn test_validate_create_request_invalid_enum_value() {
         result,
         Err(CredentialServiceError::InvalidDatatype { .. })
     ));
+}
+
+/// A history repository that reports `outcomes` as the resolved ecosystems of any entity.
+fn history_with_outcomes(outcomes: EcosystemOutcomes) -> MockHistoryRepository {
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository.expect_get_history_list().returning({
+        move |_| {
+            let values = if outcomes.is_empty() {
+                vec![]
+            } else {
+                vec![History {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    action: HistoryAction::EcosystemsResolved,
+                    name: Default::default(),
+                    target: None,
+                    source: HistorySource::Core,
+                    entity_id: None,
+                    entity_type: HistoryEntityType::Credential,
+                    metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes.to_owned())),
+                    organisation_id: None,
+                    user: None,
+                    metadata_blob_id: None,
+                }]
+            };
+            let total_items = values.len() as u64;
+            Ok(GetListResponse {
+                values,
+                total_pages: 1,
+                total_items,
+            })
+        }
+    });
+    history_repository
+}
+
+fn untrusted_by(ecosystem: &str) -> EcosystemOutcomes {
+    let mut outcomes = EcosystemOutcomes::default();
+    outcomes.record(
+        EcosystemId::from(ecosystem),
+        Err(HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0477,
+            message: "not on the trust list".to_string(),
+        }),
+    );
+    outcomes
+}
+
+/// The trust information of a credential in `role`, given the recorded `outcomes`.
+async fn trust_information_of(
+    role: CredentialRole,
+    ecosystem: Option<&str>,
+    outcomes: EcosystemOutcomes,
+) -> Option<TrustInformation> {
+    let mut credential = generic_credential().await;
+    credential.role = role;
+    credential.ecosystem = ecosystem.map(EcosystemId::from);
+
+    get_credential_trust_information(
+        &credential,
+        &MockEcosystemDirectory::new(),
+        &history_with_outcomes(outcomes),
+    )
+    .await
+    .unwrap()
+}
+
+#[tokio::test]
+async fn test_the_issuer_sees_why_the_wallet_provider_was_not_trusted() {
+    let outcomes = untrusted_by("EUDI");
+
+    let trust_information = trust_information_of(CredentialRole::Issuer, None, outcomes.to_owned())
+        .await
+        .expect("the issuer is told about the wallet provider");
+
+    assert_eq!(TrustResolutionResult::Untrusted, trust_information.result);
+    assert_eq!(outcomes, trust_information.ecosystem_errors);
+}
+
+#[tokio::test]
+async fn test_the_issuer_sees_a_trusted_wallet_provider() {
+    let mut outcomes = EcosystemOutcomes::default();
+    outcomes.record(EcosystemId::from("EUDI"), Ok(()));
+
+    let trust_information =
+        trust_information_of(CredentialRole::Issuer, Some("EUDI"), outcomes.to_owned())
+            .await
+            .expect("an ecosystem was consulted, so there is something to report");
+
+    assert_eq!(TrustResolutionResult::Trusted, trust_information.result);
+    assert_eq!(outcomes, trust_information.ecosystem_errors);
+}
+
+#[tokio::test]
+async fn test_an_issuer_not_using_ecosystems_is_told_nothing() {
+    // unchanged behaviour: without an ecosystem in play there is no trust to report
+    assert!(
+        trust_information_of(CredentialRole::Issuer, None, EcosystemOutcomes::default(),)
+            .await
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn test_the_verifier_sees_why_an_issuer_was_not_trusted() {
+    let outcomes = untrusted_by("EUDI");
+
+    let trust_information =
+        trust_information_of(CredentialRole::Verifier, None, outcomes.to_owned())
+            .await
+            .expect("an issuer no ecosystem trusted still says why");
+
+    assert_eq!(TrustResolutionResult::Untrusted, trust_information.result);
+    assert_eq!(outcomes, trust_information.ecosystem_errors);
+}
+
+#[tokio::test]
+async fn test_a_verifier_with_no_ecosystem_in_play_is_told_nothing() {
+    assert!(
+        trust_information_of(CredentialRole::Verifier, None, EcosystemOutcomes::default(),)
+            .await
+            .is_none()
+    );
 }

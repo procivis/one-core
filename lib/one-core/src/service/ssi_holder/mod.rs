@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
 use shared_types::{EntityId, InteractionId, OrganisationId};
-use uuid::Uuid;
 
 use crate::config::core_config;
 use crate::model::ecosystem::EcosystemOutcomes;
-use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-};
+use crate::model::history::HistoryEntityType;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
@@ -25,6 +22,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::common_mapper::{record_ecosystems_resolved, resolved_ecosystems};
 
 pub mod dto;
 pub mod error;
@@ -110,7 +108,8 @@ impl SSIHolderService {
         interaction_id: &InteractionId,
         entities: &[(EntityId, HistoryEntityType)],
     ) {
-        let Some((outcomes, organisation_id)) = self.resolved_ecosystems(interaction_id).await
+        let Some((outcomes, organisation_id)) =
+            resolved_ecosystems(interaction_id, self.interaction_repository.as_ref()).await
         else {
             return;
         };
@@ -119,59 +118,19 @@ impl SSIHolderService {
             .await;
     }
 
-    /// `None` when no ecosystem was ever consulted.
-    async fn resolved_ecosystems(
-        &self,
-        interaction_id: &InteractionId,
-    ) -> Option<(EcosystemOutcomes, OrganisationId)> {
-        let interaction = match self
-            .interaction_repository
-            .get_interaction(interaction_id, None)
-            .await
-        {
-            Ok(interaction) => interaction,
-            Err(err) => {
-                tracing::warn!(%err, "failed to load interaction {interaction_id} to record the resolved ecosystems");
-                return None;
-            }
-        };
-
-        let outcomes = interaction.ecosystem_data.outcomes();
-        if outcomes.is_empty() {
-            return None;
-        }
-
-        Some((outcomes.to_owned(), interaction.organisation.id()))
-    }
-
     async fn write_ecosystems_resolved(
         &self,
         outcomes: &EcosystemOutcomes,
         organisation_id: OrganisationId,
         entities: &[(EntityId, HistoryEntityType)],
     ) {
-        for (entity_id, entity_type) in entities {
-            let result = self
-                .history_repository
-                .create_history(History {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    action: HistoryAction::EcosystemsResolved,
-                    name: Default::default(),
-                    target: None,
-                    source: HistorySource::Core,
-                    entity_id: Some(*entity_id),
-                    entity_type: entity_type.to_owned(),
-                    metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes.to_owned())),
-                    organisation_id: Some(organisation_id),
-                    user: self.session_provider.session().user(),
-                    metadata_blob_id: None,
-                })
-                .await;
-
-            if let Err(err) = result {
-                tracing::warn!(%err, "failed to record the resolved ecosystems");
-            }
-        }
+        record_ecosystems_resolved(
+            outcomes,
+            organisation_id,
+            entities,
+            self.session_provider.session().user(),
+            &*self.history_repository,
+        )
+        .await;
     }
 }

@@ -20,7 +20,8 @@ use crate::config::core_config::{BlobStorageType, VerificationProtocolType};
 use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
-use crate::model::history::HistoryErrorMetadata;
+use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::history::{HistoryEntityType, HistoryErrorMetadata};
 use crate::model::identifier::Identifier;
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -41,6 +42,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, SubmissionRequestData, VpSubmissionData,
 };
 use crate::repository::error::DataLayerError;
+use crate::service::common_mapper::record_ecosystems_resolved;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::jwe::decrypt_jwe;
 use crate::util::openid4vp::persist_accepted_proof;
@@ -340,6 +342,7 @@ impl OID4VPFinal1_0Service {
             (
                 ValidatedProofResult,
                 Option<EcosystemId>,
+                Vec<EcosystemOutcomes>,
                 DirectPostResponse,
             ),
             OID4VPFinal1_0ServiceError,
@@ -384,12 +387,26 @@ impl OID4VPFinal1_0Service {
                 proved_credential.credential.ecosystem = ecosystem;
             }
 
-            Ok((proof_result, ecosystems.committed, response))
+            Ok((
+                proof_result,
+                ecosystems.committed,
+                ecosystems.outcomes,
+                response,
+            ))
         }
         .await;
 
         match validation_result {
-            Ok((validated_proof_result, ecosystem, response)) => {
+            Ok((validated_proof_result, ecosystem, per_credential_outcomes, response)) => {
+                // captured before the result is consumed. Each accepted credential keeps its
+                // own outcomes, so an untrusted issuer can say why
+                let recorded: Vec<_> = validated_proof_result
+                    .proved_credentials
+                    .iter()
+                    .map(|proved| proved.credential.id)
+                    .zip(per_credential_outcomes)
+                    .collect();
+
                 persist_accepted_proof(
                     &proof,
                     validated_proof_result,
@@ -403,6 +420,18 @@ impl OID4VPFinal1_0Service {
                 )
                 .await
                 .error_while("persisting proof")?;
+
+                for (credential_id, outcomes) in recorded {
+                    record_ecosystems_resolved(
+                        &outcomes,
+                        organisation.id,
+                        &[(credential_id.into(), HistoryEntityType::Credential)],
+                        None,
+                        &*self.history_repository,
+                    )
+                    .await;
+                }
+
                 Ok(response)
             }
             Err(err) => {

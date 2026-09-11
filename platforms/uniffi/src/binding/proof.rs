@@ -442,6 +442,9 @@ pub struct ProofInputBindingDTO {
     pub credential: Option<CredentialDetailBindingDTO>,
     /// Credential schema metadata.
     pub credential_schema: CredentialSchemaBindingDTO,
+    /// Trust of the credential shared for this input, and of its issuer.
+    #[from(with_fn = convert_inner)]
+    pub trust_information: Option<TrustInformationBindingDTO>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

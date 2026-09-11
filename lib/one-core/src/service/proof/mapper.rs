@@ -399,11 +399,16 @@ pub(super) async fn get_verifier_proof_detail(
             .await
             .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
 
+        let credential = credential_for_credential_schema
+            .get(&credential_schema.id)
+            .cloned();
         proof_inputs.push(ProofInputDTO {
             claims: proof_input_claims,
-            credential: credential_for_credential_schema
-                .get(&credential_schema.id)
-                .cloned(),
+            // the input reports the trust of the credential it holds, issuer included
+            trust_information: credential
+                .as_ref()
+                .and_then(|credential| credential.trust_information.to_owned()),
+            credential,
             credential_schema: credential_schema_dto,
         })
     }
@@ -647,6 +652,7 @@ pub(super) async fn get_holder_proof_detail(
 
         proof_inputs.push(ProofInputDTO {
             claims: nest_proof_claims(&claims, &credential_claim_schemas, None).await?,
+            trust_information: credential.trust_information.to_owned(),
             credential: Some(credential),
             credential_schema: credential_schema_dto,
         });

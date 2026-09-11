@@ -46,6 +46,7 @@ use crate::provider::issuance_protocol::{
     self, HolderBindingInput, IssuanceProtocol, deserialize_interaction_data,
     serialize_interaction_data,
 };
+use crate::service::common_mapper::resolved_ecosystems;
 use crate::service::error::MissingProviderError;
 use crate::validator::ecosystem::{
     SelectionRole, commit_selected_ecosystem, resolve_credential_ecosystems,
@@ -603,7 +604,8 @@ impl SSIHolderService {
         interaction_id: &InteractionId,
         issued: Option<&IssuanceAcceptResponseDTO>,
     ) {
-        let Some((outcomes, organisation_id)) = self.resolved_ecosystems(interaction_id).await
+        let Some((outcomes, organisation_id)) =
+            resolved_ecosystems(interaction_id, self.interaction_repository.as_ref()).await
         else {
             return;
         };
