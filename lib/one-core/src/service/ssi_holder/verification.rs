@@ -99,12 +99,6 @@ impl SSIHolderService {
             .await
             .error_while("updating proof")?;
 
-        self.record_ecosystems_resolved(
-            interaction_id,
-            &[(proof.id.into(), HistoryEntityType::Proof)],
-        )
-        .await;
-
         tracing::info!("Rejected proof request {}", proof.id);
         Ok(())
     }
@@ -115,7 +109,6 @@ impl SSIHolderService {
         verification_protocol: &dyn VerificationProtocol,
         credential_presentations: Vec<FormattedCredentialPresentation>,
         submitted_claims: Vec<Claim>,
-        interaction_id: &InteractionId,
     ) -> Result<(), HolderServiceError> {
         let submit_result = verification_protocol
             .holder_submit_proof(proof, credential_presentations)
@@ -159,13 +152,6 @@ impl SSIHolderService {
             )
             .await
             .error_while("updating proof")?;
-
-        // the proof is final here, so a retry cannot record a second event
-        self.record_ecosystems_resolved(
-            interaction_id,
-            &[(proof.id.into(), HistoryEntityType::Proof)],
-        )
-        .await;
 
         self.proof_repository
             .set_proof_claims(&proof.id, submitted_claims)
@@ -332,7 +318,6 @@ impl SSIHolderService {
             &*verification_protocol,
             credential_presentations,
             submitted_claims,
-            &request.interaction_id,
         )
         .await?;
 
@@ -445,6 +430,14 @@ impl SSIHolderService {
             .create_proof(proof)
             .await
             .error_while("creating proof")?;
+
+        // trust is decided at this point, we record it now so the wallet can render any
+        // relevant ecosystemErrors
+        self.record_ecosystems_resolved(
+            &interaction_id,
+            &[(proof_id.into(), HistoryEntityType::Proof)],
+        )
+        .await;
 
         Ok(HandleInvitationResultDTO::ProofRequest {
             interaction_id,
