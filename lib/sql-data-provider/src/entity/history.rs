@@ -135,6 +135,8 @@ pub enum HistoryAction {
     WrpNrReceived,
     #[sea_orm(string_value = "TRUST_RESOLVED")]
     TrustResolved,
+    #[sea_orm(string_value = "ECOSYSTEMS_RESOLVED")]
+    EcosystemsResolved,
     #[sea_orm(string_value = "REFRESHED")]
     Refreshed,
     #[sea_orm(string_value = "SIGNED")]

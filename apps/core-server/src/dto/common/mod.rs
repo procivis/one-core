@@ -21,6 +21,7 @@ use crate::endpoint::statistics::dto::{
     SystemManagementStatsResponseRestDTO, VerifierSchemaStatsResponseRestDTO,
 };
 
+pub(crate) mod ecosystem;
 pub(crate) mod trust_detail;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]

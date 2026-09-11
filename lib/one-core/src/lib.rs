@@ -799,6 +799,7 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 ecosystem_provider.clone(),
+                data_provider.get_history_repository(),
             ),
             wallet_provider_service: ManagedInstanceService::new(
                 data_provider.get_organisation_repository(),

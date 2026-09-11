@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use std::vec;
 
+use one_core::error::ErrorCode;
+use one_core::model::ecosystem::EcosystemOutcomes;
+use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::interaction::{
-    EcosystemDetection, Interaction, InteractionEcosystems, InteractionType,
-    UpdateInteractionRequest,
+    Interaction, InteractionEcosystems, InteractionType, UpdateInteractionRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
@@ -255,42 +257,21 @@ async fn test_delete_interaction() {
 }
 
 #[tokio::test]
-async fn test_update_interaction_ecosystem_detection() {
+async fn test_update_interaction_ecosystem_outcomes() {
     let setup = setup_with_interaction().await;
 
-    let candidates = vec![EcosystemId::from("EUDI"), EcosystemId::from("OTHER")];
-    let mut ecosystem_data = InteractionEcosystems::default();
-    ecosystem_data.set_detection(EcosystemDetection::Applicable(candidates.clone()));
-
-    setup
-        .provider
-        .update_interaction(
-            setup.interaction_id,
-            UpdateInteractionRequest {
-                ecosystem_data: Some(ecosystem_data),
-                ..Default::default()
-            },
-        )
-        .await
-        .unwrap();
-
-    let result = setup
-        .provider
-        .get_interaction(&setup.interaction_id, None)
-        .await
-        .unwrap();
-    assert_eq!(
-        &EcosystemDetection::Applicable(candidates),
-        result.ecosystem_data.detection()
+    let mut outcomes = EcosystemOutcomes::default();
+    outcomes.record(EcosystemId::from("EUDI"), Ok(()));
+    outcomes.record(
+        EcosystemId::from("OTHER"),
+        Err(HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0477,
+            message: "rejected".to_string(),
+        }),
     );
-}
-
-#[tokio::test]
-async fn test_narrowing_to_no_candidate_is_not_pending() {
-    let setup = setup_with_interaction().await;
 
     let mut ecosystem_data = InteractionEcosystems::default();
-    ecosystem_data.set_detection(EcosystemDetection::Applicable(vec![]));
+    ecosystem_data.merge_outcomes(&outcomes);
 
     setup
         .provider
@@ -304,14 +285,15 @@ async fn test_narrowing_to_no_candidate_is_not_pending() {
         .await
         .unwrap();
 
-    // an exhausted candidate list is a verdict, not "detection has not run yet"
     let result = setup
         .provider
         .get_interaction(&setup.interaction_id, None)
         .await
         .unwrap();
+    assert_eq!(&outcomes, result.ecosystem_data.outcomes());
+    // no ecosystem left is a result, not the same as no step having run
     assert_eq!(
-        &EcosystemDetection::Applicable(vec![]),
-        result.ecosystem_data.detection()
+        vec![EcosystemId::from("EUDI")],
+        result.ecosystem_data.outcomes().applicable()
     );
 }

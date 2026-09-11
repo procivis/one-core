@@ -7,6 +7,7 @@ use shared_types::{EcosystemId, InteractionId, NonceId};
 use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
 
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
 
@@ -26,7 +27,7 @@ pub struct Interaction {
     /// the ecosystem this interaction runs under, once committed: either the one the user picked,
     /// or what autodetection settled on in the last step that could narrow it down
     pub ecosystem: Option<EcosystemId>,
-    /// ecosystem state carried across the steps of the interaction: how far autodetection got,
+    /// ecosystem state carried across the steps of the interaction: the outcome of every step,
     /// plus the data the ecosystem providers manage themselves
     pub ecosystem_data: InteractionEcosystems,
 }
@@ -35,39 +36,12 @@ pub struct Interaction {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionEcosystems {
-    /// Information about the state of autodetection
-    #[serde(default, skip_serializing_if = "EcosystemDetection::is_pending")]
-    detection: EcosystemDetection,
+    /// Trust is resolved early but only reported when the interaction ends, so it is kept here
+    /// in between. The ecosystems still trusted here are the ones autodetection still allows.
+    #[serde(default, skip_serializing_if = "EcosystemOutcomes::is_empty")]
+    outcomes: EcosystemOutcomes,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     data: HashMap<EcosystemId, serde_json::Value>,
-}
-
-/// How far ecosystem autodetection has got on an interaction.
-///
-/// Autodetection only: an interaction whose [`Interaction::ecosystem`] is set runs under that
-/// commitment and never consults this.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum EcosystemDetection {
-    /// autodetection has not run yet
-    #[default]
-    Pending,
-    /// ecosystems still applicable; empty once none are left, and nothing will be assigned
-    Applicable(Vec<EcosystemId>),
-}
-
-impl EcosystemDetection {
-    /// Ecosystems still applicable, empty unless detection ran and found any.
-    pub fn applicable(&self) -> &[EcosystemId] {
-        match self {
-            Self::Applicable(candidates) => candidates,
-            Self::Pending => &[],
-        }
-    }
-
-    pub fn is_pending(&self) -> bool {
-        matches!(self, Self::Pending)
-    }
 }
 
 impl InteractionEcosystems {
@@ -82,22 +56,25 @@ impl InteractionEcosystems {
             .unwrap_or_default()
     }
 
-    /// Serialize back into the representation stored on the interaction, `None` if neither
-    /// detection nor any ecosystem has stored anything.
+    /// Serialize back into the representation stored on the interaction, `None` if no step and
+    /// no ecosystem has stored anything.
     pub fn into_stored(self) -> Result<Option<Vec<u8>>, serde_json::Error> {
-        if self.detection.is_pending() && self.data.is_empty() {
+        if self.outcomes.is_empty() && self.data.is_empty() {
             return Ok(None);
         }
 
         serde_json::to_vec(&self).map(Some)
     }
 
-    pub fn detection(&self) -> &EcosystemDetection {
-        &self.detection
+    pub fn outcomes(&self) -> &EcosystemOutcomes {
+        &self.outcomes
     }
 
-    pub fn set_detection(&mut self, detection: EcosystemDetection) {
-        self.detection = detection;
+    /// Returns false when nothing changed, so the caller can skip the write.
+    pub fn merge_outcomes(&mut self, outcomes: &EcosystemOutcomes) -> bool {
+        let before = self.outcomes.to_owned();
+        self.outcomes.merge(outcomes);
+        self.outcomes != before
     }
 
     /// Read the slot of `ecosystem`, `None` if the ecosystem has not stored anything yet.
@@ -153,6 +130,8 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
+    use crate::error::ErrorCode;
+    use crate::model::history::HistoryErrorMetadata;
 
     #[derive(Debug, PartialEq, Serialize, Deserialize)]
     struct Slot {
@@ -209,40 +188,60 @@ mod tests {
     }
 
     #[test]
-    fn test_detection_survives_a_round_trip_without_any_ecosystem_data() {
+    fn test_narrowing_to_nothing_is_distinct_from_no_step_having_run() {
         let mut ecosystem_data = InteractionEcosystems::default();
-        ecosystem_data.set_detection(EcosystemDetection::Applicable(vec![EcosystemId::from(
-            "EUDI",
-        )]));
+        let mut only_candidate = EcosystemOutcomes::default();
+        only_candidate.record(
+            EcosystemId::from("EUDI"),
+            Err(HistoryErrorMetadata {
+                error_code: ErrorCode::BR_0477,
+                message: "rejected".to_string(),
+            }),
+        );
+        ecosystem_data.merge_outcomes(&only_candidate);
 
         let stored = ecosystem_data.into_stored().unwrap();
         let ecosystem_data = InteractionEcosystems::from_stored(stored);
 
-        assert_eq!(
-            &EcosystemDetection::Applicable(vec![EcosystemId::from("EUDI")]),
-            ecosystem_data.detection()
-        );
+        // no ecosystem left is a result, not the same as no step having run
+        assert!(ecosystem_data.outcomes().applicable().is_empty());
+        assert!(!ecosystem_data.outcomes().is_empty());
     }
 
     #[test]
-    fn test_narrowing_to_nothing_is_distinct_from_pending() {
+    fn test_outcomes_survive_a_round_trip_and_fold_across_steps() {
         let mut ecosystem_data = InteractionEcosystems::default();
-        ecosystem_data.set_detection(EcosystemDetection::Applicable(vec![]));
+        let mut first = EcosystemOutcomes::default();
+        first.record(EcosystemId::from("EUDI"), Ok(()));
+        first.record(EcosystemId::from("OTHER"), Ok(()));
+
+        assert!(ecosystem_data.merge_outcomes(&first));
+        // the same step folded in again changes nothing, so nothing is written back
+        assert!(!ecosystem_data.merge_outcomes(&first));
 
         let stored = ecosystem_data.into_stored().unwrap();
-        let ecosystem_data = InteractionEcosystems::from_stored(stored);
+        let mut ecosystem_data = InteractionEcosystems::from_stored(stored);
+        assert_eq!(&first, ecosystem_data.outcomes());
 
-        // narrowing down to nothing is a verdict, and must not read back as "not run yet"
-        assert_eq!(
-            &EcosystemDetection::Applicable(vec![]),
-            ecosystem_data.detection()
+        // a later step rejects one of them, and that wins over the earlier pass
+        let mut second = EcosystemOutcomes::default();
+        second.record(
+            EcosystemId::from("EUDI"),
+            Err(HistoryErrorMetadata {
+                error_code: ErrorCode::BR_0477,
+                message: "rejected".to_string(),
+            }),
         );
-        assert!(!ecosystem_data.detection().is_pending());
-        assert!(ecosystem_data.detection().applicable().is_empty());
+        assert!(ecosystem_data.merge_outcomes(&second));
+
+        assert_eq!(
+            vec![EcosystemId::from("OTHER")],
+            ecosystem_data.outcomes().applicable()
+        );
     }
 
     #[test]
-    fn test_absent_or_legacy_payload_reads_as_pending_and_empty() {
+    fn test_absent_or_legacy_payload_reads_as_empty() {
         assert_eq!(
             InteractionEcosystems::default(),
             InteractionEcosystems::from_stored(None)
@@ -251,7 +250,7 @@ mod tests {
         // pre-map payload: a bare object that is not the ecosystem state
         let legacy = serde_json::to_vec(&slot("legacy")).unwrap();
         let ecosystem_data = InteractionEcosystems::from_stored(Some(legacy));
-        assert!(ecosystem_data.detection().is_pending());
+        assert!(ecosystem_data.outcomes().is_empty());
         assert!(
             ecosystem_data
                 .get::<Slot>(&EcosystemId::from("EUDI"))

@@ -12,6 +12,7 @@ use time::OffsetDateTime;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
@@ -24,12 +25,22 @@ pub enum HistoryMetadata {
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadata),
     TrustResolution(TrustResolutionMetadata),
+    EcosystemsResolved(EcosystemOutcomes),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HistoryErrorMetadata {
     pub error_code: ErrorCode,
     pub message: String,
+}
+
+impl<T: ErrorCodeMixin> From<T> for HistoryErrorMetadata {
+    fn from(value: T) -> Self {
+        Self {
+            error_code: value.error_code(),
+            message: value.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -66,10 +77,7 @@ impl TrustResolutionResult {
 
 impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {
     fn from(value: T) -> Self {
-        Self::ErrorMetadata(HistoryErrorMetadata {
-            error_code: value.error_code(),
-            message: value.to_string(),
-        })
+        Self::ErrorMetadata(value.into())
     }
 }
 
@@ -140,6 +148,7 @@ pub enum HistoryAction {
     WrpRcReceived,
     WrpNrReceived,
     TrustResolved,
+    EcosystemsResolved,
     Refreshed,
     Signed,
 }

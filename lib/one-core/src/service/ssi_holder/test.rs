@@ -24,8 +24,12 @@ use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::history::{
+    HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
-use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::interaction::{Interaction, InteractionEcosystems, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -58,6 +62,7 @@ use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -136,9 +141,190 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_| Ok(Arc::new(verification_protocol_mock)));
 
+    // rejecting ends the interaction, so the ecosystems get recorded
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |_, _| {
+            Ok(Interaction {
+                id: interaction_id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: None,
+                organisation: dummy_organisation(None).into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            })
+        });
+
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
+        interaction_repository: Arc::new(interaction_repository),
+        ..mock_ssi_holder_service()
+    };
+
+    service.reject_proof_request(&interaction_id).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_ending_an_interaction_records_what_the_ecosystems_made_of_it() {
+    let interaction_id = Uuid::new_v4().into();
+    let proof_id = Uuid::new_v4().into();
+    let protocol = "OPENID4VP_FINAL1";
+
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof_by_interaction_id()
+        .once()
+        .return_once(move |_| {
+            Ok(Proof {
+                id: proof_id,
+                protocol: protocol.to_string(),
+                state: ProofStateEnum::Requested,
+                ..dummy_proof()
+            })
+        });
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .return_once(move |_, _, _| Ok(()));
+
+    let mut verification_protocol_mock = MockVerificationProtocol::default();
+    verification_protocol_mock
+        .expect_holder_reject_proof()
+        .once()
+        .return_once(move |_| Ok(()));
+    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
+    verification_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Ok(Arc::new(verification_protocol_mock)));
+
+    // one ecosystem trusted the verifier and the other rejected it; both end up in the event
+    let mut outcomes = EcosystemOutcomes::default();
+    outcomes.record(EcosystemId::from("EUDI"), Ok(()));
+    outcomes.record(
+        EcosystemId::from("OTHER"),
+        Err(HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0477,
+            message: "not on the trust list".to_string(),
+        }),
+    );
+    let mut ecosystem_data = InteractionEcosystems::default();
+    ecosystem_data.merge_outcomes(&outcomes);
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |_, _| {
+            Ok(Interaction {
+                id: interaction_id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: None,
+                organisation: dummy_organisation(None).into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: ecosystem_data.to_owned(),
+            })
+        });
+
+    let expected = outcomes.to_owned();
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(move |history| {
+            assert_eq!(HistoryAction::EcosystemsResolved, history.action);
+            assert_eq!(HistoryEntityType::Proof, history.entity_type);
+            assert_eq!(Some(proof_id.into()), history.entity_id);
+
+            let Some(HistoryMetadata::EcosystemsResolved(recorded)) = &history.metadata else {
+                panic!("the event carries the outcome of every consulted ecosystem");
+            };
+            assert_eq!(expected, *recorded);
+            true
+        })
+        .return_once(|history| Ok(history.id));
+
+    let service = SSIHolderService {
+        proof_repository: Arc::new(proof_repository),
+        verification_protocol_provider: Arc::new(verification_protocol_provider),
+        interaction_repository: Arc::new(interaction_repository),
+        history_repository: Arc::new(history_repository),
+        ..mock_ssi_holder_service()
+    };
+
+    service.reject_proof_request(&interaction_id).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_an_interaction_without_ecosystems_records_nothing() {
+    let interaction_id = Uuid::new_v4().into();
+    let proof_id = Uuid::new_v4().into();
+    let protocol = "OPENID4VP_FINAL1";
+
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof_by_interaction_id()
+        .once()
+        .return_once(move |_| {
+            Ok(Proof {
+                id: proof_id,
+                protocol: protocol.to_string(),
+                state: ProofStateEnum::Requested,
+                ..dummy_proof()
+            })
+        });
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .return_once(move |_, _, _| Ok(()));
+
+    let mut verification_protocol_mock = MockVerificationProtocol::default();
+    verification_protocol_mock
+        .expect_holder_reject_proof()
+        .once()
+        .return_once(move |_| Ok(()));
+    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
+    verification_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Ok(Arc::new(verification_protocol_mock)));
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |_, _| {
+            Ok(Interaction {
+                id: interaction_id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: None,
+                organisation: dummy_organisation(None).into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            })
+        });
+
+    // no ecosystem was ever consulted, so there is nothing to report
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository.expect_create_history().never();
+
+    let service = SSIHolderService {
+        proof_repository: Arc::new(proof_repository),
+        verification_protocol_provider: Arc::new(verification_protocol_provider),
+        interaction_repository: Arc::new(interaction_repository),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -264,9 +450,29 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
         .once()
         .return_once(move |_| Ok(Arc::new(verification_protocol_mock)));
 
+    // rejecting ends the interaction, so the ecosystems get recorded
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |_, _| {
+            Ok(Interaction {
+                id: interaction_id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: None,
+                organisation: dummy_organisation(None).into(),
+                nonce_id: None,
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            })
+        });
+
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
+        interaction_repository: Arc::new(interaction_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -393,11 +599,8 @@ async fn test_accept_credential() {
             })
         });
 
-    // no ecosystem applies: the narrowing persists the empty candidate set
-    interaction_repository
-        .expect_update_interaction()
-        .once()
-        .returning(|_, _| Ok(()));
+    // no ecosystem selected, so nothing is consulted and the interaction is not touched
+    interaction_repository.expect_update_interaction().never();
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -543,6 +746,18 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
                 ecosystem_data: Default::default(),
             })
         });
+
+    // the committed ecosystem outcome is carried on the interaction
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .withf(|_, request| {
+            request
+                .ecosystem_data
+                .as_ref()
+                .is_some_and(|data| !data.outcomes().is_empty())
+        })
+        .returning(|_, _| Ok(()));
 
     // every issued configuration is validated against the committed ecosystem
     let mut ecosystem = MockEcosystem::new();
@@ -700,11 +915,8 @@ async fn test_accept_credential_with_did() {
             })
         });
 
-    // no ecosystem applies: the narrowing persists the empty candidate set
-    interaction_repository
-        .expect_update_interaction()
-        .once()
-        .returning(|_, _| Ok(()));
+    // no ecosystem selected, so nothing is consulted and the interaction is not touched
+    interaction_repository.expect_update_interaction().never();
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -814,11 +1026,8 @@ async fn test_accept_credential_batch() {
             })
         });
 
-    // no ecosystem applies: the narrowing persists the empty candidate set
-    interaction_repository
-        .expect_update_interaction()
-        .once()
-        .returning(|_, _| Ok(()));
+    // no ecosystem selected, so nothing is consulted and the interaction is not touched
+    interaction_repository.expect_update_interaction().never();
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -907,14 +1116,15 @@ async fn test_accept_credential_wrong_tx_code() {
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
+        // consulted again when the issuance ends, to record the ecosystems
         .expect_get_interaction()
-        .return_once(move |_, _| {
+        .returning(move |_, _| {
             Ok(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: organisation.into(),
+                organisation: organisation.clone().into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -1160,11 +1370,8 @@ async fn test_continue_issuance() {
                 ecosystem_data: Default::default(),
             })
         });
-    // autodetection records that no ecosystem applies, so a later step does not re-detect
-    interaction_repository
-        .expect_update_interaction()
-        .once()
-        .returning(|_, _| Ok(()));
+    // no ecosystem selected, so nothing is consulted and the interaction is not touched
+    interaction_repository.expect_update_interaction().never();
 
     let mut issuance_protocol = MockIssuanceProtocol::new();
     issuance_protocol
@@ -1332,6 +1539,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         identifier_creator: Arc::new(MockIdentifierCreator::new()),
         transaction_manager: Arc::new(NoTransactionManager),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
+        history_repository: Arc::new(MockHistoryRepository::new()),
     }
 }
 
@@ -1569,14 +1777,15 @@ async fn test_accept_interaction_credential_org_mismatch() {
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
+        // consulted again when the issuance ends, to record the ecosystems
         .expect_get_interaction()
-        .return_once(move |_, _| {
+        .returning(move |_, _| {
             Ok(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: organisation.into(),
+                organisation: organisation.clone().into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,

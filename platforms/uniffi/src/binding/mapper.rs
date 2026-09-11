@@ -68,8 +68,8 @@ use super::credential_schema::{
 };
 use super::did::{DidListQueryBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use super::history::{
-    HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryListQueryBindingDTO,
-    HistoryMetadataBinding, MultiLangStringBindingDTO,
+    EcosystemOutcomeBindingDTO, HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO,
+    HistoryListQueryBindingDTO, HistoryMetadataBinding, MultiLangStringBindingDTO,
 };
 use super::identifier::{CreateIdentifierDidRequestBindingDTO, IdentifierListQueryBindingDTO};
 use super::interaction::{
@@ -391,6 +391,30 @@ fn convert_history_metadata(
             HistoryMetadataResponse::TrustResolution(value) => {
                 Some(HistoryMetadataBinding::TrustResolution {
                     value: value.into(),
+                })
+            }
+            HistoryMetadataResponse::EcosystemsResolved(value) => {
+                Some(HistoryMetadataBinding::EcosystemsResolved {
+                    value: value
+                        .iter()
+                        .map(|(ecosystem, outcome)| {
+                            (
+                                ecosystem.to_string(),
+                                EcosystemOutcomeBindingDTO {
+                                    result: outcome.result.into(),
+                                    error: outcome.error.to_owned().map(|error| {
+                                        HistoryErrorMetadataBindingDTO {
+                                            error_code: Into::<&'static str>::into(
+                                                error.error_code,
+                                            )
+                                            .to_string(),
+                                            message: error.message,
+                                        }
+                                    }),
+                                },
+                            )
+                        })
+                        .collect(),
                 })
             }
         },

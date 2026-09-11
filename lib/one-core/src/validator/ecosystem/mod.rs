@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-
 use shared_types::{EcosystemId, InteractionId};
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::interaction::{EcosystemDetection, Interaction, UpdateInteractionRequest};
+use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::history::HistoryErrorMetadata;
+use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::provider::ProviderExt;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
@@ -17,8 +17,9 @@ mod test;
 pub(crate) enum EcosystemValidationError {
     #[error("No ecosystem selected")]
     NoEcosystemSelected,
+    /// no candidate validated the artifact; the reason each gave is kept
     #[error("No ecosystem detected")]
-    NoEcosystemDetected,
+    NoEcosystemDetected(EcosystemOutcomes),
     #[error("Ecosystem not permitted")]
     EcosystemNotPermitted,
     #[error("Ecosystem `{0}` already committed on this interaction")]
@@ -31,7 +32,7 @@ pub(crate) enum EcosystemValidationError {
 impl ErrorCodeMixin for EcosystemValidationError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::NoEcosystemSelected | Self::NoEcosystemDetected => ErrorCode::BR_0476,
+            Self::NoEcosystemSelected | Self::NoEcosystemDetected(_) => ErrorCode::BR_0476,
             Self::EcosystemNotPermitted => ErrorCode::BR_0475,
             Self::EcosystemAlreadyCommitted(_) => ErrorCode::BR_0477,
             Self::Nested(nested) => nested.error_code(),
@@ -107,7 +108,7 @@ pub(crate) async fn commit_selected_ecosystem(
     selection: &EcosystemId,
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
-) -> Result<(), EcosystemValidationError> {
+) -> Result<EcosystemOutcomes, EcosystemValidationError> {
     let interaction = load(interaction_id, interaction_repository).await?;
 
     if let Some(committed) = interaction.ecosystem {
@@ -116,7 +117,8 @@ pub(crate) async fn commit_selected_ecosystem(
         ));
     }
 
-    validate_committed(&interaction, selection, artifact, ecosystem_provider).await?;
+    let outcomes =
+        validate_committed(&interaction, selection, artifact, ecosystem_provider).await?;
 
     interaction_repository
         .update_interaction(
@@ -129,7 +131,9 @@ pub(crate) async fn commit_selected_ecosystem(
         .await
         .error_while("committing ecosystem")?;
 
-    Ok(())
+    persist_step(interaction_id, &outcomes, interaction_repository).await?;
+
+    Ok(outcomes)
 }
 
 /// Carry the ecosystem of an interaction through one step.
@@ -143,17 +147,26 @@ pub(crate) async fn validate_ecosystem_step(
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
     role: SelectionRole,
-) -> Result<(), EcosystemValidationError> {
-    step(
+) -> Result<EcosystemOutcomes, EcosystemValidationError> {
+    Ok(step(
         interaction_id,
         artifact,
         interaction_repository,
         ecosystem_provider,
         role,
     )
-    .await?;
+    .await?
+    .into_outcomes())
+}
 
-    Ok(())
+/// The ecosystem an interaction resolves to from one artifact.
+#[derive(Debug)]
+pub(crate) struct EcosystemResolution {
+    /// the ecosystem the interaction ends up committed to
+    pub committed: Option<EcosystemId>,
+    /// the outcome of each consulted ecosystem
+    #[cfg_attr(not(test), expect(dead_code))]
+    pub outcomes: EcosystemOutcomes,
 }
 
 /// As [`validate_ecosystem_step`], for the last artifact that adds information: whatever
@@ -164,8 +177,8 @@ pub(crate) async fn resolve_ecosystem(
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
     role: SelectionRole,
-) -> Result<Option<EcosystemId>, EcosystemValidationError> {
-    let applicable = match step(
+) -> Result<EcosystemResolution, EcosystemValidationError> {
+    let outcomes = match step(
         interaction_id,
         artifact,
         interaction_repository,
@@ -175,12 +188,17 @@ pub(crate) async fn resolve_ecosystem(
     .await?
     {
         // already committed, by the user selecting it or by an earlier step
-        StepOutcome::Committed(ecosystem) => return Ok(Some(ecosystem)),
-        StepOutcome::Applicable(applicable) => applicable,
+        StepOutcome::Committed(ecosystem, outcomes) => {
+            return Ok(EcosystemResolution {
+                committed: Some(ecosystem),
+                outcomes,
+            });
+        }
+        StepOutcome::Applicable(outcomes) => outcomes,
     };
 
     // commit the first still applicable ecosystem
-    let committed = applicable.into_iter().next();
+    let committed = outcomes.applicable().into_iter().next();
     interaction_repository
         .update_interaction(
             interaction_id,
@@ -192,7 +210,10 @@ pub(crate) async fn resolve_ecosystem(
         .await
         .error_while("committing ecosystem")?;
 
-    Ok(committed)
+    Ok(EcosystemResolution {
+        committed,
+        outcomes,
+    })
 }
 
 /// The ecosystems an interaction resolves to from its credentials.
@@ -202,6 +223,9 @@ pub(crate) struct ResolvedEcosystems {
     pub committed: Option<EcosystemId>,
     /// per credential (indexed as the artifacts): the ecosystem providing its trust information
     pub per_credential: Vec<Option<EcosystemId>>,
+    /// per credential (indexed as the artifacts): the outcome of each consulted ecosystem
+    #[cfg_attr(not(test), expect(dead_code))]
+    pub outcomes: Vec<EcosystemOutcomes>,
 }
 
 /// Resolve the ecosystems of an interaction from its credentials, one artifact per credential.
@@ -220,15 +244,26 @@ pub(crate) async fn resolve_credential_ecosystems(
 
     // if ecosystem is commited, all credentials must match
     if let Some(committed) = interaction.ecosystem.to_owned() {
+        let mut outcomes = Vec::with_capacity(artifacts.len());
         for artifact in artifacts {
             // TODO ONE-10972: find a nicer way to do this
             let interaction = load(interaction_id, interaction_repository).await?;
-            validate_committed(&interaction, &committed, artifact, ecosystem_provider).await?;
+            outcomes.push(
+                validate_committed(&interaction, &committed, artifact, ecosystem_provider).await?,
+            );
         }
+
+        persist_step(
+            interaction_id,
+            &EcosystemOutcomes::merged(&outcomes),
+            interaction_repository,
+        )
+        .await?;
 
         return Ok(ResolvedEcosystems {
             per_credential: vec![Some(committed.to_owned()); artifacts.len()],
             committed: Some(committed),
+            outcomes,
         });
     }
 
@@ -236,6 +271,7 @@ pub(crate) async fn resolve_credential_ecosystems(
         return Ok(ResolvedEcosystems {
             committed: None,
             per_credential: vec![],
+            outcomes: vec![],
         });
     }
 
@@ -251,7 +287,7 @@ pub(crate) async fn resolve_credential_ecosystems(
         artifacts,
         interaction_repository,
         ecosystem_provider,
-        outcomes: HashMap::new(),
+        per_artifact: vec![EcosystemOutcomes::default(); artifacts.len()],
     };
 
     // the interaction level: a candidate stays applicable only if it validates every credential
@@ -263,10 +299,17 @@ pub(crate) async fn resolve_credential_ecosystems(
     }
 
     if applicable.is_empty() && ecosystem_enforced(&configuration, role) {
-        return Err(EcosystemValidationError::NoEcosystemDetected);
+        return Err(EcosystemValidationError::NoEcosystemDetected(
+            EcosystemOutcomes::merged(&outcomes.per_artifact),
+        ));
     }
 
-    persist_detection(interaction_id, &applicable, interaction_repository).await?;
+    persist_step(
+        interaction_id,
+        &EcosystemOutcomes::merged(&outcomes.per_artifact),
+        interaction_repository,
+    )
+    .await?;
 
     // commit the first still applicable ecosystem
     if let Some(committed) = applicable.into_iter().next() {
@@ -285,6 +328,7 @@ pub(crate) async fn resolve_credential_ecosystems(
         return Ok(ResolvedEcosystems {
             per_credential: vec![Some(committed.to_owned()); artifacts.len()],
             committed: Some(committed),
+            outcomes: outcomes.per_artifact,
         });
     }
 
@@ -305,6 +349,7 @@ pub(crate) async fn resolve_credential_ecosystems(
     Ok(ResolvedEcosystems {
         committed: None,
         per_credential,
+        outcomes: outcomes.per_artifact,
     })
 }
 
@@ -314,8 +359,8 @@ struct ValidationOutcomes<'a> {
     artifacts: &'a [ProtocolArtifact<'a>],
     interaction_repository: &'a dyn InteractionRepository,
     ecosystem_provider: &'a dyn EcosystemDirectory,
-    // whether the ecosystem validated the artifact at the given position in `artifacts`
-    outcomes: HashMap<(EcosystemId, usize), bool>,
+    // per artifact (indexed as `artifacts`): the outcome of each consulted ecosystem
+    per_artifact: Vec<EcosystemOutcomes>,
 }
 
 impl ValidationOutcomes<'_> {
@@ -339,43 +384,58 @@ impl ValidationOutcomes<'_> {
         ecosystem_id: &EcosystemId,
         index: usize,
     ) -> Result<bool, EcosystemValidationError> {
-        let key = (ecosystem_id.to_owned(), index);
-        if let Some(outcome) = self.outcomes.get(&key) {
-            return Ok(*outcome);
-        }
-        let Some(artifact) = self.artifacts.get(index) else {
+        let Some((artifact, recorded)) = self
+            .artifacts
+            .get(index)
+            .zip(self.per_artifact.get_mut(index))
+        else {
             return Ok(false);
         };
+        if let Some(outcome) = recorded.get(ecosystem_id) {
+            return Ok(outcome.is_trusted());
+        }
 
-        let outcome = match self.ecosystem_provider.get(ecosystem_id) {
+        let outcome: Result<(), HistoryErrorMetadata> = match self
+            .ecosystem_provider
+            .get(ecosystem_id)
+        {
             Ok(ecosystem) => {
                 // TODO ONE-10972: find a nicer way to do this
                 let interaction = load(self.interaction_id, self.interaction_repository).await?;
-                match ecosystem.validate_interaction(artifact, &interaction).await {
-                    Ok(()) => true,
-                    Err(err) => {
-                        tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the credential");
-                        false
-                    }
-                }
+                ecosystem
+                        .validate_interaction(artifact, &interaction)
+                        .await
+                        .map_err(|err| {
+                            tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the credential");
+                            err.into()
+                        })
             }
             Err(err) => {
                 tracing::warn!(ecosystem = %ecosystem_id, %err, "Ecosystem unavailable, dropping candidate");
-                false
+                Err(err.into())
             }
         };
 
-        self.outcomes.insert(key, outcome);
-        Ok(outcome)
+        let validated = outcome.is_ok();
+        recorded.record(ecosystem_id.to_owned(), outcome);
+        Ok(validated)
     }
 }
 
 /// Where one step leaves the ecosystem of an interaction.
 enum StepOutcome {
     /// the interaction runs under this ecosystem, and it validated the artifact
-    Committed(EcosystemId),
-    /// nothing is committed yet: the ecosystems autodetection still considers applicable
-    Applicable(Vec<EcosystemId>),
+    Committed(EcosystemId, EcosystemOutcomes),
+    /// nothing is committed yet; the candidates that validated the artifact stay applicable
+    Applicable(EcosystemOutcomes),
+}
+
+impl StepOutcome {
+    fn into_outcomes(self) -> EcosystemOutcomes {
+        match self {
+            Self::Committed(_, outcomes) | Self::Applicable(outcomes) => outcomes,
+        }
+    }
 }
 
 /// The step itself: validate what is committed, or narrow if nothing is.
@@ -389,8 +449,10 @@ async fn step(
     let interaction = load(interaction_id, interaction_repository).await?;
 
     if let Some(committed) = &interaction.ecosystem {
-        validate_committed(&interaction, committed, artifact, ecosystem_provider).await?;
-        return Ok(StepOutcome::Committed(committed.to_owned()));
+        let outcomes =
+            validate_committed(&interaction, committed, artifact, ecosystem_provider).await?;
+        persist_step(interaction_id, &outcomes, interaction_repository).await?;
+        return Ok(StepOutcome::Committed(committed.to_owned(), outcomes));
     }
 
     narrow(
@@ -410,7 +472,7 @@ async fn validate_committed(
     ecosystem_id: &EcosystemId,
     artifact: &ProtocolArtifact<'_>,
     ecosystem_provider: &dyn EcosystemDirectory,
-) -> Result<(), EcosystemValidationError> {
+) -> Result<EcosystemOutcomes, EcosystemValidationError> {
     let permitted = interaction
         .organisation
         .as_ref()
@@ -428,7 +490,7 @@ async fn validate_committed(
         .await
         .error_while("validating interaction")?;
 
-    Ok(())
+    Ok(EcosystemOutcomes::validated(ecosystem_id.to_owned()))
 }
 
 /// The narrowing itself, persisting the ecosystems that are still applicable.
@@ -438,7 +500,7 @@ async fn narrow(
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
     role: SelectionRole,
-) -> Result<Vec<EcosystemId>, EcosystemValidationError> {
+) -> Result<EcosystemOutcomes, EcosystemValidationError> {
     let interaction_id = interaction.id;
     let configuration = interaction
         .organisation
@@ -448,7 +510,7 @@ async fn narrow(
         .to_owned();
 
     let candidates = remaining_candidates(interaction, &configuration);
-    let applicable = narrow_candidates(
+    let outcomes = narrow_candidates(
         interaction_id,
         &candidates,
         artifact,
@@ -457,28 +519,29 @@ async fn narrow(
     )
     .await?;
 
-    if applicable.is_empty() && ecosystem_enforced(&configuration, role) {
-        return Err(EcosystemValidationError::NoEcosystemDetected);
+    if outcomes.applicable().is_empty() && ecosystem_enforced(&configuration, role) {
+        return Err(EcosystemValidationError::NoEcosystemDetected(outcomes));
     }
 
-    persist_detection(interaction_id, &applicable, interaction_repository).await?;
+    persist_step(interaction_id, &outcomes, interaction_repository).await?;
 
-    Ok(applicable)
+    Ok(outcomes)
 }
 
-/// Persist what narrowing left applicable, unless unchanged.
-async fn persist_detection(
+/// Persist the outcome of a step, unless nothing changed.
+///
+/// This is the narrowing state: the ecosystems still trusted are the ones still allowed. It is
+/// also what gets reported when the interaction ends, which is usually a later step.
+async fn persist_step(
     interaction_id: InteractionId,
-    applicable: &[EcosystemId],
+    outcomes: &EcosystemOutcomes,
     interaction_repository: &dyn InteractionRepository,
 ) -> Result<(), EcosystemValidationError> {
     // Reload, as ecosystem validation may persist the ecosystems' own interaction data
     // TODO ONE-10972: find a nicer way to do this
     let mut interaction = load(interaction_id, interaction_repository).await?;
 
-    let detection = EcosystemDetection::Applicable(applicable.to_owned());
-    if interaction.ecosystem_data.detection() != &detection {
-        interaction.ecosystem_data.set_detection(detection);
+    if interaction.ecosystem_data.merge_outcomes(outcomes) {
         interaction_repository
             .update_interaction(
                 interaction_id,
@@ -512,17 +575,19 @@ fn remaining_candidates(
 ) -> Vec<EcosystemId> {
     let selected = &configuration.selected_ecosystems;
 
-    match interaction.ecosystem_data.detection() {
-        EcosystemDetection::Pending => selected.to_owned(),
-        EcosystemDetection::Applicable(applicable) => {
-            let mut candidates = applicable.to_owned();
-            candidates.retain(|ecosystem| selected.contains(ecosystem));
-            candidates
-        }
+    let outcomes = interaction.ecosystem_data.outcomes();
+    if outcomes.is_empty() {
+        // no step has run yet, so nothing has been narrowed down
+        return selected.to_owned();
     }
+
+    let mut candidates = outcomes.applicable();
+    candidates.retain(|ecosystem| selected.contains(ecosystem));
+    candidates
 }
 
-/// Candidates that still validate the artifact of this step.
+/// Ask every candidate about the artifact of this step. The ones that validate it stay
+/// applicable.
 ///
 /// Every candidate is consulted: which ecosystems remain applicable can only be decided once the
 /// interaction completes, so narrowing may not stop at the first one that happens to validate.
@@ -532,14 +597,15 @@ async fn narrow_candidates(
     artifact: &ProtocolArtifact<'_>,
     interaction_repository: &dyn InteractionRepository,
     ecosystem_provider: &dyn EcosystemDirectory,
-) -> Result<Vec<EcosystemId>, EcosystemValidationError> {
-    let mut applicable = Vec::with_capacity(candidates.len());
+) -> Result<EcosystemOutcomes, EcosystemValidationError> {
+    let mut outcomes = EcosystemOutcomes::default();
 
     for ecosystem_id in candidates {
         let ecosystem = match ecosystem_provider.get(ecosystem_id) {
             Ok(ecosystem) => ecosystem,
             Err(err) => {
                 tracing::warn!(ecosystem = %ecosystem_id, %err, "Ecosystem unavailable, dropping candidate");
+                outcomes.record(ecosystem_id.to_owned(), Err(err.into()));
                 continue;
             }
         };
@@ -552,13 +618,15 @@ async fn narrow_candidates(
             .await
             .error_while("loading interaction")?;
 
-        match ecosystem.validate_interaction(artifact, &interaction).await {
-            Ok(()) => applicable.push(ecosystem_id.to_owned()),
-            Err(err) => {
+        let outcome = ecosystem
+            .validate_interaction(artifact, &interaction)
+            .await
+            .map_err(|err| {
                 tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the artifact, dropping candidate");
-            }
-        }
+                err.into()
+            });
+        outcomes.record(ecosystem_id.to_owned(), outcome);
     }
 
-    Ok(applicable)
+    Ok(outcomes)
 }

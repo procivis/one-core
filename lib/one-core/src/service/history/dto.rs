@@ -8,6 +8,7 @@ use time::OffsetDateTime;
 
 use crate::error::ErrorCode;
 use crate::model::common::GetListResponse;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
     HistorySearchEnum, HistorySource, TrustResolutionMetadata, TrustResolutionResult,
@@ -24,6 +25,7 @@ pub enum HistoryMetadataResponse {
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadataDTO),
     TrustResolution(TrustResolutionMetadataDTO),
+    EcosystemsResolved(EcosystemOutcomes),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]

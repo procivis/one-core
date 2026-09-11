@@ -18,6 +18,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
+use crate::dto::common::ecosystem::EcosystemOutcomesRestDTO;
 use crate::dto::common::trust_detail::TrustResolutionResultRestEnum;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::credential::dto::{
@@ -136,6 +137,8 @@ pub(crate) enum HistoryMetadataRestEnum {
     WalletRelyingParty(#[try_from(infallible)] WalletRelyingPartyMetadataRestDTO),
     /// The trust resolution verdict.
     TrustResolution(#[try_from(infallible)] TrustResolutionMetadataRestDTO),
+    /// One entry per ecosystem provider consulted, keyed by provider id.
+    EcosystemsResolved(#[try_from(infallible)] EcosystemOutcomesRestDTO),
 }
 
 #[derive(Debug, Clone, Serialize, From, ToSchema)]
@@ -220,6 +223,7 @@ pub enum HistoryAction {
     WrpRcReceived,
     WrpNrReceived,
     TrustResolved,
+    EcosystemsResolved,
     Refreshed,
     Signed,
 }

@@ -65,7 +65,8 @@ pub(super) async fn resolve_verifier_and_trust(
         SelectionRole::Holder,
     )
     .await
-    .error_while("resolving ecosystem")?;
+    .error_while("resolving ecosystem")?
+    .committed;
 
     let identifier = if let Some(verifier_details) = verifier_details {
         let (identifier, _) = identifier_creator

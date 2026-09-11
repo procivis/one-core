@@ -9,6 +9,7 @@ pub mod credential_schema;
 pub mod credential_schema_format;
 pub mod credential_schema_format_claim_schema;
 pub mod did;
+pub mod ecosystem;
 pub mod history;
 pub mod identifier;
 pub mod identifier_trust_information;

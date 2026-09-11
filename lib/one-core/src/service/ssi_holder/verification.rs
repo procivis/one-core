@@ -31,7 +31,7 @@ use crate::model::credential::{
     SortableCredentialColumn, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::history::HistoryErrorMetadata;
+use crate::model::history::{HistoryEntityType, HistoryErrorMetadata};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::Organisation;
@@ -99,6 +99,12 @@ impl SSIHolderService {
             .await
             .error_while("updating proof")?;
 
+        self.record_ecosystems_resolved(
+            interaction_id,
+            &[(proof.id.into(), HistoryEntityType::Proof)],
+        )
+        .await;
+
         tracing::info!("Rejected proof request {}", proof.id);
         Ok(())
     }
@@ -109,6 +115,7 @@ impl SSIHolderService {
         verification_protocol: &dyn VerificationProtocol,
         credential_presentations: Vec<FormattedCredentialPresentation>,
         submitted_claims: Vec<Claim>,
+        interaction_id: &InteractionId,
     ) -> Result<(), HolderServiceError> {
         let submit_result = verification_protocol
             .holder_submit_proof(proof, credential_presentations)
@@ -152,6 +159,13 @@ impl SSIHolderService {
             )
             .await
             .error_while("updating proof")?;
+
+        // the proof is final here, so a retry cannot record a second event
+        self.record_ecosystems_resolved(
+            interaction_id,
+            &[(proof.id.into(), HistoryEntityType::Proof)],
+        )
+        .await;
 
         self.proof_repository
             .set_proof_claims(&proof.id, submitted_claims)
@@ -318,8 +332,10 @@ impl SSIHolderService {
             &*verification_protocol,
             credential_presentations,
             submitted_claims,
+            &request.interaction_id,
         )
         .await?;
+
         tracing::info!("Submitted presentation V2 for proof request {}", proof.id);
         Ok(())
     }
@@ -405,15 +421,18 @@ impl SSIHolderService {
                 .error_while("committing selected ecosystem")?;
                 Some(selection)
             }
-            None => resolve_ecosystem(
-                interaction_id,
-                &ecosystem_artifact,
-                self.interaction_repository.as_ref(),
-                self.ecosystem_provider.as_ref(),
-                SelectionRole::Holder,
-            )
-            .await
-            .error_while("resolving ecosystem")?,
+            None => {
+                resolve_ecosystem(
+                    interaction_id,
+                    &ecosystem_artifact,
+                    self.interaction_repository.as_ref(),
+                    self.ecosystem_provider.as_ref(),
+                    SelectionRole::Holder,
+                )
+                .await
+                .error_while("resolving ecosystem")?
+                .committed
+            }
         };
 
         proof.protocol = protocol.clone();

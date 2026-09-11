@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use one_core::model::ecosystem::EcosystemTrustResult;
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistorySearchEnum, SortableHistoryColumn,
     TrustResolutionResult,
@@ -84,6 +87,7 @@ pub enum HistoryActionBindingEnum {
     WrpRcReceived,
     WrpNrReceived,
     TrustResolved,
+    EcosystemsResolved,
     Refreshed,
     Signed,
 }
@@ -137,6 +141,26 @@ pub enum HistoryMetadataBinding {
     TrustResolution {
         value: TrustResolutionMetadataBindingDTO,
     },
+    /// One entry per ecosystem provider consulted, keyed by provider id.
+    EcosystemsResolved {
+        value: HashMap<String, EcosystemOutcomeBindingDTO>,
+    },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+#[uniffi(name = "EcosystemOutcome")]
+pub struct EcosystemOutcomeBindingDTO {
+    pub result: EcosystemTrustResultBindingEnum,
+    /// Why the provider did not trust the interaction. `None` when it did.
+    pub error: Option<HistoryErrorMetadataBindingDTO>,
+}
+
+#[derive(Debug, Clone, From, uniffi::Enum)]
+#[from(EcosystemTrustResult)]
+#[uniffi(name = "EcosystemTrustResult")]
+pub enum EcosystemTrustResultBindingEnum {
+    Trusted,
+    NotTrusted,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

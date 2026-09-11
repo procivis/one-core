@@ -27,6 +27,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
+use crate::model::history::HistoryEntityType;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
@@ -99,9 +100,13 @@ impl SSIHolderService {
             None
         };
 
+        // the issuance ends here, success or not, so this is where the ecosystems get recorded
         let response = self
             .accept_credential_final1(interaction_id, holder_binding_input, tx_code)
-            .await?;
+            .await;
+        self.record_issuance_ecosystems(&interaction_id, response.as_ref().ok())
+            .await;
+        let response = response?;
 
         tracing::info!(
             "Accepted issuance of credentials {:?} for interaction {interaction_id}",
@@ -587,6 +592,42 @@ impl SSIHolderService {
         Ok(())
     }
 
+    /// A failed issuance may have produced no credential. There is then nothing to attach the
+    /// record to, but the caller still gets the reason in the error response.
+    async fn record_issuance_ecosystems(
+        &self,
+        interaction_id: &InteractionId,
+        issued: Option<&IssuanceAcceptResponseDTO>,
+    ) {
+        let Some((outcomes, organisation_id)) = self.resolved_ecosystems(interaction_id).await
+        else {
+            return;
+        };
+
+        let credential_ids = match issued {
+            Some(response) => response.credential_ids.to_owned(),
+            None => match self
+                .credential_repository
+                .get_credentials_by_interaction_id(interaction_id)
+                .await
+            {
+                Ok(credentials) => credentials.into_iter().map(|it| it.id).collect(),
+                Err(err) => {
+                    tracing::warn!(%err, "failed to load the credentials of interaction {interaction_id} to record the resolved ecosystems");
+                    return;
+                }
+            },
+        };
+
+        let entities: Vec<_> = credential_ids
+            .into_iter()
+            .map(|id| (id.into(), HistoryEntityType::Credential))
+            .collect();
+
+        self.write_ecosystems_resolved(&outcomes, organisation_id, &entities)
+            .await;
+    }
+
     // the items of a batch follow their parent
     async fn credential_and_batch_item_ids(
         &self,
@@ -640,7 +681,7 @@ impl SSIHolderService {
             )
             .await
             .error_while("narrowing ecosystem candidates")?,
-        }
+        };
 
         Ok(())
     }
