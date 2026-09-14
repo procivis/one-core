@@ -65,6 +65,8 @@ async fn test_oauth_authorization_server_metadata() {
         resp["token_endpoint"]
     );
 
+    assert!(resp["challenge_endpoint"].is_null());
+
     // Check scopes supported (must include "openid" per RFC 8414)
     let scopes = resp["scopes_supported"].as_array().unwrap();
     assert_eq!(scopes.len(), 1);
@@ -275,4 +277,44 @@ async fn test_oauth_authorization_server_metadata_nonexistent_schema() {
 
     // THEN
     assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_oauth_authorization_server_metadata_with_oauth_attestation_challenge() {
+    // GIVEN
+    let config = indoc::indoc! {"
+      issuanceProtocol:
+        OPENID4VCI_FINAL1:
+          params:
+            private:
+              oauthAttestationChallenge:
+                signingKey: \"93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e\"
+    "}
+    .to_string();
+    let (context, organisation, _did, identifier, ..) =
+        TestContext::new_with_did(Some(config)).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .oauth_authorization_server("OPENID4VCI_FINAL1", identifier.id, credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(
+        format!(
+            "{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/challenge",
+            context.config.app.core_base_url
+        ),
+        resp["challenge_endpoint"]
+    );
 }

@@ -10,11 +10,10 @@ use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
-use one_core::service::oid4vci_final1_0::error::{
-    OID4VCIFinal1_0ServiceError, WalletAttestationError,
-};
+use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
+use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::token::TokenResponse;
 use standardized_types::openid4vci::{
@@ -25,27 +24,13 @@ use super::dto::{
     OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
     OpenID4VCITokenRequestRestDTO,
 };
+use super::mapper::wallet_attestation_response;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
 use crate::extractor::Accept;
 use crate::headers::APPLICATION_JWT;
 use crate::router::AppState;
-
-/// Renders a wallet-attestation (WIA / KA) validation failure as an OpenID4VCI error
-/// response: HTTP 400 with the OAuth2 `error` code and the reworked message (prefixed
-/// with the stable `BR_xxxx` code) in `errorDescription`.
-fn wallet_attestation_response(wa: &WalletAttestationError) -> Response {
-    tracing::info!("Wallet attestation validation error: {wa}");
-    (
-        StatusCode::BAD_REQUEST,
-        Json(OpenID4VCIErrorResponseRestDTO::with_description(
-            wa.oauth_error(),
-            format!("{} | {}", wa.error_code(), wa),
-        )),
-    )
-        .into_response()
-}
 
 #[endpoint(
     permissions = [],
@@ -525,6 +510,43 @@ pub(crate) async fn oid4vci_final1_0_nonce(
         .core
         .oid4vci_final1_0_service
         .generate_nonce(&issuance_protocol_id)
+        .await;
+
+    match result {
+        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[endpoint(
+    permissions = [],
+    post,
+    path = "/ssi/openid4vci/final-1.0/{protocol_id}/challenge",
+    params(
+        ("protocol_id" = String, Path, description = "Issuance protocol id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = ChallengeResponse),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "openid4vci-final1_0",
+    summary = "OID4VC - Generate OAuth attestation challenge",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn oid4vci_final1_0_oauth_attestation_challenge(
+    state: State<AppState>,
+    WithRejection(Path(issuance_protocol_id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oid4vci_final1_0_service
+        .generate_oauth_attestation_challenge(&issuance_protocol_id)
         .await;
 
     match result {

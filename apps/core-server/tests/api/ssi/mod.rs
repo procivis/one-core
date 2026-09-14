@@ -16,6 +16,7 @@ mod get_trust_list_publication_content_xml;
 mod get_verifier_provider;
 mod get_wallet_provider_metadata;
 mod issue_wallet_attestations;
+mod oauth_attestation_challenge;
 mod oid4vci_get_credential_offer;
 mod oid4vci_nonce;
 mod register_instance;

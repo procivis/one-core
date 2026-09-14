@@ -44,6 +44,7 @@ pub(crate) struct OpenID4VCIFinal1Params {
     pub redirect_uri: OpenID4VCRedirectUriParams,
 
     pub nonce: Option<OpenID4VCNonceParams>,
+    pub oauth_attestation_challenge: Option<OpenID4VCNonceParams>,
 
     #[serde_as(as = "DurationSeconds<i64>")]
     pub oauth_attestation_leeway_seconds: Duration,

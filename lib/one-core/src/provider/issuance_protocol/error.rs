@@ -140,6 +140,13 @@ pub enum OpenID4VCIError {
     InvalidNotificationRequest,
     #[error("invalid_encryption_parameters")]
     InvalidEncryptionParameters,
+
+    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-11#name-errors
+    #[error("use_attestation_challenge")]
+    UseAttestationChallenge,
+    #[error("use_fresh_attestation")]
+    UseFreshAttestation,
+
     #[error("oidc runtime error: `{0}`")]
     RuntimeError(String),
 }

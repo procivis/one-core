@@ -1,6 +1,12 @@
+use axum::Json;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use one_core::error::ErrorCodeMixin;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
-use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
+use one_core::service::oid4vci_final1_0::error::{
+    OID4VCIFinal1_0ServiceError, WalletAttestationError,
+};
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{CredentialConfiguration, CredentialIssuerMetadata};
@@ -10,6 +16,7 @@ use super::dto::{
     OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
 };
+use crate::endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO;
 
 impl From<CredentialIssuerMetadata> for OpenID4VCIIssuerMetadataResponseRestDTO {
     fn from(value: CredentialIssuerMetadata) -> Self {
@@ -96,6 +103,34 @@ impl From<OpenID4VCICredentialResponseDTO> for OpenID4VCIFinal1CredentialRespons
             interval: value.interval,
             notification_id: value.notification_id,
         }
+    }
+}
+
+/// Renders a wallet-attestation (WIA / KA) validation failure as an OpenID4VCI error
+/// response: HTTP 400 with the OAuth2 `error` code and the reworked message (prefixed
+/// with the stable `BR_xxxx` code) in `errorDescription`.
+pub(crate) fn wallet_attestation_response(wa: &WalletAttestationError) -> Response {
+    tracing::info!("Wallet attestation validation error: {wa}");
+
+    match wa {
+        WalletAttestationError::InvalidChallenge { fresh_challenge }
+        | WalletAttestationError::MissingChallenge { fresh_challenge } => (
+            StatusCode::BAD_REQUEST,
+            [("OAuth-Client-Attestation-Challenge", fresh_challenge)],
+            Json(OpenID4VCIErrorResponseRestDTO::with_description(
+                wa.oauth_error(),
+                format!("{} | {}", wa.error_code(), wa),
+            )),
+        )
+            .into_response(),
+        _ => (
+            StatusCode::BAD_REQUEST,
+            Json(OpenID4VCIErrorResponseRestDTO::with_description(
+                wa.oauth_error(),
+                format!("{} | {}", wa.error_code(), wa),
+            )),
+        )
+            .into_response(),
     }
 }
 

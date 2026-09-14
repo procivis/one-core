@@ -91,6 +91,8 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     InvalidNotificationId,
     InvalidNotificationRequest,
     InvalidEncryptionParameters,
+    UseAttestationChallenge,
+    UseFreshAttestation,
     RuntimeError(String),
 }
 

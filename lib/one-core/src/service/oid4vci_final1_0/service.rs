@@ -13,6 +13,9 @@ use shared_types::{
     NonceId,
 };
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
+use standardized_types::oauth2::attestation_based_client_auth::{
+    ChallengeResponse, OAuthClientAttestationPopCustomClaims,
+};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::oauth2::token::{ExpiresIn, TokenRequest, TokenResponse};
@@ -32,7 +35,7 @@ use super::dto::{
 };
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::{interaction_data_to_dto, offered_formats};
-use super::nonce::{generate_nonce, validate_nonce};
+use super::nonce::{Context, generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
     validate_credential_request_format, validate_pop_audience, validate_response_encryption,
@@ -157,6 +160,12 @@ impl OID4VCIFinal1_0Service {
         )
         .error_while("validating protocol type")?;
 
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(protocol_id)
+            .error_while("getting protocol params")?;
+
         let issuance_protocol = self.protocol_provider.get_protocol(protocol_id)?;
         let protocol_base_url = issuance_protocol.protocol_base_url().ok_or(
             OID4VCIFinal1_0ServiceError::MappingError("Missing base_url".to_owned()),
@@ -189,6 +198,20 @@ impl OID4VCIFinal1_0Service {
             )
         } else {
             (None, None)
+        };
+
+        let challenge_endpoint = if params.oauth_attestation_challenge.is_some() {
+            Some(
+                format!("{protocol_base_url}/{protocol_id}/challenge")
+                    .parse()
+                    .map_err(|e| {
+                        OID4VCIFinal1_0ServiceError::MappingError(format!(
+                            "Invalid challenge endpoint URL: {e}"
+                        ))
+                    })?,
+            )
+        } else {
+            None
         };
 
         let credential_issuer =
@@ -226,7 +249,7 @@ impl OID4VCIFinal1_0Service {
                 "refresh_token".to_string(),
             ],
             token_endpoint_auth_methods_supported,
-            challenge_endpoint: None,
+            challenge_endpoint,
             client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported,
             dpop_signing_alg_values_supported: Some(vec!["ES256".to_string()]), // necessary for the EUDI wallet to work
@@ -682,11 +705,16 @@ impl OID4VCIFinal1_0Service {
                     .into(),
             );
         };
-        let nonce_id =
-            validate_nonce(nonce_params, self.base_url.to_owned(), &nonce).map_err(|e| {
-                tracing::debug!("Nonce validation failed: {e}");
-                OpenID4VCIError::InvalidNonce
-            })?;
+        let nonce_id = validate_nonce(
+            nonce_params,
+            self.base_url.as_ref(),
+            &nonce,
+            Context::OpenID4VCINonce,
+        )
+        .map_err(|e| {
+            tracing::debug!("Nonce validation failed: {e}");
+            OpenID4VCIError::InvalidNonce
+        })?;
 
         // Key attestation is expected if wallet storage type is set
         if let Some(key_storage_security) = schema.key_storage_security {
@@ -857,7 +885,7 @@ impl OID4VCIFinal1_0Service {
                 key_id,
                 key_attestation,
             },
-            nonce_id.into(),
+            nonce_id,
         ))
     }
 
@@ -1444,7 +1472,10 @@ impl OID4VCIFinal1_0Service {
             wallet_instance_attestation_token,
         )
         .map_err(|e| WalletAttestationError::WiaMalformed(format!("parsing: {e}")))?;
-        let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)
+        let proof_of_key_possession =
+            Jwt::<OAuthClientAttestationPopCustomClaims>::decompose_token(
+                proof_of_key_possesion_token,
+            )
             .map_err(|e| {
                 WalletAttestationError::WiaMalformed(format!("parsing client attestation PoP: {e}"))
             })?;
@@ -1453,7 +1484,7 @@ impl OID4VCIFinal1_0Service {
         validate_timestamps(&wallet_instance_attestation, leeway)?;
         validate_timestamps(&proof_of_key_possession, leeway)?;
 
-        // Validate proof of possession audience
+        // Validate proof of possession
         let expected_audience = {
             let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
             let base_url = issuance_protocol.protocol_base_url().ok_or(
@@ -1468,21 +1499,25 @@ impl OID4VCIFinal1_0Service {
             }
         };
         validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
-
-        // Verify signatures
         verify_pop_signature(
             &proof_of_key_possession,
             &wallet_instance_attestation,
             self.key_algorithm_provider.as_ref(),
         )?;
+        self.validate_pop_challenge(
+            &proof_of_key_possession.payload.custom,
+            &credential.protocol,
+            &interaction_id,
+        )
+        .await?;
 
+        // Validate WIA
         let verifier = KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
             certificate_validator: self.certificate_validator.clone(),
         };
-
         verify_wia_signature(&wallet_instance_attestation, &verifier).await?;
 
         let key_source = wia_key_source(&wallet_instance_attestation)?;
@@ -1543,8 +1578,42 @@ impl OID4VCIFinal1_0Service {
                 .into());
         };
 
-        let c_nonce = generate_nonce(params, self.base_url.to_owned()).await?;
+        let c_nonce =
+            generate_nonce(params, self.base_url.to_owned(), Context::OpenID4VCINonce).await?;
         Ok(NonceResponse { c_nonce })
+    }
+
+    pub async fn generate_oauth_attestation_challenge(
+        &self,
+        protocol_id: &str,
+    ) -> Result<ChallengeResponse, OID4VCIFinal1_0ServiceError> {
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            protocol_id,
+        )
+        .error_while("validating protocol type")?;
+
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(protocol_id)
+            .error_while("getting protocol params")?;
+        let Some(params) = params.oauth_attestation_challenge else {
+            return Err(ConfigValidationError::TypeNotFound(protocol_id.to_string())
+                .error_while("getting oauth attestation challenge params")
+                .into());
+        };
+
+        let attestation_challenge = generate_nonce(
+            params,
+            self.base_url.to_owned(),
+            Context::OAuthAttestationChallenge,
+        )
+        .await?;
+        Ok(ChallengeResponse {
+            attestation_challenge,
+        })
     }
 
     async fn prepare_batch_item(
@@ -1798,6 +1867,71 @@ impl OID4VCIFinal1_0Service {
                 credential.state,
             ));
         }
+        Ok(())
+    }
+
+    async fn validate_pop_challenge(
+        &self,
+        pop_token_claims: &OAuthClientAttestationPopCustomClaims,
+        protocol_id: &str,
+        interaction_id: &InteractionId,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(protocol_id)
+            .error_while("getting protocol params")?;
+
+        let Some(params) = params.oauth_attestation_challenge else {
+            return Ok(());
+        };
+
+        let get_fresh_challenge = async || {
+            generate_nonce(
+                params.to_owned(),
+                self.base_url.clone(),
+                Context::OAuthAttestationChallenge,
+            )
+            .await
+        };
+
+        let Some(challenge) = &pop_token_claims.challenge else {
+            return Err(WalletAttestationError::MissingChallenge {
+                fresh_challenge: get_fresh_challenge().await?,
+            }
+            .into());
+        };
+
+        let challenge_id = match validate_nonce(
+            &params,
+            self.base_url.as_ref(),
+            challenge,
+            Context::OAuthAttestationChallenge,
+        ) {
+            Ok(challenge_id) => challenge_id,
+            Err(err) => {
+                return Err(WalletAttestationError::InvalidChallenge {
+                    fresh_challenge: get_fresh_challenge().await?,
+                }
+                .error_while(format!("OAuth attestation challenge validation: {err}"))
+                .into());
+            }
+        };
+
+        if let Err(err) = self
+            .interaction_repository
+            .mark_nonces_as_used(interaction_id, vec![challenge_id])
+            .await
+        {
+            return Err(match err {
+                DataLayerError::AlreadyExists => WalletAttestationError::InvalidChallenge {
+                    fresh_challenge: get_fresh_challenge().await?,
+                }
+                .into(),
+                e => e.error_while("marking challenge as used").into(),
+            });
+        }
+
         Ok(())
     }
 }

@@ -648,6 +648,9 @@ fn get_external_endpoints(
             ).route(
                 "/ssi/openid4vci/final-1.0/{protocol_id}/nonce",
                 post(ssi::issuance::final1_0::controller::oid4vci_final1_0_nonce),
+            ).route(
+                "/ssi/openid4vci/final-1.0/{protocol_id}/challenge",
+                post(ssi::issuance::final1_0::controller::oid4vci_final1_0_oauth_attestation_challenge),
             )
             .route(
                 "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{id}",
@@ -672,6 +675,10 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/nonce",
                 post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_nonce),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/challenge",
+                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_oauth_attestation_challenge),
             )
             .route(
                 "/ssi/openid4vci/final-1.0-swiyu/{id}/notification",

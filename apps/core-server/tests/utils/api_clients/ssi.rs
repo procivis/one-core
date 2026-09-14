@@ -250,6 +250,11 @@ impl SSIApi {
         self.client.post(&url, None).await
     }
 
+    pub async fn generate_oauth_attestation_challenge(&self, issuance_protocol: &str) -> Response {
+        let url = format!("/ssi/openid4vci/final-1.0/{issuance_protocol}/challenge");
+        self.client.post(&url, None).await
+    }
+
     pub async fn oauth_authorization_server(
         &self,
         protocol_id: &str,

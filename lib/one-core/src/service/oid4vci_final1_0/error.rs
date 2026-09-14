@@ -25,10 +25,14 @@ pub enum WalletAttestationError {
     WuaRevoked,
     #[error("Key storage security level `{0:?}` is not attested by the key attestation")]
     KeyStorageSecurityLevelMismatch(KeyStorageSecurityLevel),
+    #[error("Missing OAuth attestation challenge")]
+    MissingChallenge { fresh_challenge: String },
+    #[error("Invalid OAuth attestation challenge")]
+    InvalidChallenge { fresh_challenge: String },
 }
 
-impl WalletAttestationError {
-    pub fn error_code(&self) -> ErrorCode {
+impl ErrorCodeMixin for WalletAttestationError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             Self::WiaIssuerUntrusted => ErrorCode::BR_0494,
             Self::WiaMalformed(_) => ErrorCode::BR_0495,
@@ -37,14 +41,20 @@ impl WalletAttestationError {
             Self::WiaKaIssuerMismatch => ErrorCode::BR_0498,
             Self::WuaRevoked => ErrorCode::BR_0499,
             Self::KeyStorageSecurityLevelMismatch(_) => ErrorCode::BR_0500,
+            Self::InvalidChallenge { .. } | Self::MissingChallenge { .. } => ErrorCode::BR_0153,
         }
     }
+}
 
+impl WalletAttestationError {
     /// OAuth2 `error` value for the OpenID4VCI error response body.
     pub fn oauth_error(&self) -> OpenID4VCIError {
         match self {
             // The WIA is the OAuth client attestation at the token endpoint.
             Self::WiaIssuerUntrusted | Self::WiaMalformed(_) => OpenID4VCIError::InvalidClient,
+            Self::InvalidChallenge { .. } | Self::MissingChallenge { .. } => {
+                OpenID4VCIError::UseAttestationChallenge
+            }
             // The key attestation is part of the holder proof at the credential endpoint.
             _ => OpenID4VCIError::InvalidOrMissingProof,
         }

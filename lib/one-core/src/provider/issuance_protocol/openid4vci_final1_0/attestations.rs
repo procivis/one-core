@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
 use shared_types::OrganisationId;
+use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use time::Duration;
@@ -289,12 +289,6 @@ async fn create_wallet_unit_attestation_pop(
     challenge: Option<String>,
     client_id: &str,
 ) -> Result<String, IssuanceProtocolError> {
-    #[derive(Serialize)]
-    struct WalletUnitPopCustomClaims {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        challenge: Option<String>,
-    }
-
     let now = crate::clock::now_utc();
     let proof = Jwt::new(
         "oauth-client-attestation-pop+jwt".to_string(),
@@ -310,7 +304,7 @@ async fn create_wallet_unit_attestation_pop(
             issuer: Some(client_id.to_string()),
             subject: None,
             proof_of_possession_key: None,
-            custom: WalletUnitPopCustomClaims { challenge },
+            custom: OAuthClientAttestationPopCustomClaims { challenge },
         },
     );
 

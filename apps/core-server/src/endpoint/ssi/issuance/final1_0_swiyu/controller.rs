@@ -14,6 +14,7 @@ use one_core::service::oid4vci_final1_0::dto::{
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
+use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::token::TokenResponse;
 use standardized_types::openid4vci::{
@@ -26,6 +27,7 @@ use crate::endpoint::ssi::issuance::final1_0::dto::{
     OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
     OpenID4VCITokenRequestRestDTO,
 };
+use crate::endpoint::ssi::issuance::final1_0::mapper::wallet_attestation_response;
 use crate::endpoint::ssi::issuance::final1_0_swiyu::dto::SwiyuOpenID4VCITokenResponseRestDTO;
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
 use crate::extractor::Accept;
@@ -320,6 +322,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
             Json(SwiyuOpenID4VCITokenResponseRestDTO::from(value)),
         )
             .into_response(),
+        Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
             (
@@ -437,6 +440,43 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
         .core
         .oid4vci_final1_0_service
         .generate_nonce(&issuance_protocol_id)
+        .await;
+
+    match result {
+        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[endpoint(
+    permissions = [],
+    post,
+    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/challenge",
+    params(
+        ("protocol_id" = String, Path, description = "Issuance protocol id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = ChallengeResponse),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "openid4vci-final1_0-swiyu",
+    summary = "OID4VC - Generate OAuth attestation challenge",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn oid4vci_final1_0_swiyu_oauth_attestation_challenge(
+    state: State<AppState>,
+    WithRejection(Path(issuance_protocol_id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oid4vci_final1_0_service
+        .generate_oauth_attestation_challenge(&issuance_protocol_id)
         .await;
 
     match result {

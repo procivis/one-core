@@ -2,6 +2,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
+use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::openid4vci::{
     CredentialRequest, CredentialRequestIdentifier, KeyStorageSecurityLevel, ResponseEncryption,
 };
@@ -82,7 +83,7 @@ pub(crate) fn validate_timestamps(
 }
 
 pub(crate) fn validate_pop_audience(
-    pop_token: &DecomposedJwt<()>,
+    pop_token: &DecomposedJwt<OAuthClientAttestationPopCustomClaims>,
     expected_audience: &str,
 ) -> Result<(), OID4VCIFinal1_0ServiceError> {
     let empty_vec = vec![];
@@ -99,7 +100,7 @@ pub(crate) fn validate_pop_audience(
 }
 
 pub(crate) fn verify_pop_signature(
-    pop_token: &DecomposedJwt<()>,
+    pop_token: &DecomposedJwt<OAuthClientAttestationPopCustomClaims>,
     wallet_unit_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), OID4VCIFinal1_0ServiceError> {
