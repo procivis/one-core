@@ -14,7 +14,8 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse, VecResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
+    ReferencedOkOrErrorResponse, VecResponse,
 };
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, CredentialRoleRestEnum, GetCredentialQuery,
@@ -409,7 +410,7 @@ pub(crate) async fn credential_revocation_check(
     permissions = [Permission::CredentialDetail],
     get,
     path = "/api/credential/v1/{id}/trust-detail",
-    responses(OkOrErrorResponse<CredentialTrustInformationDetailResponseRestDTO>),
+    responses(ReferencedOkOrErrorResponse<CredentialTrustInformationDetailResponseRestDTO>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),

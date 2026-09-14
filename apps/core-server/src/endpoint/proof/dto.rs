@@ -686,7 +686,7 @@ pub(crate) enum ExactProofFilterColumnRestEnum {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofTrustInformationDetailResponseRestDTO {
     /// EUDI trust information received from Access Certificates,

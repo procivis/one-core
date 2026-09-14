@@ -54,6 +54,10 @@ fn on_struct(input: ItemStruct) -> TokenStream {
 }
 
 fn on_struct_field(named_field: Field) -> Option<proc_macro2::TokenStream> {
+    let deprecated = named_field
+        .attrs
+        .iter()
+        .any(|attribute| attribute.path().is_ident("deprecated"));
     let attributes = match ModifySchemaAttributes::from_attributes(&named_field.attrs) {
         Ok(v) => v,
         Err(e) => {
@@ -62,10 +66,40 @@ fn on_struct_field(named_field: Field) -> Option<proc_macro2::TokenStream> {
     };
     let field_ident = named_field.ident?;
 
-    if let Some(allowed_values_fn) = attributes.allowed_values_fn {
+    let deprecated = deprecated.then(|| {
+        let field_name = to_camel_case(&field_ident.to_string());
+        quote! {
+            if let Some(schema) = object.properties.get_mut(#field_name) {
+                let item = std::mem::replace(
+                    schema,
+                    utoipa::openapi::RefOr::T(utoipa::openapi::Schema::OneOf(
+                        utoipa::openapi::schema::OneOf::new()
+                    )),
+                );
+                let mut deprecated = utoipa::openapi::schema::OneOf::new();
+                deprecated.items.push(item);
+                deprecated.extensions = Some(
+                    utoipa::openapi::extensions::Extensions::from_iter([("deprecated", true)])
+                );
+                *schema = utoipa::openapi::RefOr::T(
+                    utoipa::openapi::Schema::OneOf(deprecated)
+                );
+            }
+        }
+    });
+    let configured = if let Some(allowed_values_fn) = attributes.allowed_values_fn {
         on_struct_fields_allowed_values_fn(field_ident, allowed_values_fn)
     } else if let Some(field) = attributes.field {
         on_struct_fields_field(field_ident, field)
+    } else {
+        None
+    };
+
+    if deprecated.is_some() || configured.is_some() {
+        Some(quote! {
+            #deprecated
+            #configured
+        })
     } else {
         None
     }

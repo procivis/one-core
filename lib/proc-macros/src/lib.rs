@@ -83,6 +83,8 @@ pub fn require_permissions(args: TokenStream, input: TokenStream) -> TokenStream
 /// Purpose
 /// - Generate an implementation of a schema-modification trait for types whose OpenAPI schema
 ///   must depend on runtime configuration.
+/// - Preserve `deprecated: true` for `#[deprecated]` fields whose schemas Utoipa represents by
+///   reference.
 /// - The derive inspects either:
 ///   - Structs: selected fields annotated with `#[modify_schema(allowed_values_fn = path::to::fn)]` or `#[modify_schema(field = field_of_core_config)]`,
 ///     and updates each field’s `allowed_values` values dynamically.
@@ -130,7 +132,9 @@ pub fn require_permissions(args: TokenStream, input: TokenStream) -> TokenStream
 ///     #[modify_schema(allowed_values_fn = crate::allowed_colors)]
 ///     color: String,
 ///     #[modify_schema(field = producers)]
-///     producer: String
+///     producer: String,
+///     #[deprecated]
+///     legacy_color: String,
 ///     amount_liters: u32,
 /// }
 /// ```
@@ -163,6 +167,7 @@ pub fn require_permissions(args: TokenStream, input: TokenStream) -> TokenStream
 ///     and updates the field schema’s `enum_values`.
 ///   - For structs: visits fields marked with `#[modify_schema(field = ...)]`,
 ///     and updates the field schema’s `enum_values`.
+///   - For structs: marks fields carrying Rust's `#[deprecated]` as deprecated in OpenAPI.
 ///   - For enums: updates the type schema’s `enum_values`.
 ///
 /// Limitations and requirements
@@ -175,7 +180,7 @@ pub fn require_permissions(args: TokenStream, input: TokenStream) -> TokenStream
 ///   `fn(&one_core::config::core_config::CoreConfig, Option<Vec<utoipa::openapi::Value>>) -> Option<Vec<utoipa::openapi::Value>>`
 ///   (the exact `Value` element type should match what your `utoipa` version uses to represent enum values).
 /// - Only named struct fields are supported; unit structs and tuple structs are ignored.
-/// - For structs, only fields explicitly annotated are modified; other fields are untouched.
+/// - For structs, only fields carrying `#[modify_schema(...)]` or `#[deprecated]` are modified.
 /// - The derive does not rename schemas or properties; it relies on the property identifier names
 ///   as they appear in the OpenAPI object’s `properties` map.
 /// - Build-time dependencies are typical for proc-macros (`syn`, `quote`, `darling`), whereas
@@ -245,10 +250,9 @@ pub fn core_config_dependant_schema(input: TokenStream) -> TokenStream {
 ///     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
 ///         if let Some(components) = openapi.components.as_mut() {
 ///             // For every `T` with `#[derive(ModifySchema)]` discovered under `path`:
-///             // if let Some(RefOr::T(Schema::Object(object))) = components.schemas.get_mut("T") {
+///             // For an object schema, or each object directly inside an `allOf` schema:
 ///             //     use crate::<module_path>::T;
 ///             //     T::core_config_modify_schema(self.core_config.as_ref(), object);
-///             // }
 ///         }
 ///     }
 /// }

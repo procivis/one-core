@@ -80,7 +80,7 @@ pub(crate) struct CredentialListItemResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialListItemSchemaRestDTO {
     /// Deprecated: will be removed
@@ -248,7 +248,7 @@ pub struct WalletUnitAttestationRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialTrustInformationDetailResponseRestDTO {
     /// EUDI trust information received from Access Certificates,
@@ -290,7 +290,7 @@ pub(crate) enum CredentialRoleRestEnum {
 
 /// Credential schema used to issue the credential.
 #[options_not_nullable]
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub organisation_id: OrganisationId,

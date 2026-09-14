@@ -32,6 +32,82 @@ async fn test_openapi_json() {
 }
 
 #[tokio::test]
+async fn test_openapi_schema_regressions() {
+    let context = TestContext::new(None).await;
+    let openapi: serde_json::Value = context.api.other.openapi_json().await.json().await;
+    let schemas = &openapi["components"]["schemas"];
+
+    for (schema, property) in [
+        ("CredentialListItemSchemaRestDTO", "revocationMethod"),
+        ("CredentialListItemSchemaRestDTO", "format"),
+        (
+            "CredentialTrustInformationDetailResponseRestDTO",
+            "eudiEcosystem",
+        ),
+        ("CredentialDetailSchemaResponseRestDTO", "revocationMethod"),
+        ("CredentialDetailSchemaResponseRestDTO", "format"),
+        (
+            "ProofTrustInformationDetailResponseRestDTO",
+            "eudiEcosystem",
+        ),
+    ] {
+        assert_eq!(
+            Some(true),
+            find_property(&schemas[schema], property)
+                .and_then(|schema| schema["deprecated"].as_bool()),
+            "{schema}.{property} should be deprecated in OpenAPI",
+        );
+    }
+
+    for (path, component) in [
+        (
+            "/api/credential/v1/{id}/trust-detail",
+            "CredentialTrustInformationDetailResponseRestDTO",
+        ),
+        (
+            "/api/proof-request/v1/{id}/trust-detail",
+            "ProofTrustInformationDetailResponseRestDTO",
+        ),
+    ] {
+        let schema = &openapi["paths"][path]["get"]["responses"]["200"]["content"]["application/json"]
+            ["schema"];
+        assert_eq!(
+            Some(component),
+            schema["$ref"]
+                .as_str()
+                .and_then(|reference| reference.strip_prefix("#/components/schemas/")),
+            "{path} should reference its modified component schema",
+        );
+    }
+
+    let schema = &openapi["paths"]["/api/credential-schema/v1"]["get"]["responses"]["200"]["content"]
+        ["application/json"]["schema"];
+
+    assert_eq!(
+        Some("object"),
+        schema["type"].as_str(),
+        "credential schema list response should resolve to an object schema",
+    );
+    assert_eq!(
+        Some("#/components/schemas/CredentialSchemaListItemResponseRestDTO"),
+        schema["properties"]["values"]["items"]["$ref"].as_str(),
+        "credential schema list values should reference the list item schema",
+    );
+}
+
+fn find_property<'a>(
+    schema: &'a serde_json::Value,
+    property: &str,
+) -> Option<&'a serde_json::Value> {
+    schema["properties"].get(property).or_else(|| {
+        schema["allOf"]
+            .as_array()?
+            .iter()
+            .find_map(|schema| find_property(schema, property))
+    })
+}
+
+#[tokio::test]
 async fn test_openapi_json_disabled() {
     let config = indoc::indoc! {"
       app:

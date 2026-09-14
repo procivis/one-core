@@ -65,11 +65,20 @@ pub(super) fn modify_schema_autodetect(
             let ident = &struct_with_attr.ident;
             let ident_str = struct_with_attr.ident.to_string();
             let quote = quote! {
-                let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(object))) = components.schemas.get_mut(#ident_str) else {
-                    return;
-                };
-                use #module::#ident;
-                #ident::core_config_modify_schema(self.core_config.as_ref(), object);
+                if let Some(schema) = components.schemas.get_mut(#ident_str) {
+                    use #module::#ident;
+                    match schema {
+                        utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(object)) =>
+                            #ident::core_config_modify_schema(self.core_config.as_ref(), object),
+                        utoipa::openapi::RefOr::T(utoipa::openapi::Schema::AllOf(all_of)) =>
+                            all_of.items.iter_mut().for_each(|schema| {
+                                if let utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(object)) = schema {
+                                    #ident::core_config_modify_schema(self.core_config.as_ref(), object);
+                                }
+                            }),
+                        _ => {}
+                    }
+                }
             };
             struct_items.push(quote);
         }
