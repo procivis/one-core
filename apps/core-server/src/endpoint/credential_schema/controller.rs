@@ -332,7 +332,7 @@ pub(crate) async fn get_credential_schema_v2(
         and per-claim technical key mappings.
 
         The `formats` array is mandatory and must contain at least one entry.
-        Each entry specifies a `format` (mandatory) and an optional `schemaId`.
+        Each entry specifies a `format` (mandatory) and an optional `ecosystemSchemaId`.
 
         Claims may include a `mapping` array to specify per-format technical keys
         and namespaces. When no mapping is specified, the claim key is used as the

@@ -238,8 +238,8 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     #[try_into(rename = "credential_schema_ids", infallible)]
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialSchemaId>>,
-    /// Return credential schemas associated with the specified `schemaId` or document
-    /// type for ISO mdocs.
+    /// Return credential schemas associated with the specified `ecosystemSchemaId`.
+    /// This is the DocType for ISO mdocs and the `vct` for SD-JWT VCs.
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub schema_id: Option<String>,
@@ -907,7 +907,7 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     /// from this schema. Must be greater than 0 if specified.
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
-    #[schema(value_type = Option<i64>, minimum = 1)]
+    #[schema(value_type = Option<i64>, nullable = false, minimum = 1)]
     #[try_into(infallible)]
     pub expiration: Option<Duration>,
     #[modify_schema(field = ecosystem)]

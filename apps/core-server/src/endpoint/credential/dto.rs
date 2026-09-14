@@ -534,7 +534,7 @@ pub(crate) enum SortableCredentialColumnRestEnum {
 pub(crate) struct CreateCredentialRequestRestDTO {
     /// UUID of the credential schema to use for this credential. The `id`
     /// field is returned when creating a credential schema; do not use the
-    /// `schemaId` (document type) value.
+    /// `ecosystemSchemaId` (document type) value.
     pub credential_schema_id: CredentialSchemaId,
     /// UUID of the identifier to use for issuing this credential. This
     /// references an identifier entry (which could be a DID, key, or certificate)
