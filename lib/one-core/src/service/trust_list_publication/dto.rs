@@ -52,7 +52,7 @@ pub struct GetTrustListPublicationResponseDTO {
     pub identifier: GetIdentifierListItemResponseDTO,
     pub r#type: TrustListPublisherId,
     pub role: TrustListRoleEnum,
-    pub content: Option<Vec<u8>>,
+    pub public_url: String,
     pub sequence_number: u32,
     pub metadata: Vec<u8>,
     pub organisation_id: OrganisationId,
@@ -68,6 +68,7 @@ pub struct TrustListPublicationListItemResponseDTO {
     pub r#type: TrustListPublisherId,
     pub role: TrustListRoleEnum,
     pub deleted_at: Option<OffsetDateTime>,
+    pub public_url: String,
 }
 
 pub type GetTrustListPublicationListResponseDTO =

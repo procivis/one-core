@@ -11,11 +11,11 @@ use super::dto::{
     CreateTrustEntryRequestDTO, CreateTrustListPublicationRequestDTO, GetTrustEntryListResponseDTO,
     GetTrustListPublicationListResponseDTO, GetTrustListPublicationResponseDTO,
     TrustEntryFilterParamsDTO, TrustEntryListItemResponseDTO, TrustListContentTypeDTO,
-    TrustListPublicationFilterParamsDTO, UpdateTrustEntryRequestDTO,
+    TrustListPublicationFilterParamsDTO, TrustListPublicationListItemResponseDTO,
+    UpdateTrustEntryRequestDTO,
 };
 use super::error::TrustListPublicationServiceError;
 use crate::error::ContextWithErrorCode;
-use crate::mapper::list_response_into;
 use crate::model::identifier::Identifier;
 use crate::model::trust_entry::{SortableTrustEntryColumn, TrustEntry};
 use crate::model::trust_list_publication::{
@@ -209,7 +209,8 @@ impl TrustListPublicationService {
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
-        GetTrustListPublicationResponseDTO::try_from(trust_list).await
+        let core_base_url = self.core_base_url()?;
+        GetTrustListPublicationResponseDTO::try_from(trust_list, core_base_url).await
     }
 
     /// `accepted_content_types` holds the content types the caller accepts, ordered by
@@ -250,12 +251,25 @@ impl TrustListPublicationService {
         )
         .error_while("checking session")?;
 
+        let core_base_url = self.core_base_url()?;
+
         let trust_list_publication_list = self
             .trust_list_publication_repository
             .list(query.into())
             .await
             .error_while("getting trust list publications")?;
-        Ok(list_response_into(trust_list_publication_list))
+
+        Ok(GetTrustListPublicationListResponseDTO {
+            values: trust_list_publication_list
+                .values
+                .into_iter()
+                .map(|value| {
+                    TrustListPublicationListItemResponseDTO::from_model(value, core_base_url)
+                })
+                .collect(),
+            total_pages: trust_list_publication_list.total_pages,
+            total_items: trust_list_publication_list.total_items,
+        })
     }
 
     pub async fn get_trust_entry_list(
@@ -333,6 +347,14 @@ impl TrustListPublicationService {
             .get(identifier_id)
             .await
             .error_while("fetching identifier")?)
+    }
+
+    fn core_base_url(&self) -> Result<&str, TrustListPublicationServiceError> {
+        self.core_base_url.as_deref().ok_or_else(|| {
+            TrustListPublicationServiceError::MappingError(
+                "Missing core base_url, cannot build trust list publication public URL".to_string(),
+            )
+        })
     }
 }
 
@@ -601,6 +623,7 @@ mod tests {
             Arc::new(MockTrustEntryRepository::default()),
             Arc::new(session_provider),
             Arc::new(publisher_provider),
+            Some("http://127.0.0.1".to_string()),
         );
 
         // when

@@ -117,6 +117,8 @@ pub(crate) struct TrustListPublicationListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deleted_at: Option<OffsetDateTime>,
+    /// Public URL where the published trust list can be retrieved.
+    pub public_url: String,
 }
 
 #[options_not_nullable]
@@ -143,9 +145,8 @@ pub(crate) struct GetTrustListPublicationResponseRestDTO {
     pub r#type: TrustListPublisherId,
     /// The profile this trust list conforms to.
     pub role: TrustListRoleRestEnum,
-    /// The trust list in JWT form.
-    #[from(with_fn_ref = "map_raw_str_opt")]
-    pub content: Option<String>,
+    /// Public URL where the published trust list can be retrieved.
+    pub public_url: String,
     /// The sequence number increments with each publication of
     /// the list.
     pub sequence_number: u32,
@@ -350,8 +351,4 @@ pub enum TrustListRoleRestEnum {
 
 fn map_raw_str(raw: &[u8]) -> String {
     String::from_utf8_lossy(raw).into_owned()
-}
-
-fn map_raw_str_opt(raw: &Option<Vec<u8>>) -> Option<String> {
-    raw.as_deref().map(map_raw_str)
 }

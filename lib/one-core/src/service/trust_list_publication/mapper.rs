@@ -140,7 +140,9 @@ impl TrustEntryListItemResponseDTO {
 impl GetTrustListPublicationResponseDTO {
     pub(super) async fn try_from(
         value: TrustListPublication,
+        core_base_url: &str,
     ) -> Result<Self, TrustListPublicationServiceError> {
+        let public_url = trust_list_publication_public_url(core_base_url, value.id);
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -150,7 +152,7 @@ impl GetTrustListPublicationResponseDTO {
             identifier: value.identifier.as_ref().await?.to_owned().into(),
             r#type: value.r#type,
             role: value.role,
-            content: Some(value.content),
+            public_url,
             sequence_number: value.sequence_number,
             metadata: value.metadata,
             organisation_id: value.organisation.id(),
@@ -158,8 +160,9 @@ impl GetTrustListPublicationResponseDTO {
     }
 }
 
-impl From<TrustListPublication> for TrustListPublicationListItemResponseDTO {
-    fn from(value: TrustListPublication) -> Self {
+impl TrustListPublicationListItemResponseDTO {
+    pub(super) fn from_model(value: TrustListPublication, core_base_url: &str) -> Self {
+        let public_url = trust_list_publication_public_url(core_base_url, value.id);
         Self {
             id: value.id,
             name: value.name,
@@ -169,6 +172,14 @@ impl From<TrustListPublication> for TrustListPublicationListItemResponseDTO {
             r#type: value.r#type,
             role: value.role,
             deleted_at: value.deleted_at,
+            public_url,
         }
     }
+}
+
+fn trust_list_publication_public_url(
+    core_base_url: &str,
+    id: shared_types::TrustListPublicationId,
+) -> String {
+    format!("{core_base_url}/ssi/trust-list/v1/{id}")
 }

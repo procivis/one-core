@@ -41,6 +41,14 @@ async fn test_get_trust_list_publication() {
         "test_trust_list_publication"
     );
     similar_asserts::assert_eq!(resp_json["role"].as_str().unwrap(), "PID_PROVIDER");
+    similar_asserts::assert_eq!(
+        resp_json["publicUrl"].as_str().unwrap(),
+        format!(
+            "{}/ssi/trust-list/v1/{}",
+            context.config.app.core_base_url, trust_list_publication.id
+        )
+    );
+    assert!(resp_json.get("content").is_none());
 }
 
 #[tokio::test]

@@ -869,7 +869,7 @@ impl OneCore {
                 wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
                 trust_collection_manager,
-                core_base_url,
+                core_base_url.clone(),
                 config.clone(),
                 session_provider.clone(),
                 schema_importer,
@@ -903,6 +903,7 @@ impl OneCore {
                 data_provider.get_trust_entry_repository(),
                 session_provider.clone(),
                 trust_list_publisher_provider,
+                core_base_url.clone(),
             ),
             trust_collection_service: TrustCollectionService::new(
                 data_provider.get_organisation_repository(),

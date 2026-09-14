@@ -51,6 +51,16 @@ async fn test_get_trust_list_publications() {
 
     let values = resp_json["values"].as_array().unwrap();
     similar_asserts::assert_eq!(values.len(), 2);
+    for value in values {
+        similar_asserts::assert_eq!(
+            value["publicUrl"].as_str().unwrap(),
+            format!(
+                "{}/ssi/trust-list/v1/{}",
+                context.config.app.core_base_url,
+                value["id"].as_str().unwrap()
+            )
+        );
+    }
 }
 
 #[tokio::test]

@@ -18,6 +18,7 @@ pub struct TrustListPublicationService {
     trust_entry_repository: Arc<dyn TrustEntryRepository>,
     session_provider: Arc<dyn SessionProvider>,
     trust_list_publisher_provider: Arc<dyn TrustListPublisherProvider>,
+    core_base_url: Option<String>,
 }
 
 impl TrustListPublicationService {
@@ -27,6 +28,7 @@ impl TrustListPublicationService {
         trust_entry_repository: Arc<dyn TrustEntryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         trust_list_publisher_provider: Arc<dyn TrustListPublisherProvider>,
+        core_base_url: Option<String>,
     ) -> Self {
         Self {
             identifier_repository,
@@ -34,6 +36,7 @@ impl TrustListPublicationService {
             trust_entry_repository,
             session_provider,
             trust_list_publisher_provider,
+            core_base_url,
         }
     }
 }
