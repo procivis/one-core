@@ -93,8 +93,10 @@ pub(crate) async fn get_instance_details(
         ("bearer" = [])
     ),
     summary = "Check wallet status",
-    description = indoc::formatdoc! {
-        "Check the status of a wallet instance. Active instances return `204`. Revoked instances return an error."},
+    description = indoc::formatdoc! {"
+        Checks the status of an instance with the provider. Successful calls return `204`.
+        To see the result, call `GET /api/instance/v1/{{id}}`.
+    "},
 )]
 pub(crate) async fn instance_status(
     state: State<AppState>,

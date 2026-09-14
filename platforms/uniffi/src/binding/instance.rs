@@ -27,8 +27,8 @@ impl OneCore {
         Ok(response.into())
     }
 
-    /// Check status of the instance with the provider. Will return an error
-    /// if the instance has been revoked.
+    /// Checks the status of an instance with the provider. Successful calls return `204`.
+    /// To see the result, call `holderGetInstance`.
     #[uniffi::method]
     pub async fn holder_instance_status(&self, id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;

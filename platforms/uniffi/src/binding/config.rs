@@ -64,6 +64,8 @@ pub struct ConfigBindingDTO {
     /// management, trust collections, and feature flags.
     #[from(with_fn = serialize_config_entity)]
     pub wallet_provider: HashMap<String, String>,
+    /// Configurations from the Verifier Provider, incluiding
+    /// version management, ecosystems, and feature flags.
     #[from(with_fn = serialize_config_entity)]
     pub verifier_provider: HashMap<String, String>,
     /// Transaction data types and their capabilities.
