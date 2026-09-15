@@ -47,6 +47,8 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_allow_revocation: bool,
     pub credential_schema_embedded_disclosure_policy: Option<String>,
     pub credential_schema_expiration: Option<i32>,
+    pub credential_schema_preferred_key_storage_attestation_lifetime: Option<i32>,
+    pub credential_schema_preferred_instance_attestation_lifetime: Option<i32>,
 
     pub organisation_id: OrganisationId,
 

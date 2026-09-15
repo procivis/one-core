@@ -22,7 +22,7 @@ use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
@@ -353,7 +353,12 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             name: "schema".to_string(),
-            key_storage_security: Some(KeyStorageSecurity::Basic),
+            wallet_attestation: WalletAttestation {
+                require_instance_attestation: false,
+                key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                preferred_key_storage_attestation_lifetime: None,
+                preferred_instance_attestation_lifetime: None,
+            },
             formats: vec![format.clone()].into(),
             imported_source_url: "CORE_URL".to_string(),
             claim_schemas: vec![ClaimSchema {
@@ -371,7 +376,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             organisation: dummy_organisation(None).into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -393,7 +397,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         ),
         key: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -559,7 +563,7 @@ pub fn dummy_credential_schema_with_format(format: &str) -> CredentialSchema {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
-        key_storage_security: None,
+        wallet_attestation: Default::default(),
         imported_source_url: "CORE_URL".to_string(),
         formats: vec![CredentialSchemaFormat {
             id: Uuid::new_v4().into(),
@@ -576,7 +580,6 @@ pub fn dummy_credential_schema_with_format(format: &str) -> CredentialSchema {
         organisation: dummy_organisation(None).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         allow_revocation: true,
         translations: Default::default(),

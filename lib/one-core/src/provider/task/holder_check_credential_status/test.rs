@@ -14,7 +14,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
@@ -312,13 +312,17 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            key_storage_security: Some(KeyStorageSecurity::Basic),
+            wallet_attestation: WalletAttestation {
+                require_instance_attestation: false,
+                key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                preferred_key_storage_attestation_lifetime: None,
+                preferred_instance_attestation_lifetime: None,
+            },
             formats: vec![format.clone()].into(),
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -328,7 +332,7 @@ fn generic_credential() -> Credential {
         key: None,
         profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,

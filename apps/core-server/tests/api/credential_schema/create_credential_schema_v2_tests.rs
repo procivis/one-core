@@ -1,6 +1,7 @@
 use core_server::endpoint::credential_schema::dto::{
     CredentialSchemaTransactionCodeRequestRestDTO, TransactionCodeTypeRestEnum,
 };
+use one_core::model::credential_schema::{KeyStorageSecurity, WalletAttestation};
 use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
 use shared_types::EntityId;
 use similar_asserts::assert_eq;
@@ -437,6 +438,140 @@ async fn test_fail_create_credential_schema_v2_negative_expiration() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0474");
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_success_with_wallet_attestation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema with wallet attestation".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            wallet_attestation: Some(serde_json::json!({
+                "requireInstanceAttestation": true,
+                "keyStorageSecurityLevel": "HIGH",
+                "preferredKeyStorageAttestationLifetime": 2678400,
+                "preferredInstanceAttestationLifetime": 5356800,
+            })),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+    assert_eq!(
+        credential_schema.wallet_attestation,
+        WalletAttestation {
+            require_instance_attestation: true,
+            key_storage_security_level: Some(KeyStorageSecurity::High),
+            preferred_key_storage_attestation_lifetime: Some(time::Duration::seconds(2678400)),
+            preferred_instance_attestation_lifetime: Some(time::Duration::seconds(5356800)),
+        }
+    );
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&credential_schema.id)
+        .await
+        .json_value()
+        .await;
+    assert_eq!(
+        get_resp["walletAttestation"]["requireInstanceAttestation"],
+        true
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["keyStorageSecurityLevel"],
+        "HIGH"
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["preferredKeyStorageAttestationLifetime"],
+        2678400
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["preferredInstanceAttestationLifetime"],
+        5356800
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_default_wallet_attestation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema without wallet attestation".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+    assert_eq!(
+        credential_schema.wallet_attestation,
+        WalletAttestation::default()
+    );
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&credential_schema.id)
+        .await
+        .json_value()
+        .await;
+    assert_eq!(
+        get_resp["walletAttestation"]["requireInstanceAttestation"],
+        false
+    );
+    assert!(get_resp["walletAttestation"]["keyStorageSecurityLevel"].is_null());
+    assert!(get_resp["walletAttestation"]["preferredKeyStorageAttestationLifetime"].is_null());
+    assert!(get_resp["walletAttestation"]["preferredInstanceAttestationLifetime"].is_null());
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_v2_wallet_attestation_lifetime_not_positive() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema with invalid wallet attestation lifetime".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            wallet_attestation: Some(serde_json::json!({
+                "preferredKeyStorageAttestationLifetime": 0,
+            })),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0504");
 }
 
 #[tokio::test]

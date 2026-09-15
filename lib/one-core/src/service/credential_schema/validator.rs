@@ -100,6 +100,18 @@ pub(crate) fn validate_create_v2_request(
         return Err(CredentialSchemaServiceError::InvalidExpiration);
     }
 
+    if let Some(wallet_attestation) = &request.wallet_attestation
+        && [
+            wallet_attestation.preferred_key_storage_attestation_lifetime,
+            wallet_attestation.preferred_instance_attestation_lifetime,
+        ]
+        .into_iter()
+        .flatten()
+        .any(|lifetime| lifetime <= time::Duration::ZERO)
+    {
+        return Err(CredentialSchemaServiceError::InvalidWalletAttestationLifetime);
+    }
+
     if let Some(embedded_disclosure_policy) = &request.embedded_disclosure_policy {
         validate_disclosure_policy(&embedded_disclosure_policy.policy)?;
     }

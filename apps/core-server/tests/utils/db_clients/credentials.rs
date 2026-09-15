@@ -210,7 +210,7 @@ impl CredentialsDB {
             key: params.key.map(Into::into),
             profile: params.profile,
             credential_blob_id: params.credential_blob_id,
-            wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
+            wallet_key_attestation_blob_id: params.wallet_key_attestation_blob_id,
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
             webhook_url: params.webhook_url,
             embedded_disclosure_policy: params.embedded_disclosure_policy,

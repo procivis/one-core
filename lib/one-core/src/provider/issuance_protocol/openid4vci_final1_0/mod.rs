@@ -1556,7 +1556,10 @@ impl OpenID4VCIFinal1_0 {
                 map_proof_types_supported(
                     self.key_algorithm_provider
                         .supported_verification_jose_alg_ids(),
-                    schema.key_storage_security.map(Into::into),
+                    schema
+                        .wallet_attestation
+                        .key_storage_security_level
+                        .map(Into::into),
                 );
 
             let formats = schema.formats.as_ref().await?;

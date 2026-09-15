@@ -16,6 +16,7 @@ use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialSchemaExactColumn, KeyStorageSecurity, TransactionCode, TransactionCodeType,
+    WalletAttestation,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 pub use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
@@ -90,13 +91,13 @@ pub struct CredentialSchemaDetailV2ResponseDTO {
     pub formats: Vec<CredentialSchemaFormatResponseDTO>,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaV2DTO>,
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    #[serde(default)]
+    pub wallet_attestation: CredentialSchemaWalletAttestationDTO,
     pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
     pub translations: CredentialSchemaTranslationsDTO,
     pub embedded_disclosure_policy: Option<DisclosurePolicy>,
@@ -147,6 +148,23 @@ pub struct CredentialSchemaTransactionCodeDTO {
     pub r#type: TransactionCodeType,
     pub length: u32,
     pub description: Option<String>,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Into, From)]
+#[into(WalletAttestation)]
+#[from(WalletAttestation)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaWalletAttestationDTO {
+    #[serde(default)]
+    pub require_instance_attestation: bool,
+    pub key_storage_security_level: Option<KeyStorageSecurity>,
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
+    pub preferred_key_storage_attestation_lifetime: Option<Duration>,
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
+    pub preferred_instance_attestation_lifetime: Option<Duration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -266,13 +284,13 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub formats: Vec<CredentialSchemaFormatResponseDTO>,
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    #[serde(default)]
+    pub wallet_attestation: CredentialSchemaWalletAttestationDTO,
     pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     pub translations: Option<CredentialSchemaTranslationsDTO>,
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub expiration: Option<Duration>,
@@ -286,12 +304,11 @@ pub struct CreateCredentialSchemaV2RequestDTO {
     pub formats: Vec<CredentialSchemaFormatRequestDTO>,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub wallet_attestation: Option<CredentialSchemaWalletAttestationDTO>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub allow_suspension: Option<bool>,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
     pub translations: Option<CredentialSchemaTranslationsDTO>,
     pub embedded_disclosure_policy: Option<DisclosurePolicyCreateRequest>,
@@ -574,15 +591,13 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     #[serde(default)]
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub wallet_attestation: Option<CredentialSchemaWalletAttestationDTO>,
     pub imported_source_url: String,
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     #[serde(default)]
     pub allow_suspension: Option<bool>,
-    #[serde(default)]
-    pub requires_wallet_instance_attestation: Option<bool>,
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,

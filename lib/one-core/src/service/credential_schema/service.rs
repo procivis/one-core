@@ -11,9 +11,9 @@ use super::dto::{
     CredentialSchemaFilterParamsDTO, CredentialSchemaFormatRequestDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaShareResponseDTO,
-    CredentialSchemaV2FilterParamsDTO, GetCredentialSchemaListResponseDTO,
-    GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaV2RequestDTO,
+    CredentialSchemaV2FilterParamsDTO, CredentialSchemaWalletAttestationDTO,
+    GetCredentialSchemaListResponseDTO, GetCredentialSchemaListV2ResponseDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaV2RequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{
@@ -110,12 +110,16 @@ impl CredentialSchemaService {
             }],
             organisation_id: request.organisation_id,
             claims,
-            key_storage_security: request.key_storage_security,
+            wallet_attestation: Some(CredentialSchemaWalletAttestationDTO {
+                require_instance_attestation: request.requires_wallet_instance_attestation,
+                key_storage_security_level: request.key_storage_security,
+                preferred_key_storage_attestation_lifetime: None,
+                preferred_instance_attestation_lifetime: None,
+            }),
             layout_properties: request.layout_properties,
             allow_suspension: request.allow_suspension,
             allow_revocation,
             batch_size: None,
-            requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
             transaction_code: request.transaction_code,
             translations: None,
             embedded_disclosure_policy: None,
@@ -161,7 +165,10 @@ impl CredentialSchemaService {
         super::validator::check_background_properties(request.layout_properties.as_ref())?;
         super::validator::check_logo_properties(request.layout_properties.as_ref())?;
         super::validator::validate_key_storage_security_supported(
-            request.key_storage_security,
+            request
+                .wallet_attestation
+                .as_ref()
+                .and_then(|wallet_attestation| wallet_attestation.key_storage_security_level),
             &self.config,
         )?;
 
@@ -297,7 +304,11 @@ impl CredentialSchemaService {
             "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`: key storage security {}",
             credential_schema.name,
             resolved_format_types,
-            quoted_opt_provider(&credential_schema.key_storage_security)
+            quoted_opt_provider(
+                &credential_schema
+                    .wallet_attestation
+                    .key_storage_security_level
+            )
         );
 
         let schema_id = self
@@ -575,7 +586,11 @@ impl CredentialSchemaService {
             credential_schema.id,
             credential_schema.format().await?,
             credential_schema.allow_revocation,
-            quoted_opt_provider(&credential_schema.key_storage_security)
+            quoted_opt_provider(
+                &credential_schema
+                    .wallet_attestation
+                    .key_storage_security_level
+            )
         );
 
         let credential_schema = self
@@ -609,7 +624,11 @@ impl CredentialSchemaService {
             "Imported credential schema v2 `{}` ({}): key storage security {}",
             credential_schema.name,
             credential_schema.id,
-            quoted_opt_provider(&credential_schema.key_storage_security)
+            quoted_opt_provider(
+                &credential_schema
+                    .wallet_attestation
+                    .key_storage_security_level
+            )
         );
 
         let credential_schema = self

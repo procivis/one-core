@@ -27,7 +27,7 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
@@ -276,13 +276,12 @@ fn generic_proof_input_schema() -> ProofInputSchema {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             imported_source_url: "CORE_URL".to_string(),
             layout_properties: None,
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -345,7 +344,12 @@ async fn test_get_proof_exists() {
                             id: credential_schema_id,
                             deleted_at: None,
                             created_date: crate::clock::now_utc(),
-                            key_storage_security: Some(KeyStorageSecurity::Basic),
+                            wallet_attestation: WalletAttestation {
+                                require_instance_attestation: false,
+                                key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                                preferred_key_storage_attestation_lifetime: None,
+                                preferred_instance_attestation_lifetime: None,
+                            },
                             imported_source_url: "CORE_URL".to_string(),
                             last_modified: crate::clock::now_utc(),
                             name: "credential schema".to_string(),
@@ -374,7 +378,6 @@ async fn test_get_proof_exists() {
                             organisation: dummy_organisation(None).into(),
                             layout_properties: None,
                             allow_suspension: true,
-                            requires_wallet_instance_attestation: false,
                             transaction_code: None,
                             translations: Default::default(),
                             embedded_disclosure_policy: None,
@@ -493,7 +496,7 @@ async fn test_get_proof_with_array_holder() {
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: crate::clock::now_utc(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
             formats: vec![format.clone()].into(),
@@ -501,7 +504,6 @@ async fn test_get_proof_with_array_holder() {
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -567,7 +569,7 @@ async fn test_get_proof_with_array_holder() {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -741,7 +743,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: crate::clock::now_utc(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
             formats: vec![format.clone()].into(),
@@ -749,7 +751,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -825,7 +826,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -1003,7 +1004,7 @@ async fn test_get_proof_with_object_array_holder() {
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
@@ -1012,7 +1013,6 @@ async fn test_get_proof_with_object_array_holder() {
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -1098,7 +1098,7 @@ async fn test_get_proof_with_object_array_holder() {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -1271,7 +1271,7 @@ async fn test_get_proof_with_array() {
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
@@ -1280,7 +1280,6 @@ async fn test_get_proof_with_array() {
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -1346,7 +1345,7 @@ async fn test_get_proof_with_array() {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -1529,7 +1528,7 @@ async fn test_get_proof_with_array_in_object() {
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: crate::clock::now_utc(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
             formats: vec![format.clone()].into(),
@@ -1537,7 +1536,6 @@ async fn test_get_proof_with_array_in_object() {
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -1613,7 +1611,7 @@ async fn test_get_proof_with_array_in_object() {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -1801,7 +1799,7 @@ async fn test_get_proof_with_object_array() {
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
             name: "credential schema".to_string(),
@@ -1810,7 +1808,6 @@ async fn test_get_proof_with_object_array() {
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -1896,7 +1893,7 @@ async fn test_get_proof_with_object_array() {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -3042,7 +3039,8 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         .as_mut()
         .await
         .unwrap()
-        .key_storage_security = Some(KeyStorageSecurity::EnhancedBasic);
+        .wallet_attestation
+        .key_storage_security_level = Some(KeyStorageSecurity::EnhancedBasic);
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository

@@ -177,12 +177,14 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credential schema")?;
 
-        let token_endpoint_auth_methods_supported =
-            if credential_schema.requires_wallet_instance_attestation {
-                vec![TokenEndpointAuthMethod::AttestJwtClientAuth]
-            } else {
-                vec![TokenEndpointAuthMethod::None]
-            };
+        let token_endpoint_auth_methods_supported = if credential_schema
+            .wallet_attestation
+            .require_instance_attestation
+        {
+            vec![TokenEndpointAuthMethod::AttestJwtClientAuth]
+        } else {
+            vec![TokenEndpointAuthMethod::None]
+        };
 
         // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
         // If token_endpoint_auth_methods_supported includes attest_jwt_client_auth, we MUST include these fields
@@ -717,7 +719,7 @@ impl OID4VCIFinal1_0Service {
         })?;
 
         // Key attestation is expected if wallet storage type is set
-        if let Some(key_storage_security) = schema.key_storage_security {
+        if let Some(key_storage_security) = schema.wallet_attestation.key_storage_security_level {
             let Some(key_attestation_jwt) = &key_attestation else {
                 tracing::debug!("expected key attestation but none provided");
                 return Err(OpenID4VCIError::InvalidOrMissingProof.into());
@@ -742,7 +744,7 @@ impl OID4VCIFinal1_0Service {
                 return Err(WalletAttestationError::WuaRevoked.into());
             }
 
-            if schema.requires_wallet_instance_attestation {
+            if schema.wallet_attestation.require_instance_attestation {
                 let Some(wallet_instance_attestation_blob_id) =
                     credential.wallet_instance_attestation_blob_id.as_ref()
                 else {
@@ -1073,7 +1075,7 @@ impl OID4VCIFinal1_0Service {
                 UpdateCredentialRequest {
                     issuance_date: Some(issuance_date),
                     holder_identifier_id: Some(holder_identifier_id),
-                    wallet_unit_attestation_blob_id: wua_blob_id,
+                    wallet_key_attestation_blob_id: wua_blob_id,
                     format: Some(format_id),
                     ..Default::default()
                 },
@@ -1446,7 +1448,10 @@ impl OID4VCIFinal1_0Service {
         leeway: Duration,
     ) -> Result<Option<WalletInstanceAttestationDTO>, OID4VCIFinal1_0ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
-        if !credential_schema.requires_wallet_instance_attestation {
+        if !credential_schema
+            .wallet_attestation
+            .require_instance_attestation
+        {
             if oauth_client_attestation.is_some() || oauth_client_attestation_pop.is_some() {
                 return Err(WalletAttestationError::WiaMalformed(
                     "unexpected OAuth client attestation headers".to_string(),

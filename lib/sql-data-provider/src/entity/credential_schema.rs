@@ -36,6 +36,8 @@ pub struct Model {
     pub embedded_disclosure_policy: Option<String>,
     pub expiration: Option<i32>,
     pub ecosystem: Option<EcosystemId>,
+    pub preferred_key_storage_attestation_lifetime: Option<i32>,
+    pub preferred_instance_attestation_lifetime: Option<i32>,
 }
 
 #[derive(

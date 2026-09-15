@@ -146,7 +146,7 @@ impl VCAPIService {
                     key: None,
                     interaction: None,
                     credential_blob_id: None,
-                    wallet_unit_attestation_blob_id: None,
+                    wallet_key_attestation_blob_id: None,
                 }],
                 issuer_identifier,
                 RevocationListPurpose::Revocation,

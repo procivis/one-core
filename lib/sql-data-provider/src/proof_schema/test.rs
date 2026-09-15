@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::common::SortDirection;
-use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::{ListPagination, ListSorting};
@@ -196,7 +196,12 @@ async fn test_create_proof_schema_already_exists() {
                     allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
-                    key_storage_security: Some(KeyStorageSecurity::Basic),
+                    wallet_attestation: WalletAttestation {
+                        require_instance_attestation: false,
+                        key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                        preferred_key_storage_attestation_lifetime: None,
+                        preferred_instance_attestation_lifetime: None,
+                    },
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -215,7 +220,6 @@ async fn test_create_proof_schema_already_exists() {
                     organisation: dummy_organisation(None).into(),
                     layout_properties: None,
                     allow_suspension: true,
-                    requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
                     embedded_disclosure_policy: None,
@@ -315,7 +319,12 @@ async fn test_create_proof_schema_success() {
                     allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
-                    key_storage_security: Some(KeyStorageSecurity::Basic),
+                    wallet_attestation: WalletAttestation {
+                        require_instance_attestation: false,
+                        key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                        preferred_key_storage_attestation_lifetime: None,
+                        preferred_instance_attestation_lifetime: None,
+                    },
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -334,7 +343,6 @@ async fn test_create_proof_schema_success() {
                     organisation: dummy_organisation(None).into(),
                     layout_properties: None,
                     allow_suspension: true,
-                    requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
                     embedded_disclosure_policy: None,
@@ -1054,6 +1062,8 @@ async fn test_get_proof_schema_list_filter_formats() {
         expiration: Set(None),
         ecosystem: Set(None),
         batch_size: Set(None),
+        preferred_key_storage_attestation_lifetime: Set(None),
+        preferred_instance_attestation_lifetime: Set(None),
         allow_revocation: Set(false),
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
@@ -1092,6 +1102,8 @@ async fn test_get_proof_schema_list_filter_formats() {
         expiration: Set(None),
         ecosystem: Set(None),
         batch_size: Set(None),
+        preferred_key_storage_attestation_lifetime: Set(None),
+        preferred_instance_attestation_lifetime: Set(None),
         allow_revocation: Set(false),
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),

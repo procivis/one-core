@@ -104,7 +104,7 @@ fn get_credential_list_query(
             credential::Column::HolderIdentifierId,
             credential::Column::IssuerCertificateId,
             credential::Column::CredentialBlobId,
-            credential::Column::WalletUnitAttestationBlobId,
+            credential::Column::WalletKeyAttestationBlobId,
             credential::Column::WalletInstanceAttestationBlobId,
             credential::Column::WebhookUrl,
             credential::Column::EmbeddedDisclosurePolicy,
@@ -148,6 +148,14 @@ fn get_credential_list_query(
         .column_as(
             credential_schema::Column::RequiresWalletInstanceAttestation,
             "credential_schema_requires_wallet_instance_attestation",
+        )
+        .column_as(
+            credential_schema::Column::PreferredKeyStorageAttestationLifetime,
+            "credential_schema_preferred_key_storage_attestation_lifetime",
+        )
+        .column_as(
+            credential_schema::Column::PreferredInstanceAttestationLifetime,
+            "credential_schema_preferred_instance_attestation_lifetime",
         )
         .column_as(
             credential_schema::Column::TransactionCodeType,
@@ -265,7 +273,7 @@ impl CredentialRepository for CredentialProvider {
             interaction_id,
             key_id,
             request.credential_blob_id,
-            request.wallet_unit_attestation_blob_id,
+            request.wallet_key_attestation_blob_id,
             request.wallet_instance_attestation_blob_id,
         );
 
@@ -438,7 +446,7 @@ impl CredentialRepository for CredentialProvider {
             Some(expires_at) => Set(Some(expires_at)),
         };
 
-        let wallet_unit_attestation_blob_id = match request.wallet_unit_attestation_blob_id {
+        let wallet_key_attestation_blob_id = match request.wallet_key_attestation_blob_id {
             None => Unchanged(Default::default()),
             Some(blob_id) => Set(Some(blob_id)),
         };
@@ -469,7 +477,7 @@ impl CredentialRepository for CredentialProvider {
             consumed_at,
             state,
             credential_blob_id,
-            wallet_unit_attestation_blob_id,
+            wallet_key_attestation_blob_id,
             wallet_instance_attestation_blob_id,
             format,
             ..Default::default()

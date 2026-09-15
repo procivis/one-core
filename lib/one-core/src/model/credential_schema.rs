@@ -34,10 +34,9 @@ pub struct CredentialSchema {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: CredentialSchemaName,
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub wallet_attestation: WalletAttestation,
     pub layout_properties: Option<LayoutProperties>,
     pub imported_source_url: String,
-    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<TransactionCode>,
     pub batch_size: Option<i32>,
 
@@ -169,6 +168,14 @@ pub enum KeyStorageSecurity {
     Moderate,
     EnhancedBasic,
     Basic,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct WalletAttestation {
+    pub require_instance_attestation: bool,
+    pub key_storage_security_level: Option<KeyStorageSecurity>,
+    pub preferred_key_storage_attestation_lifetime: Option<Duration>,
+    pub preferred_instance_attestation_lifetime: Option<Duration>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -16,9 +16,10 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaLogoPropertiesResponseDTO,
     CredentialSchemaShareResponseDTO, CredentialSchemaTransactionCodeDTO,
     CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaTranslationsDTO,
-    GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaLayoutPropertiesDTO,
-    ImportCredentialSchemaTransactionCodeDTO, ImportCredentialSchemaV2FormatDTO,
-    ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
+    CredentialSchemaWalletAttestationDTO, GetCredentialSchemaListV2ResponseDTO,
+    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaTransactionCodeDTO,
+    ImportCredentialSchemaV2FormatDTO, ImportCredentialSchemaV2RequestDTO,
+    ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -147,6 +148,23 @@ pub struct CredentialSchemaTransactionCodeBindingDTO {
     pub r#type: TransactionCodeTypeBindingEnum,
     pub length: u32,
     pub description: Option<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From, Into)]
+#[from(CredentialSchemaWalletAttestationDTO)]
+#[into(CredentialSchemaWalletAttestationDTO)]
+#[uniffi(name = "CredentialSchemaWalletAttestation")]
+pub struct CredentialSchemaWalletAttestationBindingDTO {
+    pub require_instance_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub key_storage_security_level: Option<KeyStorageSecurityBindingEnum>,
+    #[from(with_fn = seconds_from_duration)]
+    #[into(with_fn = duration_from_seconds)]
+    pub preferred_key_storage_attestation_lifetime: Option<i64>,
+    #[from(with_fn = seconds_from_duration)]
+    #[into(with_fn = duration_from_seconds)]
+    pub preferred_instance_attestation_lifetime: Option<i64>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -399,15 +417,13 @@ pub struct CredentialSchemaDetailV2BindingDTO {
     pub organisation_id: String,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaV2BindingDTO>,
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub wallet_attestation: CredentialSchemaWalletAttestationBindingDTO,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
     pub translations: CredentialSchemaTranslationsBindingDTO,
@@ -430,15 +446,13 @@ pub struct CredentialSchemaListItemV2BindingDTO {
     pub name: String,
     #[from(with_fn = convert_inner)]
     pub formats: Vec<CredentialSchemaFormatResponseBindingDTO>,
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub wallet_attestation: CredentialSchemaWalletAttestationBindingDTO,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = seconds_from_duration)]
     pub expiration: Option<i64>,
     #[from(with_fn = convert_inner)]
@@ -505,7 +519,7 @@ pub struct CreateCredentialSchemaV2RequestBindingDTO {
     #[try_into(infallible, with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaRequestBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub wallet_attestation: Option<CredentialSchemaWalletAttestationBindingDTO>,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible)]
@@ -514,8 +528,6 @@ pub struct CreateCredentialSchemaV2RequestBindingDTO {
     pub allow_revocation: Option<bool>,
     #[try_into(infallible)]
     pub batch_size: Option<i32>,
-    #[try_into(infallible)]
-    pub requires_wallet_instance_attestation: bool,
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
@@ -570,15 +582,13 @@ pub struct ImportCredentialSchemaV2RequestSchemaBindingDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub claims: Vec<ImportCredentialSchemaV2ClaimSchemaBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub wallet_attestation: Option<CredentialSchemaWalletAttestationBindingDTO>,
     #[try_into(infallible)]
     pub imported_source_url: String,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
-    #[try_into(infallible)]
-    pub requires_wallet_instance_attestation: Option<bool>,
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeBindingDTO>,
     #[try_into(infallible)]

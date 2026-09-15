@@ -134,7 +134,7 @@ impl EudiEcosystem {
                     .attestation_revoked(
                         credential,
                         blob_storage.as_ref(),
-                        credential.wallet_unit_attestation_blob_id,
+                        credential.wallet_key_attestation_blob_id,
                     )
                     .await?
                 {

@@ -21,7 +21,9 @@ use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType,
 };
-use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutProperties};
+use one_core::model::credential_schema::{
+    CredentialSchema, KeyStorageSecurity, LayoutProperties, WalletAttestation,
+};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::did::{Did, DidType, RelatedKey};
@@ -677,7 +679,12 @@ pub async fn create_credential_schema(
         imported_source_url: "CORE_URL".to_string(),
         last_modified: params.last_modified.unwrap_or(now),
         name: name.clone(),
-        key_storage_security: params.key_storage_security.unwrap_or_default(),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: false,
+            key_storage_security_level: params.key_storage_security.unwrap_or_default(),
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        },
         organisation: organisation.to_owned().into(),
         deleted_at: params.deleted_at,
         formats: vec![CredentialSchemaFormat {
@@ -693,7 +700,6 @@ pub async fn create_credential_schema(
         claim_schemas: vec![claim_schema].into(),
         layout_properties: params.layout_properties,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         embedded_disclosure_policy: None,
         translations: Default::default(),
@@ -745,7 +751,7 @@ pub async fn create_credential_schema_with_claims(
         imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        key_storage_security: None,
+        wallet_attestation: Default::default(),
         name: name.to_owned(),
         organisation: organisation.to_owned().into(),
         deleted_at: None,
@@ -774,7 +780,6 @@ pub async fn create_credential_schema_with_claims(
         claim_schemas: claim_schemas.into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         embedded_disclosure_policy: None,
         translations: Default::default(),
@@ -925,7 +930,7 @@ pub struct TestingCredentialParams {
     pub claims_data: Option<Vec<ClaimData>>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
-    pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
@@ -995,7 +1000,7 @@ pub async fn create_credential(
         key: params.key.map(Into::into),
         profile: None,
         credential_blob_id: params.credential_blob_id,
-        wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
+        wallet_key_attestation_blob_id: params.wallet_key_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
         webhook_url: params.webhook_url,
         embedded_disclosure_policy: params.embedded_disclosure_policy,

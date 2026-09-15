@@ -100,7 +100,7 @@ async fn insert_credential_to_database(
         profile: Set(None),
         parent_id: Set(None),
         credential_blob_id: Set(None),
-        wallet_unit_attestation_blob_id: Set(None),
+        wallet_key_attestation_blob_id: Set(None),
         wallet_instance_attestation_blob_id: Set(None),
         webhook_url: Set(None),
         embedded_disclosure_policy: Set(None),

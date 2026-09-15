@@ -1111,6 +1111,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Requested credential is not permitted by the verifier's trust attestation")]
     BR_0503,
+
+    #[strum(message = "Wallet attestation lifetime must be greater than 0")]
+    BR_0504,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

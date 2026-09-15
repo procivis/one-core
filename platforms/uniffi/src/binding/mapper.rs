@@ -235,12 +235,17 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             last_modified: value.schema.last_modified.format_timestamp(),
             name: value.schema.name,
             format: format.format.to_string(),
-            key_storage_security: convert_inner(value.schema.key_storage_security),
+            key_storage_security: convert_inner(
+                value.schema.wallet_attestation.key_storage_security_level,
+            ),
             schema_id: format.ecosystem_schema_id,
             imported_source_url: value.schema.imported_source_url,
             layout_properties: convert_inner(value.schema.layout_properties),
             allow_suspension: value.schema.allow_suspension,
-            requires_wallet_instance_attestation: value.schema.requires_wallet_instance_attestation,
+            requires_wallet_instance_attestation: value
+                .schema
+                .wallet_attestation
+                .require_instance_attestation,
             translations: convert_inner(value.schema.translations),
         }
     }

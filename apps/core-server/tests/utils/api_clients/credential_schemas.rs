@@ -78,6 +78,7 @@ pub struct CreateSchemaV2Params {
     pub translations: Option<serde_json::Value>,
     pub embedded_disclosure_policy: Option<serde_json::Value>,
     pub expiration: Option<i64>,
+    pub wallet_attestation: Option<serde_json::Value>,
 }
 
 impl CreateSchemaParams {
@@ -260,6 +261,9 @@ impl CredentialSchemasApi {
         }
         if let Some(embedded_disclosure_policy) = params.embedded_disclosure_policy {
             body["embeddedDisclosurePolicy"] = embedded_disclosure_policy;
+        }
+        if let Some(wallet_attestation) = params.wallet_attestation {
+            body["walletAttestation"] = wallet_attestation;
         }
         self.client.post("/api/credential-schema/v2", body).await
     }

@@ -55,7 +55,7 @@ async fn test_import_proof_schema_ok() {
               "name": original_credential_schema.name,
               "organisationId": source_organisation.id,
               "schemaId": original_credential_schema.schema_id().await.unwrap(),
-              "keyStorageSecurity": original_credential_schema.key_storage_security,
+              "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
               "allowSuspension": original_credential_schema.allow_suspension,
               "claims": claim_schemas.iter().map(|schema| json!({
                   "array": schema.array,
@@ -102,7 +102,7 @@ async fn test_import_proof_schema_ok() {
                     "name": original_credential_schema.name,
                     "format": original_credential_schema.format().await.unwrap(),
                     "revocationMethod": original_credential_schema.format().await.unwrap(),
-                    "keyStorageSecurity": original_credential_schema.key_storage_security,
+                    "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
                     "schemaId": original_credential_schema.schema_id().await.unwrap(),
                 }
             }
@@ -188,7 +188,7 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
                     "name": credential_schema.name,
                     "format": credential_schema.format().await.unwrap(),
                     "revocationMethod": credential_schema.format().await.unwrap(),
-                    "keyStorageSecurity": credential_schema.key_storage_security,
+                    "keyStorageSecurity": credential_schema.wallet_attestation.key_storage_security_level,
                     "schemaId": credential_schema.schema_id().await.unwrap(),
                 }
             }
@@ -256,7 +256,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                     "name": original_credential_schema.name,
                     "format": original_credential_schema.format().await.unwrap(),
                     "revocationMethod": original_credential_schema.format().await.unwrap(),
-                    "keyStorageSecurity": original_credential_schema.key_storage_security,
+                    "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
                     "schemaId": original_credential_schema.schema_id().await.unwrap(),
                 }
             }
@@ -391,7 +391,7 @@ async fn test_import_proof_schema_nested_array() {
                     "name": original_credential_schema.name,
                     "format": original_credential_schema.format().await.unwrap(),
                     "revocationMethod": original_credential_schema.format().await.unwrap(),
-                    "keyStorageSecurity": original_credential_schema.key_storage_security,
+                    "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
                     "schemaId": original_credential_schema.schema_id().await.unwrap(),
                 }
             }

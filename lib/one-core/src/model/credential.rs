@@ -38,7 +38,7 @@ pub struct Credential {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
-    pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
@@ -128,7 +128,7 @@ pub struct UpdateCredentialRequest {
     pub expires_at: Option<OffsetDateTime>,
     pub suspend_end_date: Clearable<Option<OffsetDateTime>>,
     pub consumed_at: Clearable<Option<OffsetDateTime>>,
-    pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
 
     pub claims: Option<Vec<Claim>>,

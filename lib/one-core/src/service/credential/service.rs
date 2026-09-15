@@ -86,8 +86,11 @@ impl CredentialService {
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
-        validate_key_storage_security_supported(schema.key_storage_security, &self.config)
-            .error_while("validating key storage security")?;
+        validate_key_storage_security_supported(
+            schema.wallet_attestation.key_storage_security_level,
+            &self.config,
+        )
+        .error_while("validating key storage security")?;
 
         let mut formats = schema.formats.as_ref().await?.to_vec();
         if let Some(selected_formats) = &request.formats {
@@ -388,7 +391,7 @@ impl CredentialService {
         credential: &Credential,
     ) -> Result<CredentialAttestationBlobs, CredentialServiceError> {
         if credential.wallet_instance_attestation_blob_id.is_none()
-            && credential.wallet_unit_attestation_blob_id.is_none()
+            && credential.wallet_key_attestation_blob_id.is_none()
         {
             return Ok(CredentialAttestationBlobs::default());
         }
@@ -410,7 +413,7 @@ impl CredentialService {
             ),
             None => None,
         };
-        let wallet_unit_attestation_blob = match &credential.wallet_unit_attestation_blob_id {
+        let wallet_key_attestation_blob = match &credential.wallet_key_attestation_blob_id {
             Some(blob_id) => Some(
                 db_blob_storage
                     .get(blob_id)
@@ -425,7 +428,7 @@ impl CredentialService {
 
         Ok(CredentialAttestationBlobs {
             wallet_instance_attestation_blob,
-            wallet_unit_attestation_blob,
+            wallet_key_attestation_blob,
         })
     }
 

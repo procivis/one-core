@@ -233,7 +233,7 @@ pub(crate) fn extracted_credential_to_model(
         key: None,
         role: CredentialRole::Verifier,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         r#type: CredentialType::Single,
@@ -510,7 +510,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::model::credential_schema::KeyStorageSecurity;
+    use crate::model::credential_schema::{KeyStorageSecurity, WalletAttestation};
     use crate::model::credential_schema_format::CredentialSchemaFormat;
     use crate::model::did::{Did, DidType};
     use crate::model::identifier::{IdentifierData, IdentifierState};
@@ -584,13 +584,17 @@ mod tests {
                 last_modified: crate::clock::now_utc(),
                 name: "CredentialSchema".to_string(),
                 formats: vec![format.clone()].into(),
-                key_storage_security: Some(KeyStorageSecurity::Basic),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 layout_properties: None,
                 claim_schemas: claim_schemas.to_owned().into(),
                 organisation: dummy_organisation(None).into(),
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,

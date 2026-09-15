@@ -88,7 +88,10 @@ pub fn dummy_interaction_data(
             ]
         },
     });
-    if let Some(key_security_level) = credential_schema.key_storage_security {
+    if let Some(key_security_level) = credential_schema
+        .wallet_attestation
+        .key_storage_security_level
+    {
         configuration["proof_types_supported"]["jwt"]["key_attestations_required"] = json!({
             "key_storage": [KeyStorageSecurityLevel::from(key_security_level)]
         });

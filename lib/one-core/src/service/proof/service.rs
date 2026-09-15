@@ -352,7 +352,11 @@ impl ProofService {
             .map(|input| &input.credential_schema)
         {
             validate_key_storage_security_supported(
-                credential_schema.as_ref().await?.key_storage_security,
+                credential_schema
+                    .as_ref()
+                    .await?
+                    .wallet_attestation
+                    .key_storage_security_level,
                 &self.config,
             )
             .error_while("validating key storage security")?;

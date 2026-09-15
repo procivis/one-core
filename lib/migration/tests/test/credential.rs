@@ -28,7 +28,7 @@ async fn test_db_schema_credential() {
             "profile",
             "parent_id",
             "credential_blob_id",
-            "wallet_unit_attestation_blob_id",
+            "wallet_key_attestation_blob_id",
             "wallet_instance_attestation_blob_id",
             "webhook_url",
             "embedded_disclosure_policy",
@@ -155,11 +155,11 @@ async fn test_db_schema_credential() {
         .nullable(true)
         .foreign_key("fk_credential_credential_blob_id", "blob_storage", "id");
     credential
-        .column("wallet_unit_attestation_blob_id")
+        .column("wallet_key_attestation_blob_id")
         .r#type(ColumnType::Uuid)
         .nullable(true)
         .foreign_key(
-            "fk_credential_wallet_unit_attestation_blob_id",
+            "fk_credential_wallet_key_attestation_blob_id",
             "blob_storage",
             "id",
         );

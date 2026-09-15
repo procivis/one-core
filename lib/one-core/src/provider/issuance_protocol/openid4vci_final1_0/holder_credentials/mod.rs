@@ -112,7 +112,7 @@ impl OpenID4VCIFinal1_0 {
                 r#type: CredentialType::BatchParent,
                 credential_blob_id: None,
                 wallet_instance_attestation_blob_id: None,
-                wallet_unit_attestation_blob_id: None,
+                wallet_key_attestation_blob_id: None,
                 issuer_identifier: None,
                 issuer_certificate: None,
                 holder_identifier: None,
@@ -616,7 +616,7 @@ impl OpenID4VCIFinal1_0 {
         .await?;
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);
         schema.organisation = organisation.to_owned().into();
-        schema.key_storage_security = configuration
+        schema.wallet_attestation.key_storage_security_level = configuration
             .proof_types_supported
             .as_ref()
             .and_then(|map| map.get("jwt"))

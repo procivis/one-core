@@ -219,7 +219,7 @@ pub(crate) async fn credential_detail_response_from_model(
             .map(TryInto::try_into)
             .transpose()?,
         wallet_unit_attestation: attestation
-            .wallet_unit_attestation_blob
+            .wallet_key_attestation_blob
             .map(TryInto::try_into)
             .transpose()?,
         webhook_destination_url: value.webhook_url,
@@ -675,7 +675,7 @@ pub(super) fn from_create_request(
         role: CredentialRole::Issuer,
         profile: request.profile,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: request.webhook_destination_url,
         r#type,

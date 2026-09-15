@@ -11,6 +11,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, TransactionCodeType,
+    WalletAttestation,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::credential_schema::dto::{
@@ -212,7 +213,12 @@ async fn test_importer_import_credential_schema_success() {
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        key_storage_security: Some(KeyStorageSecurity::Basic),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: false,
+            key_storage_security_level: Some(KeyStorageSecurity::Basic),
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        },
         name: "Test Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
             id: Uuid::new_v4().into(),
@@ -239,7 +245,6 @@ async fn test_importer_import_credential_schema_success() {
         organisation: dummy_organisation(None).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
         embedded_disclosure_policy: None,
@@ -285,7 +290,12 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        key_storage_security: Some(KeyStorageSecurity::Basic),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: false,
+            key_storage_security_level: Some(KeyStorageSecurity::Basic),
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        },
         name: "Existing Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
             id: Uuid::new_v4().into(),
@@ -301,7 +311,6 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         organisation: dummy_organisation(None).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
         embedded_disclosure_policy: None,
@@ -360,7 +369,12 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        key_storage_security: Some(KeyStorageSecurity::Basic),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: false,
+            key_storage_security_level: Some(KeyStorageSecurity::Basic),
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        },
         name: "Existing Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
             id: Uuid::new_v4().into(),
@@ -376,7 +390,6 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         organisation: dummy_organisation(None).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
         embedded_disclosure_policy: None,

@@ -300,7 +300,7 @@ pub struct CredentialRevocationCheckResponseDTO {
 #[derive(Clone, Debug, Default)]
 pub struct CredentialAttestationBlobs {
     pub wallet_instance_attestation_blob: Option<Blob>,
-    pub wallet_unit_attestation_blob: Option<Blob>,
+    pub wallet_key_attestation_blob: Option<Blob>,
 }
 
 #[derive(Clone, Debug)]

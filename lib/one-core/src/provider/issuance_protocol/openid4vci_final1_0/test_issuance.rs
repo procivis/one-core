@@ -17,7 +17,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -918,7 +918,12 @@ async fn dummy_credential() -> Credential {
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
-                key_storage_security: Some(KeyStorageSecurity::Basic),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 name: "schema".to_string(),
                 formats: vec![format.clone()].into(),
                 claim_schemas: vec![ClaimSchema {
@@ -936,7 +941,6 @@ async fn dummy_credential() -> Credential {
                 layout_properties: None,
                 organisation: dummy_organisation(None).into(),
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -963,7 +967,7 @@ async fn dummy_credential() -> Credential {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,

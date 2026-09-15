@@ -9,7 +9,7 @@ use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialListQuery, CredentialRole,
     CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
-use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::credential_schema::{CredentialSchema, WalletAttestation};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
@@ -121,7 +121,12 @@ async fn setup_empty() -> TestSetup {
             claim_mappings: Default::default(),
         }]
         .into(),
-        key_storage_security: Some(KeyStorageSecurity::Basic.into()),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: false,
+            key_storage_security_level: Some(KeyStorageSecurity::Basic.into()),
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        },
 
         claim_schemas: new_claim_schemas
             .into_iter()
@@ -141,7 +146,6 @@ async fn setup_empty() -> TestSetup {
         organisation: dummy_organisation(Some(organisation_id)).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
         embedded_disclosure_policy: None,
@@ -381,7 +385,7 @@ async fn test_create_credential_success() {
             key: None,
             profile: None,
             credential_blob_id: None,
-            wallet_unit_attestation_blob_id: None,
+            wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
             embedded_disclosure_policy: None,
@@ -441,7 +445,7 @@ async fn test_create_credential_empty_claims() {
             key: None,
             profile: None,
             credential_blob_id: None,
-            wallet_unit_attestation_blob_id: None,
+            wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
             embedded_disclosure_policy: None,
@@ -513,7 +517,7 @@ async fn test_create_credential_already_exists() {
             key: None,
             profile: None,
             credential_blob_id: None,
-            wallet_unit_attestation_blob_id: None,
+            wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
             embedded_disclosure_policy: None,

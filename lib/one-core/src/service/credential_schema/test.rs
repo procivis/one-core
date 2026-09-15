@@ -103,7 +103,7 @@ fn generic_credential_schema() -> CredentialSchema {
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
-        key_storage_security: None,
+        wallet_attestation: Default::default(),
         name: "testName".to_string(),
         formats: vec![CredentialSchemaFormat {
             id: Uuid::new_v4().into(),
@@ -139,7 +139,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: dummy_organisation(None).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: vec![LocalizedText {
             entity_id: credential_schema_id.into(),

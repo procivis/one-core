@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
-    CredentialSchema, SortableCredentialSchemaColumn, TransactionCode,
+    CredentialSchema, SortableCredentialSchemaColumn, TransactionCode, WalletAttestation,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::ListFilterCondition;
@@ -189,10 +189,22 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             name: Set(value.name),
             imported_source_url: Set(value.imported_source_url),
             organisation_id: Set(value.organisation.id()),
-            key_storage_security: Set(convert_inner(value.key_storage_security)),
+            key_storage_security: Set(convert_inner(
+                value.wallet_attestation.key_storage_security_level,
+            )),
             layout_properties: Set(convert_inner(value.layout_properties)),
             allow_suspension: Set(value.allow_suspension),
-            requires_wallet_instance_attestation: Set(value.requires_wallet_instance_attestation),
+            requires_wallet_instance_attestation: Set(value
+                .wallet_attestation
+                .require_instance_attestation),
+            preferred_key_storage_attestation_lifetime: Set(value
+                .wallet_attestation
+                .preferred_key_storage_attestation_lifetime
+                .map(|d| d.whole_seconds() as i32)),
+            preferred_instance_attestation_lifetime: Set(value
+                .wallet_attestation
+                .preferred_instance_attestation_lifetime
+                .map(|d| d.whole_seconds() as i32)),
             transaction_code_type: Set(transaction_code_type),
             transaction_code_length: Set(transaction_code_length.map(|l| l as i32)),
             transaction_code_description: Set(transaction_code_description),
@@ -254,7 +266,16 @@ pub(super) fn credential_schema_from_models(
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
         name: credential_schema.name,
-        key_storage_security: convert_inner(credential_schema.key_storage_security),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: credential_schema.requires_wallet_instance_attestation,
+            key_storage_security_level: convert_inner(credential_schema.key_storage_security),
+            preferred_key_storage_attestation_lifetime: credential_schema
+                .preferred_key_storage_attestation_lifetime
+                .map(|seconds| Duration::seconds(seconds as i64)),
+            preferred_instance_attestation_lifetime: credential_schema
+                .preferred_instance_attestation_lifetime
+                .map(|seconds| Duration::seconds(seconds as i64)),
+        },
         formats: RelatedVec::new(CredentialSchemaFormatsLoader { id, db: db.clone() }),
         claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db: db.clone() }),
         organisation: Related::new(
@@ -268,8 +289,6 @@ pub(super) fn credential_schema_from_models(
         },
         imported_source_url: credential_schema.imported_source_url,
         allow_suspension: credential_schema.allow_suspension,
-        requires_wallet_instance_attestation: credential_schema
-            .requires_wallet_instance_attestation,
         transaction_code,
         batch_size: credential_schema.batch_size,
         allow_revocation: credential_schema.allow_revocation,

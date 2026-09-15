@@ -47,4 +47,5 @@ pub mod m20260903_090000_add_logo_to_identifier;
 pub mod m20260911_062928_used_nonce_table;
 pub mod m20260915_023353_managed_instance_attestation;
 pub mod m20260915_071407_wallet_unit_history;
+pub mod m20260915_082929_credential_schema_wallet_attestation;
 pub mod m20260915_090000_add_localized_text_name_index;

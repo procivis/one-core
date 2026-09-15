@@ -93,7 +93,9 @@ async fn test_create_credential_schema_remote_secure_element_success() {
         2
     );
     assert_eq!(
-        credential_schema.key_storage_security,
+        credential_schema
+            .wallet_attestation
+            .key_storage_security_level,
         Some(KeyStorageSecurity::High)
     );
 }

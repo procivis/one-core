@@ -44,7 +44,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{
-    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, WalletAttestation,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -398,7 +398,12 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
-            key_storage_security: Some(KeyStorageSecurity::Basic),
+            wallet_attestation: WalletAttestation {
+                require_instance_attestation: false,
+                key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                preferred_key_storage_attestation_lifetime: None,
+                preferred_instance_attestation_lifetime: None,
+            },
             last_modified: now,
             name: "schema".to_string(),
             formats: vec![format.clone()].into(),
@@ -406,7 +411,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             layout_properties: None,
             organisation: dummy_organisation(None).into(),
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -431,7 +435,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         key: None,
         profile: None,
         credential_blob_id: None,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,

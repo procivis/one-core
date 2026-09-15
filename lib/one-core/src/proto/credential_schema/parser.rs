@@ -35,6 +35,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::service::credential_schema::dto::CredentialSchemaWalletAttestationDTO;
 use crate::service::credential_schema::mapper::schema_translations_from_dto;
 
 pub(crate) struct CredentialSchemaImportParserImpl {
@@ -96,7 +97,15 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             created_date: dto.schema.created_date,
             last_modified: dto.schema.last_modified,
             name: dto.schema.name,
-            key_storage_security: dto.schema.key_storage_security,
+            wallet_attestation: Some(CredentialSchemaWalletAttestationDTO {
+                require_instance_attestation: dto
+                    .schema
+                    .requires_wallet_instance_attestation
+                    .unwrap_or(false),
+                key_storage_security_level: dto.schema.key_storage_security,
+                preferred_key_storage_attestation_lifetime: None,
+                preferred_instance_attestation_lifetime: None,
+            }),
             layout_properties,
             imported_source_url: dto.schema.imported_source_url,
             allow_revocation: Some(
@@ -106,7 +115,6 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 dto.schema.allow_suspension,
                 revocation_method.as_deref(),
             )?),
-            requires_wallet_instance_attestation: dto.schema.requires_wallet_instance_attestation,
             claims,
             organisation_id: dto.schema.organisation_id,
             formats: vec![ImportCredentialSchemaV2FormatDTO {
@@ -205,7 +213,11 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             created_date: now,
             last_modified: now,
             name: dto.schema.name,
-            key_storage_security: dto.schema.key_storage_security,
+            wallet_attestation: dto
+                .schema
+                .wallet_attestation
+                .map(Into::into)
+                .unwrap_or_default(),
             layout_properties: self.parse_layout_properties(
                 dto.schema.layout_properties,
                 &claim_schemas,
@@ -213,10 +225,6 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             )?,
             imported_source_url,
             allow_suspension: dto.schema.allow_suspension.unwrap_or(false),
-            requires_wallet_instance_attestation: dto
-                .schema
-                .requires_wallet_instance_attestation
-                .unwrap_or(false),
             claim_schemas: claim_schemas.into(),
             organisation: dto.organisation.into(),
             formats: formats.into(),

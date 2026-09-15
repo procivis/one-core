@@ -22,7 +22,7 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, WalletAttestation,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::proof_schema::{
@@ -431,12 +431,11 @@ async fn test_create_proof_schema_success() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: None,
+                wallet_attestation: Default::default(),
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -569,12 +568,16 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: Some(KeyStorageSecurity::Basic),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 claim_schemas: vec![claim_schema_software.clone()].into(),
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -583,7 +586,12 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
             let schema_hardware = CredentialSchema {
                 id: credential_schema_hardware_id,
                 name: "hardware".to_string(),
-                key_storage_security: Some(KeyStorageSecurity::Moderate),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Moderate),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 claim_schemas: vec![claim_schema_hardware.clone()].into(),
                 ..schema_software.clone()
             };
@@ -713,12 +721,16 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::EnhancedBasic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -871,7 +883,7 @@ async fn test_create_proof_schema_array_object_fail() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: None,
+                wallet_attestation: Default::default(),
                 claim_schemas: vec![
                     claim_schema_root.clone(),
                     claim_schema_array.clone(),
@@ -882,7 +894,6 @@ async fn test_create_proof_schema_array_object_fail() {
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -1041,7 +1052,7 @@ async fn test_create_proof_schema_array_success() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: None,
+                wallet_attestation: Default::default(),
                 claim_schemas: vec![
                     claim_schema_root.clone(),
                     claim_schema_array.clone(),
@@ -1052,7 +1063,6 @@ async fn test_create_proof_schema_array_success() {
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -1199,7 +1209,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: None,
+                wallet_attestation: Default::default(),
                 claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
                     key: "key".to_string(),
@@ -1215,7 +1225,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -2016,7 +2025,12 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: Some(KeyStorageSecurity::Moderate),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Moderate),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
@@ -2032,7 +2046,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 .into(),
                 organisation: dummy_organisation(None).into(),
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -2206,7 +2219,12 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: Some(KeyStorageSecurity::Moderate),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Moderate),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
@@ -2222,7 +2240,6 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 .into(),
                 organisation: dummy_organisation(None).into(),
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
@@ -2830,12 +2847,11 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
             }]
             .into(),
             imported_source_url: "CORE_URL".to_string(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             layout_properties: None,
             claim_schemas: claims.into(),
             organisation: dummy_organisation(None).into(),
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -3076,12 +3092,11 @@ async fn test_create_proof_schema_verify_nested_generic(
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                key_storage_security: None,
+                wallet_attestation: Default::default(),
                 claim_schemas: claim_schemas_cloned.into(),
                 organisation: dummy_organisation(None).into(),
                 layout_properties: None,
                 allow_suspension: true,
-                requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,

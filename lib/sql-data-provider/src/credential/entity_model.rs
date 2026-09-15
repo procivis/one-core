@@ -31,7 +31,7 @@ pub(super) struct CredentialListEntityModel {
     pub holder_identifier_id: Option<IdentifierId>,
     pub issuer_certificate_id: Option<CertificateId>,
     pub credential_blob_id: Option<BlobId>,
-    pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
@@ -58,6 +58,8 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_embedded_disclosure_policy: Option<String>,
     pub credential_schema_expiration: Option<i32>,
     pub credential_schema_ecosystem: Option<EcosystemId>,
+    pub credential_schema_preferred_key_storage_attestation_lifetime: Option<i32>,
+    pub credential_schema_preferred_instance_attestation_lifetime: Option<i32>,
 
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_identifier_created_date: Option<OffsetDateTime>,

@@ -148,7 +148,9 @@ impl ProofSchemaService {
 
         for credential_schema in &credential_schemas {
             validate_key_storage_security_supported(
-                credential_schema.key_storage_security,
+                credential_schema
+                    .wallet_attestation
+                    .key_storage_security_level,
                 &self.config,
             )
             .error_while("validating key storage security")?;

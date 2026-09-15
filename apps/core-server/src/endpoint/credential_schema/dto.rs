@@ -9,9 +9,9 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaTransactionCodeDTO,
     CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaTranslationsDTO,
-    CredentialSchemaV2FilterParamsDTO, DisclosurePolicyCreateRequest,
-    ImportCredentialSchemaV2FormatDTO, ImportCredentialSchemaV2RequestDTO,
-    ImportCredentialSchemaV2RequestSchemaDTO,
+    CredentialSchemaV2FilterParamsDTO, CredentialSchemaWalletAttestationDTO,
+    DisclosurePolicyCreateRequest, ImportCredentialSchemaV2FormatDTO,
+    ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
@@ -95,16 +95,13 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     pub name: String,
     #[from(with_fn = convert_inner)]
     pub formats: Vec<CredentialSchemaFormatResponseRestDTO>,
-    /// Indication of what type of key storage the wallet should use.
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub wallet_attestation: CredentialSchemaWalletAttestationRestDTO,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
     /// Administrative lifetime, in seconds, applied to credentials issued
@@ -177,6 +174,38 @@ pub(crate) struct CredentialSchemaTransactionCodeRestDTO {
     pub r#type: TransactionCodeTypeRestEnum,
     pub length: u32,
     pub description: Option<String>,
+}
+
+/// Wallet attestation requirements the holder's wallet must meet for
+/// credential issuance.
+#[options_not_nullable]
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
+#[from(CredentialSchemaWalletAttestationDTO)]
+#[into(CredentialSchemaWalletAttestationDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSchemaWalletAttestationRestDTO {
+    /// If `true`, the wallet must present a wallet instance attestation
+    /// during issuance.
+    #[serde(default)]
+    pub require_instance_attestation: bool,
+    /// Indication of what type of key storage the wallet should use.
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub key_storage_security_level: Option<KeyStorageSecurityRestEnum>,
+    /// Preferred status maintenance lifetime, in seconds, of the key
+    /// attestation the credential is bound to. Must be greater than 0 if
+    /// specified.
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
+    #[schema(value_type = Option<i64>, minimum = 1)]
+    pub preferred_key_storage_attestation_lifetime: Option<Duration>,
+    /// Preferred status maintenance lifetime, in seconds, of the wallet
+    /// instance attestation. Must be greater than 0 if specified.
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
+    #[schema(value_type = Option<i64>, minimum = 1)]
+    pub preferred_instance_attestation_lifetime: Option<Duration>,
 }
 
 #[options_not_nullable]
@@ -857,9 +886,11 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[schema(min_items = 1)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
-    /// Specifies key storage security requirements.
+    /// Wallet attestation requirements the holder's wallet must meet for
+    /// credential issuance.
+    #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub wallet_attestation: Option<CredentialSchemaWalletAttestationRestDTO>,
     /// kept for backwards compatibility
     #[serde(default, skip_serializing)]
     #[schema(ignore)]
@@ -883,9 +914,6 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub batch_size: Option<i32>,
-    #[serde(default)]
-    #[try_into(infallible)]
-    pub requires_wallet_instance_attestation: bool,
     /// Optional transaction code configuration.
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
@@ -999,15 +1027,13 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaV2ResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub wallet_attestation: CredentialSchemaWalletAttestationRestDTO,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
-    pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
     pub translations: CredentialSchemaTranslationsRestDTO,
@@ -1095,7 +1121,7 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub wallet_attestation: Option<CredentialSchemaWalletAttestationRestDTO>,
     #[try_into(infallible)]
     pub imported_source_url: String,
     /// kept for backwards compatibility
@@ -1111,9 +1137,6 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
-    #[serde(default)]
-    #[try_into(infallible)]
-    pub requires_wallet_instance_attestation: Option<bool>,
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeRequestRestDTO>,
@@ -1150,6 +1173,8 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     #[test]
@@ -1221,5 +1246,88 @@ mod test {
         let serialized = serde_json::to_value(shared).unwrap();
 
         serde_json::from_value::<ImportCredentialSchemaRequestSchemaRestDTO>(serialized).unwrap();
+    }
+
+    #[test]
+    fn test_shared_schema_v2_deserializes_into_import_schema_v2() {
+        let shared = CredentialSchemaV2ResponseRestDTO {
+            id: Uuid::new_v4().into(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
+            name: "name".to_string(),
+            formats: vec![CredentialSchemaFormatResponseRestDTO {
+                format: "format".into(),
+                ecosystem_schema_id: "schema_id".to_string(),
+                dcql: None,
+            }],
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaV2ResponseRestDTO {
+                id: Uuid::new_v4().into(),
+                created_date: one_core::clock::now_utc(),
+                last_modified: one_core::clock::now_utc(),
+                key: "key".to_string(),
+                datatype: "datatype".to_string(),
+                required: true,
+                array: true,
+                claims: vec![],
+                mappings: Some(vec![CredentialClaimSchemaMappingResponseRestDTO {
+                    format: "format".into(),
+                    technical_key: "key".to_string(),
+                    namespace: None,
+                }]),
+                translations: CredentialClaimSchemaTranslationsRestDTO {
+                    name: I18nString(std::collections::HashMap::from([(
+                        "en".to_string(),
+                        "key".to_string(),
+                    )])),
+                },
+            }],
+            wallet_attestation: CredentialSchemaWalletAttestationRestDTO {
+                require_instance_attestation: true,
+                key_storage_security_level: Some(KeyStorageSecurityRestEnum::Basic),
+                preferred_key_storage_attestation_lifetime: Some(Duration::seconds(2678400)),
+                preferred_instance_attestation_lifetime: Some(Duration::seconds(5356800)),
+            },
+            imported_source_url: "imported_source_url".to_string(),
+            layout_properties: None,
+            allow_suspension: true,
+            allow_revocation: Some(true),
+            batch_size: Some(2),
+            transaction_code: Some(CredentialSchemaTransactionCodeRestDTO {
+                r#type: TransactionCodeTypeRestEnum::Numeric,
+                length: 6,
+                description: Some("description".to_string()),
+            }),
+            translations: CredentialSchemaTranslationsRestDTO {
+                name: I18nString(std::collections::HashMap::from([(
+                    "en".to_string(),
+                    "name".to_string(),
+                )])),
+                description: None,
+            },
+            embedded_disclosure_policy: None,
+            expiration: Some(Duration::seconds(63072000)),
+            ecosystem: Some("EUDI".into()),
+        };
+
+        let serialized = serde_json::to_value(shared).unwrap();
+
+        let imported =
+            serde_json::from_value::<ImportCredentialSchemaV2RequestSchemaRestDTO>(serialized)
+                .unwrap();
+        let wallet_attestation = imported.wallet_attestation.unwrap();
+        assert!(wallet_attestation.require_instance_attestation);
+        assert_eq!(
+            wallet_attestation.key_storage_security_level,
+            Some(KeyStorageSecurityRestEnum::Basic)
+        );
+        assert_eq!(
+            wallet_attestation.preferred_key_storage_attestation_lifetime,
+            Some(Duration::seconds(2678400))
+        );
+        assert_eq!(
+            wallet_attestation.preferred_instance_attestation_lifetime,
+            Some(Duration::seconds(5356800))
+        );
     }
 }

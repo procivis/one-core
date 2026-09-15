@@ -31,8 +31,11 @@ async fn test_get_credential_schema_success() {
     resp["id"].assert_eq(&credential_schema.id);
     resp["schemaId"].assert_eq(&credential_schema.id);
     assert_eq!(resp["format"], "JWT");
-    resp["requiresWalletInstanceAttestation"]
-        .assert_eq(&credential_schema.requires_wallet_instance_attestation);
+    resp["requiresWalletInstanceAttestation"].assert_eq(
+        &credential_schema
+            .wallet_attestation
+            .require_instance_attestation,
+    );
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["revocationMethod"], "BITSTRINGSTATUSLIST");
     assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");

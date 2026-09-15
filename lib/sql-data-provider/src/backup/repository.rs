@@ -288,6 +288,14 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::Expiration,
                 "credential_schema_expiration",
             )
+            .column_as(
+                credential_schema::Column::PreferredKeyStorageAttestationLifetime,
+                "credential_schema_preferred_key_storage_attestation_lifetime",
+            )
+            .column_as(
+                credential_schema::Column::PreferredInstanceAttestationLifetime,
+                "credential_schema_preferred_instance_attestation_lifetime",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .expr_as_(
                 coalesce_to_empty_array(

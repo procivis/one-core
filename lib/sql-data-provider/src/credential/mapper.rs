@@ -4,7 +4,7 @@ use one_core::model::claim::Claim;
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
 };
-use one_core::model::credential_schema::{CredentialSchema, TransactionCode};
+use one_core::model::credential_schema::{CredentialSchema, TransactionCode, WalletAttestation};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
@@ -271,7 +271,7 @@ pub(crate) fn model_to_credential(
             .key_id
             .map(|id| Related::new(id, key_repository.clone())),
         credential_blob_id: credential.credential_blob_id,
-        wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
+        wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
         embedded_disclosure_policy: credential.embedded_disclosure_policy,
@@ -295,7 +295,7 @@ pub(super) fn request_to_active_model(
     interaction_id: Option<InteractionId>,
     key_id: Option<KeyId>,
     credential_blob_id: Option<BlobId>,
-    wallet_unit_attestation_blob_id: Option<BlobId>,
+    wallet_key_attestation_blob_id: Option<BlobId>,
     wallet_instance_attestation_blob_id: Option<BlobId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
@@ -320,7 +320,7 @@ pub(super) fn request_to_active_model(
         profile: Set(request.profile.clone()),
         parent_id: Set(request.parent.as_ref().map(|m| m.id())),
         credential_blob_id: Set(credential_blob_id),
-        wallet_unit_attestation_blob_id: Set(wallet_unit_attestation_blob_id),
+        wallet_key_attestation_blob_id: Set(wallet_key_attestation_blob_id),
         wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
         webhook_url: Set(request.webhook_url.to_owned()),
         embedded_disclosure_policy: Set(request.embedded_disclosure_policy.clone()),
@@ -368,7 +368,19 @@ pub(super) fn credential_list_model_to_repository_model(
         deleted_at: credential.credential_schema_deleted_at,
         created_date: credential.credential_schema_created_date,
         last_modified: credential.credential_schema_last_modified,
-        key_storage_security: convert_inner(credential.credential_schema_key_storage_security),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: credential
+                .credential_schema_requires_wallet_instance_attestation,
+            key_storage_security_level: convert_inner(
+                credential.credential_schema_key_storage_security,
+            ),
+            preferred_key_storage_attestation_lifetime: credential
+                .credential_schema_preferred_key_storage_attestation_lifetime
+                .map(|seconds| Duration::seconds(seconds as i64)),
+            preferred_instance_attestation_lifetime: credential
+                .credential_schema_preferred_instance_attestation_lifetime
+                .map(|seconds| Duration::seconds(seconds as i64)),
+        },
         name: credential.credential_schema_name,
         formats,
         imported_source_url: credential.credential_schema_imported_source_url,
@@ -384,8 +396,6 @@ pub(super) fn credential_list_model_to_repository_model(
             .credential_schema_schema_layout_properties
             .map(|layout_properties| layout_properties.into()),
         allow_suspension: credential.credential_schema_allow_suspension,
-        requires_wallet_instance_attestation: credential
-            .credential_schema_requires_wallet_instance_attestation,
         transaction_code,
         batch_size: credential.credential_schema_batch_size,
         allow_revocation: credential.credential_schema_allow_revocation,
@@ -485,7 +495,7 @@ pub(super) fn credential_list_model_to_repository_model(
             .key_id
             .map(|id| Related::new(id, key_repository.to_owned())),
         credential_blob_id: credential.credential_blob_id,
-        wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
+        wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
         embedded_disclosure_policy: credential.embedded_disclosure_policy,

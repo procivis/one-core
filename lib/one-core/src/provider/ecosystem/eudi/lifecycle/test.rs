@@ -186,7 +186,7 @@ fn accepted_pid(wua_blob_id: Option<BlobId>, wia_blob_id: Option<BlobId>) -> Cre
     Credential {
         id: Uuid::new_v4().into(),
         state: CredentialStateEnum::Accepted,
-        wallet_unit_attestation_blob_id: wua_blob_id,
+        wallet_key_attestation_blob_id: wua_blob_id,
         wallet_instance_attestation_blob_id: wia_blob_id,
         ..dummy_credential()
     }

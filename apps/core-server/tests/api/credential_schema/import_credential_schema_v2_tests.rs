@@ -1,3 +1,4 @@
+use one_core::model::credential_schema::{KeyStorageSecurity, WalletAttestation};
 use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
 use similar_asserts::assert_eq;
 
@@ -75,7 +76,6 @@ async fn test_import_credential_schema_v2_with_translations() {
       "layoutType": "CARD",
       "name": "exportable schema",
       "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
-      "requiresWalletInstanceAttestation": false,
       "translations": {
         "description": {
           "de": "Ein Schema zum Importieren",
@@ -210,7 +210,6 @@ async fn test_import_credential_schema_v2_imports_claim_translations() {
       "layoutType": "CARD",
       "name": "exportable schema",
       "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
-      "requiresWalletInstanceAttestation": false,
       "translations": {
         "name": {
           "en": "Importable schema"
@@ -288,8 +287,7 @@ async fn test_import_credential_schema_v2_with_expiration() {
       "lastModified": "2026-05-18T13:53:49.979Z",
       "layoutType": "CARD",
       "name": "schema with expiration",
-      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
-      "requiresWalletInstanceAttestation": false
+      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7"
     });
 
     // WHEN
@@ -316,6 +314,97 @@ async fn test_import_credential_schema_v2_with_expiration() {
         .json_value()
         .await;
     assert_eq!(get_resp["expiration"], 63072000);
+}
+
+#[tokio::test]
+async fn test_import_credential_schema_v2_with_wallet_attestation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let import_schema = serde_json::json!(
+    {
+      "allowSuspension": false,
+      "claims": [
+        {
+          "array": false,
+          "claims": [],
+          "createdDate": "2026-05-18T13:53:49.979Z",
+          "datatype": "STRING",
+          "id": "ac18f142-50c4-4878-802a-7e3245ac0d05",
+          "key": "firstName",
+          "lastModified": "2026-05-18T13:53:49.979Z",
+          "required": true,
+          "translations": {
+            "name": {
+              "en": "firstName"
+            }
+          }
+        }
+      ],
+      "createdDate": "2026-05-18T13:53:49.979Z",
+      "formats": [
+        {
+          "format": "JWT",
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+        }
+      ],
+      "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
+      "importedSourceUrl": "http://127.0.0.1:51147/ssi/schema/v2/6b457c8b-5af4-4fd9-9767-c87349675dd2",
+      "lastModified": "2026-05-18T13:53:49.979Z",
+      "layoutType": "CARD",
+      "name": "schema with wallet attestation",
+      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
+      "walletAttestation": {
+        "requireInstanceAttestation": true,
+        "keyStorageSecurityLevel": "HIGH",
+        "preferredKeyStorageAttestationLifetime": 2678400,
+        "preferredInstanceAttestationLifetime": 5356800
+      }
+    });
+
+    // WHEN
+    let import_resp = context
+        .api
+        .credential_schemas
+        .import_v2(organisation.id, import_schema)
+        .await;
+
+    // THEN
+    assert_eq!(import_resp.status(), 201);
+    let imported_id = import_resp.json_value().await["id"].parse();
+    let imported_schema = context.db.credential_schemas.get(&imported_id).await;
+    assert_eq!(
+        imported_schema.wallet_attestation,
+        WalletAttestation {
+            require_instance_attestation: true,
+            key_storage_security_level: Some(KeyStorageSecurity::High),
+            preferred_key_storage_attestation_lifetime: Some(time::Duration::seconds(2678400)),
+            preferred_instance_attestation_lifetime: Some(time::Duration::seconds(5356800)),
+        }
+    );
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&imported_id)
+        .await
+        .json_value()
+        .await;
+    assert_eq!(
+        get_resp["walletAttestation"]["requireInstanceAttestation"],
+        true
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["keyStorageSecurityLevel"],
+        "HIGH"
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["preferredKeyStorageAttestationLifetime"],
+        2678400
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["preferredInstanceAttestationLifetime"],
+        5356800
+    );
 }
 
 #[tokio::test]
@@ -361,8 +450,7 @@ async fn test_import_credential_schema_v2_multiple_formats_with_shared_metadata_
       "lastModified": "2026-07-03T11:44:45.285Z",
       "layoutType": "CARD",
       "name": "multi-format schema",
-      "organisationId": "18364c17-06a1-4b93-9a4b-c440f2bc2420",
-      "requiresWalletInstanceAttestation": false
+      "organisationId": "18364c17-06a1-4b93-9a4b-c440f2bc2420"
     });
 
     // WHEN
@@ -473,8 +561,7 @@ async fn test_import_credential_schema_v2_without_translation() {
       },
       "layoutType": "CARD",
       "name": "plain schema",
-      "organisationId": "ca7493bb-2ae4-49b9-b26c-c0485e98f2d9",
-      "requiresWalletInstanceAttestation": false
+      "organisationId": "ca7493bb-2ae4-49b9-b26c-c0485e98f2d9"
     }
         );
     // WHEN

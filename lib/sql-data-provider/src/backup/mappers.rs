@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::Credential;
-use one_core::model::credential_schema::{CredentialSchema, TransactionCode};
+use one_core::model::credential_schema::{CredentialSchema, TransactionCode, WalletAttestation};
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
@@ -89,13 +89,23 @@ pub(super) fn credential_from_unexportable_model(
             imported_source_url: value.credential_schema_imported_source_url,
             name: value.credential_schema_name,
             formats,
-            key_storage_security: convert_inner(value.credential_schema_key_storage_security),
+            wallet_attestation: WalletAttestation {
+                require_instance_attestation: value
+                    .credential_schema_requires_wallet_instance_attestation,
+                key_storage_security_level: convert_inner(
+                    value.credential_schema_key_storage_security,
+                ),
+                preferred_key_storage_attestation_lifetime: value
+                    .credential_schema_preferred_key_storage_attestation_lifetime
+                    .map(|seconds| Duration::seconds(seconds as i64)),
+                preferred_instance_attestation_lifetime: value
+                    .credential_schema_preferred_instance_attestation_lifetime
+                    .map(|seconds| Duration::seconds(seconds as i64)),
+            },
             claim_schemas: claim_schemas.into(),
             organisation: Related::new(value.organisation_id, organisation_repository.to_owned()),
             layout_properties: None,
             allow_suspension: value.credential_schema_allow_suspension,
-            requires_wallet_instance_attestation: value
-                .credential_schema_requires_wallet_instance_attestation,
             transaction_code,
             batch_size: value.credential_schema_batch_size,
             allow_revocation: value.credential_schema_allow_revocation,
@@ -112,7 +122,7 @@ pub(super) fn credential_from_unexportable_model(
         interaction: None,
         key: None,
         credential_blob_id: value.credential_blob_id,
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: value.webhook_url,
         embedded_disclosure_policy: value.embedded_disclosure_policy,

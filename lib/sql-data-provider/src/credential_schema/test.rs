@@ -4,7 +4,7 @@ use one_core::clock::now_utc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaListQuery, LayoutProperties,
-    UpdateCredentialSchemaRequest,
+    UpdateCredentialSchemaRequest, WalletAttestation,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
@@ -126,7 +126,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -159,7 +159,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             organisation: organisation.clone().into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             embedded_disclosure_policy: None,
             translations: Default::default(),
@@ -215,7 +214,12 @@ async fn test_create_credential_schema_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
-            key_storage_security: Some(KeyStorageSecurity::Basic.into()),
+            wallet_attestation: WalletAttestation {
+                require_instance_attestation: false,
+                key_storage_security_level: Some(KeyStorageSecurity::Basic.into()),
+                preferred_key_storage_attestation_lifetime: None,
+                preferred_instance_attestation_lifetime: None,
+            },
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             formats: vec![CredentialSchemaFormat {
@@ -232,7 +236,6 @@ async fn test_create_credential_schema_success() {
             organisation: organisation.into(),
             layout_properties: None,
             allow_suspension: true,
-            requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
             embedded_disclosure_policy: None,
@@ -514,11 +517,10 @@ async fn test_delete_credential_schema_not_found() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            key_storage_security: None,
+            wallet_attestation: Default::default(),
             layout_properties: None,
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            requires_wallet_instance_attestation: false,
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),
             transaction_code: None,

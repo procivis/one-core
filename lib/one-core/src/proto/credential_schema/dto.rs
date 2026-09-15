@@ -98,11 +98,11 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     #[allow(unused)]
     pub organisation_id: OrganisationId,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub wallet_attestation:
+        Option<crate::service::credential_schema::dto::CredentialSchemaWalletAttestationDTO>,
     pub imported_source_url: String,
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
-    pub requires_wallet_instance_attestation: Option<bool>,
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,

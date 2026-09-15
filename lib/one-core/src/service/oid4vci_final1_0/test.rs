@@ -24,7 +24,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
-use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::Did;
@@ -248,7 +248,12 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         name: "SchemaName".to_string(),
-        key_storage_security: Some(KeyStorageSecurity::Basic),
+        wallet_attestation: WalletAttestation {
+            require_instance_attestation: false,
+            key_storage_security_level: Some(KeyStorageSecurity::Basic),
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        },
         formats: vec![CredentialSchemaFormat {
             id: format_id,
             created_date: crate::clock::now_utc(),
@@ -275,7 +280,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: dummy_organisation(None).into(),
         layout_properties: None,
         allow_suspension: true,
-        requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
         embedded_disclosure_policy: None,
@@ -353,7 +357,7 @@ fn dummy_credential(
         key: None,
         profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
-        wallet_unit_attestation_blob_id: None,
+        wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
@@ -1604,7 +1608,7 @@ async fn test_create_credential_success() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let mut schema = generic_credential_schema();
-    schema.key_storage_security = None;
+    schema.wallet_attestation.key_storage_security_level = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Offered,
@@ -1840,7 +1844,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         claim_mappings: Default::default(),
     }]
     .into();
-    schema.key_storage_security = None;
+    schema.wallet_attestation.key_storage_security_level = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Offered,
@@ -2046,7 +2050,7 @@ async fn test_create_credential_success_mdoc() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        key_storage_security: None,
+        wallet_attestation: Default::default(),
         ..generic_credential_schema()
     };
     let credential = dummy_credential(
@@ -2641,7 +2645,7 @@ async fn test_create_credential_issuer_failed() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let mut schema = generic_credential_schema();
-    schema.key_storage_security = None;
+    schema.wallet_attestation.key_storage_security_level = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Offered,
@@ -2822,7 +2826,7 @@ async fn test_create_credential_nonce_reused() {
     let mut interaction_repository = MockInteractionRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.key_storage_security = None;
+    schema.wallet_attestation.key_storage_security_level = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Offered,
@@ -3248,7 +3252,7 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.requires_wallet_instance_attestation = true;
+    schema.wallet_attestation.require_instance_attestation = true;
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -3305,7 +3309,7 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.requires_wallet_instance_attestation = true;
+    schema.wallet_attestation.require_instance_attestation = true;
 
     credential_schema_repository
         .expect_get_credential_schema()

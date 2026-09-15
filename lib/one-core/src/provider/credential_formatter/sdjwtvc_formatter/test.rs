@@ -674,11 +674,10 @@ async fn test_extract_credentials_swiyu() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        key_storage_security: None,
+        wallet_attestation: Default::default(),
         layout_properties: None,
         imported_source_url: "".to_string(),
         allow_suspension: false,
-        requires_wallet_instance_attestation: false,
         claim_schemas: vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "portrait".to_string(),
