@@ -50,6 +50,7 @@ async fn managed_instance_attestation_table(manager: &SchemaManager<'_>) -> Resu
         .create_table(
             Table::create()
                 .table(ManagedInstanceAttestation::Table)
+                .if_not_exists()
                 .col(uuid_char(ManagedInstanceAttestation::Id).primary_key())
                 .col(timestamp(ManagedInstanceAttestation::CreatedDate, manager))
                 .col(timestamp(ManagedInstanceAttestation::LastModified, manager))
@@ -118,7 +119,7 @@ async fn managed_instance_attestation_table(manager: &SchemaManager<'_>) -> Resu
         db.execute(
             backend.build(
                 Query::insert()
-                    .into_table(ManagedInstanceAttestedKey::Table)
+                    .into_table(ManagedInstanceAttestation::Table)
                     .columns([
                         ManagedInstanceAttestation::Id,
                         ManagedInstanceAttestation::CreatedDate,
