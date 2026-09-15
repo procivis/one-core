@@ -157,7 +157,7 @@ async fn test_list_wallet_instance_by_attestation_success() {
             .histories
             .create_without_organisation(TestingHistoryParams {
                 entity_id: Some(wallet_unit.id.into()),
-                entity_type: Some(one_core::model::history::HistoryEntityType::WalletUnit),
+                entity_type: Some(one_core::model::history::HistoryEntityType::ManagedInstance),
                 action: Some(one_core::model::history::HistoryAction::Issued),
                 metadata: Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
                 ..Default::default()

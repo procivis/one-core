@@ -172,7 +172,7 @@ impl IntoFilterCondition for ManagedInstanceFilterValue {
                                 Condition::all()
                                     .add(
                                         history::Column::EntityType
-                                            .eq(history::HistoryEntityType::WalletUnit),
+                                            .eq(history::HistoryEntityType::ManagedInstance),
                                     )
                                     .add(
                                         history::Column::Action

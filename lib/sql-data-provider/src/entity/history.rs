@@ -174,8 +174,10 @@ pub enum HistoryEntityType {
     Organisation,
     #[sea_orm(string_value = "BACKUP")]
     Backup,
-    #[sea_orm(string_value = "WALLET_UNIT")]
-    WalletUnit,
+    #[sea_orm(string_value = "INSTANCE")]
+    Instance,
+    #[sea_orm(string_value = "MANAGED_INSTANCE")]
+    ManagedInstance,
     #[sea_orm(string_value = "USER")]
     User,
     #[sea_orm(string_value = "PROVIDER")]

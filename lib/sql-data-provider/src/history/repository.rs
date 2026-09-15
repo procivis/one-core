@@ -384,8 +384,9 @@ impl HistoryProvider {
             self.window_counts(Credential, &CREDENTIAL_LIFECYCLE_OPS, from, to, None, true);
         let sessions = self.window_counts(StsSession, &[Created], from, to, None, true);
         let wallet_units_new =
-            self.window_counts(WalletUnit, &[Created, Activated], from, to, None, true);
-        let wallet_units_revoked = self.window_counts(WalletUnit, &[Revoked], from, to, None, true);
+            self.window_counts(ManagedInstance, &[Created, Activated], from, to, None, true);
+        let wallet_units_revoked =
+            self.window_counts(ManagedInstance, &[Revoked], from, to, None, true);
         let (
             issuance_count,
             verification_count,

@@ -405,7 +405,7 @@ impl ManagedInstanceService {
                 source: HistorySource::Core,
                 target: None,
                 entity_id: Some(EntityId::from(*wallet_unit_id)),
-                entity_type: HistoryEntityType::WalletUnit,
+                entity_type: HistoryEntityType::ManagedInstance,
                 metadata,
                 metadata_blob_id: None,
                 organisation_id: Some(organisation_id),

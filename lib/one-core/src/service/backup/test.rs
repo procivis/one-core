@@ -162,7 +162,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
             source: HistorySource::Core,
             target: None,
             entity_id: Some(Uuid::new_v4().into()),
-            entity_type: HistoryEntityType::WalletUnit,
+            entity_type: HistoryEntityType::Instance,
             metadata: None,
             organisation_id: None,
             user: None,

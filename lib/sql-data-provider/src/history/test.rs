@@ -1424,7 +1424,7 @@ async fn test_system_history_stats_dummy_data() {
     .await;
     add_history(
         &db,
-        HistoryEntityType::WalletUnit,
+        HistoryEntityType::ManagedInstance,
         HistoryAction::Created,
         None,
         org_id,
@@ -1433,7 +1433,7 @@ async fn test_system_history_stats_dummy_data() {
     .await;
     add_history(
         &db,
-        HistoryEntityType::WalletUnit,
+        HistoryEntityType::ManagedInstance,
         HistoryAction::Activated,
         None,
         org_id,
@@ -1442,7 +1442,7 @@ async fn test_system_history_stats_dummy_data() {
     .await;
     add_history(
         &db,
-        HistoryEntityType::WalletUnit,
+        HistoryEntityType::ManagedInstance,
         HistoryAction::Revoked,
         None,
         org_id,

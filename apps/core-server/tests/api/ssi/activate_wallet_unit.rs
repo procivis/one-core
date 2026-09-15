@@ -113,7 +113,7 @@ async fn activate_wallet_unit_attestation_invalid() {
         .await;
     assert_eq!(history.total_items, 1);
     let history = &history.values[0];
-    assert_eq!(history.entity_type, HistoryEntityType::WalletUnit);
+    assert_eq!(history.entity_type, HistoryEntityType::ManagedInstance);
     assert_eq!(history.action, HistoryAction::Errored);
     assert_eq!(history.organisation_id.unwrap(), org.id);
 }
