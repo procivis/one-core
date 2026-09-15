@@ -21,7 +21,7 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 #[async_trait::async_trait]
 impl ManagedInstanceRepository for ManagedInstanceProvider {
     async fn create(&self, request: ManagedInstance) -> Result<ManagedInstanceId, DataLayerError> {
-        let attested_keys = request.attested_keys.clone();
+        let attestations = request.attestations.clone();
         self.db
             .tx(async {
                 let wallet_unit = managed_instance::ActiveModel::try_from(request)?
@@ -29,9 +29,9 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
                     .await
                     .map_err(to_data_layer_error)?;
 
-                for key in &attested_keys.as_ref().await? {
-                    self.wallet_instance_attested_key_repository
-                        .create_attested_key(key.clone())
+                for attestation in &attestations.as_ref().await? {
+                    self.managed_instance_attestation_repository
+                        .create_attestation(attestation.clone())
                         .await?;
                 }
 
@@ -54,7 +54,7 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
         managed_instance_from_model(
             wallet_unit,
             &self.organisation_repository,
-            &self.wallet_instance_attested_key_repository,
+            &self.managed_instance_attestation_repository,
         )
     }
 
@@ -76,7 +76,7 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
             managed_instance_from_model(
                 model,
                 &self.organisation_repository,
-                &self.wallet_instance_attested_key_repository,
+                &self.managed_instance_attestation_repository,
             )
         })
         .await
@@ -126,12 +126,12 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
                         .await
                         .map_err(to_update_data_layer_error)?;
 
-                    if let Some(attested_keys) = request.attested_keys {
+                    if let Some(attestations) = request.attestations {
                         // Currently deletion is not supported. New entries are inserted, or updated if already
                         // existing.
-                        join_all(attested_keys.into_iter().map(|key| {
-                            self.wallet_instance_attested_key_repository
-                                .upsert_attested_key(key.into())
+                        join_all(attestations.into_iter().map(|key| {
+                            self.managed_instance_attestation_repository
+                                .upsert_attestation(key.into())
                         }))
                         .await
                         .into_iter()

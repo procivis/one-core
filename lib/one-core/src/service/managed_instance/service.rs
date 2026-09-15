@@ -46,10 +46,11 @@ use crate::model::managed_instance::{
     ManagedInstance, ManagedInstanceListQuery, ManagedInstanceOs, SortableManagedInstanceColumn,
     UpdateManagedInstanceRequest,
 };
-use crate::model::managed_instance_attested_key::{
-    ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyRevocationInfo,
+use crate::model::managed_instance_attestation::{
+    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::organisation::Organisation;
+use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
@@ -880,7 +881,7 @@ impl ManagedInstanceService {
             instance_attestations.push(signed_attestation);
         }
 
-        let mut attested_keys = managed_instance.attested_keys.as_ref().await?.to_owned();
+        let mut attestations = managed_instance.attestations.as_ref().await?.to_owned();
 
         let mut key_attestation_inputs = vec![];
         for wua_request in request.wua {
@@ -891,35 +892,36 @@ impl ManagedInstanceService {
             let (_, config_params) =
                 self.get_wallet_provider_config_params(&managed_instance.provider)?;
 
-            let wua_expiration_date =
-                now + config_params.wallet_unit_attestation.expiration_seconds;
+            let expiration_date = now + config_params.wallet_unit_attestation.expiration_seconds;
 
             let holder_jwk = self
                 .verify_pop(&wua_request.proof, config_params.device_auth_leeway_seconds)
                 .await?;
-            let attested_key_input = if let Some(attested_key) = attested_keys
-                .iter_mut()
-                .find(|attested_key| attested_key.public_key_jwk == holder_jwk)
-            {
-                attested_key.last_modified = now;
-                attested_key.expiration_date = wua_expiration_date;
-                let revocation_info = match attested_key.revocation.as_ref() {
+            let attested_key_input = if let Some(attestation) =
+                attestations.iter_mut().find(|attestation| {
+                    attestation.r#type == AttestationType::KeyAttestation
+                        && attestation.public_key_jwk == holder_jwk
+                }) {
+                attestation.last_modified = now;
+                attestation.expiration_date = expiration_date;
+                let revocation_info = match attestation.revocation.as_ref() {
                     None => None,
                     Some(revocation) => Some(revocation.as_ref().await?.to_owned()),
                 };
                 AttestedKeyInput::Reused(revocation_info)
             } else {
-                let key = ManagedInstanceAttestedKey {
+                let attestation = ManagedInstanceAttestation {
                     id: Uuid::new_v4().into(),
                     instance_id,
                     created_date: now,
                     last_modified: now,
-                    expiration_date: wua_expiration_date,
+                    expiration_date,
                     public_key_jwk: holder_jwk.clone(),
+                    r#type: AttestationType::KeyAttestation,
                     revocation: None,
                 };
-                attested_keys.push(key.to_owned());
-                AttestedKeyInput::NewlyCreated(key)
+                attestations.push(attestation.to_owned());
+                AttestedKeyInput::NewlyCreated(attestation)
             };
 
             key_attestation_inputs.push(KeyAttestationInput {
@@ -929,12 +931,12 @@ impl ManagedInstanceService {
             });
         }
 
-        let updated_attested_keys = (!key_attestation_inputs.is_empty()).then_some(attested_keys);
+        let updated_attestations = (!key_attestation_inputs.is_empty()).then_some(attestations);
 
         let mut key_attestations = vec![];
 
         // DB update is only necessary if we either issued app or key attestation
-        if !instance_attestations.is_empty() || updated_attested_keys.is_some() {
+        if !instance_attestations.is_empty() || updated_attestations.is_some() {
             let (_, config_params) =
                 self.get_wallet_provider_config_params(&managed_instance.provider)?;
 
@@ -955,7 +957,7 @@ impl ManagedInstanceService {
                             &instance_id,
                             UpdateManagedInstanceRequest {
                                 last_issuance: Some(now),
-                                attested_keys: updated_attested_keys,
+                                attestations: updated_attestations,
                                 ..Default::default()
                             },
                         )
@@ -1347,13 +1349,13 @@ impl ManagedInstanceService {
         &self,
         id: &ManagedInstanceId,
     ) -> Result<(), ManagedInstanceError> {
-        let wallet_unit = self
+        let managed_instance = self
             .managed_instance_repository
             .get(id)
             .await
             .error_while("getting wallet unit")?;
 
-        if wallet_unit.status != InstanceStatus::Active {
+        if managed_instance.status != InstanceStatus::Active {
             return Err(ManagedInstanceError::WalletUnitMustBeActive
                 .error_while("checking status")
                 .into());
@@ -1362,13 +1364,13 @@ impl ManagedInstanceService {
         // Resolve/perform fallible role-specific work before persisting the Revoked status,
         // so a config lookup or certificate revocation failure doesn't leave the instance
         // marked Revoked in the DB with nothing actually revoked.
-        let wallet_provider_config_params = match wallet_unit.role {
+        let wallet_provider_config_params = match managed_instance.role {
             InstanceRole::Wallet => Some(
-                self.get_wallet_provider_config_params(&wallet_unit.provider)?
+                self.get_wallet_provider_config_params(&managed_instance.provider)?
                     .1,
             ),
             InstanceRole::Verifier => {
-                self.revoke_verifier_access_certificates(&wallet_unit)
+                self.revoke_verifier_access_certificates(&managed_instance)
                     .await?;
                 None
             }
@@ -1386,10 +1388,10 @@ impl ManagedInstanceService {
             .error_while("updating wallet unit")?;
         self.create_instance_history(
             id,
-            wallet_unit.name.clone(),
+            managed_instance.name.clone(),
             HistoryAction::Revoked,
             None,
-            wallet_unit.organisation.id(),
+            managed_instance.organisation.id(),
         )
         .await;
 
@@ -1399,29 +1401,29 @@ impl ManagedInstanceService {
                 return Ok(());
             };
 
-            let mut keys = vec![];
-            for key in wallet_unit
-                .attested_keys
+            let mut attestation_entries = vec![];
+            for attestation_revocation_info in managed_instance
+                .attestations
                 .as_ref()
                 .await?
                 .into_iter()
-                .filter_map(|key| key.revocation.as_ref())
+                .filter_map(|attestation| attestation.revocation.as_ref())
             {
-                keys.push(key.as_ref().await?.to_owned());
+                attestation_entries.push(attestation_revocation_info.as_ref().await?.to_owned());
             }
 
-            if !keys.is_empty() {
+            if !attestation_entries.is_empty() {
                 let revocation_method = self
                     .revocation_method_provider
                     .get_revocation_method(revocation_method)?;
 
                 revocation_method
-                    .update_attestation_entries(keys, RevocationState::Revoked)
+                    .update_attestation_entries(attestation_entries, RevocationState::Revoked)
                     .await
                     .error_while("revoking attestations")?;
             }
         }
-        tracing::info!("Revoked wallet unit {}", id);
+        tracing::info!("Revoked managed instance {}", id);
         Ok(())
     }
 
@@ -1700,8 +1702,8 @@ struct KeyAttestationInput {
 
 #[expect(clippy::large_enum_variant)]
 enum AttestedKeyInput {
-    NewlyCreated(ManagedInstanceAttestedKey),
-    Reused(Option<ManagedInstanceAttestedKeyRevocationInfo>),
+    NewlyCreated(ManagedInstanceAttestation),
+    Reused(Option<ManagedInstanceAttestationRevocationInfo>),
 }
 
 #[derive(serde::Serialize)]

@@ -1,7 +1,8 @@
 use one_core::model::history::HistoryAction;
 use one_core::model::instance::{InstanceRole, InstanceStatus};
 use one_core::model::managed_instance::UpdateManagedInstanceRequest;
-use one_core::model::managed_instance_attested_key::ManagedInstanceAttestedKey;
+use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
+use one_core::model::wallet_instance_attestation::AttestationType;
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -274,7 +275,7 @@ async fn test_issue_wua_only_success() {
         .get(wallet_unit.id)
         .await
         .unwrap();
-    assert_eq!(wallet_unit.attested_keys.as_ref().await.unwrap().len(), 1);
+    assert_eq!(wallet_unit.attestations.as_ref().await.unwrap().len(), 1);
 }
 
 #[tokio::test]
@@ -304,12 +305,13 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
         .update(
             wallet_unit.id,
             UpdateManagedInstanceRequest {
-                attested_keys: Some(vec![ManagedInstanceAttestedKey {
+                attestations: Some(vec![ManagedInstanceAttestation {
                     id: Uuid::new_v4().into(),
                     instance_id: wallet_unit.id,
                     created_date: now,
                     last_modified: now,
                     expiration_date: now + Duration::days(30),
+                    r#type: AttestationType::KeyAttestation,
                     public_key_jwk: holder_public_jwk,
                     revocation: None,
                 }]),
@@ -359,7 +361,7 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
         .get(wallet_unit.id)
         .await
         .unwrap();
-    assert_eq!(wallet_unit.attested_keys.as_ref().await.unwrap().len(), 1);
+    assert_eq!(wallet_unit.attestations.as_ref().await.unwrap().len(), 1);
 }
 
 #[tokio::test]

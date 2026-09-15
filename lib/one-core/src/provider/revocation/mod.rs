@@ -10,8 +10,8 @@ use self::model::{
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
-use crate::model::managed_instance_attested_key::{
-    ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyRevocationInfo,
+use crate::model::managed_instance_attestation::{
+    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::provider::Provider;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
@@ -64,19 +64,19 @@ pub trait RevocationMethod: Provider + Send + Sync {
     /// Issuer: place issued attestation on a status-list
     async fn add_issued_attestation(
         &self,
-        attestation: &ManagedInstanceAttestedKey,
+        attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Issuer: construct status block to be included in a re-issued attestion JWT
     async fn get_attestation_revocation_info(
         &self,
-        key_info: &ManagedInstanceAttestedKeyRevocationInfo,
+        key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Issuer: update precomputed revocation credential with latest changes considering input attestations
     async fn update_attestation_entries(
         &self,
-        keys: Vec<ManagedInstanceAttestedKeyRevocationInfo>,
+        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError>;
 

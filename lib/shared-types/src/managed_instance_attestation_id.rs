@@ -7,12 +7,12 @@ use crate::macros::impls_for_uuid_newtype;
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]
 #[repr(transparent)]
-pub struct ManagedInstanceAttestedKeyId(Uuid);
+pub struct ManagedInstanceAttestationId(Uuid);
 
-impls_for_uuid_newtype!(ManagedInstanceAttestedKeyId);
+impls_for_uuid_newtype!(ManagedInstanceAttestationId);
 
 #[cfg(feature = "sea-orm")]
 use crate::macros::impls_for_seaorm_newtype;
 
 #[cfg(feature = "sea-orm")]
-impls_for_seaorm_newtype!(ManagedInstanceAttestedKeyId);
+impls_for_seaorm_newtype!(ManagedInstanceAttestationId);

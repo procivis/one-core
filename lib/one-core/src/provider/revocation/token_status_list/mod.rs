@@ -28,8 +28,8 @@ use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
-use crate::model::managed_instance_attested_key::{
-    ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyRevocationInfo,
+use crate::model::managed_instance_attestation::{
+    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::relation::Related;
 use crate::model::revocation_list::{
@@ -37,6 +37,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
     UpdateRevocationListEntryRequest,
 };
+use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::certificate_validator::{
     CertSelection, CertificatePurpose, CertificateValidationOptions, CertificateValidator,
     EnforceKeyUsage,
@@ -393,7 +394,7 @@ impl RevocationMethod for TokenStatusList {
 
     async fn add_issued_attestation(
         &self,
-        attestation: &ManagedInstanceAttestedKey,
+        attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         let wallet_instance = self
             .wallet_unit_repository
@@ -430,19 +431,24 @@ impl RevocationMethod for TokenStatusList {
             None
         };
 
+        let entity_id = match attestation.r#type {
+            AttestationType::WalletInstanceAttestation => {
+                RevocationListEntityId::WalletInstanceAttestation(attestation.id)
+            }
+            AttestationType::KeyAttestation => {
+                RevocationListEntityId::KeyAttestation(attestation.id)
+            }
+        };
+
         let result = self
-            .create_entry(
-                RevocationListEntityId::WalletUnitAttestedKey(attestation.id),
-                &issuer_identifier,
-                issuer_certificate.as_ref(),
-            )
+            .create_entry(entity_id, &issuer_identifier, issuer_certificate.as_ref())
             .await?;
         Ok(result.1)
     }
 
     async fn get_attestation_revocation_info(
         &self,
-        key_info: &ManagedInstanceAttestedKeyRevocationInfo,
+        key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Ok(CredentialRevocationInfo {
             credential_status: self.create_credential_status(
@@ -455,7 +461,7 @@ impl RevocationMethod for TokenStatusList {
 
     async fn update_attestation_entries(
         &self,
-        keys: Vec<ManagedInstanceAttestedKeyRevocationInfo>,
+        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         let mut revocation_lists: HashMap<RevocationListId, (Related<RevocationList>, Vec<usize>)> =

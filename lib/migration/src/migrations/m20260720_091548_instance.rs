@@ -57,7 +57,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum ManagedInstance {
+pub(crate) enum ManagedInstance {
     Table,
     Id,
     OrganisationId,
@@ -213,7 +213,7 @@ async fn managed_instance_table(manager: &SchemaManager<'_>) -> Result<(), DbErr
 }
 
 #[derive(DeriveIden)]
-enum ManagedInstanceAttestedKey {
+pub(crate) enum ManagedInstanceAttestedKey {
     Table,
     Id,
     CreatedDate,

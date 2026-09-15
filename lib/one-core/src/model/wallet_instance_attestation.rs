@@ -1,4 +1,6 @@
+use serde::{Deserialize, Serialize};
 use shared_types::{InstanceId, WalletInstanceAttestationId};
+use strum::Display;
 use time::OffsetDateTime;
 
 use crate::model::key::Key;
@@ -24,4 +26,11 @@ pub struct WalletInstanceAttestation {
 pub struct UpdateWalletInstanceAttestationRequest {
     pub expiration_date: Option<OffsetDateTime>,
     pub attestation: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AttestationType {
+    WalletInstanceAttestation,
+    KeyAttestation,
 }

@@ -347,7 +347,7 @@ async fn test_get_entries_non_empty() {
             id: entry_1_id,
             created_date: results[0].created_date,
             last_modified: results[0].last_modified,
-            entity_info: RevocationListEntityInfo::WalletUnitAttestedKey,
+            entity_info: RevocationListEntityInfo::KeyAttestation,
             index: Some(1),
             state: RevocationListEntryState::Active,
         }

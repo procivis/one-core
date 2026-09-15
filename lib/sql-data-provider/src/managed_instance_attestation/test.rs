@@ -1,12 +1,13 @@
-use one_core::model::managed_instance_attested_key::{
-    ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyUpsertRequest,
+use one_core::model::managed_instance_attestation::{
+    ManagedInstanceAttestation, ManagedInstanceAttestationUpsertRequest,
 };
-use one_core::repository::managed_instance_attested_key_repository::ManagedInstanceAttestedKeyRepository;
-use shared_types::{ManagedInstanceAttestedKeyId, ManagedInstanceId};
+use one_core::model::wallet_instance_attestation::AttestationType;
+use one_core::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
+use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::managed_instance_attested_key::ManagedInstanceAttestedKeyProvider;
+use crate::managed_instance_attestation::ManagedInstanceAttestationProvider;
 use crate::test_utilities::{
     insert_organisation_to_database, insert_wallet_instance_to_database, random_jwk,
     setup_test_data_layer_and_connection,
@@ -14,20 +15,21 @@ use crate::test_utilities::{
 use crate::transaction_context::TransactionManagerImpl;
 
 #[tokio::test]
-async fn test_upsert_wallet_instance_attested_key_success() {
+async fn test_upsert_attestation_success() {
     let test_setup = setup(1).await;
     let provider = test_setup.provider;
 
-    let id: ManagedInstanceAttestedKeyId = Uuid::new_v4().into();
-    let request = ManagedInstanceAttestedKeyUpsertRequest {
+    let id: ManagedInstanceAttestationId = Uuid::new_v4().into();
+    let request = ManagedInstanceAttestationUpsertRequest {
         id,
         instance_id: test_setup.wallet_unit_ids[0],
         expiration_date: one_core::clock::now_utc(),
+        r#type: AttestationType::KeyAttestation,
         public_key_jwk: random_jwk(),
     };
-    provider.upsert_attested_key(request.clone()).await.unwrap();
+    provider.upsert_attestation(request.clone()).await.unwrap();
 
-    let reloaded = provider.get_attested_key(&id).await.unwrap();
+    let reloaded = provider.get_attestation(&id).await.unwrap();
     assert_eq!(reloaded.instance_id, request.instance_id);
     assert_eq!(reloaded.expiration_date, request.expiration_date);
     assert_eq!(reloaded.public_key_jwk, request.public_key_jwk);
@@ -35,35 +37,37 @@ async fn test_upsert_wallet_instance_attested_key_success() {
 }
 
 #[tokio::test]
-async fn test_upsert_wallet_instance_attested_key_conflict_success() {
+async fn test_upsert_attestation_conflict_success() {
     let test_setup = setup(2).await;
     let provider = test_setup.provider;
 
-    let id: ManagedInstanceAttestedKeyId = Uuid::new_v4().into();
+    let id: ManagedInstanceAttestationId = Uuid::new_v4().into();
     let now = one_core::clock::now_utc();
-    let original_attested_key = ManagedInstanceAttestedKey {
+    let original_attested_key = ManagedInstanceAttestation {
         id,
         instance_id: test_setup.wallet_unit_ids[0],
         created_date: now,
         last_modified: now,
         expiration_date: now,
+        r#type: AttestationType::KeyAttestation,
         public_key_jwk: random_jwk(),
         revocation: None,
     };
     provider
-        .create_attested_key(original_attested_key.clone())
+        .create_attestation(original_attested_key.clone())
         .await
         .unwrap();
 
-    let request = ManagedInstanceAttestedKeyUpsertRequest {
+    let request = ManagedInstanceAttestationUpsertRequest {
         id,
         instance_id: test_setup.wallet_unit_ids[1],
         expiration_date: one_core::clock::now_utc(),
+        r#type: AttestationType::KeyAttestation,
         public_key_jwk: random_jwk(),
     };
-    provider.upsert_attested_key(request.clone()).await.unwrap();
+    provider.upsert_attestation(request.clone()).await.unwrap();
 
-    let reloaded = provider.get_attested_key(&id).await.unwrap();
+    let reloaded = provider.get_attestation(&id).await.unwrap();
     assert_eq!(reloaded.created_date, original_attested_key.created_date);
     assert_eq!(reloaded.instance_id, request.instance_id);
     assert_eq!(reloaded.expiration_date, request.expiration_date);
@@ -72,23 +76,24 @@ async fn test_upsert_wallet_instance_attested_key_conflict_success() {
 }
 
 #[tokio::test]
-async fn test_get_wallet_instance_attested_key_by_wallet_instance() {
+async fn test_get_attestation_by_wallet_instance() {
     let test_setup = setup(1).await;
     let provider = test_setup.provider;
 
-    let id: ManagedInstanceAttestedKeyId = Uuid::new_v4().into();
+    let id: ManagedInstanceAttestationId = Uuid::new_v4().into();
     let now = one_core::clock::now_utc();
-    let attested_key = ManagedInstanceAttestedKey {
+    let attested_key = ManagedInstanceAttestation {
         id,
         instance_id: test_setup.wallet_unit_ids[0],
         created_date: now,
         last_modified: now,
         expiration_date: now,
+        r#type: AttestationType::KeyAttestation,
         public_key_jwk: random_jwk(),
         revocation: None,
     };
     provider
-        .create_attested_key(attested_key.clone())
+        .create_attestation(attested_key.clone())
         .await
         .unwrap();
 
@@ -101,7 +106,7 @@ async fn test_get_wallet_instance_attested_key_by_wallet_instance() {
 }
 
 struct TestSetup {
-    pub provider: ManagedInstanceAttestedKeyProvider,
+    pub provider: ManagedInstanceAttestationProvider,
     pub wallet_unit_ids: Vec<ManagedInstanceId>,
 }
 
@@ -118,7 +123,7 @@ async fn setup(n: usize) -> TestSetup {
     }
 
     TestSetup {
-        provider: ManagedInstanceAttestedKeyProvider {
+        provider: ManagedInstanceAttestationProvider {
             db: TransactionManagerImpl::new(db.clone()),
             revocation_list_repository: data_layer.revocation_list_repository.clone(),
         },

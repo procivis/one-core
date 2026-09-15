@@ -55,7 +55,7 @@ pub(crate) fn wallet_unit_from_request(
         verifier_csr: None,
         verifier_signature_ids: None,
         organisation: organisation.into(),
-        attested_keys: Default::default(),
+        attestations: Default::default(),
     })
 }
 

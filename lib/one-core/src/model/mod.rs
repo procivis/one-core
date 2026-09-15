@@ -20,7 +20,7 @@ pub mod list_filter;
 pub mod list_query;
 pub mod localized_text;
 pub mod managed_instance;
-pub mod managed_instance_attested_key;
+pub mod managed_instance_attestation;
 pub mod notification;
 pub mod organisation;
 pub mod proof;

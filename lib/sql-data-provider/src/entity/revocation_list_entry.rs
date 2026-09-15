@@ -26,8 +26,10 @@ pub struct Model {
 pub enum RevocationListEntryType {
     #[sea_orm(string_value = "CREDENTIAL")]
     Credential,
-    #[sea_orm(string_value = "WUA")]
-    WalletUnitAttestedKey,
+    #[sea_orm(string_value = "KA")]
+    KeyAttestation,
+    #[sea_orm(string_value = "WIA")]
+    WalletInstanceAttestation,
     #[sea_orm(string_value = "SIGNATURE")]
     Signature,
 }
@@ -63,8 +65,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Credential,
-    #[sea_orm(has_one = "super::managed_instance_attested_key::Entity")]
-    ManagedInstanceAttestedKey,
+    #[sea_orm(has_one = "super::managed_instance_attestation::Entity")]
+    ManagedInstanceAttestation,
 }
 
 impl Related<super::revocation_list::Entity> for Entity {
@@ -79,9 +81,9 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-impl Related<super::managed_instance_attested_key::Entity> for Entity {
+impl Related<super::managed_instance_attestation::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ManagedInstanceAttestedKey.def()
+        Relation::ManagedInstanceAttestation.def()
     }
 }
 

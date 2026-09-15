@@ -31,7 +31,7 @@ use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::localized_text_repository::LocalizedTextRepository;
-use crate::repository::managed_instance_attested_key_repository::ManagedInstanceAttestedKeyRepository;
+use crate::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
 use crate::repository::notification_repository::NotificationRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -155,11 +155,11 @@ impl DataRepository for DecoratedDataProvider {
         self.data_provider
             .get_wallet_instance_attestation_repository()
     }
-    fn get_managed_instance_attested_key_repository(
+    fn get_managed_instance_attestation_repository(
         &self,
-    ) -> Arc<dyn ManagedInstanceAttestedKeyRepository> {
+    ) -> Arc<dyn ManagedInstanceAttestationRepository> {
         self.data_provider
-            .get_managed_instance_attested_key_repository()
+            .get_managed_instance_attestation_repository()
     }
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
         self.data_provider.get_tx_manager()

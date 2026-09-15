@@ -7,8 +7,8 @@ use one_core::model::managed_instance::{
 };
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::error::DataLayerError;
-use one_core::repository::managed_instance_attested_key_repository::{
-    ManagedInstanceAttestedKeyRepository, ManagedInstanceAttestedKeysLoader,
+use one_core::repository::managed_instance_attestation_repository::{
+    ManagedInstanceAttestationRepository, ManagedInstanceAttestationsLoader,
 };
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
@@ -28,7 +28,7 @@ use crate::list_query_generic::{
 pub(super) fn managed_instance_from_model(
     value: managed_instance::Model,
     organisation_repository: &Arc<dyn OrganisationRepository>,
-    managed_instance_repository: &Arc<dyn ManagedInstanceAttestedKeyRepository>,
+    managed_instance_repository: &Arc<dyn ManagedInstanceAttestationRepository>,
 ) -> Result<ManagedInstance, DataLayerError> {
     Ok(ManagedInstance {
         id: value.id,
@@ -51,7 +51,7 @@ pub(super) fn managed_instance_from_model(
         user_sub: value.user_sub,
         verifier_csr: value.verifier_csr,
         verifier_signature_ids: convert_inner(value.verifier_signature_ids),
-        attested_keys: RelatedVec::new(ManagedInstanceAttestedKeysLoader {
+        attestations: RelatedVec::new(ManagedInstanceAttestationsLoader {
             id: value.id,
             managed_instance_repository: managed_instance_repository.clone(),
         }),

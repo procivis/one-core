@@ -11,8 +11,8 @@ use super::model::{
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
-use crate::model::managed_instance_attested_key::{
-    ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyRevocationInfo,
+use crate::model::managed_instance_attestation::{
+    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::provider::Provider;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
@@ -66,21 +66,21 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
 
     async fn add_issued_attestation(
         &self,
-        _attestation: &ManagedInstanceAttestedKey,
+        _attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.disabled_error()
     }
 
     async fn get_attestation_revocation_info(
         &self,
-        key_info: &ManagedInstanceAttestedKeyRevocationInfo,
+        key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.inner().get_attestation_revocation_info(key_info).await
     }
 
     async fn update_attestation_entries(
         &self,
-        keys: Vec<ManagedInstanceAttestedKeyRevocationInfo>,
+        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         self.inner()
@@ -191,21 +191,21 @@ impl RevocationMethod for CapabilityChecked {
 
     async fn add_issued_attestation(
         &self,
-        attestation: &ManagedInstanceAttestedKey,
+        attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.0.add_issued_attestation(attestation).await
     }
 
     async fn get_attestation_revocation_info(
         &self,
-        key_info: &ManagedInstanceAttestedKeyRevocationInfo,
+        key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.0.get_attestation_revocation_info(key_info).await
     }
 
     async fn update_attestation_entries(
         &self,
-        keys: Vec<ManagedInstanceAttestedKeyRevocationInfo>,
+        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         self.check_revocation_state_eligibility(&new_state)?;

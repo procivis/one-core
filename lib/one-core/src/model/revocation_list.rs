@@ -1,7 +1,7 @@
 use proc_macros::Model;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, ManagedInstanceAttestedKeyId, RevocationListEntryId, RevocationListId,
+    CredentialId, ManagedInstanceAttestationId, RevocationListEntryId, RevocationListId,
     RevocationMethodId, SignerId,
 };
 use standardized_types::x509::CertificateSerial;
@@ -67,14 +67,16 @@ pub enum RevocationListEntryState {
 pub enum RevocationListEntityId {
     Credential(CredentialId),
     Signature(SignerId, Option<CertificateSerial>),
-    WalletUnitAttestedKey(ManagedInstanceAttestedKeyId),
+    KeyAttestation(ManagedInstanceAttestationId),
+    WalletInstanceAttestation(ManagedInstanceAttestationId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityInfo {
     Credential(CredentialId),
     Signature(SignerId, Option<CertificateSerial>),
-    WalletUnitAttestedKey,
+    KeyAttestation,
+    WalletInstanceAttestation,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

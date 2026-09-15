@@ -23,8 +23,8 @@ use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
-use crate::model::managed_instance_attested_key::{
-    ManagedInstanceAttestedKey, ManagedInstanceAttestedKeyRevocationInfo,
+use crate::model::managed_instance_attestation::{
+    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryState,
@@ -339,7 +339,7 @@ impl RevocationMethod for BitstringStatusList {
 
     async fn add_issued_attestation(
         &self,
-        _attestation: &ManagedInstanceAttestedKey,
+        _attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),
@@ -348,7 +348,7 @@ impl RevocationMethod for BitstringStatusList {
 
     async fn get_attestation_revocation_info(
         &self,
-        _key_info: &ManagedInstanceAttestedKeyRevocationInfo,
+        _key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),
@@ -357,7 +357,7 @@ impl RevocationMethod for BitstringStatusList {
 
     async fn update_attestation_entries(
         &self,
-        _keys: Vec<ManagedInstanceAttestedKeyRevocationInfo>,
+        _keys: Vec<ManagedInstanceAttestationRevocationInfo>,
         _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(

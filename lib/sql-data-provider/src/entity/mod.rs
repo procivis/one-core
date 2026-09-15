@@ -18,7 +18,7 @@ pub mod key;
 pub mod key_did;
 pub mod localized_text;
 pub mod managed_instance;
-pub mod managed_instance_attested_key;
+pub mod managed_instance_attestation;
 pub mod notification;
 pub mod organisation;
 pub mod proof;

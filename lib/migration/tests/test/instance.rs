@@ -270,10 +270,10 @@ async fn test_db_schema_wallet_instance_attestation() {
 }
 
 #[tokio::test]
-async fn test_db_schema_managed_instance_attested_key() {
+async fn test_db_schema_managed_instance_attestation() {
     let schema = get_schema().await;
 
-    let managed_instance_attested_key = schema.table("managed_instance_attested_key").columns(&[
+    let managed_instance_attestation = schema.table("managed_instance_attestation").columns(&[
         "id",
         "created_date",
         "last_modified",
@@ -281,50 +281,56 @@ async fn test_db_schema_managed_instance_attested_key() {
         "public_key_jwk",
         "managed_instance_id",
         "revocation_list_entry_id",
+        "type",
     ]);
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
         .default(None)
         .primary_key();
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("created_date")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(false)
         .default(None);
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("last_modified")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(false)
         .default(None);
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("expiration_date")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(false)
         .default(None);
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("public_key_jwk")
         .r#type(ColumnType::Text)
         .nullable(false)
         .default(None);
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("managed_instance_id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
         .default(None)
         .foreign_key(
-            "fk-ManagedInstanceAttestedKey-ManagedInstanceId",
+            "fk-ManagedInstanceAttestation-ManagedInstanceId",
             "managed_instance",
             "id",
         );
-    managed_instance_attested_key
+    managed_instance_attestation
         .column("revocation_list_entry_id")
         .r#type(ColumnType::Uuid)
         .nullable(true)
         .foreign_key(
-            "fk-ManagedInstanceAttestedKey-RevocationListEntryId",
+            "fk-ManagedInstanceAttestation-RevocationListEntryId",
             "revocation_list_entry",
             "id",
         );
+    managed_instance_attestation
+        .column("type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
 }

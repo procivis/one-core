@@ -6,7 +6,7 @@ use one_core::model::managed_instance::{
     ManagedInstance, ManagedInstanceList, ManagedInstanceListQuery, ManagedInstanceOs,
     UpdateManagedInstanceRequest,
 };
-use one_core::model::managed_instance_attested_key::ManagedInstanceAttestedKey;
+use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
@@ -28,7 +28,7 @@ pub struct TestWalletInstance {
     pub public_key: Option<PublicJwk>,
     pub status: Option<InstanceStatus>,
     pub last_issuance: Option<Option<OffsetDateTime>>,
-    pub attested_keys: Option<Vec<ManagedInstanceAttestedKey>>,
+    pub attestations: Option<Vec<ManagedInstanceAttestation>>,
     pub user_sub: Option<String>,
     pub role: Option<InstanceRole>,
     pub provider: Option<String>,
@@ -78,10 +78,7 @@ impl ManagedInstancesDB {
             verifier_csr: test_wallet_instance.verifier_csr,
             verifier_signature_ids: test_wallet_instance.verifier_signature_ids,
             organisation: organisation.into(),
-            attested_keys: test_wallet_instance
-                .attested_keys
-                .unwrap_or_default()
-                .into(),
+            attestations: test_wallet_instance.attestations.unwrap_or_default().into(),
         };
 
         self.repository

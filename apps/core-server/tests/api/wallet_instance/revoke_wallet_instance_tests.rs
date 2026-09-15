@@ -1,10 +1,11 @@
 use one_core::model::identifier::IdentifierType;
 use one_core::model::instance::InstanceStatus;
-use one_core::model::managed_instance_attested_key::ManagedInstanceAttestedKey;
+use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
 use one_core::model::organisation::UpdateOrganisationRequest;
 use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, RevocationListPurpose,
 };
+use one_core::model::wallet_instance_attestation::AttestationType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
@@ -73,12 +74,13 @@ async fn test_revoke_wallet_instance_success() {
             TestWalletInstance {
                 id: Some(wallet_unit_id),
                 status: Some(InstanceStatus::Active),
-                attested_keys: Some(vec![ManagedInstanceAttestedKey {
+                attestations: Some(vec![ManagedInstanceAttestation {
                     id: wallet_unit_attested_key_id,
                     instance_id: wallet_unit_id,
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
                     expiration_date: one_core::clock::now_utc() + Duration::days(1),
+                    r#type: AttestationType::KeyAttestation,
                     public_key_jwk: public_key_jwk(),
                     revocation: None,
                 }]),
@@ -92,7 +94,7 @@ async fn test_revoke_wallet_instance_success() {
         .revocation_lists
         .create_entry(
             revocation_list.id,
-            RevocationListEntityId::WalletUnitAttestedKey(wallet_unit_attested_key_id),
+            RevocationListEntityId::KeyAttestation(wallet_unit_attested_key_id),
             Some(0),
         )
         .await;
@@ -111,9 +113,9 @@ async fn test_revoke_wallet_instance_success() {
         .unwrap();
     assert_eq!(wallet_unit.status, InstanceStatus::Revoked);
 
-    let attested_keys = wallet_unit.attested_keys.as_ref().await.unwrap();
-    assert_eq!(attested_keys.len(), 1);
-    let attested_key_revocation = attested_keys[0]
+    let attestations = wallet_unit.attestations.as_ref().await.unwrap();
+    assert_eq!(attestations.len(), 1);
+    let attested_key_revocation = attestations[0]
         .revocation
         .as_ref()
         .unwrap()

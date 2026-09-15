@@ -1,3 +1,4 @@
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{InstanceId, KeyId, WalletInstanceAttestationId};
 use time::OffsetDateTime;
@@ -39,3 +40,14 @@ pub enum Relation {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(one_core::model::wallet_instance_attestation::AttestationType)]
+#[into(one_core::model::wallet_instance_attestation::AttestationType)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum AttestationType {
+    #[sea_orm(string_value = "WIA")]
+    WalletInstanceAttestation,
+    #[sea_orm(string_value = "KA")]
+    KeyAttestation,
+}

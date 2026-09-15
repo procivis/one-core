@@ -1,4 +1,5 @@
 use autometrics::autometrics;
+use futures::FutureExt;
 use one_core::model::common::LockType;
 use one_core::model::relation::Related;
 use one_core::model::revocation_list::{
@@ -18,7 +19,7 @@ use shared_types::{
 use uuid::Uuid;
 
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
-use crate::entity::{managed_instance_attested_key, revocation_list, revocation_list_entry};
+use crate::entity::{managed_instance_attestation, revocation_list, revocation_list_entry};
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 use crate::revocation_list::RevocationListProvider;
 
@@ -225,47 +226,62 @@ impl RevocationListRepository for RevocationListProvider {
             None
         };
 
+        let managed_instance_attestation_id = match &entity_id {
+            RevocationListEntityId::Credential(_) | RevocationListEntityId::Signature(_, _) => None,
+            RevocationListEntityId::KeyAttestation(attestation_id)
+            | RevocationListEntityId::WalletInstanceAttestation(attestation_id) => {
+                Some(*attestation_id)
+            }
+        };
+
         let r#type = match &entity_id {
             RevocationListEntityId::Credential(_) => RevocationListEntryType::Credential,
             RevocationListEntityId::Signature(_, _) => RevocationListEntryType::Signature,
-            RevocationListEntityId::WalletUnitAttestedKey(_) => {
-                RevocationListEntryType::WalletUnitAttestedKey
+            RevocationListEntityId::KeyAttestation(_) => RevocationListEntryType::KeyAttestation,
+            RevocationListEntityId::WalletInstanceAttestation(_) => {
+                RevocationListEntryType::WalletInstanceAttestation
             }
         };
 
         let now = one_core::clock::now_utc();
         let entry_id: RevocationListEntryId = Uuid::new_v4().into();
-        revocation_list_entry::ActiveModel {
-            id: Set(entry_id),
-            created_date: Set(now),
-            last_modified: Set(now),
-            revocation_list_id: Set(list_id),
-            index: Set(index_on_status_list.map(|index| index as _)),
-            credential_id: Set(credential_id),
-            r#type: Set(r#type),
-            signature_type: Set(signature_type.map(|t| t.to_string())),
-            state: Set(RevocationListEntryState::Active),
-            serial: Set(serial),
-        }
-        .insert(&self.db)
-        .await
-        .map_err(to_data_layer_error)?;
 
-        if let RevocationListEntityId::WalletUnitAttestedKey(key_id) = entity_id {
-            managed_instance_attested_key::Entity::update(
-                managed_instance_attested_key::ActiveModel {
-                    id: Unchanged(key_id),
+        self.db
+            .tx(async move {
+                revocation_list_entry::ActiveModel {
+                    id: Set(entry_id),
+                    created_date: Set(now),
                     last_modified: Set(now),
-                    revocation_list_entry_id: Set(Some(entry_id)),
-                    ..Default::default()
-                },
-            )
-            .exec(&self.db)
-            .await
-            .map_err(to_update_data_layer_error)?;
-        }
+                    revocation_list_id: Set(list_id),
+                    index: Set(index_on_status_list.map(|index| index as _)),
+                    credential_id: Set(credential_id),
+                    r#type: Set(r#type),
+                    signature_type: Set(signature_type.map(|t| t.to_string())),
+                    state: Set(RevocationListEntryState::Active),
+                    serial: Set(serial),
+                }
+                .insert(&self.db)
+                .await
+                .map_err(to_data_layer_error)?;
 
-        Ok(entry_id)
+                if let Some(managed_instance_attestation_id) = managed_instance_attestation_id {
+                    managed_instance_attestation::Entity::update(
+                        managed_instance_attestation::ActiveModel {
+                            id: Unchanged(managed_instance_attestation_id),
+                            last_modified: Set(now),
+                            revocation_list_entry_id: Set(Some(entry_id)),
+                            ..Default::default()
+                        },
+                    )
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+                }
+
+                Ok(entry_id)
+            }
+            .boxed())
+            .await?
     }
 
     async fn update_entry(
@@ -376,8 +392,11 @@ impl RevocationListProvider {
                         Some(value) => Ok(RevocationListEntityInfo::Credential(value)),
                         None => Err(DataLayerError::MappingError),
                     },
-                    RevocationListEntryType::WalletUnitAttestedKey => {
-                        Ok(RevocationListEntityInfo::WalletUnitAttestedKey)
+                    RevocationListEntryType::KeyAttestation => {
+                        Ok(RevocationListEntityInfo::KeyAttestation)
+                    }
+                    RevocationListEntryType::WalletInstanceAttestation => {
+                        Ok(RevocationListEntityInfo::WalletInstanceAttestation)
                     }
                     RevocationListEntryType::Signature => match entry.signature_type {
                         Some(value) => {

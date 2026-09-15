@@ -17,7 +17,7 @@ pub mod instance_repository;
 pub mod interaction_repository;
 pub mod key_repository;
 pub mod localized_text_repository;
-pub mod managed_instance_attested_key_repository;
+pub mod managed_instance_attestation_repository;
 pub mod managed_instance_repository;
 pub mod notification_repository;
 pub mod organisation_repository;
@@ -49,7 +49,7 @@ use identifier_trust_information_repository::IdentifierTrustInformationRepositor
 use instance_repository::InstanceRepository;
 use interaction_repository::InteractionRepository;
 use key_repository::KeyRepository;
-use managed_instance_attested_key_repository::ManagedInstanceAttestedKeyRepository;
+use managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
 use managed_instance_repository::ManagedInstanceRepository;
 use notification_repository::NotificationRepository;
 use organisation_repository::OrganisationRepository;
@@ -98,9 +98,9 @@ pub trait DataRepository: Send + Sync {
     fn get_wallet_instance_attestation_repository(
         &self,
     ) -> Arc<dyn WalletInstanceAttestationRepository>;
-    fn get_managed_instance_attested_key_repository(
+    fn get_managed_instance_attestation_repository(
         &self,
-    ) -> Arc<dyn ManagedInstanceAttestedKeyRepository>;
+    ) -> Arc<dyn ManagedInstanceAttestationRepository>;
     fn get_localized_text_repository(&self) -> Arc<dyn LocalizedTextRepository>;
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }

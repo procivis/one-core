@@ -45,8 +45,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
-    #[sea_orm(has_many = "super::managed_instance_attested_key::Entity")]
-    ManagedInstanceAttestedKey,
+    #[sea_orm(has_many = "super::managed_instance_attestation::Entity")]
+    ManagedInstanceAttestation,
 }
 impl ActiveModelBehavior for ActiveModel {}
 
@@ -56,9 +56,9 @@ impl Related<super::organisation::Entity> for Entity {
     }
 }
 
-impl Related<super::managed_instance_attested_key::Entity> for Entity {
+impl Related<super::managed_instance_attestation::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ManagedInstanceAttestedKey.def()
+        Relation::ManagedInstanceAttestation.def()
     }
 }
 

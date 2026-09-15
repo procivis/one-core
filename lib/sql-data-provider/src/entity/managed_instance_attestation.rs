@@ -2,20 +2,23 @@ use sea_orm::{
     ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
     EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
 };
-use shared_types::{ManagedInstanceAttestedKeyId, ManagedInstanceId, RevocationListEntryId};
+use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId, RevocationListEntryId};
 use time::OffsetDateTime;
 
+use crate::entity::wallet_instance_attestation::AttestationType;
+
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "managed_instance_attested_key")]
+#[sea_orm(table_name = "managed_instance_attestation")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: ManagedInstanceAttestedKeyId,
+    pub id: ManagedInstanceAttestationId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub expiration_date: OffsetDateTime,
     pub public_key_jwk: String,
     pub managed_instance_id: ManagedInstanceId,
     pub revocation_list_entry_id: Option<RevocationListEntryId>,
+    pub r#type: AttestationType,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

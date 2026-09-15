@@ -9,7 +9,7 @@ use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
-use crate::model::managed_instance_attested_key::ManagedInstanceAttestedKey;
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
 use crate::model::organisation::Organisation;
 use crate::model::relation::{Related, RelatedVec};
 
@@ -35,7 +35,7 @@ pub struct ManagedInstance {
 
     // Relations:
     pub organisation: Related<Organisation>,
-    pub attested_keys: RelatedVec<ManagedInstanceAttestedKey>,
+    pub attestations: RelatedVec<ManagedInstanceAttestation>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display)]
@@ -85,7 +85,7 @@ pub struct UpdateManagedInstanceRequest {
     pub status: Option<InstanceStatus>,
     pub last_issuance: Option<OffsetDateTime>,
     pub authentication_key_jwk: Option<PublicJwk>,
-    pub attested_keys: Option<Vec<ManagedInstanceAttestedKey>>,
+    pub attestations: Option<Vec<ManagedInstanceAttestation>>,
     pub user_sub: Option<String>,
     pub verifier_csr: Option<Option<String>>,
     pub verifier_signature_ids: Option<Vec<RevocationListEntryId>>,

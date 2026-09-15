@@ -600,7 +600,7 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         verifier_csr: None,
         verifier_signature_ids: None,
         organisation: dummy_organisation(None).into(),
-        attested_keys: Default::default(),
+        attestations: Default::default(),
     };
     let mut managed_instance_repository = MockManagedInstanceRepository::new();
     managed_instance_repository

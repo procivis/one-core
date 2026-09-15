@@ -16,7 +16,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId,
     CredentialSchemaId, DidId, DidMethodId, DidValue, EntityId, HistoryId, IdentifierId,
-    InteractionId, KeyId, ManagedInstanceAttestedKeyId, ManagedInstanceId, NonceId, OrganisationId,
+    InteractionId, KeyId, ManagedInstanceAttestationId, ManagedInstanceId, NonceId, OrganisationId,
     ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, RevocationMethodId,
     TrustCollectionId, TrustListSubscriptionId,
 };
@@ -36,10 +36,11 @@ use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
+use crate::entity::wallet_instance_attestation::AttestationType;
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, credential_schema_format, did,
     identifier, instance, interaction, key, key_did, managed_instance,
-    managed_instance_attested_key, organisation, proof, proof_claim, proof_input_claim_schema,
+    managed_instance_attestation, organisation, proof, proof_claim, proof_input_claim_schema,
     proof_input_schema, proof_schema, revocation_list, revocation_list_entry, trust_collection,
     trust_list_subscription, used_nonce,
 };
@@ -756,7 +757,7 @@ pub async fn insert_revocation_list_entry(
         credential_id: Set(credential_id),
         r#type: Set(credential_id
             .map(|_| RevocationListEntryType::Credential)
-            .unwrap_or(RevocationListEntryType::WalletUnitAttestedKey)),
+            .unwrap_or(RevocationListEntryType::KeyAttestation)),
         signature_type: Set(None),
         state: Set(RevocationListEntryState::Active),
         serial: Set(None),
@@ -832,13 +833,14 @@ pub async fn insert_wallet_unit_attested_key_to_database(
     managed_instance_id: ManagedInstanceId,
     revocation_list_entry_id: Option<Uuid>,
     expiration_date: OffsetDateTime,
-) -> ManagedInstanceAttestedKeyId {
+) -> ManagedInstanceAttestationId {
     let id = Uuid::new_v4().into();
-    managed_instance_attested_key::ActiveModel {
+    managed_instance_attestation::ActiveModel {
         id: Set(id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         expiration_date: Set(expiration_date),
+        r#type: Set(AttestationType::KeyAttestation),
         public_key_jwk: Set(random_jwk_string()),
         managed_instance_id: Set(managed_instance_id),
         revocation_list_entry_id: Set(revocation_list_entry_id.map(|id| id.into())),
