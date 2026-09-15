@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use one_core::model::managed_instance_attestation::{
     ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-    ManagedInstanceAttestationUpsertRequest,
 };
-use one_core::model::relation::{AsyncModelLoader, Related};
+use one_core::model::relation::{AsyncModelLoader, OptionalRelatedExt, Related};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{EntityTrait, Set};
@@ -19,16 +18,15 @@ pub(super) fn attested_key_from_model(
     value: Model,
     db: &TransactionManagerImpl,
     revocation_list_repository: &Arc<dyn RevocationListRepository>,
-) -> Result<ManagedInstanceAttestation, DataLayerError> {
-    Ok(ManagedInstanceAttestation {
+) -> ManagedInstanceAttestation {
+    ManagedInstanceAttestation {
         id: value.id,
         instance_id: value.managed_instance_id,
         created_date: value.created_date,
         last_modified: value.last_modified,
         expiration_date: value.expiration_date,
         r#type: value.r#type.into(),
-        public_key_jwk: serde_json::from_str(&value.public_key_jwk)
-            .map_err(|_| DataLayerError::MappingError)?,
+        attestation_content_hash: value.attestation_content_hash,
         revocation: value.revocation_list_entry_id.map(|id| {
             Related::new(
                 id,
@@ -38,43 +36,21 @@ pub(super) fn attested_key_from_model(
                 },
             )
         }),
-    })
+    }
 }
 
-impl TryFrom<ManagedInstanceAttestation> for ActiveModel {
-    type Error = DataLayerError;
-
-    fn try_from(value: ManagedInstanceAttestation) -> Result<Self, DataLayerError> {
-        Ok(Self {
+impl From<ManagedInstanceAttestation> for ActiveModel {
+    fn from(value: ManagedInstanceAttestation) -> Self {
+        Self {
             id: Set(value.id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             expiration_date: Set(value.expiration_date),
             r#type: Set(value.r#type.into()),
-            public_key_jwk: Set(serde_json::to_string(&value.public_key_jwk)
-                .map_err(|_| DataLayerError::MappingError)?),
+            attestation_content_hash: Set(value.attestation_content_hash),
             managed_instance_id: Set(value.instance_id),
-            revocation_list_entry_id: Set(value.revocation.map(|revocation| revocation.id())),
-        })
-    }
-}
-
-impl TryFrom<ManagedInstanceAttestationUpsertRequest> for ActiveModel {
-    type Error = DataLayerError;
-
-    fn try_from(value: ManagedInstanceAttestationUpsertRequest) -> Result<Self, DataLayerError> {
-        let now = one_core::clock::now_utc();
-        Ok(Self {
-            id: Set(value.id),
-            created_date: Set(now),
-            last_modified: Set(now),
-            expiration_date: Set(value.expiration_date),
-            r#type: Set(value.r#type.into()),
-            public_key_jwk: Set(serde_json::to_string(&value.public_key_jwk)
-                .map_err(|_| DataLayerError::MappingError)?),
-            managed_instance_id: Set(value.instance_id),
-            revocation_list_entry_id: Set(None),
-        })
+            revocation_list_entry_id: Set(value.revocation.id_opt()),
+        }
     }
 }
 

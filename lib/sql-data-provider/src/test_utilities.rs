@@ -843,7 +843,7 @@ pub async fn insert_wallet_unit_attested_key_to_database(
         last_modified: Set(get_dummy_date()),
         expiration_date: Set(expiration_date),
         r#type: Set(AttestationType::KeyAttestation),
-        public_key_jwk: Set(random_jwk_string()),
+        attestation_content_hash: Set(None),
         managed_instance_id: Set(managed_instance_id),
         revocation_list_entry_id: Set(revocation_list_entry_id.map(|id| id.into())),
     }

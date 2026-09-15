@@ -273,16 +273,23 @@ async fn test_db_schema_wallet_instance_attestation() {
 async fn test_db_schema_managed_instance_attestation() {
     let schema = get_schema().await;
 
-    let managed_instance_attestation = schema.table("managed_instance_attestation").columns(&[
-        "id",
-        "created_date",
-        "last_modified",
-        "expiration_date",
-        "public_key_jwk",
-        "managed_instance_id",
-        "revocation_list_entry_id",
-        "type",
-    ]);
+    let managed_instance_attestation = schema
+        .table("managed_instance_attestation")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "expiration_date",
+            "managed_instance_id",
+            "revocation_list_entry_id",
+            "type",
+            "attestation_content_hash",
+        ])
+        .index(
+            "index-ManagedInstanceAttestation-AttestationContentHash-Unique",
+            true,
+            &["attestation_content_hash"],
+        );
     managed_instance_attestation
         .column("id")
         .r#type(ColumnType::Uuid)
@@ -302,11 +309,6 @@ async fn test_db_schema_managed_instance_attestation() {
     managed_instance_attestation
         .column("expiration_date")
         .r#type(ColumnType::TimestampMilliseconds)
-        .nullable(false)
-        .default(None);
-    managed_instance_attestation
-        .column("public_key_jwk")
-        .r#type(ColumnType::Text)
         .nullable(false)
         .default(None);
     managed_instance_attestation
@@ -333,4 +335,8 @@ async fn test_db_schema_managed_instance_attestation() {
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
+    managed_instance_attestation
+        .column("attestation_content_hash")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
 }

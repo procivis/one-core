@@ -1,10 +1,13 @@
 use one_core::model::history::HistoryMetadata;
 use one_core::model::instance::InstanceStatus;
+use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
+use one_core::model::wallet_instance_attestation::AttestationType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use similar_asserts::assert_eq;
+use time::Duration;
 use uuid::Uuid;
 
 use crate::api_wallet_unit_tests::create_wallet_instance_attestation;
@@ -138,30 +141,47 @@ async fn test_list_wallet_instance_by_attestation_success() {
             "http://127.0.0.1:12312".to_string(),
         )
         .await;
+        let attestation_hash = SHA256.hash_base64(attestation.as_bytes()).unwrap();
+
+        let wallet_unit_id = Uuid::new_v4().into();
+        let attestation_id = Uuid::new_v4().into();
         let wallet_unit = context
             .db
             .managed_instances
             .create(
                 organisation.clone(),
                 TestWalletInstance {
+                    id: Some(wallet_unit_id),
                     name: Some(format!("wallet_{i}")),
                     public_key: Some(holder_public_jwk),
+                    attestations: Some(vec![ManagedInstanceAttestation {
+                        id: attestation_id,
+                        instance_id: wallet_unit_id,
+                        created_date: one_core::clock::now_utc(),
+                        last_modified: one_core::clock::now_utc(),
+                        expiration_date: one_core::clock::now_utc() + Duration::days(1),
+                        r#type: AttestationType::KeyAttestation,
+                        attestation_content_hash: Some(attestation_hash),
+                        revocation: None,
+                    }]),
                     ..Default::default()
                 },
             )
             .await;
 
-        let attestation_hash = SHA256.hash_base64(attestation.as_bytes()).unwrap();
         context
             .db
             .histories
-            .create_without_organisation(TestingHistoryParams {
-                entity_id: Some(wallet_unit.id.into()),
-                entity_type: Some(one_core::model::history::HistoryEntityType::ManagedInstance),
-                action: Some(one_core::model::history::HistoryAction::Issued),
-                metadata: Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
-                ..Default::default()
-            })
+            .create(
+                &organisation,
+                TestingHistoryParams {
+                    entity_id: Some(wallet_unit.id.into()),
+                    entity_type: Some(one_core::model::history::HistoryEntityType::ManagedInstance),
+                    action: Some(one_core::model::history::HistoryAction::KaCreated),
+                    metadata: Some(HistoryMetadata::ManagedInstanceAttestation(attestation_id)),
+                    ..Default::default()
+                },
+            )
             .await;
 
         attestations.push((wallet_unit.id, attestation));

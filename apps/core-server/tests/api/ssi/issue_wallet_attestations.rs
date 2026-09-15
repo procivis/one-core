@@ -1,6 +1,5 @@
 use one_core::model::history::HistoryAction;
 use one_core::model::instance::{InstanceRole, InstanceStatus};
-use one_core::model::managed_instance::UpdateManagedInstanceRequest;
 use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
 use one_core::model::wallet_instance_attestation::AttestationType;
 use one_core::proto::jwt::Jwt;
@@ -99,10 +98,20 @@ async fn test_issue_wallet_attestations_success() {
     );
     assert!(wua_jwt.payload.proof_of_possession_key.is_none());
     assert!(wua_jwt.payload.custom["attested_keys"].is_array());
-    // One Updated entry if at least one WIA is issued
-    assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Updated, 1).await;
-    // One Issued entry for every WUA
-    assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Issued, 2).await;
+    assert_history_count(
+        &context,
+        &wallet_unit.id.into(),
+        HistoryAction::WiaCreated,
+        1,
+    )
+    .await;
+    assert_history_count(
+        &context,
+        &wallet_unit.id.into(),
+        HistoryAction::KaCreated,
+        2,
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -267,8 +276,14 @@ async fn test_issue_wua_only_success() {
     );
     assert!(wua_jwt.payload.proof_of_possession_key.is_none());
     assert!(wua_jwt.payload.custom["attested_keys"].is_array());
-    // One Issued entry for the WUA
-    assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Issued, 1).await;
+
+    assert_history_count(
+        &context,
+        &wallet_unit.id.into(),
+        HistoryAction::KaCreated,
+        1,
+    )
+    .await;
     let wallet_unit = context
         .db
         .managed_instances
@@ -279,7 +294,7 @@ async fn test_issue_wua_only_success() {
 }
 
 #[tokio::test]
-async fn test_issue_wia_only_with_existing_attested_keys_success() {
+async fn test_issue_wia_only_with_existing_key_attestation_success() {
     // given
     let (context, org) = TestContext::new_with_organisation(None).await;
     create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
@@ -287,32 +302,24 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
     let holder_key_pair = Ecdsa.generate_key().unwrap();
     let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
 
+    let now = one_core::clock::now_utc();
+    let wallet_unit_id = Uuid::new_v4().into();
     let wallet_unit = context
         .db
         .managed_instances
         .create(
             org.clone(),
             TestWalletInstance {
-                public_key: Some(holder_public_jwk.clone()),
-                ..Default::default()
-            },
-        )
-        .await;
-    let now = one_core::clock::now_utc();
-    context
-        .db
-        .managed_instances
-        .update(
-            wallet_unit.id,
-            UpdateManagedInstanceRequest {
+                id: Some(wallet_unit_id),
+                public_key: Some(holder_public_jwk),
                 attestations: Some(vec![ManagedInstanceAttestation {
                     id: Uuid::new_v4().into(),
-                    instance_id: wallet_unit.id,
+                    instance_id: wallet_unit_id,
                     created_date: now,
                     last_modified: now,
                     expiration_date: now + Duration::days(30),
                     r#type: AttestationType::KeyAttestation,
-                    public_key_jwk: holder_public_jwk,
+                    attestation_content_hash: None,
                     revocation: None,
                 }]),
                 ..Default::default()
@@ -353,15 +360,21 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
     assert!(wia_jwt.payload.proof_of_possession_key.is_some());
     // Verify sub claim is set to wallet_client_id from config
     assert_eq!(wia_jwt.payload.subject, Some("eudiw-abca".to_string()));
-    // One Updated entry for WIA
-    assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Updated, 1).await;
+
+    assert_history_count(
+        &context,
+        &wallet_unit.id.into(),
+        HistoryAction::WiaCreated,
+        1,
+    )
+    .await;
     let wallet_unit = context
         .db
         .managed_instances
         .get(wallet_unit.id)
         .await
         .unwrap();
-    assert_eq!(wallet_unit.attestations.as_ref().await.unwrap().len(), 1);
+    assert_eq!(wallet_unit.attestations.as_ref().await.unwrap().len(), 2);
 }
 
 #[tokio::test]

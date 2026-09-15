@@ -90,6 +90,8 @@ pub enum HistoryActionBindingEnum {
     EcosystemsResolved,
     Refreshed,
     Signed,
+    KaCreated,
+    WiaCreated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -135,7 +137,7 @@ pub enum HistoryMetadataBinding {
     ErrorMetadata {
         value: HistoryErrorMetadataBindingDTO,
     },
-    WalletUnitJWT(String),
+    ManagedInstanceAttestation(String),
     WalletRelyingParty {
         value: WalletRelyingPartyMetadataBindingDTO,
     },

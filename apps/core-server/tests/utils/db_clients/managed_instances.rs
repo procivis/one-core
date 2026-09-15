@@ -104,6 +104,7 @@ impl ManagedInstancesDB {
         }
     }
 
+    #[allow(unused)]
     pub async fn update(
         &self,
         wallet_instance_id: impl Into<ManagedInstanceId>,

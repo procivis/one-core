@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaId, EcosystemId, EntityId, HistoryId, IdentifierId,
-    OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
+    ManagedInstanceAttestationId, OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
 };
 use standardized_types::etsi_119_602::MultiLangString;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
@@ -21,7 +21,7 @@ use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 pub enum HistoryMetadata {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadata),
-    WalletUnitJWT(String),
+    ManagedInstanceAttestation(ManagedInstanceAttestationId),
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadata),
     TrustResolution(TrustResolutionMetadata),
@@ -151,6 +151,8 @@ pub enum HistoryAction {
     EcosystemsResolved,
     Refreshed,
     Signed,
+    KaCreated,
+    WiaCreated,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

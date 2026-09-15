@@ -5,15 +5,12 @@ use one_core::model::managed_instance::{
     ManagedInstance, ManagedInstanceFilterValue, ManagedInstanceListQuery, ManagedInstanceOs,
     SortableManagedInstanceColumn, UpdateManagedInstanceRequest,
 };
-use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
 use one_core::model::organisation::Organisation;
-use one_core::model::wallet_instance_attestation::AttestationType;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
 use one_core::service::test_utilities::dummy_organisation;
 use shared_types::{ManagedInstanceId, OrganisationId};
 use similar_asserts::assert_eq;
-use time::Duration;
 use uuid::Uuid;
 
 use super::ManagedInstanceProvider;
@@ -78,20 +75,6 @@ fn dummy_managed_instance(id: ManagedInstanceId, org: OrganisationId) -> Managed
         }
         .into(),
         attestations: Default::default(),
-    }
-}
-
-fn dummy_attestation(wallet_unit_id: ManagedInstanceId) -> ManagedInstanceAttestation {
-    let now = get_dummy_date();
-    ManagedInstanceAttestation {
-        id: Uuid::new_v4().into(),
-        instance_id: wallet_unit_id,
-        created_date: now,
-        last_modified: now,
-        expiration_date: now + Duration::days(30),
-        r#type: AttestationType::KeyAttestation,
-        public_key_jwk: random_jwk(),
-        revocation: None,
     }
 }
 
@@ -898,72 +881,6 @@ async fn test_update_and_list_wallet_instances() {
 
     // Verify the revoked one is not in the list
     assert!(!result.values.iter().any(|wu| wu.id == wallet_unit_ids[1]));
-}
-
-#[tokio::test]
-async fn test_update_wallet_instance_attested_key_changes() {
-    let test_setup = setup(0).await;
-    let provider = test_setup.provider;
-
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
-    let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
-    let attested_key1 = dummy_attestation(wallet_unit_id);
-    wallet_unit.attestations = vec![attested_key1.clone()].into();
-    provider.create(wallet_unit).await.unwrap();
-    let created_wallet_instance = provider.get(&wallet_unit_id).await.unwrap();
-    assert_eq!(
-        created_wallet_instance
-            .attestations
-            .as_ref()
-            .await
-            .unwrap()
-            .len(),
-        1
-    );
-    assert_eq!(
-        created_wallet_instance.attestations.as_ref().await.unwrap()[0].id,
-        attested_key1.id
-    );
-
-    let attested_key2 = dummy_attestation(wallet_unit_id);
-    let new_attested_keys = vec![attested_key1.clone(), attested_key2.clone()];
-    let update_request = UpdateManagedInstanceRequest {
-        attestations: Some(new_attested_keys),
-        ..Default::default()
-    };
-
-    let result = provider.update(&wallet_unit_id, update_request).await;
-    assert!(result.is_ok());
-
-    // Verify public key was updated
-    let updated_wallet_instance = provider.get(&wallet_unit_id).await.unwrap();
-    assert_eq!(
-        updated_wallet_instance
-            .attestations
-            .as_ref()
-            .await
-            .unwrap()
-            .len(),
-        2
-    );
-    assert!(
-        updated_wallet_instance
-            .attestations
-            .as_ref()
-            .await
-            .unwrap()
-            .iter()
-            .any(|attested_key| attested_key.id == attested_key1.id)
-    );
-    assert!(
-        updated_wallet_instance
-            .attestations
-            .as_ref()
-            .await
-            .unwrap()
-            .iter()
-            .any(|attested_key| attested_key.id == attested_key2.id)
-    );
 }
 
 // SORTING TESTS

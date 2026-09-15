@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use one_core::model::history::HistoryMetadata;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::managed_instance::{
     ManagedInstance, ManagedInstanceFilterValue, ManagedInstanceOs, SortableManagedInstanceColumn,
@@ -19,7 +18,7 @@ use sea_orm::{ColumnTrait, Condition};
 use shared_types::RevocationListEntryId;
 
 use crate::entity::managed_instance::VerifierSignatures;
-use crate::entity::{history, instance, managed_instance};
+use crate::entity::{instance, managed_instance, managed_instance_attestation};
 use crate::list_query_generic::{
     ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_equals_condition, get_string_match_condition,
@@ -158,32 +157,18 @@ impl IntoFilterCondition for ManagedInstanceFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
-            Self::AttestationHash(attestation_hash) => {
-                let history_metadata = HistoryMetadata::WalletUnitJWT(attestation_hash);
-                #[allow(clippy::expect_used)]
-                let history_metadata_json = serde_json::to_string(&history_metadata)
-                    .expect("Failed to serialize history metadata");
-                managed_instance::Column::Id
-                    .in_subquery(
-                        Query::select()
-                            .column(history::Column::EntityId)
-                            .from(history::Entity)
-                            .cond_where(
-                                Condition::all()
-                                    .add(
-                                        history::Column::EntityType
-                                            .eq(history::HistoryEntityType::ManagedInstance),
-                                    )
-                                    .add(
-                                        history::Column::Action
-                                            .is_in([history::HistoryAction::Issued]),
-                                    )
-                                    .add(history::Column::Metadata.eq(history_metadata_json)),
-                            )
-                            .to_owned(),
-                    )
-                    .into_condition()
-            }
+            Self::AttestationHash(attestation_hash) => managed_instance::Column::Id
+                .in_subquery(
+                    Query::select()
+                        .column(managed_instance_attestation::Column::ManagedInstanceId)
+                        .from(managed_instance_attestation::Entity)
+                        .cond_where(
+                            managed_instance_attestation::Column::AttestationContentHash
+                                .eq(attestation_hash),
+                        )
+                        .to_owned(),
+                )
+                .into_condition(),
             Self::CreatedDate(comparison) => {
                 get_comparison_condition(managed_instance::Column::CreatedDate, comparison)
             }

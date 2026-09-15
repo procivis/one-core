@@ -6,10 +6,7 @@ use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, RevocationListPurpose,
 };
 use one_core::model::wallet_instance_attestation::AttestationType;
-use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
-use standardized_types::jwk::PublicJwk;
 use time::Duration;
 use uuid::Uuid;
 
@@ -81,7 +78,7 @@ async fn test_revoke_wallet_instance_success() {
                     last_modified: one_core::clock::now_utc(),
                     expiration_date: one_core::clock::now_utc() + Duration::days(1),
                     r#type: AttestationType::KeyAttestation,
-                    public_key_jwk: public_key_jwk(),
+                    attestation_content_hash: None,
                     revocation: None,
                 }]),
                 ..Default::default()
@@ -140,9 +137,4 @@ async fn test_revoke_wallet_instance_success() {
         revocation_list_entry[0].state,
         RevocationListEntryState::Revoked
     );
-}
-
-fn public_key_jwk() -> PublicJwk {
-    let key_pair = Ecdsa.generate_key().unwrap();
-    key_pair.key.public_key_as_jwk().unwrap()
 }

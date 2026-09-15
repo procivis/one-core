@@ -1,6 +1,4 @@
-use one_core::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationUpsertRequest,
-};
+use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
 use one_core::model::wallet_instance_attestation::AttestationType;
 use one_core::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
@@ -9,71 +7,10 @@ use uuid::Uuid;
 
 use crate::managed_instance_attestation::ManagedInstanceAttestationProvider;
 use crate::test_utilities::{
-    insert_organisation_to_database, insert_wallet_instance_to_database, random_jwk,
+    insert_organisation_to_database, insert_wallet_instance_to_database,
     setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
-
-#[tokio::test]
-async fn test_upsert_attestation_success() {
-    let test_setup = setup(1).await;
-    let provider = test_setup.provider;
-
-    let id: ManagedInstanceAttestationId = Uuid::new_v4().into();
-    let request = ManagedInstanceAttestationUpsertRequest {
-        id,
-        instance_id: test_setup.wallet_unit_ids[0],
-        expiration_date: one_core::clock::now_utc(),
-        r#type: AttestationType::KeyAttestation,
-        public_key_jwk: random_jwk(),
-    };
-    provider.upsert_attestation(request.clone()).await.unwrap();
-
-    let reloaded = provider.get_attestation(&id).await.unwrap();
-    assert_eq!(reloaded.instance_id, request.instance_id);
-    assert_eq!(reloaded.expiration_date, request.expiration_date);
-    assert_eq!(reloaded.public_key_jwk, request.public_key_jwk);
-    assert_eq!(reloaded.revocation, None);
-}
-
-#[tokio::test]
-async fn test_upsert_attestation_conflict_success() {
-    let test_setup = setup(2).await;
-    let provider = test_setup.provider;
-
-    let id: ManagedInstanceAttestationId = Uuid::new_v4().into();
-    let now = one_core::clock::now_utc();
-    let original_attested_key = ManagedInstanceAttestation {
-        id,
-        instance_id: test_setup.wallet_unit_ids[0],
-        created_date: now,
-        last_modified: now,
-        expiration_date: now,
-        r#type: AttestationType::KeyAttestation,
-        public_key_jwk: random_jwk(),
-        revocation: None,
-    };
-    provider
-        .create_attestation(original_attested_key.clone())
-        .await
-        .unwrap();
-
-    let request = ManagedInstanceAttestationUpsertRequest {
-        id,
-        instance_id: test_setup.wallet_unit_ids[1],
-        expiration_date: one_core::clock::now_utc(),
-        r#type: AttestationType::KeyAttestation,
-        public_key_jwk: random_jwk(),
-    };
-    provider.upsert_attestation(request.clone()).await.unwrap();
-
-    let reloaded = provider.get_attestation(&id).await.unwrap();
-    assert_eq!(reloaded.created_date, original_attested_key.created_date);
-    assert_eq!(reloaded.instance_id, request.instance_id);
-    assert_eq!(reloaded.expiration_date, request.expiration_date);
-    assert_eq!(reloaded.public_key_jwk, request.public_key_jwk);
-    assert_eq!(reloaded.revocation, None);
-}
 
 #[tokio::test]
 async fn test_get_attestation_by_wallet_instance() {
@@ -89,7 +26,7 @@ async fn test_get_attestation_by_wallet_instance() {
         last_modified: now,
         expiration_date: now,
         r#type: AttestationType::KeyAttestation,
-        public_key_jwk: random_jwk(),
+        attestation_content_hash: None,
         revocation: None,
     };
     provider

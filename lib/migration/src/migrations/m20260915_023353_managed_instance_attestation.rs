@@ -31,7 +31,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum ManagedInstanceAttestation {
+pub(crate) enum ManagedInstanceAttestation {
     Table,
     Id,
     CreatedDate,

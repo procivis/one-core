@@ -3,7 +3,7 @@ use std::sync::Arc;
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 
 use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationUpsertRequest,
+    ManagedInstanceAttestation, UpdateManagedInstanceAttestationRequest,
 };
 use crate::model::relation::{AsyncModelLoader, AsyncVecLoader};
 use crate::repository::error::DataLayerError;
@@ -18,13 +18,9 @@ pub trait ManagedInstanceAttestationRepository: Send + Sync {
 
     async fn update_attestation(
         &self,
-        request: ManagedInstanceAttestation,
+        id: &ManagedInstanceAttestationId,
+        request: UpdateManagedInstanceAttestationRequest,
     ) -> Result<(), DataLayerError>;
-
-    async fn upsert_attestation(
-        &self,
-        request: ManagedInstanceAttestationUpsertRequest,
-    ) -> Result<ManagedInstanceAttestationId, DataLayerError>;
 
     async fn get_attestation(
         &self,

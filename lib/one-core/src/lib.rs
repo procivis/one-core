@@ -808,6 +808,7 @@ impl OneCore {
             wallet_provider_service: ManagedInstanceService::new(
                 data_provider.get_organisation_repository(),
                 data_provider.get_managed_instance_repository(),
+                data_provider.get_managed_instance_attestation_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_trust_collection_repository(),

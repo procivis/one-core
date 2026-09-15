@@ -419,9 +419,9 @@ fn convert_history_metadata(
                     },
                 })
             }
-            HistoryMetadataResponse::WalletUnitJWT(value) => {
-                Some(HistoryMetadataBinding::WalletUnitJWT(value))
-            }
+            HistoryMetadataResponse::ManagedInstanceAttestation(value) => Some(
+                HistoryMetadataBinding::ManagedInstanceAttestation(value.to_string()),
+            ),
             HistoryMetadataResponse::WalletRelyingParty(value) => {
                 Some(HistoryMetadataBinding::WalletRelyingParty {
                     value: value.into(),

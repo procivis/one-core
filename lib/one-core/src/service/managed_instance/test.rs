@@ -12,6 +12,8 @@ use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
 
+use super::ManagedInstanceService;
+use super::dto::{DisplayNameDTO, ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO};
 use crate::config;
 use crate::config::core_config::{
     CoreConfig, DocumentSignerType, Fields, KeyAlgorithmType, Params,
@@ -53,14 +55,11 @@ use crate::provider::verifier::provider::MockVerifierProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::managed_instance_attestation_repository::MockManagedInstanceAttestationRepository;
 use crate::repository::managed_instance_repository::MockManagedInstanceRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::managed_instance::ManagedInstanceService;
-use crate::service::managed_instance::dto::{
-    DisplayNameDTO, ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO,
-};
 use crate::service::test_utilities::{
     dummy_credential_schema, dummy_organisation, generic_config, get_dummy_date,
 };
@@ -71,6 +70,9 @@ fn mock_wallet_provider_service() -> ManagedInstanceService {
     ManagedInstanceService {
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         managed_instance_repository: Arc::new(MockManagedInstanceRepository::default()),
+        managed_instance_attestation_repository: Arc::new(
+            MockManagedInstanceAttestationRepository::default(),
+        ),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),

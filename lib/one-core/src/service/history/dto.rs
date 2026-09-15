@@ -1,8 +1,8 @@
 use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
-    ProofSchemaId, TrustCollectionId,
+    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId,
+    ManagedInstanceAttestationId, OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
 };
 use time::OffsetDateTime;
 
@@ -21,7 +21,7 @@ use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 pub enum HistoryMetadataResponse {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadataDTO),
-    WalletUnitJWT(String),
+    ManagedInstanceAttestation(ManagedInstanceAttestationId),
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadataDTO),
     TrustResolution(TrustResolutionMetadataDTO),

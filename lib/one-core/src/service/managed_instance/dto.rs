@@ -79,7 +79,7 @@ pub struct IssueWuaRequestDTO {
     pub security_level: KeyStorageSecurityLevel,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct IssueWalletUnitAttestationResponseDTO {
     pub wia: Vec<String>,
     pub wua: Vec<String>,

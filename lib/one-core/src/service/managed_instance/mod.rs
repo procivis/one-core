@@ -14,6 +14,7 @@ use crate::provider::verifier::provider::VerifierProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -33,6 +34,7 @@ mod test;
 pub struct ManagedInstanceService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
+    managed_instance_attestation_repository: Arc<dyn ManagedInstanceAttestationRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -56,6 +58,7 @@ impl ManagedInstanceService {
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
         managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
+        managed_instance_attestation_repository: Arc<dyn ManagedInstanceAttestationRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -76,6 +79,7 @@ impl ManagedInstanceService {
         Self {
             organisation_repository,
             managed_instance_repository,
+            managed_instance_attestation_repository,
             identifier_repository,
             history_repository,
             trust_collection_repository,

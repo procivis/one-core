@@ -15,7 +15,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub expiration_date: OffsetDateTime,
-    pub public_key_jwk: String,
+    pub attestation_content_hash: Option<String>,
     pub managed_instance_id: ManagedInstanceId,
     pub revocation_list_entry_id: Option<RevocationListEntryId>,
     pub r#type: AttestationType,

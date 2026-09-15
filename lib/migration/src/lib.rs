@@ -324,6 +324,7 @@ impl MigratorTrait for Migrator {
                 migrations::m20260915_082929_credential_schema_wallet_attestation::Migration,
             ),
             Box::new(migrations::m20260915_090000_add_localized_text_name_index::Migration),
+            Box::new(migrations::m20260915_120242_attestation_hash::Migration),
         ]
     }
 }

@@ -10,8 +10,8 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared_types::{
-    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
-    ProofSchemaId, TrustCollectionId,
+    CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId,
+    ManagedInstanceAttestationId, OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -128,8 +128,7 @@ pub(crate) enum HistoryMetadataRestEnum {
     UnexportableEntities(UnexportableEntitiesResponseRestDTO),
     /// Metadata for error events.
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
-    /// The hash of a wallet unit's JWT.
-    WalletUnitJWT(#[try_from(infallible)] String),
+    ManagedInstanceAttestation(#[try_from(infallible)] ManagedInstanceAttestationId),
     /// Additional information from non-Core services recording history
     /// events.
     External(#[try_from(infallible)] serde_json::Value),
@@ -226,6 +225,8 @@ pub enum HistoryAction {
     EcosystemsResolved,
     Refreshed,
     Signed,
+    KaCreated,
+    WiaCreated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

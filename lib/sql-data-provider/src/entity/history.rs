@@ -141,6 +141,10 @@ pub enum HistoryAction {
     Refreshed,
     #[sea_orm(string_value = "SIGNED")]
     Signed,
+    #[sea_orm(string_value = "KA_CREATED")]
+    KaCreated,
+    #[sea_orm(string_value = "WIA_CREATED")]
+    WiaCreated,
 }
 
 impl From<&HistoryAction> for SimpleExpr {

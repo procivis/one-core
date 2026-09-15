@@ -1,10 +1,8 @@
 use autometrics::autometrics;
 use futures::FutureExt;
-use futures::future::join_all;
 use one_core::model::managed_instance::{
     ManagedInstance, ManagedInstanceList, ManagedInstanceListQuery, UpdateManagedInstanceRequest,
 };
-use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
 use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QueryOrder, Set, Unchanged};
@@ -118,31 +116,10 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
             ..Default::default()
         };
 
-        self.db
-            .transaction(
-                async {
-                    update_model
-                        .update(&self.db)
-                        .await
-                        .map_err(to_update_data_layer_error)?;
-
-                    if let Some(attestations) = request.attestations {
-                        // Currently deletion is not supported. New entries are inserted, or updated if already
-                        // existing.
-                        join_all(attestations.into_iter().map(|key| {
-                            self.managed_instance_attestation_repository
-                                .upsert_attestation(key.into())
-                        }))
-                        .await
-                        .into_iter()
-                        .collect::<Result<Vec<_>, _>>()?;
-                    }
-                    Ok(())
-                }
-                .boxed(),
-            )
-            .await?
-            .map_err(|err| DataLayerError::TransactionError(err.to_string()))?;
+        update_model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
         Ok(())
     }
 

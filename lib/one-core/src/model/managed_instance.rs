@@ -85,7 +85,6 @@ pub struct UpdateManagedInstanceRequest {
     pub status: Option<InstanceStatus>,
     pub last_issuance: Option<OffsetDateTime>,
     pub authentication_key_jwk: Option<PublicJwk>,
-    pub attestations: Option<Vec<ManagedInstanceAttestation>>,
     pub user_sub: Option<String>,
     pub verifier_csr: Option<Option<String>>,
     pub verifier_signature_ids: Option<Vec<RevocationListEntryId>>,
