@@ -474,6 +474,68 @@ async fn test_non_qualified_category_skips_issuer_trust_check() {
     );
 }
 
+#[tokio::test]
+async fn test_pid_with_non_qualified_category_still_requires_pid_provider() {
+    let validator = make_validator_with_subscription(
+        dummy_subscription(None),
+        Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+    );
+    let schema = dummy_credential_schema();
+    let pid_schema_ids = vec![schema.schema_id().await.unwrap()];
+
+    let result = validator
+        .validate_credential_issuer(
+            Some("pem"),
+            &schema,
+            &pid_schema_ids,
+            Some("urn:etsi:esi:eaa:eu:pub"),
+            all_x5_references(),
+            &trust_scope(TEST_ECOSYSTEM),
+        )
+        .await;
+
+    assert!(
+        matches!(
+            result,
+            Err(WRPValidatorError::IssuerNotTrusted {
+                role: "PID provider"
+            })
+        ),
+        "an issuer-supplied category must not bypass the PID provider check"
+    );
+}
+
+#[tokio::test]
+async fn test_pid_with_qualified_category_still_requires_pid_provider() {
+    let validator = make_validator_with_subscription(
+        dummy_subscription(None),
+        Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+    );
+    let schema = dummy_credential_schema();
+    let pid_schema_ids = vec![schema.schema_id().await.unwrap()];
+
+    let result = validator
+        .validate_credential_issuer(
+            Some("pem"),
+            &schema,
+            &pid_schema_ids,
+            Some(QUALIFIED_EAA_CATEGORY),
+            all_x5_references(),
+            &trust_scope(TEST_ECOSYSTEM),
+        )
+        .await;
+
+    assert!(
+        matches!(
+            result,
+            Err(WRPValidatorError::IssuerNotTrusted {
+                role: "PID provider"
+            })
+        ),
+        "a PID must be checked against the PID provider role, not the QEAA role"
+    );
+}
+
 fn dummy_wrp_payload() -> WRPPayload {
     WRPPayload {
         data: WRPPayloadData {

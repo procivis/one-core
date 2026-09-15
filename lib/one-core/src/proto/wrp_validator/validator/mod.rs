@@ -253,10 +253,13 @@ impl WRPValidator for WRPValidatorImpl {
         issuer_x5_references: X5References,
         trust_scope: &TrustScope,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
-        if let Some(category) = credential_category {
-            if category != QUALIFIED_EAA_CATEGORY {
-                return Ok(None);
-            }
+        if pid_schema_ids.contains(&credential_schema.schema_id().await?) {
+            return self
+                .validate_pid_issuer(issuer_certificate_pem_chain, trust_scope)
+                .await;
+        }
+
+        if credential_category == Some(QUALIFIED_EAA_CATEGORY) {
             return self
                 .validate_qeaa_issuer(
                     issuer_certificate_pem_chain,
@@ -266,30 +269,8 @@ impl WRPValidator for WRPValidatorImpl {
                 .await;
         }
 
-        let credential_schema_schema_id = credential_schema.schema_id().await?;
-        if !pid_schema_ids.contains(&credential_schema_schema_id) {
-            tracing::debug!("Credential not a PID, skipping issuer trust checks");
-            return Ok(None);
-        }
-
-        let Some(pem_chain) = issuer_certificate_pem_chain else {
-            return Err(WRPValidatorError::IssuerNotTrusted {
-                role: "PID provider",
-            });
-        };
-
-        let trusted_entity = self
-            .perform_trust_validation(
-                TrustEntityIdentifier::PemChain(Cow::from(pem_chain)),
-                TrustListRoleEnum::PidProvider,
-                trust_scope,
-            )
-            .await?
-            .ok_or(WRPValidatorError::IssuerNotTrusted {
-                role: "PID provider",
-            })?;
-
-        Ok(Some(trusted_entity))
+        tracing::debug!("Credential is neither a PID nor a QEAA, skipping issuer trust checks");
+        Ok(None)
     }
 
     async fn validate_wallet_provider<'a>(
@@ -313,6 +294,29 @@ enum TrustEntityIdentifier<'a> {
 }
 
 impl WRPValidatorImpl {
+    async fn validate_pid_issuer(
+        &self,
+        issuer_certificate_pem_chain: Option<&str>,
+        trust_scope: &TrustScope,
+    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+        let Some(pem_chain) = issuer_certificate_pem_chain else {
+            return Err(WRPValidatorError::IssuerNotTrusted {
+                role: "PID provider",
+            });
+        };
+        let trusted_entity = self
+            .perform_trust_validation(
+                TrustEntityIdentifier::PemChain(Cow::from(pem_chain)),
+                TrustListRoleEnum::PidProvider,
+                trust_scope,
+            )
+            .await?
+            .ok_or(WRPValidatorError::IssuerNotTrusted {
+                role: "PID provider",
+            })?;
+        Ok(Some(trusted_entity))
+    }
+
     async fn validate_qeaa_issuer(
         &self,
         issuer_certificate_pem_chain: Option<&str>,
