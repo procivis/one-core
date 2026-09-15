@@ -320,6 +320,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260911_062928_used_nonce_table::Migration),
             Box::new(migrations::m20260915_023353_managed_instance_attestation::Migration),
             Box::new(migrations::m20260915_071407_wallet_unit_history::Migration),
+            Box::new(migrations::m20260915_090000_add_localized_text_name_index::Migration),
         ]
     }
 }

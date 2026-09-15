@@ -60,6 +60,15 @@ use crate::service::test_utilities::{
 
 const IMPORT_URL: &str = "http://import.credential.schema";
 
+fn credential_schema_list(schema: Option<CredentialSchema>) -> GetCredentialSchemaList {
+    let values = schema.into_iter().collect::<Vec<_>>();
+    GetCredentialSchemaList {
+        total_pages: u64::from(!values.is_empty()),
+        total_items: values.len() as u64,
+        values,
+    }
+}
+
 #[derive(Default)]
 struct Repositories {
     pub proof_schema_repository: MockProofSchemaRepository,
@@ -1375,10 +1384,9 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
-        .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org| schema_id == "iso-org-test123" && org == &organisation_id)
+        .expect_get_credential_schema_list()
         .once()
-        .returning(|_, _| Ok(None));
+        .returning(|_| Ok(credential_schema_list(None)));
     credential_schema_repository
         .expect_create_credential_schema()
         .once()
@@ -1576,10 +1584,9 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
-        .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org| schema_id == "iso-org-test123" && org == &organisation_id)
+        .expect_get_credential_schema_list()
         .once()
-        .returning(|_, _| Ok(None));
+        .returning(|_| Ok(credential_schema_list(None)));
     credential_schema_repository
         .expect_create_credential_schema()
         .once()
@@ -1779,14 +1786,13 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
-        .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org| schema_id == "iso-org-test123" && org == &organisation_id)
+        .expect_get_credential_schema_list()
         .once()
-        .returning(|_, _| {
-            Ok(Some(CredentialSchema {
+        .returning(|_| {
+            Ok(credential_schema_list(Some(CredentialSchema {
                 deleted_at: Some(get_dummy_date()),
                 ..dummy_credential_schema()
-            }))
+            })))
         });
     credential_schema_repository
         .expect_create_credential_schema()
@@ -1986,11 +1992,10 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     let existing_schema_id = Uuid::new_v4().into();
 
     credential_schema_repository
-        .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org| schema_id == "iso-org-test123" && org == &organisation_id)
+        .expect_get_credential_schema_list()
         .once()
-        .returning(move |_, _| {
-            Ok(Some(CredentialSchema {
+        .returning(move |_| {
+            Ok(credential_schema_list(Some(CredentialSchema {
                 expiration: None,
                 ecosystem: None,
                 batch_size: None,
@@ -2031,7 +2036,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
-            }))
+            })))
         });
 
     let schema = ImportProofSchemaDTO {
@@ -2177,11 +2182,10 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
     let existing_schema_id = Uuid::new_v4().into();
 
     credential_schema_repository
-        .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org| schema_id == "iso-org-test123" && org == &organisation_id)
+        .expect_get_credential_schema_list()
         .once()
-        .returning(move |_, _| {
-            Ok(Some(CredentialSchema {
+        .returning(move |_| {
+            Ok(credential_schema_list(Some(CredentialSchema {
                 expiration: None,
                 ecosystem: None,
                 batch_size: None,
@@ -2222,7 +2226,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 transaction_code: None,
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
-            }))
+            })))
         });
 
     let schema = ImportProofSchemaDTO {

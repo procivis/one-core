@@ -7,8 +7,9 @@ use one_core::model::credential_schema::{
     UpdateCredentialSchemaRequest,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
-use one_core::model::list_filter::ListFilterValue;
+use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::ListPagination;
+use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
 use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -299,6 +300,73 @@ async fn test_get_credential_schema_list_success() {
 }
 
 #[tokio::test]
+async fn test_get_credential_schema_list_by_display_names() {
+    let TestSetupWithCredentialSchema {
+        organisation,
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    crate::entity::localized_text::ActiveModel {
+        entity_id: Set(credential_schema.id.into()),
+        lang: Set("de".to_string()),
+        field: Set(LocalizedTextField::Name.into()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        value: Set("Deutscher Ausweis".to_string()),
+        entity_type: Set(LocalizedTextEntityType::CredentialSchema.into()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let result = repository
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition()
+                    & CredentialSchemaFilterValue::DisplayNames(vec![(
+                        "de".to_string(),
+                        StringMatch::starts_with("Deutscher"),
+                    )])
+                    .condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result.total_items, 1);
+    assert_eq!(result.values[0].id, credential_schema.id);
+
+    let result = repository
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition()
+                    & CredentialSchemaFilterValue::DisplayNames(vec![(
+                        "en".to_string(),
+                        StringMatch::starts_with("Deutscher"),
+                    )])
+                    .condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result.total_items, 0);
+}
+
+#[tokio::test]
 async fn test_get_credential_schema_list_deleted_schema() {
     let TestSetupWithCredentialSchema {
         organisation,
@@ -539,24 +607,4 @@ async fn test_update_credential_schema_claims_success() {
         .unwrap()
         .unwrap();
     assert_eq!(claim_schema.order, 2);
-}
-
-#[tokio::test]
-async fn test_get_by_schema_id_and_organisation() {
-    let TestSetupWithCredentialSchema {
-        credential_schema,
-        repository,
-        ..
-    } = setup_with_schema(Repositories::default()).await;
-
-    let res = repository
-        .get_by_schema_id_and_organisation(
-            &credential_schema.schema_id().await.unwrap(),
-            credential_schema.organisation.id(),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-
-    assert_eq!(res, credential_schema);
 }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
 use crate::model::credential_schema::{
@@ -84,16 +84,6 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
         query_params: CredentialSchemaListQuery,
     ) -> Result<GetCredentialSchemaList, DataLayerError> {
         self.inner.get_credential_schema_list(query_params).await
-    }
-
-    async fn get_by_schema_id_and_organisation(
-        &self,
-        schema_id: &str,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<CredentialSchema>, DataLayerError> {
-        self.inner
-            .get_by_schema_id_and_organisation(schema_id, organisation_id)
-            .await
     }
 }
 

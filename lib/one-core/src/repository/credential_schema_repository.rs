@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::CredentialSchemaId;
 
 use super::error::DataLayerError;
 use crate::model::credential_schema::{
@@ -37,12 +37,6 @@ pub trait CredentialSchemaRepository: Send + Sync {
         id: &CredentialSchemaId,
         schema: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError>;
-
-    async fn get_by_schema_id_and_organisation(
-        &self,
-        schema_id: &str,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<CredentialSchema>, DataLayerError>;
 }
 
 #[async_trait::async_trait]

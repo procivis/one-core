@@ -11,11 +11,10 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::Query;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged,
 };
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::CredentialSchemaId;
 
 use crate::common::list_query_with_custom_model;
 use crate::credential_schema::CredentialSchemaProvider;
@@ -223,47 +222,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .await??;
 
         Ok(())
-    }
-
-    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
-    async fn get_by_schema_id_and_organisation(
-        &self,
-        schema_id: &str,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<CredentialSchema>, DataLayerError> {
-        let credential_schema = credential_schema::Entity::find()
-            .filter(
-                credential_schema::Column::OrganisationId
-                    .eq(organisation_id)
-                    .and(credential_schema::Column::DeletedAt.is_null())
-                    .and(
-                        credential_schema::Column::Id.in_subquery(
-                            Query::select()
-                                .column(credential_schema_format::Column::CredentialSchemaId)
-                                .from(credential_schema_format::Entity)
-                                .cond_where(
-                                    credential_schema_format::Column::EcosystemSchemaId
-                                        .eq(schema_id),
-                                )
-                                .to_owned(),
-                        ),
-                    ),
-            )
-            .one(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
-
-        let Some(credential_schema) = credential_schema else {
-            return Ok(None);
-        };
-
-        Ok(credential_schema_from_models(
-            credential_schema,
-            true,
-            self.db.to_owned(),
-            &self.organisation_repository,
-        )?
-        .into())
     }
 }
 

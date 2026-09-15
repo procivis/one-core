@@ -4,15 +4,22 @@ use crate::fixtures::{ColumnType, get_schema};
 async fn test_db_schema_localized_text() {
     let schema = get_schema().await;
 
-    let localized_text = schema.table("localized_text").columns(&[
-        "entity_id",
-        "field",
-        "lang",
-        "created_date",
-        "last_modified",
-        "value",
-        "entity_type",
-    ]);
+    let localized_text = schema
+        .table("localized_text")
+        .columns(&[
+            "entity_id",
+            "field",
+            "lang",
+            "created_date",
+            "last_modified",
+            "value",
+            "entity_type",
+        ])
+        .index(
+            "index-LocalizedText-EntityType-Field-Lang-Value",
+            false,
+            &["entity_type", "field", "lang", "value"],
+        );
     localized_text
         .column("entity_id")
         .r#type(ColumnType::Uuid)

@@ -25,11 +25,15 @@ use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaListQuery, UpdateCredentialSchemaRequest,
+};
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListPagination;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
@@ -44,6 +48,7 @@ use crate::provider::credential_formatter::model::{CertificateDetails, Identifie
 use crate::provider::issuance_protocol::model::CredentialWithBlob;
 use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtocolError};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::validator::validate_issuance_time;
 
 impl OpenID4VCIFinal1_0 {
@@ -633,6 +638,34 @@ impl OpenID4VCIFinal1_0 {
         Ok(result)
     }
 }
+
+async fn find_credential_schema(
+    repository: &dyn CredentialSchemaRepository,
+    schema_id: &str,
+    organisation_id: OrganisationId,
+) -> Result<Option<CredentialSchema>, IssuanceProtocolError> {
+    Ok(repository
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                    & CredentialSchemaFilterValue::EcosystemSchemaId(StringMatch::equals(
+                        schema_id,
+                    ))
+                    .condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .error_while("getting credential schema")?
+        .values
+        .into_iter()
+        .next())
+}
+
 async fn get_or_create_credential_schema(
     credential_schema_importer: &dyn CredentialSchemaImporter,
     credential_schema_repository: &dyn CredentialSchemaRepository,
@@ -648,10 +681,12 @@ async fn get_or_create_credential_schema(
         .format()
         .await
         .error_while("getting parsed format")?;
-    let stored_schema = credential_schema_repository
-        .get_by_schema_id_and_organisation(&parsed_schema_id, organisation_id)
-        .await
-        .error_while("getting credential schema")?;
+    let stored_schema = find_credential_schema(
+        credential_schema_repository,
+        &parsed_schema_id,
+        organisation_id,
+    )
+    .await?;
 
     if let Some(stored_schema) = stored_schema {
         let conflicting_format = if let Some(conflicting_schema) =
@@ -703,13 +738,15 @@ async fn get_or_create_credential_schema(
         };
 
         // refetch and try again
-        let stored_schema = credential_schema_repository
-            .get_by_schema_id_and_organisation(&parsed_schema_id, organisation_id)
-            .await
-            .error_while("getting credential schema")?
-            .ok_or(IssuanceProtocolError::Failed(
-                "Credential schema not found".to_string(),
-            ))?;
+        let stored_schema = find_credential_schema(
+            credential_schema_repository,
+            &parsed_schema_id,
+            organisation_id,
+        )
+        .await?
+        .ok_or(IssuanceProtocolError::Failed(
+            "Credential schema not found".to_string(),
+        ))?;
 
         Ok((stored_schema, None))
     }

@@ -189,6 +189,7 @@ pub enum CredentialSchemaListIncludeEntityTypeEnum {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CredentialSchemaFilterValue {
     Name(StringMatch),
+    DisplayNames(Vec<(String, StringMatch)>),
     OrganisationId(OrganisationId),
     EcosystemSchemaId(StringMatch),
     EcosystemSchemaIds(Vec<String>),

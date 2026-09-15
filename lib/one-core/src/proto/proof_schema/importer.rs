@@ -9,12 +9,16 @@ use super::validator::{proof_schema_name_already_exists, validate_imported_proof
 use super::{Error, ProofSchemaImporter};
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
+use crate::model::credential_schema::CredentialSchemaListQuery;
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporter;
 use crate::proto::http_client::HttpClient;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::proof_schema::dto::ImportProofSchemaDTO;
 
 pub(crate) struct ProofSchemaImporterProto {
@@ -70,12 +74,28 @@ impl ProofSchemaImporter for ProofSchemaImporterProto {
                     // check if the credential schema already exists
                     let maybe_credential_schema = self
                         .credential_schema_repository
-                        .get_by_schema_id_and_organisation(
-                            &request_input_schema.credential_schema.schema_id,
-                            organisation.id,
-                        )
+                        .get_credential_schema_list(CredentialSchemaListQuery {
+                            pagination: Some(ListPagination {
+                                page: 0,
+                                page_size: 1,
+                            }),
+                            filtering: Some(
+                                CredentialSchemaFilterValue::OrganisationId(organisation.id)
+                                    .condition()
+                                    & CredentialSchemaFilterValue::EcosystemSchemaId(
+                                        StringMatch::equals(
+                                            &request_input_schema.credential_schema.schema_id,
+                                        ),
+                                    )
+                                    .condition(),
+                            ),
+                            ..Default::default()
+                        })
                         .await
-                        .error_while("getting credential schema")?;
+                        .error_while("getting credential schema")?
+                        .values
+                        .into_iter()
+                        .next();
 
                     let credential_schema =
                         // if not exists (or deleted) create new credential schema

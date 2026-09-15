@@ -13,7 +13,7 @@ use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{ColumnRef, ExprTrait, Query};
+use sea_orm::sea_query::{ColumnRef, Condition, ExprTrait, Query};
 use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, RelationTrait};
 use shared_types::CredentialSchemaId;
 use time::Duration;
@@ -22,7 +22,7 @@ use crate::TransactionManagerImpl;
 use crate::claim_schema::mapper::claim_schema_from_model;
 use crate::credential_schema_format::mapper::credential_schema_format_from_model;
 use crate::entity::credential_schema::KeyStorageSecurity;
-use crate::entity::{claim_schema, credential_schema, credential_schema_format};
+use crate::entity::{claim_schema, credential_schema, credential_schema_format, localized_text};
 use crate::list_query_generic::{
     ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_equals_condition, get_string_match_condition,
@@ -46,6 +46,33 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)
+            }
+            Self::DisplayNames(language_matches) => {
+                let language_matches = language_matches.into_iter().fold(
+                    Condition::any(),
+                    |condition, (language, string_match)| {
+                        condition.add(
+                            Condition::all()
+                                .add(localized_text::Column::Lang.eq(language))
+                                .add(get_string_match_condition(
+                                    localized_text::Column::Value,
+                                    string_match,
+                                )),
+                        )
+                    },
+                );
+
+                credential_schema::Column::Id
+                    .in_subquery(
+                        Query::select()
+                            .column(localized_text::Column::EntityId)
+                            .from(localized_text::Entity)
+                            .cond_where(localized_text::Column::EntityType.eq("CREDENTIAL_SCHEMA"))
+                            .cond_where(localized_text::Column::Field.eq("NAME"))
+                            .cond_where(language_matches)
+                            .to_owned(),
+                    )
+                    .into_condition()
             }
             Self::EcosystemSchemaId(string_match) => get_string_match_condition(
                 credential_schema_format::Column::EcosystemSchemaId,
