@@ -3,12 +3,13 @@ use mime::Mime;
 use one_core::mapper::x509::pem_chain_into_x5c;
 use one_core::model::blob::BlobType;
 use one_core::model::certificate::CertificateRole;
-use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use one_core::model::identifier::Identifier;
 use one_core::model::identifier_trust_information::SchemaFormat;
 use one_core::proto::jwt::Jwt;
-use serde_json::Value;
+use serde_json::{Value, json};
 use similar_asserts::assert_eq;
+use time::Duration;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingCertIdentifierParams, create_cert_identifier};
@@ -44,6 +45,55 @@ async fn test_get_credential_issuer_metadata_json() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     assert_issuer_metadata(&context, &identifier, &credential_schema, resp).await;
+}
+
+#[tokio::test]
+async fn test_get_credential_issuer_metadata_wallet_attestation_status_periods() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell(
+            "test_schema",
+            &organisation,
+            TestingCreateSchemaParams {
+                key_storage_security: Some(KeyStorageSecurity::Basic),
+                preferred_key_storage_attestation_lifetime: Some(Duration::hours(1)),
+                preferred_instance_attestation_lifetime: Some(Duration::days(30)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer_final1(
+            "OPENID4VCI_FINAL1",
+            identifier.id,
+            credential_schema.id,
+            mime::APPLICATION_JSON.into(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["preferred_client_status_period"], 2592000);
+    let key_attestations_required = &resp["credential_configurations_supported"]
+        [credential_schema.schema_id().await.unwrap()]["proof_types_supported"]["jwt"]["key_attestations_required"];
+    assert_eq!(
+        key_attestations_required["key_storage"],
+        json!(["iso_18045_basic"])
+    );
+    assert_eq!(
+        key_attestations_required["preferred_key_storage_status_period"],
+        3600
+    );
 }
 
 #[tokio::test]
@@ -416,6 +466,7 @@ async fn assert_issuer_metadata(
     );
 
     assert_eq!(issuer, resp["credential_issuer"]);
+    assert!(resp.get("preferred_client_status_period").is_none());
     assert_eq!(
         format!(
             "{}/ssi/openid4vci/final-1.0/{}/credential",

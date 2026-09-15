@@ -25,7 +25,7 @@ use crate::config::core_config::{IdentifierType, Params};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, KeyStorageSecurity, LayoutProperties,
-    LogoProperties,
+    LogoProperties, WalletAttestation,
 };
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -150,13 +150,18 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
 
 pub(crate) fn map_proof_types_supported<R: From<[(String, ProofTypeSupported); 1]>>(
     supported_jose_alg_ids: Vec<String>,
-    key_storage_security_level: Option<KeyStorageSecurityLevel>,
+    wallet_attestation: &WalletAttestation,
 ) -> R {
     let key_attestations_required =
-        key_storage_security_level.map(|level| KeyAttestationsRequired {
-            key_storage: vec![level],
-            user_authentication: vec![],
-        });
+        wallet_attestation
+            .key_storage_security_level
+            .map(|level| KeyAttestationsRequired {
+                key_storage: vec![level.into()],
+                user_authentication: vec![],
+                preferred_key_storage_status_period: wallet_attestation
+                    .preferred_key_storage_attestation_lifetime
+                    .map(|lifetime| lifetime.whole_seconds() as u64),
+            });
 
     R::from([(
         "jwt".to_string(),

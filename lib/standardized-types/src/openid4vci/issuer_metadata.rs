@@ -33,6 +33,8 @@ pub struct CredentialIssuerMetadata {
     pub batch_credential_issuance: Option<BatchCredentialIssuance>,
     pub credential_request_encryption: Option<CredentialRequestEncryption>,
     pub credential_response_encryption: Option<CredentialResponseEncryption>,
+    /// EUDI TS3 Wallet Unit Attestation V1.5.2, Section 2.4.2
+    pub preferred_client_status_period: Option<u64>,
 }
 
 /// Entry of the `issuer_info` Credential Issuer Metadata parameter.
@@ -228,12 +230,15 @@ pub struct ProofTypeSupported {
 /// Key attestation requirements of a proof type.
 ///
 /// Spec <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-key-attestations>
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyAttestationsRequired {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub key_storage: Vec<KeyStorageSecurityLevel>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_authentication: Vec<String>,
+    /// EUDI TS3 Wallet Unit Attestation V1.5.2, Section 2.4.2
+    pub preferred_key_storage_status_period: Option<u64>,
 }
 
 /// Attack potential resistance level of the key storage, as defined by ISO/IEC 18045.
@@ -278,6 +283,7 @@ mod test {
             "credential_endpoint": "https://issuer.example.com/credential",
             "nonce_endpoint": "https://issuer.example.com/nonce",
             "batch_credential_issuance": { "batch_size": 5 },
+            "preferred_client_status_period": 2592000,
             "credential_configurations_supported": {
                 "UniversityDegree": {
                     "format": "dc+sd-jwt",
@@ -287,7 +293,10 @@ mod test {
                     "proof_types_supported": {
                         "jwt": {
                             "proof_signing_alg_values_supported": ["ES256"],
-                            "key_attestations_required": { "key_storage": ["iso_18045_moderate"] }
+                            "key_attestations_required": {
+                                "key_storage": ["iso_18045_moderate"],
+                                "preferred_key_storage_status_period": 3600
+                            }
                         }
                     },
                     "credential_metadata": {
@@ -303,6 +312,7 @@ mod test {
             Some(BatchCredentialIssuance { batch_size: 5 }),
             metadata.batch_credential_issuance
         );
+        assert_eq!(Some(2592000), metadata.preferred_client_status_period);
 
         let config = &metadata.credential_configurations_supported["UniversityDegree"];
         assert_eq!("dc+sd-jwt", config.format);
@@ -314,12 +324,14 @@ mod test {
             config.credential_signing_alg_values_supported
         );
         assert_eq!(
-            vec![KeyStorageSecurityLevel::Moderate],
+            Some(&KeyAttestationsRequired {
+                key_storage: vec![KeyStorageSecurityLevel::Moderate],
+                user_authentication: vec![],
+                preferred_key_storage_status_period: Some(3600),
+            }),
             config.proof_types_supported.as_ref().unwrap()["jwt"]
                 .key_attestations_required
                 .as_ref()
-                .unwrap()
-                .key_storage
         );
 
         let metadata = config.credential_metadata.as_ref().unwrap();

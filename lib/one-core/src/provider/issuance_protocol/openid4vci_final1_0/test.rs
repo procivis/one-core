@@ -3250,6 +3250,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
             key_attestations_required: Some(KeyAttestationsRequired {
                 key_storage: vec![KeyStorageSecurityLevel::Basic],
                 user_authentication: vec![],
+                preferred_key_storage_status_period: None,
             }),
         },
     );
@@ -3407,6 +3408,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             key_attestations_required: Some(KeyAttestationsRequired {
                 key_storage: vec![KeyStorageSecurityLevel::Basic],
                 user_authentication: vec![],
+                preferred_key_storage_status_period: None,
             }),
         },
     );
@@ -5331,6 +5333,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
                     KeyAttestationsRequired {
                         key_storage: vec![KeyStorageSecurityLevel::Basic],
                         user_authentication: vec![],
+                        preferred_key_storage_status_period: None,
                     }
                 }),
             },

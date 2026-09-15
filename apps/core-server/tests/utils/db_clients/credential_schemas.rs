@@ -25,6 +25,8 @@ pub struct TestingCreateSchemaParams {
     pub schema_id: Option<String>,
     pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<KeyStorageSecurity>,
+    pub preferred_key_storage_attestation_lifetime: Option<Duration>,
+    pub preferred_instance_attestation_lifetime: Option<Duration>,
     pub allow_suspension: Option<bool>,
     pub allow_revocation: Option<bool>,
     pub imported_source_url: Option<String>,
@@ -147,8 +149,10 @@ impl CredentialSchemasDB {
             wallet_attestation: WalletAttestation {
                 require_instance_attestation: params.requires_wallet_instance_attestation,
                 key_storage_security_level: params.key_storage_security,
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
+                preferred_key_storage_attestation_lifetime: params
+                    .preferred_key_storage_attestation_lifetime,
+                preferred_instance_attestation_lifetime: params
+                    .preferred_instance_attestation_lifetime,
             },
             organisation: organisation.clone().into(),
             deleted_at: params.deleted_at,
@@ -231,8 +235,10 @@ impl CredentialSchemasDB {
             wallet_attestation: WalletAttestation {
                 require_instance_attestation: false,
                 key_storage_security_level: params.key_storage_security,
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
+                preferred_key_storage_attestation_lifetime: params
+                    .preferred_key_storage_attestation_lifetime,
+                preferred_instance_attestation_lifetime: params
+                    .preferred_instance_attestation_lifetime,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -362,8 +368,10 @@ impl CredentialSchemasDB {
             wallet_attestation: WalletAttestation {
                 require_instance_attestation: false,
                 key_storage_security_level: params.key_storage_security,
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
+                preferred_key_storage_attestation_lifetime: params
+                    .preferred_key_storage_attestation_lifetime,
+                preferred_instance_attestation_lifetime: params
+                    .preferred_instance_attestation_lifetime,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -493,8 +501,10 @@ impl CredentialSchemasDB {
             wallet_attestation: WalletAttestation {
                 require_instance_attestation: false,
                 key_storage_security_level: params.key_storage_security,
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
+                preferred_key_storage_attestation_lifetime: params
+                    .preferred_key_storage_attestation_lifetime,
+                preferred_instance_attestation_lifetime: params
+                    .preferred_instance_attestation_lifetime,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -636,8 +646,10 @@ impl CredentialSchemasDB {
             wallet_attestation: WalletAttestation {
                 require_instance_attestation: false,
                 key_storage_security_level: params.key_storage_security,
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
+                preferred_key_storage_attestation_lifetime: params
+                    .preferred_key_storage_attestation_lifetime,
+                preferred_instance_attestation_lifetime: params
+                    .preferred_instance_attestation_lifetime,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -921,8 +933,10 @@ impl CredentialSchemasDB {
             wallet_attestation: WalletAttestation {
                 require_instance_attestation: params.requires_wallet_instance_attestation,
                 key_storage_security_level: params.key_storage_security,
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
+                preferred_key_storage_attestation_lifetime: params
+                    .preferred_key_storage_attestation_lifetime,
+                preferred_instance_attestation_lifetime: params
+                    .preferred_instance_attestation_lifetime,
             },
             organisation: organisation.clone().into(),
             formats: vec![CredentialSchemaFormat {

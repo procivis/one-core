@@ -36,6 +36,7 @@ impl From<CredentialIssuerMetadata> for OpenID4VCIIssuerMetadataResponseRestDTO 
             batch_credential_issuance: convert_inner(value.batch_credential_issuance),
             credential_request_encryption: value.credential_request_encryption,
             credential_response_encryption: value.credential_response_encryption,
+            preferred_client_status_period: value.preferred_client_status_period,
         }
     }
 }

@@ -1410,6 +1410,7 @@ async fn test_continue_issuance() {
                             batch_credential_issuance: None,
                             credential_request_encryption: None,
                             credential_response_encryption: None,
+                            preferred_client_status_period: None,
                         },
                     )),
                     credential_configuration_ids: vec![],

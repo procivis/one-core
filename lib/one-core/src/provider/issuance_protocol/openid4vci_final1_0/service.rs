@@ -119,6 +119,10 @@ pub(crate) fn create_issuer_metadata_response(
         batch_credential_issuance,
         credential_request_encryption,
         credential_response_encryption,
+        preferred_client_status_period: schema
+            .wallet_attestation
+            .preferred_instance_attestation_lifetime
+            .map(|lifetime| lifetime.whole_seconds() as u64),
     })
 }
 

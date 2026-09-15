@@ -40,6 +40,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub batch_credential_issuance: Option<BatchCredentialIssuance>,
     pub credential_request_encryption: Option<CredentialRequestEncryption>,
     pub credential_response_encryption: Option<CredentialResponseEncryption>,
+    pub preferred_client_status_period: Option<u64>,
 }
 
 #[options_not_nullable]
