@@ -1,9 +1,10 @@
 use one_core::model::blob::BlobType;
-use one_core::model::history::HistoryAction;
+use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use similar_asserts::assert_eq;
+use url::Url;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
@@ -131,7 +132,174 @@ async fn test_get_proof_trust_detail_success() {
           "phone": "+41 44 523 65 35",
           "uri": "www.procivis.ch"
         },
-        "website": "https://procivis.ch/"
+        "supportUrl": "https://procivis.ch/",
+        "infoUrl": "https://procivis.ch/",
+        "privacyPolicyUrl": "https://procivis.ch/privacy"
+    });
+
+    assert_eq!(
+        resp,
+        json!({
+            "ecosystem": "EUDI",
+            "ecosystemErrors": {},
+            "eudiEcosystem": rp_data,
+            "verifier": rp_data
+        })
+    );
+}
+
+// Hand-crafted national registry WRP JWT (header.payload.signature, unsigned - the signature
+// segment is never verified by `Jwt::decompose_token`). Decoded payload:
+// {
+//   "iat": 1776063346,
+//   "sub": "NTRCH-nr.procivis",
+//   "data": {
+//     "tradeName": "National Registry WRP",
+//     "supportURI": ["https://procivis.ch/nr-support"],
+//     "srvDescription": [{"lang": "en", "content": "NR service description"}],
+//     "intendedUse": [{
+//       "purpose": [{"lang": "en", "content": "Age verification"}],
+//       "privacyPolicy": [{
+//         "type": "http://data.europa.eu/eudi/policy/privacy-policy",
+//         "policyURI": "https://procivis.ch/nr-privacy"
+//       }],
+//       "createdAt": "2026-01-01T00:00:00Z",
+//       "revokedAt": null,
+//       "credential": [{"format": "mso_mdoc", "meta": {"doctype_value": "org.iso.18013.5.1.mDL"}}],
+//       "intendedUseIdentifier": "use-1"
+//     }],
+//     "entitlement": [],
+//     "supervisoryAuthority": {
+//       "legalPerson": {"legalName": ["National Supervisory Authority"]},
+//       "naturalPerson": null,
+//       "country": "CH",
+//       "email": ["supervisory@example.com"],
+//       "phone": ["+41000000000"],
+//       "infoURI": ["https://supervisory.example.com"]
+//     },
+//     "registryURI": "https://procivis.ch/registry",
+//     "country": "CH",
+//     "email": ["nr-contact@procivis.ch"],
+//     "phone": ["+41111111111"],
+//     "infoURI": ["https://procivis.ch/nr-info"]
+//   }
+// }
+const NATIONAL_REGISTRY_JWT: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IndycC1ucitqd3QifQ.eyJpYXQiOjE3NzYwNjMzNDYsInN1YiI6Ik5UUkNILW5yLnByb2NpdmlzIiwiZGF0YSI6eyJ0cmFkZU5hbWUiOiJOYXRpb25hbCBSZWdpc3RyeSBXUlAiLCJzdXBwb3J0VVJJIjpbImh0dHBzOi8vcHJvY2l2aXMuY2gvbnItc3VwcG9ydCJdLCJzcnZEZXNjcmlwdGlvbiI6W3sibGFuZyI6ImVuIiwiY29udGVudCI6Ik5SIHNlcnZpY2UgZGVzY3JpcHRpb24ifV0sImludGVuZGVkVXNlIjpbeyJwdXJwb3NlIjpbeyJsYW5nIjoiZW4iLCJjb250ZW50IjoiQWdlIHZlcmlmaWNhdGlvbiJ9XSwicHJpdmFjeVBvbGljeSI6W3sidHlwZSI6Imh0dHA6Ly9kYXRhLmV1cm9wYS5ldS9ldWRpL3BvbGljeS9wcml2YWN5LXBvbGljeSIsInBvbGljeVVSSSI6Imh0dHBzOi8vcHJvY2l2aXMuY2gvbnItcHJpdmFjeSJ9XSwiY3JlYXRlZEF0IjoiMjAyNi0wMS0wMVQwMDowMDowMFoiLCJyZXZva2VkQXQiOm51bGwsImNyZWRlbnRpYWwiOlt7ImZvcm1hdCI6Im1zb19tZG9jIiwibWV0YSI6eyJkb2N0eXBlX3ZhbHVlIjoib3JnLmlzby4xODAxMy41LjEubURMIn19XSwiaW50ZW5kZWRVc2VJZGVudGlmaWVyIjoidXNlLTEifV0sImVudGl0bGVtZW50IjpbXSwic3VwZXJ2aXNvcnlBdXRob3JpdHkiOnsibGVnYWxQZXJzb24iOnsibGVnYWxOYW1lIjpbIk5hdGlvbmFsIFN1cGVydmlzb3J5IEF1dGhvcml0eSJdfSwibmF0dXJhbFBlcnNvbiI6bnVsbCwiY291bnRyeSI6IkNIIiwiZW1haWwiOlsic3VwZXJ2aXNvcnlAZXhhbXBsZS5jb20iXSwicGhvbmUiOlsiKzQxMDAwMDAwMDAwIl0sImluZm9VUkkiOlsiaHR0cHM6Ly9zdXBlcnZpc29yeS5leGFtcGxlLmNvbSJdfSwicmVnaXN0cnlVUkkiOiJodHRwczovL3Byb2NpdmlzLmNoL3JlZ2lzdHJ5IiwiY291bnRyeSI6IkNIIiwiZW1haWwiOlsibnItY29udGFjdEBwcm9jaXZpcy5jaCJdLCJwaG9uZSI6WyIrNDExMTExMTExMTEiXSwiaW5mb1VSSSI6WyJodHRwczovL3Byb2NpdmlzLmNoL25yLWluZm8iXX19.ZHVtbXktc2lnbmF0dXJl";
+
+#[tokio::test]
+async fn test_get_proof_trust_detail_national_registry_success() {
+    // GIVEN a verification resolved via the National Registry (not a registration certificate),
+    // where the matched intended use's privacy policy URL was captured and stored on the
+    // WrpNrReceived history entry's metadata (as `resolve_trust` does at request time)
+    let (context, organisation, identifier, _, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Verification,
+            Default::default(),
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            ProofStateEnum::Requested,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_key: Some(key),
+                interaction: Some(interaction),
+                ecosystem: Some("EUDI".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let ac_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(ACCESS_CERT.as_bytes().to_vec()),
+            r#type: Some(BlobType::HistoryMetadata),
+            ..Default::default()
+        })
+        .await;
+    let nr_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(NATIONAL_REGISTRY_JWT.as_bytes().to_vec()),
+            r#type: Some(BlobType::HistoryMetadata),
+            ..Default::default()
+        })
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                entity_id: Some(proof.id.into()),
+                action: Some(HistoryAction::WrpAcReceived),
+                metadata_blob_id: Some(ac_blob.id),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                entity_id: Some(proof.id.into()),
+                action: Some(HistoryAction::WrpNrReceived),
+                metadata_blob_id: Some(nr_blob.id),
+                metadata: Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        privacy_policy_url: Some(
+                            Url::parse("https://procivis.ch/nr-privacy").unwrap(),
+                        ),
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.get_trust_detail(&proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let rp_data = json!({
+        "country": "CH",
+        "email": "tester@test.com",
+        "identifier": "NTRCH-nr.procivis",
+        "isPublicSector": false,
+        "name": "National Registry WRP",
+        "phone": "+4123456789",
+        "serviceDescription": [
+          {
+            "en": "NR service description"
+          }
+        ],
+        "supervisoryAuthority": {
+          "email": "supervisory@example.com",
+          "phone": "+41000000000",
+          "uri": "https://supervisory.example.com"
+        },
+        "supportUrl": "https://procivis.ch/nr-support",
+        "infoUrl": "https://procivis.ch/nr-info",
+        "privacyPolicyUrl": "https://procivis.ch/nr-privacy"
     });
 
     assert_eq!(

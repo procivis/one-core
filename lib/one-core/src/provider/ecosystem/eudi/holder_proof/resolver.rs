@@ -6,6 +6,7 @@ use shared_types::{EcosystemId, OrganisationId, ProofId};
 use standardized_types::etsi_119_475::registration_certificate;
 use standardized_types::etsi_119_475::registry::IntendedUse;
 use standardized_types::etsi_119_602::MultiLangString;
+use standardized_types::eudi_ts2::PolicyType;
 use standardized_types::openid4vp::VerifierInfoAttestation;
 use standardized_types::openid4vp::dcql::{CredentialQuery, CredentialQueryId, DcqlQuery};
 use time::Duration;
@@ -327,8 +328,9 @@ impl HolderProofResolver {
             .error_while("fetching from WRP registry")?;
 
         let mut purpose: HashMap<CredentialQueryId, Vec<MultiLangString>> = Default::default();
+        let mut privacy_policy_url: Option<Url> = None;
         for credential_query in &dcql_query.credentials {
-            let Some(applied_purpose) = find_matching_intended_use(
+            let Some(matched) = find_matching_intended_use(
                 credential_query,
                 &info.payload.custom.data.intended_use,
             ) else {
@@ -338,7 +340,10 @@ impl HolderProofResolver {
                 });
             };
 
-            purpose.insert(credential_query.id.to_owned(), applied_purpose);
+            purpose.insert(credential_query.id.to_owned(), matched.purpose);
+            if privacy_policy_url.is_none() {
+                privacy_policy_url = matched.privacy_policy_url;
+            }
         }
 
         self.store_trust_history_event(
@@ -349,6 +354,7 @@ impl HolderProofResolver {
             Some(WalletRelyingPartyMetadata {
                 name: info.payload.custom.data.trade_name,
                 purpose,
+                privacy_policy_url,
                 ..Default::default()
             }),
         )
@@ -410,17 +416,30 @@ impl HolderProofResolver {
     }
 }
 
+struct MatchedIntendedUse {
+    purpose: Vec<MultiLangString>,
+    privacy_policy_url: Option<Url>,
+}
+
 fn find_matching_intended_use(
     credential_query: &CredentialQuery,
     among_uses: &[IntendedUse],
-) -> Option<Vec<MultiLangString>> {
+) -> Option<MatchedIntendedUse> {
     for intended_use in among_uses {
         if intended_use
             .credential
             .iter()
             .any(|c| credential_query_matches_reg_cert_credential(credential_query, c))
         {
-            return Some(convert_inner(intended_use.purpose.to_owned()));
+            let privacy_policy_url = intended_use
+                .privacy_policy
+                .iter()
+                .find(|policy| policy.r#type == PolicyType::PrivacyPolicy)
+                .map(|policy| policy.policy_uri.to_owned());
+            return Some(MatchedIntendedUse {
+                purpose: convert_inner(intended_use.purpose.to_owned()),
+                privacy_policy_url,
+            });
         }
     }
     None

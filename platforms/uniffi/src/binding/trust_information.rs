@@ -35,7 +35,12 @@ pub enum TrustInformationDetailResponseBindingEnum {
 #[uniffi(name = "EudiTrustInformation")]
 pub struct EudiTrustInformationResponseBindingDTO {
     pub name: String,
-    pub website: String,
+    #[from(with_fn = convert_inner)]
+    pub support_url: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub info_url: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub privacy_policy_url: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub country: String,
@@ -62,7 +67,10 @@ pub(crate) struct EudiSupervisoryAuthorityResponseBindingDTO {
 pub struct EudiIntermediaryResponseBindingDTO {
     pub name: Option<String>,
     pub identifier: String,
-    pub website: String,
+    #[from(with_fn = convert_inner)]
+    pub support_url: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub info_url: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub country: String,

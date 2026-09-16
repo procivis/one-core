@@ -16,8 +16,6 @@ use crate::mapper::x509::parse_oid;
 pub(crate) enum AccessCertParsingError {
     #[error("Missing organisation identifier")]
     MissingOrganisationIdentifier,
-    #[error("Missing support uri")]
-    MissingSupportUri,
     #[error("Missing country")]
     MissingCountry,
     #[error("Invalid phone nr: `{0}`")]
@@ -48,7 +46,6 @@ impl ErrorCodeMixin for AccessCertParsingError {
             | Self::MissingOrganisationIdentifier
             | Self::PEMError(_)
             | Self::X509NomError(_)
-            | Self::MissingSupportUri
             | Self::MissingCountry
             | Self::InvalidPhoneNr(_)
             | Self::MissingSubjectAlternativeName
@@ -62,7 +59,7 @@ impl ErrorCodeMixin for AccessCertParsingError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EtsiParsedAccessCert {
     pub rp_id: String,
-    pub support_uri: Url,
+    pub support_uri: Option<Url>,
     pub country: String,
     pub common_name: Option<String>,
     pub email: Option<String>,
@@ -137,8 +134,8 @@ pub(crate) fn etsi_access_cert_from_pem_chain(
             GeneralName::URI(support_uri) => Some(support_uri),
             _ => None,
         })
-        .ok_or(AccessCertParsingError::MissingSupportUri)?;
-    let support_uri = Url::parse(support_uri)?;
+        .map(|support_uri| Url::parse(support_uri))
+        .transpose()?;
     let email = san
         .general_names
         .iter()
@@ -279,7 +276,7 @@ KqyEej23GXbZ9gL6
     fn test_data() -> EtsiParsedAccessCert {
         EtsiParsedAccessCert {
             rp_id: "orgId".to_string(),
-            support_uri: Url::parse("https://some-uri.com").unwrap(),
+            support_uri: Some(Url::parse("https://some-uri.com").unwrap()),
             country: "CH".to_string(),
             common_name: Some("common name".to_string()),
             email: Some("tester@test.com".to_string()),

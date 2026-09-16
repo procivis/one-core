@@ -2,6 +2,7 @@ use shared_types::i18n::I18nString;
 use shared_types::{EcosystemId, EntityId};
 use standardized_types::etsi_119_475::registration_certificate::{Payload, SupervisoryAuthority};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
+use url::Url;
 
 use super::EudiEcosystem;
 use crate::config::core_config::BlobStorageType;
@@ -144,8 +145,17 @@ impl EudiEcosystem {
             HistoryAction::WrpNrReceived => {
                 let parsed_token = Jwt::decompose_token(blob_value)
                     .error_while("parsing national registry wrp info")?;
+                let privacy_policy_url = match &reg_cert_history.metadata {
+                    Some(HistoryMetadata::WalletRelyingParty(metadata)) => {
+                        metadata.privacy_policy_url.clone()
+                    }
+                    _ => None,
+                };
                 Ok((
-                    WalletRelyingPartyDetails::NationalRegistryInfo(parsed_token.payload),
+                    WalletRelyingPartyDetails::NationalRegistryInfo(
+                        parsed_token.payload,
+                        privacy_policy_url,
+                    ),
                     reg_cert_history,
                 ))
             }
@@ -238,7 +248,7 @@ fn trust_purpose_from_history(
 
 enum WalletRelyingPartyDetails {
     RegistrationCertificate(JWTPayload<Payload>),
-    NationalRegistryInfo(JWTPayload<WRPPayload>),
+    NationalRegistryInfo(JWTPayload<WRPPayload>, Option<Url>),
 }
 
 fn build_eudi_trust_info(
@@ -247,17 +257,33 @@ fn build_eudi_trust_info(
 ) -> Result<EudiTrustInformationResponseDTO, EcosystemError> {
     let (eudi_ecosystem, has_intermediary) = match wrp {
         WalletRelyingPartyDetails::RegistrationCertificate(reg_cert) => map_reg_cert(reg_cert)?,
-        WalletRelyingPartyDetails::NationalRegistryInfo(national_registry_info) => {
-            map_national_registry_info(national_registry_info)?
-        }
+        WalletRelyingPartyDetails::NationalRegistryInfo(
+            national_registry_info,
+            privacy_policy_url,
+        ) => map_national_registry_info(national_registry_info, privacy_policy_url)?,
     };
     let (intermediary, email, phone) = map_access_cert(access_certificate, has_intermediary);
-    Ok(EudiTrustInformationResponseDTO {
+    let trust_info = EudiTrustInformationResponseDTO {
         intermediary,
         email,
         phone,
         ..eudi_ecosystem
-    })
+    };
+    validate_has_a_contact_option(&trust_info)?;
+    Ok(trust_info)
+}
+
+/// ETSI TS 119 475 clause 5.2.4 / B.2.1-B.2.2: at least one of support URI, email or phone
+/// SHALL be present so the wallet can always offer the holder a way to reach the relying party.
+fn validate_has_a_contact_option(
+    info: &EudiTrustInformationResponseDTO,
+) -> Result<(), EcosystemError> {
+    if info.support_url.is_none() && info.email.is_none() && info.phone.is_none() {
+        return Err(EcosystemError::MappingError(
+            "None of support uri, email or phone is present".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn map_reg_cert(
@@ -266,7 +292,9 @@ fn map_reg_cert(
     Ok((
         EudiTrustInformationResponseDTO {
             name: reg_cert.custom.name,
-            website: reg_cert.custom.support_uri,
+            support_url: Some(reg_cert.custom.support_uri),
+            info_url: Some(reg_cert.custom.info_uri),
+            privacy_policy_url: Some(reg_cert.custom.privacy_policy),
             email: None,
             phone: None,
             country: reg_cert.custom.country,
@@ -294,6 +322,7 @@ fn map_reg_cert(
 
 fn map_national_registry_info(
     national_registry_info: JWTPayload<WRPPayload>,
+    privacy_policy_url: Option<Url>,
 ) -> Result<(EudiTrustInformationResponseDTO, bool), EcosystemError> {
     let data = national_registry_info.custom.data;
     Ok((
@@ -301,13 +330,9 @@ fn map_national_registry_info(
             name: data.trade_name.ok_or(EcosystemError::MappingError(
                 "Missing trade name".to_string(),
             ))?,
-            website: data
-                .support_uri
-                .into_iter()
-                .next()
-                .ok_or(EcosystemError::MappingError(
-                    "Empty support uri".to_string(),
-                ))?,
+            support_url: data.support_uri.into_iter().next(),
+            info_url: data.info_uri.into_iter().next(),
+            privacy_policy_url,
             email: data.email.into_iter().next(),
             phone: data.phone.into_iter().next(),
             country: data.country,
@@ -359,7 +384,8 @@ fn map_access_cert(
             Some(EudiIntermediaryResponseDTO {
                 name: access_certificate.common_name,
                 identifier: access_certificate.rp_id,
-                website: access_certificate.support_uri.clone(),
+                support_url: access_certificate.support_uri.clone(),
+                info_url: None,
                 email: access_certificate.email,
                 phone: access_certificate.phone,
                 country: access_certificate.country,
@@ -427,5 +453,62 @@ mod tests {
             vec![legacy.id],
             resolved.iter().map(|h| h.id).collect::<Vec<_>>()
         );
+    }
+
+    fn trust_info_with_contact_options(
+        support_url: Option<Url>,
+        email: Option<String>,
+        phone: Option<String>,
+    ) -> EudiTrustInformationResponseDTO {
+        EudiTrustInformationResponseDTO {
+            name: "RP".to_string(),
+            support_url,
+            info_url: None,
+            privacy_policy_url: None,
+            email,
+            phone,
+            country: "CH".to_string(),
+            identifier: "id".to_string(),
+            service_description: vec![],
+            supervisory_authority: SupervisoryAuthority {
+                email: "supervisory@example.com".to_string(),
+                phone: "+41000000000".to_string(),
+                uri: "https://supervisory.example.com".to_string(),
+            },
+            intermediary: None,
+            is_public_sector: false,
+        }
+    }
+
+    #[test]
+    fn test_validate_has_a_contact_option_fails_when_all_absent() {
+        let info = trust_info_with_contact_options(None, None, None);
+
+        assert!(validate_has_a_contact_option(&info).is_err());
+    }
+
+    #[test]
+    fn test_validate_has_a_contact_option_succeeds_when_only_support_url_present() {
+        let info = trust_info_with_contact_options(
+            Some(Url::parse("https://example.com/support").unwrap()),
+            None,
+            None,
+        );
+
+        assert!(validate_has_a_contact_option(&info).is_ok());
+    }
+
+    #[test]
+    fn test_validate_has_a_contact_option_succeeds_when_only_email_present() {
+        let info = trust_info_with_contact_options(None, Some("rp@example.com".to_string()), None);
+
+        assert!(validate_has_a_contact_option(&info).is_ok());
+    }
+
+    #[test]
+    fn test_validate_has_a_contact_option_succeeds_when_only_phone_present() {
+        let info = trust_info_with_contact_options(None, None, Some("+41000000000".to_string()));
+
+        assert!(validate_has_a_contact_option(&info).is_ok());
     }
 }

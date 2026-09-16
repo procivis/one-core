@@ -92,6 +92,5 @@ pub(crate) struct WRPPayloadData {
     #[serde(default)]
     pub phone: Vec<String>,
     #[serde(default, rename = "infoURI")]
-    #[expect(unused)]
     pub info_uri: Vec<Url>,
 }

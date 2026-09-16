@@ -9,6 +9,7 @@ use standardized_types::etsi_119_602::MultiLangString;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use strum::IntoStaticStr;
 use time::OffsetDateTime;
+use url::Url;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
@@ -54,6 +55,10 @@ pub struct WalletRelyingPartyMetadata {
     /// `None` on events written before the tag was introduced.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ecosystem: Option<EcosystemId>,
+    /// privacy policy URL of the first matched intended use across the proof's credential
+    /// queries, resolved from the National Registry WRP payload.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub privacy_policy_url: Option<Url>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

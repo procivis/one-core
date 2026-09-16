@@ -158,6 +158,7 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
                             name: Some("Test RP".to_string()),
                             purpose,
                             ecosystem: Some("EUDI".into()),
+                            privacy_policy_url: None,
                         },
                     ),
                 ),

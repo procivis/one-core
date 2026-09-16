@@ -201,7 +201,9 @@ async fn test_get_credential_trust_detail_success() {
            "phone": "+41 44 523 65 35",
            "uri": "www.procivis.ch"
          },
-         "website": "https://procivis.ch/"
+         "supportUrl": "https://procivis.ch/",
+         "infoUrl": "https://procivis.ch/",
+         "privacyPolicyUrl": "https://procivis.ch/privacy"
     });
     assert_eq!(
         resp,

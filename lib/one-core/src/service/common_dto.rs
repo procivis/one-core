@@ -43,7 +43,9 @@ pub enum TrustInformationDetailResponseEnum {
 #[derive(Clone, Debug)]
 pub struct EudiTrustInformationResponseDTO {
     pub name: String,
-    pub website: Url,
+    pub support_url: Option<Url>,
+    pub info_url: Option<Url>,
+    pub privacy_policy_url: Option<Url>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub country: String,
@@ -58,7 +60,8 @@ pub struct EudiTrustInformationResponseDTO {
 pub struct EudiIntermediaryResponseDTO {
     pub name: Option<String>,
     pub identifier: String,
-    pub website: Url,
+    pub support_url: Option<Url>,
+    pub info_url: Option<Url>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub country: String,
