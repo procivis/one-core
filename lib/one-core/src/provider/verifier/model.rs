@@ -3,6 +3,7 @@ use serde_with::{DurationSeconds, serde_as};
 use shared_types::{IdentifierId, OrganisationId};
 use time::Duration;
 
+use crate::config::core_config::IdentifierType;
 use crate::service::managed_instance::dto::{
     UserAuthenticationParams, WalletInstanceAttestationParams,
 };
@@ -20,6 +21,8 @@ pub(crate) struct VerifierParams {
     #[serde(default = "default_device_auth_leeway")]
     #[serde_as(as = "DurationSeconds<i64>")]
     pub device_auth_leeway_seconds: Duration,
+    #[expect(unused)]
+    pub signer_identifier_types: Vec<IdentifierType>,
 }
 
 fn default_device_auth_leeway() -> Duration {

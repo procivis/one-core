@@ -37,6 +37,8 @@ walletProvider:
         walletName: "Procivis One Native Dev Wallet"
         walletInstanceAttestation:
           expirationSeconds: 86400 # 24*60*60 seconds
+          revocationMethod: TOKENSTATUSLIST
+          statusPeriodSeconds: 2678400 # 31 days
           integrityCheck:
             android:
               bundleId: ch.procivis.one.wallet.android.dev
@@ -60,6 +62,7 @@ walletProvider:
           providerName: "Procivis One iOS Dev"
           solutionId: "PROCIVIS_ONE"
           solutionVersion: "1"
+          solutionCertificationInformation: "https://procivis.ch"
           wscdType: HYBRID
         appVersion:
           minimum: "v1.0.0"
@@ -71,9 +74,12 @@ walletProvider:
         walletLink: "https://docs.procivis.ch/components/wallet-app"
         walletClientId: "eudiw-abca"
         walletRegistration: OPTIONAL
-        walletUnitAttestation:
+        walletKeyAttestation:
           expirationSeconds: 2678400 # 31 days
           revocationMethod: TOKENSTATUSLIST
+          statusPeriodSeconds: 2678400 # 31 days
+        walletCertification: "https://procivis.ch"
+        signerIdentifierTypes: ["CERTIFICATE"]
         deviceAuthLeewaySeconds: 60
 verifierProvider:
   PROCIVIS_ONE:

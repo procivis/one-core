@@ -12,6 +12,7 @@ use crate::model::credential::{
 };
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
 use crate::model::list_query::ListPagination;
+use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage::BlobStorage;
@@ -108,6 +109,7 @@ impl EudiEcosystem {
                                 main_credential,
                                 blob_storage.as_ref(),
                                 credential.wallet_instance_attestation_blob_id,
+                                AttestationType::WalletInstanceAttestation,
                             )
                             .await?;
                         cached_wia_status.insert(main_credential.id, revoked);
@@ -135,6 +137,7 @@ impl EudiEcosystem {
                         credential,
                         blob_storage.as_ref(),
                         credential.wallet_key_attestation_blob_id,
+                        AttestationType::KeyAttestation,
                     )
                     .await?
                 {
@@ -197,7 +200,7 @@ impl EudiEcosystem {
         }
     }
 
-    /// `true` only when the attestation stored in `blob_id` is known to be revoked. A missing
+    /// `true` only when the attestation stored in `blob_id` is known to be revoked. A missing or expired
     /// attestation, a missing status list entry or an inconclusive check (network failure,
     /// unresolvable issuer) never revokes a PID.
     async fn attestation_revoked(
@@ -205,6 +208,7 @@ impl EudiEcosystem {
         credential: &Credential,
         blob_storage: &dyn BlobStorage,
         blob_id: Option<BlobId>,
+        r#type: AttestationType,
     ) -> Result<bool, EcosystemError> {
         let Some(blob_id) = blob_id else {
             return Ok(false);
@@ -228,18 +232,18 @@ impl EudiEcosystem {
             })?
             .attestation;
 
-        // TODO: align WIA/WUA revocation checking with EUDI TS3
-        // https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md
         match self
             .wallet_unit_proto
-            .check_attestation_status(&attestation)
+            .check_attestation_status(&attestation, r#type)
             .await
         {
             Ok(WalletUnitStatusCheckResponse::Revoked) => Ok(true),
-            Ok(WalletUnitStatusCheckResponse::Active) => Ok(false),
+            Ok(WalletUnitStatusCheckResponse::Active)
+            | Ok(WalletUnitStatusCheckResponse::Expired) => Ok(false),
             Err(error) => {
                 tracing::warn!(
-                    "Could not check WIA / WUA status of credential `{}`: {error}",
+                    "Could not check {} status of credential `{}`: {error}",
+                    r#type,
                     credential.id
                 );
                 Ok(false)

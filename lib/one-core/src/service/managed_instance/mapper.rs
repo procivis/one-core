@@ -88,6 +88,7 @@ impl From<EudiWalletInfoConfig> for EudiWalletInfo {
                 wallet_provider_name: value.provider_name,
                 wallet_solution_id: value.solution_id,
                 wallet_solution_version: value.solution_version,
+                wallet_solution_certification_information: value.solution_certification_information,
             },
             wscd_info: Some(WscdInfo {
                 wscd_type: value.wscd_type,

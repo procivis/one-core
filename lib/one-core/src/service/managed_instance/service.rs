@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use futures::FutureExt;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -6,6 +8,7 @@ use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use shared_types::{
     EntityId, IdentifierId, ManagedInstanceId, OrganisationId, RevocationListEntryId,
+    RevocationMethodId,
 };
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
@@ -15,7 +18,7 @@ use super::ManagedInstanceService;
 use super::app_integrity::android::validate_attestation_android;
 use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
 use super::dto::{
-    DocumentSignerMetadataDTO, FeatureFlags, GetManagedInstanceListResponseDTO,
+    AttestationStatus, DocumentSignerMetadataDTO, FeatureFlags, GetManagedInstanceListResponseDTO,
     GetManagedInstanceResponseDTO, IntegrityCheck, IssueWalletUnitAttestationRequestDTO,
     IssueWalletUnitAttestationResponseDTO, IssueWiaRequestDTO, IssueWuaRequestDTO,
     ManagedInstanceFilterParamsDTO, NoncePayload, RegisterWalletUnitRequestDTO,
@@ -48,7 +51,8 @@ use crate::model::managed_instance::{
     UpdateManagedInstanceRequest,
 };
 use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, UpdateManagedInstanceAttestationRequest,
+    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
+    UpdateManagedInstanceAttestationRequest,
 };
 use crate::model::organisation::Organisation;
 use crate::model::wallet_instance_attestation::AttestationType;
@@ -920,8 +924,18 @@ impl ManagedInstanceService {
             })
             .error_while("parsing config")?;
 
-        validate_revocation_method(self.config.as_ref(), &wallet_provider_config_params)
-            .error_while("validating revocation")?;
+        validate_revocation_method(
+            self.config.as_ref(),
+            &wallet_provider_config_params,
+            AttestationType::WalletInstanceAttestation,
+        )
+        .error_while("validating revocation")?;
+        validate_revocation_method(
+            self.config.as_ref(),
+            &wallet_provider_config_params,
+            AttestationType::KeyAttestation,
+        )
+        .error_while("validating revocation")?;
 
         Ok((wallet_provider_config, wallet_provider_config_params))
     }
@@ -938,8 +952,8 @@ impl ManagedInstanceService {
             .await
             .error_while("verifying WUA request pop")?;
 
-        let revocation_method = config_params
-            .wallet_unit_attestation
+        let attestation_params = &config_params.wallet_key_attestation;
+        let revocation_method = attestation_params
             .revocation_method
             .as_ref()
             .map(|revocation_method| {
@@ -949,13 +963,18 @@ impl ManagedInstanceService {
             .transpose()?;
 
         let now = crate::clock::now_utc();
-        let expiration_date = now + config_params.wallet_unit_attestation.expiration_seconds;
+        let ka_expiration_date = now + attestation_params.expiration_seconds;
+        let status_expiration_date = if revocation_method.is_some() {
+            ka_expiration_date + attestation_params.status_period_seconds
+        } else {
+            ka_expiration_date
+        };
         let attestation = ManagedInstanceAttestation {
             id: Uuid::new_v4().into(),
             instance_id: managed_instance.id,
             created_date: now,
             last_modified: now,
-            expiration_date,
+            expiration_date: status_expiration_date,
             r#type: AttestationType::KeyAttestation,
             attestation_content_hash: None,
             revocation: None,
@@ -995,13 +1014,9 @@ impl ManagedInstanceService {
                 WUA_JWT_TYPE.to_string(),
                 JWTPayload {
                     issued_at: Some(now),
-                    expires_at: Some(expiration_date),
+                    expires_at: Some(ka_expiration_date),
                     invalid_before: Some(now),
-                    issuer: config_params
-                        .eudi_wallet_info
-                        .as_ref()
-                        .map(|info| info.provider_name.clone())
-                        .or_else(|| self.base_url.clone()),
+                    issuer: None,
                     subject: self
                         .base_url
                         .clone()
@@ -1010,10 +1025,15 @@ impl ManagedInstanceService {
                     jwt_id: None,
                     proof_of_possession_key: None,
                     custom: WalletUnitAttestationClaims {
+                        certification: Some(config_params.wallet_certification.to_owned()),
                         key_storage: vec![wua_request.security_level],
                         attested_keys: vec![holder_jwk],
-                        eudi_wallet_info: convert_inner(config_params.eudi_wallet_info.clone()),
-                        status,
+                        eudi_wallet_info: convert_inner(config_params.eudi_wallet_info.to_owned()),
+                        key_storage_status: status.map(|status| AttestationStatus {
+                            status,
+                            expires_at: status_expiration_date,
+                        }),
+                        status: None,
                     },
                 },
             )
@@ -1051,14 +1071,29 @@ impl ManagedInstanceService {
             .await
             .error_while("verifying WIA request pop")?;
 
+        let attestation_params = &config_params.wallet_instance_attestation;
+        let revocation_method = attestation_params
+            .revocation_method
+            .as_ref()
+            .map(|revocation_method| {
+                self.revocation_method_provider
+                    .get_revocation_method(revocation_method)
+            })
+            .transpose()?;
+
         let now = crate::clock::now_utc();
-        let expiration_date = now + config_params.wallet_instance_attestation.expiration_seconds;
+        let wia_expiration_date = now + attestation_params.expiration_seconds;
+        let status_expiration_date = if revocation_method.is_some() {
+            wia_expiration_date + attestation_params.status_period_seconds
+        } else {
+            wia_expiration_date
+        };
         let attestation = ManagedInstanceAttestation {
             id: Uuid::new_v4().into(),
             instance_id: managed_instance.id,
             created_date: now,
             last_modified: now,
-            expiration_date,
+            expiration_date: status_expiration_date,
             r#type: AttestationType::WalletInstanceAttestation,
             attestation_content_hash: None,
             revocation: None,
@@ -1068,14 +1103,39 @@ impl ManagedInstanceService {
             .await
             .error_while("creating attestation")?;
 
+        let revocation_info = if let Some(revocation_method) = revocation_method {
+            Some(
+                revocation_method
+                    .add_issued_attestation(&attestation)
+                    .await
+                    .error_while("adding attestation")?,
+            )
+        } else {
+            None
+        };
+
+        let status = revocation_info
+            .and_then(|info| {
+                let obj: serde_json::Value = info
+                    .credential_status
+                    .additional_fields
+                    .into_iter()
+                    .collect();
+                serde_json::from_value(obj).ok()
+            })
+            .map(|status_list| SdJwtVcStatus {
+                status_list,
+                custom_claims: Default::default(),
+            });
+
         let signed_attestation = issuer_key
             .sign_jwt(
                 WIA_JWT_TYPE.to_string(),
                 JWTPayload {
                     issued_at: Some(now),
-                    expires_at: Some(expiration_date),
+                    expires_at: Some(wia_expiration_date),
                     invalid_before: Some(now),
-                    issuer: self.base_url.clone(),
+                    issuer: None,
                     // As per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5.1
                     // sub: REQUIRED. The sub (subject) claim MUST specify client_id value of the OAuth Client.
                     subject: Some(config_params.wallet_client_id.clone()),
@@ -1090,7 +1150,14 @@ impl ManagedInstanceService {
                     custom: WalletInstanceAttestationClaims {
                         wallet_name: Some(config_params.wallet_name.clone()),
                         wallet_link: Some(config_params.wallet_link.clone()),
+                        wallet_solution_certification_information: Some(
+                            config_params.wallet_certification.to_owned(),
+                        ),
                         eudi_wallet_info: convert_inner(config_params.eudi_wallet_info.clone()),
+                        client_status: status.map(|status| AttestationStatus {
+                            status,
+                            expires_at: status_expiration_date,
+                        }),
                     },
                 },
             )
@@ -1286,62 +1353,79 @@ impl ManagedInstanceService {
                 .into());
         }
 
-        // Resolve/perform fallible role-specific work before persisting the Revoked status,
-        // so a config lookup or certificate revocation failure doesn't leave the instance
-        // marked Revoked in the DB with nothing actually revoked.
-        let wallet_provider_config_params = match managed_instance.role {
-            InstanceRole::Wallet => Some(
-                self.get_wallet_provider_config_params(&managed_instance.provider)?
-                    .1,
-            ),
-            InstanceRole::Verifier => {
-                self.revoke_verifier_access_certificates(&managed_instance)
-                    .await?;
-                None
-            }
-        };
+        self.tx_manager
+            .tx(async move {
+                match managed_instance.role {
+                    InstanceRole::Verifier => {
+                        self.revoke_verifier_access_certificates(&managed_instance)
+                            .await?;
+                    }
+                    InstanceRole::Wallet => {
+                        // revoke all revocable (and non-expired) attestations
+                        let mut attestation_to_revoke_per_revocation_method: HashMap<
+                            RevocationMethodId,
+                            Vec<ManagedInstanceAttestationRevocationInfo>,
+                        > = HashMap::new();
+                        let now = crate::clock::now_utc();
+                        for attestation_to_revoke in managed_instance
+                            .attestations
+                            .as_ref()
+                            .await?
+                            .into_iter()
+                            .filter(|attestation| attestation.expiration_date > now)
+                            .filter_map(|attestation| attestation.revocation.as_ref())
+                        {
+                            let attestation = attestation_to_revoke.as_ref().await?.to_owned();
+                            let revocation_method = attestation
+                                .revocation_list
+                                .as_ref()
+                                .await?
+                                .r#type
+                                .to_owned();
 
-        self.managed_instance_repository
-            .update(
-                id,
-                UpdateManagedInstanceRequest {
-                    status: Some(InstanceStatus::Revoked),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("updating wallet unit")?;
-        self.create_instance_history(&managed_instance, HistoryAction::Revoked, None)
-            .await;
+                            attestation_to_revoke_per_revocation_method
+                                .entry(revocation_method)
+                                .or_default()
+                                .push(attestation);
+                        }
 
-        if let Some(config_params) = wallet_provider_config_params {
-            let Some(revocation_method) = &config_params.wallet_unit_attestation.revocation_method
-            else {
-                return Ok(());
-            };
+                        for (revocation_method_id, attestation_entries) in
+                            attestation_to_revoke_per_revocation_method
+                        {
+                            let revocation_method = self
+                                .revocation_method_provider
+                                .get_revocation_method(&revocation_method_id)?;
 
-            let mut attestation_entries = vec![];
-            for attestation_revocation_info in managed_instance
-                .attestations
-                .as_ref()
-                .await?
-                .into_iter()
-                .filter_map(|attestation| attestation.revocation.as_ref())
-            {
-                attestation_entries.push(attestation_revocation_info.as_ref().await?.to_owned());
-            }
+                            revocation_method
+                                .update_attestation_entries(
+                                    attestation_entries,
+                                    RevocationState::Revoked,
+                                )
+                                .await
+                                .error_while("revoking attestations")?;
+                        }
+                    }
+                };
 
-            if !attestation_entries.is_empty() {
-                let revocation_method = self
-                    .revocation_method_provider
-                    .get_revocation_method(revocation_method)?;
-
-                revocation_method
-                    .update_attestation_entries(attestation_entries, RevocationState::Revoked)
+                self.managed_instance_repository
+                    .update(
+                        id,
+                        UpdateManagedInstanceRequest {
+                            status: Some(InstanceStatus::Revoked),
+                            ..Default::default()
+                        },
+                    )
                     .await
-                    .error_while("revoking attestations")?;
+                    .error_while("updating wallet unit")?;
+                self.create_instance_history(&managed_instance, HistoryAction::Revoked, None)
+                    .await;
+
+                Ok::<_, ManagedInstanceError>(())
             }
-        }
+            .boxed())
+            .await
+            .error_while("revoking instance")??;
+
         tracing::info!("Revoked managed instance {}", id);
         Ok(())
     }

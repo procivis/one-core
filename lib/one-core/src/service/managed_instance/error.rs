@@ -72,6 +72,8 @@ pub enum ManagedInstanceError {
     MissingUserAccessToken,
     #[error("User authentication mandated but not supported for instances with OS WEB")]
     UserAuthenticationNotSupported,
+    #[error("Invalid config: {0}")]
+    InvalidConfig(String),
 
     #[error("Mapping error: {0}")]
     MappingError(String),
@@ -117,6 +119,7 @@ impl ErrorCodeMixin for ManagedInstanceError {
             Self::MissingUserAccessToken => ErrorCode::BR_0469,
             Self::UserAuthenticationNotSupported => ErrorCode::BR_0473,
             Self::MissingWalletUnitAttestation => ErrorCode::BR_0451,
+            Self::InvalidConfig(_) => ErrorCode::BR_0051,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

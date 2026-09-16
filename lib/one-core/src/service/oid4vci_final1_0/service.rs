@@ -64,6 +64,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::relation::Related;
+use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
@@ -735,11 +736,11 @@ impl OID4VCIFinal1_0Service {
 
             let wallet_unit_attestation_status = self
                 .holder_wallet_unit_proto
-                .check_attestation_status(key_attestation_jwt)
+                .check_attestation_status(key_attestation_jwt, AttestationType::KeyAttestation)
                 .await
                 .error_while("checking wallet unit attestation status")?;
 
-            if wallet_unit_attestation_status == WalletUnitStatusCheckResponse::Revoked {
+            if wallet_unit_attestation_status != WalletUnitStatusCheckResponse::Active {
                 tracing::error!("wallet unit attestation is revoked");
                 return Err(WalletAttestationError::WuaRevoked.into());
             }

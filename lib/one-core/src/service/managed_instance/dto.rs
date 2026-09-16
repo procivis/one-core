@@ -5,7 +5,7 @@ use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use time::{Duration, OffsetDateTime};
 
-use crate::config::core_config::DocumentSignerType;
+use crate::config::core_config::{DocumentSignerType, IdentifierType};
 use crate::model::common::GetListResponse;
 use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::managed_instance::ManagedInstanceOs;
@@ -95,7 +95,8 @@ pub(super) struct WalletProviderParams {
     // Information for wallet whether it enforces having a wallet unit attestation when starting app
     pub wallet_registration: WalletRegistrationRequirement,
     pub wallet_instance_attestation: WalletInstanceAttestationParams,
-    pub wallet_unit_attestation: WalletUnitAttestationParams,
+    pub wallet_key_attestation: WalletUnitAttestationParams,
+    pub wallet_certification: serde_json::Value,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub device_auth_leeway_seconds: Duration,
     pub app_version: Option<AppVersionDTO>,
@@ -104,6 +105,8 @@ pub(super) struct WalletProviderParams {
     pub document_signers: Vec<String>,
     pub feature_flags: FeatureFlagsParams,
     pub user_authentication: Option<UserAuthenticationParams>,
+    #[expect(unused)]
+    pub signer_identifier_types: Vec<IdentifierType>,
 }
 
 /// Feature flags as configured on the wallet provider config entry.
@@ -196,6 +199,10 @@ pub(crate) struct WalletInstanceAttestationParams {
     pub expiration_seconds: Duration,
     #[serde(default)]
     pub integrity_check: IntegrityCheck,
+    pub revocation_method: Option<RevocationMethodId>,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_31_days")]
+    pub status_period_seconds: Duration,
 }
 
 #[serde_as]
@@ -205,6 +212,13 @@ pub(super) struct WalletUnitAttestationParams {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub expiration_seconds: Duration,
     pub revocation_method: Option<RevocationMethodId>,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_31_days")]
+    pub status_period_seconds: Duration,
+}
+
+fn default_31_days() -> Duration {
+    Duration::days(31)
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -213,6 +227,7 @@ pub(super) struct EudiWalletInfoConfig {
     pub provider_name: String,
     pub solution_id: String,
     pub solution_version: String,
+    pub solution_certification_information: serde_json::Value,
     pub wscd_type: WscdType,
 }
 
@@ -447,7 +462,9 @@ pub(super) struct NoncePayload {
 pub(crate) struct WalletInstanceAttestationClaims {
     pub wallet_name: Option<String>,
     pub wallet_link: Option<String>,
+    pub wallet_solution_certification_information: Option<serde_json::Value>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
+    pub client_status: Option<AttestationStatus>,
 }
 
 #[skip_serializing_none]
@@ -456,7 +473,20 @@ pub(crate) struct WalletUnitAttestationClaims {
     pub key_storage: Vec<KeyStorageSecurityLevel>,
     pub attested_keys: Vec<PublicJwk>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
+    pub key_storage_status: Option<AttestationStatus>,
+    pub certification: Option<serde_json::Value>,
+
+    /// only for backward compatibilty, use the `key_storage_status`
     pub status: Option<SdJwtVcStatus>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) struct AttestationStatus {
+    pub status: SdJwtVcStatus,
+
+    #[serde(rename = "exp", with = "crate::mapper::timestamp")]
+    pub expires_at: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -470,6 +500,8 @@ pub(crate) struct EudiWalletGeneralInfo {
     pub wallet_provider_name: String,
     pub wallet_solution_id: String,
     pub wallet_solution_version: String,
+    #[serde(default)] // for backward compatibilty, treat as null if missing
+    pub wallet_solution_certification_information: serde_json::Value,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

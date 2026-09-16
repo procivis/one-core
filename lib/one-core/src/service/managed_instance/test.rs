@@ -16,7 +16,7 @@ use super::ManagedInstanceService;
 use super::dto::{DisplayNameDTO, ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO};
 use crate::config;
 use crate::config::core_config::{
-    CoreConfig, DocumentSignerType, Fields, KeyAlgorithmType, Params,
+    CoreConfig, DocumentSignerType, Fields, IdentifierType, KeyAlgorithmType, Params,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
@@ -107,6 +107,7 @@ fn wallet_provider_config(
                 "walletName": "Procivis One Dev Wallet",
                 "walletClientId": "mock-client-id",
                 "walletLink": "https://procivis.ch",
+                "walletCertification": "https://procivis.ch",
                 "walletRegistration": "MANDATORY",
                 "walletInstanceAttestation": {
                     "expirationSeconds": 60,
@@ -124,9 +125,10 @@ fn wallet_provider_config(
                         }
                     },
                 },
-                "walletUnitAttestation": {
+                "walletKeyAttestation": {
                     "expirationSeconds": 60
                 },
+                "signerIdentifierTypes": ["CERTIFICATE"],
                 "deviceAuthLeewaySeconds": 60,
                 "appVersion": {
                     "minimum": "v1.50.0",
@@ -382,6 +384,7 @@ fn verifier_provider_params() -> VerifierParams {
         user_authentication: None,
         access_certificate_configuration: None,
         device_auth_leeway_seconds: Duration::seconds(60),
+        signer_identifier_types: vec![IdentifierType::Certificate],
     }
 }
 

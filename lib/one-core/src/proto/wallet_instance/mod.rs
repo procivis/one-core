@@ -11,6 +11,7 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError}
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::instance::Instance;
 use crate::model::key::Key;
+use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::certificate_validator::{
     CertificatePurpose, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
@@ -23,7 +24,6 @@ use crate::proto::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CertificateDetails, CredentialStatus, IdentifierDetails,
 };
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -34,7 +34,8 @@ use crate::repository::instance_repository::InstanceRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::managed_instance::dto::{
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
-    IssueWiaRequestDTO, IssueWuaRequestDTO,
+    IssueWiaRequestDTO, IssueWuaRequestDTO, WalletInstanceAttestationClaims,
+    WalletUnitAttestationClaims,
 };
 
 #[derive(Debug)]
@@ -55,18 +56,11 @@ pub(crate) enum IssueWalletAttestationRequest<'a> {
     WuaAndWia(WUARequestParams<'a>, WIARequestParams),
 }
 
-/// Minimal claims shape for a revocation-status check: any wallet attestation (WUA or WIA) that
-/// carries a token status list entry can be parsed into this.
-#[derive(Debug, serde::Deserialize)]
-struct AttestationStatusClaims {
-    #[serde(default)]
-    status: Option<SdJwtVcStatus>,
-}
-
 #[derive(PartialEq)]
 pub enum WalletUnitStatusCheckResponse {
     Revoked,
     Active,
+    Expired,
 }
 
 pub(crate) struct IssuedWalletUnitAttestations {
@@ -93,6 +87,7 @@ pub(crate) trait HolderWalletUnitProto: Send + Sync {
     async fn check_attestation_status(
         &self,
         attestation: &str,
+        r#type: AttestationType,
     ) -> Result<WalletUnitStatusCheckResponse, Error>;
 }
 
@@ -215,26 +210,54 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
     async fn check_attestation_status(
         &self,
         attestation: &str,
+        r#type: AttestationType,
     ) -> Result<WalletUnitStatusCheckResponse, Error> {
         const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
         const URI_KEY: &str = "uri";
         const INDEX_KEY: &str = "idx";
 
-        // only the `status` claim matters here, so the token is parsed into a minimal shape
-        // that fits both a WUA and a WIA
-        let parsed_attestation: Jwt<AttestationStatusClaims> =
-            Jwt::build_from_token(attestation, None, None)
-                .await
-                .error_while("parsing attestation token")?;
+        let mut deprecated_status = None;
+        let (header, attestation_status) = match r#type {
+            AttestationType::WalletInstanceAttestation => {
+                let parsed_attestation: Jwt<WalletInstanceAttestationClaims> =
+                    Jwt::build_from_token(attestation, None, None)
+                        .await
+                        .error_while("parsing attestation token")?;
 
-        let Some(status) = &parsed_attestation.payload.custom.status else {
-            return Ok(WalletUnitStatusCheckResponse::Active);
+                (
+                    parsed_attestation.header,
+                    parsed_attestation.payload.custom.client_status,
+                )
+            }
+            AttestationType::KeyAttestation => {
+                let parsed_attestation: Jwt<WalletUnitAttestationClaims> =
+                    Jwt::build_from_token(attestation, None, None)
+                        .await
+                        .error_while("parsing attestation token")?;
+
+                deprecated_status = parsed_attestation.payload.custom.status;
+                (
+                    parsed_attestation.header,
+                    parsed_attestation.payload.custom.key_storage_status,
+                )
+            }
         };
 
-        let issuer_identifier = match (
-            parsed_attestation.header.jwk,
-            parsed_attestation.header.x5c.as_ref(),
-        ) {
+        let status = match (attestation_status, deprecated_status) {
+            (None, None) => {
+                return Ok(WalletUnitStatusCheckResponse::Active);
+            }
+            (None, Some(status)) => status,
+            (Some(attestation_status), _) => {
+                if attestation_status.expires_at < crate::clock::now_utc() {
+                    return Ok(WalletUnitStatusCheckResponse::Expired);
+                }
+
+                attestation_status.status
+            }
+        };
+
+        let issuer_identifier = match (header.jwk, header.x5c.as_ref()) {
             (Some(jwk), None) => IdentifierDetails::Key(jwk),
             (None, Some(x5c)) => {
                 let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
@@ -323,7 +346,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
         for wua in &holder_wallet_unit.wallet_unit_attestations.as_ref().await? {
             if let WalletUnitStatusCheckResponse::Revoked = self
-                .check_attestation_status(&wua.attestation.clone())
+                .check_attestation_status(&wua.attestation.clone(), AttestationType::KeyAttestation)
                 .await?
             {
                 return Ok(WalletUnitStatusCheckResponse::Revoked);
