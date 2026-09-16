@@ -57,6 +57,7 @@ use crate::proto::jwt::model::{
 };
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
+use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
@@ -848,46 +849,51 @@ impl ManagedInstanceService {
         let issuer_key = self.get_issuer_key(issuer_identifier).await?;
 
         let mut result = IssueWalletUnitAttestationResponseDTO::default();
+        // READ COMMITTED, so the status list index read includes entries committed while waiting for the lock
         self.tx_manager
-            .tx(async {
-                for wia_request in request.wia {
-                    result.wia.push(
-                        self.create_wia(
-                            wia_request,
-                            &managed_instance,
-                            &issuer_key,
-                            &config_params,
+            .tx_with_config(
+                async {
+                    for wia_request in request.wia {
+                        result.wia.push(
+                            self.create_wia(
+                                wia_request,
+                                &managed_instance,
+                                &issuer_key,
+                                &config_params,
+                            )
+                            .await?,
+                        );
+                    }
+
+                    for wua_request in request.wua {
+                        result.wua.push(
+                            self.create_key_attestation(
+                                wua_request,
+                                &managed_instance,
+                                &issuer_key,
+                                &config_params,
+                            )
+                            .await?,
+                        );
+                    }
+
+                    self.managed_instance_repository
+                        .update(
+                            &instance_id,
+                            UpdateManagedInstanceRequest {
+                                last_issuance: Some(crate::clock::now_utc()),
+                                ..Default::default()
+                            },
                         )
-                        .await?,
-                    );
+                        .await
+                        .error_while("updating wallet unit")?;
+
+                    Ok::<_, ManagedInstanceError>(())
                 }
-
-                for wua_request in request.wua {
-                    result.wua.push(
-                        self.create_key_attestation(
-                            wua_request,
-                            &managed_instance,
-                            &issuer_key,
-                            &config_params,
-                        )
-                        .await?,
-                    );
-                }
-
-                self.managed_instance_repository
-                    .update(
-                        &instance_id,
-                        UpdateManagedInstanceRequest {
-                            last_issuance: Some(crate::clock::now_utc()),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .error_while("updating wallet unit")?;
-
-                Ok::<_, ManagedInstanceError>(())
-            }
-            .boxed())
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
             .await
             .error_while("issuing attestations")??;
 

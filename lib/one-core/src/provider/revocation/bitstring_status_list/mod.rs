@@ -618,14 +618,19 @@ impl BitstringStatusList {
                 }
                 .boxed())
                 .await;
-            let Ok(result) = result else {
-                tracing::debug!(
-                    "Transaction failed adding entity to list({list_id}), retry({retry_counter})"
-                );
-                continue;
-            };
-            if let Some(index) = result.error_while("creating revocation list entry")? {
-                return Ok(index);
+            match result {
+                Ok(Ok(Some(index))) => return Ok(index),
+                // index taken by a concurrent writer, retry
+                Ok(Ok(None)) => {}
+                Ok(Err(error)) => {
+                    return Err(error.error_while("creating revocation list entry").into());
+                }
+                // transaction failed (e.g. lock timeout), retry
+                Err(error) => {
+                    tracing::info!(
+                        "Transaction failed adding entity to list({list_id}), retry({retry_counter}): {error}"
+                    );
+                }
             }
 
             if retry_counter > 100 {
