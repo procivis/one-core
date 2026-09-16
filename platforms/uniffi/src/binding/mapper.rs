@@ -173,6 +173,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             protocol: value.protocol,
             profile: value.profile,
+            format: value.format.map(|format| format.to_string()),
             parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
             redirect_uri: value.redirect_uri,
             ecosystem: value.ecosystem.map(|ecosystem| ecosystem.to_string()),
@@ -802,6 +803,7 @@ impl From<ApplicableCredential> for PresentationDefinitionV2CredentialDetailBind
             holder: convert_inner(value.credential.holder),
             protocol: value.credential.protocol,
             profile: value.credential.profile,
+            format: value.credential.format.map(|format| format.to_string()),
             embedded_disclosure_policy_violation: convert_inner(
                 value.embedded_disclosure_policy_violation,
             ),

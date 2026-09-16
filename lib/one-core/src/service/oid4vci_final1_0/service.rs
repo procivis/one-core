@@ -1801,12 +1801,17 @@ impl OID4VCIFinal1_0Service {
         let schema = credential.schema.as_ref().await?;
 
         let format = credential.credential_format().await?;
-        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
-        let revocation_method = match schema.revocation_method_id(formatter.as_ref()) {
-            Some(method_id) => Some(
-                self.revocation_method_provider
-                    .get_revocation_method(method_id)?,
-            ),
+        let revocation_method = match format {
+            Some(format) => {
+                let formatter = self.formatter_provider.get_credential_formatter(&format)?;
+                match schema.revocation_method_id(formatter.as_ref()) {
+                    Some(method_id) => Some(
+                        self.revocation_method_provider
+                            .get_revocation_method(method_id)?,
+                    ),
+                    None => None,
+                }
+            }
             None => None,
         };
 

@@ -73,14 +73,12 @@ pub enum CredentialStateEnum {
 }
 
 impl Credential {
-    /// Returns the format the credential was issued in. Falls back to the first format of
-    /// the schema when no format is stored: batch parents, verifier credentials built from
-    /// presentations, and credentials of multi-format schemas older than the `format` column.
-    pub async fn credential_format(&self) -> Result<CredentialFormat, NestedError> {
-        Ok(match &self.format {
-            Some(format) => format.as_ref().await?.format.to_owned(),
-            None => self.schema.as_ref().await?.format().await?,
-        })
+    /// Returns the format stored on the credential, if any.
+    pub async fn credential_format(&self) -> Result<Option<CredentialFormat>, NestedError> {
+        match &self.format {
+            Some(format) => Ok(Some(format.as_ref().await?.format.to_owned())),
+            None => Ok(None),
+        }
     }
 }
 

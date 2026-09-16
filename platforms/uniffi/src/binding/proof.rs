@@ -667,6 +667,7 @@ pub struct PresentationDefinitionV2CredentialDetailBindingDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
     pub protocol: String,
     pub profile: Option<String>,
+    pub format: Option<String>,
     /// Present when the relying party's certificates do not satisfy
     /// the embedded disclosure policy attached to the requested
     /// credential. The wallet should surface this to the user as a

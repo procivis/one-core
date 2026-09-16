@@ -69,6 +69,10 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
         .assert_eq(&credential.id);
+    assert_eq!(
+        body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["format"],
+        "SD_JWT_VC"
+    );
     let credential_sets = json!([
       {
         "options": [

@@ -58,6 +58,8 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     pub expires_at: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
     pub r#type: CredentialTypeRestEnum,
+    /// Format of the credential. Only returned for single and batch item credentials.
+    pub format: Option<CredentialFormat>,
     pub parent_id: Option<CredentialId>,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]

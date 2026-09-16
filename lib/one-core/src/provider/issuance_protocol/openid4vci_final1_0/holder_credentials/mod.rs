@@ -287,7 +287,7 @@ impl OpenID4VCIFinal1_0 {
                 ))?;
 
         let schema = credential.schema.as_ref().await?;
-        let credential_format = credential.credential_format().await?;
+        let credential_format = credential.format.as_required_ref().await?.format.to_owned();
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&credential_format)?;

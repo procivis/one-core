@@ -33,6 +33,7 @@ pub struct CredentialListItemResponseDTO {
     pub consumed_at: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
     pub r#type: CredentialTypeEnum,
+    pub format: Option<CredentialFormat>,
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemV2ResponseDTO,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,

@@ -37,6 +37,7 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
+use crate::model::relation::OptionalRelatedExt;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -99,11 +100,12 @@ pub(crate) async fn credential_detail_response_from_model(
     let state = value.state;
 
     let credential_format = value.credential_format().await?;
-    let format_type = config
-        .format
-        .get_type(&credential_format)
-        .error_while("getting format config")?;
-    let mdoc_mso_validity = if format_type == FormatType::Mdoc
+    let mdoc_mso_validity = if let Some(credential_format) = &credential_format
+        && config
+            .format
+            .get_type(credential_format)
+            .error_while("getting format config")?
+            == FormatType::Mdoc
         && [
             CredentialStateEnum::Accepted,
             CredentialStateEnum::Suspended,
@@ -113,7 +115,7 @@ pub(crate) async fn credential_detail_response_from_model(
     {
         let params = config
             .format
-            .get::<mdoc_formatter::Params, _>(&credential_format)
+            .get::<mdoc_formatter::Params, _>(credential_format)
             .error_while("parsing formatter params")?;
 
         let issuance_date_with_expiry = match value.r#type {
@@ -213,7 +215,8 @@ pub(crate) async fn credential_detail_response_from_model(
             credential_type,
             CredentialType::Single | CredentialType::BatchItem
         )
-        .then_some(credential_format),
+        .then_some(credential_format)
+        .flatten(),
         interaction_id: value.interaction.map(|i| i.id()),
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
@@ -580,6 +583,13 @@ pub(super) async fn to_credential_list_response(
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
     let schema = credential.schema.as_ref().await?.to_owned();
+    let credential_type = credential.r#type;
+    let credential_format = match credential_type {
+        CredentialType::Single | CredentialType::BatchItem => {
+            Some(credential.format.as_required_ref().await?.format.to_owned())
+        }
+        CredentialType::BatchParent => None,
+    };
 
     let issuer = match &credential.issuer_identifier {
         None => None,
@@ -594,6 +604,7 @@ pub(super) async fn to_credential_list_response(
         expires_at: credential.expires_at,
         consumed_at: credential.consumed_at,
         state: credential.state.into(),
+        format: credential_format,
         last_modified: credential.last_modified,
         schema: to_credential_schema_list_v2_response(
             schema,
@@ -604,7 +615,7 @@ pub(super) async fn to_credential_list_response(
         .await?,
         issuer,
         role: credential.role.into(),
-        r#type: credential.r#type.into(),
+        r#type: credential_type.into(),
         suspend_end_date: credential.suspend_end_date,
         protocol: credential.protocol,
         profile: credential.profile,

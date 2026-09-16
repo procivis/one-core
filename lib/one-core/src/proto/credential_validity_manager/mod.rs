@@ -435,9 +435,12 @@ impl CredentialValidityManagerImpl {
             .into();
 
         let format = credential
-            .credential_format()
+            .format
+            .as_required_ref()
             .await
-            .error_while("getting format")?;
+            .error_while("getting format")?
+            .format
+            .to_owned();
 
         let formatter = self.formatter_provider.get_credential_formatter(&format)?;
 
@@ -757,19 +760,16 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         }
 
         let credential_schema = credential.schema.as_ref().await?;
-        let format = credential_schema
-            .format()
-            .await
-            .error_while("getting format")?;
-        let format_type = self
-            .config
-            .format
-            .get_fields(&format)
-            .error_while("getting credential format type")?
-            .r#type;
 
         match credential.r#type {
             CredentialType::Single => {
+                let format = credential.format.as_required_ref().await?;
+                let format_type = self
+                    .config
+                    .format
+                    .get_fields(&format.format)
+                    .error_while("getting credential format type")?
+                    .r#type;
                 let (result, _) = self
                     .check_status_for_single_credential(
                         &credential,
