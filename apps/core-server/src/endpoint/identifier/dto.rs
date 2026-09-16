@@ -94,10 +94,14 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub trust_information: Vec<CreateIdentifierTrustInformationRequestRestDTO>,
 
+    /// The identifier's logo image, base-64 encoded.
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub logo: Option<String>,
 
+    /// Localized values for the identifier's display name and logo alt
+    /// text. Keys are free-form locale identifiers; the Procivis One
+    /// Wallet uses BCP-47 codes such as "en" and "de".
     #[try_into(with_fn = convert_inner, infallible)]
     pub translations: Option<IdentifierTranslationsRestDTO>,
 }
