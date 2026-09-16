@@ -72,6 +72,7 @@ use crate::provider::trust_list_publisher::provider::trust_list_publisher_provid
 use crate::provider::trust_list_subscriber::provider::trust_list_subscriber_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
 use crate::provider::verifier::provider::verifier_provider_from_config;
+use crate::provider::wallet::provider::wallet_provider_directory_from_config;
 use crate::repository::DataRepository;
 use crate::service::backup::BackupService;
 use crate::service::cache::CacheService;
@@ -137,7 +138,7 @@ pub struct OneCore {
     pub oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
-    pub wallet_provider_service: ManagedInstanceService,
+    pub managed_instance_service: ManagedInstanceService,
     pub qes_service: QesService,
     pub task_service: TaskService,
     pub jsonld_service: JsonLdService,
@@ -508,6 +509,20 @@ impl OneCore {
             transaction_data_provider.clone(),
         )?;
 
+        let wallet_provider_directory = wallet_provider_directory_from_config(
+            &mut config,
+            core_base_url.clone(),
+            data_provider.get_organisation_repository(),
+            data_provider.get_trust_collection_repository(),
+            data_provider.get_credential_schema_repository(),
+            document_signer_provider.clone(),
+            revocation_method_provider.clone(),
+            data_provider.get_managed_instance_attestation_repository(),
+            key_algorithm_provider.clone(),
+            data_provider.get_identifier_repository(),
+            key_provider.clone(),
+        )?;
+
         let config = Arc::new(config);
 
         let credential_schema_url_importer = Arc::new(CredentialSchemaUrlImporterProto::new(
@@ -589,6 +604,7 @@ impl OneCore {
             key_provider.clone(),
             key_algorithm_provider.clone(),
         )?;
+
         Ok(OneCore {
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
@@ -805,24 +821,19 @@ impl OneCore {
                 ecosystem_provider.clone(),
                 data_provider.get_history_repository(),
             ),
-            wallet_provider_service: ManagedInstanceService::new(
+            managed_instance_service: ManagedInstanceService::new(
                 data_provider.get_organisation_repository(),
                 data_provider.get_managed_instance_repository(),
-                data_provider.get_managed_instance_attestation_repository(),
-                data_provider.get_identifier_repository(),
                 data_provider.get_history_repository(),
-                data_provider.get_trust_collection_repository(),
-                data_provider.get_credential_schema_repository(),
                 data_provider.get_tx_manager(),
-                key_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider,
                 signer_provider.clone(),
                 certificate_validator,
                 client.clone(),
                 session_provider.clone(),
-                document_signer_provider.clone(),
                 verifier_provider.clone(),
+                wallet_provider_directory,
                 config.clone(),
                 core_base_url.clone(),
             ),

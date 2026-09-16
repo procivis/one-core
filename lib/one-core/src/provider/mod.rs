@@ -27,6 +27,7 @@ pub mod trust_list_publisher;
 pub mod trust_list_subscriber;
 pub mod verification_protocol;
 pub mod verifier;
+pub mod wallet;
 
 /// Trait for provider implementations. Useful for core bootstrapping and decorating.
 pub trait Provider {

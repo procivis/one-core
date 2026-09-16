@@ -38,7 +38,7 @@ pub(crate) async fn register_wallet_unit(
 ) -> CreatedOrErrorResponse<RegisterWalletUnitResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .register_instance(request.into())
         .await;
     CreatedOrErrorResponse::from_result(result, state, "registering wallet unit")
@@ -70,7 +70,7 @@ pub(crate) async fn activate_wallet_unit(
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .activate_instance(id, request.into())
         .await;
     EmptyOrErrorResponse::from_result(result.map(|_| ()), state, "activating wallet unit")
@@ -106,7 +106,7 @@ pub(crate) async fn issue_wallet_unit_attestation(
 ) -> OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .issue_attestation(id, bearer.token(), request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "issuing wallet attestation")
@@ -132,7 +132,7 @@ pub(crate) async fn get_wallet_provider_metadata(
 ) -> OkOrErrorResponse<WalletProviderMetadataResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .get_wallet_provider_metadata(wallet_provider)
         .await;
     OkOrErrorResponse::from_result(result, state, "getting wallet provider metadata")

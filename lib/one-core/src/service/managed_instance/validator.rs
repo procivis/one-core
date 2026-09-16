@@ -1,14 +1,11 @@
 use shared_types::IdentifierId;
 use time::Duration;
 
-use super::dto::{NoncePayload, WalletProviderParams};
+use super::dto::NoncePayload;
 use super::error::ManagedInstanceError;
-use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, RevocationType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ContextWithErrorCode;
 use crate::model::instance::InstanceRole;
 use crate::model::organisation::Organisation;
-use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::validator::{
     validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
@@ -66,58 +63,7 @@ pub(crate) fn validate_org_verifier_provider(
     Ok(identifier_id)
 }
 
-pub(super) fn validate_revocation_method(
-    config: &CoreConfig,
-    params: &WalletProviderParams,
-    attestation_type: AttestationType,
-) -> Result<(), ConfigValidationError> {
-    let revocation_method = match attestation_type {
-        AttestationType::WalletInstanceAttestation => {
-            &params.wallet_instance_attestation.revocation_method
-        }
-        AttestationType::KeyAttestation => &params.wallet_key_attestation.revocation_method,
-    };
-    let expiration_seconds = match attestation_type {
-        AttestationType::WalletInstanceAttestation => {
-            params.wallet_instance_attestation.expiration_seconds
-        }
-        AttestationType::KeyAttestation => params.wallet_key_attestation.expiration_seconds,
-    };
-
-    let status_period_seconds = match attestation_type {
-        AttestationType::WalletInstanceAttestation => {
-            params.wallet_instance_attestation.status_period_seconds
-        }
-        AttestationType::KeyAttestation => params.wallet_key_attestation.status_period_seconds,
-    };
-
-    if let Some(revocation_method) = revocation_method {
-        let revocation_type = config.revocation.get_fields(revocation_method)?.r#type;
-        if revocation_type != RevocationType::TokenStatusList {
-            return Err(ConfigValidationError::InvalidType(
-                RevocationType::TokenStatusList.to_string(),
-                revocation_method.to_string(),
-            ));
-        }
-
-        // https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md#242-wallet-provider-responsibilities
-        if status_period_seconds < Duration::days(31) {
-            return Err(ManagedInstanceError::InvalidConfig(format!(
-                "Status period too short: {status_period_seconds}"
-            ))
-            .error_while(format!("validating provider config: `{attestation_type}`"))
-            .into());
-        }
-    } else if expiration_seconds > Duration::days(1) {
-        tracing::warn!(
-            "WUA without revocation but expiration longer than one day: {expiration_seconds}",
-        );
-    }
-
-    Ok(())
-}
-
-pub(super) fn validate_proof_payload(
+pub(crate) fn validate_proof_payload(
     proof: &DecomposedJwt<NoncePayload>,
     leeway: Duration,
     base_url: Option<&str>,

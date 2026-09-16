@@ -1,15 +1,12 @@
 use shared_types::TrustCollectionId;
 use thiserror::Error;
 
-use crate::config::ConfigValidationError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::instance::InstanceRole;
 
 #[derive(Debug, Error)]
 pub enum ManagedInstanceError {
-    #[error("Wallet provider not enabled in config: `{0}`")]
-    WalletProviderDisabled(ConfigValidationError),
     #[error("Missing proof")]
     MissingProof,
     #[error("Missing publicKey")]
@@ -72,8 +69,6 @@ pub enum ManagedInstanceError {
     MissingUserAccessToken,
     #[error("User authentication mandated but not supported for instances with OS WEB")]
     UserAuthenticationNotSupported,
-    #[error("Invalid config: {0}")]
-    InvalidConfig(String),
 
     #[error("Mapping error: {0}")]
     MappingError(String),
@@ -84,7 +79,6 @@ pub enum ManagedInstanceError {
 impl ErrorCodeMixin for ManagedInstanceError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::WalletProviderDisabled(_) => ErrorCode::BR_0260,
             Self::CouldNotVerifyProof(_) => ErrorCode::BR_0071,
             Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
             Self::WalletUnitRevoked => ErrorCode::BR_0261,
@@ -119,7 +113,6 @@ impl ErrorCodeMixin for ManagedInstanceError {
             Self::MissingUserAccessToken => ErrorCode::BR_0469,
             Self::UserAuthenticationNotSupported => ErrorCode::BR_0473,
             Self::MissingWalletUnitAttestation => ErrorCode::BR_0451,
-            Self::InvalidConfig(_) => ErrorCode::BR_0051,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

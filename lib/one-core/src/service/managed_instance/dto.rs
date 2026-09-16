@@ -1,11 +1,11 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{EcosystemId, ManagedInstanceId, RevocationMethodId, TrustCollectionId};
+use shared_types::{EcosystemId, ManagedInstanceId, TrustCollectionId};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use time::{Duration, OffsetDateTime};
 
-use crate::config::core_config::{DocumentSignerType, IdentifierType};
+use crate::config::core_config::DocumentSignerType;
 use crate::model::common::GetListResponse;
 use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::managed_instance::ManagedInstanceOs;
@@ -85,42 +85,6 @@ pub struct IssueWalletUnitAttestationResponseDTO {
     pub wua: Vec<String>,
 }
 
-#[serde_as]
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct WalletProviderParams {
-    pub wallet_name: String,
-    pub wallet_link: String,
-    pub wallet_client_id: String,
-    // Information for wallet whether it enforces having a wallet unit attestation when starting app
-    pub wallet_registration: WalletRegistrationRequirement,
-    pub wallet_instance_attestation: WalletInstanceAttestationParams,
-    pub wallet_key_attestation: WalletUnitAttestationParams,
-    pub wallet_certification: serde_json::Value,
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub device_auth_leeway_seconds: Duration,
-    pub app_version: Option<AppVersionDTO>,
-    pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
-    #[serde(default)]
-    pub document_signers: Vec<String>,
-    pub feature_flags: FeatureFlagsParams,
-    pub user_authentication: Option<UserAuthenticationParams>,
-    #[expect(unused)]
-    pub signer_identifier_types: Vec<IdentifierType>,
-}
-
-/// Feature flags as configured on the wallet provider config entry.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct FeatureFlagsParams {
-    pub ecosystems_enabled: bool,
-    pub refresh_credential_batch_enabled: bool,
-    #[serde(default)]
-    pub document_signing_enabled: bool,
-    #[serde(default)]
-    pub ecosystems_enforcement_enabled: bool,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", try_from = "FeatureFlagsWire")]
 pub struct FeatureFlags {
@@ -181,54 +145,6 @@ pub(crate) struct TokenValidationParams {
     pub aud: String,
     pub iss: String,
     pub jwks_uri: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(super) enum WalletRegistrationRequirement {
-    Mandatory,
-    Optional,
-    Disabled,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WalletInstanceAttestationParams {
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub expiration_seconds: Duration,
-    #[serde(default)]
-    pub integrity_check: IntegrityCheck,
-    pub revocation_method: Option<RevocationMethodId>,
-    #[serde_as(as = "DurationSeconds<i64>")]
-    #[serde(default = "default_31_days")]
-    pub status_period_seconds: Duration,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct WalletUnitAttestationParams {
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub expiration_seconds: Duration,
-    pub revocation_method: Option<RevocationMethodId>,
-    #[serde_as(as = "DurationSeconds<i64>")]
-    #[serde(default = "default_31_days")]
-    pub status_period_seconds: Duration,
-}
-
-fn default_31_days() -> Duration {
-    Duration::days(31)
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct EudiWalletInfoConfig {
-    pub provider_name: String,
-    pub solution_id: String,
-    pub solution_version: String,
-    pub solution_certification_information: serde_json::Value,
-    pub wscd_type: WscdType,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -454,7 +370,7 @@ pub struct WalletUnitAttestationMetadataDTO {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub(super) struct NoncePayload {
+pub(crate) struct NoncePayload {
     pub nonce: Option<String>,
 }
 

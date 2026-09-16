@@ -36,7 +36,7 @@ pub(crate) async fn get_managed_instance_list(
         Ok::<_, ServiceError>(
             state
                 .core
-                .wallet_provider_service
+                .managed_instance_service
                 .get_managed_instance_list(query.try_into()?)
                 .await
                 .error_while("getting managed instances")?,
@@ -67,7 +67,7 @@ pub(crate) async fn get_managed_instance_details(
 ) -> OkOrErrorResponse<ManagedInstanceResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .get_managed_instance(&id)
         .await;
     OkOrErrorResponse::from_result(result, state, "fetching managed instance")
@@ -99,7 +99,7 @@ pub(crate) async fn revoke_managed_instance(
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .revoke_managed_instance(&id)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "revoking managed instance")
@@ -130,7 +130,7 @@ pub(crate) async fn delete_managed_instance(
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .delete_managed_instance(&id)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "deleting managed instance")

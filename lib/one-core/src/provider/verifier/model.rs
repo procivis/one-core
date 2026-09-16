@@ -4,9 +4,7 @@ use shared_types::{IdentifierId, OrganisationId};
 use time::Duration;
 
 use crate::config::core_config::IdentifierType;
-use crate::service::managed_instance::dto::{
-    UserAuthenticationParams, WalletInstanceAttestationParams,
-};
+use crate::service::managed_instance::dto::{IntegrityCheck, UserAuthenticationParams};
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
@@ -14,7 +12,7 @@ use crate::service::managed_instance::dto::{
 pub(crate) struct VerifierParams {
     pub app_version: Option<VerifierAppVersion>,
     pub feature_flags: ConfigFeatureFlags,
-    pub verifier_instance_attestation: Option<WalletInstanceAttestationParams>,
+    pub verifier_instance_attestation: Option<InstanceAttestationParams>,
     pub user_authentication: Option<UserAuthenticationParams>,
     pub access_certificate_configuration: Option<AccessCertificateConfiguration>,
     // Defaulted so existing verifierProvider config entries without this key keep working.
@@ -27,6 +25,14 @@ pub(crate) struct VerifierParams {
 
 fn default_device_auth_leeway() -> Duration {
     Duration::seconds(60)
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct InstanceAttestationParams {
+    #[serde(default)]
+    pub integrity_check: IntegrityCheck,
 }
 
 #[derive(Clone, Debug, Deserialize)]

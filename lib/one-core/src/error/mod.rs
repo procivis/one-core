@@ -545,9 +545,6 @@ pub enum ErrorCode {
     #[strum(message = "Wallet instance not found")]
     BR_0259,
 
-    #[strum(message = "Wallet provider not enabled in config")]
-    BR_0260,
-
     #[strum(message = "Wallet instance revoked")]
     BR_0261,
 

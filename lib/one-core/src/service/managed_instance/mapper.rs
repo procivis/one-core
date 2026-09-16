@@ -7,9 +7,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    DisplayNameDTO, EudiWalletGeneralInfo, EudiWalletInfo, EudiWalletInfoConfig,
-    ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO, TokenValidationDTO,
-    UserAuthenticationDTO, UserAuthenticationParams, WscdInfo,
+    DisplayNameDTO, ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO,
+    TokenValidationDTO, UserAuthenticationDTO, UserAuthenticationParams,
 };
 use super::error::ManagedInstanceError;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -81,23 +80,7 @@ pub(super) fn map_already_exists_error(error: DataLayerError) -> ManagedInstance
     .into()
 }
 
-impl From<EudiWalletInfoConfig> for EudiWalletInfo {
-    fn from(value: EudiWalletInfoConfig) -> Self {
-        Self {
-            general_info: EudiWalletGeneralInfo {
-                wallet_provider_name: value.provider_name,
-                wallet_solution_id: value.solution_id,
-                wallet_solution_version: value.solution_version,
-                wallet_solution_certification_information: value.solution_certification_information,
-            },
-            wscd_info: Some(WscdInfo {
-                wscd_type: value.wscd_type,
-            }),
-        }
-    }
-}
-
-pub(super) fn params_into_display_names(params: HashMap<String, String>) -> Vec<DisplayNameDTO> {
+pub(crate) fn params_into_display_names(params: HashMap<String, String>) -> Vec<DisplayNameDTO> {
     params
         .into_iter()
         .map(|(lang, value)| DisplayNameDTO { lang, value })

@@ -38,7 +38,7 @@ pub(crate) async fn register_instance(
 ) -> CreatedOrErrorResponse<RegisterWalletUnitResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .register_instance(request.into())
         .await;
     CreatedOrErrorResponse::from_result(result, state, "registering instance")
@@ -69,7 +69,7 @@ pub(crate) async fn activate_instance(
 ) -> OkOrErrorResponse<WalletUnitActivationResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .activate_instance(id, request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "activating instance")
@@ -104,7 +104,7 @@ pub(crate) async fn issue_instance_attestation(
 ) -> OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO> {
     let result = state
         .core
-        .wallet_provider_service
+        .managed_instance_service
         .issue_attestation(id, bearer.token(), request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "issuing instance attestation")

@@ -193,12 +193,7 @@ async fn test_register_wallet_unit_fail_on_disabled_wallet_provider() {
 
     // then
     assert_eq!(resp.status(), 400);
-    let resp_json = resp.json_value().await;
-    assert_eq!(resp_json["code"], "BR_0260");
-    assert_eq!(
-        resp_json["message"],
-        "Wallet provider not enabled in config"
-    );
+    assert_eq!(resp.error_code().await, "BR_0431");
 }
 
 #[tokio::test]
