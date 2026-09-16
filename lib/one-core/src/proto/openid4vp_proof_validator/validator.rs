@@ -1025,7 +1025,7 @@ async fn validate_claims(
         let resolved = resolve_claim(
             &expected_credential_claim.schema,
             &credential_schema,
-            &received_credential.claims.claims,
+            &received_credential.claims,
         )
         .await?;
         if let Some(value) = resolved {

@@ -18,8 +18,8 @@ use uuid::Uuid;
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    Features, FormatterCapabilities, IdentifierDetails, Issuer, PublicKeySource, TokenVerifier,
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
+    FormatterCapabilities, IdentifierDetails, Issuer, PublicKeySource, TokenVerifier,
     VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof, vcdm_metadata_claims};
@@ -499,7 +499,6 @@ impl JsonLdClassic {
         claims.extend(metadata_claims);
 
         Ok(DetailCredential {
-            id: vcdm.id.map(|url| url.to_string()),
             issuance_date: vcdm.proof.and_then(|proof| proof.created),
             valid_from: vcdm.valid_from.or(vcdm.issuance_date),
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
@@ -508,15 +507,10 @@ impl JsonLdClassic {
             issuer: IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
             subject: credential_subject
                 .id
-                .clone()
                 .and_then(|id| DidValue::from_did_url(id).ok())
                 .map(IdentifierDetails::Did),
-            claims: CredentialSubject {
-                id: credential_subject.id,
-                claims,
-            },
+            claims,
             status: vcdm.credential_status,
-            credential_schema: vcdm.credential_schema.and_then(|v| v.first().cloned()),
         })
     }
 

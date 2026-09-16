@@ -4,7 +4,7 @@ use shared_types::DidValue;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, CredentialSubject, DetailCredential, IdentifierDetails,
+    CredentialClaim, CredentialClaimValue, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 
@@ -28,34 +28,10 @@ pub(super) fn convert_to_detail_credential(
     let metadata_claims =
         metadata_claims_with_sd_flags(&vcdm, &mandatory_pointers, metadata_claim_keys)?;
 
-    let credential_schema = vcdm
-        .credential_schema
-        .map(|mut schemas| {
-            let Some(credential_schema) = schemas.pop() else {
-                return Err(FormatterError::CouldNotExtractCredentials(
-                    "Missing credential schema".to_string(),
-                ));
-            };
-
-            if !schemas.is_empty() {
-                return Err(FormatterError::CouldNotExtractCredentials(
-                    "We currently don't support multiple credential schemas".to_string(),
-                ));
-            }
-
-            Ok(credential_schema)
-        })
-        .transpose()?;
-
     let mut claims = HashMap::from_iter(credential_subject.claims);
 
     mark_claims_selectively_disclosable(&mut claims, mandatory_pointers);
     claims.extend(metadata_claims);
-
-    let claims = CredentialSubject {
-        id: credential_subject.id.clone(),
-        claims,
-    };
 
     let subject = credential_subject
         .id
@@ -63,7 +39,6 @@ pub(super) fn convert_to_detail_credential(
         .map(IdentifierDetails::Did);
 
     Ok(DetailCredential {
-        id: vcdm.id.map(|url| url.to_string()),
         issuance_date: vcdm.proof.and_then(|proof| proof.created),
         valid_from: vcdm.valid_from.or(vcdm.issuance_date),
         valid_until: vcdm.valid_until.or(vcdm.expiration_date),
@@ -73,7 +48,6 @@ pub(super) fn convert_to_detail_credential(
         subject,
         claims,
         status: vcdm.credential_status,
-        credential_schema,
     })
 }
 

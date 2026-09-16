@@ -28,7 +28,7 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
+    CredentialStatus, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -57,7 +57,6 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -65,17 +64,13 @@ async fn test_task_holder_check_credential_status_being_revoked() {
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 

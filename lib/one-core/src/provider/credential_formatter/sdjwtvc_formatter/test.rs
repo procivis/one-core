@@ -557,7 +557,7 @@ async fn test_extract_credentials() {
     );
 
     let claim_values_as_json: serde_json::Value =
-        CredentialClaimValue::Object(credentials.claims.claims).into();
+        CredentialClaimValue::Object(credentials.claims).into();
 
     assert_eq!(claim_values_as_json, expected_result);
 }
@@ -754,7 +754,7 @@ async fn test_extract_credentials_swiyu() {
     );
 
     let claim_values_as_json: serde_json::Value =
-        CredentialClaimValue::Object(credentials.claims.claims).into();
+        CredentialClaimValue::Object(credentials.claims).into();
 
     assert_eq!(claim_values_as_json, expected_result);
 }
@@ -990,31 +990,31 @@ async fn test_extract_credentials_example_b1() {
     );
 
     assert_eq!(
-        credentials.claims.claims["given_name"].value,
+        credentials.claims["given_name"].value,
         CredentialClaimValue::String("Erika".to_owned())
     );
     assert_eq!(
-        credentials.claims.claims["family_name"].value,
+        credentials.claims["family_name"].value,
         CredentialClaimValue::String("Mustermann".to_owned())
     );
     assert_eq!(
-        credentials.claims.claims["birthdate"].value,
+        credentials.claims["birthdate"].value,
         CredentialClaimValue::String("1963-08-12".to_owned())
     );
     assert_eq!(
-        credentials.claims.claims["gender"].value,
+        credentials.claims["gender"].value,
         CredentialClaimValue::String("female".to_owned())
     );
     assert_eq!(
-        credentials.claims.claims["birth_family_name"].value,
+        credentials.claims["birth_family_name"].value,
         CredentialClaimValue::String("Gabler".to_owned())
     );
     assert_eq!(
-        credentials.claims.claims["also_known_as"].value,
+        credentials.claims["also_known_as"].value,
         CredentialClaimValue::String("Schwester Agnes".to_owned())
     );
 
-    let nationalities = match &credentials.claims.claims["nationalities"].value {
+    let nationalities = match &credentials.claims["nationalities"].value {
         CredentialClaimValue::Array(vec) => vec,
         other => panic!(
             "Expected \"nationalities\" claim to be an array, got {:?}",
@@ -1026,7 +1026,7 @@ async fn test_extract_credentials_example_b1() {
         CredentialClaimValue::String("DE".to_owned())
     );
 
-    let address = match &credentials.claims.claims["address"].value {
+    let address = match &credentials.claims["address"].value {
         CredentialClaimValue::Object(map) => map,
         other => panic!(
             "Expected \"address\" claim to be an object, got {:?}",
@@ -1050,7 +1050,7 @@ async fn test_extract_credentials_example_b1() {
         CredentialClaimValue::String("DE".to_owned())
     );
 
-    let pob = match &credentials.claims.claims["place_of_birth"].value {
+    let pob = match &credentials.claims["place_of_birth"].value {
         CredentialClaimValue::Object(map) => map,
         other => panic!(
             "Expected \"place_of_birth\" claim to be an object, got {:?}",
@@ -1066,7 +1066,7 @@ async fn test_extract_credentials_example_b1() {
         CredentialClaimValue::String("DE".to_owned())
     );
 
-    let age_over = match &credentials.claims.claims["age_equal_or_over"].value {
+    let age_over = match &credentials.claims["age_equal_or_over"].value {
         CredentialClaimValue::Object(map) => map,
         other => panic!(
             "Expected \"age_equal_or_over\" claim to be an object, got {:?}",
@@ -1332,7 +1332,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
                 json!(result.valid_until.unwrap().unix_timestamp()).try_into().unwrap(),
         },
     };
-    assert_eq!(result.claims.claims, expected)
+    assert_eq!(result.claims, expected)
 }
 
 fn test_auth_fn(key_pair: KeyPair, issuer_did: DidValue) -> MockSignatureProvider {
@@ -1562,7 +1562,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
                 json!(result.valid_until.unwrap().unix_timestamp()).try_into().unwrap(),
         },
     };
-    assert_eq!(result.claims.claims, expected)
+    assert_eq!(result.claims, expected)
 }
 
 struct FakeDidMethodProvider(Arc<dyn KeyAlgorithmProvider>);

@@ -659,7 +659,6 @@ async fn test_extract_credentials() {
     assert_eq!(
         credentials
             .claims
-            .claims
             .get("name")
             .unwrap()
             .value
@@ -670,14 +669,12 @@ async fn test_extract_credentials() {
     assert!(
         credentials
             .claims
-            .claims
             .get("name")
             .unwrap()
             .selectively_disclosable
     );
     assert_eq!(
         credentials
-            .claims
             .claims
             .get("age")
             .unwrap()
@@ -688,7 +685,6 @@ async fn test_extract_credentials() {
     );
     assert!(
         credentials
-            .claims
             .claims
             .get("age")
             .unwrap()
@@ -802,11 +798,10 @@ async fn test_extract_credentials_with_array() {
         .await
         .unwrap();
 
-    let root_item = &credentials.claims.claims.get("root_item").unwrap().value;
+    let root_item = &credentials.claims.get("root_item").unwrap().value;
     assert_eq!(root_item.as_str(), Some("root_item"));
 
     let root = credentials
-        .claims
         .claims
         .get("root")
         .unwrap()
@@ -925,7 +920,7 @@ async fn test_extract_credentials_with_array_stripped() {
         .await
         .unwrap();
 
-    let root_item = &credential.claims.claims.get("root_item").unwrap().value;
+    let root_item = &credential.claims.get("root_item").unwrap().value;
     assert_eq!(root_item.as_str(), Some("root_item"));
 
     let expected: HashMap<String, CredentialClaim> = hashmap! {
@@ -1010,7 +1005,7 @@ async fn test_extract_credentials_with_array_stripped() {
             value: json!(credential.invalid_before.unwrap().unix_timestamp()).try_into().unwrap(),
         },
     };
-    assert_eq!(credential.claims.claims, expected);
+    assert_eq!(credential.claims, expected);
 }
 
 #[test]

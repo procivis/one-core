@@ -29,7 +29,7 @@ use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorP
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
+    CredentialStatus, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -409,7 +409,6 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     };
 
     let extracted_credential = DetailCredential {
-        id: None,
         issuance_date: None,
         valid_from: Some(crate::clock::now_utc()),
         valid_until: Some(crate::clock::now_utc() + Duration::days(10)),
@@ -417,21 +416,17 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         invalid_before: Some(crate::clock::now_utc()),
         issuer: IdentifierDetails::Did(issuer_did.to_owned()),
         subject: Some(IdentifierDetails::Did(holder_did.to_owned())),
-        claims: CredentialSubject {
-            claims: try_convert_inner(HashMap::from([
-                ("unknown_key".to_string(), json!("unknown_key_value")),
-                ("required_key".to_string(), json!("required_key_value")),
-            ]))
-            .unwrap(),
-            id: None,
-        },
+        claims: try_convert_inner(HashMap::from([
+            ("unknown_key".to_string(), json!("unknown_key_value")),
+            ("required_key".to_string(), json!("required_key_value")),
+        ]))
+        .unwrap(),
         status: vec![CredentialStatus {
             id: Some("did:status:test".parse().unwrap()),
             r#type: "".to_string(),
             status_purpose: None,
             additional_fields: Default::default(),
         }],
-        credential_schema: None,
     };
 
     let extracted_presentation = ExtractedPresentation {

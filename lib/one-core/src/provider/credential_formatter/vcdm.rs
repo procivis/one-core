@@ -249,8 +249,6 @@ impl VcdmCredentialSubject {
     }
 }
 
-pub type Claims = HashMap<String, String>;
-
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

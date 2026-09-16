@@ -550,7 +550,6 @@ async fn test_extract_credentials() {
     assert_eq!(
         credentials
             .claims
-            .claims
             .get("name")
             .unwrap()
             .value
@@ -560,7 +559,6 @@ async fn test_extract_credentials() {
     );
     assert_eq!(
         credentials
-            .claims
             .claims
             .get("age")
             .unwrap()
@@ -654,11 +652,10 @@ async fn test_extract_credentials_nested_array() {
         Some(&"Val1".into())
     );
 
-    let root_item = credentials.claims.claims.get("root_item").unwrap();
+    let root_item = credentials.claims.get("root_item").unwrap();
     assert_eq!(root_item.value.as_str(), Some("root_item"));
 
     let root = credentials
-        .claims
         .claims
         .get("root")
         .unwrap()

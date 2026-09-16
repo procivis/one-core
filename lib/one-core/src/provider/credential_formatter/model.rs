@@ -120,22 +120,6 @@ impl IdentifierDetails {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn certificate_details(&self) -> Option<&CertificateDetails> {
-        match &self {
-            IdentifierDetails::Certificate(certificate) => Some(certificate),
-            _ => None,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn public_key_jwk(&self) -> Option<&PublicJwk> {
-        match &self {
-            IdentifierDetails::Key(key) => Some(key),
-            _ => None,
-        }
-    }
-
     pub(crate) fn identifier_type(&self) -> IdentifierType {
         match &self {
             IdentifierDetails::Key(_) => IdentifierType::Key,
@@ -147,7 +131,6 @@ impl IdentifierDetails {
 
 #[derive(Debug, Clone)]
 pub struct DetailCredential {
-    pub id: Option<String>,
     pub issuance_date: Option<OffsetDateTime>,
     pub valid_from: Option<OffsetDateTime>,
     pub valid_until: Option<OffsetDateTime>,
@@ -155,9 +138,8 @@ pub struct DetailCredential {
     pub invalid_before: Option<OffsetDateTime>,
     pub issuer: IdentifierDetails,
     pub subject: Option<IdentifierDetails>,
-    pub claims: CredentialSubject,
+    pub claims: HashMap<String, CredentialClaim>,
     pub status: Vec<CredentialStatus>,
-    pub credential_schema: Option<CredentialSchema>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -241,13 +223,6 @@ impl<'de> Deserialize<'de> for CredentialClaimValue {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CredentialSubject {
-    // relevant only for VCDM
-    pub id: Option<Url>,
-    pub claims: HashMap<String, CredentialClaim>,
-}
-
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -265,16 +240,6 @@ pub struct CredentialSchemaMetadata {
     /// only for backward compatibility
     #[serde(default)]
     pub layout_type: Option<String>,
-}
-
-impl CredentialSchema {
-    pub fn new(id: String, r#type: String, metadata: Option<CredentialSchemaMetadata>) -> Self {
-        Self {
-            id,
-            r#type,
-            metadata,
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -327,16 +292,6 @@ impl From<&str> for PublishedClaimValue {
     }
 }
 
-impl PartialEq<str> for PublishedClaimValue {
-    fn eq(&self, other: &str) -> bool {
-        if let PublishedClaimValue::String(value) = self {
-            value == other
-        } else {
-            false
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct CredentialData {
     pub vcdm: VcdmCredential,
@@ -344,15 +299,6 @@ pub struct CredentialData {
     pub holder_identifier: Option<Identifier>,
     pub holder_key_id: Option<String>,
     pub issuer_certificate: Option<Certificate>,
-}
-
-#[derive(Debug)]
-pub struct CredentialSchemaData {
-    pub id: Option<String>,
-    pub r#type: Option<String>,
-    pub context: Option<String>,
-    pub name: String,
-    pub metadata: Option<CredentialSchemaMetadata>,
 }
 
 #[skip_serializing_none]
@@ -378,23 +324,6 @@ pub struct CredentialPresentation {
     pub credential: Credential,
     pub token: SerializedCredential,
     pub disclosed_keys: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VCCredentialClaimSchemaResponse {
-    pub key: String,
-    pub id: String,
-    pub datatype: String,
-    pub required: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VCCredentialSchemaResponse {
-    pub name: String,
-    pub id: String,
-    pub claims: Vec<VCCredentialClaimSchemaResponse>,
 }
 
 #[derive(Clone, Default, Serialize)]

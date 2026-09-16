@@ -1862,8 +1862,8 @@ async fn test_get_presentation_definition_dcql_multiple() {
             &org,
             &[
                 (claim_1, "org.iso.18013.5.1", true, "OBJECT", false),
-                (claim_2, "test_1", true, "STRING", false),
-                (claim_3, "test_2", false, "BOOLEAN", false),
+                (claim_2, "org.iso.18013.5.1/test_1", true, "STRING", false),
+                (claim_3, "org.iso.18013.5.1/test_2", false, "BOOLEAN", false),
             ],
             "MDOC",
             doctype,

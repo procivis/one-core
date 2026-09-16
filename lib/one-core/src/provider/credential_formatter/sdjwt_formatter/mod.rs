@@ -19,9 +19,8 @@ use uuid::Uuid;
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    Features, FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, TokenVerifier,
-    VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
+    FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::mapper::vc_from_credential;
@@ -490,11 +489,8 @@ pub(crate) async fn extract_credentials_internal(
             FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
         })?;
 
-    let mut claims = CredentialSubject {
-        id: credential_subject.id,
-        claims: HashMap::from_iter(credential_subject.claims),
-    };
-    claims.claims.extend(metadata_claims);
+    let mut claims = HashMap::from_iter(credential_subject.claims);
+    claims.extend(metadata_claims);
 
     let issuer = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {
         (None, None) => {
@@ -534,7 +530,6 @@ pub(crate) async fn extract_credentials_internal(
     };
 
     Ok(DetailCredential {
-        id: jwt.payload.jwt_id,
         issuance_date: jwt.payload.issued_at,
         valid_from: jwt.payload.issued_at,
         valid_until: jwt.payload.expires_at,
@@ -544,12 +539,6 @@ pub(crate) async fn extract_credentials_internal(
         subject,
         claims,
         status: jwt.payload.custom.vc.credential_status,
-        credential_schema: jwt
-            .payload
-            .custom
-            .vc
-            .credential_schema
-            .and_then(|schema| schema.into_iter().next()),
     })
 }
 

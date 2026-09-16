@@ -211,27 +211,27 @@ fn extract_matching_requested_schema(
     ),
     ServiceError,
 > {
-    let (matching_credential_schema_id, matching_claim_schemas) =
-        remaining_requested_claims
-            .iter()
-            .find(|(_, requested)| {
-                requested
-                    .iter()
-                    .filter(|(schema, _)| schema.required)
-                    .all(|(_, mapping)| {
-                        received_credential.claims.claims.iter().any(
-                            |(namespace, element_value)| {
-                                mapping.namespace.as_ref().is_some_and(|n| n == namespace)
-                                    && element_value.value.as_object().is_some_and(|value| {
-                                        value.keys().any(|key| key == &mapping.technical_key)
-                                    })
-                            },
-                        )
-                    })
-            })
-            .ok_or(ServiceError::ValidationError(
-                "Could not find matching requested credential schema".to_owned(),
-            ))?;
+    let (matching_credential_schema_id, matching_claim_schemas) = remaining_requested_claims
+        .iter()
+        .find(|(_, requested)| {
+            requested
+                .iter()
+                .filter(|(schema, _)| schema.required)
+                .all(|(_, mapping)| {
+                    received_credential
+                        .claims
+                        .iter()
+                        .any(|(namespace, element_value)| {
+                            mapping.namespace.as_ref().is_some_and(|n| n == namespace)
+                                && element_value.value.as_object().is_some_and(|value| {
+                                    value.keys().any(|key| key == &mapping.technical_key)
+                                })
+                        })
+                })
+        })
+        .ok_or(ServiceError::ValidationError(
+            "Could not find matching requested credential schema".to_owned(),
+        ))?;
 
     Ok((
         matching_credential_schema_id.to_owned(),
@@ -250,7 +250,6 @@ fn extract_matching_requested_claim(
     // NOTE: this only works because proof requests cannot request array elements
     // (otherwise the technical key would not match element paths)
     let found = received_credential
-        .claims
         .claims
         .get(namespace)
         .and_then(|elements| elements.value.as_object())

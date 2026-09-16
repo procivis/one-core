@@ -34,7 +34,7 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
+    CredentialStatus, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -83,7 +83,6 @@ async fn test_check_revocation_non_revocable() {
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -91,12 +90,8 @@ async fn test_check_revocation_non_revocable() {
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![],
-                credential_schema: None,
             })
         });
 
@@ -200,7 +195,6 @@ async fn test_check_revocation_becoming_revoked() {
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -208,17 +202,13 @@ async fn test_check_revocation_becoming_revoked() {
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 
@@ -313,7 +303,6 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -321,17 +310,13 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 
@@ -607,7 +592,6 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -615,17 +599,13 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 
@@ -789,7 +769,6 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -797,17 +776,13 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 
@@ -962,7 +937,6 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -970,17 +944,13 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 
@@ -1130,7 +1100,6 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
         .expect_extract_credentials_unverified()
         .returning(|_, _| {
             Ok(DetailCredential {
-                id: None,
                 issuance_date: None,
                 valid_from: None,
                 valid_until: None,
@@ -1138,17 +1107,13 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
                 invalid_before: None,
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
-                claims: CredentialSubject {
-                    claims: Default::default(),
-                    id: None,
-                },
+                claims: Default::default(),
                 status: vec![CredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
-                credential_schema: None,
             })
         });
 

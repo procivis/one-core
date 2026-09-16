@@ -29,9 +29,8 @@ use super::json_claims::{parse_claims, prepare_identifier};
 use super::mapper::{default_2_years, first_certificate, to_format_with_mappings};
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
-    CredentialPresentation, CredentialStatus, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, PublishedClaim, SelectiveDisclosure, TokenVerifier,
-    VerificationFn,
+    CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
+    IdentifierDetails, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
@@ -575,13 +574,9 @@ impl SDJWTVCFormatter {
             .proof_of_possession_key
             .map(|holder_key| IdentifierDetails::Key(holder_key.jwk.jwk().clone()));
 
-        let mut claims = CredentialSubject {
-            claims: jwt.payload.custom.public_claims,
-            id: None,
-        };
-        claims.claims.extend(metadata_claims);
+        let mut claims = jwt.payload.custom.public_claims;
+        claims.extend(metadata_claims);
         Ok(DetailCredential {
-            id: jwt.payload.jwt_id,
             issuance_date: jwt.payload.issued_at,
             valid_from: jwt.payload.issued_at,
             valid_until: jwt.payload.expires_at,
@@ -591,7 +586,6 @@ impl SDJWTVCFormatter {
             subject,
             claims,
             status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
-            credential_schema: None,
         })
     }
 

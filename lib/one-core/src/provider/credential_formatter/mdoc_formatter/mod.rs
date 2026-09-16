@@ -44,9 +44,8 @@ use super::mapper::first_certificate;
 use super::mdoc_formatter::util::StatusListEncoded;
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
-    CredentialPresentation, CredentialSchema, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, PublicKeySource, PublishedClaim, SelectiveDisclosure,
-    TokenVerifier, VerificationFn,
+    CredentialPresentation, DetailCredential, Features, FormatterCapabilities, IdentifierDetails,
+    PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use super::{CredentialFormatter, MetadataClaimSchema, nest_claims};
 use crate::config::core_config::{
@@ -752,7 +751,6 @@ async fn extract_credentials_internal(
     );
 
     Ok(DetailCredential {
-        id: None,
         issuance_date: Some(mso.validity_info.signed.into()),
         valid_from: Some(mso.validity_info.valid_from.into()),
         valid_until: Some(mso.validity_info.valid_until.into()),
@@ -763,13 +761,8 @@ async fn extract_credentials_internal(
         invalid_before: None,
         issuer: IdentifierDetails::Certificate(issuer_cert),
         subject: Some(IdentifierDetails::Key(holder_jwk)),
-        claims: CredentialSubject { claims, id: None },
+        claims,
         status: parse_status(mso.status),
-        credential_schema: Some(CredentialSchema {
-            id: mso.doc_type,
-            r#type: "mdoc".to_string(),
-            metadata: None,
-        }),
     })
 }
 

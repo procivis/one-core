@@ -6,24 +6,8 @@ use super::model::VcClaim;
 use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
 use crate::provider::did_method::error::DidMethodError;
-
-impl From<CredentialSchemaData> for Option<CredentialSchema> {
-    fn from(credential_schema: CredentialSchemaData) -> Self {
-        match credential_schema {
-            CredentialSchemaData {
-                id: Some(id),
-                r#type: Some(r#type),
-                metadata,
-                ..
-            } => Some(CredentialSchema::new(id, r#type, metadata)),
-            _ => None,
-        }
-    }
-}
 
 impl TryFrom<Jwt<VcClaim>> for DetailCredential {
     type Error = FormatterError;
@@ -67,7 +51,6 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
         let mut claims = HashMap::from_iter(credential_subject.claims);
         claims.extend(metadata_claims);
         Ok(Self {
-            id: jwt.payload.jwt_id,
             issuance_date: jwt.payload.issued_at,
             valid_from: jwt.payload.issued_at,
             valid_until: jwt.payload.expires_at,
@@ -75,17 +58,8 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             invalid_before: jwt.payload.invalid_before,
             issuer: IdentifierDetails::Did(did),
             subject,
-            claims: CredentialSubject {
-                id: credential_subject.id,
-                claims,
-            },
+            claims,
             status: jwt.payload.custom.vc.credential_status,
-            credential_schema: jwt
-                .payload
-                .custom
-                .vc
-                .credential_schema
-                .and_then(|s| s.into_iter().next()),
         })
     }
 }

@@ -21,8 +21,8 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::http_client::MockHttpClient;
 use crate::provider::credential_formatter::model::{
-    CertificateDetails, CredentialSchemaMetadata, Issuer, MockSignatureProvider, MockTokenVerifier,
-    PublishedClaimValue, X5References,
+    CertificateDetails, CredentialSchema, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
+    MockTokenVerifier, PublishedClaimValue, X5References,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::data_type::error::DataTypeProviderError;
@@ -39,7 +39,6 @@ use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{
     dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
-    get_dummy_date,
 };
 
 #[test]
@@ -902,15 +901,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     );
 
     assert_eq!(
-        CredentialSchema {
-            id: "doctype".to_owned(),
-            r#type: "mdoc".to_owned(),
-            metadata: None,
-        },
-        credential.credential_schema.unwrap()
-    );
-
-    assert_eq!(
         hashmap! {
             "a".into() => CredentialClaim {
                 selectively_disclosable: true,
@@ -935,235 +925,8 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                 value: CredentialClaimValue::String("doctype".into())
             }
         },
-        credential.claims.claims
+        credential.claims
     )
-}
-
-#[tokio::test]
-async fn test_credential_formatting_ok_for_ecdsa_layout_not_transfered() {
-    let detailed_credential = format_and_extract_ecdsa().await;
-    assert!(
-        detailed_credential
-            .credential_schema
-            .unwrap()
-            .metadata
-            .is_none()
-    );
-}
-
-async fn format_and_extract_ecdsa() -> DetailCredential {
-    let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
-
-    let holder_did: DidValue = "did:holder:123".parse().unwrap();
-
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-        array_item: false,
-    }];
-
-    let vcdm = VcdmCredential::new_v2(
-        issuer_did,
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: Some(CredentialSchemaMetadata {
-            layout_properties: LayoutProperties {
-                background: Some(BackgroundProperties {
-                    color: Some("color".to_string()),
-                    image: None,
-                }),
-                logo: None,
-                primary_attribute: None,
-                secondary_attribute: None,
-                picture_attribute: None,
-                code: None,
-            },
-            layout_type: None,
-        }),
-    });
-
-    let holder_identifier = Identifier {
-        data: IdentifierData::Did(
-            (Did {
-                did: holder_did.clone(),
-                ..dummy_did()
-            })
-            .into(),
-        ),
-        ..dummy_identifier()
-    };
-
-    let credential_data = CredentialData {
-        vcdm,
-        claims,
-        holder_identifier: Some(holder_identifier),
-        holder_key_id: None,
-        issuer_certificate: Some(Certificate {
-            id: Uuid::new_v4().into(),
-            identifier_id: Uuid::new_v4().into(),
-            organisation: dummy_organisation(None).into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            deleted_at: None,
-            expiry_date: crate::clock::now_utc().add(Duration::minutes(10)),
-            name: "test cert".to_string(),
-            chain: r#"-----BEGIN CERTIFICATE-----
-MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
-YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2
-aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu
-Y29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMC
-Q0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNV
-BAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMB
-BwMiAAJx38tO0JCdq3ZecMSW6a+BAAzllydQxVOQ+KDjnwLXJ6OCAeswggHnMA4G
-A1UdDwEB/wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB/wQC
-MAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBP
-oE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdG
-MzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbsw
-gbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vl
-ci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBa
-BggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENE
-MjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1Ud
-EgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0
-ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFem
-Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
-1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg==
------END CERTIFICATE-----
-"#
-            .to_string(),
-            fingerprint: hex::encode("testfoo"),
-            state: CertificateState::Active,
-            roles: vec![],
-            key: None,
-        }),
-    };
-
-    let mut did_method_provider = MockDidMethodProvider::new();
-
-    did_method_provider
-        .expect_resolve()
-        .withf({
-            let holder_did = holder_did.clone();
-
-            move |did| did == &holder_did
-        })
-        .returning(|holder_did| {
-            Ok(DidDocument {
-                context: json!({}),
-                id: holder_did.to_owned(),
-                verification_method: vec![DidVerificationMethod {
-                    id: "did-vm-id".to_string(),
-                    r#type: "did-vm-type".to_string(),
-                    controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
-                        alg: None,
-                        r#use: None,
-                        kid: None,
-                        crv: "P-256".to_string(),
-                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
-                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
-                    }),
-                }],
-                authentication: None,
-                assertion_method: None,
-                key_agreement: None,
-                capability_invocation: None,
-                capability_delegation: None,
-                also_known_as: None,
-                service: None,
-            })
-        });
-
-    let params = json!({
-        "expirationSeconds": 10,
-        "msoExpectedUpdateInSeconds": 10,
-        "msoMinimumRefreshSeconds": 10,
-        "leewaySeconds": 60
-    });
-
-    let mut certificate_validator = MockCertificateValidator::new();
-    certificate_validator
-        .expect_parse_pem_chain()
-        .once()
-        .returning(|_, _| {
-            let mut public_key_handle = MockSignaturePublicKeyHandle::default();
-            public_key_handle
-                .expect_as_multibase()
-                .return_once(|| Ok("abcd".to_string()));
-            Ok(ParsedCertificate {
-                attributes: CertificateX509AttributesDTO {
-                    serial_number: "".to_string(),
-                    not_before: crate::clock::now_utc() - Duration::days(1),
-                    not_after: crate::clock::now_utc() + Duration::days(1),
-                    issuer: "Some issuer".to_string(),
-                    subject: "Some subject".to_string(),
-                    fingerprint: hex::encode("testfoo"),
-                    extensions: vec![],
-                },
-                subject_common_name: Some("common name".to_string()),
-                subject_key_identifier: None,
-                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
-                    public_key_handle,
-                ))),
-            })
-        });
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider.expect_parse_jwk().returning(|_| {
-        let mut public_key = MockSignaturePublicKeyHandle::new();
-        public_key.expect_as_cose().returning(|| {
-            Ok(CoseKeyBuilder::new_ec2_pub_key(
-                iana::EllipticCurve::P_256,
-                b"xabc".into(),
-                b"yabc".into(),
-            )
-            .build())
-        });
-        Ok(ParsedKey {
-            algorithm_type: KeyAlgorithmType::Ecdsa,
-            key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(public_key))),
-        })
-    });
-
-    let config = generic_config().core;
-
-    let formatter = MdocFormatter::new(
-        Some("testUrl".into()),
-        "MDOC".into(),
-        params,
-        Arc::new(certificate_validator),
-        Arc::new(did_method_provider),
-        config.datatype,
-        Arc::new(MockDataTypeProvider::new()),
-        Arc::new(key_algorithm_provider),
-        Arc::new(MockHttpClient::new()),
-    )
-    .unwrap();
-
-    let mut auth_fn = MockSignatureProvider::new();
-    auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
-    auth_fn
-        .expect_get_key_algorithm()
-        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
-
-    let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
-        .await
-        .unwrap();
-
-    let mut token_verifier = MockTokenVerifier::new();
-    token_verifier
-        .expect_verify()
-        .never()
-        .returning(move |_, _, _, _| Ok(()));
-
-    formatter
-        .extract_credentials(&formatted_credential, None, Box::new(token_verifier))
-        .await
-        .unwrap()
 }
 
 #[test]
