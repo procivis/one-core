@@ -30,6 +30,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             state: value.state.into(),
             r#type: value.r#type.into(),
             remaining_batch_item_count: value.remaining_batch_item_count,
+            format: value.format,
             last_modified: value.last_modified,
             schema: value.schema.into(),
             issuer: convert_inner(value.issuer),

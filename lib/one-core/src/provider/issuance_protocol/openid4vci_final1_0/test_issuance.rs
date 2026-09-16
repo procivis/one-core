@@ -283,6 +283,13 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
     let credential_schema = backfill_default_translations(credential_schema, "en")
         .await
         .unwrap();
+    let credential_format = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .cloned();
     Credential {
         state,
         suspend_end_date: None,
@@ -313,6 +320,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         ),
         key: Some(key.into()),
         schema: credential_schema.into(),
+        format: credential_format.map(Into::into),
         ..dummy_credential().await
     }
 }

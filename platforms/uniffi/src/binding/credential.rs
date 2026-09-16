@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
@@ -16,7 +18,7 @@ use crate::binding::credential_schema::{
     CredentialSchemaListItemV2BindingDTO, CredentialSchemaTranslationsBindingDTO,
     KeyStorageSecurityBindingEnum,
 };
-use crate::binding::history::TrustResolutionResultBindingEnum;
+use crate::binding::history::{EcosystemOutcomeBindingDTO, TrustResolutionResultBindingEnum};
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
@@ -130,7 +132,8 @@ pub struct CredentialDetailBindingDTO {
 
     pub consumed_at: Option<String>,
     pub r#type: CredentialTypeBindingEnum,
-    pub remaining_batch_item_count: Option<u32>,
+    pub remaining_batch_item_count: Option<HashMap<String, u32>>,
+    pub format: Option<String>,
     pub parent_id: Option<String>,
     pub ecosystem: Option<String>,
 }
@@ -145,8 +148,7 @@ pub struct TrustInformationBindingDTO {
     result: TrustResolutionResultBindingEnum,
     /// One entry per ecosystem provider consulted, keyed by provider id.
     #[from(with_fn_ref = "crate::binding::mapper::convert_ecosystem_outcomes")]
-    ecosystem_errors:
-        std::collections::HashMap<String, crate::binding::history::EcosystemOutcomeBindingDTO>,
+    ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]

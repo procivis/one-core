@@ -73,6 +73,7 @@ async fn test_get_credential_success() {
     assert_eq!(resp["state"], "CREATED");
     assert_eq!(resp["role"], "ISSUER");
     assert_eq!(resp["protocol"], "OPENID4VCI_DRAFT13");
+    assert_eq!(resp["format"], "JWT");
     assert_eq!(
         resp["walletInstanceAttestation"]["name"],
         "Wallet solution X by Wonderland State Department"
@@ -393,14 +394,8 @@ async fn test_get_credential_success_batch() {
     resp["id"].assert_eq(&parent_credential.id);
     assert_eq!(resp["type"].as_str().unwrap(), "BATCH_PARENT");
     assert!(!resp.as_object().unwrap().contains_key("parentId"));
-    assert_eq!(
-        resp["remainingBatchItemCount"]
-            .as_number()
-            .unwrap()
-            .as_u64()
-            .unwrap(),
-        1
-    );
+    assert_eq!(resp["remainingBatchItemCount"]["JWT"], 1);
+    assert!(!resp.as_object().unwrap().contains_key("format"));
 
     // WHEN
     let resp = context.api.credentials.get(&item_credential.id).await;
@@ -410,6 +405,7 @@ async fn test_get_credential_success_batch() {
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&item_credential.id);
     assert_eq!(resp["type"].as_str().unwrap(), "BATCH_ITEM");
+    assert_eq!(resp["format"], "JWT");
     assert!(
         !resp
             .as_object()
@@ -419,6 +415,87 @@ async fn test_get_credential_success_batch() {
     assert_eq!(
         resp["parentId"].as_str().unwrap(),
         parent_credential.id.to_string()
+    );
+}
+
+#[tokio::test]
+async fn test_get_credential_success_batch_count_excludes_rejected_formats() {
+    // GIVEN
+    let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Multi-format batch schema",
+            &org,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                formats: Some(vec![
+                    ("JWT".into(), "jwt-schema-id".to_string()),
+                    ("SD_JWT_VC".into(), "sd-jwt-vc-schema-id".to_string()),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let formats = credential_schema.formats.as_ref().await.unwrap().to_owned();
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                format: Some(formats[0].clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Rejected,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                format: Some(formats[1].clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.get(&parent_credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(
+        resp["remainingBatchItemCount"],
+        serde_json::json!({"JWT": 1})
     );
 }
 

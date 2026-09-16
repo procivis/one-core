@@ -385,6 +385,7 @@ fn map_to_filtered_dto(
         redirect_uri: full_dto.redirect_uri,
         role: full_dto.role,
         r#type: full_dto.r#type,
+        format: full_dto.format,
         interaction_id: full_dto.interaction_id,
         suspend_end_date: full_dto.suspend_end_date,
         mdoc_mso_validity: full_dto.mdoc_mso_validity,

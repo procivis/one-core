@@ -171,8 +171,11 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     /// a batch of credentials.
     pub r#type: CredentialTypeRestEnum,
 
-    /// Number of non-consumed batch items (if batch parent).
-    pub remaining_batch_item_count: Option<u32>,
+    /// Number of non-consumed batch items by format (if batch parent).
+    pub remaining_batch_item_count: Option<std::collections::HashMap<CredentialFormat, u32>>,
+
+    /// Format of the credential. Only returned for single and batch item credentials.
+    pub format: Option<CredentialFormat>,
 
     /// Batch parent (if batch item).
     pub parent_id: Option<CredentialId>,

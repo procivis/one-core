@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -60,7 +62,8 @@ pub struct CredentialDetailResponseDTO<T> {
     pub consumed_at: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
     pub r#type: CredentialTypeEnum,
-    pub remaining_batch_item_count: Option<u32>,
+    pub remaining_batch_item_count: Option<HashMap<CredentialFormat, u32>>,
+    pub format: Option<CredentialFormat>,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,

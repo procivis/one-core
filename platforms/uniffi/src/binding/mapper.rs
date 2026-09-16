@@ -130,7 +130,13 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             protocol: value.protocol,
             profile: value.profile,
             trust_information: convert_inner(value.trust_information),
-            remaining_batch_item_count: value.remaining_batch_item_count,
+            remaining_batch_item_count: value.remaining_batch_item_count.map(|counts| {
+                counts
+                    .into_iter()
+                    .map(|(format, count)| (format.to_string(), count))
+                    .collect()
+            }),
+            format: value.format.map(|format| format.to_string()),
             parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
             ecosystem: value.ecosystem.map(|ecosystem| ecosystem.to_string()),
         }

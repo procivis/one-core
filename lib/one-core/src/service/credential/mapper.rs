@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::CredentialId;
+use shared_types::{CredentialFormat, CredentialId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -54,12 +54,13 @@ use crate::service::credential_schema::mapper::to_credential_schema_list_v2_resp
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
 #[expect(clippy::too_many_arguments)]
+#[allow(deprecated)]
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
     attestation: CredentialAttestationBlobs,
     trust_information: Option<TrustInformation>,
-    remaining_batch_item_count: Option<u32>,
+    remaining_batch_item_count: Option<HashMap<CredentialFormat, u32>>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
     blob_storage_provider: Option<&dyn BlobStorageProvider>,
@@ -97,7 +98,7 @@ pub(crate) async fn credential_detail_response_from_model(
     let claims = filtered_claims;
     let state = value.state;
 
-    let credential_format = schema_model.format().await?;
+    let credential_format = value.credential_format().await?;
     let format_type = config
         .format
         .get_type(&credential_format)
@@ -191,6 +192,7 @@ pub(crate) async fn credential_detail_response_from_model(
     };
 
     let offered_formats = get_offered_formats(&value, credential_repository).await?;
+    let credential_type = value.r#type;
 
     Ok(CredentialDetailResponseDTO {
         id: value.id,
@@ -206,7 +208,12 @@ pub(crate) async fn credential_detail_response_from_model(
         issuer,
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
-        r#type: value.r#type.into(),
+        r#type: credential_type.into(),
+        format: matches!(
+            credential_type,
+            CredentialType::Single | CredentialType::BatchItem
+        )
+        .then_some(credential_format),
         interaction_id: value.interaction.map(|i| i.id()),
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
@@ -1034,33 +1041,49 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
 pub(crate) async fn get_remaining_batch_item_count(
     credential: &Credential,
     credential_repository: &dyn CredentialRepository,
-) -> Result<Option<u32>, CredentialServiceError> {
-    Ok(
-        if credential.r#type == CredentialType::BatchParent
-            && credential.role == CredentialRole::Holder
-        {
-            Some(
-                credential_repository
-                    .get_credential_list(ListQuery {
-                        filtering: Some(
-                            CredentialFilterValue::ParentCredential(credential.id).condition()
-                                & CredentialFilterValue::Consumed(false)
-                                & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
-                                & CredentialFilterValue::States(vec![
-                                    CredentialStateEnum::Accepted,
-                                ])
-                                & CredentialFilterValue::Deleted(false),
-                        ),
-                        ..Default::default()
-                    })
-                    .await
-                    .error_while("listing batch items")?
-                    .total_items as _,
-            )
-        } else {
-            None
-        },
-    )
+) -> Result<Option<HashMap<CredentialFormat, u32>>, CredentialServiceError> {
+    if credential.r#type != CredentialType::BatchParent || credential.role != CredentialRole::Holder
+    {
+        return Ok(None);
+    }
+
+    let batch_items = credential_repository
+        .get_credential_list(ListQuery {
+            filtering: Some(
+                CredentialFilterValue::ParentCredential(credential.id).condition()
+                    & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                    & CredentialFilterValue::Deleted(false)
+                    & CredentialFilterValue::States(vec![
+                        // Currently or previously usable states as holder.
+                        CredentialStateEnum::Accepted,
+                        CredentialStateEnum::Suspended,
+                        CredentialStateEnum::Revoked,
+                        CredentialStateEnum::Expired,
+                    ]),
+            ),
+            ..Default::default()
+        })
+        .await
+        .error_while("listing batch items")?
+        .values;
+
+    let mut counts = HashMap::new();
+    for item in batch_items {
+        let format = item
+            .format
+            .as_ref()
+            .ok_or(CredentialServiceError::MappingError(format!(
+                "Missing format on batch_item credential {}",
+                item.id
+            )))?
+            .as_ref()
+            .await?;
+        let entry = counts.entry(format.format.to_owned()).or_insert(0);
+        if item.state == CredentialStateEnum::Accepted && item.consumed_at.is_none() {
+            *entry += 1;
+        }
+    }
+    Ok(Some(counts))
 }
 
 pub(crate) async fn get_credential_trust_information(
