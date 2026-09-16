@@ -28,6 +28,7 @@ use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaListQuery, UpdateCredentialSchemaRequest,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -36,7 +37,7 @@ use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
-use crate::model::relation::Related;
+use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::identifier_creator::{
     IdentifierLogo, IdentifierName, IdentifierRole, RemoteIdentifierRelation,
@@ -148,12 +149,11 @@ impl OpenID4VCIFinal1_0 {
         let main_credential_id = main_credential.credential.id;
 
         let schema = self
-            .process_schema(
+            .update_credential_schema(
                 &mut main_credential.credential,
                 organisation,
                 interaction_data,
                 configuration,
-                &format,
             )
             .await?;
         if !credentials.is_empty() {
@@ -192,51 +192,55 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
-    async fn process_schema(
+    async fn update_credential_schema(
         &self,
         credential: &mut Credential,
         organisation: &Organisation,
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
-        format: &CredentialFormat,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
-        let (mut schema, conflicting_format) = self
-            .prepare_credential_schema(interaction_data, configuration, credential, organisation)
-            .await?;
-
-        // Adjust format if it was replaced by a different one of the same type.
-        if let Some(conflicting_format) = &conflicting_format {
-            let mut credential_schema = credential.schema.as_mut().await?;
-            let mut formats = credential_schema.formats.as_mut().await?;
-            let format = formats.first_mut().ok_or(IssuanceProtocolError::Failed(
-                "missing parsed format".to_string(),
-            ))?;
-            format.format = conflicting_format.clone();
-        }
-
-        let (new_claim_schemas, new_mappings) = validate_existing_and_find_new_claim_schemas(
-            &mut schema,
-            credential,
-            conflicting_format.as_ref().unwrap_or(format),
-            &self.config.global_settings.default_language,
-            true,
+        self.enrich_credential_schema(
+            credential.schema.as_mut().await?.as_mut(),
+            interaction_data,
+            configuration,
+            organisation,
         )
         .await?;
 
-        if !new_claim_schemas.is_empty() {
+        let parsed_schema = credential.schema.as_ref().await?.to_owned();
+        let parsed_format = credential.format.as_required_ref().await?;
+        let mut stored_schema = find_or_import_credential_schema(
+            self.credential_schema_importer.as_ref(),
+            self.credential_schema_repository.as_ref(),
+            parsed_schema,
+            &parsed_format,
+            organisation.id,
+            &self.config,
+        )
+        .await?;
+        drop(parsed_format);
+
+        let alignment = align_format_claim_schemas_and_mappings(
+            &mut stored_schema,
+            credential,
+            &self.config.global_settings.default_language,
+        )
+        .await?;
+
+        if !alignment.new_claim_schemas.is_empty() {
             self.credential_schema_repository
                 .update_credential_schema(
-                    &schema.id,
+                    &stored_schema.id,
                     UpdateCredentialSchemaRequest {
-                        claim_schemas: Some(new_claim_schemas),
-                        claim_mappings: Some(new_mappings),
+                        claim_schemas: Some(alignment.new_claim_schemas),
+                        claim_mappings: Some(alignment.new_mappings),
                         ..Default::default()
                     },
                 )
                 .await
                 .error_while("updating credential schema")?;
         }
-        Ok(schema)
+        Ok(stored_schema)
     }
 
     pub(super) async fn holder_process_refresh(
@@ -378,7 +382,7 @@ impl OpenID4VCIFinal1_0 {
 
         let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
         for issued_credential in issuer_response.credentials {
-            let mut credential = self
+            let credential = self
                 .prepare_issued_credential(
                     &issued_credential,
                     &mut holder_bindings,
@@ -389,7 +393,6 @@ impl OpenID4VCIFinal1_0 {
                     None,
                 )
                 .await?;
-            credential.format = Some(parent_format.clone().into());
             batch_credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -402,14 +405,22 @@ impl OpenID4VCIFinal1_0 {
             .iter_mut()
             .next()
             .ok_or(IssuanceProtocolError::Failed("empty batch".to_string()))?;
-        validate_existing_and_find_new_claim_schemas(
+        let alignment = align_format_claim_schemas_and_mappings(
             &mut schema,
             &mut batch_credential.credential,
-            &parent_format.format,
             &self.config.global_settings.default_language,
-            false,
         )
         .await?;
+        if !alignment.new_claim_schemas.is_empty() {
+            return Err(IssuanceProtocolError::Failed(format!(
+                "Unknown claims found: {}",
+                alignment
+                    .new_claim_schemas
+                    .into_iter()
+                    .map(|claim_schema| claim_schema.key)
+                    .join(", ")
+            )));
+        }
 
         self.history_repository
             .create_history(History {
@@ -599,17 +610,15 @@ impl OpenID4VCIFinal1_0 {
         Ok(credential)
     }
 
-    async fn prepare_credential_schema(
+    async fn enrich_credential_schema(
         &self,
+        schema: &mut CredentialSchema,
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
-        parsed_credential: &Credential,
         organisation: &Organisation,
-    ) -> Result<(CredentialSchema, Option<CredentialFormat>), IssuanceProtocolError> {
-        let mut schema = parsed_credential.schema.as_ref().await?.to_owned();
-
+    ) -> Result<(), IssuanceProtocolError> {
         apply_issuer_metadata_to_schema(
-            &mut schema,
+            schema,
             configuration.credential_metadata.as_ref(),
             &self.config.global_settings.default_language,
         )
@@ -625,17 +634,7 @@ impl OpenID4VCIFinal1_0 {
                 (!att_list.key_storage.is_empty()).then_some(&att_list.key_storage)
             })
             .and_then(|levels| convert_inner(KeyStorageSecurityLevel::select_lowest(levels)));
-
-        let result = get_or_create_credential_schema(
-            self.credential_schema_importer.as_ref(),
-            self.credential_schema_repository.as_ref(),
-            schema,
-            organisation.id,
-            &self.config,
-        )
-        .await?;
-
-        Ok(result)
+        Ok(())
     }
 }
 
@@ -666,69 +665,62 @@ async fn find_credential_schema(
         .next())
 }
 
-async fn get_or_create_credential_schema(
+async fn find_or_import_credential_schema(
     credential_schema_importer: &dyn CredentialSchemaImporter,
     credential_schema_repository: &dyn CredentialSchemaRepository,
-    credential_schema: CredentialSchema,
+    parsed_schema: CredentialSchema,
+    parsed_format: &CredentialSchemaFormat,
     organisation_id: OrganisationId,
     config: &CoreConfig,
-) -> Result<(CredentialSchema, Option<CredentialFormat>), IssuanceProtocolError> {
-    let parsed_schema_id = credential_schema
-        .schema_id()
-        .await
-        .error_while("getting parsed schema_id")?;
-    let parsed_format = credential_schema
-        .format()
-        .await
-        .error_while("getting parsed format")?;
+) -> Result<CredentialSchema, IssuanceProtocolError> {
     let stored_schema = find_credential_schema(
         credential_schema_repository,
-        &parsed_schema_id,
+        &parsed_format.ecosystem_schema_id,
         organisation_id,
     )
     .await?;
 
     if let Some(stored_schema) = stored_schema {
-        let conflicting_format = if let Some(conflicting_schema) =
-            stored_schema.formats.as_ref().await?.iter().find(|format| {
-                format.ecosystem_schema_id == parsed_schema_id && format.format != parsed_format
-            }) {
+        if let Some(stored_format) = stored_schema
+            .formats
+            .as_ref()
+            .await?
+            .iter()
+            .find(|format| {
+                format.ecosystem_schema_id == parsed_format.ecosystem_schema_id
+                    && format.format != parsed_format.format
+            })
+            .cloned()
+        {
             if config
                 .format
-                .get_type(&conflicting_schema.format)
+                .get_type(&stored_format.format)
                 .error_while("getting format type")?
-                == config
+                != config
                     .format
-                    .get_type(&parsed_format)
+                    .get_type(&parsed_format.format)
                     .error_while("getting format type")?
             {
-                tracing::debug!(
-                    "Found matching existing schema {} with different format `{}` of same type, replacing format `{}`.",
-                    conflicting_schema.id,
-                    conflicting_schema.format,
-                    parsed_format
-                );
-                Some(conflicting_schema.format.clone())
-            } else {
                 return Err(IssuanceProtocolError::Failed(format!(
-                    "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
-                    conflicting_schema.id,
-                    conflicting_schema.ecosystem_schema_id,
-                    conflicting_schema.format
+                    "Credential schema conflict: credential schema with id {} has matching schema_id `{}` but different format `{}`",
+                    stored_format.id, stored_format.ecosystem_schema_id, stored_format.format
                 )));
             }
-        } else {
-            None
+
+            tracing::debug!(
+                "Found matching existing schema {} with different format `{}` of same type, replacing format `{}`.",
+                stored_format.id,
+                stored_format.format,
+                parsed_format.format
+            );
         };
-        Ok((stored_schema, conflicting_format))
+        Ok(stored_schema)
     } else {
         match credential_schema_importer
-            .import_credential_schema(credential_schema)
+            .import_credential_schema(parsed_schema)
             .await
         {
-            Ok(schema) => {
-                return Ok((schema, None));
-            }
+            Ok(schema) => return Ok(schema),
             Err(error) if error.error_code() == ErrorCode::BR_0007 => {
                 tracing::debug!("Conflicting schema detected during parsing, refetching");
             }
@@ -740,7 +732,7 @@ async fn get_or_create_credential_schema(
         // refetch and try again
         let stored_schema = find_credential_schema(
             credential_schema_repository,
-            &parsed_schema_id,
+            &parsed_format.ecosystem_schema_id,
             organisation_id,
         )
         .await?
@@ -748,79 +740,90 @@ async fn get_or_create_credential_schema(
             "Credential schema not found".to_string(),
         ))?;
 
-        Ok((stored_schema, None))
+        Ok(stored_schema)
     }
 }
 
-async fn validate_existing_and_find_new_claim_schemas(
+struct AlignmentUpdate {
+    new_claim_schemas: Vec<ClaimSchema>,
+    new_mappings: Vec<CredentialSchemaFormatClaimSchema>,
+}
+
+async fn align_format_claim_schemas_and_mappings(
     stored_schema: &mut CredentialSchema,
     credential: &mut Credential,
-    format: &CredentialFormat,
     default_language: &str,
-    allow_new_claim_schemas: bool,
-) -> Result<(Vec<ClaimSchema>, Vec<CredentialSchemaFormatClaimSchema>), IssuanceProtocolError> {
-    let mut new_claim_schemas = vec![];
-    let mut new_mappings = vec![];
+) -> Result<AlignmentUpdate, IssuanceProtocolError> {
     let mut claims = credential.claims.as_mut().await?;
     claims.sort_by_key(|c| c.path.clone());
 
-    let parsed_schema = credential.schema.as_ref().await?;
-    let mut parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?.to_owned();
+    let mut parsed_claim_schemas = {
+        let parsed_schema = credential.schema.as_ref().await?;
+        parsed_schema.claim_schemas.as_ref().await?.to_owned()
+    };
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
-    let parsed_formats = parsed_schema.formats.as_ref().await?.to_owned();
-    let parsed_format = parsed_formats.iter().find(|f| f.format == *format).ok_or(
-        IssuanceProtocolError::Failed(format!("No matching parsed format found for `{format}`")),
-    )?;
-    let parsed_mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
-    drop(parsed_schema);
+    let (parsed_format, parsed_mappings) = {
+        let parsed_format = credential.format.as_required_ref().await?;
+        let mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
+        (parsed_format.format.clone(), mappings)
+    };
 
-    let mut stored_formats = stored_schema.formats.as_mut().await?;
-    let stored_format = stored_formats
-        .iter_mut()
-        .find(|f| f.format == *format)
-        .ok_or(IssuanceProtocolError::Failed(format!(
-            "No matching stored format found for `{format}`"
-        )))?;
-    let mut stored_mappings = stored_format.claim_mappings.as_mut().await?;
-
-    let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
-    // parsed key -> stored key
-    let mut key_translations = HashMap::new();
-    // parsed path -> stored path
-    let mut claim_path_translations = HashMap::new();
-
-    // iterate sorted by key -> parent schemas before their children
-    for mut parsed_claim_schema in parsed_claim_schemas {
-        let parsed_mapping = parsed_mappings
+    let mut new_claim_schemas = vec![];
+    let mut new_mappings = vec![];
+    let mut stored_format = {
+        let stored_formats = stored_schema.formats.as_ref().await?;
+        stored_formats
             .iter()
-            .find(|m| m.claim_schema_id == parsed_claim_schema.id)
+            .find(|format| format.format == parsed_format)
+            .cloned()
             .ok_or(IssuanceProtocolError::Failed(format!(
-                "missing mapping for claim schema `{}`",
-                parsed_claim_schema.key
-            )))?;
-        let stored_claim_schema_id = find_matching_stored_schema(parsed_mapping, &stored_mappings);
+                "No matching stored format found for `{parsed_format}`"
+            )))?
+    };
+    let stored_format_id = stored_format.id;
+    {
+        let mut stored_mappings = stored_format.claim_mappings.as_mut().await?;
+        let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
+        // parsed key -> stored key
+        let mut key_translations = HashMap::new();
+        // parsed path -> stored path
+        let mut claim_path_translations = HashMap::new();
 
-        if let Some(stored_claim_schema_id) = stored_claim_schema_id {
-            let known_claim_schema = stored_claim_schemas
+        // iterate sorted by key -> parent schemas before their children
+        for mut parsed_claim_schema in parsed_claim_schemas {
+            let parsed_mapping = parsed_mappings
                 .iter()
-                .find(|schema| schema.id == stored_claim_schema_id)
+                .find(|mapping| mapping.claim_schema_id == parsed_claim_schema.id)
                 .ok_or(IssuanceProtocolError::Failed(format!(
-                    "stored claim schema {} not found",
-                    stored_claim_schema_id
+                    "missing mapping for claim schema `{}`",
+                    parsed_claim_schema.key
                 )))?;
-            key_translations.insert(
-                parsed_claim_schema.key.clone(),
-                known_claim_schema.key.clone(),
-            );
-            relink_claims(
-                &mut claims,
-                parsed_claim_schema.id,
-                known_claim_schema,
-                &mut claim_path_translations,
-            )
-            .await?;
-        } else {
+            let stored_claim_schema_id =
+                find_matching_stored_schema(parsed_mapping, &stored_mappings);
+
+            if let Some(stored_claim_schema_id) = stored_claim_schema_id {
+                let known_claim_schema = stored_claim_schemas
+                    .iter()
+                    .find(|schema| schema.id == stored_claim_schema_id)
+                    .ok_or(IssuanceProtocolError::Failed(format!(
+                        "stored claim schema {} not found",
+                        stored_claim_schema_id
+                    )))?;
+                key_translations.insert(
+                    parsed_claim_schema.key.clone(),
+                    known_claim_schema.key.clone(),
+                );
+                relink_claims(
+                    &mut claims,
+                    parsed_claim_schema.id,
+                    known_claim_schema,
+                    &mut claim_path_translations,
+                )
+                .await?;
+                continue;
+            }
+
             if let Some((parent_key, new_child_key)) =
                 parsed_claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER)
             {
@@ -861,8 +864,9 @@ async fn validate_existing_and_find_new_claim_schemas(
                     claim_path_translations.insert(claim.path.clone(), claim.path.clone());
                 }
             }
+
             let mut new_mapping = parsed_mapping.clone();
-            new_mapping.credential_schema_format_id = stored_format.id;
+            new_mapping.credential_schema_format_id = stored_format_id;
             stored_mappings.push(new_mapping.clone());
             new_mappings.push(new_mapping);
             new_claim_schemas.push(
@@ -871,25 +875,15 @@ async fn validate_existing_and_find_new_claim_schemas(
                     .error_while("adding fallback claim translation")?,
             );
         }
+        stored_claim_schemas.extend(new_claim_schemas.clone());
     }
 
-    if !allow_new_claim_schemas && !new_claim_schemas.is_empty() {
-        return Err(IssuanceProtocolError::Failed(format!(
-            "Unknown claims found: {}",
-            new_claim_schemas
-                .into_iter()
-                .map(|claim_schema| claim_schema.key)
-                .join(", ")
-        )));
-    }
-    stored_claim_schemas.extend(new_claim_schemas.clone());
-
-    drop(stored_claim_schemas);
-    drop(stored_mappings);
-    credential.format = Some(stored_format.to_owned().into());
-    drop(stored_formats);
-    credential.schema = stored_schema.to_owned().into();
-    Ok((new_claim_schemas, new_mappings))
+    credential.format = Some(stored_format.into());
+    credential.schema = stored_schema.clone().into();
+    Ok(AlignmentUpdate {
+        new_claim_schemas,
+        new_mappings,
+    })
 }
 
 /// Link all claims currently linked to `claim_schema_id` to `new_claim_schema`, while rewriting
