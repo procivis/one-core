@@ -684,7 +684,6 @@ impl OneCore {
                 certificate_validator.clone(),
                 blob_storage_provider.clone(),
                 data_provider.get_tx_manager(),
-                wallet_unit_proto.clone(),
                 identifier_creator.clone(),
                 credential_issuer_metadata_cache.clone(),
                 credential_formatter_provider.clone(),

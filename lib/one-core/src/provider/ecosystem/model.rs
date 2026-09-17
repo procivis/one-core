@@ -10,8 +10,11 @@ use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::proto::jwt::model::DecomposedJwt;
-use crate::provider::credential_formatter::model::{IdentifierDetails, PublicKeySource};
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::common_dto::EudiTrustInformationResponseDTO;
+use crate::service::managed_instance::dto::{
+    WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
+};
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -57,10 +60,7 @@ pub enum ProtocolArtifact<'a> {
     },
     /// As issuer, issuance protocol artifacts
     IssuerIssuance {
-        wallet_provider: PublicKeySource<'a>,
-        /// Which wallet attestation the `wallet_provider` key was taken from.
-        /// Used to report a trust failure against the right attestation (WIA vs KA).
-        source: WalletProviderAttestationSource,
+        attestation: WalletAttestationArtifact<'a>,
     },
     /// As verifier, protocol artifacts of a proof-request (after submission)
     VerifierSubmission {
@@ -69,12 +69,19 @@ pub enum ProtocolArtifact<'a> {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Display)]
-pub enum WalletProviderAttestationSource {
+/// Parsed and signature-checked by the issuance protocol, the token is kept for the status list lookup.
+#[derive(Clone, Debug)]
+pub enum WalletAttestationArtifact<'a> {
     /// OAuth client attestation at the token endpoint (WIA)
-    WalletInstanceAttestation,
-    /// Key attestation of the holder proof at the credential endpoint (KA/WUA)
-    KeyAttestation,
+    WalletInstance {
+        token: &'a str,
+        jwt: &'a DecomposedJwt<WalletInstanceAttestationClaims>,
+    },
+    /// Key attestation of the holder proof at the credential endpoint (KA)
+    Key {
+        token: &'a str,
+        jwt: &'a DecomposedJwt<WalletUnitAttestationClaims>,
+    },
 }
 
 #[derive(Clone, Debug, Display)]

@@ -4,7 +4,6 @@ use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -43,7 +42,6 @@ pub struct OID4VCIFinal1_0Service {
     base_url: Option<String>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     transaction_manager: Arc<dyn TransactionManager>,
-    holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -68,7 +66,6 @@ impl OID4VCIFinal1_0Service {
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         transaction_manager: Arc<dyn TransactionManager>,
-        holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -90,7 +87,6 @@ impl OID4VCIFinal1_0Service {
             base_url: core_base_url,
             blob_storage_provider,
             transaction_manager,
-            holder_wallet_unit_proto,
             identifier_creator,
             issuer_metadata_cache,
             formatter_provider,

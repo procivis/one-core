@@ -1091,7 +1091,7 @@ pub enum ErrorCode {
     #[strum(message = "Wallet Instance Attestation and Key Attestation issuers do not match")]
     BR_0498,
 
-    #[strum(message = "Wallet unit attestation is revoked")]
+    #[strum(message = "Key Attestation is revoked")]
     BR_0499,
 
     #[strum(message = "Key storage security level is not attested")]
@@ -1108,6 +1108,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Wallet attestation lifetime must be greater than 0")]
     BR_0504,
+
+    #[strum(message = "Wallet Instance Attestation is revoked")]
+    BR_0505,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

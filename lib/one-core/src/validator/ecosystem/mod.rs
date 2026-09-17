@@ -7,6 +7,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::provider::ProviderExt;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
+use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::repository::interaction_repository::InteractionRepository;
 
@@ -24,6 +25,9 @@ pub(crate) enum EcosystemValidationError {
     EcosystemNotPermitted,
     #[error("Ecosystem `{0}` already committed on this interaction")]
     EcosystemAlreadyCommitted(EcosystemId),
+    /// the committed ecosystem rejected the artifact
+    #[error(transparent)]
+    Rejected(EcosystemError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -35,6 +39,7 @@ impl ErrorCodeMixin for EcosystemValidationError {
             Self::NoEcosystemSelected | Self::NoEcosystemDetected(_) => ErrorCode::BR_0476,
             Self::EcosystemNotPermitted => ErrorCode::BR_0475,
             Self::EcosystemAlreadyCommitted(_) => ErrorCode::BR_0477,
+            Self::Rejected(error) => error.error_code(),
             Self::Nested(nested) => nested.error_code(),
         }
     }
@@ -496,7 +501,7 @@ async fn validate_committed(
     ecosystem
         .validate_interaction(artifact, interaction)
         .await
-        .error_while("validating interaction")?;
+        .map_err(EcosystemValidationError::Rejected)?;
 
     Ok(EcosystemOutcomes::validated(ecosystem_id.to_owned()))
 }

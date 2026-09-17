@@ -39,13 +39,12 @@ use super::nonce::{Context, generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
     validate_credential_request_format, validate_pop_audience, validate_response_encryption,
-    validate_timestamps, verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match,
-    wia_key_source,
+    validate_timestamps, verify_ka_wia_issuers_match, verify_pop_signature, verify_wia_signature,
 };
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolType};
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
@@ -64,15 +63,13 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::relation::Related;
-use crate::model::wallet_instance_attestation::AttestationType;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
-use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::ecosystem::model::{ProtocolArtifact, WalletProviderAttestationSource};
+use crate::provider::ecosystem::model::{ProtocolArtifact, WalletAttestationArtifact};
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -88,9 +85,7 @@ use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
 use crate::service::common_mapper::{record_ecosystems_resolved, resolved_ecosystems};
 use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
-use crate::service::managed_instance::dto::{
-    WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
-};
+use crate::service::managed_instance::dto::WalletInstanceAttestationClaims;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::jwe::{build_jwe, decrypt_jwe};
 use crate::util::key_agreement::key_agreement_keys;
@@ -726,24 +721,13 @@ impl OID4VCIFinal1_0Service {
                 return Err(OpenID4VCIError::InvalidOrMissingProof.into());
             };
 
-            let attested_keys = validator::validate_key_attestation(
+            let ka = validator::validate_key_attestation(
                 key_attestation_jwt,
                 &token_verifier,
                 key_storage_security.into(),
                 params.key_attestation_leeway_seconds,
             )
             .await?;
-
-            let wallet_unit_attestation_status = self
-                .holder_wallet_unit_proto
-                .check_attestation_status(key_attestation_jwt, AttestationType::KeyAttestation)
-                .await
-                .error_while("checking wallet unit attestation status")?;
-
-            if wallet_unit_attestation_status != WalletUnitStatusCheckResponse::Active {
-                tracing::error!("wallet unit attestation is revoked");
-                return Err(WalletAttestationError::WuaRevoked.into());
-            }
 
             if schema.wallet_attestation.require_instance_attestation {
                 let Some(wallet_instance_attestation_blob_id) =
@@ -782,32 +766,25 @@ impl OID4VCIFinal1_0Service {
                         WalletAttestationError::WiaMalformed(format!("parsing stored WIA: {e}"))
                     })?;
 
-                verify_wua_wia_issuers_match(key_attestation_jwt, &wia)?;
+                verify_ka_wia_issuers_match(&ka, &wia)?;
             }
-
-            let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)
-                .map_err(|e| WalletAttestationError::KaMalformed(format!("parsing: {e}")))?;
-            let key_source = wua.public_key_source(None).map_err(|e| {
-                WalletAttestationError::KaMalformed(format!("extracting public key: {e}"))
-            })?;
 
             if interaction.ecosystem.is_some() {
                 // committed, so the step validates the attestation and records the verdict
                 validate_ecosystem_step(
                     interaction.id,
                     &ProtocolArtifact::IssuerIssuance {
-                        wallet_provider: key_source,
-                        source: WalletProviderAttestationSource::KeyAttestation,
+                        attestation: WalletAttestationArtifact::Key {
+                            token: key_attestation_jwt,
+                            jwt: &ka,
+                        },
                     },
                     self.interaction_repository.as_ref(),
                     self.ecosystem_provider.as_ref(),
                     SelectionRole::Issuer,
                 )
                 .await
-                .map_err(|e| match e.error_code() {
-                    ErrorCode::BR_0496 => WalletAttestationError::KaIssuerUntrusted.into(),
-                    _ => OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem")),
-                })?;
+                .map_err(OID4VCIFinal1_0ServiceError::from_ecosystem_validation)?;
             }
 
             let proof_signing_key = match &holder_binding {
@@ -831,7 +808,7 @@ impl OID4VCIFinal1_0Service {
                 OpenID4VCIProofHolderBinding::Jwk(jwk) => jwk.clone(),
             };
 
-            if !attested_keys.contains(&proof_signing_key) {
+            if !ka.payload.custom.attested_keys.contains(&proof_signing_key) {
                 tracing::debug!("proof signing key is not in the attested_keys list");
                 return Err(OpenID4VCIError::InvalidOrMissingProof.into());
             }
@@ -1526,8 +1503,6 @@ impl OID4VCIFinal1_0Service {
         };
         verify_wia_signature(&wallet_instance_attestation, &verifier).await?;
 
-        let key_source = wia_key_source(&wallet_instance_attestation)?;
-
         let interaction = self
             .interaction_repository
             .get_interaction(&interaction_id, None)
@@ -1538,18 +1513,17 @@ impl OID4VCIFinal1_0Service {
             validate_ecosystem_step(
                 interaction.id,
                 &ProtocolArtifact::IssuerIssuance {
-                    wallet_provider: key_source,
-                    source: WalletProviderAttestationSource::WalletInstanceAttestation,
+                    attestation: WalletAttestationArtifact::WalletInstance {
+                        token: wallet_instance_attestation_token,
+                        jwt: &wallet_instance_attestation,
+                    },
                 },
                 self.interaction_repository.as_ref(),
                 self.ecosystem_provider.as_ref(),
                 SelectionRole::Issuer,
             )
             .await
-            .map_err(|e| match e.error_code() {
-                ErrorCode::BR_0494 => WalletAttestationError::WiaIssuerUntrusted.into(),
-                _ => OID4VCIFinal1_0ServiceError::from(e.error_while("validating ecosystem")),
-            })?;
+            .map_err(OID4VCIFinal1_0ServiceError::from_ecosystem_validation)?;
         }
 
         // Extract wallet metadata

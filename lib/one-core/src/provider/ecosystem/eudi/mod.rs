@@ -15,10 +15,9 @@ use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
     EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
-    WalletProviderAttestationSource,
 };
 use crate::config::core_config::CoreConfig;
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
 use crate::model::identifier::IdentifierFilterValue;
 use crate::model::interaction::Interaction;
@@ -28,7 +27,6 @@ use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::proto::wrp_validator::model::TrustScope;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -42,6 +40,7 @@ use crate::repository::proof_schema_repository::ProofSchemaRepository;
 mod holder_issuance;
 mod holder_proof;
 mod identifier_filter;
+mod issuer_issuance;
 mod lifecycle;
 mod mapper;
 mod trust_detail;
@@ -245,27 +244,9 @@ impl Ecosystem for EudiEcosystem {
                     .await
                     .error_while("resolving holder proof trust")?;
             }
-            ProtocolArtifact::IssuerIssuance {
-                wallet_provider,
-                source,
-            } => {
-                self.wrp_validator
-                    .validate_wallet_provider(
-                        wallet_provider.to_owned(),
-                        &self.trust_scope(interaction.organisation.id()),
-                    )
-                    .await
-                    .map_err(|e| match (*source, &e) {
-                        (
-                            WalletProviderAttestationSource::WalletInstanceAttestation,
-                            WRPValidatorError::WalletProviderNotTrusted,
-                        ) => EcosystemError::WalletInstanceAttestationIssuerUntrusted,
-                        (
-                            WalletProviderAttestationSource::KeyAttestation,
-                            WRPValidatorError::WalletProviderNotTrusted,
-                        ) => EcosystemError::KeyAttestationIssuerUntrusted,
-                        _ => EcosystemError::Nested(e.error_while("validating wallet provider")),
-                    })?;
+            ProtocolArtifact::IssuerIssuance { attestation } => {
+                self.resolve_wallet_attestation(attestation, interaction.organisation.id())
+                    .await?;
             }
             ProtocolArtifact::VerifierSubmission {
                 credential,

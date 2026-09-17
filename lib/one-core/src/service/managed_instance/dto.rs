@@ -9,6 +9,9 @@ use crate::config::core_config::DocumentSignerType;
 use crate::model::common::GetListResponse;
 use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::managed_instance::ManagedInstanceOs;
+use crate::proto::jwt::TokenError;
+use crate::proto::jwt::model::{DecomposedJwt, JWTHeader};
+use crate::provider::credential_formatter::model::PublicKeySource;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 
 #[derive(Clone, Debug)]
@@ -375,7 +378,7 @@ pub(crate) struct NoncePayload {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct WalletInstanceAttestationClaims {
+pub struct WalletInstanceAttestationClaims {
     pub wallet_name: Option<String>,
     pub wallet_link: Option<String>,
     pub wallet_solution_certification_information: Option<serde_json::Value>,
@@ -385,7 +388,7 @@ pub(crate) struct WalletInstanceAttestationClaims {
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct WalletUnitAttestationClaims {
+pub struct WalletUnitAttestationClaims {
     pub key_storage: Vec<KeyStorageSecurityLevel>,
     pub attested_keys: Vec<PublicJwk>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
@@ -396,9 +399,32 @@ pub(crate) struct WalletUnitAttestationClaims {
     pub status: Option<SdJwtVcStatus>,
 }
 
+impl DecomposedJwt<WalletInstanceAttestationClaims> {
+    pub fn wallet_provider_key(&self) -> Result<PublicKeySource<'_>, TokenError> {
+        wallet_provider_key(&self.header)
+    }
+}
+
+impl DecomposedJwt<WalletUnitAttestationClaims> {
+    pub fn wallet_provider_key(&self) -> Result<PublicKeySource<'_>, TokenError> {
+        wallet_provider_key(&self.header)
+    }
+}
+
+/// The wallet provider signs with the key in the `jwk` or `x5c` header, `iss` is not read.
+fn wallet_provider_key(header: &JWTHeader) -> Result<PublicKeySource<'_>, TokenError> {
+    match (&header.jwk, &header.x5c) {
+        (Some(jwk), None) => Ok(jwk.into()),
+        (None, Some(x5c)) => Ok(PublicKeySource::X5c { x5c }),
+        _ => Err(TokenError::ValidationFailed(
+            "jwk/x5c header missing or ambiguous".to_string(),
+        )),
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct AttestationStatus {
+pub struct AttestationStatus {
     pub status: SdJwtVcStatus,
 
     #[serde(rename = "exp", with = "crate::mapper::timestamp")]
@@ -406,13 +432,13 @@ pub(crate) struct AttestationStatus {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct EudiWalletInfo {
+pub struct EudiWalletInfo {
     pub general_info: EudiWalletGeneralInfo,
     pub wscd_info: Option<WscdInfo>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct EudiWalletGeneralInfo {
+pub struct EudiWalletGeneralInfo {
     pub wallet_provider_name: String,
     pub wallet_solution_id: String,
     pub wallet_solution_version: String,
@@ -421,6 +447,6 @@ pub(crate) struct EudiWalletGeneralInfo {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct WscdInfo {
+pub struct WscdInfo {
     pub wscd_type: WscdType,
 }

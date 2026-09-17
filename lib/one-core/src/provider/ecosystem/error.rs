@@ -22,10 +22,8 @@ pub enum EcosystemError {
     },
     #[error("Untrusted identifier")]
     UntrustedIdentifier,
-    #[error("Wallet Instance Attestation issuer not on wallet provider trust list")]
-    WalletInstanceAttestationIssuerUntrusted,
-    #[error("Key Attestation issuer not on wallet provider trust list")]
-    KeyAttestationIssuerUntrusted,
+    #[error(transparent)]
+    WalletAttestation(#[from] WalletAttestationRejection),
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -40,11 +38,33 @@ impl ErrorCodeMixin for EcosystemError {
             | Self::UntrustedIdentifier
             | Self::InvalidIdentifier(_)
             | Self::DisallowedSchemaFormat(_) => ErrorCode::BR_0477,
-            Self::WalletInstanceAttestationIssuerUntrusted => ErrorCode::BR_0494,
-            Self::KeyAttestationIssuerUntrusted => ErrorCode::BR_0496,
+            Self::WalletAttestation(rejection) => rejection.error_code(),
             Self::UnsupportedRole(_) | Self::InvalidRoleFilter { .. } => ErrorCode::BR_0479,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum WalletAttestationRejection {
+    #[error("Wallet Instance Attestation issuer not on wallet provider trust list")]
+    WiaIssuerUntrusted,
+    #[error("Key Attestation issuer not on wallet provider trust list")]
+    KaIssuerUntrusted,
+    #[error("Wallet Instance Attestation is revoked")]
+    WiaRevoked,
+    #[error("Key Attestation is revoked")]
+    KaRevoked,
+}
+
+impl ErrorCodeMixin for WalletAttestationRejection {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::WiaIssuerUntrusted => ErrorCode::BR_0494,
+            Self::KaIssuerUntrusted => ErrorCode::BR_0496,
+            Self::WiaRevoked => ErrorCode::BR_0505,
+            Self::KaRevoked => ErrorCode::BR_0499,
         }
     }
 }

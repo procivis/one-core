@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
@@ -9,11 +9,15 @@ use super::*;
 use crate::clock::now_utc;
 use crate::model::interaction::{InteractionEcosystems, InteractionType};
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::model::{IdentifierDetails, PublicKeySource};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::DecomposedJwt;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::ecosystem::error::EcosystemError;
+use crate::provider::ecosystem::model::WalletAttestationArtifact;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::service::managed_instance::dto::WalletInstanceAttestationClaims;
 use crate::service::test_utilities::{dummy_credential, dummy_organisation};
 
 fn configuration(selected: &[&str]) -> OrganisationConfiguration {
@@ -190,9 +194,17 @@ fn interaction_under_test(
 }
 
 fn issuer_artifact() -> ProtocolArtifact<'static> {
+    // an unsigned WIA with an empty payload, header `{"alg":"ES256"}`
+    const WIA_TOKEN: &str = "eyJhbGciOiJFUzI1NiJ9.e30";
+    static WIA: LazyLock<DecomposedJwt<WalletInstanceAttestationClaims>> = LazyLock::new(|| {
+        Jwt::<WalletInstanceAttestationClaims>::decompose_token(WIA_TOKEN).unwrap()
+    });
+
     ProtocolArtifact::IssuerIssuance {
-        wallet_provider: PublicKeySource::X5c { x5c: &[] },
-        source: crate::provider::ecosystem::model::WalletProviderAttestationSource::WalletInstanceAttestation,
+        attestation: WalletAttestationArtifact::WalletInstance {
+            token: WIA_TOKEN,
+            jwt: &WIA,
+        },
     }
 }
 
