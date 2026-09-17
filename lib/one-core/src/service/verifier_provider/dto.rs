@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::provider::verifier::model::VerifierAppVersion;
+use crate::provider::verifier::dto::VerifierAppVersion;
 use crate::service::managed_instance::dto::{
     EcosystemMetadataDTO, ProviderTrustCollectionDTO, UserAuthenticationDTO,
     WalletUnitAttestationMetadataDTO,

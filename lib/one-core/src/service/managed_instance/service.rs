@@ -43,7 +43,7 @@ use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::model::RevocationState;
-use crate::provider::verifier::model::AccessCertificateConfiguration;
+use crate::provider::verifier::dto::AccessCertificateConfiguration;
 use crate::service::common_dto::ListQueryDTO;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -298,24 +298,16 @@ impl ManagedInstanceService {
                 }
             }
             InstanceRole::Verifier => {
-                let verifier_params = self
-                    .verifier_provider
-                    .get_by_id(provider)
-                    .error_while("validating config")?;
-                let integrity_check = verifier_params
-                    .verifier_instance_attestation
-                    .map(|attestation| attestation.integrity_check)
-                    .unwrap_or(IntegrityCheck {
-                        enabled: false,
-                        ..IntegrityCheck::default()
-                    });
+                let verifier_provider = self.verifier_provider_directory.get_provider(provider)?;
+                let params = verifier_provider
+                    .get_registration_params()
+                    .error_while("getting provider params")?;
                 ProviderRegistrationParams {
-                    name_label: provider.to_string(),
-                    integrity_check,
-                    device_auth_leeway: verifier_params.device_auth_leeway_seconds,
-                    user_authentication: verifier_params.user_authentication,
-                    access_certificate_configuration: verifier_params
-                        .access_certificate_configuration,
+                    name_label: params.name_label,
+                    integrity_check: params.integrity_check,
+                    device_auth_leeway: params.device_auth_leeway,
+                    user_authentication: params.user_authentication,
+                    access_certificate_configuration: params.access_certificate_configuration,
                 }
             }
         })

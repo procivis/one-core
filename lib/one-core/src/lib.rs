@@ -71,7 +71,7 @@ use crate::provider::transaction_data::provider::transaction_data_provider_from_
 use crate::provider::trust_list_publisher::provider::trust_list_publisher_provider_from_config;
 use crate::provider::trust_list_subscriber::provider::trust_list_subscriber_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
-use crate::provider::verifier::provider::verifier_provider_from_config;
+use crate::provider::verifier::provider::verifier_provider_directory_from_config;
 use crate::provider::wallet::provider::wallet_provider_directory_from_config;
 use crate::repository::DataRepository;
 use crate::service::backup::BackupService;
@@ -353,8 +353,6 @@ impl OneCore {
             did_method_provider.clone(),
         )?;
 
-        let verifier_provider = verifier_provider_from_config(&config)?;
-
         let document_signer_provider =
             document_signer_provider_from_config(&mut config, csc_client)?;
 
@@ -521,6 +519,14 @@ impl OneCore {
             key_algorithm_provider.clone(),
             data_provider.get_identifier_repository(),
             key_provider.clone(),
+        )?;
+
+        let verifier_provider_directory = verifier_provider_directory_from_config(
+            &mut config,
+            data_provider.get_organisation_repository(),
+            data_provider.get_trust_collection_repository(),
+            data_provider.get_credential_schema_repository(),
+            data_provider.get_proof_schema_repository(),
         )?;
 
         let config = Arc::new(config);
@@ -832,7 +838,7 @@ impl OneCore {
                 certificate_validator,
                 client.clone(),
                 session_provider.clone(),
-                verifier_provider.clone(),
+                verifier_provider_directory.clone(),
                 wallet_provider_directory,
                 config.clone(),
                 core_base_url.clone(),
@@ -901,14 +907,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 session_provider.clone(),
             ),
-            verifier_provider_service: VerifierProviderService::new(
-                verifier_provider,
-                data_provider.get_trust_collection_repository(),
-                data_provider.get_credential_schema_repository(),
-                data_provider.get_proof_schema_repository(),
-                data_provider.get_organisation_repository(),
-                config.clone(),
-            ),
+            verifier_provider_service: VerifierProviderService::new(verifier_provider_directory),
             trust_list_publication_service: TrustListPublicationService::new(
                 data_provider.get_identifier_repository(),
                 data_provider.get_trust_list_publication_repository(),

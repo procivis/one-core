@@ -298,7 +298,6 @@ verifierProvider:
       public:
         verifierName: "Procivis One Verifier"
         verifierInstanceAttestation:
-          expirationSeconds: 86400 # 24*60*60 seconds
           integrityCheck:
             android:
               bundleId: ch.procivis.one.verifier.dev

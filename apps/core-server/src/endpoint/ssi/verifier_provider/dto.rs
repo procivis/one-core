@@ -1,4 +1,4 @@
-use one_core::provider::verifier::model::{VerifierAppVersion, VerifierUpdateScreen};
+use one_core::provider::verifier::dto::{VerifierAppVersion, VerifierUpdateScreen};
 use one_core::service::managed_instance::dto::EcosystemMetadataDTO;
 use one_core::service::verifier_provider::dto::VerifierProviderMetadataResponseDTO;
 use one_dto_mapper::{From, convert_inner};

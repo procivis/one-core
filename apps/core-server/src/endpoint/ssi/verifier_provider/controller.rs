@@ -1,6 +1,9 @@
 use axum::extract::{Path, State};
+use axum::response::{IntoResponse, Response};
 use axum_extra::extract::WithRejection;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use proc_macros::endpoint;
+use reqwest::StatusCode;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
@@ -24,11 +27,23 @@ use crate::router::AppState;
 pub(crate) async fn get_verification_provider(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<VerifierProviderResponseRestDTO> {
+) -> Response {
     let result = state
         .core
         .verifier_provider_service
         .get_verifier_by_id(id.as_str())
         .await;
-    OkOrErrorResponse::from_result(result, state, "retrieving verifier provider")
+
+    match result {
+        Err(error) if matches!(error.error_code(), ErrorCode::BR_0430) => {
+            tracing::error!("Verifier provider not found: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        result => OkOrErrorResponse::<VerifierProviderResponseRestDTO>::from_result(
+            result,
+            state,
+            "retrieving verifier provider",
+        )
+        .into_response(),
+    }
 }

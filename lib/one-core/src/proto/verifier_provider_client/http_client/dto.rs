@@ -1,7 +1,7 @@
 use one_dto_mapper::{Into, convert_inner};
 use serde::Deserialize;
 
-use crate::provider::verifier::model::VerifierAppVersion;
+use crate::provider::verifier::dto::VerifierAppVersion;
 use crate::service::managed_instance::dto::{
     EcosystemMetadataDTO, ProviderTrustCollectionDTO, UserAuthenticationDTO,
     WalletUnitAttestationMetadataDTO,

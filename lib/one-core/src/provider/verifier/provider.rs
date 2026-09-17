@@ -1,63 +1,57 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use thiserror::Error;
-
-use super::model::VerifierParams;
+use super::VerifierProvider;
+use super::procivis::ProcivisVerifierProvider;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::CoreConfig;
-use crate::error::{ErrorCode, ErrorCodeMixin};
-
-#[derive(Debug, Error)]
-pub(crate) enum VerifierRegistryError {
-    #[error("Cannot find verifier provider `{0}`")]
-    NotFound(String),
-}
-
-impl ErrorCodeMixin for VerifierRegistryError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::NotFound(_) => ErrorCode::BR_0380,
-        }
-    }
-}
+use crate::config::core_config::{CoreConfig, Fields, VerifierProviderType};
+use crate::error::{ContextWithErrorCode, NestedError};
+use crate::provider::provider_directory::ProviderDirectory;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
+use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use crate::repository::trust_collection_repository::TrustCollectionRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-pub(crate) trait VerifierProvider: Send + Sync {
-    fn get_by_id(&self, id: &str) -> Result<VerifierParams, VerifierRegistryError>;
+pub(crate) trait VerifierProviderDirectory: Send + Sync {
+    fn get_provider(&self, provider_id: &str) -> Result<Arc<dyn VerifierProvider>, NestedError>;
 }
 
-struct VerifierProviderImpl {
-    verifiers: HashMap<String, VerifierParams>,
-}
-
-impl VerifierProvider for VerifierProviderImpl {
-    fn get_by_id(&self, id: &str) -> Result<VerifierParams, VerifierRegistryError> {
-        match self.verifiers.get(id) {
-            Some(value) => Ok(value.clone()),
-            None => Err(VerifierRegistryError::NotFound(id.to_owned())),
-        }
+impl VerifierProviderDirectory
+    for ProviderDirectory<String, Fields<VerifierProviderType>, dyn VerifierProvider>
+{
+    fn get_provider(&self, provider_id: &str) -> Result<Arc<dyn VerifierProvider>, NestedError> {
+        self.provider(provider_id)
     }
 }
 
-pub(crate) fn verifier_provider_from_config(
-    config: &CoreConfig,
-) -> Result<Arc<dyn VerifierProvider>, ConfigValidationError> {
-    let mut verifiers = HashMap::new();
-    for (name, fields) in config.verifier_provider.iter() {
-        let verifier: VerifierParams = serde_json::from_value(
-            fields
-                .params
-                .as_ref()
-                .and_then(|params| params.merge())
-                .unwrap_or(serde_json::Value::Null),
-        )
-        .map_err(|e| ConfigValidationError::FieldsDeserialization {
-            key: name.clone(),
-            source: e,
-        })?;
-        verifiers.insert(name.clone(), verifier);
-    }
+pub(crate) fn verifier_provider_directory_from_config(
+    config: &mut CoreConfig,
+    organisation_repository: Arc<dyn OrganisationRepository>,
+    trust_collection_repository: Arc<dyn TrustCollectionRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+) -> Result<Arc<dyn VerifierProviderDirectory>, ConfigValidationError> {
+    let core_config = Arc::new(config.to_owned());
 
-    Ok(Arc::new(VerifierProviderImpl { verifiers }))
+    let directory = ProviderDirectory::initialize(
+        config.verifier_provider.iter_mut(),
+        |name: &String, fields: &Fields<VerifierProviderType>| {
+            let provider: Arc<dyn VerifierProvider> = match fields.r#type {
+                VerifierProviderType::ProcivisOne => Arc::new(ProcivisVerifierProvider::new(
+                    name.to_string(),
+                    core_config.clone(),
+                    fields.merge_fields(),
+                    organisation_repository.clone(),
+                    trust_collection_repository.clone(),
+                    credential_schema_repository.clone(),
+                    proof_schema_repository.clone(),
+                )?),
+            };
+
+            Ok(provider)
+        },
+    )
+    .error_while("initializing verifier providers")?;
+
+    Ok(Arc::new(directory))
 }

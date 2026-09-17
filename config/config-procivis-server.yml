@@ -168,7 +168,6 @@ verifierProvider:
     params:
       public:
         verifierInstanceAttestation:
-          expirationSeconds: 86400 # 24*60*60 seconds
           integrityCheck:
             android:
               trustedAttestationCAs:

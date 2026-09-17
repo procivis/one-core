@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::ManagedInstanceService;
 use super::dto::{ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO};
 use crate::config;
-use crate::config::core_config::{CoreConfig, Fields, IdentifierType, KeyAlgorithmType, Params};
+use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::instance::{InstanceRole, InstanceStatus};
 use crate::model::managed_instance::{ManagedInstance, ManagedInstanceOs};
@@ -37,8 +37,9 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::signer::provider::MockSignerProvider;
-use crate::provider::verifier::model::{ConfigFeatureFlags, VerifierParams};
-use crate::provider::verifier::provider::MockVerifierProvider;
+use crate::provider::verifier::MockVerifierProvider;
+use crate::provider::verifier::dto::VerifierProviderRegistrationParams;
+use crate::provider::verifier::provider::MockVerifierProviderDirectory;
 use crate::provider::wallet::MockWalletProvider;
 use crate::provider::wallet::dto::WalletProviderRegistrationParams;
 use crate::provider::wallet::provider::MockWalletProviderDirectory;
@@ -65,7 +66,7 @@ fn mock_wallet_provider_service() -> ManagedInstanceService {
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
         session_provider: Arc::new(NoSessionProvider),
-        verifier_provider: Arc::new(MockVerifierProvider::default()),
+        verifier_provider_directory: Arc::new(MockVerifierProviderDirectory::default()),
         wallet_provider_directory: Arc::new(MockWalletProviderDirectory::default()),
     }
 }
@@ -300,21 +301,6 @@ async fn test_register_wallet_unit_integrity_check() {
     assert!(result.nonce.is_some());
 }
 
-fn verifier_provider_params() -> VerifierParams {
-    VerifierParams {
-        app_version: None,
-        feature_flags: ConfigFeatureFlags {
-            ecosystems_enabled: false,
-            ecosystems_enforcement_enabled: false,
-        },
-        verifier_instance_attestation: None,
-        user_authentication: None,
-        access_certificate_configuration: None,
-        device_auth_leeway_seconds: Duration::seconds(60),
-        signer_identifier_types: vec![IdentifierType::Certificate],
-    }
-}
-
 #[tokio::test]
 async fn test_register_verifier_unit() {
     // given
@@ -334,11 +320,29 @@ async fn test_register_verifier_unit() {
             }))
         });
 
-    let mut verifier_provider = MockVerifierProvider::new();
-    verifier_provider
-        .expect_get_by_id()
-        .withf(|id| id == "VERIFIER_PROVIDER")
-        .returning(|_| Ok(verifier_provider_params()));
+    let mut verifier_provider_directory = MockVerifierProviderDirectory::new();
+    verifier_provider_directory
+        .expect_get_provider()
+        .with(eq(verifier_provider_name))
+        .return_once(|_| {
+            let mut verifier_provider = MockVerifierProvider::new();
+            verifier_provider
+                .expect_get_registration_params()
+                .return_once(|| {
+                    Ok(VerifierProviderRegistrationParams {
+                        name_label: verifier_provider_name.to_string(),
+                        integrity_check: IntegrityCheck {
+                            enabled: false,
+                            ..Default::default()
+                        },
+                        device_auth_leeway: Default::default(),
+                        user_authentication: None,
+                        access_certificate_configuration: None,
+                    })
+                });
+
+            Ok(Arc::new(verifier_provider))
+        });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -361,7 +365,7 @@ async fn test_register_verifier_unit() {
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         managed_instance_repository: Arc::new(managed_instance_repository),
         history_repository: Arc::new(history_repository),
-        verifier_provider: Arc::new(verifier_provider),
+        verifier_provider_directory: Arc::new(verifier_provider_directory),
         ..mock_wallet_provider_service()
     };
 

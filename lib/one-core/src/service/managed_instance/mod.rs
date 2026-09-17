@@ -8,7 +8,7 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::signer::provider::SignerProvider;
-use crate::provider::verifier::provider::VerifierProvider;
+use crate::provider::verifier::provider::VerifierProviderDirectory;
 use crate::provider::wallet::provider::WalletProviderDirectory;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
@@ -37,7 +37,7 @@ pub struct ManagedInstanceService {
     certificate_validator: Arc<dyn CertificateValidator>,
     http_client: Arc<dyn HttpClient>,
     session_provider: Arc<dyn SessionProvider>,
-    verifier_provider: Arc<dyn VerifierProvider>,
+    verifier_provider_directory: Arc<dyn VerifierProviderDirectory>,
     wallet_provider_directory: Arc<dyn WalletProviderDirectory>,
     base_url: Option<String>,
     config: Arc<core_config::CoreConfig>,
@@ -56,7 +56,7 @@ impl ManagedInstanceService {
         certificate_validator: Arc<dyn CertificateValidator>,
         http_client: Arc<dyn HttpClient>,
         session_provider: Arc<dyn SessionProvider>,
-        verifier_provider: Arc<dyn VerifierProvider>,
+        verifier_provider_directory: Arc<dyn VerifierProviderDirectory>,
         wallet_provider_directory: Arc<dyn WalletProviderDirectory>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
@@ -74,7 +74,7 @@ impl ManagedInstanceService {
             config,
             base_url,
             session_provider,
-            verifier_provider,
+            verifier_provider_directory,
             wallet_provider_directory,
         }
     }
