@@ -164,6 +164,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         id: &CredentialSchemaId,
         request: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError> {
+        let translations = request.translations.unwrap_or_default();
         let layout_properties = match request.layout_properties {
             None => Unchanged(Default::default()),
             Some(layout_properties) => Set(Some(layout_properties.into())),
@@ -233,6 +234,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
                 if let Some(claim_mappings) = request.claim_mappings {
                     self.insert_claim_mappings(claim_mappings).await?;
+                }
+                if !translations.is_empty() {
+                    self.localized_text_repository
+                        .upsert_many(translations)
+                        .await?;
                 }
                 Ok::<_, DataLayerError>(())
             }

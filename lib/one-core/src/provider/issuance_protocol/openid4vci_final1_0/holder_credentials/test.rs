@@ -1,5 +1,8 @@
-use shared_types::{ClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId};
-use standardized_types::openid4vci::{ClaimMetadata, CredentialMetadata};
+use shared_types::{ClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId, EntityId};
+use similar_asserts::assert_eq;
+use standardized_types::openid4vci::{
+    ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialMetadata,
+};
 use uuid::Uuid;
 
 use super::apply_issuer_metadata_to_schema;
@@ -33,7 +36,7 @@ async fn applies_mandatory_issuer_metadata_to_claim_schema() {
         ..Default::default()
     };
 
-    apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en")
+    apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
         .await
         .unwrap();
 
@@ -83,11 +86,74 @@ async fn errors_when_mandatory_issuer_metadata_claims_are_missing_from_parsed_sc
         ..Default::default()
     };
 
-    let error = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en")
+    let error = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
         .await
         .unwrap_err();
 
     assert!(error.to_string().contains("['missing', 'address/street']"));
+}
+
+#[tokio::test]
+async fn returns_all_issuer_metadata_translations_for_persistence() {
+    let claim = claim_schema("givenName", "STRING");
+    let claim_id = claim.id;
+    let format_id = Uuid::new_v4().into();
+    let mut schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![claim],
+        vec![mapping(format_id, claim_id, "given_name", None)],
+    );
+    let metadata = CredentialMetadata {
+        display: Some(vec![
+            CredentialDisplay {
+                name: "Identity".to_string(),
+                locale: Some("en".to_string()),
+                description: Some("Identity credential".to_string()),
+                ..Default::default()
+            },
+            CredentialDisplay {
+                name: "Identität".to_string(),
+                locale: Some("de".to_string()),
+                description: Some("Identitätsnachweis".to_string()),
+                ..Default::default()
+            },
+        ]),
+        claims: Some(vec![ClaimMetadata {
+            path: vec!["given_name".to_string()],
+            display: Some(vec![
+                ClaimDisplay {
+                    name: Some("Given name".to_string()),
+                    locale: Some("en".to_string()),
+                },
+                ClaimDisplay {
+                    name: Some("Vorname".to_string()),
+                    locale: Some("de".to_string()),
+                },
+            ]),
+            mandatory: None,
+            additional_values: Default::default(),
+        }]),
+    };
+
+    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+        .await
+        .unwrap();
+
+    assert_eq!(translations.len(), 6);
+    assert!(translations.iter().any(|translation| {
+        translation.entity_id == EntityId::from(schema.id)
+            && translation.field == crate::model::localized_text::LocalizedTextField::Description
+            && translation.lang == "de"
+            && translation.value == "Identitätsnachweis"
+    }));
+    assert!(translations.iter().any(|translation| {
+        translation.entity_id == EntityId::from(claim_id)
+            && translation.field == crate::model::localized_text::LocalizedTextField::Name
+            && translation.lang == "en"
+            && translation.value == "Given name"
+    }));
 }
 
 fn claim_schema(key: &str, data_type: &str) -> ClaimSchema {

@@ -9,7 +9,7 @@ use one_crypto::encryption::encrypt_data;
 use one_crypto::jwe::{Header, build_jwe, decrypt_jwe_payload};
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, EntityId};
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_472::disclosure_policy::{DisclosurePolicy, PolicyType};
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
@@ -45,7 +45,8 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{
-    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, WalletAttestation,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, UpdateCredentialSchemaRequest,
+    WalletAttestation,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -636,7 +637,23 @@ async fn test_holder_accept_credential_success() {
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
             credential_signing_alg_values_supported: None,
             proof_types_supported: None,
-            credential_metadata: None,
+            credential_metadata: Some(CredentialMetadata {
+                display: Some(vec![CredentialDisplay {
+                    name: "Number credential".to_string(),
+                    locale: Some("en".to_string()),
+                    description: Some("Contains a number".to_string()),
+                    ..Default::default()
+                }]),
+                claims: Some(vec![ClaimMetadata {
+                    path: vec!["NUMBER".to_string()],
+                    display: Some(vec![ClaimDisplay {
+                        name: Some("Number".to_string()),
+                        locale: Some("en".to_string()),
+                    }]),
+                    mandatory: Some(true),
+                    additional_values: Default::default(),
+                }]),
+            }),
             disclosure_policy: None,
             notification_id: None,
             credential_id: None,
@@ -731,11 +748,34 @@ async fn test_holder_accept_credential_success() {
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let mut schema = credential.schema.as_ref().await.unwrap().to_owned();
+    // Keep the stored claims independent from the formatter's parsed schema.
+    let claim_schemas = schema.claim_schemas.as_ref().await.unwrap().to_owned();
+    schema.claim_schemas = claim_schemas.into();
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
         .returning(move |_| Ok(credential_schema_list(Some(schema.clone()))));
+    credential_schema_repository
+        .expect_update_credential_schema()
+        .once()
+        .withf(|_, request| {
+            request.translations.as_ref().is_some_and(|translations| {
+                translations.len() == 3
+                    && translations.iter().any(|translation| {
+                        translation.field == LocalizedTextField::Description
+                            && translation.lang == "en"
+                            && translation.value == "Contains a number"
+                    })
+                    && translations.iter().any(|translation| {
+                        translation.entity_type == LocalizedTextEntityType::ClaimSchema
+                            && translation.field == LocalizedTextField::Name
+                            && translation.lang == "en"
+                            && translation.value == "Number"
+                    })
+            })
+        })
+        .returning(|_, _| Ok(()));
 
     interaction_repository
         .expect_update_interaction()
@@ -851,6 +891,13 @@ async fn test_holder_accept_credential_success() {
         single_credential.issuer_identifier.as_ref().unwrap().id(),
         identifier.id
     );
+    let accepted_schema = single_credential.schema.as_ref().await.unwrap();
+    let schema_translations = accepted_schema.translations.as_ref().await.unwrap();
+    assert_eq!(schema_translations.len(), 2);
+    let claim_schemas = accepted_schema.claim_schemas.as_ref().await.unwrap();
+    let claim_translations = claim_schemas[0].translations.as_ref().await.unwrap();
+    assert_eq!(claim_translations.len(), 1);
+    assert_eq!(claim_translations[0].value, "Number");
 }
 
 #[tokio::test]
@@ -3806,6 +3853,21 @@ async fn interaction_with_metadata(
     }
 }
 
+fn capture_credential_schema_update(
+    repository: &mut MockCredentialSchemaRepository,
+) -> Arc<Mutex<Option<UpdateCredentialSchemaRequest>>> {
+    let captured_update = Arc::new(Mutex::new(None));
+    let captured_update_clone = captured_update.clone();
+    repository
+        .expect_update_credential_schema()
+        .once()
+        .returning(move |_, update| {
+            *captured_update_clone.lock().unwrap() = Some(update);
+            Ok(())
+        });
+    captured_update
+}
+
 #[tokio::test]
 async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
     // GIVEN
@@ -3885,6 +3947,9 @@ async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
         .expect_get_credential_schema_list()
         .once()
         .returning(|_| Ok(credential_schema_list(None)));
+    credential_schema_repository
+        .expect_update_credential_schema()
+        .never();
 
     let captured_schema: Arc<Mutex<Option<CredentialSchema>>> = Arc::new(Mutex::new(None));
     let captured_schema_clone = captured_schema.clone();
@@ -4103,6 +4168,9 @@ async fn test_holder_accept_credential_uses_default_language_for_display_without
         .expect_get_credential_schema_list()
         .once()
         .returning(|_| Ok(credential_schema_list(None)));
+    credential_schema_repository
+        .expect_update_credential_schema()
+        .never();
 
     let captured_schema: Arc<Mutex<Option<CredentialSchema>>> = Arc::new(Mutex::new(None));
     let captured_schema_clone = captured_schema.clone();
@@ -4317,6 +4385,9 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
         .expect_get_credential_schema_list()
         .once()
         .returning(|_| Ok(credential_schema_list(None)));
+    credential_schema_repository
+        .expect_update_credential_schema()
+        .never();
 
     let captured_schema: Arc<Mutex<Option<CredentialSchema>>> = Arc::new(Mutex::new(None));
     let captured_schema_clone = captured_schema.clone();
@@ -4462,6 +4533,220 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
     assert_eq!(de.field, LocalizedTextField::Name);
     assert_eq!(de.value, "Nummer");
     assert_eq!(de.entity_type, LocalizedTextEntityType::ClaimSchema);
+}
+
+#[rstest::rstest]
+#[case::all_changed(true, true, true, "en")]
+#[case::schema_name_changed(true, false, false, "en")]
+#[case::schema_description_changed(false, true, false, "en")]
+#[case::claim_name_changed(false, false, true, "en")]
+#[case::unchanged(false, false, false, "en")]
+#[case::new_language(false, false, false, "de")]
+#[tokio::test]
+async fn test_holder_accept_credential_updates_only_changed_translations_from_metadata(
+    #[case] schema_name_changed: bool,
+    #[case] schema_description_changed: bool,
+    #[case] claim_name_changed: bool,
+    #[case] stored_language: &str,
+) {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let credential = generic_credential_key();
+    let mut stored_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let stored_schema_id = stored_schema.id;
+    let now = get_dummy_date();
+    stored_schema.translations = vec![
+        LocalizedText {
+            entity_id: stored_schema.id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: stored_language.to_string(),
+            value: if schema_name_changed {
+                "Old credential name"
+            } else {
+                "Updated credential name"
+            }
+            .to_string(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        },
+        LocalizedText {
+            entity_id: stored_schema.id.into(),
+            field: LocalizedTextField::Description,
+            created_date: now,
+            last_modified: now,
+            lang: stored_language.to_string(),
+            value: if schema_description_changed {
+                "Old credential description"
+            } else {
+                "Updated credential description"
+            }
+            .to_string(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        },
+    ]
+    .into();
+    let mut stored_claim_schemas = stored_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
+    let number_claim = stored_claim_schemas
+        .iter_mut()
+        .find(|claim_schema| claim_schema.key == "NUMBER")
+        .unwrap();
+    let number_claim_id = number_claim.id;
+    number_claim.translations = vec![LocalizedText {
+        entity_id: number_claim.id.into(),
+        field: LocalizedTextField::Name,
+        created_date: now,
+        last_modified: now,
+        lang: stored_language.to_string(),
+        value: if claim_name_changed {
+            "Old number name"
+        } else {
+            "Updated number name"
+        }
+        .to_string(),
+        entity_type: LocalizedTextEntityType::ClaimSchema,
+    }]
+    .into();
+    stored_schema.claim_schemas = stored_claim_schemas.into();
+
+    let credential_metadata = CredentialMetadata {
+        display: Some(vec![CredentialDisplay {
+            name: "Updated credential name".to_string(),
+            locale: Some("en".to_string()),
+            description: Some("Updated credential description".to_string()),
+            ..Default::default()
+        }]),
+        claims: Some(vec![ClaimMetadata {
+            path: vec!["NUMBER".to_string()],
+            display: Some(vec![ClaimDisplay {
+                name: Some("Updated number name".to_string()),
+                locale: Some("en".to_string()),
+            }]),
+            mandatory: None,
+            additional_values: Default::default(),
+        }]),
+    };
+    let interaction =
+        interaction_with_metadata(&credential, credential_metadata, &mock_server.uri()).await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "access_token": "tok",
+            "token_type": "Bearer",
+            "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"c_nonce": "nonce"})))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credentials": [{"credential": "credential"}]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(move |_| Ok(credential_schema_list(Some(stored_schema))));
+    let expected_changes = [
+        schema_name_changed || stored_language != "en",
+        schema_description_changed || stored_language != "en",
+        claim_name_changed || stored_language != "en",
+    ];
+    let expected_change_count = expected_changes.iter().filter(|changed| **changed).count();
+    let captured_update = if expected_change_count > 0 {
+        Some(capture_credential_schema_update(
+            &mut credential_schema_repository,
+        ))
+    } else {
+        credential_schema_repository
+            .expect_update_credential_schema()
+            .never();
+        None
+    };
+    let openid_provider =
+        provider_for_credential_acceptance(&credential, credential_schema_repository).await;
+
+    // WHEN
+    let key = dummy_key();
+    let configuration_ids = configuration_ids(&interaction);
+    let mut response = openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(holder_binding_input(key)),
+            None,
+            configuration_ids,
+        )
+        .await
+        .unwrap();
+
+    // THEN
+    let accepted_credential = response.issued.pop().unwrap().main_credential.credential;
+    assert_eq!(accepted_credential.schema.id(), stored_schema_id);
+    let accepted_schema = accepted_credential.schema.as_ref().await.unwrap();
+    let schema_translations = accepted_schema.translations.as_ref().await.unwrap();
+    assert_eq!(schema_translations.len(), 2);
+    assert_eq!(schema_translations[0].value, "Updated credential name");
+    assert_eq!(
+        schema_translations[1].value,
+        "Updated credential description"
+    );
+    let claim_schemas = accepted_schema.claim_schemas.as_ref().await.unwrap();
+    let claim_translations = claim_schemas[0].translations.as_ref().await.unwrap();
+    assert_eq!(claim_translations.len(), 1);
+    assert_eq!(claim_translations[0].value, "Updated number name");
+
+    let Some(captured_update) = captured_update else {
+        return;
+    };
+    let update = captured_update.lock().unwrap().take().unwrap();
+    assert!(update.claim_schemas.is_none());
+    assert!(update.formats.is_none());
+    let translations = update.translations.expect("translations not persisted");
+    assert_eq!(translations.len(), expected_change_count);
+    assert_eq!(
+        translations.iter().any(|translation| {
+            translation.entity_id == EntityId::from(stored_schema_id)
+                && translation.entity_type == LocalizedTextEntityType::CredentialSchema
+                && translation.field == LocalizedTextField::Name
+                && translation.lang == "en"
+                && translation.value == "Updated credential name"
+        }),
+        expected_changes[0]
+    );
+    assert_eq!(
+        translations.iter().any(|translation| {
+            translation.entity_id == EntityId::from(stored_schema_id)
+                && translation.entity_type == LocalizedTextEntityType::CredentialSchema
+                && translation.field == LocalizedTextField::Description
+                && translation.lang == "en"
+                && translation.value == "Updated credential description"
+        }),
+        expected_changes[1]
+    );
+    assert_eq!(
+        translations.iter().any(|translation| {
+            translation.entity_id == EntityId::from(number_claim_id)
+                && translation.entity_type == LocalizedTextEntityType::ClaimSchema
+                && translation.field == LocalizedTextField::Name
+                && translation.lang == "en"
+                && translation.value == "Updated number name"
+        }),
+        expected_changes[2]
+    );
 }
 
 #[tokio::test]
@@ -4804,6 +5089,20 @@ async fn interaction_for(
 }
 
 async fn provider_with_encryption(credential: &Credential) -> OpenID4VCIFinal1_0 {
+    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .returning(move |_| Ok(credential_schema_list(Some(schema.clone()))));
+
+    provider_for_credential_acceptance(credential, credential_schema_repository).await
+}
+
+async fn provider_for_credential_acceptance(
+    credential: &Credential,
+    credential_schema_repository: MockCredentialSchemaRepository,
+) -> OpenID4VCIFinal1_0 {
     let mut formatter = MockCredentialFormatter::new();
     formatter
         .expect_get_leeway()
@@ -4822,13 +5121,6 @@ async fn provider_with_encryption(credential: &Credential) -> OpenID4VCIFinal1_0
     formatter_provider
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
-
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    credential_schema_repository
-        .expect_get_credential_schema_list()
-        .once()
-        .returning(move |_| Ok(credential_schema_list(Some(schema.clone()))));
 
     let mut interaction_repository = MockInteractionRepository::default();
     interaction_repository

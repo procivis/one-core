@@ -105,8 +105,13 @@ impl OpenID4VCIFinal1_0 {
             )
             .await?;
         for item in credentials.iter_mut().skip(1) {
-            self.align_credential_schema(&mut schema, &mut item.credential, None)
-                .await?;
+            self.align_credential_schema(
+                &mut schema,
+                &mut item.credential,
+                None,
+                configuration.credential_metadata.as_ref(),
+            )
+            .await?;
         }
 
         let mut main_credential = if credentials.len() > 1 {
@@ -200,8 +205,13 @@ impl OpenID4VCIFinal1_0 {
         .await?;
         drop(parsed_format);
 
-        self.align_credential_schema(&mut schema, credential, new_format)
-            .await?;
+        self.align_credential_schema(
+            &mut schema,
+            credential,
+            new_format,
+            configuration.credential_metadata.as_ref(),
+        )
+        .await?;
         Ok(schema)
     }
 
@@ -210,6 +220,7 @@ impl OpenID4VCIFinal1_0 {
         schema: &mut CredentialSchema,
         credential: &mut Credential,
         new_format: Option<CredentialSchemaFormat>,
+        metadata: Option<&CredentialMetadata>,
     ) -> Result<(), IssuanceProtocolError> {
         let alignment = align_format_claim_schemas_and_mappings(
             schema,
@@ -218,7 +229,23 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        if !alignment.new_claim_schemas.is_empty() || new_format.is_some() {
+        // Schema matching can replace the parsed schema with an existing one. Apply the issuer
+        // metadata again after alignment so changed translations target the persisted schema and
+        // claim IDs.
+        let current_format = credential.format.as_required_ref().await?.to_owned();
+        let translations = apply_issuer_metadata_to_schema(
+            schema,
+            metadata,
+            &self.config.global_settings.default_language,
+            Some(&current_format),
+        )
+        .await?;
+        credential.schema = schema.clone().into();
+
+        if !alignment.new_claim_schemas.is_empty()
+            || new_format.is_some()
+            || !translations.is_empty()
+        {
             self.credential_schema_repository
                 .update_credential_schema(
                     &schema.id,
@@ -228,6 +255,7 @@ impl OpenID4VCIFinal1_0 {
                         // A new format owns all of its mappings and persists them together.
                         claim_mappings: new_format.is_none().then_some(alignment.new_mappings),
                         formats: new_format.map(|format| vec![format]),
+                        translations: (!translations.is_empty()).then_some(translations),
                         ..Default::default()
                     },
                 )
@@ -609,6 +637,7 @@ impl OpenID4VCIFinal1_0 {
             schema,
             configuration.credential_metadata.as_ref(),
             &self.config.global_settings.default_language,
+            None,
         )
         .await?;
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);
@@ -626,11 +655,13 @@ impl OpenID4VCIFinal1_0 {
     }
 }
 
+/// Applies issuer metadata and returns only new or changed translations for persistence.
 async fn apply_issuer_metadata_to_schema(
     schema: &mut CredentialSchema,
     metadata: Option<&CredentialMetadata>,
     default_language: &str,
-) -> Result<(), IssuanceProtocolError> {
+    current_format: Option<&CredentialSchemaFormat>,
+) -> Result<Vec<LocalizedText>, IssuanceProtocolError> {
     let now = now_utc();
     let all_displays = metadata.and_then(|m| m.display.as_deref()).unwrap_or(&[]);
 
@@ -677,7 +708,14 @@ async fn apply_issuer_metadata_to_schema(
         })
         .collect();
 
+    let mut translations = vec![];
     if !schema_translations.is_empty() {
+        let current_translations = schema.translations.as_ref().await?;
+        translations.extend(changed_translations(
+            &current_translations,
+            &schema_translations,
+        ));
+        drop(current_translations);
         schema.translations = schema_translations.into();
     }
 
@@ -691,12 +729,16 @@ async fn apply_issuer_metadata_to_schema(
             .collect_vec();
         let mut claim_schemas = schema.claim_schemas.as_mut().await?;
         let formats = schema.formats.as_ref().await?;
-        let format = formats
-            .first()
-            .ok_or(IssuanceProtocolError::Failed(format!(
-                "empty formats on credential schema {}",
-                schema.id
-            )))?;
+        let format = if let Some(current_format) = current_format {
+            current_format
+        } else {
+            formats
+                .first()
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "empty formats on credential schema {}",
+                    schema.id
+                )))?
+        };
         let mappings = format.claim_mappings.as_ref().await?;
         let mappings_by_schema_id: HashMap<_, _> = mappings
             .into_iter()
@@ -755,6 +797,12 @@ async fn apply_issuer_metadata_to_schema(
                 })
                 .collect();
             if !claim_translations.is_empty() {
+                let current_translations = claim_schema.translations.as_ref().await?;
+                translations.extend(changed_translations(
+                    &current_translations,
+                    &claim_translations,
+                ));
+                drop(current_translations);
                 claim_schema.translations = claim_translations.into();
             }
         }
@@ -777,7 +825,27 @@ async fn apply_issuer_metadata_to_schema(
     schema.layout_properties = metadata_display
         .and_then(|display| convert_metadata_to_layout_properties(display.to_owned()));
 
-    Ok(())
+    Ok(translations)
+}
+
+fn changed_translations(
+    current: &[LocalizedText],
+    desired: &[LocalizedText],
+) -> Vec<LocalizedText> {
+    desired
+        .iter()
+        .filter(|desired| {
+            // Issuer metadata generates fresh timestamps on every issuance; compare content only.
+            !current.iter().any(|current| {
+                current.entity_id == desired.entity_id
+                    && current.entity_type == desired.entity_type
+                    && current.field == desired.field
+                    && current.lang == desired.lang
+                    && current.value == desired.value
+            })
+        })
+        .cloned()
+        .collect()
 }
 
 async fn attach_matching_holder_binding(

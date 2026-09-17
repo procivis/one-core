@@ -10,7 +10,7 @@ use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::ListPagination;
-use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
+use one_core::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -613,6 +613,77 @@ async fn test_update_credential_schema_claims_success() {
         .unwrap()
         .unwrap();
     assert_eq!(claim_schema.order, 2);
+}
+
+#[tokio::test]
+async fn test_update_credential_schema_translations_success() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    let claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let now = now_utc();
+    repository
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                translations: Some(vec![
+                    LocalizedText {
+                        entity_id: credential_schema.id.into(),
+                        field: LocalizedTextField::Name,
+                        created_date: now,
+                        last_modified: now,
+                        lang: "de".to_string(),
+                        value: "Ausweis".to_string(),
+                        entity_type: LocalizedTextEntityType::CredentialSchema,
+                    },
+                    LocalizedText {
+                        entity_id: credential_schema.id.into(),
+                        field: LocalizedTextField::Description,
+                        created_date: now,
+                        last_modified: now,
+                        lang: "de".to_string(),
+                        value: "Ausweisbeschreibung".to_string(),
+                        entity_type: LocalizedTextEntityType::CredentialSchema,
+                    },
+                    LocalizedText {
+                        entity_id: claim_schema_id.into(),
+                        field: LocalizedTextField::Name,
+                        created_date: now,
+                        last_modified: now,
+                        lang: "de".to_string(),
+                        value: "Vorname".to_string(),
+                        entity_type: LocalizedTextEntityType::ClaimSchema,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let stored_schema = repository
+        .get_credential_schema(&credential_schema.id)
+        .await
+        .unwrap();
+    let schema_translations = stored_schema.translations.as_ref().await.unwrap();
+    assert_eq!(schema_translations.len(), 2);
+    assert!(schema_translations.iter().any(|translation| {
+        translation.field == LocalizedTextField::Description
+            && translation.lang == "de"
+            && translation.value == "Ausweisbeschreibung"
+    }));
+
+    let claim_schemas = stored_schema.claim_schemas.as_ref().await.unwrap();
+    let claim_schema = claim_schemas
+        .iter()
+        .find(|claim_schema| claim_schema.id == claim_schema_id)
+        .unwrap();
+    let claim_translations = claim_schema.translations.as_ref().await.unwrap();
+    assert_eq!(claim_translations.len(), 1);
+    assert_eq!(claim_translations[0].value, "Vorname");
 }
 
 #[tokio::test]
