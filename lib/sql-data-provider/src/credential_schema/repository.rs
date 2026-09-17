@@ -213,6 +213,24 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     }
                 }
 
+                if let Some(formats) = request.formats
+                    && !formats.is_empty()
+                {
+                    let mut claim_mappings = vec![];
+                    for format in &formats {
+                        claim_mappings.extend(format.claim_mappings.as_ref().await?.to_owned());
+                    }
+
+                    let format_models: Vec<credential_schema_format::ActiveModel> =
+                        convert_inner(formats);
+                    credential_schema_format::Entity::insert_many(format_models)
+                        .exec(&self.db)
+                        .await
+                        .map_err(|e| DataLayerError::Db(e.into()))?;
+
+                    self.insert_claim_mappings(claim_mappings).await?;
+                }
+
                 if let Some(claim_mappings) = request.claim_mappings {
                     self.insert_claim_mappings(claim_mappings).await?;
                 }

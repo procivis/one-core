@@ -248,5 +248,6 @@ pub type CredentialSchemaListQuery = ListQuery<
 pub struct UpdateCredentialSchemaRequest {
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
+    pub formats: Option<Vec<CredentialSchemaFormat>>,
     pub layout_properties: Option<LayoutProperties>,
 }

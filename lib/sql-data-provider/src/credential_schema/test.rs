@@ -7,6 +7,7 @@ use one_core::model::credential_schema::{
     UpdateCredentialSchemaRequest, WalletAttestation,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::ListPagination;
 use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
@@ -24,7 +25,10 @@ use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
-use crate::entity::{credential_schema, organisation};
+use crate::entity::{
+    credential_schema, credential_schema_format, credential_schema_format_claim_schema,
+    organisation,
+};
 use crate::organisation::mapper::organisation_from_model;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
@@ -609,4 +613,61 @@ async fn test_update_credential_schema_claims_success() {
         .unwrap()
         .unwrap();
     assert_eq!(claim_schema.order, 2);
+}
+
+#[tokio::test]
+async fn test_update_credential_schema_formats_success() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    let now = now_utc();
+    let format_id = Uuid::new_v4().into();
+    let mapping_id = Uuid::new_v4().into();
+    let claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    repository
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                formats: Some(vec![CredentialSchemaFormat {
+                    id: format_id,
+                    created_date: now,
+                    last_modified: now,
+                    credential_schema_id: credential_schema.id,
+                    format: "SD_JWT".into(),
+                    ecosystem_schema_id: "new-schema-id".to_string(),
+                    claim_mappings: vec![CredentialSchemaFormatClaimSchema {
+                        id: mapping_id,
+                        created_date: now,
+                        last_modified: now,
+                        credential_schema_format_id: format_id,
+                        claim_schema_id,
+                        technical_key: "key-0".to_string(),
+                        namespace: None,
+                    }]
+                    .into(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    assert!(
+        credential_schema_format::Entity::find_by_id(format_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    let mapping = credential_schema_format_claim_schema::Entity::find_by_id(mapping_id)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(mapping.credential_schema_format_id, format_id);
+    assert_eq!(mapping.claim_schema_id, claim_schema_id);
 }

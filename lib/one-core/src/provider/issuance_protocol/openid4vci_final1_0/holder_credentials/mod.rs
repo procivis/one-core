@@ -1,44 +1,34 @@
 use standardized_types::openid4vci::{CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel};
-#[cfg(test)]
-mod test;
+mod schema_matching;
 
 use std::collections::HashMap;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialId, OrganisationId, SerializedCredential,
-};
+use shared_types::{CredentialFormat, CredentialId, SerializedCredential};
 use uuid::Uuid;
 
+use self::schema_matching::{
+    CredentialSchemaResolution, align_format_claim_schemas_and_mappings,
+    find_or_import_credential_schema,
+};
 use super::mapper::{convert_metadata_to_layout_properties, remap_claim_credential_ids};
 use super::model::{HolderBinding, HolderCredentialConfiguration};
 use super::validator::validate_batch_consistency;
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
-use crate::config::core_config::{BlobStorageType, CoreConfig};
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
-use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::mapper::credential_schema_claim::add_fallback_translation;
+use crate::config::core_config::BlobStorageType;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
-use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaListQuery, UpdateCredentialSchemaRequest,
-};
-use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
+use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
-use crate::model::list_filter::{ListFilterValue, StringMatch};
-use crate::model::list_query::ListPagination;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::model::relation::{OptionalRelatedExt, Related};
-use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::identifier_creator::{
     IdentifierLogo, IdentifierName, IdentifierRole, RemoteIdentifierRelation,
     issuer_display_to_identifier_translations,
@@ -48,8 +38,6 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::CredentialWithBlob;
 use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtocolError};
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::validator::validate_issuance_time;
 
 impl OpenID4VCIFinal1_0 {
@@ -209,11 +197,15 @@ impl OpenID4VCIFinal1_0 {
 
         let parsed_schema = credential.schema.as_ref().await?.to_owned();
         let parsed_format = credential.format.as_required_ref().await?;
-        let mut stored_schema = find_or_import_credential_schema(
+        let CredentialSchemaResolution {
+            mut schema,
+            new_format,
+        } = find_or_import_credential_schema(
             self.credential_schema_importer.as_ref(),
             self.credential_schema_repository.as_ref(),
             parsed_schema,
             &parsed_format,
+            credential,
             organisation.id,
             &self.config,
         )
@@ -221,26 +213,29 @@ impl OpenID4VCIFinal1_0 {
         drop(parsed_format);
 
         let alignment = align_format_claim_schemas_and_mappings(
-            &mut stored_schema,
+            &mut schema,
             credential,
             &self.config.global_settings.default_language,
         )
         .await?;
 
-        if !alignment.new_claim_schemas.is_empty() {
+        if !alignment.new_claim_schemas.is_empty() || new_format.is_some() {
             self.credential_schema_repository
                 .update_credential_schema(
-                    &stored_schema.id,
+                    &schema.id,
                     UpdateCredentialSchemaRequest {
-                        claim_schemas: Some(alignment.new_claim_schemas),
-                        claim_mappings: Some(alignment.new_mappings),
+                        claim_schemas: (!alignment.new_claim_schemas.is_empty())
+                            .then_some(alignment.new_claim_schemas),
+                        // A new format owns all of its mappings and persists them together.
+                        claim_mappings: new_format.is_none().then_some(alignment.new_mappings),
+                        formats: new_format.map(|format| vec![format]),
                         ..Default::default()
                     },
                 )
                 .await
                 .error_while("updating credential schema")?;
         }
-        Ok(stored_schema)
+        Ok(schema)
     }
 
     pub(super) async fn holder_process_refresh(
@@ -636,344 +631,6 @@ impl OpenID4VCIFinal1_0 {
             .and_then(|levels| convert_inner(KeyStorageSecurityLevel::select_lowest(levels)));
         Ok(())
     }
-}
-
-async fn find_credential_schema(
-    repository: &dyn CredentialSchemaRepository,
-    schema_id: &str,
-    organisation_id: OrganisationId,
-) -> Result<Option<CredentialSchema>, IssuanceProtocolError> {
-    Ok(repository
-        .get_credential_schema_list(CredentialSchemaListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 1,
-            }),
-            filtering: Some(
-                CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                    & CredentialSchemaFilterValue::EcosystemSchemaId(StringMatch::equals(
-                        schema_id,
-                    ))
-                    .condition(),
-            ),
-            ..Default::default()
-        })
-        .await
-        .error_while("getting credential schema")?
-        .values
-        .into_iter()
-        .next())
-}
-
-async fn find_or_import_credential_schema(
-    credential_schema_importer: &dyn CredentialSchemaImporter,
-    credential_schema_repository: &dyn CredentialSchemaRepository,
-    parsed_schema: CredentialSchema,
-    parsed_format: &CredentialSchemaFormat,
-    organisation_id: OrganisationId,
-    config: &CoreConfig,
-) -> Result<CredentialSchema, IssuanceProtocolError> {
-    let stored_schema = find_credential_schema(
-        credential_schema_repository,
-        &parsed_format.ecosystem_schema_id,
-        organisation_id,
-    )
-    .await?;
-
-    if let Some(stored_schema) = stored_schema {
-        if let Some(stored_format) = stored_schema
-            .formats
-            .as_ref()
-            .await?
-            .iter()
-            .find(|format| {
-                format.ecosystem_schema_id == parsed_format.ecosystem_schema_id
-                    && format.format != parsed_format.format
-            })
-            .cloned()
-        {
-            if config
-                .format
-                .get_type(&stored_format.format)
-                .error_while("getting format type")?
-                != config
-                    .format
-                    .get_type(&parsed_format.format)
-                    .error_while("getting format type")?
-            {
-                return Err(IssuanceProtocolError::Failed(format!(
-                    "Credential schema conflict: credential schema with id {} has matching schema_id `{}` but different format `{}`",
-                    stored_format.id, stored_format.ecosystem_schema_id, stored_format.format
-                )));
-            }
-
-            tracing::debug!(
-                "Found matching existing schema {} with different format `{}` of same type, replacing format `{}`.",
-                stored_format.id,
-                stored_format.format,
-                parsed_format.format
-            );
-        };
-        Ok(stored_schema)
-    } else {
-        match credential_schema_importer
-            .import_credential_schema(parsed_schema)
-            .await
-        {
-            Ok(schema) => return Ok(schema),
-            Err(error) if error.error_code() == ErrorCode::BR_0007 => {
-                tracing::debug!("Conflicting schema detected during parsing, refetching");
-            }
-            Err(e) => {
-                return Err(IssuanceProtocolError::Failed(e.to_string()));
-            }
-        };
-
-        // refetch and try again
-        let stored_schema = find_credential_schema(
-            credential_schema_repository,
-            &parsed_format.ecosystem_schema_id,
-            organisation_id,
-        )
-        .await?
-        .ok_or(IssuanceProtocolError::Failed(
-            "Credential schema not found".to_string(),
-        ))?;
-
-        Ok(stored_schema)
-    }
-}
-
-struct AlignmentUpdate {
-    new_claim_schemas: Vec<ClaimSchema>,
-    new_mappings: Vec<CredentialSchemaFormatClaimSchema>,
-}
-
-async fn align_format_claim_schemas_and_mappings(
-    stored_schema: &mut CredentialSchema,
-    credential: &mut Credential,
-    default_language: &str,
-) -> Result<AlignmentUpdate, IssuanceProtocolError> {
-    let mut claims = credential.claims.as_mut().await?;
-    claims.sort_by_key(|c| c.path.clone());
-
-    let mut parsed_claim_schemas = {
-        let parsed_schema = credential.schema.as_ref().await?;
-        parsed_schema.claim_schemas.as_ref().await?.to_owned()
-    };
-    parsed_claim_schemas.sort_by_key(|s| s.key.clone());
-
-    let (parsed_format, parsed_mappings) = {
-        let parsed_format = credential.format.as_required_ref().await?;
-        let mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
-        (parsed_format.format.clone(), mappings)
-    };
-
-    let mut new_claim_schemas = vec![];
-    let mut new_mappings = vec![];
-    let mut stored_format = {
-        let stored_formats = stored_schema.formats.as_ref().await?;
-        stored_formats
-            .iter()
-            .find(|format| format.format == parsed_format)
-            .cloned()
-            .ok_or(IssuanceProtocolError::Failed(format!(
-                "No matching stored format found for `{parsed_format}`"
-            )))?
-    };
-    let stored_format_id = stored_format.id;
-    {
-        let mut stored_mappings = stored_format.claim_mappings.as_mut().await?;
-        let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
-        // parsed key -> stored key
-        let mut key_translations = HashMap::new();
-        // parsed path -> stored path
-        let mut claim_path_translations = HashMap::new();
-
-        // iterate sorted by key -> parent schemas before their children
-        for mut parsed_claim_schema in parsed_claim_schemas {
-            let parsed_mapping = parsed_mappings
-                .iter()
-                .find(|mapping| mapping.claim_schema_id == parsed_claim_schema.id)
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "missing mapping for claim schema `{}`",
-                    parsed_claim_schema.key
-                )))?;
-            let stored_claim_schema_id =
-                find_matching_stored_schema(parsed_mapping, &stored_mappings);
-
-            if let Some(stored_claim_schema_id) = stored_claim_schema_id {
-                let known_claim_schema = stored_claim_schemas
-                    .iter()
-                    .find(|schema| schema.id == stored_claim_schema_id)
-                    .ok_or(IssuanceProtocolError::Failed(format!(
-                        "stored claim schema {} not found",
-                        stored_claim_schema_id
-                    )))?;
-                key_translations.insert(
-                    parsed_claim_schema.key.clone(),
-                    known_claim_schema.key.clone(),
-                );
-                relink_claims(
-                    &mut claims,
-                    parsed_claim_schema.id,
-                    known_claim_schema,
-                    &mut claim_path_translations,
-                )
-                .await?;
-                continue;
-            }
-
-            if let Some((parent_key, new_child_key)) =
-                parsed_claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER)
-            {
-                // Due to ordering, parent key must have been processed already.
-                let parent_key =
-                    key_translations
-                        .get(parent_key)
-                        .ok_or(IssuanceProtocolError::Failed(format!(
-                            "failed to find key translation for parent claim schema for key `{}`",
-                            parent_key
-                        )))?;
-                let mapped_child_key = format!("{parent_key}{NESTED_CLAIM_MARKER}{new_child_key}");
-                key_translations.insert(
-                    parsed_claim_schema.key.to_owned(),
-                    mapped_child_key.to_owned(),
-                );
-                parsed_claim_schema.key = mapped_child_key;
-                // relink to the same schema with changed path
-                relink_claims(
-                    &mut claims,
-                    parsed_claim_schema.id,
-                    &parsed_claim_schema,
-                    &mut claim_path_translations,
-                )
-                .await?;
-            } else {
-                // This is a new root claim, the parsed key and paths are kept.
-                key_translations.insert(
-                    parsed_claim_schema.key.clone(),
-                    parsed_claim_schema.key.clone(),
-                );
-                // Child claims look up their parent path here, so the paths of the root claim
-                // (including array items) must be registered even though they do not change.
-                for claim in claims
-                    .iter()
-                    .filter(|claim| claim.schema.id() == parsed_claim_schema.id)
-                {
-                    claim_path_translations.insert(claim.path.clone(), claim.path.clone());
-                }
-            }
-
-            let mut new_mapping = parsed_mapping.clone();
-            new_mapping.credential_schema_format_id = stored_format_id;
-            stored_mappings.push(new_mapping.clone());
-            new_mappings.push(new_mapping);
-            new_claim_schemas.push(
-                add_fallback_translation(parsed_claim_schema, default_language)
-                    .await
-                    .error_while("adding fallback claim translation")?,
-            );
-        }
-        stored_claim_schemas.extend(new_claim_schemas.clone());
-    }
-
-    credential.format = Some(stored_format.into());
-    credential.schema = stored_schema.clone().into();
-    Ok(AlignmentUpdate {
-        new_claim_schemas,
-        new_mappings,
-    })
-}
-
-/// Link all claims currently linked to `claim_schema_id` to `new_claim_schema`, while rewriting
-/// the path to match the new key.
-async fn relink_claims(
-    claims: &mut [Claim],
-    claim_schema_id: ClaimSchemaId,
-    new_claim_schema: &ClaimSchema,
-    claim_path_translations: &mut HashMap<String, String>,
-) -> Result<(), IssuanceProtocolError> {
-    for claim in claims
-        .iter_mut()
-        .filter(|claim| claim.schema.id() == claim_schema_id)
-    {
-        let (data_type, key) = {
-            let cs = claim.schema.as_ref().await?;
-            (cs.data_type.to_owned(), cs.key.to_owned())
-        };
-        if data_type != new_claim_schema.data_type {
-            // This is just a warning because the data type detection is just a heuristic
-            tracing::warn!(
-                "detected data type mismatch on claim `{}`: expected `{}` but parsed `{}`",
-                claim.path,
-                new_claim_schema.data_type,
-                data_type
-            );
-        }
-        let mapped_path = remap_claim_path(
-            claim.path.as_str(),
-            claim_path_translations,
-            &key,
-            new_claim_schema,
-        )?;
-        claim.path = mapped_path;
-        claim.schema = new_claim_schema.to_owned().into();
-    }
-    Ok(())
-}
-
-fn find_matching_stored_schema(
-    parsed_mapping: &CredentialSchemaFormatClaimSchema,
-    stored_mappings: &[CredentialSchemaFormatClaimSchema],
-) -> Option<ClaimSchemaId> {
-    stored_mappings
-        .iter()
-        .find(|m| {
-            m.technical_key == parsed_mapping.technical_key
-                && m.namespace == parsed_mapping.namespace
-        })
-        .map(|m| m.claim_schema_id)
-}
-
-fn remap_claim_path(
-    claim_path: &str,
-    claim_path_translations: &mut HashMap<String, String>,
-    parsed_schema_key: &str,
-    stored_claim_schema: &ClaimSchema,
-) -> Result<String, IssuanceProtocolError> {
-    if claim_path == parsed_schema_key {
-        // adjust path to match schema
-        claim_path_translations.insert(
-            parsed_schema_key.to_string(),
-            stored_claim_schema.key.clone(),
-        );
-        return Ok(stored_claim_schema.key.clone());
-    } else if let Some((parent_claim, child)) = claim_path.rsplit_once(NESTED_CLAIM_MARKER) {
-        let parent_key = claim_path_translations.get(parent_claim).ok_or(IssuanceProtocolError::Failed(format!(
-            "claim path `{parent_claim}` not found in translated claim paths for parsed claim with path `{claim_path}`" )))?;
-        let new_path = if parsed_schema_key.ends_with(&format!("{NESTED_CLAIM_MARKER}{child}")) {
-            // normal nesting
-            let (_, cs_leaf) = stored_claim_schema
-                .key
-                .rsplit_once(NESTED_CLAIM_MARKER)
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "expected claim schema path `{}` to contain nesting",
-                    stored_claim_schema.key
-                )))?;
-            format!("{parent_key}{NESTED_CLAIM_MARKER}{cs_leaf}")
-        } else {
-            // `child` is an array index, which is not represented in the technical key.
-            // Preserve the index, just map to the parent key.
-            format!("{parent_key}{NESTED_CLAIM_MARKER}{child}")
-        };
-        claim_path_translations.insert(claim_path.to_string(), new_path.clone());
-        return Ok(new_path);
-    }
-    Err(IssuanceProtocolError::Failed(format!(
-        "Failed to map claim path `{claim_path}` to claim schema {} with parsed schema key `{parsed_schema_key}`",
-        stored_claim_schema.id
-    )))
 }
 
 async fn apply_issuer_metadata_to_schema(
