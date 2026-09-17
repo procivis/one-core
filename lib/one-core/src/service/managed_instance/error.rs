@@ -63,8 +63,6 @@ pub enum ManagedInstanceError {
     MissingWalletUnitAttestation,
     #[error("Invalid role: {0}")]
     InvalidRole(InstanceRole),
-    #[error("Access certificate provisioning disabled")]
-    AccessCertificateProvisioningDisabled,
     #[error("User access token required but not provided")]
     MissingUserAccessToken,
     #[error("User authentication mandated but not supported for instances with OS WEB")]
@@ -109,7 +107,6 @@ impl ErrorCodeMixin for ManagedInstanceError {
             Self::MissingUserIdToken => ErrorCode::BR_0447,
             Self::InvalidUserIdToken(_) => ErrorCode::BR_0448,
             Self::InvalidRole(_) => ErrorCode::BR_0467,
-            Self::AccessCertificateProvisioningDisabled => ErrorCode::BR_0468,
             Self::MissingUserAccessToken => ErrorCode::BR_0469,
             Self::UserAuthenticationNotSupported => ErrorCode::BR_0473,
             Self::MissingWalletUnitAttestation => ErrorCode::BR_0451,

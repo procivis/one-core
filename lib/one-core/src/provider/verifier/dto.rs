@@ -1,23 +1,12 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{IdentifierId, OrganisationId};
-use time::Duration;
+use shared_types::{IdentifierId, OrganisationId, RevocationListEntryId};
 
 use crate::config::core_config::IdentifierType;
-use crate::service::managed_instance::dto::{IntegrityCheck, UserAuthenticationParams};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifierProviderCapabilities {
     pub signer_identifier_types: Vec<IdentifierType>,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct VerifierProviderRegistrationParams {
-    pub name_label: String,
-    pub integrity_check: IntegrityCheck,
-    pub device_auth_leeway: Duration,
-    pub user_authentication: Option<UserAuthenticationParams>,
-    pub access_certificate_configuration: Option<AccessCertificateConfiguration>,
 }
 
 #[expect(unused)]
@@ -44,4 +33,11 @@ pub struct VerifierAppVersion {
 #[serde(rename_all = "camelCase")]
 pub struct VerifierUpdateScreen {
     pub link: String,
+}
+
+#[derive(Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AccessCertificateProvisioningResponse {
+    pub access_certificate: String,
+    pub signature_id: RevocationListEntryId,
 }

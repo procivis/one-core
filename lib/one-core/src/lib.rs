@@ -527,6 +527,8 @@ impl OneCore {
             data_provider.get_trust_collection_repository(),
             data_provider.get_credential_schema_repository(),
             data_provider.get_proof_schema_repository(),
+            data_provider.get_managed_instance_repository(),
+            client.clone(),
         )?;
 
         let config = Arc::new(config);

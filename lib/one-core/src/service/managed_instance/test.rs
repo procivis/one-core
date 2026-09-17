@@ -38,16 +38,14 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::signer::provider::MockSignerProvider;
 use crate::provider::verifier::MockVerifierProvider;
-use crate::provider::verifier::dto::VerifierProviderRegistrationParams;
 use crate::provider::verifier::provider::MockVerifierProviderDirectory;
 use crate::provider::wallet::MockWalletProvider;
-use crate::provider::wallet::dto::WalletProviderRegistrationParams;
 use crate::provider::wallet::provider::MockWalletProviderDirectory;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::managed_instance_repository::MockManagedInstanceRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::managed_instance::dto::IntegrityCheck;
+use crate::service::managed_instance::dto::{IntegrityCheck, ProviderRegistrationParams};
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
 const BASE_URL: &str = "https://localhost";
@@ -174,7 +172,7 @@ async fn test_register_wallet_unit() {
             wallet_provider
                 .expect_get_registration_params()
                 .return_once(|| {
-                    Ok(WalletProviderRegistrationParams {
+                    Ok(ProviderRegistrationParams {
                         name_label: procivis_one_provider.to_string(),
                         integrity_check: IntegrityCheck {
                             enabled: false,
@@ -260,7 +258,7 @@ async fn test_register_wallet_unit_integrity_check() {
             wallet_provider
                 .expect_get_registration_params()
                 .return_once(|| {
-                    Ok(WalletProviderRegistrationParams {
+                    Ok(ProviderRegistrationParams {
                         name_label: procivis_one_provider.to_string(),
                         integrity_check: IntegrityCheck {
                             enabled: true,
@@ -329,7 +327,7 @@ async fn test_register_verifier_unit() {
             verifier_provider
                 .expect_get_registration_params()
                 .return_once(|| {
-                    Ok(VerifierProviderRegistrationParams {
+                    Ok(ProviderRegistrationParams {
                         name_label: verifier_provider_name.to_string(),
                         integrity_check: IntegrityCheck {
                             enabled: false,
@@ -337,7 +335,6 @@ async fn test_register_verifier_unit() {
                         },
                         device_auth_leeway: Default::default(),
                         user_authentication: None,
-                        access_certificate_configuration: None,
                     })
                 });
 

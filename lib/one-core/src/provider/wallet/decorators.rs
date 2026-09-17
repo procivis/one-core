@@ -4,16 +4,15 @@ use std::sync::Arc;
 use shared_types::IdentifierId;
 
 use super::WalletProvider;
-use super::dto::{
-    CreatedAttestation, WalletProviderCapabilities, WalletProviderRegistrationParams,
-};
+use super::dto::{CreatedAttestation, WalletProviderCapabilities};
 use super::error::WalletProviderError;
 use crate::model::managed_instance::ManagedInstance;
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
 use crate::provider::provider_directory::WithDisabledDecorator;
 use crate::service::managed_instance::dto::{
-    IssueWiaRequestDTO, IssueWuaRequestDTO, WalletProviderMetadataResponseDTO,
+    IssueWiaRequestDTO, IssueWuaRequestDTO, ProviderRegistrationParams,
+    WalletProviderMetadataResponseDTO,
 };
 
 impl WithDisabledDecorator for dyn WalletProvider {
@@ -42,9 +41,7 @@ impl<T: Provider + WalletProvider + Display + ?Sized> WalletProvider for Disable
         self.disabled_error()
     }
 
-    fn get_registration_params(
-        &self,
-    ) -> Result<WalletProviderRegistrationParams, WalletProviderError> {
+    fn get_registration_params(&self) -> Result<ProviderRegistrationParams, WalletProviderError> {
         self.disabled_error()
     }
 

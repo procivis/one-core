@@ -450,3 +450,12 @@ pub struct EudiWalletGeneralInfo {
 pub struct WscdInfo {
     pub wscd_type: WscdType,
 }
+
+/// Registration/activation parameters normalized across wallet and verifier providers.
+#[derive(Clone, Debug)]
+pub(crate) struct ProviderRegistrationParams {
+    pub name_label: String,
+    pub integrity_check: IntegrityCheck,
+    pub device_auth_leeway: Duration,
+    pub user_authentication: Option<UserAuthenticationParams>,
+}

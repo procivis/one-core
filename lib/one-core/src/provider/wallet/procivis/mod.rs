@@ -7,9 +7,7 @@ use shared_types::IdentifierId;
 use validator::validate_params;
 
 use super::WalletProvider;
-use super::dto::{
-    CreatedAttestation, WalletProviderCapabilities, WalletProviderRegistrationParams,
-};
+use super::dto::{CreatedAttestation, WalletProviderCapabilities};
 use super::error::WalletProviderError;
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
@@ -26,7 +24,8 @@ use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::service::managed_instance::dto::{
     DocumentSignerMetadataDTO, FeatureFlags, IssueWiaRequestDTO, IssueWuaRequestDTO,
-    WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
+    ProviderRegistrationParams, WalletProviderMetadataResponseDTO,
+    WalletUnitAttestationMetadataDTO,
 };
 use crate::service::managed_instance::ecosystem_metadata::{
     EcosystemEntityRepositories, ecosystem_metadata, provider_trust_collections,
@@ -126,10 +125,8 @@ impl WalletProvider for ProcivisWalletProvider {
             .await
     }
 
-    fn get_registration_params(
-        &self,
-    ) -> Result<WalletProviderRegistrationParams, WalletProviderError> {
-        Ok(WalletProviderRegistrationParams {
+    fn get_registration_params(&self) -> Result<ProviderRegistrationParams, WalletProviderError> {
+        Ok(ProviderRegistrationParams {
             name_label: self.config_name.to_owned(),
             integrity_check: self.params.integrity_check.to_owned(),
             device_auth_leeway: self.params.device_auth_leeway_seconds,

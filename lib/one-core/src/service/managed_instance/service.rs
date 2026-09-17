@@ -2,9 +2,7 @@ use std::collections::HashMap;
 
 use futures::FutureExt;
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{
-    EntityId, ManagedInstanceId, OrganisationId, RevocationListEntryId, RevocationMethodId,
-};
+use shared_types::{EntityId, ManagedInstanceId, RevocationMethodId};
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
 use uuid::Uuid;
@@ -15,9 +13,10 @@ use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to
 use super::dto::{
     GetManagedInstanceListResponseDTO, GetManagedInstanceResponseDTO, IntegrityCheck,
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
-    ManagedInstanceFilterParamsDTO, NoncePayload, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, UserAuthenticationParams, WalletProviderMetadataResponseDTO,
-    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
+    ManagedInstanceFilterParamsDTO, NoncePayload, ProviderRegistrationParams,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, UserAuthenticationParams,
+    WalletProviderMetadataResponseDTO, WalletUnitActivationRequestDTO,
+    WalletUnitActivationResponseDTO,
 };
 use super::error::ManagedInstanceError;
 use super::mapper::{
@@ -43,7 +42,6 @@ use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::model::RevocationState;
-use crate::provider::verifier::dto::AccessCertificateConfiguration;
 use crate::service::common_dto::ListQueryDTO;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -286,29 +284,15 @@ impl ManagedInstanceService {
         Ok(match role {
             InstanceRole::Wallet => {
                 let wallet_provider = self.wallet_provider_directory.get_provider(provider)?;
-                let params = wallet_provider
+                wallet_provider
                     .get_registration_params()
-                    .error_while("getting provider params")?;
-                ProviderRegistrationParams {
-                    name_label: params.name_label,
-                    integrity_check: params.integrity_check,
-                    device_auth_leeway: params.device_auth_leeway,
-                    user_authentication: params.user_authentication,
-                    access_certificate_configuration: None,
-                }
+                    .error_while("getting provider params")?
             }
             InstanceRole::Verifier => {
                 let verifier_provider = self.verifier_provider_directory.get_provider(provider)?;
-                let params = verifier_provider
+                verifier_provider
                     .get_registration_params()
-                    .error_while("getting provider params")?;
-                ProviderRegistrationParams {
-                    name_label: params.name_label,
-                    integrity_check: params.integrity_check,
-                    device_auth_leeway: params.device_auth_leeway,
-                    user_authentication: params.user_authentication,
-                    access_certificate_configuration: params.access_certificate_configuration,
-                }
+                    .error_while("getting provider params")?
             }
         })
     }
@@ -603,51 +587,29 @@ impl ManagedInstanceService {
         let provisioned_access_certificate = if let Some(verifier_access_certificate_csr) =
             request.verifier_access_certificate_csr
         {
-            let Some(access_token) = request.user_access_token else {
-                return Err(ManagedInstanceError::MissingUserAccessToken);
-            };
-
             if wallet_unit.role != InstanceRole::Verifier {
                 return Err(ManagedInstanceError::InvalidRole(wallet_unit.role));
             }
 
-            let Some(access_certificate_configuration) =
-                reg_params.access_certificate_configuration
-            else {
-                return Err(ManagedInstanceError::AccessCertificateProvisioningDisabled);
+            let Some(access_token) = request.user_access_token else {
+                return Err(ManagedInstanceError::MissingUserAccessToken);
             };
 
-            // store the userSub + CSR before calling BFF provider
-            self.managed_instance_repository
-                .update(
-                    &wallet_unit_id,
-                    UpdateManagedInstanceRequest {
-                        user_sub: user_sub.clone(),
-                        verifier_csr: Some(Some(verifier_access_certificate_csr)),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .error_while("setting CSR")?;
+            let verifier_provider = self
+                .verifier_provider_directory
+                .get_provider(&wallet_unit.provider)?;
 
-            let response: AccessCertificateProvisioningResponse = async {
-                self.http_client
-                    .post(&access_certificate_configuration.provider_url)
-                    .bearer_auth(&access_token)
-                    .json(&AccessCertificateProvisioningRequest {
-                        provider: wallet_unit.provider.clone(),
-                        managed_instance_id: wallet_unit_id,
-                        verifier_provider_organisation_id: organisation.id,
-                    })?
-                    .send()
-                    .await?
-                    .error_for_status()?
-                    .json()
-            }
-            .await
-            .error_while("requesting access certificate")?;
-
-            Some(response)
+            Some(
+                verifier_provider
+                    .provision_access_certificate(
+                        &wallet_unit,
+                        &access_token,
+                        user_sub.clone(),
+                        verifier_access_certificate_csr,
+                    )
+                    .await
+                    .error_while("provisioning AC")?,
+            )
         } else {
             None
         };
@@ -1236,29 +1198,4 @@ struct UserIdTokenJwks {
 #[derive(Debug, serde::Deserialize, Default)]
 struct UserIdTokenClaims {
     nonce: Option<String>,
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AccessCertificateProvisioningRequest {
-    provider: String,
-    managed_instance_id: ManagedInstanceId,
-    verifier_provider_organisation_id: OrganisationId,
-}
-
-#[derive(Clone, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AccessCertificateProvisioningResponse {
-    access_certificate: String,
-    signature_id: RevocationListEntryId,
-}
-
-/// Registration/activation parameters normalized across wallet and verifier providers.
-struct ProviderRegistrationParams {
-    name_label: String,
-    integrity_check: IntegrityCheck,
-    device_auth_leeway: Duration,
-    user_authentication: Option<UserAuthenticationParams>,
-    /// Only ever set for `InstanceRole::Verifier`.
-    access_certificate_configuration: Option<AccessCertificateConfiguration>,
 }

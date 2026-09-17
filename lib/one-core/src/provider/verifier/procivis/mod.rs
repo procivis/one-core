@@ -5,17 +5,22 @@ use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
 
 use super::VerifierProvider;
-use super::dto::{VerifierProviderCapabilities, VerifierProviderRegistrationParams};
+use super::dto::{AccessCertificateProvisioningResponse, VerifierProviderCapabilities};
 use super::error::VerifierProviderError;
+use super::procivis::model::AccessCertificateProvisioningRequest;
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
+use crate::model::managed_instance::{ManagedInstance, UpdateManagedInstanceRequest};
+use crate::proto::http_client::HttpClient;
 use crate::provider::provider_directory::InitializationError;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::managed_instance_repository::ManagedInstanceRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::service::managed_instance::dto::{
-    EcosystemMetadataDTO, IntegrityCheck, WalletUnitAttestationMetadataDTO,
+    EcosystemMetadataDTO, IntegrityCheck, ProviderRegistrationParams,
+    WalletUnitAttestationMetadataDTO,
 };
 use crate::service::managed_instance::ecosystem_metadata::{
     EcosystemEntityRepositories, ecosystem_metadata, provider_trust_collections,
@@ -33,9 +38,12 @@ pub struct ProcivisVerifierProvider {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
+    http_client: Arc<dyn HttpClient>,
 }
 
 impl ProcivisVerifierProvider {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         config_name: String,
         config: Arc<CoreConfig>,
@@ -44,6 +52,8 @@ impl ProcivisVerifierProvider {
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+        managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
+        http_client: Arc<dyn HttpClient>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -59,6 +69,8 @@ impl ProcivisVerifierProvider {
             trust_collection_repository,
             credential_schema_repository,
             proof_schema_repository,
+            managed_instance_repository,
+            http_client,
         })
     }
 }
@@ -71,9 +83,7 @@ impl VerifierProvider for ProcivisVerifierProvider {
         }
     }
 
-    fn get_registration_params(
-        &self,
-    ) -> Result<VerifierProviderRegistrationParams, VerifierProviderError> {
+    fn get_registration_params(&self) -> Result<ProviderRegistrationParams, VerifierProviderError> {
         let integrity_check = self
             .params
             .integrity_check
@@ -83,15 +93,11 @@ impl VerifierProvider for ProcivisVerifierProvider {
                 ..Default::default()
             });
 
-        Ok(VerifierProviderRegistrationParams {
+        Ok(ProviderRegistrationParams {
             name_label: self.config_name.to_owned(),
             integrity_check,
             device_auth_leeway: self.params.device_auth_leeway_seconds,
             user_authentication: self.params.user_authentication.to_owned(),
-            access_certificate_configuration: self
-                .params
-                .access_certificate_configuration
-                .to_owned(),
         })
     }
 
@@ -160,6 +166,51 @@ impl VerifierProvider for ProcivisVerifierProvider {
             proof_schemas,
             ecosystems,
         })
+    }
+
+    async fn provision_access_certificate(
+        &self,
+        managed_instance: &ManagedInstance,
+        access_token: &str,
+        user_sub: Option<String>,
+        verifier_csr: String,
+    ) -> Result<AccessCertificateProvisioningResponse, VerifierProviderError> {
+        let Some(access_certificate_configuration) = &self.params.access_certificate_configuration
+        else {
+            return Err(VerifierProviderError::AccessCertificateProvisioningDisabled);
+        };
+
+        // store the userSub + CSR before calling BFF provider
+        self.managed_instance_repository
+            .update(
+                &managed_instance.id,
+                UpdateManagedInstanceRequest {
+                    user_sub,
+                    verifier_csr: Some(Some(verifier_csr)),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("setting CSR")?;
+
+        let response: AccessCertificateProvisioningResponse = async {
+            self.http_client
+                .post(&access_certificate_configuration.provider_url)
+                .bearer_auth(access_token)
+                .json(&AccessCertificateProvisioningRequest {
+                    provider: self.config_name.clone(),
+                    managed_instance_id: managed_instance.id,
+                    verifier_provider_organisation_id: managed_instance.organisation.id(),
+                })?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("requesting access certificate")?;
+
+        Ok(response)
     }
 
     fn config_name(&self) -> &str {

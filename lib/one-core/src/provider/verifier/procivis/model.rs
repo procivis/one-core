@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
+use shared_types::{ManagedInstanceId, OrganisationId};
 use time::Duration;
 
 use crate::config::core_config::IdentifierType;
@@ -32,4 +33,12 @@ pub(super) struct ConfigFeatureFlags {
     pub ecosystems_enabled: bool,
     #[serde(default)]
     pub ecosystems_enforcement_enabled: bool,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AccessCertificateProvisioningRequest {
+    pub provider: String,
+    pub managed_instance_id: ManagedInstanceId,
+    pub verifier_provider_organisation_id: OrganisationId,
 }

@@ -5,8 +5,10 @@ use super::procivis::ProcivisVerifierProvider;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, VerifierProviderType};
 use crate::error::{ContextWithErrorCode, NestedError};
+use crate::proto::http_client::HttpClient;
 use crate::provider::provider_directory::ProviderDirectory;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::managed_instance_repository::ManagedInstanceRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -30,6 +32,8 @@ pub(crate) fn verifier_provider_directory_from_config(
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    managed_instance_repository: Arc<dyn ManagedInstanceRepository>,
+    http_client: Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn VerifierProviderDirectory>, ConfigValidationError> {
     let core_config = Arc::new(config.to_owned());
 
@@ -45,6 +49,8 @@ pub(crate) fn verifier_provider_directory_from_config(
                     trust_collection_repository.clone(),
                     credential_schema_repository.clone(),
                     proof_schema_repository.clone(),
+                    managed_instance_repository.clone(),
+                    http_client.clone(),
                 )?),
             };
 

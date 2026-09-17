@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
-use dto::{CreatedAttestation, WalletProviderCapabilities, WalletProviderRegistrationParams};
+use dto::{CreatedAttestation, WalletProviderCapabilities};
 use error::WalletProviderError;
 use proc_macros::provider_mock;
 use shared_types::IdentifierId;
@@ -9,7 +9,8 @@ use shared_types::IdentifierId;
 use crate::model::managed_instance::ManagedInstance;
 use crate::provider::Provider;
 use crate::service::managed_instance::dto::{
-    IssueWiaRequestDTO, IssueWuaRequestDTO, WalletProviderMetadataResponseDTO,
+    IssueWiaRequestDTO, IssueWuaRequestDTO, ProviderRegistrationParams,
+    WalletProviderMetadataResponseDTO,
 };
 
 mod decorators;
@@ -37,9 +38,7 @@ pub(crate) trait WalletProvider: Provider + Send + Sync {
         managed_instance: &ManagedInstance,
     ) -> Result<CreatedAttestation, WalletProviderError>;
 
-    fn get_registration_params(
-        &self,
-    ) -> Result<WalletProviderRegistrationParams, WalletProviderError>;
+    fn get_registration_params(&self) -> Result<ProviderRegistrationParams, WalletProviderError>;
 
     async fn get_metadata(&self) -> Result<WalletProviderMetadataResponseDTO, WalletProviderError>;
 
