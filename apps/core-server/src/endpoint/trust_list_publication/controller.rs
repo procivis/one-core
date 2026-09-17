@@ -31,7 +31,7 @@ use crate::router::AppState;
     summary = "Publish a trust list",
     description = indoc::formatdoc! {"
     Publish a trust list using a configured `trustListPublisher` instance.
-    The published list is accessible at `/ssi/trust-list/v1/{{id}}`.
+    Fetch `publicUrl` from the list or detail endpoints for the public URL.
 "},
 )]
 pub(crate) async fn post_trust_list_publication(
