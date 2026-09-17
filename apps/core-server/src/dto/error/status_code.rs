@@ -278,7 +278,6 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0463
         | ErrorCode::BR_0464
         | ErrorCode::BR_0465
-        | ErrorCode::BR_0466
         | ErrorCode::BR_0467
         | ErrorCode::BR_0468
         | ErrorCode::BR_0469

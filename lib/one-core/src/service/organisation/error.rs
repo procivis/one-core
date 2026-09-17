@@ -1,6 +1,8 @@
 use shared_types::{OrganisationId, TrustCollectionId};
 
+use crate::config::core_config::IdentifierType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::instance::InstanceRole;
 
 #[derive(thiserror::Error, Debug)]
 pub enum OrganisationServiceError {
@@ -17,14 +19,12 @@ pub enum OrganisationServiceError {
 
     #[error("Identifier does not belong to this organisation")]
     IdentifierOrganisationMismatch,
-    #[error("Wallet provider is already associated to organisation `{0}`")]
-    WalletProviderAlreadyAssociated(OrganisationId),
-    #[error("Verifier provider is already associated to organisation `{0}`")]
-    VerifierProviderAlreadyAssociated(OrganisationId),
-    #[error("Invalid verifier provider")]
-    VerifierProviderNotConfigured,
+    #[error("Provider is already associated to organisation `{0}` for role: {1}")]
+    ProviderAlreadyAssociated(OrganisationId, InstanceRole),
     #[error("Invalid parent organisation")]
     InvalidParentOrganisation,
+    #[error("Invalid identifier type: {0}")]
+    InvalidIdentifierType(IdentifierType),
     #[error("Parent organisation `{0}` not found")]
     ParentOrganisationNotFound(OrganisationId),
 
@@ -41,10 +41,10 @@ impl ErrorCodeMixin for OrganisationServiceError {
             Self::TrustCollectionsSpanMultipleProviders => ErrorCode::BR_0472,
             Self::EcosystemEnforcementMandated => ErrorCode::BR_0481,
             Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
-            Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
-            Self::VerifierProviderAlreadyAssociated(_) => ErrorCode::BR_0465,
-            Self::VerifierProviderNotConfigured => ErrorCode::BR_0466,
+            Self::ProviderAlreadyAssociated(_, InstanceRole::Wallet) => ErrorCode::BR_0283,
+            Self::ProviderAlreadyAssociated(_, InstanceRole::Verifier) => ErrorCode::BR_0465,
             Self::InvalidParentOrganisation => ErrorCode::BR_0419,
+            Self::InvalidIdentifierType(_) => ErrorCode::BR_0323,
             Self::ParentOrganisationNotFound(_) => ErrorCode::BR_0022,
             Self::Nested(nested) => nested.error_code(),
         }

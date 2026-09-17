@@ -991,9 +991,6 @@ pub enum ErrorCode {
     #[strum(message = "Verifier provider is already associated to another organisation")]
     BR_0465,
 
-    #[strum(message = "Verifier provider not enabled in config")]
-    BR_0466,
-
     #[strum(message = "Invalid instance role")]
     BR_0467,
 

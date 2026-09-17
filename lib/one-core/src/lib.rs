@@ -629,6 +629,8 @@ impl OneCore {
                 trust_list_subscription_sync.clone(),
                 data_provider.get_trust_collection_repository(),
                 data_provider.get_trust_list_subscription_repository(),
+                wallet_provider_directory.clone(),
+                verifier_provider_directory.clone(),
                 ecosystem_sync,
                 config.clone(),
             ),

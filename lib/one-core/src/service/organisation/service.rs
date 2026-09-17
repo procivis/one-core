@@ -15,8 +15,8 @@ use super::mapper::{
     set_active_trust_collections, upsert_request_to_fresh_model,
 };
 use super::validator::{
-    validate_ecosystem_enforcement, validate_parent_organisation, validate_provider_issuer,
-    validate_verifier_provider, validate_wallet_provider,
+    validate_ecosystem_enforcement, validate_parent_organisation, validate_provider,
+    validate_provider_issuer,
 };
 use crate::config::core_config::ConfigExt;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -292,32 +292,71 @@ impl OrganisationService {
             .get_organisation_if_exists(&request.id)
             .await
             .error_while("getting organisation")?;
-        let existing_id = existing_organisation.as_ref().map(|org| &org.id);
 
-        if let Some(Some(issuer)) = request.wallet_provider_issuer {
-            validate_provider_issuer(existing_id, issuer, &*self.identifier_repository).await?;
-        }
-
-        if let Some(Some(wallet_provider)) = &request.wallet_provider {
-            validate_wallet_provider(
-                request.id,
-                wallet_provider,
-                &self.core_config,
-                &*self.organisation_repository,
+        if let Some(Some(issuer)) = &request.wallet_provider_issuer {
+            validate_provider_issuer(
+                existing_organisation.as_ref(),
+                issuer,
+                request
+                    .wallet_provider
+                    .as_ref()
+                    .and_then(|inner| inner.as_ref()),
+                self.identifier_repository.as_ref(),
+                InstanceRole::Wallet,
+                self.wallet_provider_directory.as_ref(),
+                self.verifier_provider_directory.as_ref(),
             )
             .await?;
         }
 
-        if let Some(Some(issuer)) = request.verifier_provider_issuer {
-            validate_provider_issuer(existing_id, issuer, &*self.identifier_repository).await?;
+        if let Some(Some(wallet_provider)) = &request.wallet_provider {
+            validate_provider(
+                request.id,
+                wallet_provider,
+                InstanceRole::Wallet,
+                self.organisation_repository.as_ref(),
+                self.wallet_provider_directory.as_ref(),
+                self.verifier_provider_directory.as_ref(),
+                self.identifier_repository.as_ref(),
+                request
+                    .wallet_provider_issuer
+                    .is_none()
+                    .then_some(existing_organisation.as_ref())
+                    .flatten(),
+            )
+            .await?;
+        }
+
+        if let Some(Some(issuer)) = &request.verifier_provider_issuer {
+            validate_provider_issuer(
+                existing_organisation.as_ref(),
+                issuer,
+                request
+                    .verifier_provider
+                    .as_ref()
+                    .and_then(|inner| inner.as_ref()),
+                self.identifier_repository.as_ref(),
+                InstanceRole::Verifier,
+                self.wallet_provider_directory.as_ref(),
+                self.verifier_provider_directory.as_ref(),
+            )
+            .await?;
         }
 
         if let Some(Some(verifier_provider)) = &request.verifier_provider {
-            validate_verifier_provider(
+            validate_provider(
                 request.id,
                 verifier_provider,
-                &self.core_config,
-                &*self.organisation_repository,
+                InstanceRole::Verifier,
+                self.organisation_repository.as_ref(),
+                self.wallet_provider_directory.as_ref(),
+                self.verifier_provider_directory.as_ref(),
+                self.identifier_repository.as_ref(),
+                request
+                    .verifier_provider_issuer
+                    .is_none()
+                    .then_some(existing_organisation.as_ref())
+                    .flatten(),
             )
             .await?;
         }

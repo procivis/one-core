@@ -29,6 +29,8 @@ use crate::proto::ecosystem_sync::MockEcosystemSync;
 use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::MockVerifierProviderClient;
 use crate::proto::wallet_provider_client::MockWalletProviderClient;
+use crate::provider::verifier::provider::MockVerifierProviderDirectory;
+use crate::provider::wallet::provider::MockWalletProviderDirectory;
 use crate::repository::error::{DataLayerError, EntityKind};
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
@@ -59,6 +61,8 @@ struct Mocks {
     trust_list_subscription_sync: MockTrustListSubscriptionSync,
     trust_collection_repository: MockTrustCollectionRepository,
     trust_subscription_repository: MockTrustListSubscriptionRepository,
+    wallet_provider_directory: MockWalletProviderDirectory,
+    verifier_provider_directory: MockVerifierProviderDirectory,
     ecosystem_sync: MockEcosystemSync,
     core_config: CoreConfig,
 }
@@ -73,6 +77,8 @@ fn setup_service(mocks: Mocks) -> OrganisationService {
         trust_list_subscription_sync: Arc::new(mocks.trust_list_subscription_sync),
         trust_collection_repository: Arc::new(mocks.trust_collection_repository),
         trust_subscription_repository: Arc::new(mocks.trust_subscription_repository),
+        wallet_provider_directory: Arc::new(mocks.wallet_provider_directory),
+        verifier_provider_directory: Arc::new(mocks.verifier_provider_directory),
         ecosystem_sync: Arc::new(mocks.ecosystem_sync),
         core_config: Arc::new(mocks.core_config),
     }

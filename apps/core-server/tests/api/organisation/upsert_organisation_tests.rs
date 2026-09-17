@@ -269,7 +269,7 @@ async fn test_upsert_organisation_fail_non_existing_identifier() {
 #[tokio::test]
 async fn test_upsert_organisation_success_existing_identifier() {
     // GIVEN
-    let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
 
     // WHEN
     let resp = context
@@ -280,7 +280,7 @@ async fn test_upsert_organisation_success_existing_identifier() {
             UpsertParams {
                 wallet_provider: Some(Some(ProviderParams {
                     issuer: Some(identifier.id),
-                    ..Default::default()
+                    name: Some("PROCIVIS_ONE".to_string()),
                 })),
                 ..Default::default()
             },
@@ -655,13 +655,13 @@ async fn test_upsert_organisation_fail_non_existing_wallet_provider() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0284");
+    assert_eq!(resp.error_code().await, "BR_0430");
 }
 
 #[tokio::test]
 async fn test_upsert_organisation_success_wallet_provider_issuer_rotation() {
     // GIVEN
-    let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .organisations
@@ -746,7 +746,7 @@ async fn test_upsert_organisation_fail_wallet_provider_already_associated() {
 #[tokio::test]
 async fn test_upsert_organisation_success_verifier_provider_issuer_rotation() {
     // GIVEN
-    let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .organisations
