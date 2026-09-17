@@ -12,7 +12,7 @@ use crate::service::managed_instance::dto::{IntegrityCheck, UserAuthenticationPa
 pub(super) struct Params {
     pub app_version: Option<VerifierAppVersion>,
     pub feature_flags: ConfigFeatureFlags,
-    pub verifier_instance_attestation: Option<InstanceAttestationParams>,
+    pub integrity_check: Option<IntegrityCheck>,
     pub user_authentication: Option<UserAuthenticationParams>,
     pub access_certificate_configuration: Option<AccessCertificateConfiguration>,
     // Defaulted so existing verifierProvider config entries without this key keep working.
@@ -24,14 +24,6 @@ pub(super) struct Params {
 
 fn default_device_auth_leeway() -> Duration {
     Duration::seconds(60)
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct InstanceAttestationParams {
-    #[serde(default)]
-    pub integrity_check: IntegrityCheck,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -76,9 +76,8 @@ impl VerifierProvider for ProcivisVerifierProvider {
     ) -> Result<VerifierProviderRegistrationParams, VerifierProviderError> {
         let integrity_check = self
             .params
-            .verifier_instance_attestation
-            .as_ref()
-            .map(|attestation| attestation.integrity_check.to_owned())
+            .integrity_check
+            .clone()
             .unwrap_or(IntegrityCheck {
                 enabled: false,
                 ..Default::default()
@@ -100,11 +99,10 @@ impl VerifierProvider for ProcivisVerifierProvider {
         &self,
     ) -> Result<VerifierProviderMetadataResponseDTO, VerifierProviderError> {
         let verifier_app_attestation = {
-            let (enabled, app_integrity_check_required) =
-                match &self.params.verifier_instance_attestation {
-                    Some(attestation) => (true, attestation.integrity_check.enabled),
-                    None => (false, false),
-                };
+            let (enabled, app_integrity_check_required) = match &self.params.integrity_check {
+                Some(integrity_check) => (true, integrity_check.enabled),
+                None => (false, false),
+            };
             WalletUnitAttestationMetadataDTO {
                 app_integrity_check_required,
                 enabled,

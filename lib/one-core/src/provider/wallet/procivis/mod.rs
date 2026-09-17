@@ -131,11 +131,7 @@ impl WalletProvider for ProcivisWalletProvider {
     ) -> Result<WalletProviderRegistrationParams, WalletProviderError> {
         Ok(WalletProviderRegistrationParams {
             name_label: self.config_name.to_owned(),
-            integrity_check: self
-                .params
-                .wallet_instance_attestation
-                .integrity_check
-                .to_owned(),
+            integrity_check: self.params.integrity_check.to_owned(),
             device_auth_leeway: self.params.device_auth_leeway_seconds,
             user_authentication: self.params.user_authentication.to_owned(),
         })
@@ -196,11 +192,7 @@ impl WalletProvider for ProcivisWalletProvider {
 
         Ok(WalletProviderMetadataResponseDTO {
             wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
-                app_integrity_check_required: self
-                    .params
-                    .wallet_instance_attestation
-                    .integrity_check
-                    .enabled,
+                app_integrity_check_required: self.params.integrity_check.enabled,
                 enabled,
                 required,
             },

@@ -19,6 +19,8 @@ pub(super) struct Params {
     pub wallet_registration: WalletRegistrationRequirement,
     pub wallet_instance_attestation: WalletInstanceAttestationParams,
     pub wallet_key_attestation: WalletUnitAttestationParams,
+    #[serde(default)]
+    pub integrity_check: IntegrityCheck,
     pub wallet_certification: serde_json::Value,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub device_auth_leeway_seconds: Duration,
@@ -45,8 +47,6 @@ pub(super) enum WalletRegistrationRequirement {
 pub(super) struct WalletInstanceAttestationParams {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub expiration_seconds: Duration,
-    #[serde(default)]
-    pub integrity_check: IntegrityCheck,
     pub revocation_method: Option<RevocationMethodId>,
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_31_days")]

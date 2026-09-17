@@ -11,17 +11,16 @@ walletProvider:
     params:
       public:
         walletName: "Procivis One Wallet"
-        walletInstanceAttestation:
-          integrityCheck:
-            android:
-              bundleId: ch.procivis.one.wallet.trial
-              signingCertificateFingerprints: [
-                  "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
-                  "C2:8C:32:0A:81:C7:D9:93:FE:3F:77:3F:E2:D3:6E:51:B2:78:A9:97:43:98:40:A5:59:AD:5B:D4:9C:FF:1F:81", # google-play
-                ]
-            ios:
-              bundleId: AGG3V6QN4G.ch.procivis.one.wallet.trial
-              enforceProductionBuild: true
+        integrityCheck:
+          android:
+            bundleId: ch.procivis.one.wallet.trial
+            signingCertificateFingerprints: [
+                "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
+                "C2:8C:32:0A:81:C7:D9:93:FE:3F:77:3F:E2:D3:6E:51:B2:78:A9:97:43:98:40:A5:59:AD:5B:D4:9C:FF:1F:81", # google-play
+              ]
+          ios:
+            bundleId: AGG3V6QN4G.ch.procivis.one.wallet.trial
+            enforceProductionBuild: true
         appVersion:
           minimum: "v1.50.0"
         eudiWalletInfo:
@@ -38,17 +37,16 @@ verifierProvider:
     params:
       public:
         verifierName: "Procivis One Verifier"
-        verifierInstanceAttestation:
-          integrityCheck:
-            android:
-              bundleId: ch.procivis.one.verifier.trial
-              signingCertificateFingerprints: [
+        integrityCheck:
+          android:
+            bundleId: ch.procivis.one.verifier.trial
+            signingCertificateFingerprints: [
                 "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
                 "F6:BF:9E:34:C5:24:32:5A:43:47:05:77:CE:A1:D8:B3:1D:0C:E4:BF:FE:EA:C3:47:5B:ED:CC:90:A0:D0:2F:0E", # google-play
               ]
-            ios:
-              bundleId: AGG3V6QN4G.ch.procivis.one.verifier.trial
-              enforceProductionBuild: true
+          ios:
+            bundleId: AGG3V6QN4G.ch.procivis.one.verifier.trial
+            enforceProductionBuild: true
         featureFlags:
           ecosystemsEnabled: false
           ecosystemsEnforcementEnabled: false

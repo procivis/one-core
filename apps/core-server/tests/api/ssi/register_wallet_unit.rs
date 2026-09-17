@@ -17,9 +17,8 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
         PROCIVIS_ONE:
             params:
               public:
-                walletInstanceAttestation:
-                    integrityCheck:
-                        enabled: false
+                integrityCheck:
+                    enabled: false
     "}
     .to_string();
     // given
@@ -98,9 +97,8 @@ async fn test_register_wallet_unit_fail_integrity_check_disabled_no_proof_and_pu
         PROCIVIS_ONE:
             params:
               public:
-                walletInstanceAttestation:
-                    integrityCheck:
-                        enabled: false
+                integrityCheck:
+                    enabled: false
     "}
     .to_string();
     // given
@@ -325,9 +323,8 @@ async fn test_register_wallet_unit_with_user_authentication_auth_key_path_return
         PROCIVIS_ONE:
             params:
               public:
-                walletInstanceAttestation:
-                    integrityCheck:
-                        enabled: false
+                integrityCheck:
+                    enabled: false
                 userAuthentication:
                   required: true
                   identityProvider: https://idp.example.com

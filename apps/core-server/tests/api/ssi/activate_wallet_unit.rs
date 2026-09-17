@@ -254,14 +254,14 @@ async fn activate_wallet_unit_missing_required_user_id_token() {
 
 #[tokio::test]
 async fn activate_instance_verifier_role_successfully() {
-    // given: PROCIVIS_ONE verifierProvider config has no verifierInstanceAttestation, so
+    // given: PROCIVIS_ONE verifierProvider config has no integrityCheck, so
     // activation goes through the no-integrity-check, self-certifying proof path.
     let config = indoc::indoc! {"
       verifierProvider:
         PROCIVIS_ONE:
           params:
             public:
-              verifierInstanceAttestation: null
+              integrityCheck: null
     "};
     let (context, org) = TestContext::new_with_organisation(Some(config.to_string())).await;
     create_verifier_provider_issuer_identifier(&context, &org).await;
