@@ -1,5 +1,7 @@
 use standardized_types::openid4vci::{CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel};
 mod schema_matching;
+#[cfg(test)]
+mod test;
 
 use std::collections::HashMap;
 
@@ -19,6 +21,7 @@ use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
+use crate::mapper::NESTED_CLAIM_MARKER_STR;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
@@ -690,6 +693,12 @@ async fn apply_issuer_metadata_to_schema(
 
     let issuer_metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
     if !issuer_metadata_claims.is_empty() {
+        let mandatory_claim_paths = issuer_metadata_claims
+            .iter()
+            .filter(|claim| claim.mandatory == Some(true))
+            .map(|claim| claim.path.join(NESTED_CLAIM_MARKER_STR))
+            .unique()
+            .collect_vec();
         let mut claim_schemas = schema.claim_schemas.as_mut().await?;
         let formats = schema.formats.as_ref().await?;
         let format = formats
@@ -703,6 +712,7 @@ async fn apply_issuer_metadata_to_schema(
             .into_iter()
             .map(|m| (m.claim_schema_id, m))
             .collect();
+        let mut parsed_claim_paths = Vec::with_capacity(claim_schemas.len());
 
         for claim_schema in &mut claim_schemas {
             if claim_schema.metadata {
@@ -714,6 +724,7 @@ async fn apply_issuer_metadata_to_schema(
             } else {
                 claim_schema.key.to_string()
             };
+            parsed_claim_paths.push(metadata_key.clone());
 
             // NOTE: OpenID4VCI allows putting array selectors into the issuer metadata claim path.
             // (I.e. giving the different indices of the array different descriptions)
@@ -725,6 +736,10 @@ async fn apply_issuer_metadata_to_schema(
             else {
                 continue;
             };
+
+            if mandatory_claim_paths.contains(&metadata_key) {
+                claim_schema.required = true;
+            }
 
             let claim_translations: Vec<LocalizedText> = issuer_metadata_claim
                 .display
@@ -752,6 +767,20 @@ async fn apply_issuer_metadata_to_schema(
             if !claim_translations.is_empty() {
                 claim_schema.translations = claim_translations.into();
             }
+        }
+
+        let missing_mandatory_claims = mandatory_claim_paths
+            .iter()
+            .filter(|path| !parsed_claim_paths.contains(path))
+            .collect_vec();
+        if !missing_mandatory_claims.is_empty() {
+            return Err(IssuanceProtocolError::Failed(format!(
+                "Mandatory claims are missing from the parsed credential schema: [{}]",
+                missing_mandatory_claims
+                    .iter()
+                    .map(|path| format!("'{path}'"))
+                    .join(", ")
+            )));
         }
     }
 

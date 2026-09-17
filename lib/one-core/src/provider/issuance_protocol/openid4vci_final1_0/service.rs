@@ -4,7 +4,7 @@ use std::str::FromStr;
 use indexmap::IndexMap;
 use one_crypto::utilities;
 use secrecy::SecretString;
-use shared_types::{IdentifierId, InteractionId};
+use shared_types::{ClaimSchemaId, IdentifierId, InteractionId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::token::{ExpiresIn, TokenRequest, TokenResponse};
@@ -26,7 +26,9 @@ use super::validator::{
     throw_if_interaction_pre_authorized_code_used, throw_if_token_request_invalid,
     throw_if_tx_code_invalid, validate_refresh_token,
 };
-use crate::config::core_config::FormatType;
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{DatatypeConfig, DatatypeType, FormatType};
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
@@ -130,12 +132,13 @@ pub(crate) async fn credential_configuration_supported(
     format_type: &FormatType,
     format: &CredentialSchemaFormat,
     credential_schema: &CredentialSchema,
+    datatype_config: &DatatypeConfig,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: IndexMap<String, ProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<CredentialConfiguration, OpenID4VCIError> {
     let credential_metadata_claims =
-        create_claims_dtos_from_claims(credential_schema, format).await?;
+        create_claims_dtos_from_claims(credential_schema, format, datatype_config).await?;
     let display_dtos = create_display_dtos_from_schema(credential_schema, format).await?;
 
     let credential_metadata = CredentialMetadata {
@@ -198,6 +201,7 @@ pub(crate) async fn credential_configuration_supported(
 async fn create_claims_dtos_from_claims(
     credential_schema: &CredentialSchema,
     format: &CredentialSchemaFormat,
+    datatype_config: &DatatypeConfig,
 ) -> Result<Vec<ClaimMetadata>, OpenID4VCIError> {
     let claim_schemas = credential_schema
         .claim_schemas
@@ -211,18 +215,22 @@ async fn create_claims_dtos_from_claims(
         .await
         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 
+    let mandatory_by_claim_id = calculate_mandatory_claims(&claim_schemas, datatype_config)
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+    let claim_mappings_by_claim_id: HashMap<_, _> = claim_mappings
+        .iter()
+        .map(|mapping| (mapping.claim_schema_id, mapping))
+        .collect();
+
     let mut result = vec![];
     for claim_schema in &claim_schemas {
         if claim_schema.metadata {
             continue;
         }
 
-        let mapping = claim_mappings
-            .iter()
-            .find(|m| m.claim_schema_id == claim_schema.id)
-            .ok_or(OpenID4VCIError::RuntimeError(
-                "Missing claim schema mapping".to_string(),
-            ))?;
+        let mapping = claim_mappings_by_claim_id.get(&claim_schema.id).ok_or(
+            OpenID4VCIError::RuntimeError("Missing claim schema mapping".to_string()),
+        )?;
 
         let mut path = mapping
             .technical_key
@@ -238,12 +246,81 @@ async fn create_claims_dtos_from_claims(
 
         result.push(ClaimMetadata {
             path,
-            mandatory: Some(claim_schema.required),
+            mandatory: mandatory_by_claim_id.get(&claim_schema.id).copied(),
             additional_values: Default::default(),
             display: Some(display),
         });
     }
     Ok(result)
+}
+
+pub(super) fn calculate_mandatory_claims(
+    claim_schemas: &[ClaimSchema],
+    datatype_config: &DatatypeConfig,
+) -> Result<HashMap<ClaimSchemaId, bool>, ConfigValidationError> {
+    let claim_schemas_by_key: HashMap<_, _> = claim_schemas
+        .iter()
+        .filter(|claim| !claim.metadata)
+        .map(|claim| (claim.key.as_str(), claim))
+        .collect();
+    let mut children_by_parent: HashMap<&str, Vec<&ClaimSchema>> = HashMap::new();
+    let mut root_claims = Vec::new();
+
+    for claim_schema in claim_schemas_by_key.values() {
+        match claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER) {
+            Some((parent_key, _)) if claim_schemas_by_key.contains_key(parent_key) => {
+                children_by_parent
+                    .entry(parent_key)
+                    .or_default()
+                    .push(claim_schema);
+            }
+            _ => root_claims.push(*claim_schema),
+        }
+    }
+
+    let mut mandatory_by_claim_id = HashMap::with_capacity(claim_schemas_by_key.len());
+    for root_claim in root_claims {
+        is_claim_always_present(
+            root_claim,
+            true,
+            &children_by_parent,
+            datatype_config,
+            &mut mandatory_by_claim_id,
+        )?;
+    }
+
+    Ok(mandatory_by_claim_id)
+}
+
+fn is_claim_always_present(
+    claim_schema: &ClaimSchema,
+    ancestors_required: bool,
+    children_by_parent: &HashMap<&str, Vec<&ClaimSchema>>,
+    datatype_config: &DatatypeConfig,
+    mandatory_by_claim_id: &mut HashMap<ClaimSchemaId, bool>,
+) -> Result<bool, ConfigValidationError> {
+    let claim_and_ancestors_required = ancestors_required && claim_schema.required;
+    let mut has_mandatory_non_object_descendant = false;
+
+    if let Some(children) = children_by_parent.get(claim_schema.key.as_str()) {
+        for child in children {
+            has_mandatory_non_object_descendant |= is_claim_always_present(
+                child,
+                claim_and_ancestors_required,
+                children_by_parent,
+                datatype_config,
+                mandatory_by_claim_id,
+            )?;
+        }
+    }
+
+    let is_object =
+        datatype_config.get_fields(&claim_schema.data_type)?.r#type == DatatypeType::Object;
+    let mandatory =
+        claim_and_ancestors_required && (!is_object || has_mandatory_non_object_descendant);
+    mandatory_by_claim_id.insert(claim_schema.id, mandatory);
+
+    Ok(mandatory)
 }
 
 async fn create_display_dto_from_schema(

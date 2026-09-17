@@ -1588,6 +1588,7 @@ impl OpenID4VCIFinal1_0 {
                     &format_type,
                     format,
                     &schema,
+                    &self.config.datatype,
                     map_cryptographic_binding_methods_supported(
                         &self.did_method_provider.supported_method_names(),
                         &format_capabilities.holder_identifier_types,

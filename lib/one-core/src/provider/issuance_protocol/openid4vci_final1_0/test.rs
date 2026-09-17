@@ -34,10 +34,11 @@ use super::model::{
     HolderBinding, HolderCredentialConfiguration, HolderInteractionData,
     OpenID4VCIIssuerInteractionDataDTO, RequestedCredential,
 };
-use super::service::{build_issuer_display, create_credential_offer};
+use super::service::{build_issuer_display, calculate_mandatory_claims, create_credential_offer};
 use crate::clock::now_utc;
 use crate::config::core_config::{
-    CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
+    CoreConfig, DatatypeConfig, DatatypeType, Fields, FormatType, KeyAlgorithmType,
+    KeySecurityLevelType,
 };
 use crate::error::ErrorCodeMixinExt;
 use crate::model::claim::Claim;
@@ -106,7 +107,7 @@ use crate::repository::key_repository::MockKeyRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::managed_instance::dto::IssueWalletUnitAttestationResponseDTO;
 use crate::service::test_utilities::{
-    dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
+    dummy_claim_schema, dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -5418,6 +5419,68 @@ fn text(field: LocalizedTextField, lang: &str, value: &str) -> LocalizedText {
         value: value.to_owned(),
         entity_type: LocalizedTextEntityType::Identifier,
     }
+}
+
+#[test]
+fn required_child_of_optional_parent_is_not_always_present() {
+    let optional_parent = claim_schema("optionalParent", "CUSTOM_OBJECT", false);
+    let optional_parent_child = claim_schema("optionalParent/requiredChild", "STRING", true);
+    let required_parent = claim_schema("requiredParent", "CUSTOM_OBJECT", true);
+    let required_parent_child = claim_schema("requiredParent/requiredChild", "STRING", true);
+    let claim_schemas = vec![
+        optional_parent,
+        optional_parent_child,
+        required_parent,
+        required_parent_child,
+    ];
+    let mandatory_by_claim_id =
+        calculate_mandatory_claims(&claim_schemas, &datatype_config()).unwrap();
+
+    assert!(!mandatory_by_claim_id[&claim_schemas[0].id]);
+    assert!(!mandatory_by_claim_id[&claim_schemas[1].id]);
+    assert!(mandatory_by_claim_id[&claim_schemas[2].id]);
+    assert!(mandatory_by_claim_id[&claim_schemas[3].id]);
+}
+
+#[test]
+fn required_parent_without_always_present_children_is_not_always_present() {
+    let required_parent = claim_schema("requiredParent", "CUSTOM_OBJECT", true);
+    let optional_child = claim_schema("requiredParent/optionalChild", "CUSTOM_OBJECT", false);
+    let optional_grandchild = claim_schema(
+        "requiredParent/optionalChild/optionalGrandchild",
+        "STRING",
+        false,
+    );
+    let claim_schemas = vec![required_parent, optional_child, optional_grandchild];
+    let mandatory_by_claim_id =
+        calculate_mandatory_claims(&claim_schemas, &datatype_config()).unwrap();
+
+    assert!(!mandatory_by_claim_id[&claim_schemas[0].id]);
+}
+
+fn claim_schema(key: &str, data_type: &str, required: bool) -> ClaimSchema {
+    ClaimSchema {
+        key: key.to_string(),
+        data_type: data_type.to_string(),
+        required,
+        ..dummy_claim_schema()
+    }
+}
+
+fn datatype_config() -> DatatypeConfig {
+    let fields = |r#type| Fields {
+        r#type,
+        display: "display".into(),
+        order: None,
+        priority: None,
+        enabled: true,
+        capabilities: None,
+        params: None,
+    };
+    let mut config = DatatypeConfig::default();
+    config.insert("STRING".to_string(), fields(DatatypeType::String));
+    config.insert("CUSTOM_OBJECT".to_string(), fields(DatatypeType::Object));
+    config
 }
 
 #[test]
