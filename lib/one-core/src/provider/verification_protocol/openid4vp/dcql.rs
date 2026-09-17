@@ -213,7 +213,13 @@ pub(crate) async fn get_presentation_definition_v2(
             let format = candidate.schema.as_ref().await?.format().await?;
             let formatter = formatter_provider.get_credential_formatter(&format)?;
 
-            let claims = first_matching_claims(&candidate, credential_filters, &*formatter).await?;
+            let mut claim_source = candidate.clone();
+            claim_source.claims =
+                crate::mapper::credential::detail_claims(&candidate, credential_repository)
+                    .await?
+                    .into();
+            let claims =
+                first_matching_claims(&claim_source, credential_filters, &*formatter).await?;
             let Some(claims) = claims else {
                 continue;
             };
@@ -233,6 +239,7 @@ pub(crate) async fn get_presentation_definition_v2(
 
             let credential_detail_dto = credential_detail_response_from_model(
                 candidate,
+                claim_source.claims.as_ref().await?.to_owned(),
                 config,
                 CredentialAttestationBlobs::default(),
                 None,

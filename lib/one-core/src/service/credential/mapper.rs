@@ -58,6 +58,7 @@ use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 #[allow(deprecated)]
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
+    claims: Vec<Claim>,
     config: &CoreConfig,
     attestation: CredentialAttestationBlobs,
     trust_information: Option<TrustInformation>,
@@ -72,23 +73,6 @@ pub(crate) async fn credential_detail_response_from_model(
         to_credential_schema_detail_response(schema_model.clone(), config, formatter_provider)
             .await
             .map_err(|e: NestedError| CredentialServiceError::MappingError(e.to_string()))?;
-
-    let claims = match value.r#type {
-        CredentialType::Single | CredentialType::BatchParent => {
-            value.claims.as_ref().await?.to_owned()
-        }
-        CredentialType::BatchItem => {
-            // batch items have no claims of their own, they are defined by the parent
-            let parent = value
-                .parent
-                .as_ref()
-                .ok_or(CredentialServiceError::MappingError(
-                    "batch item parent is None".to_string(),
-                ))?;
-
-            parent.as_ref().await?.claims.as_ref().await?.to_owned()
-        }
-    };
 
     let mut filtered_claims = Vec::with_capacity(claims.len());
     for claim in claims {

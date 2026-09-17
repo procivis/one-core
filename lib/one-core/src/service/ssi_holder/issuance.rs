@@ -213,21 +213,19 @@ impl SSIHolderService {
             .issued
             .iter()
             .map(|issuer_response| {
-                // either the main credential blob or a batch item
-                let serialized = issuer_response
-                    .main_credential
+                let issued = issuer_response
+                    .batch_items
+                    .first()
+                    .unwrap_or(&issuer_response.main_credential);
+                let serialized = issued
                     .serialized
                     .as_ref()
-                    .or(issuer_response
-                        .batch_items
-                        .first()
-                        .and_then(|item| item.serialized.as_ref()))
                     .ok_or(HolderServiceError::MappingError(
                         "missing serialized credential".to_string(),
                     ))?
                     .to_owned();
                 Ok(ProtocolArtifact::HolderIssuanceCredential {
-                    credential: Cow::Borrowed(&issuer_response.main_credential.credential),
+                    credential: Cow::Borrowed(&issued.credential),
                     serialized,
                     credential_configuration_id: issuer_response
                         .credential_configuration_id
@@ -492,7 +490,7 @@ impl SSIHolderService {
                 ecosystem
                     .validate_interaction(
                         &ProtocolArtifact::HolderIssuanceCredential {
-                            credential: Cow::Owned(main_credential),
+                            credential: Cow::Owned(batch_item),
                             serialized,
                             credential_configuration_id,
                         },

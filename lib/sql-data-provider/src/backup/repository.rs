@@ -313,7 +313,7 @@ impl BackupRepository for BackupProvider {
                         .join(JoinType::InnerJoin, claim::Relation::ClaimSchema.def())
                         .filter(
                             Expr::col((claim::Entity, claim::Column::CredentialId))
-                                .equals((credential::Entity, credential::Column::Id)),
+                                .eq(crate::credential::mapper::effective_claim_owner()),
                         )
                         .into_query(),
                 ),

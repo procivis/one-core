@@ -371,8 +371,14 @@ impl CredentialService {
         )
         .await?;
 
+        let claims = crate::mapper::credential::detail_claims(
+            &credential,
+            self.credential_repository.as_ref(),
+        )
+        .await?;
         let response = credential_detail_response_from_model(
             credential,
+            claims,
             &self.config,
             attestation_blobs,
             trust_information,

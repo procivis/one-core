@@ -146,11 +146,62 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential() {
+    check_batch_presentation(false).await;
+}
+
+#[tokio::test]
+async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item_claims() {
+    check_batch_presentation(true).await;
+}
+
+async fn check_batch_presentation(item_claims: bool) {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential = setup_batch_credential(&context, &organisation, &identifier, 2).await;
     let (verifier_did, verifier_identifier, credential, interaction, proof) =
         setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
             .await;
+
+    if item_claims {
+        let claims = credential.claims.as_ref().await.unwrap().to_owned();
+        let items = context
+            .db
+            .credentials
+            .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+            .await;
+        for item in items {
+            let claims = claims
+                .iter()
+                .cloned()
+                .map(|mut claim| {
+                    claim.id = Uuid::new_v4().into();
+                    claim.credential_id = item.id;
+                    claim
+                })
+                .collect();
+            context
+                .db
+                .credentials
+                .update(
+                    item.id,
+                    UpdateCredentialRequest {
+                        claims: Some(claims),
+                        ..Default::default()
+                    },
+                )
+                .await;
+        }
+        context
+            .db
+            .credentials
+            .update(
+                credential.id,
+                UpdateCredentialRequest {
+                    claims: Some(vec![]),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
 
     context
         .server_mock
@@ -227,6 +278,21 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential()
     // Only one item consumed
     assert!(items.iter().any(|c| c.consumed_at.is_some()));
     assert!(items.iter().any(|c| c.consumed_at.is_none()));
+    let consumed = items.iter().find(|c| c.consumed_at.is_some()).unwrap();
+    let expected_owner = if item_claims {
+        consumed.id
+    } else {
+        credential.id
+    };
+    assert!(
+        proof
+            .claims
+            .as_ref()
+            .await
+            .unwrap()
+            .iter()
+            .all(|claim| claim.claim.credential_id == expected_owner)
+    );
 }
 
 #[tokio::test]

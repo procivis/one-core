@@ -33,6 +33,12 @@ impl HolderIssuanceResolver {
         let format = schema.format().await?;
         let formatter = self.formatter_provider.get_credential_formatter(&format)?;
         let organisation_id = interaction.organisation.id();
+        // Validation uses the concrete item; trust history remains attached to its batch.
+        let history_credential_id = credential
+            .parent
+            .as_ref()
+            .map(|parent| parent.id())
+            .unwrap_or(credential.id);
 
         let issuer = formatter
             .extract_credentials_unverified(serialized, Some(&schema))
@@ -104,7 +110,7 @@ impl HolderIssuanceResolver {
 
         self.store_trust_history_event(
             HistoryAction::WrpAcReceived,
-            credential.id,
+            history_credential_id,
             organisation_id,
             Some(interaction_data.access_certificate),
             None,
@@ -114,7 +120,7 @@ impl HolderIssuanceResolver {
         if let Some(validated_registration_certificate) = validated_registration_certificate {
             self.store_trust_history_event(
                 HistoryAction::WrpRcReceived,
-                credential.id,
+                history_credential_id,
                 organisation_id,
                 Some(validated_registration_certificate),
                 Some(WalletRelyingPartyMetadata {
@@ -141,7 +147,7 @@ impl HolderIssuanceResolver {
 
             self.store_trust_history_event(
                 HistoryAction::WrpNrReceived,
-                credential.id,
+                history_credential_id,
                 organisation_id,
                 Some(national_registry_data),
                 Some(WalletRelyingPartyMetadata {

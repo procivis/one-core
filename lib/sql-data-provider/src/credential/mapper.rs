@@ -22,10 +22,11 @@ use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{ColumnRef, ExprTrait, Query, SelectStatement};
-use sea_orm::{
-    ActiveValue, ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait, Set, Value,
+use sea_orm::sea_query::{
+    Alias, ColumnRef, Expr, ExprTrait, Func, Order, Query, SelectStatement, SimpleExpr,
+    SubQueryStatement,
 };
+use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter, Set, Value};
 use shared_types::{
     BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, IdentifierId, InteractionId,
     KeyId,
@@ -197,18 +198,49 @@ fn unconsumed_item_select() -> SelectStatement {
 
 impl IntoJoinRelations for CredentialFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
-        match self {
-            // add claims if filtering by claim name/value
-            Self::ClaimName(_) | Self::ClaimValue(_) => {
-                vec![JoinRelation {
-                    join_type: JoinType::LeftJoin,
-                    relation_def: credential::Relation::Claim.def(),
-                    alias: None,
-                }]
-            }
-            _ => vec![],
-        }
+        vec![] // claim filters use an explicit join to the effective claim owner
     }
+}
+
+/// Match the holder detail view: use the newest item's own claims, falling back
+/// to stored legacy parent claims when that item has none. Other roles are unchanged.
+pub(crate) fn effective_claim_owner() -> SimpleExpr {
+    let item = Alias::new("claim_source_item");
+    let latest = Query::select()
+        .column((item.clone(), credential::Column::Id))
+        .from_as(credential::Entity, item.clone())
+        .and_where(
+            Expr::col((item.clone(), credential::Column::ParentId))
+                .equals((credential::Entity, credential::Column::Id)),
+        )
+        .and_where(Expr::col((item.clone(), credential::Column::DeletedAt)).is_null())
+        .order_by((item.clone(), credential::Column::CreatedDate), Order::Desc)
+        .order_by((item, credential::Column::Id), Order::Desc)
+        .limit(1)
+        .to_owned();
+    let owner = Query::select()
+        .column(claim::Column::CredentialId)
+        .from(claim::Entity)
+        .and_where(Expr::col((claim::Entity, claim::Column::CredentialId)).eq(
+            SimpleExpr::SubQuery(None, Box::new(SubQueryStatement::SelectStatement(latest))),
+        ))
+        .limit(1)
+        .to_owned();
+    let own_id = Expr::col((credential::Entity, credential::Column::Id)).into();
+    Expr::case(
+        Expr::col((credential::Entity, credential::Column::Role))
+            .eq(credential::CredentialRole::Holder)
+            .and(
+                Expr::col((credential::Entity, credential::Column::Type))
+                    .eq(credential::CredentialType::BatchParent),
+            ),
+        Func::coalesce([
+            SimpleExpr::SubQuery(None, Box::new(SubQueryStatement::SelectStatement(owner))),
+            own_id,
+        ]),
+    )
+    .finally(Expr::col((credential::Entity, credential::Column::Id)))
+    .into()
 }
 
 /// Builds the lazily loaded claims relation of a credential. Shared between the credential

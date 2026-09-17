@@ -581,17 +581,26 @@ impl SSIHolderService {
             .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
             .into();
 
-        let credential_schema = credential.schema.as_ref().await?;
+        let mut presented_credential = consumed_item.as_ref().unwrap_or(&credential).clone();
+        // Presented credential is always a single credential or a batch item.
+        presented_credential.claims =
+            crate::mapper::credential::stored_credential_claims(&presented_credential)
+                .await?
+                .into();
+        let credential_schema = presented_credential.schema.as_ref().await?;
         let formatter = self
             .formatter_for_blob_and_schema(&credential_content, &credential_schema)
             .await?;
 
         let credential_presentation = CredentialPresentation {
-            credential: credential.clone(),
+            credential: presented_credential.clone(),
             token: credential_content,
-            disclosed_keys: presented_paths_to_disclosed_keys(presented_paths, &credential)
-                .await
-                .error_while("mapping presented paths to disclosed keys")?,
+            disclosed_keys: presented_paths_to_disclosed_keys(
+                presented_paths,
+                &presented_credential,
+            )
+            .await
+            .error_while("mapping presented paths to disclosed keys")?,
         };
         let presentation = self
             .prepare_credential_presentation(credential_presentation, &*formatter)
@@ -610,7 +619,7 @@ impl SSIHolderService {
             transaction_data_ids,
         };
 
-        let claims = credential
+        let claims = presented_credential
             .claims
             .as_ref()
             .await?

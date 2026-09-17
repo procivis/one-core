@@ -1713,6 +1713,8 @@ impl OpenID4VCIFinal1_0 {
         }
         let credential_detail = credential_detail_response_from_model(
             credential.clone(),
+            // Issuer-side: batch parents have claims
+            crate::mapper::credential::stored_credential_claims(credential).await?,
             &self.config,
             CredentialAttestationBlobs::default(),
             None,

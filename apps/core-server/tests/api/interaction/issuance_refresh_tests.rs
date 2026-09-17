@@ -156,7 +156,11 @@ async fn test_issuance_refresh_skips_configuration_the_issuer_refuses() {
     for id in ids {
         let item = context.db.credentials.get(&id.parse()).await;
         assert_eq!(CredentialType::BatchItem, item.r#type);
-        assert_eq!(first_parent, item.parent.unwrap().id());
+        assert_eq!(first_parent, item.parent.as_ref().unwrap().id());
+        let claims = item.claims.as_ref().await.unwrap();
+        assert!(!claims.is_empty());
+        assert!(claims.iter().all(|claim| claim.credential_id == item.id));
+        assert!(claims.iter().any(|claim| claim.path == "string"));
     }
     // the refused configuration keeps the items of the accept only
     let refused_items = context

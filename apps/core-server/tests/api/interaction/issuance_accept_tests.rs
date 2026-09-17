@@ -733,7 +733,19 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         .list(CredentialFilterValue::ParentCredential(credential.id).condition())
         .await;
     assert_eq!(2, batch_items.len());
+    assert!(credential.claims.as_ref().await.unwrap().is_empty());
+    let mut claim_ids = std::collections::HashSet::new();
     for item in batch_items {
+        let claims = item.claims.as_ref().await.unwrap();
+        assert!(!claims.is_empty());
+        let mut has_metadata = false;
+        for claim in &claims {
+            assert_eq!(claim.credential_id, item.id);
+            assert!(claim_ids.insert(claim.id));
+            has_metadata |= claim.schema.as_ref().await.unwrap().metadata;
+        }
+        assert!(has_metadata);
+        assert!(claims.iter().any(|claim| claim.path == "string"));
         assert_eq!(CredentialType::BatchItem, item.r#type);
         assert!(item.expires_at.is_some());
     }

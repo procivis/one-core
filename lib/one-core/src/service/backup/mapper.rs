@@ -19,9 +19,13 @@ pub(super) async fn unexportable_entities_to_response_dto(
     let mut credentials = vec![];
 
     for credential in entities.credentials {
+        // Batch parents without claims have their latest item claims backfilled by the repository
+        // which uses the `effective_claim_owner` helper.
+        let claims = crate::mapper::credential::stored_credential_claims(&credential).await?;
         credentials.push(
             credential_detail_response_from_model(
                 credential,
+                claims,
                 config,
                 CredentialAttestationBlobs::default(),
                 None,

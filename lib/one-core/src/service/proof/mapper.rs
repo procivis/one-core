@@ -234,8 +234,11 @@ pub(super) async fn get_verifier_proof_detail(
                 .await
                 .error_while("getting credential trust information")?;
 
+        // Verifier side, credentials are type single and have claims directly
+        let claims = crate::mapper::credential::stored_credential_claims(&credential).await?;
         let credential_detail = credential_detail_response_from_model(
             credential,
+            claims,
             config,
             CredentialAttestationBlobs::default(),
             trust_information,
@@ -621,6 +624,11 @@ pub(super) async fn get_holder_proof_detail(
                     vec![proof_claim.clone()],
                     credential_detail_response_from_model(
                         credential.clone(),
+                        // Proof claims reference their attached credential:
+                        //  - a single
+                        //  - a new item with claims
+                        //  - a legacy parent with claims
+                        crate::mapper::credential::stored_credential_claims(&credential).await?,
                         config,
                         CredentialAttestationBlobs::default(),
                         None,

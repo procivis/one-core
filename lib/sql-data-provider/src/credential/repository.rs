@@ -4,8 +4,8 @@ use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::claim::Claim;
 use one_core::model::credential::{
-    Credential, CredentialListIncludeEntityTypeEnum, CredentialListQuery, GetCredentialList,
-    UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
+    GetCredentialList, UpdateCredentialRequest,
 };
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_repository::CredentialRepository;
@@ -14,8 +14,8 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, JoinType,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
-    Unchanged,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set,
+    SqlErr, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
@@ -215,6 +215,23 @@ fn get_credential_list_query(
         // list query
         .with_filter_join(&query_params)
         .with_list_query(&query_params, db_backend);
+
+    if query_params.filtering.as_ref().is_some_and(|filter| {
+        filter.contains(&|value| {
+            matches!(
+                value,
+                CredentialFilterValue::ClaimName(_) | CredentialFilterValue::ClaimValue(_)
+            )
+        })
+    }) {
+        QueryTrait::query(&mut query).join(
+            JoinType::LeftJoin,
+            claim::Entity,
+            Expr::col((claim::Entity, claim::Column::CredentialId))
+                .eq(super::mapper::effective_claim_owner()),
+        );
+        query = query.distinct();
+    }
 
     if query_params.sorting.is_some() || query_params.pagination.is_some() {
         // fallback ordering

@@ -1145,3 +1145,59 @@ async fn test_delete_unexportable_identifiers() {
         .map(|identifier| identifier.id);
     assert_eq_unordered(not_deleted, unexportable_identifiers_setup.exportable_ids);
 }
+
+#[tokio::test]
+async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
+    use sea_orm::IntoActiveModel;
+
+    use crate::entity::claim;
+
+    let setup = setup_empty().await;
+    let keys = add_unexportable_keys(&setup.db, setup.organisation_id).await;
+    let credentials = add_unexportable_credentials(&setup.db, setup.organisation_id, &keys).await;
+    let parent_id: CredentialId = credentials.unexportable_ids[0].into();
+    let mut parent = credential::Entity::find_by_id(parent_id)
+        .one(&setup.db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    parent.r#type = Set(CredentialType::BatchParent);
+    let mut item = parent.update(&setup.db).await.unwrap().into_active_model();
+    let item_id: CredentialId = Uuid::new_v4().into();
+    item.id = Set(item_id);
+    item.parent_id = Set(Some(parent_id));
+    item.r#type = Set(CredentialType::BatchItem);
+    item.insert(&setup.db).await.unwrap();
+    claim::Entity::update_many()
+        .col_expr(
+            claim::Column::CredentialId,
+            sea_orm::sea_query::Expr::value(item_id),
+        )
+        .filter(claim::Column::CredentialId.eq(parent_id))
+        .exec(&setup.db)
+        .await
+        .unwrap();
+
+    let snapshot = NamedTempFile::new().unwrap();
+    setup.provider.copy_db_to(snapshot.path()).await.unwrap();
+    claim::Entity::delete_many()
+        .filter(claim::Column::CredentialId.eq(item_id))
+        .exec(&setup.db)
+        .await
+        .unwrap();
+    let backup = setup
+        .provider
+        .fetch_unexportable(Some(snapshot.path()))
+        .await
+        .unwrap();
+    let parent = backup
+        .credentials
+        .iter()
+        .find(|credential| credential.id == parent_id)
+        .unwrap();
+    let claims = parent.claims.as_ref().await.unwrap();
+    assert_eq!(claims.len(), 1);
+    assert_eq!(claims[0].credential_id, item_id);
+    assert_eq!(claims[0].schema.as_ref().await.unwrap().key, "name");
+}

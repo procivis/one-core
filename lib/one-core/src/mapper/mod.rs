@@ -30,6 +30,7 @@ use crate::provider::credential_formatter::model::{CredentialClaim, CredentialCl
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::identifier::dto::IdentifierTranslationsDTO;
 
+pub(crate) mod credential;
 pub(crate) mod credential_schema_claim;
 pub(crate) mod etsi_lote;
 pub(crate) mod etsi_lotl;

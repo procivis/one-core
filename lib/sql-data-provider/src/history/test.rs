@@ -2040,3 +2040,56 @@ fn assert_timelines(result: &OrganisationTimelines, expected: &[usize]) {
 fn assert_counts(actual: &[TimeSeriesPoint], expected: &[usize]) {
     assert_eq!(actual.iter().map(|p| p.count).collect::<Vec<_>>(), expected);
 }
+
+#[tokio::test]
+async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() {
+    use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+
+    use crate::entity::{claim, credential};
+
+    let setup = setup_with_credential_schema_and_proof().await;
+    let db = &setup.provider.db;
+    let mut parent = credential::Entity::find_by_id(setup.credential_id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    parent.role = Set(CredentialRole::Holder);
+    parent.r#type = Set(credential::CredentialType::BatchParent);
+    let mut item = parent.update(db).await.unwrap().into_active_model();
+    let item_id: CredentialId = Uuid::new_v4().into();
+    item.id = Set(item_id);
+    item.parent_id = Set(Some(setup.credential_id));
+    item.r#type = Set(credential::CredentialType::BatchItem);
+    item.insert(db).await.unwrap();
+    claim::Entity::update_many()
+        .col_expr(
+            claim::Column::CredentialId,
+            sea_orm::sea_query::Expr::value(item_id),
+        )
+        .filter(claim::Column::CredentialId.eq(setup.credential_id))
+        .exec(db)
+        .await
+        .unwrap();
+
+    for filter in [
+        HistoryFilterValue::CredentialId(setup.credential_id),
+        HistoryFilterValue::SearchQuery(setup.claim_schema_name, HistorySearchEnum::ClaimName),
+        HistoryFilterValue::SearchQuery(
+            setup.claim_value.to_string(),
+            HistorySearchEnum::ClaimValue,
+        ),
+        HistoryFilterValue::SearchQuery(setup.claim_value.to_string(), HistorySearchEnum::All),
+    ] {
+        let result = setup
+            .provider
+            .get_history_list(history_list_query_with_filter(
+                setup.organisation.id,
+                filter,
+            ))
+            .await
+            .unwrap();
+        assert_result(2 /* parent credential and proof */, result);
+    }
+}

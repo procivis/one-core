@@ -73,7 +73,20 @@ impl IntoSortingColumn for SortableHistoryColumn {
 fn credential_id_related_subqueries(credential_id: CredentialId) -> Vec<SelectStatement> {
     vec![
         select_proof_id_from_proof_claim_to_claim_join()
-            .cond_where(claim::Column::CredentialId.eq(credential_id))
+            .cond_where(
+                claim::Column::CredentialId
+                    .eq(credential_id)
+                    .or(claim::Column::CredentialId.in_subquery(
+                        Query::select()
+                            .column(credential::Column::Id)
+                            .from(credential::Entity)
+                            .and_where(credential::Column::ParentId.eq(credential_id))
+                            .and_where(
+                                credential::Column::Role.eq(credential::CredentialRole::Holder),
+                            )
+                            .to_owned(),
+                    )),
+            )
             .to_owned(),
     ]
 }
@@ -207,6 +220,20 @@ impl IntoFilterCondition for PreprocessedHistoryFilterValue {
     }
 }
 
+fn select_holder_parent_ids_for_claims() -> SelectStatement {
+    Query::select()
+        .expr_as(credential::Column::ParentId.into_expr(), ENTITY_ID)
+        .from(claim::Entity)
+        .inner_join(
+            credential::Entity,
+            Expr::col((claim::Entity, claim::Column::CredentialId))
+                .equals((credential::Entity, credential::Column::Id)),
+        )
+        .and_where(credential::Column::Role.eq(credential::CredentialRole::Holder))
+        .and_where(credential::Column::ParentId.is_not_null())
+        .to_owned()
+}
+
 fn search_query_subqueries(
     search_text: String,
     search_type: HistorySearchEnum,
@@ -214,6 +241,14 @@ fn search_query_subqueries(
     match search_type {
         HistorySearchEnum::All => search_all_subqueries(search_text),
         HistorySearchEnum::ClaimName => vec![
+            select_holder_parent_ids_for_claims()
+                .inner_join(
+                    claim_schema::Entity,
+                    Expr::col((claim_schema::Entity, claim_schema::Column::Id))
+                        .equals((claim::Entity, claim::Column::ClaimSchemaId)),
+                )
+                .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
+                .to_owned(),
             Query::select()
                 .expr_as(claim::Column::CredentialId.into_expr(), ENTITY_ID)
                 .from(claim::Entity)
@@ -260,6 +295,16 @@ fn search_query_subqueries(
                 .to_owned(),
         ],
         HistorySearchEnum::ClaimValue => vec![
+            select_holder_parent_ids_for_claims()
+                .cond_where(get_blob_match_condition(
+                    claim::Column::Value,
+                    StringMatch {
+                        r#match: StringMatchType::Contains,
+                        value: search_text.to_owned(),
+                    },
+                    255,
+                ))
+                .to_owned(),
             Query::select()
                 .expr_as(claim::Column::CredentialId.into_expr(), ENTITY_ID)
                 .from(claim::Entity)

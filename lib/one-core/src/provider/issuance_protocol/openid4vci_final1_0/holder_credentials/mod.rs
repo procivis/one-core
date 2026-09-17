@@ -7,14 +7,14 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialId, SerializedCredential};
+use shared_types::{CredentialId, SerializedCredential};
 use uuid::Uuid;
 
 use self::schema_matching::{
     CredentialSchemaResolution, align_format_claim_schemas_and_mappings,
     find_or_import_credential_schema,
 };
-use super::mapper::{convert_metadata_to_layout_properties, remap_claim_credential_ids};
+use super::mapper::convert_metadata_to_layout_properties;
 use super::model::{HolderBinding, HolderCredentialConfiguration};
 use super::validator::validate_batch_consistency;
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
@@ -26,6 +26,7 @@ use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
@@ -62,7 +63,7 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref(),
         )?;
 
-        let (format, formatter) = self
+        let (_, formatter) = self
             .formatter_provider
             .get_formatter_by_type(format_type)
             .ok_or_else(|| {
@@ -90,6 +91,24 @@ impl OpenID4VCIFinal1_0 {
 
         validate_batch_consistency(&credentials).await?;
 
+        let first = credentials
+            .first_mut()
+            .ok_or(IssuanceProtocolError::Failed(
+                "No credentials received".to_string(),
+            ))?;
+        let mut schema = self
+            .update_credential_schema(
+                &mut first.credential,
+                organisation,
+                interaction_data,
+                configuration,
+            )
+            .await?;
+        for item in credentials.iter_mut().skip(1) {
+            self.align_credential_schema(&mut schema, &mut item.credential, None)
+                .await?;
+        }
+
         let mut main_credential = if credentials.len() > 1 {
             let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
@@ -99,7 +118,7 @@ impl OpenID4VCIFinal1_0 {
             } else {
                 batch_item.credential.expires_at
             };
-            let mut credential = Credential {
+            let credential = Credential {
                 id: Uuid::new_v4().into(),
                 r#type: CredentialType::BatchParent,
                 credential_blob_id: None,
@@ -109,18 +128,10 @@ impl OpenID4VCIFinal1_0 {
                 issuer_certificate: None,
                 holder_identifier: None,
                 key: None,
-                // materialized on purpose: cloning the relation would alias the batch item's claims
-                claims: batch_item
-                    .credential
-                    .claims
-                    .as_ref()
-                    .await?
-                    .to_owned()
-                    .into(),
+                claims: Default::default(),
                 expires_at,
                 ..batch_item.credential.clone()
             };
-            remap_claim_credential_ids(&mut credential).await?;
 
             CredentialWithBlob {
                 credential,
@@ -139,20 +150,8 @@ impl OpenID4VCIFinal1_0 {
 
         let main_credential_id = main_credential.credential.id;
 
-        let schema = self
-            .update_credential_schema(
-                &mut main_credential.credential,
-                organisation,
-                interaction_data,
-                configuration,
-            )
-            .await?;
-        if !credentials.is_empty() {
-            // update batch items
-            for c in credentials.iter_mut() {
-                self.change_to_batch_item(&mut c.credential, main_credential_id, &schema, &format)
-                    .await?;
-            }
+        for item in &mut credentials {
+            self.change_to_batch_item(&mut item.credential, main_credential_id);
         }
 
         // Add main credential to the front so that the batch_parent already exists when the batch_items are created.
@@ -163,24 +162,10 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    async fn change_to_batch_item(
-        &self,
-        credential: &mut Credential,
-        parent_id: CredentialId,
-        schema: &CredentialSchema,
-        format: &CredentialFormat,
-    ) -> Result<(), IssuanceProtocolError> {
-        credential.schema = schema.clone().into();
+    fn change_to_batch_item(&self, credential: &mut Credential, parent_id: CredentialId) {
         credential.r#type = CredentialType::BatchItem;
         credential.parent = Some(Related::new(parent_id, self.credential_repository.clone()));
-        credential.claims = Default::default();
         credential.interaction = None;
-
-        let formats = schema.formats.as_ref().await?;
-        let format = formats.iter().find(|f| &f.format == format).cloned();
-        credential.format = convert_inner(format);
-
-        Ok(())
     }
 
     async fn update_credential_schema(
@@ -215,8 +200,19 @@ impl OpenID4VCIFinal1_0 {
         .await?;
         drop(parsed_format);
 
+        self.align_credential_schema(&mut schema, credential, new_format)
+            .await?;
+        Ok(schema)
+    }
+
+    async fn align_credential_schema(
+        &self,
+        schema: &mut CredentialSchema,
+        credential: &mut Credential,
+        new_format: Option<CredentialSchemaFormat>,
+    ) -> Result<(), IssuanceProtocolError> {
         let alignment = align_format_claim_schemas_and_mappings(
-            &mut schema,
+            schema,
             credential,
             &self.config.global_settings.default_language,
         )
@@ -238,7 +234,7 @@ impl OpenID4VCIFinal1_0 {
                 .await
                 .error_while("updating credential schema")?;
         }
-        Ok(schema)
+        Ok(())
     }
 
     pub(super) async fn holder_process_refresh(
@@ -398,26 +394,26 @@ impl OpenID4VCIFinal1_0 {
         }
         validate_batch_consistency(&batch_credentials).await?;
 
-        // as the batch is validated to be consistent, any credential in the batch is suitable for this validation
-        let batch_credential = batch_credentials
-            .iter_mut()
-            .next()
-            .ok_or(IssuanceProtocolError::Failed("empty batch".to_string()))?;
-        let alignment = align_format_claim_schemas_and_mappings(
-            &mut schema,
-            &mut batch_credential.credential,
-            &self.config.global_settings.default_language,
-        )
-        .await?;
-        if !alignment.new_claim_schemas.is_empty() {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Unknown claims found: {}",
-                alignment
-                    .new_claim_schemas
-                    .into_iter()
-                    .map(|claim_schema| claim_schema.key)
-                    .join(", ")
-            )));
+        if batch_credentials.is_empty() {
+            return Err(IssuanceProtocolError::Failed("empty batch".to_string()));
+        }
+        for item in &mut batch_credentials {
+            let alignment = align_format_claim_schemas_and_mappings(
+                &mut schema,
+                &mut item.credential,
+                &self.config.global_settings.default_language,
+            )
+            .await?;
+            if !alignment.new_claim_schemas.is_empty() {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Unknown claims found: {}",
+                    alignment
+                        .new_claim_schemas
+                        .into_iter()
+                        .map(|schema| schema.key)
+                        .join(", ")
+                )));
+            }
         }
 
         self.history_repository
@@ -447,13 +443,7 @@ impl OpenID4VCIFinal1_0 {
                 mut credential,
                 serialized,
             } = batch_credential;
-            self.change_to_batch_item(
-                &mut credential,
-                batch_parent.id,
-                &schema,
-                &parent_format.format,
-            )
-            .await?;
+            self.change_to_batch_item(&mut credential, batch_parent.id);
 
             let credential_blob_id = if let Some(token) = serialized {
                 let blob = Blob::new(token.as_ref(), BlobType::Credential);
