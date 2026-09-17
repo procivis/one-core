@@ -162,10 +162,10 @@ impl TransactionManager for TransactionManagerImpl {
                     DataLayerError::TransactionError(format!("Failed to commit transaction: {e}"))
                 })?;
             }
-            Err(_) => {
+            Err(inner) => {
                 tx.rollback().await.map_err(|e| {
                     DataLayerError::TransactionError(format!(
-                        "Failed to roll back transaction: {e}"
+                        "Failed to roll back transaction: {e}, transaction failed with: {inner}"
                     ))
                 })?;
             }

@@ -831,6 +831,19 @@ impl ManagedInstanceService {
         self.tx_manager
             .tx_with_config(
                 async {
+                    // locks the wallet unit row before the status list lock, so concurrent
+                    // issuances for one unit wait here instead of deadlocking (shared FK lock)
+                    self.managed_instance_repository
+                        .update(
+                            &instance_id,
+                            UpdateManagedInstanceRequest {
+                                last_issuance: Some(crate::clock::now_utc()),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating wallet unit")?;
+
                     for wia_request in request.wia {
                         let attestation = wallet_provider
                             .issue_instance_attestation(
@@ -870,17 +883,6 @@ impl ManagedInstanceService {
 
                         result.wua.push(attestation.jwt);
                     }
-
-                    self.managed_instance_repository
-                        .update(
-                            &instance_id,
-                            UpdateManagedInstanceRequest {
-                                last_issuance: Some(crate::clock::now_utc()),
-                                ..Default::default()
-                            },
-                        )
-                        .await
-                        .error_while("updating wallet unit")?;
 
                     Ok::<_, ManagedInstanceError>(())
                 }
