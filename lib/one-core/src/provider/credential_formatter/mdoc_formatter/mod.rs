@@ -63,7 +63,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier;
 use crate::model::organisation::Organisation;
-use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
@@ -257,7 +257,11 @@ impl CredentialFormatter for MdocFormatter {
         let unprotected_headers = HeaderBuilder::new()
             .add_header(
                 HeaderParameter::X5Chain,
-                build_x5chain_header_value(&certificate)?,
+                build_x5chain_header_value(
+                    &certificate.chain,
+                    Some(self.certificate_validator.as_ref()),
+                )
+                .await?,
             )
             .add_header(
                 HeaderParameter::X5U,
@@ -330,7 +334,7 @@ impl CredentialFormatter for MdocFormatter {
             )
             .add_header(
                 HeaderParameter::X5Chain,
-                build_x5chain_header_value(certificate)?,
+                build_x5chain_header_value(&certificate.chain, None).await?,
             )
             .build();
         let unprotected_headers = {
@@ -1015,22 +1019,42 @@ fn map_to_ciborium_value(
     })
 }
 
-pub(crate) fn build_x5chain_header_value(
-    certificate: &Certificate,
+/// <https://www.rfc-editor.org/info/rfc9360/#section-2-5.3>
+pub(crate) async fn build_x5chain_header_value(
+    pem_chain: &str,
+    strip_root_ca: Option<&dyn CertificateValidator>,
 ) -> Result<ciborium::Value, FormatterError> {
-    let x5c = pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?;
+    let x5c = pem_chain_into_x5c(pem_chain).error_while("parsing PEM chain")?;
 
-    let mut chain = vec![];
+    let mut chain = Vec::with_capacity(x5c.len());
     for cert in x5c {
         let bytes = Base64::decode_to_vec(cert, None)?;
         chain.push(ciborium::Value::Bytes(bytes));
     }
 
+    // mdoc should not contain the root CA (IACA)
+    if let Some(validator) = strip_root_ca
+        && chain.len() > 1
+        && validator
+            .parse_pem_chain(
+                pem_chain,
+                CertificateValidationOptions {
+                    require_root_termination: true,
+                    ..CertificateValidationOptions::no_validation()
+                },
+            )
+            .await
+            .is_ok()
+    {
+        chain.pop();
+    }
+
     let x5chain_value = if chain.len() == 1 {
-        chain.remove(0)
+        chain.swap_remove(0)
     } else {
         ciborium::Value::Array(chain)
     };
+
     Ok(x5chain_value)
 }
 

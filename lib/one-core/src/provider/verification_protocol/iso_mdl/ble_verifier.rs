@@ -721,7 +721,9 @@ pub(super) async fn prepare_reader_auth(
     let unprotected_headers = HeaderBuilder::new()
         .add_header(
             HeaderParameter::X5Chain,
-            build_x5chain_header_value(&verifier.certificate).error_while("creating x5chain")?,
+            build_x5chain_header_value(&verifier.certificate.chain, None)
+                .await
+                .error_while("creating x5chain")?,
         )
         .build();
 
