@@ -95,7 +95,7 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
-use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
+use crate::provider::credential_formatter::mapper::first_certificate;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialStatus, VerificationFn,
@@ -121,13 +121,10 @@ use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
-use crate::service::credential::dto::CredentialAttestationBlobs;
-use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
 use crate::util::jwe::{build_jwe, select_recipient_jwk};
 use crate::util::key_agreement::{KeyAgreementKey, key_agreement_keys};
 use crate::util::key_selection::KeyFilter;
-use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 mod attestations;
 mod holder_credentials;
@@ -1707,46 +1704,15 @@ impl OpenID4VCIFinal1_0 {
         let schema_format = schema_formats.iter().find(|f| f.id == format_id).ok_or(
             IssuanceProtocolError::Failed("missing credential schema format".to_string()),
         )?;
-        let mappings = schema_format.claim_mappings.as_ref().await?;
-        if !mappings.is_empty() {
-            return credential_to_credential_detail_v2(
-                credential,
-                &schema,
-                schema_format,
-                &self.config,
-                core_base_url,
-                credential_status,
-            )
-            .await;
-        }
-        let credential_detail = credential_detail_response_from_model(
-            credential.clone(),
-            // Issuer-side: batch parents have claims
-            crate::mapper::credential::stored_credential_claims(credential).await?,
-            &self.config,
-            CredentialAttestationBlobs::default(),
-            None,
-            None,
-            self.credential_repository.as_ref(),
-            self.formatter_provider.as_ref(),
-            None,
-        )
-        .await
-        .error_while("creating credential detail")?;
-
-        let credential_data = credential_data_from_credential_detail_response(
-            credential_detail,
+        credential_to_credential_detail_v2(
             credential,
-            core_base_url,
-            credential_status,
-            vcdm_v2_base_context(None),
             &schema,
             schema_format,
             &self.config,
+            core_base_url,
+            credential_status,
         )
         .await
-        .error_while("getting credential data")?;
-        Ok(credential_data)
     }
 }
 
@@ -2194,16 +2160,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         credential_data.holder_identifier = Some(holder_identifier);
         credential_data.holder_key_id = Some(holder_key_id);
-        credential_data.issuer_certificate =
-            if let Some(cert) = credential.issuer_certificate.as_ref() {
-                Some(cert.as_ref().await?.to_owned())
-            } else if let IdentifierData::Certificate(certificates)
-            | IdentifierData::CertificateAuthority(certificates) = &issuer_identifier.data
-            {
-                certificates.as_ref().await?.first().cloned()
-            } else {
-                None
-            };
+        credential_data.issuer_certificate = match credential.issuer_certificate.as_ref() {
+            Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
+            None => first_certificate(&issuer_identifier)
+                .await
+                .error_while("getting issuer certificate")?,
+        };
 
         let token = formatter
             .format_credential(credential_data, auth_fn)

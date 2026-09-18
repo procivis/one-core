@@ -170,7 +170,7 @@ pub(crate) fn claim_path_to_formatted_path(
     claim: &Claim,
     claim_schema: &ClaimSchema,
     claim_mapping: &CredentialSchemaFormatClaimSchema,
-) -> Result<(String, bool), IssuanceProtocolError> {
+) -> Result<String, IssuanceProtocolError> {
     let key_segments = claim_schema
         .key
         .split(NESTED_CLAIM_MARKER)
@@ -196,16 +196,12 @@ pub(crate) fn claim_path_to_formatted_path(
         map_array_indices(&mut path_segments, key_segment, &mut mapped_path)?;
         mapped_path.push(technical_key_segment);
     }
-    let mut array_item = false;
-    if !path_segments.is_empty() {
-        // there are path segments left over, which _must_ be an array indices, so _this_ claim is an array item
-        array_item = true;
-        mapped_path.extend(path_segments);
-    }
+    // path segments left over are array indices, which are not part of the schema keys
+    mapped_path.extend(path_segments);
     if let Some(namespace) = &claim_mapping.namespace {
         mapped_path.insert(0, namespace);
     }
-    Ok((mapped_path.join(NESTED_CLAIM_MARKER_STR), array_item))
+    Ok(mapped_path.join(NESTED_CLAIM_MARKER_STR))
 }
 
 /// Maps path segments to the mapped path until one matches the key segment.
@@ -260,7 +256,7 @@ pub(crate) async fn presented_paths_to_disclosed_keys(
                 claim_schema.id, format.id
             ))
         })?;
-        let (mapped_path, _) = claim_path_to_formatted_path(claim, &claim_schema, mapping)
+        let mapped_path = claim_path_to_formatted_path(claim, &claim_schema, mapping)
             .error_while("mapping claim path")?;
         disclosed_keys.push(mapped_path);
     }

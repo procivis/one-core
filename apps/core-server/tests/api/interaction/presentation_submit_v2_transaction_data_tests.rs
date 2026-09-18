@@ -119,7 +119,6 @@ async fn create_mdoc_holder_credential(
                 key: format!("{MDOC_NAMESPACE}/given_name"),
                 value: PublishedClaimValue::String("John".to_string()),
                 datatype: Some("STRING".to_string()),
-                array_item: false,
             }],
             holder_identifier: Some(holder_identifier.clone()),
             holder_key_id: None,

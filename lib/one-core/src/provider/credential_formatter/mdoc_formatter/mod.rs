@@ -1270,13 +1270,6 @@ fn extract_claims(
     Ok(result)
 }
 
-pub async fn try_extracting_mso_from_token(
-    token: &SerializedCredential,
-) -> Result<MobileSecurityObject, FormatterError> {
-    let issuer_signed: IssuerSigned = decode_cbor_base64(token.as_ref())?;
-    try_extract_mobile_security_object(&issuer_signed.issuer_auth)
-}
-
 async fn parse_claims(
     namespaces: Namespaces,
     datatype_provider: &dyn DataTypeProvider,

@@ -887,9 +887,7 @@ async fn dcql_path_exactly_matches_claim(
         dcql_path.segments.iter().collect()
     };
     let effective_path = if let Some(mapping) = claim_mappings.get(&schema.id) {
-        let (path, _) = claim_path_to_formatted_path(claim, &schema, mapping)
-            .error_while("mapping claim path")?;
-        path
+        claim_path_to_formatted_path(claim, &schema, mapping).error_while("mapping claim path")?
     } else {
         claim.path.to_owned()
     };

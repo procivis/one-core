@@ -61,11 +61,6 @@ pub struct WalletUnitActivationResponseDTO {
 }
 
 #[derive(Clone, Debug)]
-pub struct RefreshWalletUnitRequestDTO {
-    pub proof: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct IssueWalletUnitAttestationRequestDTO {
     pub wia: Vec<IssueWiaRequestDTO>,
     pub wua: Vec<IssueWuaRequestDTO>,

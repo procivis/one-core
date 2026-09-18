@@ -114,11 +114,6 @@ pub struct OpenID4VPDirectPostRequestDTO {
     pub state: Option<InteractionId>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
-pub struct OpenID4VPClientMetadataJwks {
-    pub keys: Vec<PublicJwk>,
-}
-
 /// Interaction data used for OpenID4VP on verifier side
 /// - HTTP transport generates this
 ///

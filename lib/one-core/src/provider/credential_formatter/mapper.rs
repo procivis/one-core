@@ -9,8 +9,7 @@ use url::Url;
 use uuid::Uuid;
 use uuid::fmt::Urn;
 
-use super::common::map_claims;
-use super::model::{CredentialData, CredentialSchema, FormatterCapabilities, PublishedClaim};
+use super::model::{CredentialSchema, FormatterCapabilities, PublishedClaim};
 use super::nest_claims;
 use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::{CoreConfig, FormatType};
@@ -24,9 +23,6 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialSchemaMetadata, CredentialStatus, Issuer,
-};
-use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
 use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
 
@@ -112,40 +108,6 @@ pub(crate) async fn first_certificate(
         }
         _ => Ok(None),
     }
-}
-
-#[expect(clippy::too_many_arguments)]
-pub(crate) async fn credential_data_from_credential_detail_response(
-    credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
-    credential: &Credential,
-    core_base_url: &str,
-    credential_status: Vec<CredentialStatus>,
-    context: IndexSet<ContextType>,
-    credential_schema: &crate::model::credential_schema::CredentialSchema,
-    credential_schema_format: &CredentialSchemaFormat,
-    config: &CoreConfig,
-) -> Result<CredentialData, FormatterError> {
-    let flat_claims = map_claims(&credential_detail.claims, false);
-
-    let vcdm = vcdm_from_credential_and_published_claims(
-        credential,
-        core_base_url,
-        credential_status,
-        context,
-        flat_claims.clone(),
-        credential_schema,
-        credential_schema_format,
-        config,
-    )
-    .await?;
-
-    Ok(CredentialData {
-        vcdm,
-        claims: flat_claims,
-        holder_identifier: None,
-        holder_key_id: None,
-        issuer_certificate: None,
-    })
 }
 
 #[expect(clippy::too_many_arguments)]

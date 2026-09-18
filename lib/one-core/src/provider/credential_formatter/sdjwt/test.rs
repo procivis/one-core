@@ -25,7 +25,7 @@ use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
-use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
+use crate::service::test_utilities::{dummy_did, dummy_identifier};
 
 const W3C_USER_CLAIM_PATH: [&str; 2] = ["vc", "credentialSubject"];
 
@@ -49,7 +49,6 @@ async fn test_prepare_sd_presentation() {
 
     // Take name and age
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
@@ -70,7 +69,6 @@ async fn test_prepare_sd_presentation() {
 
     // Take name
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string()],
     };
@@ -90,7 +88,6 @@ async fn test_prepare_sd_presentation() {
 
     // Take age
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["age".to_string()],
     };
@@ -108,7 +105,6 @@ async fn test_prepare_sd_presentation() {
 
     // Take none
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token,
         disclosed_keys: vec![],
     };
@@ -148,7 +144,6 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take name and age
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
@@ -169,7 +164,6 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take name
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string()],
     };
@@ -189,7 +183,6 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take age
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["age".to_string()],
     };
@@ -207,7 +200,6 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take none
     let presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token,
         disclosed_keys: vec![],
     };
@@ -672,24 +664,22 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
             key: "name".into(),
             value: "John".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
         PublishedClaim {
             key: "age".into(),
             value: "42".into(),
             datatype: Some("NUMBER".to_owned()),
-            array_item: false,
         },
     ];
     let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
     let credential_subject =
         VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap()).unwrap();
-    let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
+    let mut vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
         .add_context(schema_context)
         .add_credential_schema(schema)
-        .add_credential_status(status)
-        .with_valid_from(issuance_date)
-        .with_valid_until(issuance_date + valid_for);
+        .with_valid_from(issuance_date);
+    vcdm.valid_until = Some(issuance_date + valid_for);
+    vcdm.credential_status = vec![status];
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(

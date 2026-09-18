@@ -129,12 +129,6 @@ impl VcdmCredential {
     }
 
     #[must_use]
-    pub fn with_proof(mut self, proof: VcdmProof) -> Self {
-        self.proof = Some(proof);
-        self
-    }
-
-    #[must_use]
     pub fn with_id(mut self, id: impl Into<Url>) -> Self {
         self.id = Some(id.into());
         self
@@ -143,17 +137,6 @@ impl VcdmCredential {
     #[must_use]
     pub fn with_valid_from(mut self, valid_from: OffsetDateTime) -> Self {
         self.valid_from = Some(valid_from);
-        self
-    }
-
-    #[must_use]
-    pub fn with_valid_until(mut self, valid_until: OffsetDateTime) -> Self {
-        self.valid_until = Some(valid_until);
-        self
-    }
-
-    pub fn add_credential_status(mut self, credential_status: CredentialStatus) -> Self {
-        self.credential_status.push(credential_status);
         self
     }
 

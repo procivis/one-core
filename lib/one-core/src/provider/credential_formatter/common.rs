@@ -1,15 +1,11 @@
 use indexmap::IndexMap;
 
-use super::model::PublishedClaimValue;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::der_chain_into_pem_chain;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 use crate::provider::credential_formatter::model::PublishedClaim;
-use crate::service::credential::dto::{
-    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
-};
 
 /// Resolves the certificate (chain) referenced by the `x5u` header parameter
 /// (IETF RFC 7515 clause 4.1.5 for JOSE, IETF RFC 9360 for COSE). ETSI TS 119 472-1
@@ -96,47 +92,6 @@ fn json_pointer_escape(input: &str) -> String {
     input.replace("~", "~0")
 }
 
-pub(super) fn map_claims(
-    claims: &[DetailCredentialClaimResponseDTO],
-    array_item: bool,
-) -> Vec<PublishedClaim> {
-    let mut result = vec![];
-
-    for claim in claims {
-        let published_claim_value = match &claim.value {
-            DetailCredentialClaimValueResponseDTO::Nested(value) => {
-                result.extend(map_claims(value, claim.schema.array));
-                None
-            }
-            DetailCredentialClaimValueResponseDTO::String(value) => {
-                Some(PublishedClaimValue::String(value.to_owned()))
-            }
-            DetailCredentialClaimValueResponseDTO::Boolean(value) => {
-                Some(PublishedClaimValue::Bool(value.to_owned()))
-            }
-            DetailCredentialClaimValueResponseDTO::Float(value) => {
-                Some(PublishedClaimValue::Float(value.to_owned()))
-            }
-            DetailCredentialClaimValueResponseDTO::Integer(value) => {
-                Some(PublishedClaimValue::Integer(value.to_owned()))
-            }
-        };
-
-        let key = claim.path.clone();
-
-        if let Some(value) = published_claim_value {
-            result.push(PublishedClaim {
-                key,
-                value,
-                datatype: Some(claim.schema.datatype.clone()),
-                array_item,
-            });
-        }
-    }
-
-    result
-}
-
 #[cfg(test)]
 #[derive(Clone)]
 pub struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
@@ -186,19 +141,16 @@ mod tests {
                 key: "name".into(),
                 value: "John".into(),
                 datatype: None,
-                array_item: false,
             },
             PublishedClaim {
                 key: "location/x".into(),
                 value: "1".into(),
                 datatype: None,
-                array_item: false,
             },
             PublishedClaim {
                 key: "location/y".into(),
                 value: "2".into(),
                 datatype: None,
-                array_item: false,
             },
         ];
         let expected = IndexMap::from([
@@ -222,19 +174,16 @@ mod tests {
                 key: "name".into(),
                 value: "John".into(),
                 datatype: None,
-                array_item: false,
             },
             PublishedClaim {
                 key: "location/0".into(),
                 value: "1".into(),
                 datatype: None,
-                array_item: true,
             },
             PublishedClaim {
                 key: "location/1".into(),
                 value: "2".into(),
                 datatype: None,
-                array_item: true,
             },
         ];
         let expected = IndexMap::from([
@@ -252,13 +201,11 @@ mod tests {
                 key: "name".into(),
                 value: "John".into(),
                 datatype: None,
-                array_item: false,
             },
             PublishedClaim {
                 key: "location/weird ~!@#$%^&*()_+{}|:\"<>?`-=[]\\;',.".into(),
                 value: "1".into(),
                 datatype: None,
-                array_item: false,
             },
         ];
         let expected = IndexMap::from([

@@ -5,12 +5,6 @@ use serde::Serialize;
 
 use crate::provider::key_algorithm::key::KeyHandle;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ParsedPublicKeyJwk {
-    pub public_key_bytes: Vec<u8>,
-    pub signer_algorithm_id: String,
-}
-
 #[derive(Clone)]
 pub struct GeneratedKey {
     pub key: KeyHandle,

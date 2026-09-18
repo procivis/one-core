@@ -806,10 +806,8 @@ impl OneCore {
                 data_provider.get_identifier_repository(),
                 did_method_provider,
                 key_algorithm_provider.clone(),
-                data_provider.get_revocation_list_repository(),
                 certificate_validator.clone(),
                 ContextCache::new(json_ld_cache.clone(), client.clone()),
-                core_base_url.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),

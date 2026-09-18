@@ -6,11 +6,11 @@ use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, CredentialSchemaFormatId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaFormatId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
-    AuthorizationDetail, CredentialConfiguration, CredentialMetadata, CredentialRequestEncryption,
+    CredentialConfiguration, CredentialMetadata, CredentialRequestEncryption,
     CredentialResponseEncryption, Grants, IssuerDisplay, ProofTypeSupported, SigningAlgValue,
 };
 use time::{Duration, OffsetDateTime};
@@ -524,17 +524,6 @@ pub(crate) struct CredentialIssuerParams {
     pub logo: Option<String>,
     pub issuer: String,
     pub client_id: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ContinuationIssuanceDTO {
-    pub organisation_id: OrganisationId,
-    pub protocol: String,
-    pub issuer: String,
-    pub client_id: String,
-    pub redirect_uri: Option<String>,
-    pub scope: Option<Vec<String>>,
-    pub authorization_details: Option<Vec<AuthorizationDetail>>,
 }
 
 #[derive(Debug)]

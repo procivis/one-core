@@ -108,11 +108,10 @@ fn claim_to_published_claim(
     };
 
     // map to technical keys
-    let (key, array_item) = claim_path_to_formatted_path(claim, claim_schema, claim_mapping)?;
+    let key = claim_path_to_formatted_path(claim, claim_schema, claim_mapping)?;
     Ok(PublishedClaim {
         key,
         value,
         datatype: Some(claim_schema.data_type.clone()),
-        array_item,
     })
 }

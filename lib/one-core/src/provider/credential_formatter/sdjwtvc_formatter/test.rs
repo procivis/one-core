@@ -65,8 +65,7 @@ use crate::provider::key_algorithm::provider::{
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
-    dummy_credential, dummy_did, dummy_did_document, dummy_identifier, dummy_jwk,
-    dummy_organisation, generic_config,
+    dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, dummy_organisation, generic_config,
 };
 use crate::util::test_utilities::assert_time_diff_less_than;
 
@@ -280,7 +279,6 @@ async fn test_format_credential_swiyu() {
         key: "portrait".to_string(),
         value: PublishedClaimValue::String(picture_value),
         datatype: Some("SWIYU_PICTURE".to_string()),
-        array_item: false,
     });
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -1188,25 +1186,21 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
             key: "age".to_string(),
             value: PublishedClaimValue::Integer(22),
             datatype: Some("NUMBER".to_string()),
-            array_item: false,
         },
         PublishedClaim {
             key: "object/name".to_string(),
             value: PublishedClaimValue::String("Mike".to_string()),
             datatype: Some("STRING".to_string()),
-            array_item: false,
         },
         PublishedClaim {
             key: "is_over_18".to_string(),
             value: PublishedClaimValue::Bool(true),
             datatype: Some("BOOLEAN".to_string()),
-            array_item: false,
         },
         PublishedClaim {
             key: "object/measurements/0/air pollution".to_string(),
             value: PublishedClaimValue::Float(24.6),
             datatype: Some("NUMBER".to_string()),
-            array_item: true,
         },
     ];
 
@@ -1223,10 +1217,10 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         .unwrap()
         .with_id(holder_did.clone().into_url());
 
-    let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+    let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
         .add_credential_schema(schema)
-        .with_valid_from(now)
-        .with_valid_until(now + Duration::seconds(10));
+        .with_valid_from(now);
+    vcdm.valid_until = Some(now + Duration::seconds(10));
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -1247,7 +1241,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         issuer_certificate: None,
     };
 
-    let auth_fn = test_auth_fn(key_pair, issuer_did);
+    let auth_fn = test_auth_fn(key_pair, issuer_did.clone());
     let key_verification = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
@@ -1298,7 +1292,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
             selectively_disclosable: false,
             metadata: true,
             value: json!(
-                result.issuer.did_value().unwrap().as_str()
+                issuer_did.to_string()
             ).try_into().unwrap(),
         },
         "vct".into()=> CredentialClaim {
@@ -1404,25 +1398,21 @@ async fn test_format_extract_round_trip_sd_array_elements() {
             key: "age".to_string(),
             value: PublishedClaimValue::Integer(22),
             datatype: Some("NUMBER".to_string()),
-            array_item: false,
         },
         PublishedClaim {
             key: "object/name".to_string(),
             value: PublishedClaimValue::String("Mike".to_string()),
             datatype: Some("STRING".to_string()),
-            array_item: false,
         },
         PublishedClaim {
             key: "is_over_18".to_string(),
             value: PublishedClaimValue::Bool(true),
             datatype: Some("BOOLEAN".to_string()),
-            array_item: false,
         },
         PublishedClaim {
             key: "object/measurements/0/air pollution".to_string(),
             value: PublishedClaimValue::Float(24.6),
             datatype: Some("NUMBER".to_string()),
-            array_item: true,
         },
     ];
 
@@ -1439,10 +1429,10 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         .unwrap()
         .with_id(holder_did.clone().into_url());
 
-    let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+    let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
         .add_credential_schema(schema)
-        .with_valid_from(now)
-        .with_valid_until(now + Duration::seconds(10));
+        .with_valid_from(now);
+    vcdm.valid_until = Some(now + Duration::seconds(10));
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -1463,7 +1453,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         issuer_certificate: None,
     };
 
-    let auth_fn = test_auth_fn(key_pair, issuer_did);
+    let auth_fn = test_auth_fn(key_pair, issuer_did.clone());
     let key_verification = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
@@ -1528,7 +1518,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
             selectively_disclosable: false,
             metadata: true,
             value: json!(
-                result.issuer.did_value().unwrap().as_str()
+                issuer_did.to_string()
             ).try_into().unwrap(),
         },
         "vct".into()=> CredentialClaim {
@@ -2251,7 +2241,6 @@ async fn test_format_presentation_mixed_sd_array_claim() {
     let token = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDpqd2s6ZXlKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWVDSTZJbGhMU25sbWVtcDBSVlYyTTBocFZHNDVVVUpSWkdwS1oyUXlTMEpPTVhKMk5qRlVkRkJJZFVRNWFrRWlmUSMwIiwidHlwIjoidmMrc2Qtand0In0.eyJpYXQiOjE3NTcwNzU3MjgsImV4cCI6MTc1NzA3NTczOCwibmJmIjoxNzU3MDc1NzI4LCJpc3MiOiJkaWQ6andrOmV5SnJkSGtpT2lKUFMxQWlMQ0pqY25ZaU9pSkZaREkxTlRFNUlpd2llQ0k2SWxoTFNubG1lbXAwUlZWMk0waHBWRzQ1VVVKUlpHcEtaMlF5UzBKT01YSjJOakZVZEZCSWRVUTVha0VpZlEiLCJzdWIiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInZjdCI6ImNyZWRlbnRpYWwtc2NoZW1hLWlkIiwiX3NkIjpbIk9VamJWRlZ1RGhoRkRReXpJdllfd3AzQTJRVnBadjlsZ0JoRUdMYlVSTXMiLCJod1ZXdW9CeG1hcEd2RHZCdDJ1RGR6RmlfMjNIR3ZQd3hJT3lCdGNVRjZBIiwidVBCaWJWdzVOMFVqalF3cjJwSURPbTRwRlltS3MzbFVUdWQ4ZTRxajlCbyJdLCJfc2RfYWxnIjoic2hhLTI1NiJ9.4mDkXOv500AjcM-HtMLHsadP7-qb0kXlY10i6EfQzJCku4NypM_tQBlsbCQL5JJRxNqrm6BE2aetfPOmLjeABA~WyJpZWg1U1YwTjcwT2NkQkljMi00akxRIiwiYWdlIiwyMl0~WyJtY2p2TERkc1hsd2lDSDdXekd2aTVnIiwiaXNfb3Zlcl8xOCIsdHJ1ZV0~WyJSeExGd2VhQVdyeEp4XzRRVFF5VEJnIiwibWVhc3VyZW1lbnRzIixbeyJhaXIgcG9sbHV0aW9uIjoyNC42fV1d~WyJqWTFOM0R1cEJiczVuUUdRVUFCSmdRIiwibmFtZSIsIk1pa2UiXQ~WyJQWl9kRThIbXhKQ2xxVHVQUGhhOGhnIiwib2JqZWN0Iix7Il9zZCI6WyJBczVEX241c0pjaURMQlM5THNxaGlwc3doOGRzeVBrOEtiQjZERW94Q1NnIiwiWjBQaFV1V19jTnpVYnFEeC1kZFFXVV9yYzVZemxiWFlRYV9xN2FCZEpUQSJdfV0~";
     let expected_presentation = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDpqd2s6ZXlKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWVDSTZJbGhMU25sbWVtcDBSVlYyTTBocFZHNDVVVUpSWkdwS1oyUXlTMEpPTVhKMk5qRlVkRkJJZFVRNWFrRWlmUSMwIiwidHlwIjoidmMrc2Qtand0In0.eyJpYXQiOjE3NTcwNzU3MjgsImV4cCI6MTc1NzA3NTczOCwibmJmIjoxNzU3MDc1NzI4LCJpc3MiOiJkaWQ6andrOmV5SnJkSGtpT2lKUFMxQWlMQ0pqY25ZaU9pSkZaREkxTlRFNUlpd2llQ0k2SWxoTFNubG1lbXAwUlZWMk0waHBWRzQ1VVVKUlpHcEtaMlF5UzBKT01YSjJOakZVZEZCSWRVUTVha0VpZlEiLCJzdWIiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInZjdCI6ImNyZWRlbnRpYWwtc2NoZW1hLWlkIiwiX3NkIjpbIk9VamJWRlZ1RGhoRkRReXpJdllfd3AzQTJRVnBadjlsZ0JoRUdMYlVSTXMiLCJod1ZXdW9CeG1hcEd2RHZCdDJ1RGR6RmlfMjNIR3ZQd3hJT3lCdGNVRjZBIiwidVBCaWJWdzVOMFVqalF3cjJwSURPbTRwRlltS3MzbFVUdWQ4ZTRxajlCbyJdLCJfc2RfYWxnIjoic2hhLTI1NiJ9.4mDkXOv500AjcM-HtMLHsadP7-qb0kXlY10i6EfQzJCku4NypM_tQBlsbCQL5JJRxNqrm6BE2aetfPOmLjeABA~WyJQWl9kRThIbXhKQ2xxVHVQUGhhOGhnIiwib2JqZWN0Iix7Il9zZCI6WyJBczVEX241c0pjaURMQlM5THNxaGlwc3doOGRzeVBrOEtiQjZERW94Q1NnIiwiWjBQaFV1V19jTnpVYnFEeC1kZFFXVV9yYzVZemxiWFlRYV9xN2FCZEpUQSJdfV0~WyJSeExGd2VhQVdyeEp4XzRRVFF5VEJnIiwibWVhc3VyZW1lbnRzIixbeyJhaXIgcG9sbHV0aW9uIjoyNC42fV1d~";
     let credential_presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: token.into(),
         disclosed_keys: vec!["object/measurements/0/air pollution".to_string()],
     };
@@ -2301,7 +2290,6 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
     .unwrap();
 
     let credential_presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: COMPLEX_TEST_VECTOR.into(),
         disclosed_keys: vec![
             "verified_claims/verification/evidence/0/method".to_string(),

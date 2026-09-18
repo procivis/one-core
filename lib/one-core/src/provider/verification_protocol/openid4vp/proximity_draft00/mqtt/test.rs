@@ -20,7 +20,9 @@ use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
-use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
+use crate::provider::credential_formatter::model::{
+    IdentifierDetails, MockSignatureProvider, MockTokenVerifier,
+};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -145,13 +147,16 @@ async fn test_handle_invitation_success() {
         .once()
         .returning(|_, did, _, _, _, _| {
             let organisation = dummy_organisation(None);
+            let IdentifierDetails::Did(did) = did else {
+                panic!("expected a DID identifier");
+            };
             let verifier_did = Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
-                did: did.did_value().unwrap().to_owned(),
+                did: did.to_owned(),
                 did_type: DidType::Remote,
                 did_method: "KEY".into(),
                 deactivated: false,

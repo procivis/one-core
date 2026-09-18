@@ -23,7 +23,6 @@ use crate::config::core_config::{
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
-use crate::model::credential::Credential;
 use crate::model::credential_schema::LayoutProperties;
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::TokenError;
@@ -112,14 +111,6 @@ pub enum IdentifierDetails {
 }
 
 impl IdentifierDetails {
-    #[allow(dead_code)]
-    pub(crate) fn did_value(&self) -> Option<&DidValue> {
-        match &self {
-            IdentifierDetails::Did(did_value) => Some(did_value),
-            _ => None,
-        }
-    }
-
     pub(crate) fn identifier_type(&self) -> IdentifierType {
         match &self {
             IdentifierDetails::Key(_) => IdentifierType::Key,
@@ -247,7 +238,6 @@ pub struct PublishedClaim {
     pub key: String,
     pub value: PublishedClaimValue,
     pub datatype: Option<String>,
-    pub array_item: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -321,7 +311,6 @@ pub struct HolderBindingCtx {
 
 #[derive(Clone, Debug)]
 pub struct CredentialPresentation {
-    pub credential: Credential,
     pub token: SerializedCredential,
     pub disclosed_keys: Vec<String>,
 }

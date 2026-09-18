@@ -22,7 +22,6 @@ use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::vc_api::model::LdCredential;
 
@@ -36,10 +35,8 @@ impl VCAPIService {
         identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        revocation_list_repository: Arc<dyn RevocationListRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
         json_ld_ctx_cache: ContextCache,
-        base_url: Option<String>,
     ) -> Self {
         Self {
             credential_formatter_provider,
@@ -49,10 +46,8 @@ impl VCAPIService {
             identifier_repository,
             did_method_provider,
             key_algorithm_provider,
-            revocation_list_repository,
             certificate_validator,
             jsonld_ctx_cache: json_ld_ctx_cache,
-            base_url,
         }
     }
 

@@ -3,15 +3,10 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
-use shared_types::CredentialId;
 use standardized_types::jwk::PublicJwk;
 use url::Url;
 
-use crate::service::credential::dto::DetailCredentialClaimResponseDTO;
-use crate::service::credential_schema::dto::{
-    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesResponseDTO,
-};
-use crate::service::did::dto::DidListItemResponseDTO;
+use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsonLDContextResponseDTO {
@@ -52,16 +47,6 @@ pub struct JsonLDInlineEntityDTO {
     pub id: String,
     pub r#type: Option<String>,
     pub context: Option<JsonLDContextDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectIssuerResponseDTO {
-    pub id: CredentialId,
-    pub schema: CredentialSchemaDetailResponseDTO,
-    pub issuer_did: DidListItemResponseDTO,
-    pub claims: Vec<DetailCredentialClaimResponseDTO>,
-    pub redirect_uri: Option<String>,
 }
 
 /// (Partial) SD-JWT VC type metadata.

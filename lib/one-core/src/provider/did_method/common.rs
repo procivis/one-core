@@ -9,9 +9,6 @@ use super::error::DidMethodError;
 use super::model::DidVerificationMethod;
 use crate::model::key::Key;
 
-pub const ENC: &str = "enc";
-pub const SIG: &str = "sig";
-
 pub fn jwk_context() -> serde_json::Value {
     json!([
         "https://www.w3.org/ns/did/v1",

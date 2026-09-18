@@ -30,9 +30,6 @@ use crate::proto::http_client::HttpClientSecurityConfig;
 
 type Dict<K, V> = BTreeMap<K, V>;
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct NoCustomConfig;
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AppCustomConfigSerdeDTO<Custom> {
@@ -97,21 +94,6 @@ pub struct GlobalSettings {
 
 fn default_en() -> String {
     "en".to_string()
-}
-
-impl CoreConfig {
-    pub fn get_datatypes_of_type(&self, datatype: DatatypeType) -> Vec<&str> {
-        self.datatype
-            .iter()
-            .filter_map(|(key, fields)| {
-                if fields.r#type == datatype {
-                    Some(key.as_str())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<&str>>()
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]

@@ -13,7 +13,6 @@ use time::OffsetDateTime;
 use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
 use crate::model::credential::ExactCredentialFilterColumn;
-use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::TrustResolutionResult;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
@@ -145,17 +144,6 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub organisation_id: OrganisationId,
     #[serde(flatten)]
     pub schema: CredentialSchemaListItemV2ResponseDTO,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, From, Into)]
-#[from(TransactionCode)]
-#[into(TransactionCode)]
-#[serde(rename_all = "camelCase")]
-pub struct DetailCredentialSchemaTransactionCodeDTO {
-    pub r#type: TransactionCodeType,
-    pub length: u32,
-    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

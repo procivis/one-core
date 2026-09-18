@@ -200,7 +200,6 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         key: "a/b/c".to_string(),
         value: PublishedClaimValue::String("15".to_string()),
         datatype: Some("STRING".to_string()),
-        array_item: false,
     }];
 
     let vcdm = VcdmCredential::new_v2(
@@ -490,7 +489,6 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
         key: "a/b/c".to_string(),
         value: PublishedClaimValue::String("15".to_string()),
         datatype: Some("STRING".to_string()),
-        array_item: false,
     }];
 
     // chosen far outside the `expirationSeconds: 10` fallback window used below, so a test
@@ -500,7 +498,7 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
         .replace_nanosecond(0)
         .unwrap();
 
-    let vcdm = VcdmCredential::new_v2(
+    let mut vcdm = VcdmCredential::new_v2(
         issuer_did.clone(),
         VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
     )
@@ -508,8 +506,8 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
         id: "credential-schema-id".to_string(),
         r#type: "Mdoc".to_string(),
         metadata: None,
-    })
-    .with_valid_until(real_valid_until);
+    });
+    vcdm.valid_until = Some(real_valid_until);
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
@@ -674,7 +672,6 @@ async fn test_unverified_credential_extraction() {
         key: "a/b/c".to_string(),
         value: PublishedClaimValue::String("15".to_string()),
         datatype: Some("STRING".to_string()),
-        array_item: false,
     }];
 
     let vcdm = VcdmCredential::new_v2(
@@ -1292,7 +1289,6 @@ fn test_map_enum_datatype_to_ciborium_value() {
         key: "org.iso.example/category".to_string(),
         value: PublishedClaimValue::String("urn:etsi:esi:eaa:eu:qualified".to_string()),
         datatype: Some("EAA_CATEGORY".to_string()),
-        array_item: false,
     };
 
     let value = map_to_ciborium_value(&claim, &datatype_config).unwrap();

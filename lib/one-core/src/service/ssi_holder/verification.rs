@@ -544,7 +544,6 @@ impl SSIHolderService {
         let formatter = self.formatter_provider.get_credential_formatter(&format)?;
 
         let credential_presentation = CredentialPresentation {
-            credential: presented_credential.clone(),
             token: credential_content,
             disclosed_keys: presented_paths_to_disclosed_keys(
                 &presented_paths,

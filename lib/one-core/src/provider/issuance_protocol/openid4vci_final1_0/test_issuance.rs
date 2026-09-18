@@ -17,6 +17,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -259,26 +260,24 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
 
 async fn generic_credential_with_format(state: CredentialStateEnum, format: &str) -> Credential {
     let key = dummy_key();
-
+    let credential = dummy_credential().await;
+    let dummy_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let dummy_format = dummy_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
     let credential_schema = CredentialSchema {
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            credential_schema_id: Uuid::new_v4().into(),
             format: CredentialFormat::from(format),
-            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
+            ..dummy_format
         }]
         .into(),
         allow_revocation: false,
-        ..dummy_credential()
-            .await
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
+        ..dummy_schema
     };
     let credential_schema = backfill_default_translations(credential_schema, "en")
         .await
@@ -321,7 +320,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         key: Some(key.into()),
         schema: credential_schema.into(),
         format: credential_format.map(Into::into),
-        ..dummy_credential().await
+        ..credential
     }
 }
 
@@ -860,14 +859,24 @@ async fn dummy_credential() -> Credential {
     let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
     let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_format_id = Uuid::new_v4().into();
     let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: credential_schema_format_id,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id,
         format: "JWT".into(),
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
+        claim_mappings: vec![CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_format_id,
+            claim_schema_id,
+            technical_key: "key".to_string(),
+            namespace: None,
+        }]
+        .into(),
     };
     Credential {
         expires_at: None,

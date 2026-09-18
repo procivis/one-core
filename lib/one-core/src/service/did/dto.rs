@@ -84,11 +84,6 @@ pub struct CreateDidRequestKeysDTO {
 }
 
 #[derive(Clone, Debug)]
-pub struct CreateDidResponseDTO {
-    pub id: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct DidPatchRequestDTO {
     pub deactivated: Option<bool>,
 }

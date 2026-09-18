@@ -1059,19 +1059,16 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
             key: "root/array/0".into(),
             value: "array_item".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: true,
         },
         PublishedClaim {
             key: "root/nested".into(),
             value: "nested_item".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
         PublishedClaim {
             key: "root_item".into(),
             value: "root_item".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
     ];
 
@@ -1079,12 +1076,12 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     let credential_subject =
         VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap()).unwrap();
 
-    let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
+    let mut vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
         .add_context(schema_context)
         .add_credential_schema(schema)
-        .add_credential_status(status)
-        .with_valid_from(issuance_date)
-        .with_valid_until(issuance_date + valid_for);
+        .with_valid_from(issuance_date);
+    vcdm.valid_until = Some(issuance_date + valid_for);
+    vcdm.credential_status = vec![status];
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(

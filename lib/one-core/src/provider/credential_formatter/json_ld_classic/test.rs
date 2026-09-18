@@ -114,7 +114,6 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
         key: "a/b/c".to_string(),
         value: PublishedClaimValue::String("15".to_string()),
         datatype: Some("STRING".to_string()),
-        array_item: false,
     }];
     let now = crate::clock::now_utc();
 
@@ -128,9 +127,7 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
         .with_valid_from(now)
         .add_context(schema_context)
         .add_credential_schema(schema);
-    if let Some(valid_until) = valid_until {
-        vcdm = vcdm.with_valid_until(valid_until);
-    }
+    vcdm.valid_until = valid_until;
 
     let credential_data = CredentialData {
         vcdm,

@@ -11,14 +11,11 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::revocation_list_repository::RevocationListRepository;
 
 pub mod dto;
-pub mod mapper;
 pub mod model;
 mod validation;
 
-#[expect(dead_code)]
 pub struct VCAPIService {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -27,8 +24,6 @@ pub struct VCAPIService {
     identifier_repository: Arc<dyn IdentifierRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    revocation_list_repository: Arc<dyn RevocationListRepository>,
     jsonld_ctx_cache: ContextCache,
-    base_url: Option<String>,
     certificate_validator: Arc<dyn CertificateValidator>,
 }

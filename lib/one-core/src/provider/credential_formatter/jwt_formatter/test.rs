@@ -38,9 +38,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::service::test_utilities::{
-    dummy_credential, dummy_did, dummy_identifier, dummy_organisation,
-};
+use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
     let issuance_date: OffsetDateTime = crate::clock::now_utc();
@@ -72,13 +70,11 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
             key: "name".into(),
             value: "John".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
         PublishedClaim {
             key: "age".into(),
             value: "42".into(),
             datatype: Some("NUMBER".to_owned()),
-            array_item: false,
         },
     ];
 
@@ -86,15 +82,15 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
         .unwrap()
         .with_id(holder_did.clone().into_url());
 
-    let vcdm = VcdmCredential::new_v2(
+    let mut vcdm = VcdmCredential::new_v2(
         Issuer::Url("did:issuer:test".parse().unwrap()),
         credential_subject,
     )
     .add_context(schema_context)
     .with_valid_from(issuance_date)
-    .with_valid_until(issuance_date + valid_for)
-    .add_credential_schema(schema)
-    .add_credential_status(status);
+    .add_credential_schema(schema);
+    vcdm.valid_until = Some(issuance_date + valid_for);
+    vcdm.credential_status = vec![status];
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -137,19 +133,16 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
             key: "root_item".into(),
             value: "root_item".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
         PublishedClaim {
             key: "root/nested".into(),
             value: "nested_item".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
         PublishedClaim {
             key: "root/array/0".into(),
             value: "array_item".into(),
             datatype: Some("STRING".to_owned()),
-            array_item: false,
         },
     ];
 
@@ -157,15 +150,15 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         .unwrap()
         .with_id(holder_did.clone().into_url());
 
-    let vcdm = VcdmCredential::new_v2(
+    let mut vcdm = VcdmCredential::new_v2(
         Issuer::Url("did:issuer:test".parse().unwrap()),
         credential_subject,
     )
     .add_context(schema_context)
     .with_valid_from(issuance_date)
-    .with_valid_until(issuance_date + valid_for)
-    .add_credential_schema(schema)
-    .add_credential_status(status);
+    .add_credential_schema(schema);
+    vcdm.valid_until = Some(issuance_date + valid_for);
+    vcdm.credential_status = vec![status];
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -697,7 +690,6 @@ async fn test_format_credential_presentation() {
 
     // Both
     let credential_presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: jwt_token.into(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
@@ -710,7 +702,6 @@ async fn test_format_credential_presentation() {
 
     // Just name
     let credential_presentation = CredentialPresentation {
-        credential: dummy_credential(),
         token: jwt_token.into(),
         disclosed_keys: vec!["name".to_string()],
     };
