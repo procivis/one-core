@@ -307,6 +307,7 @@ fn map_reg_cert(
                 .custom
                 .service_descriptions
                 .into_iter()
+                .filter(|langs| !langs.is_empty())
                 .map(|langs| {
                     langs
                         .into_iter()
@@ -343,12 +344,16 @@ fn map_national_registry_info(
                 .ok_or(EcosystemError::MappingError(
                     "Missing registration certificate subject".to_string(),
                 ))?,
-            service_description: vec![
-                data.srv_description
-                    .into_iter()
-                    .map(|lang| (lang.lang, lang.content))
-                    .collect(),
-            ],
+            service_description: [data.srv_description]
+                .into_iter()
+                .filter(|langs| !langs.is_empty())
+                .map(|langs| {
+                    langs
+                        .into_iter()
+                        .map(|lang| (lang.lang, lang.content))
+                        .collect()
+                })
+                .collect(),
             supervisory_authority: SupervisoryAuthority {
                 email: data.supervisory_authority.email.into_iter().next().ok_or(
                     EcosystemError::MappingError("Empty supervisor authority email".to_string()),
@@ -402,6 +407,7 @@ fn map_access_cert(
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
     use shared_types::HistoryId;
     use similar_asserts::assert_eq;
     use uuid::Uuid;
@@ -512,5 +518,65 @@ mod tests {
         let info = trust_info_with_contact_options(None, None, Some("+41000000000".to_string()));
 
         assert!(validate_has_a_contact_option(&info).is_ok());
+    }
+
+    #[test]
+    fn test_map_reg_cert_skips_empty_service_description() {
+        let reg_cert = serde_json::from_value(json!({
+            "sub": "NTRCH-ch.procivis",
+            "name": "RP",
+            "country": "CH",
+            "registry_uri": "https://registry.example.com/",
+            "srv_description": [[]],
+            "entitlements": [],
+            "privacy_policy": "https://example.com/privacy",
+            "info_uri": "https://example.com/",
+            "supervisory_authority": {
+                "email": "supervisory@example.com",
+                "phone": "+41000000000",
+                "uri": "https://supervisory.example.com"
+            },
+            "policy_id": [],
+            "certificate_policy": "https://example.com/policy",
+            "status": { "status_list": { "uri": "https://example.com/status", "idx": "2" } },
+            "support_uri": "https://example.com/support"
+        }))
+        .unwrap();
+
+        let (info, _) = map_reg_cert(reg_cert).unwrap();
+
+        assert_eq!(info.service_description, vec![]);
+    }
+
+    #[test]
+    fn test_map_national_registry_info_skips_empty_service_description() {
+        let national_registry_info = serde_json::from_value(json!({
+            "sub": "NTRCH-nr.procivis",
+            "data": {
+                "tradeName": "RP",
+                "supportURI": ["https://example.com/support"],
+                "srvDescription": [],
+                "intendedUse": [],
+                "entitlement": [],
+                "supervisoryAuthority": {
+                    "legalPerson": { "legalName": ["Supervisory Authority"] },
+                    "naturalPerson": null,
+                    "country": "CH",
+                    "email": ["supervisory@example.com"],
+                    "phone": ["+41000000000"],
+                    "infoURI": ["https://supervisory.example.com"]
+                },
+                "registryURI": "https://registry.example.com",
+                "country": "CH",
+                "email": [],
+                "phone": [],
+                "infoURI": []
+            }
+        }))
+        .unwrap();
+
+        let (info, _) = map_national_registry_info(national_registry_info, None).unwrap();
+
+        assert_eq!(info.service_description, vec![]);
     }
 }
