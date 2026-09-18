@@ -851,7 +851,15 @@ fn test_credential_presentation(
 ) -> FormattedCredentialPresentation {
     FormattedCredentialPresentation {
         presentation: "presentation-token".to_string(),
-        credential_schema: test_credential_schema("MDOC".into()),
+        credential_format: CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id: Uuid::new_v4().into(),
+            format: "MDOC".into(),
+            ecosystem_schema_id: "test_schema_id".into(),
+            claim_mappings: Default::default(),
+        },
         credential_query_id: CredentialQueryId::from(credential_query_id),
         holder_did: None,
         key: test_key("ECDSA"),

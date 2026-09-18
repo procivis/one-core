@@ -5076,17 +5076,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             .times(1)
             .with(eq(clone.id))
             .returning(move |_| Ok(clone.clone()));
-
-        credential_repository
-            .expect_get_credential_list()
-            .once()
-            .return_once(|_| {
-                Ok(GetCredentialList {
-                    values: vec![],
-                    total_pages: Some(0),
-                    total_items: Some(0),
-                })
-            });
     }
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();

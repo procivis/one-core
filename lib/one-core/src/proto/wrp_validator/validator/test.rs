@@ -381,7 +381,7 @@ async fn test_qeaa_issuer_trusted_when_in_tsl_with_full_x5_references() {
     let result = validator
         .validate_credential_issuer(
             Some("pem"),
-            &dummy_credential_schema(),
+            &dummy_credential_schema().formats.as_ref().await.unwrap()[0],
             &[],
             Some(QUALIFIED_EAA_CATEGORY),
             all_x5_references(),
@@ -404,7 +404,7 @@ async fn test_qeaa_issuer_trusted_without_x5c() {
     let result = validator
         .validate_credential_issuer(
             Some("pem"),
-            &dummy_credential_schema(),
+            &dummy_credential_schema().formats.as_ref().await.unwrap()[0],
             &[],
             Some(QUALIFIED_EAA_CATEGORY),
             X5References {
@@ -432,7 +432,7 @@ async fn test_qeaa_issuer_rejected_when_x5_reference_missing() {
     let result = validator
         .validate_credential_issuer(
             Some("pem"),
-            &dummy_credential_schema(),
+            &dummy_credential_schema().formats.as_ref().await.unwrap()[0],
             &[],
             Some(QUALIFIED_EAA_CATEGORY),
             X5References {
@@ -459,7 +459,7 @@ async fn test_non_qualified_category_skips_issuer_trust_check() {
     let result = validator
         .validate_credential_issuer(
             Some("pem"),
-            &dummy_credential_schema(),
+            &dummy_credential_schema().formats.as_ref().await.unwrap()[0],
             &[],
             Some("urn:etsi:esi:eaa:eu:pub"),
             all_x5_references(),
@@ -481,12 +481,13 @@ async fn test_pid_with_non_qualified_category_still_requires_pid_provider() {
         Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
     );
     let schema = dummy_credential_schema();
-    let pid_schema_ids = vec![schema.schema_id().await.unwrap()];
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let pid_schema_ids = vec![format.ecosystem_schema_id.clone()];
 
     let result = validator
         .validate_credential_issuer(
             Some("pem"),
-            &schema,
+            &format,
             &pid_schema_ids,
             Some("urn:etsi:esi:eaa:eu:pub"),
             all_x5_references(),
@@ -512,12 +513,13 @@ async fn test_pid_with_qualified_category_still_requires_pid_provider() {
         Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
     );
     let schema = dummy_credential_schema();
-    let pid_schema_ids = vec![schema.schema_id().await.unwrap()];
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let pid_schema_ids = vec![format.ecosystem_schema_id.clone()];
 
     let result = validator
         .validate_credential_issuer(
             Some("pem"),
-            &schema,
+            &format,
             &pid_schema_ids,
             Some(QUALIFIED_EAA_CATEGORY),
             all_x5_references(),

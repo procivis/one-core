@@ -570,6 +570,13 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
         )
         .await;
 
+    let parent_details = context.api.credentials.get(&parent_credential.id).await;
+    assert_eq!(parent_details.status(), 200);
+    let parent_details = parent_details.json_value().await;
+    // Even legacy batch parents with a stored MDOC format have no MSO validity.
+    assert!(parent_credential.format.is_some());
+    assert!(parent_details["mdocMsoValidity"].is_null());
+
     // MDOC's `expirationSeconds` config default is 72h - pick a real expiration that doesn't
     // land on `issuanceDate + expirationSeconds`, so a fallback to that computed value (instead
     // of the batch item's own real `expires_at`) would be caught by the assertions below
@@ -610,6 +617,13 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
     // the top-level credential expiration must match the mdoc-specific MSO validity expiration
     assert_eq!(expires_at, returned_expires_at);
     assert_eq!(expires_at, mso_expiration);
+
+    // Adding an MDOC item must not give the parent MSO validity either.
+    let parent_details = context.api.credentials.get(&parent_credential.id).await;
+    assert_eq!(parent_details.status(), 200);
+    let parent_details = parent_details.json_value().await;
+    assert!(parent_details["mdocMsoValidity"].is_null());
+    assert!(parent_details["format"].is_null());
 }
 
 #[tokio::test]

@@ -23,8 +23,8 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{
-    Alias, ColumnRef, Expr, ExprTrait, Func, Order, Query, SelectStatement, SimpleExpr,
-    SubQueryStatement,
+    Alias, ColumnRef, Expr, ExprTrait, Func, NullOrdering, Order, Query, SelectStatement,
+    SimpleExpr, SubQueryStatement,
 };
 use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter, Set, Value};
 use shared_types::{
@@ -177,6 +177,16 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::HasUnconsumedBatchItems(false) => credential::Column::Id
                 .not_in_subquery(unconsumed_item_select())
                 .into_condition(),
+            Self::EarliestExpiringBatchItemPerFormat => {
+                Expr::col((credential::Entity, credential::Column::Id))
+                    .eq(SimpleExpr::SubQuery(
+                        None,
+                        Box::new(SubQueryStatement::SelectStatement(
+                            earliest_expiring_batch_item(),
+                        )),
+                    ))
+                    .into_condition()
+            }
             Self::Deleted(false) => credential::Column::DeletedAt.is_null().into_condition(),
             Self::Deleted(true) => credential::Column::DeletedAt.is_not_null().into_condition(),
         }
@@ -193,6 +203,65 @@ fn unconsumed_item_select() -> SelectStatement {
                 .is_null()
                 .and(credential::Column::State.eq(credential::CredentialState::Accepted)),
         )
+        .to_owned()
+}
+
+/// Correlated with the outer credential row by parent and format. LIMIT 1 selects
+/// the available item with the earliest expiry for that group, placing items
+/// without an expiry last and breaking ties by descending ID. The outer query
+/// keeps every row matching its group's ID.
+/// Example query produced by this filter:
+/// ``` SQL
+/// SELECT "credential"."id"
+/// FROM "credential"
+///          INNER JOIN "credential_schema" ON "credential"."credential_schema_id" = "credential_schema"."id"
+///          LEFT JOIN "identifier" ON "credential"."issuer_identifier_id" = "identifier"."id"
+/// WHERE "credential"."type" IN ('SINGLE')
+///    OR "credential"."id" = (
+///     -- This subquery selects the earliest-expiring accepted, non-deleted, unconsumed item
+///     -- Then the credential id must be equal to the outer row --> hence it filters out all rows that are different items
+///     -- Given it is scoped by format of the outer select, this leaves exactly one row per format.
+///     SELECT "available_item"."id"
+///     FROM "credential" AS "available_item"
+///     WHERE "available_item"."parent_id" = "credential"."parent_id"
+///       AND "available_item"."format" = "credential"."format"
+///       AND "available_item"."type" = 'BATCH_ITEM'
+///       AND "available_item"."state" = 'ACCEPTED'
+///       AND "available_item"."deleted_at" IS NULL
+///       AND "available_item"."consumed_at" IS NULL
+///     ORDER BY "available_item"."expires_at" ASC NULLS LAST, "available_item"."id" DESC
+///     LIMIT 1)
+/// ```
+fn earliest_expiring_batch_item() -> SelectStatement {
+    let item = Alias::new("available_item");
+    Query::select()
+        .column((item.clone(), credential::Column::Id))
+        .from_as(credential::Entity, item.clone())
+        .and_where(
+            Expr::col((item.clone(), credential::Column::ParentId))
+                .equals((credential::Entity, credential::Column::ParentId)),
+        )
+        .and_where(
+            Expr::col((item.clone(), credential::Column::Format))
+                .equals((credential::Entity, credential::Column::Format)),
+        )
+        .and_where(
+            Expr::col((item.clone(), credential::Column::Type))
+                .eq(credential::CredentialType::BatchItem),
+        )
+        .and_where(
+            Expr::col((item.clone(), credential::Column::State))
+                .eq(credential::CredentialState::Accepted),
+        )
+        .and_where(Expr::col((item.clone(), credential::Column::DeletedAt)).is_null())
+        .and_where(Expr::col((item.clone(), credential::Column::ConsumedAt)).is_null())
+        .order_by_with_nulls(
+            (item.clone(), credential::Column::ExpiresAt),
+            Order::Asc,
+            NullOrdering::Last,
+        )
+        .order_by((item, credential::Column::Id), Order::Desc)
+        .limit(1)
         .to_owned()
 }
 

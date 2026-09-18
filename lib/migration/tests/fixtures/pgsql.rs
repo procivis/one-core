@@ -72,7 +72,15 @@ async fn extract_non_unique_indexes(conn: &DatabaseConnection) -> Vec<NonUniqueI
             && let Some(columns) = COLUMNS_REGEX.find(&def)
         {
             let columns = columns.as_str().trim_matches(['(', ')']);
-            let columns = columns.split(", ").map(ToString::to_string).collect();
+            let columns = columns
+                .split(", ")
+                .map(|column| {
+                    column
+                        .trim_end_matches(" ASC")
+                        .trim_end_matches(" DESC")
+                        .to_string()
+                })
+                .collect();
 
             result.push(NonUniqueIndex {
                 name,

@@ -146,6 +146,7 @@ async fn validate_proof(
             &claim_schemas,
             &mappings_map,
             first_claim.credential_schema.to_owned(),
+            format,
             claims,
             credential.issuer.to_owned(),
             holder_details.to_owned(),

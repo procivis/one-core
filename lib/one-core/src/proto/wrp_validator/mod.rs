@@ -7,7 +7,7 @@ use time::Duration;
 use url::Url;
 
 use crate::model::claim::Claim;
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::provider::credential_formatter::model::{PublicKeySource, X5References};
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
@@ -65,7 +65,7 @@ pub(crate) trait WRPValidator: Send + Sync {
     async fn validate_credential_issuer<'a>(
         &self,
         issuer_certificate_pem_chain: Option<&'a str>,
-        credential_schema: &CredentialSchema,
+        credential_schema_format: &CredentialSchemaFormat,
         pid_schema_ids: &'a [String],
         credential_category: Option<&'a str>,
         issuer_x5_references: X5References,

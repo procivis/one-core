@@ -73,8 +73,12 @@ pub enum CredentialStateEnum {
 }
 
 impl Credential {
-    /// Returns the format stored on the credential, if any.
+    /// Returns the concrete credential's format. Batch parents return `None`, even if
+    /// they retain a legacy format in storage; use their items' formats instead.
     pub async fn credential_format(&self) -> Result<Option<CredentialFormat>, NestedError> {
+        if self.r#type == CredentialType::BatchParent {
+            return Ok(None);
+        }
         match &self.format {
             Some(format) => Ok(Some(format.as_ref().await?.format.to_owned())),
             None => Ok(None),
@@ -181,6 +185,9 @@ pub enum CredentialFilterValue {
     ExpiresAt(ValueComparison<OffsetDateTime>),
     Formats(Vec<CredentialSchemaFormatId>),
     HasUnconsumedBatchItems(bool),
+    /// The accepted, non-deleted, unconsumed item with the earliest expiry per parent and format.
+    /// Items without an expiry sort last; ties are broken by descending ID.
+    EarliestExpiringBatchItemPerFormat,
     Deleted(bool),
 }
 

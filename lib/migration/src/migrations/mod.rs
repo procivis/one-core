@@ -52,3 +52,4 @@ pub mod m20260915_090000_add_localized_text_name_index;
 pub mod m20260915_120242_attestation_hash;
 pub mod m20260918_015758_wallet_attestation;
 pub mod m20260918_103742_add_task_check_indexes;
+pub mod m20260918_120000_credential_available_batch_item_index;

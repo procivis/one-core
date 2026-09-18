@@ -14,7 +14,7 @@ use super::model::{
 use super::{QUALIFIED_EAA_CATEGORY, WRPValidator};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
@@ -247,13 +247,13 @@ impl WRPValidator for WRPValidatorImpl {
     async fn validate_credential_issuer<'a>(
         &self,
         issuer_certificate_pem_chain: Option<&'a str>,
-        credential_schema: &CredentialSchema,
+        credential_schema_format: &CredentialSchemaFormat,
         pid_schema_ids: &'a [String],
         credential_category: Option<&'a str>,
         issuer_x5_references: X5References,
         trust_scope: &TrustScope,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
-        if pid_schema_ids.contains(&credential_schema.schema_id().await?) {
+        if pid_schema_ids.contains(&credential_schema_format.ecosystem_schema_id) {
             return self
                 .validate_pid_issuer(issuer_certificate_pem_chain, trust_scope)
                 .await;

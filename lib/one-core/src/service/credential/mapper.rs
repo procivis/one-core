@@ -22,10 +22,9 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::common::SortDirection;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
-    ExactCredentialFilterColumn, SortableCredentialColumn,
+    ExactCredentialFilterColumn,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -36,7 +35,7 @@ use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
-use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
+use crate::model::list_query::ListQuery;
 use crate::model::relation::OptionalRelatedExt;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -84,6 +83,7 @@ pub(crate) async fn credential_detail_response_from_model(
     let state = value.state;
 
     let credential_format = value.credential_format().await?;
+    // Batch parents have no concrete format and therefore no MDOC validity.
     let mdoc_mso_validity = if let Some(credential_format) = &credential_format
         && config
             .format
@@ -101,38 +101,13 @@ pub(crate) async fn credential_detail_response_from_model(
             .format
             .get::<mdoc_formatter::Params, _>(credential_format)
             .error_while("parsing formatter params")?;
-
-        let issuance_date_with_expiry = match value.r#type {
-            CredentialType::BatchItem => value.issuance_date.map(|i| (i, value.expires_at)),
-            CredentialType::BatchParent | CredentialType::Single => {
-                // use the latest item
-                credential_repository
-                    .get_credential_list(ListQuery {
-                        include_count: false,
-                        pagination: Some(ListPagination {
-                            page: 0,
-                            page_size: 1,
-                        }),
-                        sorting: Some(ListSorting {
-                            column: SortableCredentialColumn::CreatedDate,
-                            direction: Some(SortDirection::Descending),
-                        }),
-                        filtering: Some(
-                            CredentialFilterValue::ParentCredential(value.id).condition()
-                                & CredentialFilterValue::Deleted(false),
-                        ),
-                        ..Default::default()
-                    })
-                    .await
-                    .error_while("getting batch items")?
-                    .values
-                    .first()
-                    .and_then(|c| c.issuance_date.map(|d| (d, c.expires_at)))
-                    // fallback for legacy credentials
-                    .or(Some((value.last_modified, None)))
-            }
-        };
-
+        let issuance_date_with_expiry = value
+            .issuance_date
+            .map(|i| (i, value.expires_at))
+            // Legacy singles may predate the issuance date field.
+            .or_else(|| {
+                (value.r#type == CredentialType::Single).then_some((value.last_modified, None))
+            });
         issuance_date_with_expiry.map(|(issuance_date, expiry)| MdocMsoValidityResponseDTO {
             expiration: expiry.unwrap_or(issuance_date + params.expiration_seconds),
             next_update: issuance_date + params.mso_expected_update_in_seconds,
@@ -196,12 +171,7 @@ pub(crate) async fn credential_detail_response_from_model(
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
         r#type: credential_type.into(),
-        format: matches!(
-            credential_type,
-            CredentialType::Single | CredentialType::BatchItem
-        )
-        .then_some(credential_format)
-        .flatten(),
+        format: credential_format,
         interaction_id: value.interaction.map(|i| i.id()),
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,

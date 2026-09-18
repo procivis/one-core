@@ -41,7 +41,20 @@ async fn test_db_schema_credential() {
         .index("index-Credential-Role", false, &["role"])
         .index("index-Credential-Type", false, &["type"])
         .index("index-Credential-DeletedAt", false, &["deleted_at"])
-        .index("index-Credential-ConsumedAt", false, &["consumed_at"])
+        .index(
+            "index-Credential-EarliestExpiringBatchItem",
+            false,
+            &[
+                "consumed_at",
+                "state",
+                "parent_id",
+                "format",
+                "type",
+                "deleted_at",
+                "expires_at",
+                "id",
+            ],
+        )
         .index("index-Credential-State", false, &["state"])
         .index(
             "index-Credential-SuspendEndDate",

@@ -29,6 +29,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::proof::Proof;
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -121,13 +122,20 @@ pub(crate) async fn get_presentation_definition_v2(
         .await?;
 
         let mut filtered_credential_candidates = vec![];
-        for credential_candidate in credential_candidates.into_iter() {
-            let schema = credential_candidate.schema.as_ref().await?;
-            let format = schema.format().await?;
-            drop(schema);
-            if format_matches(&query.format, &format, config) {
-                filtered_credential_candidates.push(credential_candidate);
+        for candidate in credential_candidates.into_iter().unique_by(|c| c.id) {
+            let format = candidate.format.as_required_ref().await?;
+            if !format_matches(&query.format, &format.format, config)
+                || !credential_filters.iter().any(|filter| {
+                    filter
+                        .ecosystem_schema_ids
+                        .iter()
+                        .any(|id| map_schema_id(filter, id) == format.ecosystem_schema_id)
+                })
+            {
+                continue;
             }
+            drop(format);
+            filtered_credential_candidates.push(candidate);
         }
 
         if let Some(authorities) = &query.trusted_authorities {
@@ -208,28 +216,39 @@ pub(crate) async fn get_presentation_definition_v2(
             None => None,
             Some(cred) => Some(cred.schema.as_ref().await?.to_owned()),
         };
-        let mut applicable_credentials = vec![];
+        let mut applicable_credentials: Vec<ApplicableCredential> = vec![];
         for candidate in candidates {
-            let format = candidate.schema.as_ref().await?.format().await?;
-            let formatter = formatter_provider.get_credential_formatter(&format)?;
-
+            let format = candidate.format.as_required_ref().await?.to_owned();
+            let formatter = formatter_provider.get_credential_formatter(&format.format)?;
             let mut claim_source = candidate.clone();
-            claim_source.claims =
-                crate::mapper::credential::detail_claims(&candidate, credential_repository)
-                    .await?
-                    .into();
+            // The candidate query returns only singles and representative batch items.
+            claim_source.claims = crate::mapper::credential::stored_credential_claims(&candidate)
+                .await?
+                .into();
             let claims =
                 first_matching_claims(&claim_source, credential_filters, &*formatter).await?;
             let Some(claims) = claims else {
                 continue;
             };
+            // The parent supplies the public batch summary and disclosure policy;
+            // lifecycle tasks keep item state and deletion in sync with the parent.
+            let summary = match &candidate.parent {
+                Some(parent) => parent.as_ref().await?.to_owned(),
+                None => candidate.clone(),
+            };
+            if applicable_credentials
+                .iter()
+                .any(|c| c.credential.id == summary.id)
+            {
+                continue;
+            }
             let remaining_batch_item_count =
-                get_remaining_batch_item_count(&candidate, credential_repository)
+                get_remaining_batch_item_count(&summary, credential_repository)
                     .await
                     .error_while("getting remaining batch items")?;
 
             let embedded_disclosure_policy_violation = check_disclosure_policy(
-                &candidate,
+                &summary,
                 &query.id,
                 verifier_details,
                 verifier_info,
@@ -238,7 +257,7 @@ pub(crate) async fn get_presentation_definition_v2(
             .await?;
 
             let credential_detail_dto = credential_detail_response_from_model(
-                candidate,
+                summary.clone(),
                 claim_source.claims.as_ref().await?.to_owned(),
                 config,
                 CredentialAttestationBlobs::default(),
@@ -251,9 +270,11 @@ pub(crate) async fn get_presentation_definition_v2(
             .await
             .error_while("creating credential detail")?;
 
+            let credential = map_to_filtered_dto(credential_detail_dto, &claims);
             applicable_credentials.push(ApplicableCredential {
-                credential: map_to_filtered_dto(credential_detail_dto, &claims),
+                credential,
                 embedded_disclosure_policy_violation,
+                presentation_credential_id: candidate.id,
             });
         }
         if applicable_credentials.is_empty() {
@@ -458,7 +479,15 @@ async fn first_matching_claims(
     filters: &[CredentialFilter],
     formatter: &dyn CredentialFormatter,
 ) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
+    let format = credential.format.as_required_ref().await?;
     for filter in filters {
+        if !filter
+            .ecosystem_schema_ids
+            .iter()
+            .any(|id| map_schema_id(filter, id) == format.ecosystem_schema_id)
+        {
+            continue;
+        }
         let claims = select_matching_claims(credential, filter, formatter).await?;
         let Some(claims) = claims else {
             continue;
@@ -576,16 +605,8 @@ async fn select_claims(
     let mut missing_claims = vec![];
 
     let credential_schema = credential.schema.as_ref().await?;
-    let formats = credential_schema.formats.as_ref().await?;
-    let mappings = formats
-        .first()
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "empty formats on credential schema {}",
-            credential_schema.id
-        )))?
-        .claim_mappings
-        .as_ref()
-        .await?;
+    let format = credential.format.as_required_ref().await?;
+    let mappings = format.claim_mappings.as_ref().await?;
     let mappings_by_schema_id = mappings
         .iter()
         .map(|m| (m.claim_schema_id, m.clone()))
@@ -1156,5 +1177,85 @@ async fn check_disclosure_policy(
 
             Ok(violation())
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
+    use crate::provider::credential_formatter::MockCredentialFormatter;
+    use crate::service::test_utilities::dummy_credential;
+
+    #[tokio::test]
+    async fn matching_and_disclosure_use_the_items_exact_format() {
+        let mut item = dummy_credential();
+        let mut format = item.format.as_required_ref().await.unwrap().to_owned();
+        format.id = Uuid::new_v4().into();
+        format.format = "MDOC".into();
+        format.ecosystem_schema_id = "doctype".into();
+        let claim = item.claims.as_ref().await.unwrap()[0].clone();
+        format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: item.created_date,
+            last_modified: item.last_modified,
+            credential_schema_format_id: format.id,
+            claim_schema_id: claim.schema.id(),
+            technical_key: "renamed".into(),
+            namespace: Some("namespace".into()),
+        }]
+        .into();
+        // The credential uses the second schema format, with a different name and namespace.
+        let mut schema = item.schema.as_ref().await.unwrap().to_owned();
+        schema.formats.as_mut().await.unwrap().push(format.clone());
+        item.schema = schema.into();
+        item.format = Some(format.into());
+        item.claims.as_mut().await.unwrap()[0].selectively_disclosable = true;
+        let query: DcqlQuery = serde_json::from_value(serde_json::json!({
+            "credentials": [{
+                "id": "mdoc", "format": "mso_mdoc", "meta": {"doctype_value": "doctype"},
+                "claims": [{"path": ["namespace", "renamed"]}]
+            }]
+        }))
+        .unwrap();
+        let filters = query.credential_filters().unwrap();
+        let filters = filters.values().next().unwrap();
+        let mut formatter = MockCredentialFormatter::new();
+        formatter.expect_user_claims_path().return_const(vec![]);
+        let selected = first_matching_claims(&item, filters, &formatter)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(selected.len(), 1);
+        assert!(selected[0].selective_disclosure_supported);
+        assert_eq!(
+            presented_paths_to_disclosed_keys(std::slice::from_ref(&claim.path), &item)
+                .await
+                .unwrap(),
+            vec!["namespace/renamed"]
+        );
+
+        item.claims = Default::default();
+        assert!(
+            first_matching_claims(&item, filters, &formatter)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        item.claims = vec![claim].into();
+        item.format
+            .as_required_mut()
+            .await
+            .unwrap()
+            .ecosystem_schema_id = "different-doctype".into();
+        assert!(
+            first_matching_claims(&item, filters, &formatter)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 }

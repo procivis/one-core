@@ -6,13 +6,15 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::CredentialSetResponseDTO;
+use crate::model::common::SortDirection;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
-    CredentialType,
+    CredentialType, SortableCredentialColumn,
 };
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListSorting;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::relation::Related;
@@ -103,10 +105,12 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                     & CredentialFilterValue::Roles(vec![CredentialRole::Holder])
                     & CredentialFilterValue::Deleted(false)
                     & (CredentialFilterValue::Types(vec![CredentialType::Single]).condition()
-                        | (CredentialFilterValue::Types(vec![CredentialType::BatchParent])
-                            .condition()
-                            & CredentialFilterValue::HasUnconsumedBatchItems(true))),
+                        | CredentialFilterValue::EarliestExpiringBatchItemPerFormat),
             ),
+            sorting: Some(ListSorting {
+                column: SortableCredentialColumn::CreatedDate,
+                direction: Some(SortDirection::Ascending),
+            }),
             ..Default::default()
         })
         .await?

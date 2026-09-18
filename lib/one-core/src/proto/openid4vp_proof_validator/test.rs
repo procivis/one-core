@@ -121,6 +121,14 @@ async fn test_validate_submission_success_dcql() {
     assert_eq!(result.0.proved_claims.len(), 1);
     assert_eq!(result.0.proved_credentials.len(), 1);
     assert_eq!(
+        result.0.proved_credentials[0]
+            .credential
+            .credential_format()
+            .await
+            .unwrap(),
+        Some("format".into())
+    );
+    assert_eq!(
         result.0.proved_credentials.first().unwrap().issuer_details,
         IdentifierDetails::Did(test_data.issuer_did.to_owned())
     );

@@ -14,6 +14,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
+use crate::model::relation::OptionalRelatedExt;
 use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::repository::error::DataLayerError;
@@ -234,12 +235,8 @@ pub(crate) async fn presented_paths_to_disclosed_keys(
     presented_paths: &[String],
     credential: &Credential,
 ) -> Result<Vec<String>, ServiceError> {
-    let credential_schema = credential.schema.as_ref().await?;
     let claims = credential.claims.as_ref().await?;
-    let formats = credential_schema.formats.as_ref().await?;
-    let format = formats
-        .first()
-        .ok_or(ServiceError::MappingError("formats is empty".to_string()))?;
+    let format = credential.format.as_required_ref().await?;
     let mappings = format.claim_mappings.as_ref().await?;
     let mappings_by_schema_id: HashMap<_, _> = mappings
         .into_iter()

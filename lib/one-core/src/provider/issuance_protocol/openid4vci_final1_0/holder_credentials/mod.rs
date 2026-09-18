@@ -126,6 +126,7 @@ impl OpenID4VCIFinal1_0 {
             let credential = Credential {
                 id: Uuid::new_v4().into(),
                 r#type: CredentialType::BatchParent,
+                format: None,
                 credential_blob_id: None,
                 wallet_instance_attestation_blob_id: None,
                 wallet_key_attestation_blob_id: None,
@@ -378,10 +379,10 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref(),
         )?;
 
-        // TODO: the _exact_ format of the batch parent should be known. Address when properly implementing
-        // multi-format issuance.
-        let parent_formats = schema.formats.as_ref().await?;
-        let parent_format = parent_formats
+        // TODO: persist the exact schema-format reference per configuration when implementing
+        // multi-configuration refresh routing.
+        let schema_formats = schema.formats.as_ref().await?;
+        let configuration_format = schema_formats
             .iter()
             .find(|f| {
                 self.config
@@ -397,10 +398,10 @@ impl OpenID4VCIFinal1_0 {
                 ))
             })?
             .to_owned();
-        drop(parent_formats);
+        drop(schema_formats);
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&parent_format.format)?;
+            .get_credential_formatter(&configuration_format.format)?;
 
         let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
         for issued_credential in issuer_response.credentials {

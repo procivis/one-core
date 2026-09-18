@@ -1243,3 +1243,156 @@ async fn test_delete_credential_blobs_success() {
     let credential_two = provider.get_credential(&credential_two.id).await.unwrap();
     assert!(credential_two.credential_blob_id.is_none());
 }
+
+#[tokio::test]
+async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
+    use sea_orm::ActiveModelTrait;
+
+    use crate::credential_schema_format::mapper::credential_schema_format_from_model;
+    use crate::entity::credential_schema_format;
+
+    let TestSetup {
+        credential_schema,
+        db,
+        identifier,
+    } = setup_empty().await;
+    let provider = credential_repository(db.clone(), None);
+    // Singles remain eligible independently of the batch-item grouping filter.
+    let single = insert_credential(
+        &db,
+        &credential_schema.id,
+        CredentialStateEnum::Accepted,
+        "OPENID4VCI_FINAL1",
+        identifier.id,
+        None,
+        None,
+        Uuid::new_v4().into(),
+        credential::CredentialRole::Holder,
+    )
+    .await
+    .unwrap();
+    let mut template = provider.get_credential(&single.id).await.unwrap();
+    template.claims = Default::default();
+    let jwt_format = credential_schema_format_from_model(
+        credential_schema_format::Entity::find()
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap(),
+        TransactionManagerImpl::new(db.clone()),
+    );
+    let mdoc_format = CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        format: "MDOC".into(),
+        ecosystem_schema_id: "other-format".into(),
+        claim_mappings: Default::default(),
+        ..jwt_format.clone()
+    };
+    credential_schema_format::ActiveModel::from(mdoc_format.clone())
+        .insert(&db)
+        .await
+        .unwrap();
+
+    let new_parent = || Credential {
+        id: Uuid::new_v4().into(),
+        r#type: CredentialType::BatchParent,
+        format: None,
+        ..template.clone()
+    };
+    let first_parent = new_parent();
+    let second_parent = new_parent();
+    for parent in [&first_parent, &second_parent] {
+        provider.create_credential(parent.clone()).await.unwrap();
+    }
+    let expiry = now_utc() + Duration::days(1);
+    let new_item = |parent: &Credential, format: &CredentialSchemaFormat, seconds| Credential {
+        id: Uuid::new_v4().into(),
+        r#type: CredentialType::BatchItem,
+        parent: Some(parent.clone().into()),
+        format: Some(format.clone().into()),
+        // Creation order deliberately disagrees with expiry order.
+        created_date: get_dummy_date() - Duration::seconds(seconds),
+        expires_at: Some(expiry + Duration::seconds(seconds)),
+        ..template.clone()
+    };
+
+    // Suspended items with an earlier expiry must not hide an accepted item.
+    let suspended_jwt = Credential {
+        state: CredentialStateEnum::Suspended,
+        ..new_item(&first_parent, &jwt_format, 0)
+    };
+    // An already consumed item is unavailable even though its state is Accepted.
+    let consumed_jwt = Credential {
+        consumed_at: Some(get_dummy_date()),
+        ..new_item(&first_parent, &jwt_format, 1)
+    };
+    // Deleted items must likewise be skipped even if they expire earlier.
+    let deleted_jwt = Credential {
+        deleted_at: Some(get_dummy_date()),
+        ..new_item(&first_parent, &jwt_format, 2)
+    };
+    // The earliest eligible expiry wins, with descending ID breaking ties.
+    let earliest_expiring_jwt = Credential {
+        id: Uuid::from_u128(2).into(),
+        ..new_item(&first_parent, &jwt_format, 3)
+    };
+    let tied_jwt = Credential {
+        id: Uuid::from_u128(1).into(),
+        ..new_item(&first_parent, &jwt_format, 3)
+    };
+    let later_expiring_jwt = new_item(&first_parent, &jwt_format, 4);
+    // An item without an expiry must not take precedence over expiring items.
+    let non_expiring_jwt = Credential {
+        expires_at: None,
+        ..new_item(&first_parent, &jwt_format, 5)
+    };
+    // The same parent has an independent MDOC group. When all expiries are absent,
+    // descending ID still selects exactly one item.
+    let selected_mdoc = Credential {
+        id: Uuid::from_u128(4).into(),
+        expires_at: None,
+        ..new_item(&first_parent, &mdoc_format, 5)
+    };
+    let other_mdoc = Credential {
+        id: Uuid::from_u128(3).into(),
+        ..selected_mdoc.clone()
+    };
+    // The same format has an independent group under a different parent.
+    let second_parent_jwt = new_item(&second_parent, &jwt_format, 6);
+    for item in [
+        &suspended_jwt,
+        &consumed_jwt,
+        &deleted_jwt,
+        &earliest_expiring_jwt,
+        &tied_jwt,
+        &later_expiring_jwt,
+        &non_expiring_jwt,
+        &selected_mdoc,
+        &other_mdoc,
+        &second_parent_jwt,
+    ] {
+        provider.create_credential(item.clone()).await.unwrap();
+    }
+
+    let result = provider
+        .get_credential_list(CredentialListQuery {
+            filtering: Some(
+                CredentialFilterValue::Types(vec![CredentialType::Single]).condition()
+                    | CredentialFilterValue::EarliestExpiringBatchItemPerFormat,
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    // Keep the single plus one available item from each of the three groups:
+    // first parent/JWT, first parent/MDOC, and second parent/JWT.
+    assert_eq_unordered(
+        result.values.into_iter().map(|credential| credential.id),
+        [
+            single.id,
+            earliest_expiring_jwt.id,
+            selected_mdoc.id,
+            second_parent_jwt.id,
+        ],
+    );
+}

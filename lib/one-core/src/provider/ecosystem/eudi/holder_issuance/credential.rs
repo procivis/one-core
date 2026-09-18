@@ -13,6 +13,7 @@ use crate::model::history::{
     WalletRelyingPartyMetadata,
 };
 use crate::model::interaction::Interaction;
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::{IdentifierDetails, X5References};
@@ -30,8 +31,9 @@ impl HolderIssuanceResolver {
         credential_schemas: &[CredentialSchemaParams],
     ) -> Result<(), HolderIssuanceError> {
         let schema = credential.schema.as_ref().await?;
-        let format = schema.format().await?;
-        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
+        let schema_format = credential.format.as_required_ref().await?;
+        let format = &schema_format.format;
+        let formatter = self.formatter_provider.get_credential_formatter(format)?;
         let organisation_id = interaction.organisation.id();
         // Validation uses the concrete item; trust history remains attached to its batch.
         let history_credential_id = credential
@@ -62,8 +64,8 @@ impl HolderIssuanceResolver {
         self.wrp_validator
             .validate_credential_issuer(
                 chain,
-                &schema,
-                &pid_schema_ids(credential_schemas, &format),
+                &schema_format,
+                &pid_schema_ids(credential_schemas, format),
                 credential_category,
                 x5_references,
                 &self.trust_scope(organisation_id),

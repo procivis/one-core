@@ -327,6 +327,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260915_120242_attestation_hash::Migration),
             Box::new(migrations::m20260918_015758_wallet_attestation::Migration),
             Box::new(migrations::m20260918_103742_add_task_check_indexes::Migration),
+            Box::new(migrations::m20260918_120000_credential_available_batch_item_index::Migration),
         ]
     }
 }

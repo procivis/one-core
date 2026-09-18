@@ -26,6 +26,7 @@ use crate::mapper::{NESTED_CLAIM_MARKER, value_to_model_claims};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::proof::Proof;
@@ -264,6 +265,7 @@ pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[ClaimSchema],
     mappings: &HashMap<ClaimSchemaId, &CredentialSchemaFormatClaimSchema>,
     credential_schema: CredentialSchema,
+    credential_schema_format: &CredentialSchemaFormat,
     claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_details: IdentifierDetails,
     holder_details: IdentifierDetails,
@@ -327,7 +329,7 @@ pub(crate) fn extracted_credential_to_model(
             parent: None,
             embedded_disclosure_policy: None,
             subscriber_information: None,
-            format: None,
+            format: Some(credential_schema_format.to_owned().into()),
         },
         issuer_details,
         holder_details,
@@ -340,7 +342,7 @@ pub(crate) async fn format_to_type(
 ) -> Result<FormatType, VerificationProtocolError> {
     Ok(config
         .format
-        .get_type(&presented_credential.credential_schema.format().await?)
+        .get_type(&presented_credential.credential_format.format)
         .error_while("getting format type")?)
 }
 

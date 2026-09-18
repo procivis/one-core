@@ -210,11 +210,11 @@ impl VerificationProtocol for IsoMdl {
             self.key_algorithm_provider.clone(),
         )?;
 
-        let presentation_schema_format = credential_presentation.credential_schema.format().await?;
+        let presentation_schema_format = &credential_presentation.credential_format.format;
         let format_type = self
             .config
             .format
-            .get_type(&presentation_schema_format)
+            .get_type(presentation_schema_format)
             .error_while("getting format type")?;
         let (_, presentation_formatter) = self
             .presentation_formatter_provider

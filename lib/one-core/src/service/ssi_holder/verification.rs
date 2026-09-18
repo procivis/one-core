@@ -1,11 +1,8 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use futures_util::FutureExt;
 use itertools::Itertools;
-use shared_types::{
-    CredentialId, EcosystemId, InteractionId, ProofId, SerializedCredential, TransactionDataId,
-};
+use shared_types::{CredentialId, EcosystemId, InteractionId, ProofId, TransactionDataId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use url::Url;
 
@@ -25,17 +22,13 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMix
 use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::model::claim::Claim;
-use crate::model::common::SortDirection;
 use crate::model::credential::{
-    Clearable, CredentialFilterValue, CredentialListQuery, CredentialStateEnum, CredentialType,
-    SortableCredentialColumn, UpdateCredentialRequest,
+    Clearable, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::{HistoryEntityType, HistoryErrorMetadata};
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -153,8 +146,13 @@ impl SSIHolderService {
             .await
             .error_while("updating proof")?;
 
+        // Multiple queries can disclose the same claim, including claims inherited
+        // by different items of a legacy batch. Record each claim only once.
         self.proof_repository
-            .set_proof_claims(&proof.id, submitted_claims)
+            .set_proof_claims(
+                &proof.id,
+                submitted_claims.into_iter().unique_by(|c| c.id).collect(),
+            )
             .await
             .error_while("setting proof claims")?;
 
@@ -162,21 +160,6 @@ impl SSIHolderService {
             Some(err) => Err(err.into()),
             None => Ok(()),
         }
-    }
-
-    async fn formatter_for_blob_and_schema(
-        &self,
-        credential_content: &SerializedCredential,
-        credential_schema: &CredentialSchema,
-    ) -> Result<Arc<dyn CredentialFormatter>, HolderServiceError> {
-        let format = detect_format_with_crypto_suite(
-            &credential_schema.format().await?,
-            credential_content,
-            &*self.formatter_provider,
-        )
-        .error_while("detecting format")?;
-        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
-        Ok(formatter)
     }
 
     /// Formats the given presentation using the appropriate formatter.
@@ -283,23 +266,13 @@ impl SSIHolderService {
         let mut credential_presentations = vec![];
         let mut consumed_items = vec![];
         for (query_id, credential_selection) in creds_paths_to_present {
-            for CredentialPathsToPresent {
-                credential_id,
-                presented_paths,
-                transaction_data_ids,
-            } in credential_selection
-            {
+            for selection in credential_selection {
                 let SubmissionItem {
                     presentation,
                     claims,
                     consumed_item,
                 } = self
-                    .get_credential_presentation(
-                        query_id.to_owned().into(),
-                        credential_id,
-                        &presented_paths,
-                        transaction_data_ids,
-                    )
+                    .get_credential_presentation(query_id.to_owned().into(), selection)
                     .await?;
 
                 credential_presentations.push(presentation);
@@ -333,7 +306,7 @@ impl SSIHolderService {
             let now = now_utc();
             self.transaction_manager
                 .tx(async {
-                    for item in consumed_items {
+                    for item in consumed_items.into_iter().unique() {
                         self.credential_repository
                             .update_credential(
                                 item,
@@ -499,77 +472,47 @@ impl SSIHolderService {
     async fn get_credential_presentation(
         &self,
         credential_query_id: CredentialQueryId,
-        credential_id: CredentialId,
-        presented_paths: &[String],
-        transaction_data_ids: Vec<TransactionDataId>,
+        selection: CredentialPathsToPresent,
     ) -> Result<SubmissionItem, HolderServiceError> {
+        let CredentialPathsToPresent {
+            credential_id,
+            presented_paths,
+            transaction_data_ids,
+        } = selection;
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
-
-        let credential = self
+        // The definition retains the concrete item matching this query's format and
+        // displayed claims. Repeated queries can reuse it until submission consumes it.
+        let mut presented_credential = self
             .credential_repository
             .get_credential(&credential_id)
             .await
-            .error_while("getting credential")?;
-        let (blob_id, consumed_item) = match credential.r#type {
-            CredentialType::Single => {
-                let blob_id =
-                    credential
-                        .credential_blob_id
-                        .ok_or(HolderServiceError::MappingError(format!(
-                            "Missing blob id on credential `{credential_id}`"
-                        )))?;
-                (blob_id, None)
-            }
-            CredentialType::BatchParent => {
-                let list = self
-                    .credential_repository
-                    .get_credential_list(CredentialListQuery {
-                        include_count: false,
-                        pagination: Some(ListPagination {
-                            page: 0,
-                            page_size: 1,
-                        }),
-                        sorting: Some(ListSorting {
-                            column: SortableCredentialColumn::CreatedDate,
-                            direction: Some(SortDirection::Ascending),
-                        }),
-                        filtering: Some(
-                            CredentialFilterValue::Consumed(false).condition()
-                                & CredentialFilterValue::ParentCredential(credential_id)
-                                & CredentialFilterValue::States(vec![
-                                    CredentialStateEnum::Accepted,
-                                ])
-                                & CredentialFilterValue::Deleted(false),
-                        ),
-                        include: None,
-                    })
-                    .await
-                    .error_while("loading batch item")?;
-                let Some(item) = list.values.first() else {
-                    return Err(HolderServiceError::BatchExhausted(credential_id));
-                };
-                // reload with relations
-                let item = self
-                    .credential_repository
-                    .get_credential(&item.id)
-                    .await
-                    .error_while("loading batch item")?;
-                let blob_id = item
-                    .credential_blob_id
-                    .ok_or(HolderServiceError::MappingError(format!(
-                        "Missing blob id on credential `{}`",
-                        item.id
-                    )))?;
-                (blob_id, Some(item))
-            }
-            CredentialType::BatchItem => {
-                return Err(HolderServiceError::InvalidCredentialType(
-                    CredentialType::BatchItem,
-                ));
-            }
-        };
+            .error_while("loading presentation credential")?;
+        if presented_credential.r#type == CredentialType::BatchParent {
+            return Err(HolderServiceError::InvalidCredentialType(
+                CredentialType::BatchParent,
+            ));
+        }
+        if presented_credential.state != CredentialStateEnum::Accepted
+            || presented_credential.deleted_at.is_some()
+            || presented_credential.consumed_at.is_some()
+        {
+            return Err(HolderServiceError::BatchExhausted(
+                presented_credential
+                    .parent
+                    .as_ref()
+                    .map_or(credential_id, |parent| parent.id()),
+            ));
+        }
+        let consumed_item = (presented_credential.r#type == CredentialType::BatchItem)
+            .then_some(presented_credential.id);
+        let blob_id = presented_credential.credential_blob_id.ok_or_else(|| {
+            HolderServiceError::MappingError(format!(
+                "Missing blob id on credential `{}`",
+                presented_credential.id
+            ))
+        })?;
         let credential_blob = blob_storage
             .get(&blob_id)
             .await
@@ -582,22 +525,29 @@ impl SSIHolderService {
             .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
             .into();
 
-        let mut presented_credential = consumed_item.as_ref().unwrap_or(&credential).clone();
         // Presented credential is always a single credential or a batch item.
         presented_credential.claims =
             crate::mapper::credential::stored_credential_claims(&presented_credential)
                 .await?
                 .into();
-        let credential_schema = presented_credential.schema.as_ref().await?;
-        let formatter = self
-            .formatter_for_blob_and_schema(&credential_content, &credential_schema)
-            .await?;
+        let credential_format = presented_credential
+            .format
+            .as_required_ref()
+            .await?
+            .to_owned();
+        let format = detect_format_with_crypto_suite(
+            &credential_format.format,
+            &credential_content,
+            &*self.formatter_provider,
+        )
+        .error_while("detecting format")?;
+        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
 
         let credential_presentation = CredentialPresentation {
             credential: presented_credential.clone(),
             token: credential_content,
             disclosed_keys: presented_paths_to_disclosed_keys(
-                presented_paths,
+                &presented_paths,
                 &presented_credential,
             )
             .await
@@ -608,11 +558,10 @@ impl SSIHolderService {
             .await?;
 
         let (holder_did, key, jwk_key_id) =
-            holder_did_key_jwk_from_credential(consumed_item.as_ref().unwrap_or(&credential))
-                .await?;
+            holder_did_key_jwk_from_credential(&presented_credential).await?;
         let presentation = FormattedCredentialPresentation {
             presentation,
-            credential_schema: credential_schema.clone(),
+            credential_format,
             credential_query_id,
             holder_did,
             key,
@@ -632,7 +581,7 @@ impl SSIHolderService {
         Ok(SubmissionItem {
             presentation,
             claims,
-            consumed_item: consumed_item.map(|c| c.id),
+            consumed_item,
         })
     }
 }
@@ -705,12 +654,13 @@ fn get_credential_paths_to_present(
             });
         };
 
+        let presented_paths = presented_claim_paths_from_nested_with_selection(
+            &selected_credential.credential,
+            user_selections,
+        )?;
         result.push(CredentialPathsToPresent {
-            credential_id,
-            presented_paths: presented_claim_paths_from_nested_with_selection(
-                &selected_credential.credential,
-                user_selections,
-            )?,
+            credential_id: selected_credential.presentation_credential_id,
+            presented_paths,
             transaction_data_ids,
         });
     }

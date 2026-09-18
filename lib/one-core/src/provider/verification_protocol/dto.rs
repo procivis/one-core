@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 use shared_types::i18n::I18nString;
-use shared_types::{InteractionId, TransactionDataId, TransactionDataType};
+use shared_types::{CredentialId, InteractionId, TransactionDataId, TransactionDataType};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, UpdateProofRequest};
@@ -55,7 +55,7 @@ pub(crate) struct InvitationResponseDTO<'a> {
 #[derive(Clone, Debug)]
 pub(crate) struct FormattedCredentialPresentation {
     pub presentation: String,
-    pub credential_schema: CredentialSchema,
+    pub credential_format: CredentialSchemaFormat,
     pub credential_query_id: CredentialQueryId,
     pub holder_did: Option<Did>,
     pub key: Key,
@@ -112,6 +112,9 @@ pub enum ApplicableCredentialOrFailureHintEnum {
 pub struct ApplicableCredential {
     pub credential: CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>,
     pub embedded_disclosure_policy_violation: Option<DisclosurePolicyViolation>,
+    /// Concrete credential matching this query and the displayed claims. The public
+    /// credential ID may be its formatless batch parent; submission needs this item ID.
+    pub(crate) presentation_credential_id: CredentialId,
 }
 
 #[derive(Clone, Debug)]

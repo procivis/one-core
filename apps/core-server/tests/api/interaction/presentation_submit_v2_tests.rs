@@ -356,6 +356,289 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_consumed() {
     assert_eq!(resp.error_code().await, "BR_0291")
 }
 
+#[tokio::test]
+async fn mixed_format_batch_presents_earliest_expiring_matching_item() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let batch = setup_mixed_format_batch(&context, &organisation, &identifier).await;
+    // The request accepts JWT: skip BBS even though it expires first, and present
+    // the JWT item with the earliest expiry through the formatless parent.
+    let (_, _, _, interaction, proof) = setup_submittable_presentation_dcql(
+        &context,
+        &organisation,
+        &identifier,
+        Some(batch.parent.clone()),
+    )
+    .await;
+    let definition = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+    assert_eq!(definition.status(), 200);
+    let definition = definition.json_value().await;
+    let applicable = definition["credentialQueries"]["input_0"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    assert_eq!(applicable.len(), 1);
+    assert_eq!(applicable[0]["id"], batch.parent.id.to_string());
+
+    context
+        .server_mock
+        .ssi_request_uri_endpoint(None::<fn(MockBuilder) -> MockBuilder>)
+        .await;
+    let response = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, batch.parent.id, &[], &[])
+        .await;
+    assert_eq!(response.status(), 204);
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(batch.parent.id).condition())
+        .await;
+    let consumed_ids: Vec<_> = items
+        .into_iter()
+        .filter(|item| item.consumed_at.is_some())
+        .map(|item| item.id)
+        .collect();
+    // Neither the later-expiring JWT item nor the non-matching BBS item is consumed.
+    assert_eq!(consumed_ids, vec![batch.earliest_expiring_jwt_item]);
+}
+
+#[tokio::test]
+async fn mixed_format_batch_rejects_submission_when_matching_format_is_exhausted() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let batch = setup_mixed_format_batch(&context, &organisation, &identifier).await;
+    // Exhaust only JWT. An available BBS item cannot satisfy the JWT request.
+    for id in [
+        batch.earliest_expiring_jwt_item,
+        batch.later_expiring_jwt_item,
+    ] {
+        context
+            .db
+            .credentials
+            .update(
+                id,
+                UpdateCredentialRequest {
+                    consumed_at: Clearable::ForceSet(Some(now_utc())),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
+    let (_, _, _, interaction, _) = setup_submittable_presentation_dcql(
+        &context,
+        &organisation,
+        &identifier,
+        Some(batch.parent.clone()),
+    )
+    .await;
+    let response = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, batch.parent.id, &[], &[])
+        .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(response.error_code().await, "BR_0291");
+    assert!(
+        context
+            .db
+            .credentials
+            .get(&batch.bbs_item)
+            .await
+            .consumed_at
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn two_queries_reuse_the_same_batch_item() {
+    use one_core::model::interaction::UpdateInteractionRequest;
+    use one_core::repository::DataRepository;
+    use sql_data_provider::DataLayer;
+
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let parent = setup_batch_credential(&context, &organisation, &identifier, 2).await;
+    let (_, _, _, interaction, _) = setup_submittable_presentation_dcql(
+        &context,
+        &organisation,
+        &identifier,
+        Some(parent.clone()),
+    )
+    .await;
+    let mut data: serde_json::Value =
+        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+    let queries = data["dcql_query"]["credentials"].as_array_mut().unwrap();
+    let mut second = queries[0].clone();
+    second["id"] = json!("input_1");
+    queries.push(second);
+    DataLayer::build(context.db.db_conn.clone(), vec![])
+        .get_interaction_repository()
+        .update_interaction(
+            interaction.id,
+            UpdateInteractionRequest {
+                data: Some(Some(serde_json::to_vec(&data).unwrap())),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    context
+        .server_mock
+        .ssi_request_uri_endpoint(Some(|builder: MockBuilder| {
+            builder
+                .and(body_string_contains("input_0"))
+                .and(body_string_contains("input_1"))
+        }))
+        .await;
+    let response = context
+        .api
+        .client
+        .post(
+            "/api/interaction/v2/presentation-submit",
+            json!({
+                "interactionId": interaction.id,
+                "submission": {
+                    "input_0": {"credentialId": parent.id},
+                    "input_1": {"credentialId": parent.id}
+                }
+            }),
+        )
+        .await;
+    assert_eq!(response.status(), 204);
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(parent.id).condition())
+        .await;
+    assert_eq!(items.len(), 2);
+    assert_eq!(
+        items
+            .iter()
+            .filter(|item| item.consumed_at.is_some())
+            .count(),
+        1
+    );
+}
+
+struct MixedFormatBatch {
+    parent: Credential,
+    earliest_expiring_jwt_item: shared_types::CredentialId,
+    later_expiring_jwt_item: shared_types::CredentialId,
+    bbs_item: shared_types::CredentialId,
+}
+
+async fn setup_mixed_format_batch(
+    context: &TestContext,
+    organisation: &Organisation,
+    identifier: &Identifier,
+) -> MixedFormatBatch {
+    use one_core::model::credential::CredentialType;
+    use one_core::model::credential_schema::UpdateCredentialSchemaRequest;
+    use one_core::repository::DataRepository;
+    use sea_orm::ConnectionTrait;
+    use sea_orm::sea_query::{Alias, Expr, Query};
+    use sql_data_provider::DataLayer;
+
+    let parent = setup_batch_credential(context, organisation, identifier, 2).await;
+    let [earliest_expiring_jwt, later_expiring_jwt]: [Credential; 2] = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(parent.id).condition())
+        .await
+        .try_into()
+        .unwrap();
+    let schema = parent.schema.as_ref().await.unwrap();
+    // BBS sorts before JWT in the schema, so using the first schema format would be wrong.
+    let mut bbs_format = schema.formats.as_ref().await.unwrap()[0].clone();
+    bbs_format.id = Uuid::new_v4().into();
+    bbs_format.format = "JSON_LD_BBSPLUS".into();
+    bbs_format.ecosystem_schema_id = "other-schema-id".into();
+    bbs_format.claim_mappings = Default::default();
+    DataLayer::build(context.db.db_conn.clone(), vec![])
+        .get_credential_schema_repository()
+        .update_credential_schema(
+            &schema.id,
+            UpdateCredentialSchemaRequest {
+                formats: Some(vec![bbs_format.clone()]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let bbs = context
+        .db
+        .credentials
+        .create(
+            &schema,
+            CredentialStateEnum::Accepted,
+            identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.id),
+                format: Some(bbs_format),
+                ..Default::default()
+            },
+        )
+        .await;
+    // BBS expires first. Creation order disagrees with expiry order, so selecting
+    // the oldest matching item would choose the wrong JWT item.
+    let expiry = now_utc() + time::Duration::days(1);
+    for (id, seconds) in [
+        (bbs.id, -1),
+        (earliest_expiring_jwt.id, 0),
+        (later_expiring_jwt.id, 1),
+    ] {
+        context
+            .db
+            .db_conn
+            .execute(
+                context.db.db_conn.get_database_backend().build(
+                    &Query::update()
+                        .table(Alias::new("credential"))
+                        .value(
+                            Alias::new("created_date"),
+                            parent.created_date - time::Duration::seconds(seconds),
+                        )
+                        .value(
+                            Alias::new("expires_at"),
+                            expiry + time::Duration::seconds(seconds),
+                        )
+                        .and_where(Expr::col(Alias::new("id")).eq(id.to_string()))
+                        .to_owned(),
+                ),
+            )
+            .await
+            .unwrap();
+    }
+    // The generic batch fixture models legacy storage; new parents have no format.
+    context
+        .db
+        .db_conn
+        .execute(
+            context.db.db_conn.get_database_backend().build(
+                &Query::update()
+                    .table(Alias::new("credential"))
+                    .value(Alias::new("format"), Option::<String>::None)
+                    .and_where(Expr::col(Alias::new("id")).eq(parent.id.to_string()))
+                    .to_owned(),
+            ),
+        )
+        .await
+        .unwrap();
+    let parent = context.db.credentials.get(&parent.id).await;
+    assert!(parent.format.is_none());
+    MixedFormatBatch {
+        parent,
+        earliest_expiring_jwt_item: earliest_expiring_jwt.id,
+        later_expiring_jwt_item: later_expiring_jwt.id,
+        bbs_item: bbs.id,
+    }
+}
+
 async fn setup_batch_credential(
     context: &TestContext,
     organisation: &Organisation,
@@ -515,6 +798,16 @@ async fn setup_submittable_presentation_dcql(
         .await
     };
 
+    let jwt_schema_id = {
+        let schema = credential.schema.as_ref().await.unwrap();
+        let formats = schema.formats.as_ref().await.unwrap();
+        formats
+            .iter()
+            .find(|format| format.format == "JWT".into())
+            .unwrap()
+            .ecosystem_schema_id
+            .clone()
+    };
     let verifier_url = context.server_mock.uri();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
@@ -537,7 +830,7 @@ async fn setup_submittable_presentation_dcql(
                             "meta": {
                                 "type_values": [[
                                     "https://www.w3.org/2018/credentials#VerifiableCredential",
-                                    format!("{}#Schema1", credential.schema.as_ref().await.unwrap().schema_id().await.unwrap())
+                                    format!("{jwt_schema_id}#Schema1")
                                 ]]
                             },
                             "claims": [
