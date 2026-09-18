@@ -326,6 +326,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260915_090000_add_localized_text_name_index::Migration),
             Box::new(migrations::m20260915_120242_attestation_hash::Migration),
             Box::new(migrations::m20260918_015758_wallet_attestation::Migration),
+            Box::new(migrations::m20260918_103742_add_task_check_indexes::Migration),
         ]
     }
 }
