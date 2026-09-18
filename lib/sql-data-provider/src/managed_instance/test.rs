@@ -226,6 +226,7 @@ async fn test_create_and_list_wallet_instances() {
 
     // List all wallet units
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -239,7 +240,7 @@ async fn test_create_and_list_wallet_instances() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 3);
 
     // Verify all created wallet units are in the list
@@ -286,6 +287,7 @@ async fn test_get_wallet_instance_list_no_filters() {
     } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -299,8 +301,8 @@ async fn test_get_wallet_instance_list_no_filters() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 3);
 
     assert!(
@@ -315,6 +317,7 @@ async fn test_get_wallet_instance_list_with_pagination() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 2,
@@ -328,8 +331,8 @@ async fn test_get_wallet_instance_list_with_pagination() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 2);
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_pages.unwrap(), 2);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 2);
 }
 
@@ -338,6 +341,7 @@ async fn test_get_wallet_instance_list_with_name_filter() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -356,8 +360,8 @@ async fn test_get_wallet_instance_list_with_name_filter() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 1);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 1);
     assert_eq!(data.values.len(), 1);
     assert_eq!(data.values[0].name, "wallet1");
 }
@@ -367,6 +371,7 @@ async fn test_get_wallet_instance_list_with_status_filter() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -382,8 +387,8 @@ async fn test_get_wallet_instance_list_with_status_filter() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 3);
     assert!(
         data.values
@@ -397,6 +402,7 @@ async fn test_get_wallet_instance_list_with_sorting() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -413,8 +419,8 @@ async fn test_get_wallet_instance_list_with_sorting() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 3);
 
     // Check that names are sorted in ascending order
@@ -433,6 +439,7 @@ async fn test_get_wallet_instance_list_with_ids_filter() {
     let target_ids = vec![wallet_unit_ids[0], wallet_unit_ids[2]];
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -446,8 +453,8 @@ async fn test_get_wallet_instance_list_with_ids_filter() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 2);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 2);
     assert_eq!(data.values.len(), 2);
 
     let returned_ids: Vec<ManagedInstanceId> = data.values.iter().map(|wu| wu.id).collect();
@@ -459,6 +466,7 @@ async fn test_get_wallet_instance_list_with_wallet_provider_name_filter() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -475,8 +483,8 @@ async fn test_get_wallet_instance_list_with_wallet_provider_name_filter() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 3);
 }
 
@@ -485,6 +493,7 @@ async fn test_get_wallet_instance_list_with_os_filter() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -500,8 +509,8 @@ async fn test_get_wallet_instance_list_with_os_filter() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 3);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 3);
     assert_eq!(data.values.len(), 3);
     assert!(
         data.values
@@ -531,6 +540,7 @@ async fn test_get_wallet_instance_list_with_user_sub_filter() {
         .unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -546,7 +556,7 @@ async fn test_get_wallet_instance_list_with_user_sub_filter() {
     };
 
     let result = provider.get_list(query).await.unwrap();
-    assert_eq!(result.total_items, 1);
+    assert_eq!(result.total_items.unwrap(), 1);
     assert_eq!(result.values[0].id, wallet_unit_ids[0]);
     assert_eq!(result.values[0].user_sub.as_deref(), Some("sub-alice"));
 }
@@ -581,6 +591,7 @@ async fn test_get_wallet_instance_list_with_user_sub_prefix_filter() {
         .unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -596,7 +607,7 @@ async fn test_get_wallet_instance_list_with_user_sub_prefix_filter() {
     };
 
     let result = provider.get_list(query).await.unwrap();
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
 }
 
 #[tokio::test]
@@ -621,6 +632,7 @@ async fn test_get_wallet_instance_list_with_user_sub_sorting() {
     }
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -634,7 +646,7 @@ async fn test_get_wallet_instance_list_with_user_sub_sorting() {
     };
 
     let result = provider.get_list(query).await.unwrap();
-    assert_eq!(result.total_items, 3);
+    assert_eq!(result.total_items.unwrap(), 3);
     let subs: Vec<Option<&str>> = result
         .values
         .iter()
@@ -648,6 +660,7 @@ async fn test_get_wallet_instance_list_empty_result() {
     let TestSetup { provider, .. } = setup(3).await;
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -663,8 +676,8 @@ async fn test_get_wallet_instance_list_empty_result() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 0);
-    assert_eq!(data.total_items, 0);
+    assert_eq!(data.total_pages.unwrap(), 0);
+    assert_eq!(data.total_items.unwrap(), 0);
     assert_eq!(data.values.len(), 0);
 }
 
@@ -856,6 +869,7 @@ async fn test_update_and_list_wallet_instances() {
 
     // List only ACTIVE wallet units
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -870,7 +884,7 @@ async fn test_update_and_list_wallet_instances() {
     let result = provider.get_list(query).await.unwrap();
 
     // Should only return 2 ACTIVE wallet units
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     assert_eq!(result.values.len(), 2);
     assert!(
         result
@@ -900,6 +914,7 @@ async fn test_sort_by_name_ascending() {
     }
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -914,7 +929,7 @@ async fn test_sort_by_name_ascending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 3);
+    assert_eq!(result.total_items.unwrap(), 3);
     let returned_names: Vec<&String> = result.values.iter().map(|wu| &wu.name).collect();
     assert_eq!(
         returned_names,
@@ -937,6 +952,7 @@ async fn test_sort_by_name_descending() {
     }
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -951,7 +967,7 @@ async fn test_sort_by_name_descending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 3);
+    assert_eq!(result.total_items.unwrap(), 3);
     let returned_names: Vec<&String> = result.values.iter().map(|wu| &wu.name).collect();
     assert_eq!(
         returned_names,
@@ -978,6 +994,7 @@ async fn test_sort_by_status_ascending() {
     provider.create(wallet_unit2).await.unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -992,7 +1009,7 @@ async fn test_sort_by_status_ascending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     // ACTIVE should come before REVOKED alphabetically
     assert_eq!(result.values[0].status, InstanceStatus::Active);
     assert_eq!(result.values[1].status, InstanceStatus::Revoked);
@@ -1017,6 +1034,7 @@ async fn test_sort_by_status_descending() {
     provider.create(wallet_unit2).await.unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1031,7 +1049,7 @@ async fn test_sort_by_status_descending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     // REVOKED should come before ACTIVE in descending order
     assert_eq!(result.values[0].status, InstanceStatus::Revoked);
     assert_eq!(result.values[1].status, InstanceStatus::Active);
@@ -1056,6 +1074,7 @@ async fn test_sort_by_os_ascending() {
     provider.create(wallet_unit2).await.unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1070,7 +1089,7 @@ async fn test_sort_by_os_ascending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     // ANDROID should come before IOS alphabetically
     assert_eq!(result.values[0].os, ManagedInstanceOs::Android);
     assert_eq!(result.values[1].os, ManagedInstanceOs::Ios);
@@ -1095,6 +1114,7 @@ async fn test_sort_by_os_descending() {
     provider.create(wallet_unit2).await.unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1109,7 +1129,7 @@ async fn test_sort_by_os_descending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     // IOS should come before ANDROID in descending order
     assert_eq!(result.values[0].os, ManagedInstanceOs::Ios);
     assert_eq!(result.values[1].os, ManagedInstanceOs::Android);
@@ -1135,6 +1155,7 @@ async fn test_sort_by_created_date_ascending() {
     provider.create(wallet_unit2).await.unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1149,7 +1170,7 @@ async fn test_sort_by_created_date_ascending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
 
     // Verify timestamps are properly ordered
     assert!(result.values[0].created_date <= result.values[1].created_date);
@@ -1186,6 +1207,7 @@ async fn test_sort_by_created_date_descending() {
     provider.create(wallet_unit2).await.unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1200,7 +1222,7 @@ async fn test_sort_by_created_date_descending() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
 
     // Verify timestamps are actually different
     assert!(result.values[0].created_date >= result.values[1].created_date);
@@ -1248,6 +1270,7 @@ async fn test_sort_by_last_modified_after_updates() {
         .unwrap();
 
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1262,7 +1285,7 @@ async fn test_sort_by_last_modified_after_updates() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     // Most recently modified (updated) should come first
     assert_eq!(result.values[0].name, "first_wallet");
     assert_eq!(result.values[1].name, "second_wallet");
@@ -1285,6 +1308,7 @@ async fn test_sort_with_pagination() {
 
     // Get first page (2 items) sorted by name ascending
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 2,
@@ -1299,8 +1323,8 @@ async fn test_sort_with_pagination() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 5);
-    assert_eq!(result.total_pages, 3);
+    assert_eq!(result.total_items.unwrap(), 5);
+    assert_eq!(result.total_pages.unwrap(), 3);
     assert_eq!(result.values.len(), 2);
 
     // First page should contain first 2 alphabetically
@@ -1309,6 +1333,7 @@ async fn test_sort_with_pagination() {
 
     // Get second page
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 1,
             page_size: 2,
@@ -1323,8 +1348,8 @@ async fn test_sort_with_pagination() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 5);
-    assert_eq!(result.total_pages, 3);
+    assert_eq!(result.total_items.unwrap(), 5);
+    assert_eq!(result.total_pages.unwrap(), 3);
     assert_eq!(result.values.len(), 2);
 
     // Second page should contain next 2 alphabetically
@@ -1358,6 +1383,7 @@ async fn test_sort_with_filtering() {
 
     // Query only ACTIVE wallet units, sorted by name ascending
     let query = ManagedInstanceListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 10,
@@ -1374,7 +1400,7 @@ async fn test_sort_with_filtering() {
 
     let result = provider.get_list(query).await.unwrap();
 
-    assert_eq!(result.total_items, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
     assert_eq!(result.values.len(), 2);
 
     // Should only return ACTIVE wallet units, sorted by name

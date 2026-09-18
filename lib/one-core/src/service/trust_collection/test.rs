@@ -223,8 +223,8 @@ async fn test_delete_trust_collection_success() {
         .returning(|_| {
             Ok(GetListResponse {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -398,8 +398,8 @@ async fn test_get_trust_collection_list_success() {
     trust_collection_repository.expect_list().returning(|_| {
         Ok(crate::model::common::GetListResponse {
             values: vec![],
-            total_items: 0,
-            total_pages: 0,
+            total_items: Some(0),
+            total_pages: Some(0),
         })
     });
 
@@ -760,8 +760,8 @@ async fn test_get_trust_list_subscription_list_success() {
         .returning(|_| {
             Ok(crate::model::common::GetListResponse {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 

@@ -128,6 +128,7 @@ impl TrustCollectionService {
             .trust_collection_repository
             .list(query.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting trust list publications")?;
         Ok(list_response_into(trust_collection_list))
     }
@@ -141,6 +142,7 @@ impl TrustCollectionService {
         let trust_lists = self
             .trust_list_subscription_repository
             .list(TrustListSubscriptionListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustListSubscriptionFilterValue::TrustCollectionId(vec![trust_collection_id])
                         .condition()
@@ -239,12 +241,14 @@ impl TrustCollectionService {
         let trust_list_subscription_list = self
             .trust_list_subscription_repository
             .list(TrustListSubscriptionListQuery {
+                include_count: list_query.include_count,
                 pagination: list_query.pagination,
                 sorting: list_query.sorting,
                 filtering: Some(filtering),
                 include: None,
             })
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting trust list subscriptions")?;
 
         Ok(list_response_into(trust_list_subscription_list))
@@ -257,6 +261,7 @@ impl TrustCollectionService {
         let trust_list_subscriptions = self
             .trust_list_subscription_repository
             .list(TrustListSubscriptionListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustListSubscriptionFilterValue::TrustCollectionId(vec![trust_collection_id])
                         .condition(),

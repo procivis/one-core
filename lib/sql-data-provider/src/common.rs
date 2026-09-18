@@ -1,12 +1,24 @@
 use one_core::model::common::GetListResponse;
 use one_core::model::list_query::ListQuery;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{EntityTrait, PaginatorTrait, Select};
+use sea_orm::{DbErr, EntityTrait, PaginatorTrait, Select};
 use serde::de::{Deserialize, Deserializer, Error, Unexpected};
 use serde_json::Value;
 
 use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
+
+/// Do not poll the count future when the caller only needs values.
+pub(crate) async fn count_if_requested(
+    include_count: bool,
+    count: impl Future<Output = Result<u64, DbErr>>,
+) -> Result<Option<u64>, DbErr> {
+    if include_count {
+        count.await.map(Some)
+    } else {
+        Ok(None)
+    }
+}
 
 pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
@@ -53,7 +65,7 @@ pub(crate) async fn list_query_with_base_model<
     query: Select<E>,
     query_params: ListQuery<SortableColumn, FV, Include>,
     db: &'db TransactionManagerImpl,
-) -> Result<GetListResponse<ListItem>, DataLayerError>
+) -> Result<GetListResponse<ListItem, Option<u64>>, DataLayerError>
 where
     Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
 {
@@ -76,29 +88,38 @@ pub(crate) async fn list_query_with_custom_model<
     query_params: ListQuery<SortableColumn, FV, Include>,
     db: &'db TransactionManagerImpl,
     model_conversion: ModelConversion,
-) -> Result<GetListResponse<ListItem>, DataLayerError>
+) -> Result<GetListResponse<ListItem, Option<u64>>, DataLayerError>
 where
     Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
 {
     let (total_items, total_pages, models) = if let Some(pagination) = query_params.pagination {
-        let (count, items) =
-            tokio::join!(PaginatorTrait::count(query.to_owned(), db), query.all(db));
+        let (count, items) = tokio::join!(
+            count_if_requested(
+                query_params.include_count,
+                PaginatorTrait::count(query.to_owned(), db)
+            ),
+            query.all(db)
+        );
 
         let total_items = count.map_err(to_data_layer_error)?;
         let models = items.map_err(to_data_layer_error)?;
 
         (
             total_items,
-            calculate_pages_count(total_items, pagination.page_size as _),
+            total_items.map(|count| calculate_pages_count(count, pagination.page_size as _)),
             models,
         )
     } else {
         // if no pagination applied, there's no need to SQL query count, all models will be returned by the list query
         let models = query.all(db).await.map_err(to_data_layer_error)?;
-        (models.len() as _, 0, models)
+        (
+            query_params.include_count.then_some(models.len() as u64),
+            query_params.include_count.then_some(0),
+            models,
+        )
     };
 
-    Ok(GetListResponse::<ListItem> {
+    Ok(GetListResponse {
         values: models
             .into_iter()
             .map(model_conversion)

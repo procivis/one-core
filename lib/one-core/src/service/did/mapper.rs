@@ -51,8 +51,8 @@ pub(crate) async fn response_from_did(value: Did) -> Result<DidResponseDTO, DidS
     })
 }
 
-impl From<GetDidList> for GetDidListResponseDTO {
-    fn from(value: GetDidList) -> Self {
+impl From<GetDidList<u64>> for GetDidListResponseDTO {
+    fn from(value: GetDidList<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,

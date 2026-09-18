@@ -49,6 +49,7 @@ impl Task for WebhookNotify {
         let notifications = self
             .notification_repository
             .list(NotificationListQuery {
+                include_count: false,
                 filtering: Some(
                     NotificationFilterValue::Types(vec![self.id.to_owned()]).condition()
                         & NotificationFilterValue::NextTryDate(ValueComparison {

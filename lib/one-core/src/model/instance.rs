@@ -86,4 +86,4 @@ impl ListFilterValue for InstanceFilterValue {}
 
 pub type InstanceListQuery = ListQuery<SortableInstanceColumn, InstanceFilterValue>;
 
-pub type InstanceList = GetListResponse<Instance>;
+pub type InstanceList<Count = Option<u64>> = GetListResponse<Instance, Count>;

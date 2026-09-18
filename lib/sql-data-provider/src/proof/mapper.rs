@@ -335,8 +335,8 @@ impl TryFrom<Proof> for proof::ActiveModel {
 #[expect(clippy::too_many_arguments)]
 pub(super) fn create_list_response(
     proofs: Vec<ProofListItemModel>,
-    limit: u64,
-    items_count: u64,
+    limit: Option<u64>,
+    items_count: Option<u64>,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     did_repository: &Arc<dyn DidRepository>,
     key_repository: &Arc<dyn KeyRepository>,
@@ -367,7 +367,7 @@ pub(super) fn create_list_response(
 
     Ok(GetProofList {
         values,
-        total_pages: calculate_pages_count(items_count, limit),
+        total_pages: items_count.map(|count| calculate_pages_count(count, limit.unwrap_or(count))),
         total_items: items_count,
     })
 }

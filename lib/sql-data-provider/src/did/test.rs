@@ -350,8 +350,8 @@ async fn test_get_did_list_one_did() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(1, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(1, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(1, response.values.len());
     assert_eq!(did_id, response.values[0].id);
 }
@@ -372,8 +372,8 @@ async fn test_get_did_list_empty_result() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(0, response.total_items);
-    assert_eq!(0, response.total_pages);
+    assert_eq!(0, response.total_items.unwrap());
+    assert_eq!(0, response.total_pages.unwrap());
     assert_eq!(0, response.values.len());
 }
 
@@ -396,8 +396,8 @@ async fn test_get_did_list_empty_incorrect_organisation() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(0, response.total_items);
-    assert_eq!(0, response.total_pages);
+    assert_eq!(0, response.total_items.unwrap());
+    assert_eq!(0, response.total_pages.unwrap());
     assert_eq!(0, response.values.len());
 }
 
@@ -435,8 +435,8 @@ async fn test_get_did_list_pages() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(50, response.total_items);
-    assert_eq!(5, response.total_pages);
+    assert_eq!(50, response.total_items.unwrap());
+    assert_eq!(5, response.total_pages.unwrap());
     assert_eq!(10, response.values.len());
 
     let result = provider
@@ -451,8 +451,8 @@ async fn test_get_did_list_pages() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(50, response.total_items);
-    assert_eq!(25, response.total_pages);
+    assert_eq!(50, response.total_items.unwrap());
+    assert_eq!(25, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
 
     let result = provider
@@ -467,8 +467,8 @@ async fn test_get_did_list_pages() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(50, response.total_items);
-    assert_eq!(5, response.total_pages);
+    assert_eq!(50, response.total_items.unwrap());
+    assert_eq!(5, response.total_pages.unwrap());
     assert_eq!(0, response.values.len());
 }
 
@@ -624,8 +624,8 @@ async fn test_get_did_list_sorting() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(older_a_did.id, response.values[0].id);
 
@@ -645,8 +645,8 @@ async fn test_get_did_list_sorting() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(newer_b_did.id, response.values[0].id);
 
@@ -666,8 +666,8 @@ async fn test_get_did_list_sorting() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(older_a_did.id, response.values[0].id);
 
@@ -687,8 +687,8 @@ async fn test_get_did_list_sorting() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(older_a_did.id, response.values[0].id);
 
@@ -708,8 +708,8 @@ async fn test_get_did_list_sorting() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(newer_b_did.id, response.values[0].id);
 
@@ -729,8 +729,8 @@ async fn test_get_did_list_sorting() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(older_a_did.id, response.values[0].id);
 
@@ -746,8 +746,8 @@ async fn test_get_did_list_sorting() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(2, response.total_items);
-    assert_eq!(1, response.total_pages);
+    assert_eq!(2, response.total_items.unwrap());
+    assert_eq!(1, response.total_pages.unwrap());
     assert_eq!(2, response.values.len());
     assert_eq!(newer_b_did.id, response.values[0].id);
 }
@@ -812,7 +812,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(1, response.total_items);
+    assert_eq!(1, response.total_items.unwrap());
     assert_eq!(1, response.values.len());
     assert_eq!(older_a_did.id, response.values[0].id);
 
@@ -837,7 +837,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(1, response.total_items);
+    assert_eq!(1, response.total_items.unwrap());
     assert_eq!(1, response.values.len());
     assert_eq!(older_a_did.id, response.values[0].id);
 
@@ -865,7 +865,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(1, response.total_items);
+    assert_eq!(1, response.total_items.unwrap());
     assert_eq!(1, response.values.len());
     assert_eq!(newer_b_did.id, response.values[0].id);
 }

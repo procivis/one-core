@@ -257,6 +257,7 @@ impl TrustListPublicationService {
             .trust_list_publication_repository
             .list(query.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting trust list publications")?;
 
         Ok(GetTrustListPublicationListResponseDTO {
@@ -290,6 +291,7 @@ impl TrustListPublicationService {
             .trust_entry_repository
             .list(trust_list_publication_id, query.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting trust entries")?;
 
         let mut response_dtos = Vec::with_capacity(result.values.len());

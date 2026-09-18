@@ -77,7 +77,7 @@ impl ListFilterValue for ManagedInstanceFilterValue {}
 pub type ManagedInstanceListQuery =
     ListQuery<SortableManagedInstanceColumn, ManagedInstanceFilterValue>;
 
-pub type ManagedInstanceList = GetListResponse<ManagedInstance>;
+pub type ManagedInstanceList<Count = Option<u64>> = GetListResponse<ManagedInstance, Count>;
 
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]

@@ -380,8 +380,8 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             }
         });
@@ -522,8 +522,8 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             }
         });
@@ -698,8 +698,8 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             }
         });
@@ -869,8 +869,8 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             }
         });
@@ -1045,8 +1045,8 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             }
         });
@@ -1195,8 +1195,8 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![item_credential],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             }
         })
@@ -1741,8 +1741,8 @@ async fn test_revoke_credential_batch_parent() {
                     CredentialFilterValue::ParentCredential(_parent_credential_id)
                 )));
                 Ok(GetCredentialList {
-                    total_items: 1,
-                    total_pages: 1,
+                    total_items: Some(1),
+                    total_pages: Some(1),
                     values: vec![clone.clone()],
                 })
             });
@@ -1862,8 +1862,8 @@ async fn test_revoke_credential_batch_item() {
                     CredentialFilterValue::ParentCredential(_parent_credential_id)
                 )));
                 Ok(GetCredentialList {
-                    total_items: 1,
-                    total_pages: 1,
+                    total_items: Some(1),
+                    total_pages: Some(1),
                     values: vec![child_credential.clone()],
                 })
             }
@@ -2084,8 +2084,8 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
                     CredentialFilterValue::ParentCredential(_parent_credential_id)
                 )));
                 Ok(GetCredentialList {
-                    total_items: 2,
-                    total_pages: 1,
+                    total_items: Some(2),
+                    total_pages: Some(1),
                     values: values.clone(),
                 })
             }
@@ -2267,8 +2267,8 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
                     CredentialFilterValue::ParentCredential(_parent_credential_id)
                 )));
                 Ok(GetCredentialList {
-                    total_items: 2,
-                    total_pages: 1,
+                    total_items: Some(2),
+                    total_pages: Some(1),
                     values: values.clone(),
                 })
             }
@@ -2707,8 +2707,8 @@ fn batch_repository(
                             == CredentialFilterValue::ParentCredential(parent_id))
                 );
                 Ok(GetCredentialList {
-                    total_items: items.len() as u64,
-                    total_pages: 1,
+                    total_items: Some(items.len() as u64),
+                    total_pages: Some(1),
                     values: items.clone(),
                 })
             }

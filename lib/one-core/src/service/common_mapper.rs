@@ -89,6 +89,7 @@ pub(crate) async fn recorded_ecosystem_outcomes(
 ) -> Result<EcosystemOutcomes, NestedError> {
     let history = history_repository
         .get_history_list(ListQuery {
+            include_count: false,
             filtering: Some(
                 HistoryFilterValue::EntityIds(vec![entity_id]).condition()
                     & HistoryFilterValue::Actions(vec![HistoryAction::EcosystemsResolved]),
@@ -167,6 +168,7 @@ where
 {
     fn from(value: ListQueryDTO<Sorting, FilterDTO, Include>) -> Self {
         Self {
+            include_count: true,
             pagination: Some(ListPagination {
                 page: value.page,
                 page_size: value.page_size,
@@ -321,8 +323,8 @@ mod test {
                         user: None,
                         metadata_blob_id: None,
                     }],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             });
 
@@ -340,8 +342,8 @@ mod test {
         history_repository.expect_get_history_list().returning(|_| {
             Ok(GetListResponse {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 

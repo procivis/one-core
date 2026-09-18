@@ -437,8 +437,8 @@ async fn test_get_proof_exists() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -657,8 +657,8 @@ async fn test_get_proof_with_array_holder() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -914,8 +914,8 @@ async fn test_get_proof_with_array_in_object_holder() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -1186,8 +1186,8 @@ async fn test_get_proof_with_object_array_holder() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -1442,8 +1442,8 @@ async fn test_get_proof_with_array() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -1708,8 +1708,8 @@ async fn test_get_proof_with_array_in_object() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -1990,8 +1990,8 @@ async fn test_get_proof_with_object_array() {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
 
@@ -2135,8 +2135,8 @@ async fn test_get_proof_list_success() {
             .returning(move |_| {
                 Ok(GetProofList {
                     values: vec![res_clone.to_owned()],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             });
         history_repository
@@ -2144,8 +2144,8 @@ async fn test_get_proof_list_success() {
             .return_once(move |_| {
                 Ok(GetHistoryList {
                     values: vec![],
-                    total_pages: 0,
-                    total_items: 0,
+                    total_pages: Some(0),
+                    total_items: Some(0),
                 })
             });
     }

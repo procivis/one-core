@@ -229,8 +229,8 @@ async fn test_get_credential_schema_list_success() {
             generic_credential_schema(),
             generic_credential_schema(),
         ],
-        total_pages: 1,
-        total_items: 3,
+        total_pages: Some(1),
+        total_items: Some(3),
     };
 
     {
@@ -341,8 +341,8 @@ async fn test_create_credential_schema_success() {
             generic_credential_schema(),
             generic_credential_schema(),
         ],
-        total_pages: 0,
-        total_items: 0,
+        total_pages: Some(0),
+        total_items: Some(0),
     };
 
     {
@@ -430,8 +430,8 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             generic_credential_schema(),
             generic_credential_schema(),
         ],
-        total_pages: 0,
-        total_items: 0,
+        total_pages: Some(0),
+        total_items: Some(0),
     };
 
     let custom_schema_id = "custom_schema_id";
@@ -530,8 +530,8 @@ async fn test_create_credential_schema_success_nested_claims() {
             generic_credential_schema(),
             generic_credential_schema(),
         ],
-        total_pages: 0,
-        total_items: 0,
+        total_pages: Some(0),
+        total_items: Some(0),
     };
 
     {
@@ -843,8 +843,8 @@ async fn test_create_credential_schema_unique_name_error() {
             generic_credential_schema(),
             generic_credential_schema(),
         ],
-        total_pages: 1,
-        total_items: 1,
+        total_pages: Some(1),
+        total_items: Some(1),
     };
 
     {
@@ -1191,8 +1191,8 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             generic_credential_schema(),
             generic_credential_schema(),
         ],
-        total_pages: 0,
-        total_items: 0,
+        total_pages: Some(0),
+        total_items: Some(0),
     };
 
     {
@@ -1413,8 +1413,8 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .return_once(|_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -2757,8 +2757,8 @@ async fn test_import_credential_schema_success() {
         .returning(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -2853,8 +2853,8 @@ async fn test_import_credential_schema_rehosts_source_url_when_enabled() {
         .returning(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 

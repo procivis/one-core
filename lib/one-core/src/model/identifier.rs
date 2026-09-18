@@ -150,7 +150,7 @@ pub enum IdentifierFilterValue {
 
 impl ListFilterValue for IdentifierFilterValue {}
 
-pub type GetIdentifierList = GetListResponse<Identifier>;
+pub type GetIdentifierList<Count = Option<u64>> = GetListResponse<Identifier, Count>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IdentifierListIncludeEntity {

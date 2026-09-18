@@ -182,8 +182,8 @@ async fn test_list_trust_list_publications() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 2);
-    assert_eq!(list.total_pages, 1);
+    assert_eq!(list.total_items.unwrap(), 2);
+    assert_eq!(list.total_pages.unwrap(), 1);
     assert_eq!(list.values.len(), 2);
 }
 
@@ -223,7 +223,7 @@ async fn test_list_trust_list_publications_with_name_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].name, "other-publication");
 }
 
@@ -256,7 +256,7 @@ async fn test_list_trust_list_publications_with_organisation_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].organisation.id(), org_id);
 }
 
@@ -285,7 +285,7 @@ async fn test_list_trust_list_publications_with_type_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].r#type, "LOTE".into());
 }
 
@@ -322,7 +322,7 @@ async fn test_list_trust_list_publications_with_role_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].role, TrustListRoleEnum::Issuer);
 }
 
@@ -358,7 +358,7 @@ async fn test_list_trust_list_publications_filter_by_created_date() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // dummy_date is 2005, created_date is set to dummy_date, so nothing is after it
-    assert_eq!(list.total_items, 0);
+    assert_eq!(list.total_items.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -406,7 +406,7 @@ async fn test_list_trust_list_publications_filter_by_last_modified() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // The updated publication has last_modified = now() which is after dummy_date
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
 }
 
 #[tokio::test]
@@ -436,8 +436,8 @@ async fn test_list_trust_list_publications_pagination() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 5);
-    assert_eq!(list.total_pages, 3);
+    assert_eq!(list.total_items.unwrap(), 5);
+    assert_eq!(list.total_pages.unwrap(), 3);
     assert_eq!(list.values.len(), 2);
 }
 

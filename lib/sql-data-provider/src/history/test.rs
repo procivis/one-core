@@ -399,6 +399,7 @@ fn history_list_query_with_filter(
     value: HistoryFilterValue,
 ) -> HistoryListQuery {
     HistoryListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 999,
@@ -414,8 +415,8 @@ fn history_list_query_with_filter(
 
 fn assert_result(expected_count: i32, result: GetHistoryList) {
     let expected_pages = if expected_count > 0 { 1 } else { 0 };
-    assert_eq!(expected_pages, result.total_pages);
-    assert_eq!(expected_count as u64, result.total_items);
+    assert_eq!(expected_pages, result.total_pages.unwrap());
+    assert_eq!(expected_count as u64, result.total_items.unwrap());
     assert_eq!(expected_count as usize, result.values.len());
 }
 
@@ -454,9 +455,9 @@ async fn test_create_history() {
 #[tokio::test]
 async fn test_get_history_list_simple() {
     let TestSetup {
-        provider,
+        mut provider,
         organisation,
-        db,
+        mut db,
         ..
     } = setup_empty().await;
 
@@ -474,22 +475,34 @@ async fn test_get_history_list_simple() {
         .unwrap();
     }
 
-    let result = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: count,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::Value(
-                HistoryFilterValue::OrganisationIds(vec![organisation.id]),
-            )),
-            include: None,
-        })
-        .await
-        .unwrap();
+    let counts = crate::test_utilities::track_count_queries(&mut db);
+    provider.db = TransactionManagerImpl::new(db);
+    for include_count in [true, false] {
+        counts.store(0, std::sync::atomic::Ordering::Relaxed);
+        let result = provider
+            .get_history_list(HistoryListQuery {
+                include_count,
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: count,
+                }),
+                sorting: None,
+                filtering: Some(ListFilterCondition::Value(
+                    HistoryFilterValue::OrganisationIds(vec![organisation.id]),
+                )),
+                include: None,
+            })
+            .await
+            .unwrap();
 
-    assert_result(count as i32, result);
+        assert_eq!(result.values.len(), count as usize);
+        assert_eq!(result.total_items, include_count.then_some(count as u64));
+        assert_eq!(result.total_pages, include_count.then_some(1));
+        assert_eq!(
+            counts.load(std::sync::atomic::Ordering::Relaxed),
+            usize::from(include_count)
+        );
+    }
 }
 
 #[tokio::test]
@@ -629,8 +642,8 @@ async fn test_get_history_list_joins_schema_credential_claim_proof_and_proof_sch
         .unwrap();
 
     let expected_count = /* create(credential_schema, credential, proof) */ 3;
-    assert_eq!(1, result.total_pages);
-    assert_eq!(expected_count as u64, result.total_items);
+    assert_eq!(1, result.total_pages.unwrap());
+    assert_eq!(expected_count as u64, result.total_items.unwrap());
     assert_eq!(expected_count as usize, result.values.len());
 
     let result = provider
@@ -1673,8 +1686,8 @@ async fn test_issuer_org_history_stats_dummy_data() {
         .issuer_stats(query, Some(query_prev))
         .await
         .unwrap();
-    assert_eq!(result.total_items, 2);
-    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.total_items.unwrap(), 2);
+    assert_eq!(result.total_pages.unwrap(), 1);
     assert_eq!(result.values[0].credential_schema_id, credential_schema_id2);
     assert_eq!(result.values[1].credential_schema_id, credential_schema_id);
     assert_eq!(result.values[0].current.suspended_count, 10);
@@ -1717,8 +1730,8 @@ async fn test_system_interaction_history_stats() {
         .system_interaction_stats(query, Some(query_prev))
         .await
         .unwrap();
-    assert_eq!(result.total_items, 2);
-    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.total_items.unwrap(), 2);
+    assert_eq!(result.total_pages.unwrap(), 1);
     assert_eq!(result.values[0].organisation_id, org2_id);
     assert_eq!(result.values[1].organisation_id, org_id);
     assert_eq!(
@@ -1740,8 +1753,8 @@ async fn test_system_interaction_history_stats() {
 #[tokio::test]
 async fn test_system_interaction_pagination() {
     let TestSetup {
-        provider,
-        db,
+        mut provider,
+        mut db,
         credential_id,
         ..
     } = setup_empty().await;
@@ -1768,6 +1781,7 @@ async fn test_system_interaction_pagination() {
     .condition();
     // Query with pagination
     let query = SystemInteractionStatsQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 2,
             page_size: 3,
@@ -1780,18 +1794,32 @@ async fn test_system_interaction_pagination() {
         include: None,
     };
 
-    let result = provider
-        .system_interaction_stats(query, None)
-        .await
-        .unwrap();
+    let counts = track_count_queries(&mut db);
+    provider.db = TransactionManagerImpl::new(db);
+    for include_count in [true, false] {
+        counts.store(0, std::sync::atomic::Ordering::Relaxed);
+        let mut current = query.clone();
+        current.include_count = include_count;
+        let mut previous = query.clone();
+        previous.include_count = !include_count;
+        let result = provider
+            .system_interaction_stats(current, Some(previous))
+            .await
+            .unwrap();
 
-    assert_eq!(result.total_items, 10);
-    assert_eq!(result.total_pages, 4);
-    assert_eq!(result.values.len(), 3);
-    // because of sorting by issued
-    assert_eq!(result.values[0].current.issued_count, 4);
-    assert_eq!(result.values[1].current.issued_count, 3);
-    assert_eq!(result.values[2].current.issued_count, 2);
+        assert_eq!(result.total_items, include_count.then_some(10));
+        assert_eq!(result.total_pages, include_count.then_some(4));
+        assert_eq!(result.values.len(), 3);
+        // because of sorting by issued
+        assert_eq!(result.values[0].current.issued_count, 4);
+        assert_eq!(result.values[1].current.issued_count, 3);
+        assert_eq!(result.values[2].current.issued_count, 2);
+        assert_eq!(result.values[0].previous.as_ref().unwrap().issued_count, 4);
+        assert_eq!(
+            counts.load(std::sync::atomic::Ordering::Relaxed),
+            usize::from(include_count)
+        );
+    }
 }
 
 async fn multi_org_test_data(
@@ -1925,6 +1953,7 @@ fn issuer_stats_query(
         })
     });
     IssuerStatsQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 999,
@@ -1956,6 +1985,7 @@ fn system_interaction_stats_query(
         })
     });
     SystemInteractionStatsQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 999,

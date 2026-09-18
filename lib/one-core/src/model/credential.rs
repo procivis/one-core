@@ -108,7 +108,7 @@ pub enum SortableCredentialColumn {
     ExpiresAt,
 }
 
-pub type GetCredentialList = GetListResponse<Credential>;
+pub type GetCredentialList<Count = Option<u64>> = GetListResponse<Credential, Count>;
 pub type CredentialListQuery =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 

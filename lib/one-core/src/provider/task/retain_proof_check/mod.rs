@@ -53,6 +53,7 @@ impl Task for RetainProofCheck {
         let processed_events: Vec<_> = self
             .history_repository
             .get_history_list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     HistoryFilterValue::EntityTypes(vec![HistoryEntityType::Proof]).condition()
                         & HistoryFilterValue::Actions(vec![HistoryAction::ClaimsRemoved]),
@@ -76,6 +77,7 @@ impl Task for RetainProofCheck {
             let proofs = self
                 .proof_repository
                 .get_proof_list(ListQuery {
+                    include_count: false,
                     filtering: Some(
                         ProofFilterValue::States(vec![ProofStateEnum::Accepted]).condition()
                             & ProofFilterValue::ValidForDeletion
@@ -133,6 +135,7 @@ impl Task for RetainProofCheck {
                 let credential_blob_ids = self
                     .credential_repository
                     .get_credential_list(CredentialListQuery {
+                        include_count: false,
                         filtering: Some(
                             CredentialFilterValue::CredentialIds(Vec::from_iter(
                                 credential_ids.clone(),

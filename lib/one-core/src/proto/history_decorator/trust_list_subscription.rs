@@ -114,6 +114,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionHistoryDecorator {
         let existing_subscriptions = self
             .inner
             .list(TrustListSubscriptionListQuery {
+                include_count: false,
                 filtering: Some(TrustListSubscriptionFilterValue::Ids(ids.clone()).condition()),
                 ..Default::default()
             })

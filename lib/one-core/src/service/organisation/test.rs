@@ -333,8 +333,8 @@ async fn test_get_organisation_list_success() {
         .returning(|_: OrganisationListQuery| {
             Ok(GetOrganisationList {
                 values: vec![dummy_organisation(None)],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -603,8 +603,8 @@ async fn verifier_provider_trust_collections(
                     "Verifier Ecosystem",
                     organisation_id,
                 )],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -1000,8 +1000,8 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
         });
     instance_repository.expect_list().returning(move |_| {
         Ok(InstanceList {
-            total_items: 2,
-            total_pages: 0,
+            total_items: Some(2),
+            total_pages: Some(0),
             values: vec![wallet_instance.clone(), verifier_instance.clone()],
         })
     });
@@ -1039,8 +1039,8 @@ async fn test_upsert_organisation_rejects_trust_collections_spanning_multiple_pr
                         organisation_id,
                     ),
                 ],
-                total_pages: 1,
-                total_items: 2,
+                total_pages: Some(1),
+                total_items: Some(2),
             })
         });
 

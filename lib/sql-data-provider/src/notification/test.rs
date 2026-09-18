@@ -123,8 +123,8 @@ async fn test_get_notification_list_success() {
     assert!(result.is_ok());
 
     let data = result.unwrap();
-    assert_eq!(data.total_pages, 1);
-    assert_eq!(data.total_items, 1);
+    assert_eq!(data.total_pages.unwrap(), 1);
+    assert_eq!(data.total_items.unwrap(), 1);
     assert_eq!(data.values.len(), 1);
 
     assert_eq!(data.values[0].id, notification_id);

@@ -19,6 +19,7 @@ use super::mapper::{
     proof_model_to_repository,
 };
 use super::model::ProofListItemModel;
+use crate::common::count_if_requested;
 use crate::entity::{identifier, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{map_lock_type, to_update_data_layer_error};
@@ -112,6 +113,7 @@ impl ProofRepository for ProofProvider {
         &self,
         query_params: ProofListQuery,
     ) -> Result<GetProofList, DataLayerError> {
+        let include_count = query_params.include_count;
         let limit = query_params
             .pagination
             .as_ref()
@@ -120,7 +122,7 @@ impl ProofRepository for ProofProvider {
         let query = get_proof_list_query(&query_params, self.db.get_database_backend());
 
         let (items_count, proofs) = tokio::join!(
-            query.to_owned().count(&self.db),
+            count_if_requested(include_count, query.to_owned().count(&self.db)),
             query.into_model::<ProofListItemModel>().all(&self.db)
         );
 
@@ -129,7 +131,7 @@ impl ProofRepository for ProofProvider {
 
         create_list_response(
             proofs,
-            limit.unwrap_or(items_count),
+            limit,
             items_count,
             &self.organisation_repository,
             &self.did_repository,

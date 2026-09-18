@@ -125,6 +125,7 @@ impl IdentifierService {
             .identifier_repository
             .get_identifier_list(query)
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting identifiers")?;
 
         identifiers_to_list_response_dto(
@@ -247,6 +248,7 @@ impl IdentifierService {
         let list = self
             .identifier_repository
             .get_identifier_list(IdentifierListQuery {
+                include_count: false,
                 filtering: Some(
                     IdentifierFilterValue::Name(StringMatch::equals(name)).condition()
                         & IdentifierFilterValue::OrganisationId(organisation_id).condition(),
@@ -642,6 +644,7 @@ impl IdentifierService {
         let identifiers = self
             .identifier_repository
             .get_identifier_list(IdentifierListQuery {
+                include_count: false,
                 filtering: Some(IdentifierFilterValue::Ids(request.identifiers).condition()),
                 ..Default::default()
             })
@@ -761,6 +764,7 @@ impl IdentifierService {
         Ok(self
             .trust_collection_repository
             .list(TrustCollectionListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustCollectionFilterValue::Ids(trust_list_collection_ids).condition(),
                 ),
@@ -782,6 +786,7 @@ impl IdentifierService {
         let mut trust_list_subscriptions = self
             .trust_list_subscription_repository
             .list(TrustListSubscriptionListQuery {
+                include_count: false,
                 filtering: Some(calculate_trust_list_subscription_filtering(
                     trust_list_roles,
                     trust_collection_ids,

@@ -118,6 +118,7 @@ impl IdentifierCreatorProto {
         let list = self
             .certificate_repository
             .list(CertificateListQuery {
+                include_count: false,
                 filtering: Some(
                     CertificateFilterValue::Fingerprint(fingerprint.to_owned()).condition()
                         & CertificateFilterValue::Deleted(false)
@@ -226,6 +227,7 @@ impl IdentifierCreatorProto {
         let list = self
             .key_repository
             .get_key_list(KeyListQuery {
+                include_count: false,
                 filtering: Some(
                     KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw()).condition()
                         & KeyFilterValue::KeyTypes(vec![parsed_key.algorithm_type.to_string()])
@@ -240,6 +242,7 @@ impl IdentifierCreatorProto {
             let identifier = self
                 .identifier_repository
                 .get_identifier_list(IdentifierListQuery {
+                    include_count: false,
                     filtering: Some(
                         IdentifierFilterValue::KeyIds(vec![key.id]).condition()
                             & IdentifierFilterValue::Types(vec![IdentifierType::Key])
@@ -343,6 +346,7 @@ impl IdentifierCreatorProto {
                 let list = self
                     .certificate_repository
                     .list(CertificateListQuery {
+                        include_count: false,
                         filtering: Some(
                             CertificateFilterValue::Fingerprint(
                                 certificate_details.fingerprint.to_owned(),
@@ -387,6 +391,7 @@ impl IdentifierCreatorProto {
                 let list = self
                     .key_repository
                     .get_key_list(KeyListQuery {
+                        include_count: false,
                         filtering: Some(
                             KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw())
                                 .condition()
@@ -407,6 +412,7 @@ impl IdentifierCreatorProto {
                 let Some(identifier) = self
                     .identifier_repository
                     .get_identifier_list(IdentifierListQuery {
+                        include_count: false,
                         filtering: Some(
                             IdentifierFilterValue::KeyIds(vec![key.id]).condition()
                                 & IdentifierFilterValue::Types(vec![IdentifierType::Key])

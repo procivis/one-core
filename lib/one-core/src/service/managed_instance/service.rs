@@ -89,6 +89,7 @@ impl ManagedInstanceService {
             .error_while("mapping filter query")?;
 
         let query = ManagedInstanceListQuery {
+            include_count: true,
             pagination: Some(ListPagination {
                 page: filter_params.page,
                 page_size: filter_params.page_size,
@@ -105,6 +106,7 @@ impl ManagedInstanceService {
             .managed_instance_repository
             .get_list(query)
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting wallet units")?;
 
         Ok(GetManagedInstanceListResponseDTO {

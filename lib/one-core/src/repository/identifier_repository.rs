@@ -59,6 +59,7 @@ impl AsyncVecLoader<Certificate> for IdentifierCertificatesLoader {
         let certificates = self
             .certificate_repository
             .list(CertificateListQuery {
+                include_count: false,
                 pagination: None,
                 sorting: Some(ListSorting {
                     column: SortableCertificateColumn::ExpiryDate,

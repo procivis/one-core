@@ -305,6 +305,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                         let existing = self
                             .certificate_repository
                             .list(CertificateListQuery {
+                                include_count: false,
                                 filtering: Some(
                                     CertificateFilterValue::Fingerprint(
                                         attributes.fingerprint.clone(),

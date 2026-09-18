@@ -39,5 +39,5 @@ pub enum NotificationFilterValue {
 
 impl ListFilterValue for NotificationFilterValue {}
 
-pub type NotificationList = GetListResponse<Notification>;
+pub type NotificationList<Count = Option<u64>> = GetListResponse<Notification, Count>;
 pub type NotificationListQuery = ListQuery<SortableNotificationColumn, NotificationFilterValue>;

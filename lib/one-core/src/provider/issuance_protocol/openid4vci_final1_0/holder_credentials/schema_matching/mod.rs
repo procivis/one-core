@@ -47,6 +47,7 @@ async fn find_credential_schemas(
 
     Ok(repository
         .get_credential_schema_list(CredentialSchemaListQuery {
+            include_count: false,
             // All candidates are needed so an ecosystem-schema-ID match can be preferred over a
             // display-name match, regardless of repository ordering.
             pagination: None,

@@ -85,11 +85,11 @@ impl TryFrom<History> for history::ActiveModel {
 pub(super) fn create_list_response(
     history_list: Vec<history::Model>,
     limit: Option<u64>,
-    items_count: u64,
+    items_count: Option<u64>,
 ) -> Result<GetHistoryList, DataLayerError> {
     Ok(GetHistoryList {
         values: try_convert_inner(history_list)?,
-        total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+        total_pages: items_count.map(|count| calculate_pages_count(count, limit.unwrap_or(0))),
         total_items: items_count,
     })
 }
@@ -461,7 +461,7 @@ where
 pub(super) fn paginated_stats_to_list_response<IN, OUT, ID>(
     paginated_stats: PaginatedStats<IN>,
     limit: Option<u64>,
-) -> GetListResponse<OUT>
+) -> GetListResponse<OUT, Option<u64>>
 where
     ID: Eq + Hash,
     IN: PaginatedStatsRow<ID>,
@@ -488,8 +488,10 @@ where
         .collect();
     GetListResponse {
         values,
-        total_pages: calculate_pages_count(paginated_stats.total_items as u64, limit.unwrap_or(0)),
-        total_items: paginated_stats.total_items as u64,
+        total_pages: paginated_stats
+            .total_items
+            .map(|count| calculate_pages_count(count, limit.unwrap_or(0))),
+        total_items: paginated_stats.total_items,
     }
 }
 

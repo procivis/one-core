@@ -304,6 +304,7 @@ impl CredentialService {
                 let batch_items = self
                     .credential_repository
                     .get_credential_list(ListQuery {
+                        include_count: false,
                         filtering: Some(
                             CredentialFilterValue::ParentCredential(*credential_id).condition(),
                         ),
@@ -475,6 +476,7 @@ impl CredentialService {
             .credential_repository
             .get_credential_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting credentials")?;
 
         let mut response_dtos = Vec::with_capacity(result.values.len());

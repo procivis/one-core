@@ -358,6 +358,7 @@ pub(super) async fn prepare_trust_collection_info(
 ) -> Result<Vec<TrustCollectionInfoDTO>, OrganisationServiceError> {
     let local_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
+            include_count: false,
             filtering: Some(
                 TrustCollectionFilterValue::OrganisationId {
                     id: organisation.id,
@@ -376,6 +377,7 @@ pub(super) async fn prepare_trust_collection_info(
     // TODO (ONE-10972): remove together with the deprecated per-collection selection API.
     let subscribed = trust_collection_repository
         .list(TrustCollectionListQuery {
+            include_count: false,
             filtering: Some(
                 TrustCollectionFilterValue::OrganisationId {
                     id: organisation.id,
@@ -433,6 +435,7 @@ pub(super) async fn set_active_trust_collections(
 ) -> Result<(), OrganisationServiceError> {
     let all_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
+            include_count: false,
             filtering: Some(
                 TrustCollectionFilterValue::OrganisationId {
                     id: organisation_id,
@@ -456,6 +459,7 @@ pub(super) async fn set_active_trust_collections(
         subscriptions_to_remove.extend(
             trust_subscription_repository
                 .list(TrustListSubscriptionListQuery {
+                    include_count: false,
                     filtering: Some(
                         TrustListSubscriptionFilterValue::TrustCollectionId(vec![collection_id])
                             .condition(),

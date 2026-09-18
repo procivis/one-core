@@ -59,4 +59,4 @@ impl ListFilterValue for TrustEntryFilterValue {}
 
 pub type TrustEntryListQuery = ListQuery<SortableTrustEntryColumn, TrustEntryFilterValue>;
 
-pub type GetTrustEntryList = GetListResponse<TrustEntry>;
+pub type GetTrustEntryList<Count = Option<u64>> = GetListResponse<TrustEntry, Count>;

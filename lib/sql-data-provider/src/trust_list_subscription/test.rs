@@ -187,8 +187,8 @@ async fn test_list_trust_list_subscription() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 2);
-    assert_eq!(list.total_pages, 1);
+    assert_eq!(list.total_items.unwrap(), 2);
+    assert_eq!(list.total_pages.unwrap(), 1);
     assert_eq!(list.values.len(), 2);
 }
 
@@ -226,7 +226,7 @@ async fn test_list_trust_list_subscription_with_name_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].name, "second-subscription");
 }
 
@@ -269,7 +269,7 @@ async fn test_list_trust_list_subscription_with_trust_collection_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].trust_collection.id(), trust_collection_id);
 }
 
@@ -317,7 +317,7 @@ async fn test_list_trust_list_subscription_with_role_filter() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // A role filter is strict: only the PID-role subscription matches, not the roleless one.
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     let roles: Vec<Option<TrustListRoleEnum>> = list.values.iter().map(|v| v.role).collect();
     assert_eq!(roles, vec![Some(TrustListRoleEnum::PidProvider)]);
 }
@@ -356,7 +356,7 @@ async fn test_list_trust_list_subscription_with_type_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].r#type, "LoTE2".into());
 }
 
@@ -396,7 +396,7 @@ async fn test_list_trust_list_subscription_with_reference_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].reference, "https://example.com/trust-list");
 }
 
@@ -431,7 +431,7 @@ async fn test_list_trust_list_subscription_filter_by_created_date() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // dummy_date is 2005, created_date is set to dummy_date, so nothing is after it
-    assert_eq!(list.total_items, 0);
+    assert_eq!(list.total_items.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -466,7 +466,7 @@ async fn test_list_trust_list_subscription_filter_by_ids() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].id, id1);
 }
 
@@ -497,8 +497,8 @@ async fn test_list_trust_list_subscription_pagination() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 5);
-    assert_eq!(list.total_pages, 3);
+    assert_eq!(list.total_items.unwrap(), 5);
+    assert_eq!(list.total_pages.unwrap(), 3);
     assert_eq!(list.values.len(), 2);
 }
 

@@ -80,7 +80,7 @@ pub enum SortableProofColumn {
     CreatedDate,
 }
 
-pub type GetProofList = GetListResponse<Proof>;
+pub type GetProofList<Count = Option<u64>> = GetListResponse<Proof, Count>;
 pub type ProofListQuery = ListQuery<SortableProofColumn, ProofFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

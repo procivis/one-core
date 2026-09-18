@@ -35,8 +35,8 @@ async fn test_collection_sync() {
                 to_not_touch_clone.clone(),
                 to_delete_clone.clone(),
             ],
-            total_pages: 1,
-            total_items: 3,
+            total_pages: Some(1),
+            total_items: Some(3),
         })
     });
     repository

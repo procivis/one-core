@@ -73,6 +73,7 @@ impl ProofSchemaService {
             .proof_schema_repository
             .get_proof_schema_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting proof schemas")?;
         Ok(list_response_into(result))
     }
@@ -131,6 +132,7 @@ impl ProofSchemaService {
         let credential_schemas = self
             .credential_schema_repository
             .get_credential_schema_list(CredentialSchemaListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
                         .condition()

@@ -331,6 +331,7 @@ impl EtsiLotePublisher {
             .list(
                 publication_id,
                 TrustEntryListQuery {
+                    include_count: false,
                     filtering: Some(
                         TrustEntryFilterValue::State(vec![TrustEntryStateEnum::Active]).condition(),
                     ),

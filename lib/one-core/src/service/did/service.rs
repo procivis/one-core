@@ -166,6 +166,7 @@ impl DidService {
             .did_repository
             .get_did_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting dids")?;
         Ok(result.into())
     }

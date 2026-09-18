@@ -526,6 +526,7 @@ impl SSIHolderService {
                 let list = self
                     .credential_repository
                     .get_credential_list(CredentialListQuery {
+                        include_count: false,
                         pagination: Some(ListPagination {
                             page: 0,
                             page_size: 1,

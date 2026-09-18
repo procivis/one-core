@@ -14,7 +14,7 @@ use shared_types::{TrustEntryId, TrustListPublicationId};
 use super::TrustEntryProvider;
 use super::entities::{TrustEntryWithIdentifier, trust_entry_from_model_with_identifier};
 use super::mapper::trust_entry_from_model;
-use crate::common::calculate_pages_count;
+use crate::common::{calculate_pages_count, count_if_requested};
 use crate::entity::{identifier, trust_entry};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -51,6 +51,7 @@ impl TrustEntryRepository for TrustEntryProvider {
         trust_list_publication_id: TrustListPublicationId,
         query: TrustEntryListQuery,
     ) -> Result<GetTrustEntryList, DataLayerError> {
+        let include_count = query.include_count;
         let limit = query
             .pagination
             .as_ref()
@@ -90,7 +91,7 @@ impl TrustEntryRepository for TrustEntryProvider {
             .order_by_desc(trust_entry::Column::Id);
 
         let (items_count, trust_entries) = tokio::join!(
-            query.to_owned().count(&self.db),
+            count_if_requested(include_count, query.to_owned().count(&self.db)),
             query.into_model::<TrustEntryWithIdentifier>().all(&self.db),
         );
 
@@ -113,7 +114,7 @@ impl TrustEntryRepository for TrustEntryProvider {
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?,
-            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+            total_pages: items_count.map(|count| calculate_pages_count(count, limit.unwrap_or(0))),
             total_items: items_count,
         })
     }

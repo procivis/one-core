@@ -54,6 +54,9 @@ pub enum DataLayerError {
     #[error("Response could not be mapped")]
     MappingError,
 
+    #[error("List response is missing counts")]
+    MissingCount,
+
     #[error("Missing required relation {relation} for {id}")]
     MissingRequiredRelation { relation: &'static str, id: String },
 
@@ -87,6 +90,7 @@ impl ErrorCodeMixin for DataLayerError {
             Self::IncorrectParameters
             | Self::RecordNotUpdated
             | Self::MappingError
+            | Self::MissingCount
             | Self::UUIDError(_)
             | Self::IncompleteClaimsList { .. }
             | Self::IncompleteClaimsSchemaList { .. }

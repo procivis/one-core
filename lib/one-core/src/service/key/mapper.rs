@@ -50,8 +50,8 @@ impl From<Key> for KeyResponseDTO {
     }
 }
 
-impl From<GetKeyList> for GetKeyListResponseDTO {
-    fn from(value: GetKeyList) -> Self {
+impl From<GetKeyList<u64>> for GetKeyListResponseDTO {
+    fn from(value: GetKeyList<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,

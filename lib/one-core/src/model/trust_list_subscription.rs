@@ -59,4 +59,5 @@ impl ListFilterValue for TrustListSubscriptionFilterValue {}
 pub type TrustListSubscriptionListQuery =
     ListQuery<SortableTrustListSubscriptionColumn, TrustListSubscriptionFilterValue>;
 
-pub type GetTrustListSubscriptionList = GetListResponse<TrustListSubscription>;
+pub type GetTrustListSubscriptionList<Count = Option<u64>> =
+    GetListResponse<TrustListSubscription, Count>;

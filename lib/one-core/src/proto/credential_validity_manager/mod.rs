@@ -293,6 +293,7 @@ impl CredentialValidityManagerImpl {
         Ok(self
             .credential_repository
             .get_credential_list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialFilterValue::ParentCredential(parent_id).condition()
                         & CredentialFilterValue::Deleted(false),

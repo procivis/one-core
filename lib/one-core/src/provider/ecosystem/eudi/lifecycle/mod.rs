@@ -78,6 +78,7 @@ impl EudiEcosystem {
             let credentials = self
                 .credential_repository
                 .get_credential_list(CredentialListQuery {
+                    include_count: false,
                     pagination: Some(ListPagination {
                         page,
                         page_size: PAGE_SIZE,

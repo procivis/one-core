@@ -50,29 +50,44 @@ async fn test_trust_list_subscription_update_active() {
         state: TrustListSubscriptionState::Active,
         trust_collection: collection.into(),
     };
-    let subscriptions = vec![subscription.clone()];
-    let mut repository = MockTrustListSubscriptionRepository::new();
-    repository.expect_list().returning(move |_| {
-        Ok(GetTrustListSubscriptionList {
-            values: subscriptions.clone(),
-            total_pages: 1,
-            total_items: subscriptions.clone().len() as u64,
-        })
-    });
-    repository
-        .expect_get()
-        .returning(move |_| Ok(subscription.clone()));
+    for item_count in [0, 1, super::PAGE_SIZE as usize] {
+        let subscriptions = vec![subscription.clone(); item_count];
+        let mut repository = MockTrustListSubscriptionRepository::new();
+        repository
+            .expect_list()
+            .times(item_count / super::PAGE_SIZE as usize + 1)
+            .returning(move |query| {
+                assert!(!query.include_count);
+                let pagination = query.pagination.unwrap();
+                assert_eq!(pagination.page_size, super::PAGE_SIZE);
+                Ok(GetTrustListSubscriptionList {
+                    values: subscriptions
+                        .iter()
+                        .skip(pagination.page as usize * pagination.page_size as usize)
+                        .take(pagination.page_size as usize)
+                        .cloned()
+                        .collect(),
+                    total_pages: None,
+                    total_items: None,
+                })
+            });
+        let subscription = subscription.clone();
+        repository
+            .expect_get()
+            .returning(move |_| Ok(subscription.clone()));
 
-    let task = TrustListSubscriptionUpdateTask::new(
-        test_subscriber_provider(Some(validation_result)),
-        Arc::new(repository),
-        Arc::new(MockHistoryRepository::new()),
-        Arc::new(NoSessionProvider),
-    );
+        let task = TrustListSubscriptionUpdateTask::new(
+            test_subscriber_provider(Some(validation_result.clone())),
+            Arc::new(repository),
+            Arc::new(MockHistoryRepository::new()),
+            Arc::new(NoSessionProvider),
+        );
 
-    let result: UpdateResultDTO = serde_json::from_value(task.run(None).await.unwrap()).unwrap();
-    assert_eq!(result.total_checks, 1);
-    assert_eq!(result.updated_subscriptions.len(), 0);
+        let result: UpdateResultDTO =
+            serde_json::from_value(task.run(None).await.unwrap()).unwrap();
+        assert_eq!(result.total_checks, item_count as u64);
+        assert_eq!(result.updated_subscriptions.len(), 0);
+    }
 }
 
 #[tokio::test]
@@ -106,8 +121,8 @@ async fn test_trust_list_subscription_update_error() {
     repository.expect_list().returning(move |_| {
         Ok(GetTrustListSubscriptionList {
             values: subscriptions.clone(),
-            total_pages: 1,
-            total_items: subscriptions.clone().len() as u64,
+            total_pages: Some(1),
+            total_items: Some(subscriptions.clone().len() as u64),
         })
     });
     repository
@@ -157,8 +172,8 @@ async fn test_trust_list_subscription_update_active_to_error() {
     repository.expect_list().returning(move |_| {
         Ok(GetTrustListSubscriptionList {
             values: subscriptions.clone(),
-            total_pages: 1,
-            total_items: subscriptions.clone().len() as u64,
+            total_pages: Some(1),
+            total_items: Some(subscriptions.clone().len() as u64),
         })
     });
     repository
@@ -219,8 +234,8 @@ async fn test_trust_list_subscription_update_error_to_active() {
     repository.expect_list().returning(move |_| {
         Ok(GetTrustListSubscriptionList {
             values: subscriptions.clone(),
-            total_pages: 1,
-            total_items: subscriptions.clone().len() as u64,
+            total_pages: Some(1),
+            total_items: Some(subscriptions.clone().len() as u64),
         })
     });
     repository

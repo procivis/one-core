@@ -31,6 +31,7 @@ where
         value: ListQueryParamsRest<FilterRest, SortableColumnRest, IncludeRest>,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
+            include_count: true,
             pagination: Some(ListPagination {
                 page: value.page,
                 page_size: value.page_size.inner(),

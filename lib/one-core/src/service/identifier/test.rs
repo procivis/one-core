@@ -256,8 +256,8 @@ async fn test_resolve_trust_entries_success() {
         .returning(move |_| {
             Ok(GetIdentifierList {
                 values: vec![identifier.clone()],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -269,8 +269,8 @@ async fn test_resolve_trust_entries_success() {
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
                 values: vec![subscription.clone()],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -279,8 +279,8 @@ async fn test_resolve_trust_entries_success() {
         .returning(move |_| {
             Ok(GetTrustCollectionList {
                 values: vec![trust_collection.clone()],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -358,8 +358,8 @@ async fn test_resolve_trust_entries_filters_local() {
         .returning(move |_| {
             Ok(GetIdentifierList {
                 values: vec![identifier.clone()],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -368,8 +368,8 @@ async fn test_resolve_trust_entries_filters_local() {
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
                 values: vec![dummy_trust_list_subscription(Uuid::new_v4().into()).0],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -378,8 +378,8 @@ async fn test_resolve_trust_entries_filters_local() {
         .returning(move |_| {
             Ok(GetTrustCollectionList {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 
@@ -443,8 +443,8 @@ async fn test_resolve_trust_entries_ignores_missing_identifiers() {
         .returning(move |_| {
             Ok(GetIdentifierList {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 
@@ -453,8 +453,8 @@ async fn test_resolve_trust_entries_ignores_missing_identifiers() {
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 
@@ -463,8 +463,8 @@ async fn test_resolve_trust_entries_ignores_missing_identifiers() {
         .returning(move |_| {
             Ok(GetTrustCollectionList {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 
@@ -509,8 +509,8 @@ async fn test_resolve_trust_entries_subscriber_error() {
         .returning(move |_| {
             Ok(GetIdentifierList {
                 values: vec![identifier.clone()],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -519,8 +519,8 @@ async fn test_resolve_trust_entries_subscriber_error() {
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
                 values: vec![dummy_trust_list_subscription(Uuid::new_v4().into()).0],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -529,8 +529,8 @@ async fn test_resolve_trust_entries_subscriber_error() {
         .returning(move |_| {
             Ok(GetTrustCollectionList {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 
@@ -598,8 +598,8 @@ async fn test_resolve_trust_entries_filters_key_type() {
         .returning(move |_| {
             Ok(GetIdentifierList {
                 values: vec![identifier.clone()],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -608,8 +608,8 @@ async fn test_resolve_trust_entries_filters_key_type() {
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
                 values: vec![dummy_trust_list_subscription(Uuid::new_v4().into()).0],
-                total_items: 1,
-                total_pages: 1,
+                total_items: Some(1),
+                total_pages: Some(1),
             })
         });
 
@@ -618,8 +618,8 @@ async fn test_resolve_trust_entries_filters_key_type() {
         .returning(move |_| {
             Ok(GetTrustCollectionList {
                 values: vec![],
-                total_items: 0,
-                total_pages: 0,
+                total_items: Some(0),
+                total_pages: Some(0),
             })
         });
 
@@ -1147,8 +1147,8 @@ fn identifier_repo_with_no_name_match() -> MockIdentifierRepository {
     repo.expect_get_identifier_list().returning(|_| {
         Ok(GetIdentifierList {
             values: vec![],
-            total_pages: 0,
-            total_items: 0,
+            total_pages: Some(0),
+            total_items: Some(0),
         })
     });
     repo
@@ -1618,8 +1618,8 @@ async fn test_create_remote_identifier_name_already_taken_returns_colliding_id()
         .returning(move |_| {
             Ok(GetIdentifierList {
                 values: vec![existing_clone.clone()],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 

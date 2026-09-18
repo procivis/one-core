@@ -20,7 +20,7 @@ pub(crate) async fn proof_schema_name_already_exists(
         .get_proof_schema_list(create_unique_name_check_request(name, organisation_id))
         .await
         .error_while("getting proof schemas")?;
-    if proof_schemas.total_items > 0 {
+    if !proof_schemas.values.is_empty() {
         return Err(Error::AlreadyExists);
     }
     Ok(())
@@ -65,6 +65,7 @@ fn create_unique_name_check_request(
     organisation_id: OrganisationId,
 ) -> ProofSchemaListQuery {
     ProofSchemaListQuery {
+        include_count: false,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 1,

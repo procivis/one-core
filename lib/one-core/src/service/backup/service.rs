@@ -52,7 +52,10 @@ impl BackupService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation_list(OrganisationListQuery::default())
+            .get_organisation_list(OrganisationListQuery {
+                include_count: false,
+                ..Default::default()
+            })
             .await
             .and_then(|organisations| {
                 organisations
@@ -145,7 +148,10 @@ impl BackupService {
         backup_db_path: impl AsRef<Path>,
     ) -> Result<(), BackupServiceError> {
         self.organisation_repository
-            .get_organisation_list(OrganisationListQuery::default())
+            .get_organisation_list(OrganisationListQuery {
+                include_count: false,
+                ..Default::default()
+            })
             .map(|result| {
                 result.and_then(|organisations| {
                     organisations

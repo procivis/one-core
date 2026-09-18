@@ -777,8 +777,8 @@ async fn test_get_proof_schema_list_empty() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 0);
-    assert_eq!(result.total_pages, 0);
+    assert_eq!(result.total_items.unwrap(), 0);
+    assert_eq!(result.total_pages.unwrap(), 0);
     assert_eq!(result.values.len(), 0);
 }
 
@@ -814,8 +814,8 @@ async fn test_get_proof_schema_list_deleted() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 0);
-    assert_eq!(result.total_pages, 0);
+    assert_eq!(result.total_items.unwrap(), 0);
+    assert_eq!(result.total_pages.unwrap(), 0);
     assert_eq!(result.values.len(), 0);
 }
 
@@ -881,8 +881,8 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 2);
-    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.total_items.unwrap(), 2);
+    assert_eq!(result.total_pages.unwrap(), 1);
     assert_eq!(result.values.len(), 2);
     assert_eq!(result.values[0].id, schema2_id);
 
@@ -956,8 +956,8 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 1);
-    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.total_items.unwrap(), 1);
+    assert_eq!(result.total_pages.unwrap(), 1);
     assert_eq!(result.values.len(), 1);
     assert_eq!(result.values[0].id, schema1_id);
 
@@ -978,8 +978,8 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 2);
-    assert_eq!(result.total_pages, 1);
+    assert_eq!(result.total_items.unwrap(), 2);
+    assert_eq!(result.total_pages.unwrap(), 1);
     assert_eq!(result.values.len(), 2);
 
     // filter by name - no results
@@ -999,8 +999,8 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 0);
-    assert_eq!(result.total_pages, 0);
+    assert_eq!(result.total_items.unwrap(), 0);
+    assert_eq!(result.total_pages.unwrap(), 0);
     assert_eq!(result.values.len(), 0);
 
     // ====== PAGINATION
@@ -1018,8 +1018,8 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 2);
-    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
+    assert_eq!(result.total_pages.unwrap(), 2);
     assert_eq!(result.values.len(), 1);
     assert_eq!(result.values[0].id, schema2_id);
 
@@ -1037,8 +1037,8 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.total_items, 2);
-    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.total_items.unwrap(), 2);
+    assert_eq!(result.total_pages.unwrap(), 2);
     assert_eq!(result.values.len(), 1);
     assert_eq!(result.values[0].id, schema1_id);
 }

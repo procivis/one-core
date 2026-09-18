@@ -61,6 +61,7 @@ impl Task for HolderCheckCredentialStatus {
         let credentials = self
             .credential_repository
             .get_credential_list(CredentialListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialFilterValue::Roles(vec![CredentialRole::Holder]).condition()
                         & CredentialFilterValue::Types(vec![
@@ -83,7 +84,7 @@ impl Task for HolderCheckCredentialStatus {
         }
 
         let result = dto::HolderCheckCredentialStatusResultDTO {
-            total_checks: credentials.total_items,
+            total_checks: credentials.values.len() as u64,
         };
 
         serde_json::to_value(result).map_err(|e| ServiceError::MappingError(e.to_string()))

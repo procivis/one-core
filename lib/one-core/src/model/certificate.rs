@@ -76,6 +76,6 @@ pub enum CertificateFilterValue {
 
 impl ListFilterValue for CertificateFilterValue {}
 
-pub type GetCertificateList = GetListResponse<Certificate>;
+pub type GetCertificateList<Count = Option<u64>> = GetListResponse<Certificate, Count>;
 
 pub type CertificateListQuery = ListQuery<SortableCertificateColumn, CertificateFilterValue>;

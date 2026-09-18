@@ -48,7 +48,7 @@ use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
-    pub repository: Box<dyn ProofRepository>,
+    pub repository: Box<ProofProvider>,
     pub organisation_id: OrganisationId,
     pub proof_schema_id: ProofSchemaId,
     pub did_id: DidId,
@@ -196,7 +196,7 @@ async fn setup(
 }
 
 struct TestSetupWithProof {
-    pub repository: Box<dyn ProofRepository>,
+    pub repository: Box<ProofProvider>,
     pub organisation_id: OrganisationId,
     pub proof_schema_id: ProofSchemaId,
     pub identifier_id: IdentifierId,
@@ -415,7 +415,8 @@ async fn test_create_proof_success() {
 #[tokio::test]
 async fn test_get_proof_list() {
     let TestSetupWithProof {
-        repository,
+        mut repository,
+        mut db,
         organisation_id,
         proof_id,
         ..
@@ -430,27 +431,37 @@ async fn test_get_proof_list() {
     )
     .await;
 
-    let result = repository
-        .get_proof_list(ProofListQuery {
-            pagination: Some(ListPagination {
-                page_size: 1,
-                page: 0,
-            }),
-            filtering: ProofFilterValue::OrganisationId(organisation_id)
-                .condition()
-                .into(),
-            sorting: None,
-            include: None,
-        })
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(result.total_items, 1);
-    assert_eq!(result.total_pages, 1);
-    assert_eq!(result.values.len(), 1);
+    let counts = crate::test_utilities::track_count_queries(&mut db);
+    repository.db = TransactionManagerImpl::new(db);
+    for include_count in [true, false] {
+        counts.store(0, std::sync::atomic::Ordering::Relaxed);
+        let result = repository
+            .get_proof_list(ProofListQuery {
+                include_count,
+                pagination: Some(ListPagination {
+                    page_size: 1,
+                    page: 0,
+                }),
+                filtering: ProofFilterValue::OrganisationId(organisation_id)
+                    .condition()
+                    .into(),
+                sorting: None,
+                include: None,
+            })
+            .await;
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.total_items, include_count.then_some(1));
+        assert_eq!(result.total_pages, include_count.then_some(1));
+        assert_eq!(result.values.len(), 1);
 
-    let proof = &result.values[0];
-    assert_eq!(proof.id, proof_id);
+        let proof = &result.values[0];
+        assert_eq!(proof.id, proof_id);
+        assert_eq!(
+            counts.load(std::sync::atomic::Ordering::Relaxed),
+            usize::from(include_count)
+        );
+    }
 }
 
 #[tokio::test]

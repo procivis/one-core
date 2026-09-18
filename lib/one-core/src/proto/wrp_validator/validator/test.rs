@@ -101,8 +101,8 @@ fn make_validator_with_subscription(
         };
 
         Ok(GetTrustCollectionList {
-            total_pages: 1,
-            total_items: values.len() as u64,
+            total_pages: Some(1),
+            total_items: Some(values.len() as u64),
             values,
         })
     });
@@ -118,8 +118,8 @@ fn make_validator_with_subscription(
         };
 
         Ok(GetTrustListSubscriptionList {
-            total_pages: 1,
-            total_items: values.len() as u64,
+            total_pages: Some(1),
+            total_items: Some(values.len() as u64),
             values,
         })
     });
@@ -299,8 +299,8 @@ async fn test_trust_collections_are_filtered_by_the_scoped_ecosystem() {
         .returning(|_| {
             Ok(GetTrustCollectionList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -308,8 +308,8 @@ async fn test_trust_collections_are_filtered_by_the_scoped_ecosystem() {
     subscription_repo.expect_list().returning(|_| {
         Ok(GetTrustListSubscriptionList {
             values: vec![],
-            total_pages: 0,
-            total_items: 0,
+            total_pages: Some(0),
+            total_items: Some(0),
         })
     });
 

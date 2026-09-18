@@ -46,6 +46,20 @@ use crate::entity::{
 };
 use crate::{DataLayer, db_conn};
 
+#[cfg(test)]
+pub fn track_count_queries(db: &mut DatabaseConnection) -> Arc<std::sync::atomic::AtomicUsize> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let counts = Arc::new(AtomicUsize::new(0));
+    let callback_counts = counts.clone();
+    db.set_metric_callback(move |info| {
+        if info.statement.sql.contains("COUNT(*) AS num_items") {
+            callback_counts.fetch_add(1, Ordering::Relaxed);
+        }
+    });
+    counts
+}
+
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 UTC)
 }

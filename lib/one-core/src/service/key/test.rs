@@ -185,8 +185,8 @@ async fn test_get_key_list() {
     repository.expect_get_key_list().once().returning(move |_| {
         Ok(GetKeyList {
             values: moved_keys.clone(),
-            total_pages: 1,
-            total_items: 2,
+            total_pages: Some(1),
+            total_items: Some(2),
         })
     });
 

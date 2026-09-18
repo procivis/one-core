@@ -9,8 +9,8 @@ use crate::service::statistics::dto::{
     GetSystemManagementStatsResponseDTO, GetVerifierStatsResponseDTO, SystemOrgStatsResponseDTO,
 };
 
-impl From<GetIssuerStats> for GetIssuerStatsResponseDTO {
-    fn from(value: GetIssuerStats) -> Self {
+impl From<GetIssuerStats<u64>> for GetIssuerStatsResponseDTO {
+    fn from(value: GetIssuerStats<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,
@@ -19,8 +19,8 @@ impl From<GetIssuerStats> for GetIssuerStatsResponseDTO {
     }
 }
 
-impl From<GetVerifierStats> for GetVerifierStatsResponseDTO {
-    fn from(value: GetVerifierStats) -> Self {
+impl From<GetVerifierStats<u64>> for GetVerifierStatsResponseDTO {
+    fn from(value: GetVerifierStats<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,
@@ -29,8 +29,8 @@ impl From<GetVerifierStats> for GetVerifierStatsResponseDTO {
     }
 }
 
-impl From<GetSystemInteractionStats> for GetSystemInteractionStatsResponseDTO {
-    fn from(value: GetSystemInteractionStats) -> Self {
+impl From<GetSystemInteractionStats<u64>> for GetSystemInteractionStatsResponseDTO {
+    fn from(value: GetSystemInteractionStats<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,
@@ -39,8 +39,8 @@ impl From<GetSystemInteractionStats> for GetSystemInteractionStatsResponseDTO {
     }
 }
 
-impl From<GetSystemManagementStats> for GetSystemManagementStatsResponseDTO {
-    fn from(value: GetSystemManagementStats) -> Self {
+impl From<GetSystemManagementStats<u64>> for GetSystemManagementStatsResponseDTO {
+    fn from(value: GetSystemManagementStats<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,

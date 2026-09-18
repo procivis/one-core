@@ -248,7 +248,7 @@ pub enum HistorySearchEnum {
 
 impl ListFilterValue for HistoryFilterValue {}
 
-pub type GetHistoryList = GetListResponse<History>;
+pub type GetHistoryList<Count = Option<u64>> = GetListResponse<History, Count>;
 pub type HistoryListQuery = ListQuery<SortableHistoryColumn, HistoryFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -322,7 +322,7 @@ pub enum StatsBySchemaFilterValue {
 impl ListFilterValue for StatsBySchemaFilterValue {}
 pub type IssuerStatsQuery = ListQuery<SortableIssuerStatisticsColumn, StatsBySchemaFilterValue>;
 
-pub type GetIssuerStats = GetListResponse<IssuerSchemaStats>;
+pub type GetIssuerStats<Count = Option<u64>> = GetListResponse<IssuerSchemaStats, Count>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IssuerSchemaStats {
@@ -342,7 +342,7 @@ pub struct IssuerStats {
 }
 
 pub type VerifierStatsQuery = ListQuery<SortableVerifierStatisticsColumn, StatsBySchemaFilterValue>;
-pub type GetVerifierStats = GetListResponse<VerifierSchemaStats>;
+pub type GetVerifierStats<Count = Option<u64>> = GetListResponse<VerifierSchemaStats, Count>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VerifierSchemaStats {
@@ -401,7 +401,8 @@ impl ListFilterValue for SystemStatsFilterValue {}
 pub type SystemInteractionStatsQuery =
     ListQuery<SortableSystemInteractionStatisticsColumn, SystemStatsFilterValue>;
 
-pub type GetSystemInteractionStats = GetListResponse<SystemOrgStats<SystemInteractionCounts>>;
+pub type GetSystemInteractionStats<Count = Option<u64>> =
+    GetListResponse<SystemOrgStats<SystemInteractionCounts>, Count>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemOrgStats<T> {
@@ -428,7 +429,8 @@ pub enum SortableSystemManagementStatisticsColumn {
 pub type SystemManagementStatsQuery =
     ListQuery<SortableSystemManagementStatisticsColumn, SystemStatsFilterValue>;
 
-pub type GetSystemManagementStats = GetListResponse<SystemOrgStats<SystemManagementCounts>>;
+pub type GetSystemManagementStats<Count = Option<u64>> =
+    GetListResponse<SystemOrgStats<SystemManagementCounts>, Count>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct SystemManagementCounts {

@@ -90,6 +90,7 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
 ) -> Result<Vec<Credential>, DataLayerError> {
     let credentials = credential_repository
         .get_credential_list(CredentialListQuery {
+            include_count: false,
             filtering: Some(
                 CredentialFilterValue::SchemaId(schema_id).condition()
                     & CredentialFilterValue::OrganisationId(organisation_id)

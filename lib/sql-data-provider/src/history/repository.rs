@@ -20,6 +20,7 @@ use time::OffsetDateTime;
 use super::mapper::{
     create_list_response, map_to_stats, paginated_stats_to_list_response, to_ops_org_count,
 };
+use crate::common::count_if_requested;
 use crate::entity::history;
 use crate::entity::history::HistoryEntityType;
 use crate::history::HistoryProvider;
@@ -76,6 +77,7 @@ impl HistoryRepository for HistoryProvider {
         query_params: HistoryListQuery,
     ) -> Result<GetHistoryList, DataLayerError> {
         let ListQuery {
+            include_count,
             pagination,
             sorting,
             filtering,
@@ -89,6 +91,7 @@ impl HistoryRepository for HistoryProvider {
             None => None,
         };
         let query_params = ListQuery {
+            include_count,
             pagination,
             sorting,
             filtering,
@@ -105,8 +108,10 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .map(|pagination| pagination.page_size as u64);
 
-        let (items_count, history_list) =
-            tokio::join!(query.to_owned().count(&self.db), query.all(&self.db));
+        let (items_count, history_list) = tokio::join!(
+            count_if_requested(include_count, query.to_owned().count(&self.db)),
+            query.all(&self.db)
+        );
 
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
         let history_list = history_list.map_err(|e| DataLayerError::Db(e.into()))?;
@@ -298,7 +303,9 @@ impl HistoryRepository for HistoryProvider {
         let db_backend = self.db.get_database_backend();
         let current = issuer_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| issuer_stats_query(&q, db_backend));
-        let paginated_stats = self.collect_paginated_stats(current, prev).await?;
+        let paginated_stats = self
+            .collect_paginated_stats(current, prev, current_query.include_count)
+            .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }
@@ -315,7 +322,9 @@ impl HistoryRepository for HistoryProvider {
         let db_backend = self.db.get_database_backend();
         let current = verifier_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| verifier_stats_query(&q, db_backend));
-        let paginated_stats = self.collect_paginated_stats(current, prev).await?;
+        let paginated_stats = self
+            .collect_paginated_stats(current, prev, current_query.include_count)
+            .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }
@@ -332,8 +341,9 @@ impl HistoryRepository for HistoryProvider {
         let db_backend = self.db.get_database_backend();
         let current = system_interaction_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| system_interaction_stats_query(&q, db_backend));
-        let paginated_stats: PaginatedStats<SystemInteractionStatsRow> =
-            self.collect_paginated_stats(current, prev).await?;
+        let paginated_stats: PaginatedStats<SystemInteractionStatsRow> = self
+            .collect_paginated_stats(current, prev, current_query.include_count)
+            .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }
@@ -350,8 +360,9 @@ impl HistoryRepository for HistoryProvider {
         let db_backend = self.db.get_database_backend();
         let current = system_management_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| system_management_stats_query(&q, db_backend));
-        let paginated_stats: PaginatedStats<SystemManagementsStatsRow> =
-            self.collect_paginated_stats(current, prev).await?;
+        let paginated_stats: PaginatedStats<SystemManagementsStatsRow> = self
+            .collect_paginated_stats(current, prev, current_query.include_count)
+            .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
     }
@@ -484,11 +495,15 @@ impl HistoryProvider {
         &self,
         current: SelectStatement,
         prev: Option<SelectStatement>,
+        include_count: bool,
     ) -> Result<PaginatedStats<T>, DataLayerError> {
         let backend = self.db.get_database_backend();
         let (count, current, prev) = tokio::join!(
-            T::find_by_statement(backend.build(current.clone().reset_limit().reset_offset()))
-                .count(&self.db),
+            count_if_requested(
+                include_count,
+                T::find_by_statement(backend.build(current.clone().reset_limit().reset_offset()))
+                    .count(&self.db)
+            ),
             T::find_by_statement(backend.build(&current)).all(&self.db),
             async {
                 let result = T::find_by_statement(backend.build(&prev?))
@@ -503,7 +518,7 @@ impl HistoryProvider {
             previous: prev
                 .transpose()
                 .map_err(|err| DataLayerError::Db(err.into()))?,
-            total_items: count.map_err(|err| DataLayerError::Db(err.into()))? as i64,
+            total_items: count.map_err(|err| DataLayerError::Db(err.into()))?,
         })
     }
 }

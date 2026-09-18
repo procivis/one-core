@@ -165,8 +165,8 @@ async fn test_get_did_list() {
         repository.expect_get_did_list().once().returning(move |_| {
             Ok(GetDidList {
                 values: vec![did_clone.clone()],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
     }

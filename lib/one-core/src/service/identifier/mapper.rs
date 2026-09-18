@@ -111,7 +111,7 @@ pub(super) async fn identifier_to_response_dto(
 }
 
 pub(super) async fn identifiers_to_list_response_dto(
-    identifiers_list: GetIdentifierList,
+    identifiers_list: GetIdentifierList<u64>,
     blob_storage_provider: &dyn BlobStorageProvider,
     includes: &[IdentifierListIncludeEntity],
     default_language: &str,
@@ -258,8 +258,8 @@ impl From<Identifier> for GetIdentifierListItemResponseDTO {
     }
 }
 
-impl From<GetIdentifierList> for GetIdentifierListResponseDTO {
-    fn from(value: GetIdentifierList) -> Self {
+impl From<GetIdentifierList<u64>> for GetIdentifierListResponseDTO {
+    fn from(value: GetIdentifierList<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,
@@ -320,6 +320,7 @@ pub(super) async fn params_to_query(
     )
     .await?;
     Ok(ListQuery {
+        include_count: true,
         pagination: Some(ListPagination {
             page: filter_params.page,
             page_size: filter_params.page_size,

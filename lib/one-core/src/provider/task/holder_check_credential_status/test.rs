@@ -107,11 +107,12 @@ async fn test_task_holder_check_credential_status_being_revoked() {
 
     credential_repository
         .expect_get_credential_list()
+        .withf(|query| !query.include_count)
         .returning(move |_| {
             Ok(GetCredentialList {
                 values: vec![credential.clone()],
-                total_pages: 0,
-                total_items: 1,
+                total_pages: None,
+                total_items: None,
             })
         });
 

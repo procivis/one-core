@@ -104,6 +104,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                 let existing_collections: GetTrustCollectionList = self
                     .repository
                     .list(TrustCollectionListQuery {
+                        include_count: false,
                         filtering: Some(
                             TrustCollectionFilterValue::OrganisationId {
                                 id: organisation_id,

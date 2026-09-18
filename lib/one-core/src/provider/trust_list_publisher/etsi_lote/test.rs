@@ -237,8 +237,8 @@ fn mock_entry_repo() -> MockTrustEntryRepository {
         let entries = store.lock().unwrap().clone();
         Ok(GetListResponse {
             values: entries,
-            total_pages: 1,
-            total_items: 0,
+            total_pages: Some(1),
+            total_items: Some(0),
         })
     });
 

@@ -110,8 +110,8 @@ async fn test_get_organisation_list() {
 
     assert!(result.is_ok());
     let organisations = result.unwrap();
-    assert_eq!(organisations.total_pages, 1);
-    assert_eq!(organisations.total_items, 2);
+    assert_eq!(organisations.total_pages.unwrap(), 1);
+    assert_eq!(organisations.total_items.unwrap(), 2);
     assert_eq!(organisations.values.len(), 2);
     assert_eq!(organisations.values[0].id, org_id);
     assert_eq!(organisations.values[1].id, org2_id);

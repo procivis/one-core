@@ -59,6 +59,7 @@ impl StatisticsService {
         let (newest_orgs, stats) = tokio::join!(
             self.organisation_repository
                 .get_organisation_list(OrganisationListQuery {
+                    include_count: false,
                     pagination: Some(ListPagination {
                         page: 0,
                         page_size: request.organisation_count as u32,
@@ -105,6 +106,7 @@ impl StatisticsService {
             .history_repository
             .issuer_stats(current, previous)
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting issuer statistics")?;
         Ok(stats.into())
     }
@@ -121,6 +123,7 @@ impl StatisticsService {
             .history_repository
             .verifier_stats(current, previous)
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting verifier statistics")?;
         Ok(stats.into())
     }
@@ -135,6 +138,7 @@ impl StatisticsService {
             .history_repository
             .system_interaction_stats(current, previous)
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting system interaction statistics")?;
         Ok(stats.into())
     }
@@ -149,6 +153,7 @@ impl StatisticsService {
             .history_repository
             .system_management_stats(current, previous)
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting system management statistics")?;
         Ok(stats.into())
     }

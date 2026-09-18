@@ -97,7 +97,7 @@ pub enum ExactKeyFilterColumn {
     Name,
 }
 
-pub type GetKeyList = GetListResponse<Key>;
+pub type GetKeyList<Count = Option<u64>> = GetListResponse<Key, Count>;
 
 pub trait PrivateJwkExt {
     fn supported_key_type(&self) -> KeyAlgorithmType;

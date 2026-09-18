@@ -363,6 +363,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         let active_attestations = self
             .wallet_attestation_repository
             .get_attestations(ListQuery {
+                include_count: false,
                 filtering: Some(
                     WalletAttestationFilterValue::Instance(holder_wallet_unit.id).condition()
                         & WalletAttestationFilterValue::ExpirationDate(ValueComparison {

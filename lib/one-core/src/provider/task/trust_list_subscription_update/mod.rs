@@ -31,6 +31,8 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::service::error::ServiceError;
 
+const PAGE_SIZE: u32 = 1000;
+
 pub(crate) struct TrustListSubscriptionUpdateTask {
     subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
     subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
@@ -106,9 +108,10 @@ impl TrustListSubscriptionUpdateTask {
     ) -> Result<GetTrustListSubscriptionList, ServiceError> {
         self.subscription_repository
             .list(TrustListSubscriptionListQuery {
+                include_count: false,
                 pagination: Some(ListPagination {
                     page,
-                    page_size: 1000,
+                    page_size: PAGE_SIZE,
                 }),
                 sorting: Some(ListSorting {
                     column: SortableTrustListSubscriptionColumn::CreatedDate,
@@ -134,6 +137,7 @@ impl Task for TrustListSubscriptionUpdateTask {
 
         loop {
             let subscription_list = self.load_subscription_batch(page).await?;
+            let last_page = subscription_list.values.len() < PAGE_SIZE as usize;
 
             for subscription in subscription_list.values {
                 // reload with relation
@@ -191,7 +195,7 @@ impl Task for TrustListSubscriptionUpdateTask {
                 result.total_checks += 1;
             }
             page += 1;
-            if (page as u64) >= subscription_list.total_pages {
+            if last_page {
                 break;
             }
         }

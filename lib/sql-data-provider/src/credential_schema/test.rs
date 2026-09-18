@@ -301,8 +301,8 @@ async fn test_get_credential_schema_list_success() {
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(1, result.total_pages);
-    assert_eq!(1, result.total_items);
+    assert_eq!(1, result.total_pages.unwrap());
+    assert_eq!(1, result.total_items.unwrap());
     assert_eq!(1, result.values.len());
 }
 
@@ -348,7 +348,7 @@ async fn test_get_credential_schema_list_by_display_names() {
         .await
         .unwrap();
 
-    assert_eq!(result.total_items, 1);
+    assert_eq!(result.total_items.unwrap(), 1);
     assert_eq!(result.values[0].id, credential_schema.id);
 
     let result = repository
@@ -370,7 +370,7 @@ async fn test_get_credential_schema_list_by_display_names() {
         .await
         .unwrap();
 
-    assert_eq!(result.total_items, 0);
+    assert_eq!(result.total_items.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -406,8 +406,8 @@ async fn test_get_credential_schema_list_deleted_schema() {
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(0, result.total_pages);
-    assert_eq!(0, result.total_items);
+    assert_eq!(0, result.total_pages.unwrap());
+    assert_eq!(0, result.total_items.unwrap());
     assert_eq!(0, result.values.len());
 }
 

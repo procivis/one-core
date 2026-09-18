@@ -236,7 +236,7 @@ pub enum CodeTypeEnum {
     QrCode,
 }
 
-pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;
+pub type GetCredentialSchemaList<Count = Option<u64>> = GetListResponse<CredentialSchema, Count>;
 pub type CredentialSchemaListQuery = ListQuery<
     SortableCredentialSchemaColumn,
     CredentialSchemaFilterValue,

@@ -63,8 +63,8 @@ const IMPORT_URL: &str = "http://import.credential.schema";
 fn credential_schema_list(schema: Option<CredentialSchema>) -> GetCredentialSchemaList {
     let values = schema.into_iter().collect::<Vec<_>>();
     GetCredentialSchemaList {
-        total_pages: u64::from(!values.is_empty()),
-        total_items: values.len() as u64,
+        total_pages: Some(u64::from(!values.is_empty())),
+        total_items: Some(values.len() as u64),
         values,
     }
 }
@@ -210,8 +210,8 @@ async fn test_get_proof_schema_list_success() {
             .returning(move |_| {
                 Ok(GetProofSchemaList {
                     values: vec![res_clone.clone()],
-                    total_pages: 1,
-                    total_items: 1,
+                    total_pages: Some(1),
+                    total_items: Some(1),
                 })
             });
     }
@@ -443,8 +443,8 @@ async fn test_create_proof_schema_success() {
 
             Ok(GetListResponse {
                 values: vec![schema],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -465,16 +465,15 @@ async fn test_create_proof_schema_success() {
     let create_request_clone = create_request.clone();
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = generic_proof_schema();
-
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(move |_| {
+        .withf(|query| !query.include_count)
+        .returning(|_| {
             Ok(GetProofSchemaList {
-                values: vec![proof_schema.clone()],
-                total_pages: 0,
-                total_items: 0,
+                values: vec![],
+                total_pages: None,
+                total_items: None,
             })
         });
 
@@ -598,8 +597,8 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
 
             Ok(GetListResponse {
                 values: vec![schema_software, schema_hardware],
-                total_pages: 1,
-                total_items: 2,
+                total_pages: Some(1),
+                total_items: Some(2),
             })
         });
 
@@ -610,8 +609,8 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         .returning(move |_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -738,8 +737,8 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
 
             Ok(GetListResponse {
                 values: vec![schema],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -764,8 +763,8 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         .returning(move |_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -901,8 +900,8 @@ async fn test_create_proof_schema_array_object_fail() {
 
             Ok(GetListResponse {
                 values: vec![schema],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -922,16 +921,15 @@ async fn test_create_proof_schema_array_object_fail() {
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = generic_proof_schema();
-
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(move |_| {
+        .withf(|query| !query.include_count)
+        .returning(|_| {
             Ok(GetProofSchemaList {
-                values: vec![proof_schema.clone()],
-                total_pages: 0,
-                total_items: 0,
+                values: vec![],
+                total_pages: None,
+                total_items: None,
             })
         });
 
@@ -1070,8 +1068,8 @@ async fn test_create_proof_schema_array_success() {
 
             Ok(GetListResponse {
                 values: vec![schema],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -1092,16 +1090,15 @@ async fn test_create_proof_schema_array_success() {
     let create_request_clone = create_request.clone();
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = generic_proof_schema();
-
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(move |_| {
+        .withf(|query| !query.include_count)
+        .returning(|_| {
             Ok(GetProofSchemaList {
-                values: vec![proof_schema.clone()],
-                total_pages: 0,
-                total_items: 0,
+                values: vec![],
+                total_pages: None,
+                total_items: None,
             })
         });
 
@@ -1153,12 +1150,13 @@ async fn test_create_proof_schema_unique_name_error() {
 
     proof_schema_repository
         .expect_get_proof_schema_list()
+        .withf(|query| !query.include_count)
         .times(1)
         .returning(move |_| {
             Ok(GetProofSchemaList {
                 values: vec![proof_schema.clone()],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: None,
+                total_items: None,
             })
         });
 
@@ -1232,22 +1230,21 @@ async fn test_create_proof_schema_claims_dont_exist() {
 
             Ok(GetListResponse {
                 values: vec![schema],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
-
-    let proof_schema = generic_proof_schema();
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema_list()
+        .withf(|query| !query.include_count)
         .times(1)
         .returning(move |_| {
             Ok(GetProofSchemaList {
-                values: vec![proof_schema.clone()],
-                total_pages: 0,
-                total_items: 0,
+                values: vec![],
+                total_pages: None,
+                total_items: None,
             })
         });
 
@@ -1382,8 +1379,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .returning(|_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     proof_schema_repository
@@ -1406,8 +1403,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .returning(|_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -1582,8 +1579,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
         .returning(|_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     proof_schema_repository
@@ -1606,8 +1603,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
         .returning(|_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -1784,8 +1781,8 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .returning(|_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     proof_schema_repository
@@ -1813,8 +1810,8 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .returning(|_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 
@@ -1987,8 +1984,8 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         .returning(|_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     proof_schema_repository
@@ -2174,8 +2171,8 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         .returning(|_| {
             Ok(GetProofSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     proof_schema_repository
@@ -2373,8 +2370,8 @@ async fn test_import_proof_failed_existing_proof_schema() {
         .returning(|_| {
             Ok(GetProofSchemaList {
                 values: vec![dummy_proof_schema()],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -3104,8 +3101,8 @@ async fn test_create_proof_schema_verify_nested_generic(
 
             Ok(GetListResponse {
                 values: vec![schema],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         });
 
@@ -3128,16 +3125,15 @@ async fn test_create_proof_schema_verify_nested_generic(
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = generic_proof_schema();
-
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(move |_| {
+        .withf(|query| !query.include_count)
+        .returning(|_| {
             Ok(GetProofSchemaList {
-                values: vec![proof_schema.clone()],
-                total_pages: 0,
-                total_items: 0,
+                values: vec![],
+                total_pages: None,
+                total_items: None,
             })
         });
 

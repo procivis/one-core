@@ -218,8 +218,8 @@ async fn test_finalize_import() {
             |_: OrganisationListQuery| {
                 Ok(GetOrganisationList {
                     values: vec![organisation],
-                    total_items: 1,
-                    total_pages: 1,
+                    total_items: Some(1),
+                    total_pages: Some(1),
                 })
             }
         });
@@ -280,8 +280,8 @@ async fn test_backup_flow() {
             |_: OrganisationListQuery| {
                 Ok(GetOrganisationList {
                     values: vec![organisation],
-                    total_items: 1,
-                    total_pages: 1,
+                    total_items: Some(1),
+                    total_pages: Some(1),
                 })
             }
         });

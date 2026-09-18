@@ -117,6 +117,7 @@ impl CredentialSchemaImporterProto {
         schema_ids: Vec<String>,
     ) -> Result<Vec<CredentialSchema>, Error> {
         let query = CredentialSchemaListQuery {
+            include_count: false,
             pagination: Some(ListPagination {
                 page: 0,
                 page_size: 1,

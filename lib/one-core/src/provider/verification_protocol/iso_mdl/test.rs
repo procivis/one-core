@@ -591,8 +591,8 @@ async fn test_get_presentation_definition_v2() {
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential.clone()],
-                    total_items: 1,
-                    total_pages: 1,
+                    total_items: Some(1),
+                    total_pages: Some(1),
                 })
             }
         });

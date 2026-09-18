@@ -112,7 +112,7 @@ impl DidFilterValue {
 
 impl ListFilterValue for DidFilterValue {}
 
-pub type GetDidList = GetListResponse<Did>;
+pub type GetDidList<Count = Option<u64>> = GetListResponse<Did, Count>;
 
 pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;
 

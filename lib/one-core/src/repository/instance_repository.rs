@@ -47,6 +47,7 @@ impl AsyncVecLoader<WalletAttestation> for InstanceWalletAttestationsLoader {
         Ok(self
             .wallet_attestation_repository
             .get_attestations(ListQuery {
+                include_count: false,
                 filtering: Some(WalletAttestationFilterValue::Instance(self.id).condition()),
                 ..Default::default()
             })

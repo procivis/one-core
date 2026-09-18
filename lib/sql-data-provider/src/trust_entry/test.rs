@@ -237,8 +237,8 @@ async fn test_list_trust_entries() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 2);
-    assert_eq!(list.total_pages, 1);
+    assert_eq!(list.total_items.unwrap(), 2);
+    assert_eq!(list.total_pages.unwrap(), 1);
     assert_eq!(list.values.len(), 2);
 }
 
@@ -293,7 +293,7 @@ async fn test_list_trust_entries_filter_by_publication_id() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(
         list.values[0].trust_list_publication.id(),
         setup.trust_list_publication_id
@@ -329,7 +329,7 @@ async fn test_list_trust_entries_filter_by_status() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].state, TrustEntryStateEnum::Active);
 }
 
@@ -385,7 +385,7 @@ async fn test_update_trust_entry_metadata() {
 
 #[tokio::test]
 async fn test_list_trust_entries_pagination() {
-    let setup = setup().await;
+    let mut setup = setup().await;
 
     for i in 0..5 {
         let did_id = insert_did_key(
@@ -412,25 +412,35 @@ async fn test_list_trust_entries_pagination() {
         setup.provider.create(entry).await.unwrap();
     }
 
-    let result = setup
-        .provider
-        .list(
-            setup.trust_list_publication_id,
-            TrustEntryListQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 2,
-                }),
-                ..Default::default()
-            },
-        )
-        .await;
+    let counts = track_count_queries(&mut setup.db);
+    setup.provider.db = TransactionManagerImpl::new(setup.db.clone());
+    for include_count in [true, false] {
+        counts.store(0, std::sync::atomic::Ordering::Relaxed);
+        let result = setup
+            .provider
+            .list(
+                setup.trust_list_publication_id,
+                TrustEntryListQuery {
+                    include_count,
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 2,
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await;
 
-    assert!(result.is_ok());
-    let list = result.unwrap();
-    assert_eq!(list.total_items, 5);
-    assert_eq!(list.total_pages, 3);
-    assert_eq!(list.values.len(), 2);
+        assert!(result.is_ok());
+        let list = result.unwrap();
+        assert_eq!(list.total_items, include_count.then_some(5));
+        assert_eq!(list.total_pages, include_count.then_some(3));
+        assert_eq!(list.values.len(), 2);
+        assert_eq!(
+            counts.load(std::sync::atomic::Ordering::Relaxed),
+            usize::from(include_count)
+        );
+    }
 }
 
 #[tokio::test]
@@ -466,7 +476,7 @@ async fn test_list_trust_entries_filter_by_created_date() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // dummy_date is 2005, created_date is set to dummy_date, so nothing is after it
-    assert_eq!(list.total_items, 0);
+    assert_eq!(list.total_items.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -514,7 +524,7 @@ async fn test_list_trust_entries_filter_by_last_modified() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // The updated entry has last_modified = now() which is after dummy_date
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
 }
 
 #[tokio::test]

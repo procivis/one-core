@@ -55,5 +55,5 @@ pub enum SortableProofSchemaColumn {
     CreatedDate,
 }
 
-pub type GetProofSchemaList = GetListResponse<ProofSchema>;
+pub type GetProofSchemaList<Count = Option<u64>> = GetListResponse<ProofSchema, Count>;
 pub type ProofSchemaListQuery = ListQuery<SortableProofSchemaColumn, ProofSchemaFilterValue>;

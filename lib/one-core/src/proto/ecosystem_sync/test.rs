@@ -457,8 +457,8 @@ fn setup_collection_repository(
         .returning(move |_| {
             Ok(GetTrustCollectionList {
                 values: vec![keep.clone(), collection_to_delete.clone()],
-                total_pages: 1,
-                total_items: 1,
+                total_pages: Some(1),
+                total_items: Some(1),
             })
         })
         .in_sequence(&mut seq);
@@ -479,8 +479,8 @@ fn setup_collection_repository(
                     collection_to_keep.clone(),
                     collection_to_create_local.clone(),
                 ],
-                total_pages: 1,
-                total_items: 2,
+                total_pages: Some(1),
+                total_items: Some(2),
             })
         })
         .in_sequence(&mut seq);

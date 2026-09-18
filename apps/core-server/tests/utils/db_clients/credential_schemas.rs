@@ -1271,6 +1271,7 @@ impl CredentialSchemasDB {
         let response = self
             .repository
             .get_credential_schema_list(CredentialSchemaListQuery {
+                include_count: true,
                 pagination: None,
                 sorting: None,
                 filtering: None,

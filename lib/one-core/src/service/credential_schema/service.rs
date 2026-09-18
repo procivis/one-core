@@ -488,6 +488,7 @@ impl CredentialSchemaService {
             .credential_schema_repository
             .get_credential_schema_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting credential schemas")?;
 
         let mut items: Vec<CredentialSchemaListItemResponseDTO> =
@@ -533,6 +534,7 @@ impl CredentialSchemaService {
             .credential_schema_repository
             .get_credential_schema_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting credential schemas")?;
 
         let mut items: Vec<CredentialSchemaListItemV2ResponseDTO> =

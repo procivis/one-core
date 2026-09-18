@@ -30,6 +30,7 @@ impl EudiEcosystem {
         let history = self
             .history_repository
             .get_history_list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     HistoryFilterValue::EntityIds(vec![entity_id]).condition()
                         & HistoryFilterValue::Actions(vec![
@@ -173,6 +174,7 @@ impl EudiEcosystem {
         let history = self
             .history_repository
             .get_history_list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     HistoryFilterValue::EntityIds(vec![entity_id]).condition()
                         & HistoryFilterValue::Actions(vec![

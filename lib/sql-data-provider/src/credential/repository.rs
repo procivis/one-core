@@ -24,7 +24,7 @@ use super::entity_model::CredentialListEntityModel;
 use super::mapper::{
     credentials_to_repository, from_clearable, model_to_credential, request_to_active_model,
 };
-use crate::common::calculate_pages_count;
+use crate::common::{calculate_pages_count, count_if_requested};
 use crate::entity::{claim, claim_schema, credential, credential_schema, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -369,6 +369,7 @@ impl CredentialRepository for CredentialProvider {
         &self,
         query_params: CredentialListQuery,
     ) -> Result<GetCredentialList, DataLayerError> {
+        let include_count = query_params.include_count;
         let limit = query_params
             .pagination
             .as_ref()
@@ -377,7 +378,7 @@ impl CredentialRepository for CredentialProvider {
         let query = get_credential_list_query(query_params, self.db.get_database_backend());
 
         let (items_count, credentials) = tokio::join!(
-            query.to_owned().count(&self.db),
+            count_if_requested(include_count, query.to_owned().count(&self.db)),
             query
                 .into_model::<CredentialListEntityModel>()
                 .all(&self.db)
@@ -400,7 +401,7 @@ impl CredentialRepository for CredentialProvider {
                 &self.trust_information_repository,
                 &self.db,
             )?,
-            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+            total_pages: items_count.map(|count| calculate_pages_count(count, limit.unwrap_or(0))),
             total_items: items_count,
         })
     }

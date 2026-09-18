@@ -110,6 +110,7 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                 let existing_subscriptions: GetTrustListSubscriptionList = self
                     .subscription_repository
                     .list(TrustListSubscriptionListQuery {
+                        include_count: false,
                         filtering: Some(
                             TrustListSubscriptionFilterValue::TrustCollectionId(vec![
                                 trust_collection.id,

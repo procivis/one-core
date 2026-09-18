@@ -109,6 +109,7 @@ impl CredentialValidityManagerImpl {
                 let batch_items = self
                     .credential_repository
                     .get_credential_list(ListQuery {
+                        include_count: false,
                         filtering: Some(
                             CredentialFilterValue::ParentCredential(credential.id).condition()
                                 & CredentialFilterValue::Deleted(false),

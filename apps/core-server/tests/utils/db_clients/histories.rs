@@ -99,8 +99,9 @@ impl HistoriesDB {
         self.repository.get_history_entry(history_id).await.unwrap()
     }
 
-    pub async fn get_by_entity_id(&self, entity_id: &EntityId) -> GetHistoryList {
+    pub async fn get_by_entity_id(&self, entity_id: &EntityId) -> GetHistoryList<u64> {
         let query = HistoryListQuery {
+            include_count: true,
             pagination: Some(ListPagination {
                 page: 0,
                 page_size: 10,
@@ -113,6 +114,11 @@ impl HistoriesDB {
             include: None,
         };
 
-        self.repository.get_history_list(query).await.unwrap()
+        self.repository
+            .get_history_list(query)
+            .await
+            .unwrap()
+            .require_count()
+            .unwrap()
     }
 }

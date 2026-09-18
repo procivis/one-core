@@ -57,6 +57,7 @@ async fn holder_detail_claims(
 ) -> Result<Vec<Claim>, NestedError> {
     let items = repository
         .get_credential_list(ListQuery {
+            include_count: false,
             filtering: Some(
                 CredentialFilterValue::ParentCredential(credential.id).condition()
                     & CredentialFilterValue::Deleted(false),
@@ -144,8 +145,8 @@ mod test {
                     );
                     Ok(GetCredentialList {
                         values: if has_item { vec![item.clone()] } else { vec![] },
-                        total_items: u64::from(has_item),
-                        total_pages: u64::from(has_item),
+                        total_items: Some(u64::from(has_item)),
+                        total_pages: Some(u64::from(has_item)),
                     })
                 });
             let claims = detail_claims(&parent, &repository).await.unwrap();

@@ -65,4 +65,5 @@ impl ListFilterValue for TrustListPublicationFilterValue {}
 pub type TrustListPublicationListQuery =
     ListQuery<SortableTrustListPublicationColumn, TrustListPublicationFilterValue>;
 
-pub type GetTrustListPublicationList = GetListResponse<TrustListPublication>;
+pub type GetTrustListPublicationList<Count = Option<u64>> =
+    GetListResponse<TrustListPublication, Count>;

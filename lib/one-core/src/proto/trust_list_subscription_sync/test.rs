@@ -101,8 +101,8 @@ async fn test_sync_subscriptions() {
                     trust_collection: trust_collection.into(),
                 },
             ],
-            total_pages: 1,
-            total_items: 2,
+            total_pages: Some(1),
+            total_items: Some(2),
         })
     });
     repository.expect_delete().once().returning(move |id| {
@@ -149,8 +149,8 @@ async fn test_sync_subscriptions_deletes_outdated_subscription_before_creating_r
                 "https://outdated.list",
                 collection_id,
             )],
-            total_pages: 1,
-            total_items: 1,
+            total_pages: Some(1),
+            total_items: Some(1),
         })
     });
     let delete_calls = calls.clone();
@@ -272,8 +272,8 @@ fn existing_subscription(
 fn empty_subscription_list() -> GetTrustListSubscriptionList {
     GetTrustListSubscriptionList {
         values: vec![],
-        total_pages: 0,
-        total_items: 0,
+        total_pages: Some(0),
+        total_items: Some(0),
     }
 }
 

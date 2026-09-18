@@ -107,6 +107,7 @@ pub(super) async fn validate_parent_organisation(
 
     let children = organisation_repository
         .get_organisation_list(OrganisationListQuery {
+            include_count: false,
             pagination: Some(ListPagination {
                 page: 0,
                 page_size: 1,
@@ -118,7 +119,7 @@ pub(super) async fn validate_parent_organisation(
         })
         .await
         .error_while("checking for existing children")?;
-    if children.total_items > 0 {
+    if !children.values.is_empty() {
         return Err(OrganisationServiceError::InvalidParentOrganisation);
     }
 

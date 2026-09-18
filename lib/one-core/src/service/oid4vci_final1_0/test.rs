@@ -2137,8 +2137,8 @@ async fn test_create_credential_success_mdoc() {
             .returning(|_| {
                 Ok(GetCredentialList {
                     values: vec![],
-                    total_pages: 0,
-                    total_items: 0,
+                    total_pages: Some(0),
+                    total_items: Some(0),
                 })
             });
 

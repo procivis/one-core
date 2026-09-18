@@ -1061,6 +1061,7 @@ async fn find_schema_by_schema_ids(
         .fold(ListFilterCondition::default(), |acc, cond| acc | cond);
     let candidates = credential_schema_repository
         .get_credential_schema_list(CredentialSchemaListQuery {
+            include_count: false,
             pagination: Some(ListPagination {
                 page: 0,
                 page_size: 1,

@@ -573,7 +573,7 @@ async fn test_delete_credential_success() {
 async fn test_get_credential_list_success() {
     let TestSetup {
         credential_schema,
-        db,
+        mut db,
         identifier,
         ..
     } = setup_empty().await;
@@ -620,36 +620,45 @@ async fn test_get_credential_list_success() {
     .unwrap()
     .id;
 
+    let counts = crate::test_utilities::track_count_queries(&mut db);
     let provider = credential_repository(db, None);
 
-    let credentials = provider
-        .get_credential_list(CredentialListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 5,
-            }),
-            sorting: None,
-            filtering: Some(
-                CredentialFilterValue::OrganisationId(credential_schema.organisation.id())
-                    .condition()
-                    & CredentialFilterValue::Deleted(false),
-            ),
-            include: None,
-        })
-        .await;
-    assert!(credentials.is_ok());
-    let credentials = credentials.unwrap();
+    for include_count in [true, false] {
+        counts.store(0, std::sync::atomic::Ordering::Relaxed);
+        let credentials = provider
+            .get_credential_list(CredentialListQuery {
+                include_count,
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 5,
+                }),
+                sorting: None,
+                filtering: Some(
+                    CredentialFilterValue::OrganisationId(credential_schema.organisation.id())
+                        .condition()
+                        & CredentialFilterValue::Deleted(false),
+                ),
+                include: None,
+            })
+            .await;
+        assert!(credentials.is_ok());
+        let credentials = credentials.unwrap();
 
-    assert_eq!(1, credentials.total_pages);
-    assert_eq!(2, credentials.total_items);
-    assert_eq!(2, credentials.values.len());
+        assert_eq!(include_count.then_some(1), credentials.total_pages);
+        assert_eq!(include_count.then_some(2), credentials.total_items);
+        assert_eq!(2, credentials.values.len());
 
-    let forbidden_uuid = credential_three_id_should_not_be_returned;
-    let forbidden_credential = credentials
-        .values
-        .iter()
-        .find(|credential| credential.id == forbidden_uuid);
-    assert!(forbidden_credential.is_none());
+        let forbidden_uuid = credential_three_id_should_not_be_returned;
+        let forbidden_credential = credentials
+            .values
+            .iter()
+            .find(|credential| credential.id == forbidden_uuid);
+        assert!(forbidden_credential.is_none());
+        assert_eq!(
+            counts.load(std::sync::atomic::Ordering::Relaxed),
+            usize::from(include_count)
+        );
+    }
 }
 
 #[tokio::test]
@@ -700,7 +709,7 @@ async fn test_get_credential_list_success_filter_state() {
         })
         .await;
     let credentials = credentials.unwrap();
-    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.total_items.unwrap());
     assert_eq!(1, credentials.values.len());
 
     let credentials = provider
@@ -712,7 +721,7 @@ async fn test_get_credential_list_success_filter_state() {
         })
         .await;
     let credentials = credentials.unwrap();
-    assert_eq!(0, credentials.total_items);
+    assert_eq!(0, credentials.total_items.unwrap());
     assert_eq!(0, credentials.values.len());
 
     let credentials = provider
@@ -728,7 +737,7 @@ async fn test_get_credential_list_success_filter_state() {
         })
         .await;
     let credentials = credentials.unwrap();
-    assert_eq!(2, credentials.total_items);
+    assert_eq!(2, credentials.total_items.unwrap());
     assert_eq!(2, credentials.values.len());
 }
 
@@ -765,7 +774,7 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
         })
         .await;
     let credentials = credentials.unwrap();
-    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.total_items.unwrap());
     assert_eq!(1, credentials.values.len());
 
     let credentials = provider
@@ -781,7 +790,7 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
         })
         .await;
     let credentials = credentials.unwrap();
-    assert_eq!(0, credentials.total_items);
+    assert_eq!(0, credentials.total_items.unwrap());
     assert_eq!(0, credentials.values.len());
 
     let credentials = provider
@@ -797,7 +806,7 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
         })
         .await;
     let credentials = credentials.unwrap();
-    assert_eq!(0, credentials.total_items);
+    assert_eq!(0, credentials.total_items.unwrap());
     assert_eq!(0, credentials.values.len());
 }
 
@@ -853,7 +862,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         .await
         .unwrap();
 
-    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.total_items.unwrap());
     assert_eq!(1, credentials.values.len());
 
     let credentials = provider
@@ -866,7 +875,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         .await
         .unwrap();
 
-    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.total_items.unwrap());
     assert_eq!(1, credentials.values.len());
 
     let credentials = provider
@@ -879,7 +888,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         .await
         .unwrap();
 
-    assert_eq!(0, credentials.total_items);
+    assert_eq!(0, credentials.total_items.unwrap());
     assert_eq!(0, credentials.values.len());
 }
 

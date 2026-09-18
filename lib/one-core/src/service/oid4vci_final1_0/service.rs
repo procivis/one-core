@@ -1072,9 +1072,10 @@ impl OID4VCIFinal1_0Service {
         parent_credential_id: CredentialId,
         format_id: CredentialSchemaFormatId,
     ) -> Result<bool, OID4VCIFinal1_0ServiceError> {
-        Ok(self
+        Ok(!self
             .credential_repository
             .get_credential_list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialFilterValue::ParentCredential(parent_credential_id).condition()
                         & CredentialFilterValue::Formats(vec![format_id])
@@ -1084,8 +1085,8 @@ impl OID4VCIFinal1_0Service {
             })
             .await
             .error_while("listing batch items")?
-            .total_items
-            > 0)
+            .values
+            .is_empty())
     }
 
     async fn get_batch_items(
@@ -1095,6 +1096,7 @@ impl OID4VCIFinal1_0Service {
         Ok(self
             .credential_repository
             .get_credential_list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialFilterValue::ParentCredential(parent_credential_id).condition()
                         & CredentialFilterValue::Types(vec![CredentialType::BatchItem])

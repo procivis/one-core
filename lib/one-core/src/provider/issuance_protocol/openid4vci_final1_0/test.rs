@@ -187,8 +187,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
 fn credential_schema_list(schema: Option<CredentialSchema>) -> GetCredentialSchemaList {
     let values = schema.into_iter().collect::<Vec<_>>();
     GetCredentialSchemaList {
-        total_pages: u64::from(!values.is_empty()),
-        total_items: values.len() as u64,
+        total_pages: Some(u64::from(!values.is_empty())),
+        total_items: Some(values.len() as u64),
         values,
     }
 }

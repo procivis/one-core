@@ -257,6 +257,7 @@ async fn test_list_filters_soft_deleted_certificates() {
     let list = setup
         .provider
         .list(CertificateListQuery {
+            include_count: true,
             pagination: Some(ListPagination {
                 page: 0,
                 page_size: 10,
@@ -271,7 +272,7 @@ async fn test_list_filters_soft_deleted_certificates() {
         .await
         .unwrap();
 
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].id, live_id);
 }
 
@@ -310,6 +311,7 @@ async fn test_list_includes_soft_deleted_certificates() {
     let list = setup
         .provider
         .list(CertificateListQuery {
+            include_count: true,
             pagination: Some(ListPagination {
                 page: 0,
                 page_size: 10,
@@ -324,7 +326,7 @@ async fn test_list_includes_soft_deleted_certificates() {
         .await
         .unwrap();
 
-    assert_eq!(list.total_items, 2);
+    assert_eq!(list.total_items.unwrap(), 2);
 }
 
 #[tokio::test]

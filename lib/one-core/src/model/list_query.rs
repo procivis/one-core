@@ -6,6 +6,8 @@ pub struct NoInclude {}
 
 #[derive(Clone, Debug)]
 pub struct ListQuery<SortableColumn, FV, Include = NoInclude> {
+    /// Include total items and pages (enabled by default). When false, both totals are absent.
+    pub include_count: bool,
     pub pagination: Option<ListPagination>,
     pub sorting: Option<ListSorting<SortableColumn>>,
     pub filtering: Option<ListFilterCondition<FV>>,
@@ -27,6 +29,7 @@ pub struct ListSorting<SortableColumn> {
 impl<SortableColumn, FV, Include> Default for ListQuery<SortableColumn, FV, Include> {
     fn default() -> Self {
         Self {
+            include_count: true,
             pagination: Default::default(),
             sorting: Default::default(),
             filtering: Default::default(),

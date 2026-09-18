@@ -133,6 +133,7 @@ impl CertificateCheck {
         let active_expired_certificates = self
             .certificate_repository
             .list(CertificateListQuery {
+                include_count: false,
                 filtering: Some(
                     CertificateFilterValue::State(CertificateState::Active).condition()
                         & CertificateFilterValue::Deleted(false)
@@ -147,7 +148,7 @@ impl CertificateCheck {
             .error_while("getting certificates")?;
 
         let mut expired_certificate_ids: Vec<ExpirationCheckResult> =
-            Vec::with_capacity(active_expired_certificates.total_items as usize);
+            Vec::with_capacity(active_expired_certificates.values.len());
         for certificate in active_expired_certificates.values {
             self.certificate_repository
                 .update(
@@ -172,6 +173,7 @@ impl CertificateCheck {
         let active_certificates = self
             .certificate_repository
             .list(CertificateListQuery {
+                include_count: false,
                 filtering: Some(
                     CertificateFilterValue::State(CertificateState::Active).condition()
                         & CertificateFilterValue::Deleted(false),

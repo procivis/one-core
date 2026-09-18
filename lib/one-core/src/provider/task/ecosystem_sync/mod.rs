@@ -73,6 +73,7 @@ impl EcosystemSyncTask {
             let instances = self
                 .instance_repository
                 .list(InstanceListQuery {
+                    include_count: false,
                     pagination: Some(ListPagination {
                         page,
                         page_size: 1000,

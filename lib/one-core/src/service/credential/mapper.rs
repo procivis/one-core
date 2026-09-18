@@ -108,6 +108,7 @@ pub(crate) async fn credential_detail_response_from_model(
                 // use the latest item
                 credential_repository
                     .get_credential_list(ListQuery {
+                        include_count: false,
                         pagination: Some(ListPagination {
                             page: 0,
                             page_size: 1,
@@ -528,6 +529,7 @@ async fn get_offered_formats(
             | CredentialStateEnum::Expired => {
                 let items = credential_repository
                     .get_credential_list(ListQuery {
+                        include_count: false,
                         filtering: Some(
                             CredentialFilterValue::ParentCredential(value.id).condition()
                                 & CredentialFilterValue::Formats(vec![format.id]),
@@ -1044,6 +1046,7 @@ pub(crate) async fn get_remaining_batch_item_count(
 
     let batch_items = credential_repository
         .get_credential_list(ListQuery {
+            include_count: false,
             filtering: Some(
                 CredentialFilterValue::ParentCredential(credential.id).condition()
                     & CredentialFilterValue::Types(vec![CredentialType::BatchItem])

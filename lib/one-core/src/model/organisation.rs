@@ -62,4 +62,4 @@ pub enum ExactOrganisationFilterColumn {}
 
 pub type OrganisationListQuery = ListQuery<SortableOrganisationColumn, OrganisationFilterValue>;
 
-pub type GetOrganisationList = GetListResponse<Organisation>;
+pub type GetOrganisationList<Count = Option<u64>> = GetListResponse<Organisation, Count>;

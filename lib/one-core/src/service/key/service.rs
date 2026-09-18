@@ -122,6 +122,7 @@ impl KeyService {
             .key_repository
             .get_key_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("loading keys")?;
 
         Ok(result.into())

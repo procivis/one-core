@@ -213,6 +213,7 @@ pub(super) async fn validate_has_active_wallet_instance(
 ) -> Result<(), IssuanceProtocolError> {
     let list = holder_wallet_instance_repository
         .list(InstanceListQuery {
+            include_count: false,
             filtering: Some(
                 InstanceFilterValue::OrganisationIds(vec![organisation_id]).condition()
                     & InstanceFilterValue::Role(InstanceRole::Wallet)

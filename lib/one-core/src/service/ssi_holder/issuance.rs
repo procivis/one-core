@@ -641,6 +641,7 @@ impl SSIHolderService {
             CredentialType::BatchParent => {
                 self.credential_repository
                     .get_credential_list(ListQuery {
+                        include_count: false,
                         filtering: Some(
                             CredentialFilterValue::ParentCredential(credential.id).condition(),
                         ),

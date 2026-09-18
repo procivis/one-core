@@ -258,8 +258,8 @@ async fn test_importer_import_credential_schema_success() {
         .returning(|_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     repository
@@ -324,8 +324,8 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         .return_once(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![existing_schema_clone],
-                total_pages: 0,
-                total_items: 1,
+                total_pages: Some(0),
+                total_items: Some(1),
             })
         });
     repository
@@ -403,8 +403,8 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         .return_once(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![existing_schema_clone],
-                total_pages: 0,
-                total_items: 1,
+                total_pages: Some(0),
+                total_items: Some(1),
             })
         });
 

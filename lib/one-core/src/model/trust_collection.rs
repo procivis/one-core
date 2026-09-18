@@ -57,4 +57,4 @@ pub enum ExactTrustCollectionFilterColumn {
 pub type TrustCollectionListQuery =
     ListQuery<SortableTrustCollectionColumn, TrustCollectionFilterValue>;
 
-pub type GetTrustCollectionList = GetListResponse<TrustCollection>;
+pub type GetTrustCollectionList<Count = Option<u64>> = GetListResponse<TrustCollection, Count>;

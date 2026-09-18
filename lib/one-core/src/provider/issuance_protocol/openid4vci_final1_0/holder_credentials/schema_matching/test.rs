@@ -1323,8 +1323,8 @@ fn credential_schema(
 
 fn credential_schema_list(values: Vec<CredentialSchema>) -> GetCredentialSchemaList {
     GetCredentialSchemaList {
-        total_pages: u64::from(!values.is_empty()),
-        total_items: values.len() as u64,
+        total_pages: Some(u64::from(!values.is_empty())),
+        total_items: Some(values.len() as u64),
         values,
     }
 }

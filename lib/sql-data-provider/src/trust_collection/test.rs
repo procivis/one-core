@@ -144,8 +144,8 @@ async fn test_list_trust_collection() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 2);
-    assert_eq!(list.total_pages, 1);
+    assert_eq!(list.total_items.unwrap(), 2);
+    assert_eq!(list.total_pages.unwrap(), 1);
     assert_eq!(list.values.len(), 2);
 }
 
@@ -182,7 +182,7 @@ async fn test_list_trust_collection_with_name_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].name, "second-collection");
 }
 
@@ -225,7 +225,7 @@ async fn test_list_trust_collection_with_organisation_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values[0].organisation.id(), org_id);
 }
 
@@ -278,7 +278,7 @@ async fn test_list_trust_collection_with_parent_organisation_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 2);
+    assert_eq!(list.total_items.unwrap(), 2);
 }
 
 #[tokio::test]
@@ -340,7 +340,7 @@ async fn test_list_trust_collection_with_organisation_filter_no_duplicates_with_
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 1);
+    assert_eq!(list.total_items.unwrap(), 1);
     assert_eq!(list.values.len(), 1);
     assert_eq!(list.values[0].id, collection_id);
 }
@@ -374,7 +374,7 @@ async fn test_list_trust_collection_filter_by_created_date() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // dummy_date is 2005, created_date is set to dummy_date, so nothing is after it
-    assert_eq!(list.total_items, 0);
+    assert_eq!(list.total_items.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -401,7 +401,7 @@ async fn test_list_trust_collection_pagination() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    assert_eq!(list.total_items, 5);
-    assert_eq!(list.total_pages, 3);
+    assert_eq!(list.total_items.unwrap(), 5);
+    assert_eq!(list.total_pages.unwrap(), 3);
     assert_eq!(list.values.len(), 2);
 }

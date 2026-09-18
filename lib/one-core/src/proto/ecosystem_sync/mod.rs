@@ -149,6 +149,7 @@ impl EcosystemSyncProto {
         let collections = self
             .trust_collection_repository
             .list(TrustCollectionListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustCollectionFilterValue::OrganisationId {
                         id: organisation.id,
@@ -229,6 +230,7 @@ impl EcosystemSyncProto {
         let collections = self
             .trust_collection_repository
             .list(TrustCollectionListQuery {
+                include_count: false,
                 filtering: Some(organisation_collections.clone().condition()),
                 ..Default::default()
             })
@@ -238,6 +240,7 @@ impl EcosystemSyncProto {
         let subscribed = self
             .trust_collection_repository
             .list(TrustCollectionListQuery {
+                include_count: false,
                 filtering: Some(
                     organisation_collections.condition() & TrustCollectionFilterValue::Empty(false),
                 ),

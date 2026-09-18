@@ -469,6 +469,7 @@ pub(super) fn create_unique_name_check_request(
     organisation_id: OrganisationId,
 ) -> Result<CredentialSchemaListQuery, CredentialSchemaServiceError> {
     Ok(CredentialSchemaListQuery {
+        include_count: false,
         pagination: Some(ListPagination {
             page: 0,
             page_size: 1,

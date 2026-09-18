@@ -213,6 +213,7 @@ impl SSIIssuerService {
         let mut schema_list = self
             .credential_schema_repository
             .get_credential_schema_list(CredentialSchemaListQuery {
+                include_count: false,
                 pagination: None,
                 sorting: None,
                 filtering: Some(
@@ -271,6 +272,7 @@ impl SSIIssuerService {
         let mut schema_list = self
             .credential_schema_repository
             .get_credential_schema_list(CredentialSchemaListQuery {
+                include_count: false,
                 pagination: None,
                 sorting: None,
                 filtering: Some(filter),

@@ -432,6 +432,7 @@ impl WRPValidatorImpl {
         let collections = self
             .trust_collection_repository
             .list(TrustCollectionListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustCollectionFilterValue::OrganisationId {
                         id: trust_scope.organisation_id,
@@ -455,6 +456,7 @@ impl WRPValidatorImpl {
         Ok(self
             .trust_list_subscription_repository
             .list(TrustListSubscriptionListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustListSubscriptionFilterValue::TrustCollectionId(collections).condition()
                         & TrustListSubscriptionFilterValue::State(vec![

@@ -75,6 +75,7 @@ impl ProofSchemaImporter for ProofSchemaImporterProto {
                     let maybe_credential_schema = self
                         .credential_schema_repository
                         .get_credential_schema_list(CredentialSchemaListQuery {
+                            include_count: false,
                             pagination: Some(ListPagination {
                                 page: 0,
                                 page_size: 1,

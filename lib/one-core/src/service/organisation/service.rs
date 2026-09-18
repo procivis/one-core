@@ -82,6 +82,7 @@ impl OrganisationService {
             .organisation_repository
             .get_organisation_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting organisations")?;
 
         let provider_issuers: Vec<IdentifierId> = organisations
@@ -101,6 +102,7 @@ impl OrganisationService {
         } else {
             self.identifier_repository
                 .get_identifier_list(IdentifierListQuery {
+                    include_count: false,
                     filtering: Some(IdentifierFilterValue::Ids(provider_issuers).condition()),
                     ..Default::default()
                 })
@@ -715,6 +717,7 @@ impl OrganisationService {
         let num_instances = self
             .instance_repository
             .list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     InstanceFilterValue::OrganisationIds(vec![organisation.id]).condition(),
                 ),
@@ -722,7 +725,8 @@ impl OrganisationService {
             })
             .await
             .error_while("getting instances")?
-            .total_items;
+            .values
+            .len();
         if num_instances <= 1 {
             return Ok(());
         }
@@ -731,6 +735,7 @@ impl OrganisationService {
         let local_trust_collections = self
             .trust_collection_repository
             .list(ListQuery {
+                include_count: false,
                 filtering: Some(
                     TrustCollectionFilterValue::OrganisationId {
                         id: organisation.id,

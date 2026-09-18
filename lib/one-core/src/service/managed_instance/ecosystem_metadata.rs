@@ -212,6 +212,7 @@ async fn ecosystem_entities(
     let trust_collections = repositories
         .trust_collections
         .list(ListQuery {
+            include_count: false,
             filtering: Some(
                 TrustCollectionFilterValue::OrganisationId {
                     id: organisation.id,
@@ -229,6 +230,7 @@ async fn ecosystem_entities(
     let credential_schemas = repositories
         .credential_schemas
         .get_credential_schema_list(ListQuery {
+            include_count: false,
             filtering: Some(
                 CredentialSchemaFilterValue::OrganisationId(organisation.id).condition()
                     & CredentialSchemaFilterValue::Ecosystems(ecosystems.to_owned()),
@@ -244,6 +246,7 @@ async fn ecosystem_entities(
         Some(repository) => {
             repository
                 .get_proof_schema_list(ListQuery {
+                    include_count: false,
                     filtering: Some(
                         ProofSchemaFilterValue::OrganisationId(organisation.id).condition()
                             & ProofSchemaFilterValue::Ecosystems(ecosystems.to_owned()),

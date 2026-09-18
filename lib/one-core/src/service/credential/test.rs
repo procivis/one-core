@@ -90,8 +90,8 @@ fn setup_service(repositories: Repositories) -> CredentialService {
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetListResponse {
             values: vec![],
-            total_pages: 0,
-            total_items: 0,
+            total_pages: Some(0),
+            total_items: Some(0),
         })
     });
 
@@ -384,8 +384,8 @@ async fn test_delete_credential_success() {
         .returning(|_| {
             Ok(GetCredentialList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
     credential_repository
@@ -493,8 +493,8 @@ async fn test_get_credential_list_success() {
 
     let credentials = GetCredentialList {
         values: vec![generic_credential_list_entity().await, c],
-        total_pages: 1,
-        total_items: 2,
+        total_pages: Some(1),
+        total_items: Some(2),
     };
     {
         let clone = credentials.clone();
@@ -5083,8 +5083,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             .return_once(|_| {
                 Ok(GetCredentialList {
                     values: vec![],
-                    total_pages: 0,
-                    total_items: 0,
+                    total_pages: Some(0),
+                    total_items: Some(0),
                 })
             });
     }
@@ -6224,8 +6224,8 @@ fn history_with_outcomes(outcomes: EcosystemOutcomes) -> MockHistoryRepository {
             let total_items = values.len() as u64;
             Ok(GetListResponse {
                 values,
-                total_pages: 1,
-                total_items,
+                total_pages: Some(1),
+                total_items: Some(total_items),
             })
         }
     });

@@ -103,6 +103,7 @@ impl ProofService {
         let history_event = self
             .history_repository
             .get_history_list(HistoryListQuery {
+                include_count: false,
                 pagination: Some(ListPagination {
                     page: 0,
                     page_size: 1,
@@ -256,6 +257,7 @@ impl ProofService {
             .proof_repository
             .get_proof_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting proofs")?;
 
         let mut response_dtos = Vec::with_capacity(result.values.len());
@@ -756,6 +758,7 @@ impl ProofService {
         let credential_blob_ids = self
             .credential_repository
             .get_credential_list(CredentialListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialFilterValue::CredentialIds(Vec::from_iter(credential_ids.clone()))
                         .condition()

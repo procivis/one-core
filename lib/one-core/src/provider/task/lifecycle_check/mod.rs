@@ -43,6 +43,7 @@ impl LifecycleCheckProvider {
         let credential_list = self
             .credential_repository
             .get_credential_list(CredentialListQuery {
+                include_count: false,
                 filtering: Some(
                     CredentialFilterValue::States(vec![CredentialStateEnum::Suspended]).condition()
                         & CredentialFilterValue::Roles(vec![CredentialRole::Issuer])
@@ -75,7 +76,7 @@ impl LifecycleCheckProvider {
             }
         }
 
-        let total_checks = credential_list.total_items;
+        let total_checks = credential_list.values.len() as u64;
 
         Ok((reactivated_ids, total_checks))
     }
@@ -101,6 +102,7 @@ impl LifecycleCheckProvider {
         let stale_credentials = self
             .credential_repository
             .get_credential_list(CredentialListQuery {
+                include_count: false,
                 filtering: Some(
                     base_filter.clone()
                         & CredentialFilterValue::Types(vec![
@@ -123,6 +125,7 @@ impl LifecycleCheckProvider {
         let batch_parents = self
             .credential_repository
             .get_credential_list(CredentialListQuery {
+                include_count: false,
                 filtering: Some(
                     base_filter & CredentialFilterValue::Types(vec![CredentialType::BatchParent]),
                 ),
@@ -131,7 +134,7 @@ impl LifecycleCheckProvider {
             .await
             .error_while("getting batch parent credentials")?;
 
-        let total_checks = stale_credentials.total_items + batch_parents.total_items;
+        let total_checks = (stale_credentials.values.len() + batch_parents.values.len()) as u64;
 
         let mut expired_ids = vec![];
 
@@ -155,6 +158,7 @@ impl LifecycleCheckProvider {
             let remaining_items = self
                 .credential_repository
                 .get_credential_list(CredentialListQuery {
+                    include_count: false,
                     filtering: Some(
                         CredentialFilterValue::ParentCredentials(parent_ids).condition()
                             & CredentialFilterValue::Deleted(false)

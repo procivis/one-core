@@ -25,6 +25,7 @@ impl HistoryService {
             .history_repository
             .get_history_list(filter_params.into())
             .await
+            .and_then(|list| list.require_count())
             .error_while("getting history list")?;
         Ok(history_list.into())
     }

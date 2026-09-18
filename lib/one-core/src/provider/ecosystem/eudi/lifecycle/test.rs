@@ -106,8 +106,8 @@ fn revoked_id(result: &serde_json::Value) -> CredentialId {
 
 fn credential_list(values: Vec<Credential>) -> GetCredentialList {
     GetListResponse {
-        total_items: values.len() as u64,
-        total_pages: 1,
+        total_items: Some(values.len() as u64),
+        total_pages: Some(1),
         values,
     }
 }

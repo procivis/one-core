@@ -9,8 +9,8 @@ use crate::service::history::dto::{
     CreateHistoryRequestDTO, GetHistoryListResponseDTO, HistoryFilterParamsDTO,
 };
 
-impl From<GetHistoryList> for GetHistoryListResponseDTO {
-    fn from(value: GetHistoryList) -> Self {
+impl From<GetHistoryList<u64>> for GetHistoryListResponseDTO {
+    fn from(value: GetHistoryList<u64>) -> Self {
         Self {
             values: convert_inner(value.values),
             total_pages: value.total_pages,

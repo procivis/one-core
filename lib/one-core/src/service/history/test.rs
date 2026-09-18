@@ -23,8 +23,8 @@ async fn test_get_list_success() {
         .returning(|_query| {
             Ok(GetHistoryList {
                 values: vec![],
-                total_pages: 0,
-                total_items: 0,
+                total_pages: Some(0),
+                total_items: Some(0),
             })
         });
 

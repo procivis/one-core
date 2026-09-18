@@ -52,4 +52,4 @@ impl ListFilterValue for WalletAttestationFilterValue {}
 pub type WalletAttestationListQuery =
     ListQuery<SortableWalletAttestationColumn, WalletAttestationFilterValue>;
 
-pub type WalletAttestationList = GetListResponse<WalletAttestation>;
+pub type WalletAttestationList<Count = Option<u64>> = GetListResponse<WalletAttestation, Count>;
