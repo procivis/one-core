@@ -41,6 +41,7 @@ pub struct Credential {
     pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
+    /// Holder configuration policy, stored on singles and batch items, not batch parents.
     pub embedded_disclosure_policy: Option<String>,
     pub subscriber_information: Option<String>,
     pub ecosystem: Option<EcosystemId>,

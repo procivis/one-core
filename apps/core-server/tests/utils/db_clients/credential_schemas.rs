@@ -1182,7 +1182,7 @@ impl CredentialSchemasDB {
         let id = Uuid::new_v4().into();
         let sd_jwt_vc_format_id = Uuid::new_v4().into();
         let mdoc_format_id = Uuid::new_v4().into();
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             expiration: None,
             ecosystem: None,
             batch_size,
@@ -1248,6 +1248,7 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema).await?;
         self.repository
             .create_credential_schema(credential_schema)
             .await

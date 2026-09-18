@@ -248,6 +248,11 @@ impl CredentialsDB {
             )
             .await;
         credential.r#type = CredentialType::BatchParent;
+        let embedded_disclosure_policy = if credential.role == CredentialRole::Holder {
+            credential.embedded_disclosure_policy.take()
+        } else {
+            credential.embedded_disclosure_policy.clone()
+        };
 
         let id = self
             .repository
@@ -257,6 +262,7 @@ impl CredentialsDB {
         let batch_item_template = Credential {
             claims: Default::default(),
             r#type: CredentialType::BatchItem,
+            embedded_disclosure_policy,
             webhook_url: None,
             parent: Some(Related::new(id, self.repository.clone())),
             interaction: None,

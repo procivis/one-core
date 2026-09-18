@@ -230,8 +230,8 @@ pub(crate) async fn get_presentation_definition_v2(
             let Some(claims) = claims else {
                 continue;
             };
-            // The parent supplies the public batch summary and disclosure policy;
-            // lifecycle tasks keep item state and deletion in sync with the parent.
+            // Expose one public entry per batch using its parent's ID and metadata.
+            // The candidate remains the concrete item used for presentation.
             let summary = match &candidate.parent {
                 Some(parent) => parent.as_ref().await?.to_owned(),
                 None => candidate.clone(),
@@ -248,7 +248,7 @@ pub(crate) async fn get_presentation_definition_v2(
                     .error_while("getting remaining batch items")?;
 
             let embedded_disclosure_policy_violation = check_disclosure_policy(
-                &summary,
+                &candidate,
                 &query.id,
                 verifier_details,
                 verifier_info,

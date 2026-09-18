@@ -83,11 +83,17 @@ async fn test_issuance_refresh_skips_configuration_the_issuer_refuses() {
     // only issuers that don't support jwk/cose_key binding force the wallet to auto-generate a
     // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
     // (bound via `sub`) need
-    for configuration in interaction_data["credential_configurations"]
+    for (index, configuration) in interaction_data["credential_configurations"]
         .as_array_mut()
         .unwrap()
+        .iter_mut()
+        .enumerate()
     {
         configuration["cryptographic_binding_methods_supported"] = json!(["did:key"]);
+        configuration["disclosure_policy"] = json!({
+            "id": format!("policy-{index}"),
+            "policy": "none",
+        });
     }
     let interaction = context
         .db
@@ -135,6 +141,26 @@ async fn test_issuance_refresh_skips_configuration_the_issuer_refuses() {
     let first_parent: CredentialId = parents[0].parse();
     let second_parent: CredentialId = parents[1].parse();
 
+    // Each configuration's policy belongs to its concrete items, including after refresh.
+    for (index, parent_id) in [first_parent, second_parent].into_iter().enumerate() {
+        let parent = context.db.credentials.get(&parent_id).await;
+        assert_eq!(parent.embedded_disclosure_policy, None);
+        let items = context
+            .db
+            .credentials
+            .list(CredentialFilterValue::ParentCredential(parent_id).condition())
+            .await;
+        assert_eq!(items.len(), 2);
+        for item in items {
+            let policy: serde_json::Value =
+                serde_json::from_str(item.embedded_disclosure_policy.as_ref().unwrap()).unwrap();
+            assert_eq!(
+                policy,
+                json!({"id": format!("policy-{index}"), "policy": "none"})
+            );
+        }
+    }
+
     // the issuer refuses the second configuration on refresh
     context
         .server_mock
@@ -157,6 +183,9 @@ async fn test_issuance_refresh_skips_configuration_the_issuer_refuses() {
         let item = context.db.credentials.get(&id.parse()).await;
         assert_eq!(CredentialType::BatchItem, item.r#type);
         assert_eq!(first_parent, item.parent.as_ref().unwrap().id());
+        let policy: serde_json::Value =
+            serde_json::from_str(item.embedded_disclosure_policy.as_ref().unwrap()).unwrap();
+        assert_eq!(policy, json!({"id": "policy-0", "policy": "none"}));
         let claims = item.claims.as_ref().await.unwrap();
         assert!(!claims.is_empty());
         assert!(claims.iter().all(|claim| claim.credential_id == item.id));

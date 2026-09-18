@@ -1,7 +1,7 @@
 use one_core::clock::now_utc;
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
-    UpdateCredentialRequest,
+    CredentialType, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::Identifier;
@@ -1472,6 +1472,115 @@ async fn test_get_presentation_definition_2_disclosure_policy_no_violation() {
             .as_object()
             .unwrap()
             .contains_key("embeddedDisclosurePolicyViolation"),
+    );
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_batch_disclosure_policy_per_format() {
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let schema_id = context
+        .db
+        .credential_schemas
+        .create_with_multiformat("multiformat", &org, Some(2))
+        .await
+        .unwrap();
+    let schema = context.db.credential_schemas.get(&schema_id).await;
+    let parent = context
+        .db
+        .credentials
+        .create(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                r#type: Some(CredentialType::BatchParent),
+                claims_data: Some(vec![]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    for format in schema.formats.as_ref().await.unwrap().iter() {
+        let policy = (format.format.as_ref() == "SD_JWT_VC").then(|| {
+            json!({
+                "id": "sd-jwt-policy",
+                "policy": "allowList",
+                "options": {"values": [{"dn": "CN=allowed verifier"}]},
+            })
+            .to_string()
+        });
+        context
+            .db
+            .credentials
+            .create(
+                &schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_FINAL1",
+                TestingCredentialParams {
+                    role: Some(CredentialRole::Holder),
+                    r#type: Some(CredentialType::BatchItem),
+                    parent_id: Some(parent.id),
+                    format: Some(format.clone()),
+                    embedded_disclosure_policy: policy,
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
+
+    let query: DcqlQuery = serde_json::from_value(json!({
+        "credentials": [
+            {
+                "id": "sd_jwt",
+                "format": "dc+sd-jwt",
+                "meta": {"vct_values": ["sd-jwt_vct"]},
+                "claims": [{"path": ["firstName"]}],
+            },
+            {
+                "id": "mdoc",
+                "format": "mso_mdoc",
+                "meta": {"doctype_value": "mdoc_doctype"},
+                "claims": [{"path": ["namespace", "firstName"], "intent_to_retain": false}],
+            },
+        ],
+    }))
+    .unwrap();
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &query,
+        "OPENID4VP_FINAL1",
+        None,
+    )
+    .await;
+
+    let response = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+    assert_eq!(response.status(), 200);
+    let body = response.json_value().await;
+    let sd_jwt = &body["credentialQueries"]["sd_jwt"]["applicableCredentials"];
+    let mdoc = &body["credentialQueries"]["mdoc"]["applicableCredentials"];
+    assert_eq!(sd_jwt.as_array().unwrap().len(), 1);
+    assert_eq!(mdoc.as_array().unwrap().len(), 1);
+    sd_jwt[0]["id"].assert_eq(&parent.id);
+    mdoc[0]["id"].assert_eq(&parent.id);
+    assert_eq!(
+        sd_jwt[0]["embeddedDisclosurePolicyViolation"]["id"],
+        "sd-jwt-policy"
+    );
+    assert!(
+        !mdoc[0]
+            .as_object()
+            .unwrap()
+            .contains_key("embeddedDisclosurePolicyViolation")
     );
 }
 

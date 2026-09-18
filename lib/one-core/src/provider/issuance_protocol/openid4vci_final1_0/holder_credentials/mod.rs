@@ -70,9 +70,14 @@ impl OpenID4VCIFinal1_0 {
                 IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
             })?;
 
+        let disclosure_policy = configuration
+            .disclosure_policy
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?;
         let mut credentials = vec![];
         for issued_credential in issuer_response.credentials {
-            let credential = self
+            let mut credential = self
                 .prepare_issued_credential(
                     &issued_credential,
                     &mut holder_bindings,
@@ -83,6 +88,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction_data.issuer_display.as_deref(),
                 )
                 .await?;
+            credential.embedded_disclosure_policy = disclosure_policy.clone();
             credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -114,7 +120,7 @@ impl OpenID4VCIFinal1_0 {
             .await?;
         }
 
-        let mut main_credential = if credentials.len() > 1 {
+        let main_credential = if credentials.len() > 1 {
             let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
             ))?;
@@ -126,6 +132,7 @@ impl OpenID4VCIFinal1_0 {
             let credential = Credential {
                 id: Uuid::new_v4().into(),
                 r#type: CredentialType::BatchParent,
+                embedded_disclosure_policy: None,
                 format: None,
                 credential_blob_id: None,
                 wallet_instance_attestation_blob_id: None,
@@ -148,11 +155,6 @@ impl OpenID4VCIFinal1_0 {
                 "No credentials received".to_string(),
             ))?
         };
-
-        if let Some(disclosure_policy) = &configuration.disclosure_policy {
-            main_credential.credential.embedded_disclosure_policy =
-                Some(serde_json::to_string(disclosure_policy)?);
-        }
 
         let main_credential_id = main_credential.credential.id;
 
@@ -403,9 +405,14 @@ impl OpenID4VCIFinal1_0 {
             .formatter_provider
             .get_credential_formatter(&configuration_format.format)?;
 
+        let disclosure_policy = configuration
+            .disclosure_policy
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?;
         let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
         for issued_credential in issuer_response.credentials {
-            let credential = self
+            let mut credential = self
                 .prepare_issued_credential(
                     &issued_credential,
                     &mut holder_bindings,
@@ -416,6 +423,7 @@ impl OpenID4VCIFinal1_0 {
                     None,
                 )
                 .await?;
+            credential.embedded_disclosure_policy = disclosure_policy.clone();
             batch_credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
