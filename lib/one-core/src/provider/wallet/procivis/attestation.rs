@@ -281,7 +281,11 @@ impl ProcivisWalletProvider {
             .error_while("getting identifier")?;
 
         let selection = issuer_identifier
-            .select_key(KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa]).into())
+            .select_key(
+                KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa])
+                    .error_while("selecting key")?
+                    .into(),
+            )
             .await
             .error_while("selecting key")?;
         let issuer_key = selection.key();
@@ -292,7 +296,8 @@ impl ProcivisWalletProvider {
             let key = issuer_did
                 .find_key(
                     &issuer_key.id,
-                    &KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa]),
+                    &KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa])
+                        .error_while("finding key")?,
                 )
                 .await
                 .error_while("finding key")?;

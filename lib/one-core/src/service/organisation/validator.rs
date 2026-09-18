@@ -43,7 +43,11 @@ pub(super) async fn validate_provider_issuer(
     };
 
     identifier
-        .select_key(KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa]).into())
+        .select_key(
+            KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa])
+                .error_while("selecting identifier key")?
+                .into(),
+        )
         .await
         .error_while("selecting identifier key")?;
 

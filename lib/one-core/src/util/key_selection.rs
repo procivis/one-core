@@ -37,16 +37,29 @@ impl KeyFilter {
         self
     }
 
-    pub fn algorithms(algorithms: Vec<KeyAlgorithmType>) -> Self {
-        Self {
+    pub fn algorithms(algorithms: Vec<KeyAlgorithmType>) -> Result<Self, KeySelectionError> {
+        if algorithms.is_empty() {
+            return Err(KeySelectionError::ImpossibleFilter(
+                "Empty algorithms".to_string(),
+            ));
+        }
+        Ok(Self {
             algorithms: Some(algorithms),
             ..Default::default()
-        }
+        })
     }
 
-    pub fn and_algorithms(mut self, algorithms: Vec<KeyAlgorithmType>) -> Self {
+    pub fn and_algorithms(
+        mut self,
+        algorithms: Vec<KeyAlgorithmType>,
+    ) -> Result<Self, KeySelectionError> {
+        if algorithms.is_empty() {
+            return Err(KeySelectionError::ImpossibleFilter(
+                "Empty algorithms".to_string(),
+            ));
+        }
         self.algorithms = Some(algorithms);
-        self
+        Ok(self)
     }
 
     pub fn matches_related_key(&self, key: &RelatedKey) -> bool {
@@ -261,6 +274,8 @@ pub enum KeySelectionError {
     },
     #[error("Key {key_id} does not belong to did {did_id}")]
     KeyDidMismatch { did_id: DidId, key_id: KeyId },
+    #[error("Impossible filter: `{0}`")]
+    ImpossibleFilter(String),
     #[error("Mapping error: {0}")]
     MappingError(String),
 

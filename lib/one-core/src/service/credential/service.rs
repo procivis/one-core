@@ -128,7 +128,8 @@ impl CredentialService {
                 did: request.issuer_did,
                 key: KeyFilter::did_role(KeyRole::AssertionMethod)
                     .and_id(request.issuer_key)
-                    .and_algorithms(formatter_capabilities.signing_key_algorithms.clone()),
+                    .and_algorithms(formatter_capabilities.signing_key_algorithms.clone())
+                    .error_while("selecting issuer identifier")?,
                 certificate: CertificateFilter::role_filter(CertificateRole::AssertionMethod)
                     .and_id(request.issuer_certificate),
             })
