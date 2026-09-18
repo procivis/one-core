@@ -1,55 +1,154 @@
 use shared_types::OrganisationId;
+use time::Duration;
 
 use super::EudiEcosystem;
+use crate::clock::now_utc;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::model::credential_schema::WalletAttestation;
 use crate::model::wallet_instance_attestation::AttestationType;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::proto::wrp_validator::error::WRPValidatorError;
-use crate::provider::ecosystem::error::{EcosystemError, WalletAttestationRejection};
+use crate::provider::ecosystem::error::{
+    EcosystemError, RejectionReason, WalletAttestationRejection,
+};
 use crate::provider::ecosystem::model::WalletAttestationArtifact;
+use crate::service::managed_instance::dto::{
+    AttestationStatus, WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
+};
 
 impl EudiEcosystem {
     pub(super) async fn resolve_wallet_attestation(
         &self,
         attestation: &WalletAttestationArtifact<'_>,
+        requirements: &WalletAttestation,
         organisation_id: OrganisationId,
     ) -> Result<(), EcosystemError> {
-        let (token, r#type, wallet_provider, issuer_untrusted, revoked) = match attestation {
-            WalletAttestationArtifact::WalletInstance { token, jwt } => (
-                *token,
-                AttestationType::WalletInstanceAttestation,
-                jwt.wallet_provider_key(),
-                WalletAttestationRejection::WiaIssuerUntrusted,
-                WalletAttestationRejection::WiaRevoked,
-            ),
-            WalletAttestationArtifact::Key { token, jwt } => (
-                *token,
-                AttestationType::KeyAttestation,
-                jwt.wallet_provider_key(),
-                WalletAttestationRejection::KaIssuerUntrusted,
-                WalletAttestationRejection::KaRevoked,
-            ),
-        };
-        let wallet_provider = wallet_provider.error_while("extracting wallet provider key")?;
+        match attestation {
+            WalletAttestationArtifact::WalletInstance { token, jwt } => {
+                self.check_wallet_instance_attestation(token, jwt, requirements, organisation_id)
+                    .await
+            }
+            WalletAttestationArtifact::Key { token, jwt } => {
+                self.check_key_attestation(token, jwt, requirements, organisation_id)
+                    .await
+            }
+        }
+    }
 
+    async fn check_wallet_instance_attestation(
+        &self,
+        token: &str,
+        jwt: &DecomposedJwt<WalletInstanceAttestationClaims>,
+        requirements: &WalletAttestation,
+        organisation_id: OrganisationId,
+    ) -> Result<(), EcosystemError> {
+        let wallet_provider = jwt
+            .wallet_provider_key()
+            .error_while("extracting wallet provider key")?;
         self.wrp_validator
             .validate_wallet_provider(wallet_provider, &self.trust_scope(organisation_id))
             .await
             .map_err(|e| match e {
-                WRPValidatorError::WalletProviderNotTrusted => issuer_untrusted.into(),
+                WRPValidatorError::WalletProviderNotTrusted => {
+                    WalletAttestationRejection::WalletInstanceAttestation(
+                        RejectionReason::IssuerUntrusted,
+                    )
+                    .into()
+                }
                 _ => EcosystemError::Nested(e.error_while("validating wallet provider")),
             })?;
 
-        let status = self
-            .wallet_unit_proto
-            .check_attestation_status(token, r#type)
-            .await
-            .error_while("checking wallet attestation status")?;
-        if status != WalletUnitStatusCheckResponse::Active {
-            return Err(revoked.into());
+        if !status_period_satisfied(
+            jwt.payload.custom.client_status.as_ref(),
+            requirements.preferred_instance_attestation_lifetime,
+            self.params.leeway_seconds,
+        ) {
+            return Err(WalletAttestationRejection::WalletInstanceAttestation(
+                RejectionReason::StatusPeriod,
+            )
+            .into());
         }
 
-        Ok(())
+        let status = self
+            .wallet_unit_proto
+            .check_attestation_status(token, AttestationType::WalletInstanceAttestation)
+            .await
+            .error_while("checking wallet attestation status")?;
+        match status {
+            WalletUnitStatusCheckResponse::Active => Ok(()),
+            WalletUnitStatusCheckResponse::Revoked => Err(
+                WalletAttestationRejection::WalletInstanceAttestation(RejectionReason::Revoked)
+                    .into(),
+            ),
+            WalletUnitStatusCheckResponse::Expired => {
+                Err(WalletAttestationRejection::WalletInstanceAttestation(
+                    RejectionReason::StatusPeriod,
+                )
+                .into())
+            }
+        }
+    }
+
+    async fn check_key_attestation(
+        &self,
+        token: &str,
+        jwt: &DecomposedJwt<WalletUnitAttestationClaims>,
+        requirements: &WalletAttestation,
+        organisation_id: OrganisationId,
+    ) -> Result<(), EcosystemError> {
+        let wallet_provider = jwt
+            .wallet_provider_key()
+            .error_while("extracting wallet provider key")?;
+        self.wrp_validator
+            .validate_wallet_provider(wallet_provider, &self.trust_scope(organisation_id))
+            .await
+            .map_err(|e| match e {
+                WRPValidatorError::WalletProviderNotTrusted => {
+                    WalletAttestationRejection::KeyAttestation(RejectionReason::IssuerUntrusted)
+                        .into()
+                }
+                _ => EcosystemError::Nested(e.error_while("validating wallet provider")),
+            })?;
+
+        if !status_period_satisfied(
+            jwt.payload.custom.key_storage_status.as_ref(),
+            requirements.preferred_key_storage_attestation_lifetime,
+            self.params.leeway_seconds,
+        ) {
+            return Err(
+                WalletAttestationRejection::KeyAttestation(RejectionReason::StatusPeriod).into(),
+            );
+        }
+
+        let status = self
+            .wallet_unit_proto
+            .check_attestation_status(token, AttestationType::KeyAttestation)
+            .await
+            .error_while("checking wallet attestation status")?;
+        match status {
+            WalletUnitStatusCheckResponse::Active => Ok(()),
+            WalletUnitStatusCheckResponse::Revoked => {
+                Err(WalletAttestationRejection::KeyAttestation(RejectionReason::Revoked).into())
+            }
+            WalletUnitStatusCheckResponse::Expired => Err(
+                WalletAttestationRejection::KeyAttestation(RejectionReason::StatusPeriod).into(),
+            ),
+        }
+    }
+}
+
+fn status_period_satisfied(
+    status: Option<&AttestationStatus>,
+    preferred_period: Option<Duration>,
+    leeway: Duration,
+) -> bool {
+    match (status, preferred_period) {
+        (None, None) => true,
+        (None, Some(_)) => false,
+        (Some(status), preferred_period) => {
+            status.expires_at >= now_utc() - leeway + preferred_period.unwrap_or(Duration::ZERO)
+        }
     }
 }
 
@@ -66,9 +165,9 @@ mod test {
     use super::*;
     use crate::config::core_config::CoreConfig;
     use crate::error::{ErrorCode, ErrorCodeMixin};
+    use crate::model::credential_schema::WalletAttestation;
     use crate::proto::credential_validity_manager::MockCredentialValidityManager;
     use crate::proto::jwt::Jwt;
-    use crate::proto::jwt::model::DecomposedJwt;
     use crate::proto::session_provider::NoSessionProvider;
     use crate::proto::wallet_instance::MockHolderWalletUnitProto;
     use crate::proto::wrp_validator::MockWRPValidator;
@@ -82,9 +181,6 @@ mod test {
     use crate::repository::history_repository::MockHistoryRepository;
     use crate::repository::interaction_repository::MockInteractionRepository;
     use crate::repository::proof_schema_repository::MockProofSchemaRepository;
-    use crate::service::managed_instance::dto::{
-        WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
-    };
 
     const WALLET_PROVIDER_CERTIFICATE: &str = "wallet-provider-certificate";
 
@@ -136,6 +232,51 @@ mod test {
         let token = token(json!({ "key_storage": [], "attested_keys": [] }));
         let jwt = Jwt::<WalletUnitAttestationClaims>::decompose_token(&token).unwrap();
         (token, jwt)
+    }
+
+    fn wia_with_status(
+        period: Duration,
+    ) -> (String, DecomposedJwt<WalletInstanceAttestationClaims>) {
+        let token = token(json!({
+            "wallet_name": "wallet",
+            "client_status": status_claim(period),
+        }));
+        let jwt = Jwt::<WalletInstanceAttestationClaims>::decompose_token(&token).unwrap();
+        (token, jwt)
+    }
+
+    fn ka_with_status(period: Duration) -> (String, DecomposedJwt<WalletUnitAttestationClaims>) {
+        let token = token(json!({
+            "key_storage": [],
+            "attested_keys": [],
+            "key_storage_status": status_claim(period),
+        }));
+        let jwt = Jwt::<WalletUnitAttestationClaims>::decompose_token(&token).unwrap();
+        (token, jwt)
+    }
+
+    fn status_claim(period: Duration) -> serde_json::Value {
+        json!({
+            "status": { "status_list": { "idx": 0, "uri": "https://example.com/status" } },
+            "exp": (now_utc() + period).unix_timestamp(),
+        })
+    }
+
+    fn no_preference() -> WalletAttestation {
+        WalletAttestation {
+            require_instance_attestation: true,
+            key_storage_security_level: None,
+            preferred_key_storage_attestation_lifetime: None,
+            preferred_instance_attestation_lifetime: None,
+        }
+    }
+
+    fn preferred_periods(period: Duration) -> WalletAttestation {
+        WalletAttestation {
+            preferred_key_storage_attestation_lifetime: Some(period),
+            preferred_instance_attestation_lifetime: Some(period),
+            ..no_preference()
+        }
     }
 
     fn trusted_wallet_provider() -> MockWRPValidator {
@@ -215,6 +356,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -240,6 +382,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -264,6 +407,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -285,6 +429,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -292,7 +437,11 @@ mod test {
 
         assert!(matches!(
             error,
-            EcosystemError::WalletAttestation(WalletAttestationRejection::WiaIssuerUntrusted)
+            EcosystemError::WalletAttestation(
+                WalletAttestationRejection::WalletInstanceAttestation(
+                    RejectionReason::IssuerUntrusted
+                )
+            )
         ));
         assert_eq!(ErrorCode::BR_0494, error.error_code());
     }
@@ -311,6 +460,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -318,7 +468,9 @@ mod test {
 
         assert!(matches!(
             error,
-            EcosystemError::WalletAttestation(WalletAttestationRejection::KaIssuerUntrusted)
+            EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
+                RejectionReason::IssuerUntrusted
+            ))
         ));
         assert_eq!(ErrorCode::BR_0496, error.error_code());
     }
@@ -341,6 +493,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -348,7 +501,9 @@ mod test {
 
         assert!(matches!(
             error,
-            EcosystemError::WalletAttestation(WalletAttestationRejection::WiaRevoked)
+            EcosystemError::WalletAttestation(
+                WalletAttestationRejection::WalletInstanceAttestation(RejectionReason::Revoked)
+            )
         ));
         assert_eq!(ErrorCode::BR_0505, error.error_code());
     }
@@ -371,6 +526,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -378,13 +534,15 @@ mod test {
 
         assert!(matches!(
             error,
-            EcosystemError::WalletAttestation(WalletAttestationRejection::KaRevoked)
+            EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
+                RejectionReason::Revoked
+            ))
         ));
         assert_eq!(ErrorCode::BR_0499, error.error_code());
     }
 
     #[tokio::test]
-    async fn test_ka_expired_status_period() {
+    async fn test_ka_expired_by_status_check() {
         let (token, jwt) = ka();
         let ecosystem = setup(Mocks {
             wrp_validator: trusted_wallet_provider(),
@@ -401,6 +559,7 @@ mod test {
                     token: &token,
                     jwt: &jwt,
                 },
+                &no_preference(),
                 Uuid::new_v4().into(),
             )
             .await
@@ -408,7 +567,180 @@ mod test {
 
         assert!(matches!(
             error,
-            EcosystemError::WalletAttestation(WalletAttestationRejection::KaRevoked)
+            EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
+                RejectionReason::StatusPeriod
+            ))
+        ));
+        assert_eq!(ErrorCode::BR_0507, error.error_code());
+    }
+
+    #[tokio::test]
+    async fn test_wia_status_period_satisfied() {
+        let (token, jwt) = wia_with_status(Duration::days(31));
+        let ecosystem = setup(Mocks {
+            wrp_validator: trusted_wallet_provider(),
+            wallet_unit_proto: attestation_status(
+                token.clone(),
+                AttestationType::WalletInstanceAttestation,
+                WalletUnitStatusCheckResponse::Active,
+            ),
+        });
+
+        ecosystem
+            .resolve_wallet_attestation(
+                &WalletAttestationArtifact::WalletInstance {
+                    token: &token,
+                    jwt: &jwt,
+                },
+                &preferred_periods(Duration::days(30)),
+                Uuid::new_v4().into(),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_wia_status_period_within_leeway() {
+        // within the default 1 minute leeway
+        let (token, jwt) = wia_with_status(Duration::days(30) - Duration::seconds(30));
+        let ecosystem = setup(Mocks {
+            wrp_validator: trusted_wallet_provider(),
+            wallet_unit_proto: attestation_status(
+                token.clone(),
+                AttestationType::WalletInstanceAttestation,
+                WalletUnitStatusCheckResponse::Active,
+            ),
+        });
+
+        ecosystem
+            .resolve_wallet_attestation(
+                &WalletAttestationArtifact::WalletInstance {
+                    token: &token,
+                    jwt: &jwt,
+                },
+                &preferred_periods(Duration::days(30)),
+                Uuid::new_v4().into(),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_wia_status_period_too_short() {
+        let (token, jwt) = wia_with_status(Duration::days(10));
+        // rejected before the status list is consulted
+        let ecosystem = setup(Mocks {
+            wrp_validator: trusted_wallet_provider(),
+            wallet_unit_proto: MockHolderWalletUnitProto::new(),
+        });
+
+        let error = ecosystem
+            .resolve_wallet_attestation(
+                &WalletAttestationArtifact::WalletInstance {
+                    token: &token,
+                    jwt: &jwt,
+                },
+                &preferred_periods(Duration::days(30)),
+                Uuid::new_v4().into(),
+            )
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            EcosystemError::WalletAttestation(
+                WalletAttestationRejection::WalletInstanceAttestation(
+                    RejectionReason::StatusPeriod
+                )
+            )
+        ));
+        assert_eq!(ErrorCode::BR_0506, error.error_code());
+    }
+
+    #[tokio::test]
+    async fn test_wia_status_period_ended_without_preference() {
+        let (token, jwt) = wia_with_status(-Duration::hours(1));
+        let ecosystem = setup(Mocks {
+            wrp_validator: trusted_wallet_provider(),
+            wallet_unit_proto: MockHolderWalletUnitProto::new(),
+        });
+
+        let error = ecosystem
+            .resolve_wallet_attestation(
+                &WalletAttestationArtifact::WalletInstance {
+                    token: &token,
+                    jwt: &jwt,
+                },
+                &no_preference(),
+                Uuid::new_v4().into(),
+            )
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            EcosystemError::WalletAttestation(
+                WalletAttestationRejection::WalletInstanceAttestation(
+                    RejectionReason::StatusPeriod
+                )
+            )
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_ka_status_period_too_short() {
+        let (token, jwt) = ka_with_status(Duration::days(10));
+        let ecosystem = setup(Mocks {
+            wrp_validator: trusted_wallet_provider(),
+            wallet_unit_proto: MockHolderWalletUnitProto::new(),
+        });
+
+        let error = ecosystem
+            .resolve_wallet_attestation(
+                &WalletAttestationArtifact::Key {
+                    token: &token,
+                    jwt: &jwt,
+                },
+                &preferred_periods(Duration::days(30)),
+                Uuid::new_v4().into(),
+            )
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
+                RejectionReason::StatusPeriod
+            ))
+        ));
+        assert_eq!(ErrorCode::BR_0507, error.error_code());
+    }
+
+    #[tokio::test]
+    async fn test_ka_without_status_but_preference_set() {
+        let (token, jwt) = ka();
+        let ecosystem = setup(Mocks {
+            wrp_validator: trusted_wallet_provider(),
+            wallet_unit_proto: MockHolderWalletUnitProto::new(),
+        });
+
+        let error = ecosystem
+            .resolve_wallet_attestation(
+                &WalletAttestationArtifact::Key {
+                    token: &token,
+                    jwt: &jwt,
+                },
+                &preferred_periods(Duration::days(30)),
+                Uuid::new_v4().into(),
+            )
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
+                RejectionReason::StatusPeriod
+            ))
         ));
     }
 }

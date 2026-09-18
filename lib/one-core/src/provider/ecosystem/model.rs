@@ -9,6 +9,7 @@ use strum::Display;
 use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
+use crate::model::credential_schema::WalletAttestation;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::common_dto::EudiTrustInformationResponseDTO;
@@ -61,6 +62,8 @@ pub enum ProtocolArtifact<'a> {
     /// As issuer, issuance protocol artifacts
     IssuerIssuance {
         attestation: WalletAttestationArtifact<'a>,
+        /// as defined by the credential schema
+        requirements: &'a WalletAttestation,
     },
     /// As verifier, protocol artifacts of a proof-request (after submission)
     VerifierSubmission {

@@ -48,10 +48,9 @@ impl WalletAttestationError {
         match self {
             // The WIA is the OAuth client attestation at the token endpoint.
             Self::WiaMalformed(_)
-            | Self::Rejected(
-                WalletAttestationRejection::WiaIssuerUntrusted
-                | WalletAttestationRejection::WiaRevoked,
-            ) => OpenID4VCIError::InvalidClient,
+            | Self::Rejected(WalletAttestationRejection::WalletInstanceAttestation(_)) => {
+                OpenID4VCIError::InvalidClient
+            }
             Self::InvalidChallenge { .. } | Self::MissingChallenge { .. } => {
                 OpenID4VCIError::UseAttestationChallenge
             }

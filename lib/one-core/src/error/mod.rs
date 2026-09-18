@@ -1111,6 +1111,14 @@ pub enum ErrorCode {
 
     #[strum(message = "Wallet Instance Attestation is revoked")]
     BR_0505,
+
+    #[strum(
+        message = "Wallet Instance Attestation does not satisfy the required client status period"
+    )]
+    BR_0506,
+
+    #[strum(message = "Key Attestation does not satisfy the required key storage status period")]
+    BR_0507,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

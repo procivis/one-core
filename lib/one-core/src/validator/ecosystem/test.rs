@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use super::*;
 use crate::clock::now_utc;
+use crate::model::credential_schema::WalletAttestation;
 use crate::model::interaction::{InteractionEcosystems, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::proto::jwt::Jwt;
@@ -200,11 +201,19 @@ fn issuer_artifact() -> ProtocolArtifact<'static> {
         Jwt::<WalletInstanceAttestationClaims>::decompose_token(WIA_TOKEN).unwrap()
     });
 
+    static REQUIREMENTS: WalletAttestation = WalletAttestation {
+        require_instance_attestation: true,
+        key_storage_security_level: None,
+        preferred_key_storage_attestation_lifetime: None,
+        preferred_instance_attestation_lifetime: None,
+    };
+
     ProtocolArtifact::IssuerIssuance {
         attestation: WalletAttestationArtifact::WalletInstance {
             token: WIA_TOKEN,
             jwt: &WIA,
         },
+        requirements: &REQUIREMENTS,
     }
 }
 

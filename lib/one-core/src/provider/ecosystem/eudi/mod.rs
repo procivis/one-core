@@ -244,9 +244,16 @@ impl Ecosystem for EudiEcosystem {
                     .await
                     .error_while("resolving holder proof trust")?;
             }
-            ProtocolArtifact::IssuerIssuance { attestation } => {
-                self.resolve_wallet_attestation(attestation, interaction.organisation.id())
-                    .await?;
+            ProtocolArtifact::IssuerIssuance {
+                attestation,
+                requirements,
+            } => {
+                self.resolve_wallet_attestation(
+                    attestation,
+                    requirements,
+                    interaction.organisation.id(),
+                )
+                .await?;
             }
             ProtocolArtifact::VerifierSubmission {
                 credential,

@@ -48,23 +48,35 @@ impl ErrorCodeMixin for EcosystemError {
 
 #[derive(Debug, Error)]
 pub enum WalletAttestationRejection {
-    #[error("Wallet Instance Attestation issuer not on wallet provider trust list")]
-    WiaIssuerUntrusted,
-    #[error("Key Attestation issuer not on wallet provider trust list")]
-    KaIssuerUntrusted,
-    #[error("Wallet Instance Attestation is revoked")]
-    WiaRevoked,
-    #[error("Key Attestation is revoked")]
-    KaRevoked,
+    #[error("Wallet Instance Attestation {0}")]
+    WalletInstanceAttestation(RejectionReason),
+    #[error("Key Attestation {0}")]
+    KeyAttestation(RejectionReason),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Error)]
+pub enum RejectionReason {
+    #[error("issuer not on wallet provider trust list")]
+    IssuerUntrusted,
+    #[error("is revoked")]
+    Revoked,
+    #[error("does not satisfy the required status period")]
+    StatusPeriod,
 }
 
 impl ErrorCodeMixin for WalletAttestationRejection {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::WiaIssuerUntrusted => ErrorCode::BR_0494,
-            Self::KaIssuerUntrusted => ErrorCode::BR_0496,
-            Self::WiaRevoked => ErrorCode::BR_0505,
-            Self::KaRevoked => ErrorCode::BR_0499,
+            Self::WalletInstanceAttestation(reason) => match reason {
+                RejectionReason::IssuerUntrusted => ErrorCode::BR_0494,
+                RejectionReason::Revoked => ErrorCode::BR_0505,
+                RejectionReason::StatusPeriod => ErrorCode::BR_0506,
+            },
+            Self::KeyAttestation(reason) => match reason {
+                RejectionReason::IssuerUntrusted => ErrorCode::BR_0496,
+                RejectionReason::Revoked => ErrorCode::BR_0499,
+                RejectionReason::StatusPeriod => ErrorCode::BR_0507,
+            },
         }
     }
 }
