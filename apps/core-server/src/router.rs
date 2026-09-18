@@ -682,7 +682,7 @@ fn get_external_endpoints(
             )
             .route(
                 "/ssi/openid4vci/final-1.0-swiyu/{id}/notification",
-                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_credential_notification),
+                post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_swiyu_credential_notification),
             )
             .route(
                 "/ssi/openid4vp/final-1.0/response",

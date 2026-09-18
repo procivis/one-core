@@ -513,7 +513,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_attestation_challenge(
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oid4vci_final1_0_credential_notification(
+pub(crate) async fn oid4vci_final1_0_swiyu_credential_notification(
     state: State<AppState>,
     WithRejection(Path(credential_schema_id), _): WithRejection<
         Path<CredentialSchemaId>,
