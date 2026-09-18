@@ -152,9 +152,10 @@ fn request_to_certificate_params(
         }
         CsrRequestProfile::Mdl => {
             params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
-            params
-                .custom_extensions
-                .push(prepare_extended_key_usage_extension_iso_mdl_ds());
+            params.custom_extensions.extend([
+                prepare_extended_key_usage_extension_iso_mdl_ds(),
+                prepare_extended_key_usage_extension_iso_mdoc_ds(),
+            ]);
         }
         CsrRequestProfile::Ca => {
             // Basic constraints cannot be set in CSR, so only key usages are specified here.
@@ -212,6 +213,24 @@ pub(crate) fn prepare_extended_key_usage_extension_iso_mdl_ds() -> CustomExtensi
     let mut extended_key_usage_extension = CustomExtension::from_oid_content(
         oid::extension::EXTENDED_KEY_USAGE,
         mdlds_extended_key_usage,
+    );
+    extended_key_usage_extension.set_criticality(true);
+    extended_key_usage_extension
+}
+
+/// ISO 7367-2, C.1.4 Document signer certificate
+pub(crate) const OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS: [u64; 6] = [1, 0, 23220, 4, 1, 2];
+pub(crate) fn prepare_extended_key_usage_extension_iso_mdoc_ds() -> CustomExtension {
+    let mdocds_extended_key_usage = yasna::construct_der(|writer| {
+        writer.write_sequence(|writer| {
+            writer.next().write_oid(&ObjectIdentifier::from_slice(
+                &OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS,
+            ));
+        });
+    });
+    let mut extended_key_usage_extension = CustomExtension::from_oid_content(
+        oid::extension::EXTENDED_KEY_USAGE,
+        mdocds_extended_key_usage,
     );
     extended_key_usage_extension.set_criticality(true);
     extended_key_usage_extension
