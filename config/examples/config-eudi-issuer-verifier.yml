@@ -154,11 +154,12 @@ signer:
     params:
       private:
         payload:
-          maxValidityDurationSeconds: 157680000 # 5 years
           allowCaSigning: true
           pathLenConstraint: 0
           keyIdDerivation: "sha-1" # based on ISO 18013-5
         revocationMethod: CRL
+      public:
+        maxValidityDurationSeconds: 157680000 # 5 years
 datatype:
   STRING:
     display: "datatype.string"

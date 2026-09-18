@@ -22,6 +22,10 @@ async fn test_signer_config_exposes_max_validity_duration() {
         resp["signer"]["ACCESS_CERTIFICATE"]["params"]["maxValidityDurationSeconds"],
         157680000
     );
+    assert_eq!(
+        resp["signer"]["X509_CERTIFICATE"]["params"]["maxValidityDurationSeconds"],
+        157680000
+    );
 
     // private params must stay hidden
     assert_eq!(
@@ -36,6 +40,14 @@ async fn test_signer_config_exposes_max_validity_duration() {
         resp["signer"]["ACCESS_CERTIFICATE"]["params"]["revocationMethod"],
         serde_json::Value::Null
     );
+    assert_eq!(
+        resp["signer"]["X509_CERTIFICATE"]["params"]["payload"],
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        resp["signer"]["X509_CERTIFICATE"]["params"]["revocationMethod"],
+        serde_json::Value::Null
+    );
 }
 
 #[tokio::test]
@@ -44,6 +56,10 @@ async fn test_signer_config_max_validity_duration_reflects_override() {
     let config = indoc::indoc! {"
       signer:
         REGISTRATION_CERTIFICATE:
+          params:
+            public:
+              maxValidityDurationSeconds: 604800
+        X509_CERTIFICATE:
           params:
             public:
               maxValidityDurationSeconds: 604800
@@ -60,6 +76,10 @@ async fn test_signer_config_max_validity_duration_reflects_override() {
 
     assert_eq!(
         resp["signer"]["REGISTRATION_CERTIFICATE"]["params"]["maxValidityDurationSeconds"],
+        604800
+    );
+    assert_eq!(
+        resp["signer"]["X509_CERTIFICATE"]["params"]["maxValidityDurationSeconds"],
         604800
     );
 }

@@ -77,10 +77,8 @@ impl Signer for X509CertificateSigner {
         issuer: Issuer,
         request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
-        let validity = calculate_signature_validity(
-            self.params.payload.max_validity_duration_seconds,
-            &request,
-        )?;
+        let validity =
+            calculate_signature_validity(self.params.max_validity_duration_seconds, &request)?;
 
         let request_data: RequestData = serde_json::from_value(request.data)?;
 

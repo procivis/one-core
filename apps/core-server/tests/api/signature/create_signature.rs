@@ -350,9 +350,10 @@ async fn test_create_signature_x509_success_no_crl() {
             type: X509_CERTIFICATE
             params:
               private:
-                payload:
-                  maxValidityDurationSeconds: 157680000 # 5 years
+                payload: {}
                 # no revocationMethod
+              public:
+                maxValidityDurationSeconds: 157680000 # 5 years
         "}
     .to_string();
     let (context, _org, identifier, ..) =

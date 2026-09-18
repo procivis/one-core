@@ -12,19 +12,19 @@ use crate::service::identifier::dto::{
 };
 use crate::service::key::dto::KeyGenerateCSRRequestSubjectDTO;
 
+#[serde_as]
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub payload: PayloadParams,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub max_validity_duration_seconds: Duration,
     pub revocation_method: Option<RevocationMethodId>,
 }
 
-#[serde_as]
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PayloadParams {
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub max_validity_duration_seconds: Duration,
     #[serde(default)]
     pub allow_ca_signing: bool,
     pub path_len_constraint: Option<u8>,
