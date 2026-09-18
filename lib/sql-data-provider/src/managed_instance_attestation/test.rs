@@ -1,5 +1,5 @@
 use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
-use one_core::model::wallet_instance_attestation::AttestationType;
+use one_core::model::wallet_attestation::AttestationType;
 use one_core::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 use similar_asserts::assert_eq;

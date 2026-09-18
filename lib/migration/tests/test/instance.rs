@@ -200,73 +200,60 @@ async fn test_db_schema_instance() {
 }
 
 #[tokio::test]
-async fn test_db_schema_wallet_instance_attestation() {
+async fn test_db_schema_wallet_attestation() {
     let schema = get_schema().await;
 
-    let wallet_instance_attestation = schema
-        .table("wallet_instance_attestation")
-        .columns(&[
-            "id",
-            "created_date",
-            "last_modified",
-            "expiration_date",
-            "attestation",
-            "instance_id",
-            "attested_key_id",
-            "revocation_list_url",
-            "revocation_list_index",
-        ])
-        .index(
-            "index-WalletInstanceAttestation-AttestedKey-Unique",
-            true,
-            &["attested_key_id"],
-        );
-    wallet_instance_attestation
+    let wallet_attestation = schema.table("wallet_attestation").columns(&[
+        "id",
+        "created_date",
+        "last_modified",
+        "expiration_date",
+        "attestation",
+        "instance_id",
+        "attested_key_id",
+        "type",
+    ]);
+    wallet_attestation
         .column("id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
         .default(None)
         .primary_key();
-    wallet_instance_attestation
+    wallet_attestation
         .column("created_date")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(false)
         .default(None);
-    wallet_instance_attestation
+    wallet_attestation
         .column("last_modified")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(false)
         .default(None);
-    wallet_instance_attestation
+    wallet_attestation
         .column("expiration_date")
-        .r#type(ColumnType::TimestampMilliseconds)
-        .nullable(false)
-        .default(None);
-    wallet_instance_attestation
+        .r#type(ColumnType::TimestampSeconds)
+        .nullable(true);
+    wallet_attestation
         .column("attestation")
         .r#type(ColumnType::Blob)
         .nullable(false)
         .default(None);
-    wallet_instance_attestation
+    wallet_attestation
         .column("instance_id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
         .default(None)
-        .foreign_key("fk-WalletInstanceAttestation-InstanceId", "instance", "id");
-    wallet_instance_attestation
+        .foreign_key("fk-WalletAttestation-InstanceId", "instance", "id");
+    wallet_attestation
         .column("attested_key_id")
         .r#type(ColumnType::Uuid)
-        .nullable(false)
-        .default(None)
-        .foreign_key("fk-WalletInstanceAttestation-AttestedKeyId", "key", "id");
-    wallet_instance_attestation
-        .column("revocation_list_url")
+        .nullable(true)
+        .foreign_key("fk-WalletAttestation-AttestedKeyId", "key", "id");
+    wallet_attestation
+        .column("type")
         .r#type(ColumnType::String(None))
-        .nullable(true);
-    wallet_instance_attestation
-        .column("revocation_list_index")
-        .r#type(ColumnType::Integer)
-        .nullable(true);
+        .nullable(false)
+        .default(None);
 }
 
 #[tokio::test]

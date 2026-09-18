@@ -33,7 +33,7 @@ use super::models::UnexportableCredentialModel;
 use crate::did::mapper::did_from_model;
 use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema, did, history, identifier,
-    instance, key, key_did, organisation, wallet_instance_attestation,
+    instance, key, key_did, organisation, wallet_attestation,
 };
 use crate::identifier::mapper::identifier_from_model;
 use crate::key::mapper::key_from_model;
@@ -625,9 +625,7 @@ fn update_identifiers_matching_subquery(
 async fn delete_wallet_unit_attestations(
     db: &TransactionManagerImpl,
 ) -> Result<(), sea_orm::DbErr> {
-    wallet_instance_attestation::Entity::delete_many()
-        .exec(db)
-        .await?;
+    wallet_attestation::Entity::delete_many().exec(db).await?;
     Ok(())
 }
 

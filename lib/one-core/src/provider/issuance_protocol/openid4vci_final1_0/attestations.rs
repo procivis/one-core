@@ -11,22 +11,17 @@ use super::mapper::configuration_to_accepted_key_storage_security;
 use super::model::{RequestedCredential, TokenRequestAttestationHeaders};
 use super::{HolderInteractionData, IssuanceProtocolError, OpenID4VCIFinal1_0};
 use crate::error::ContextWithErrorCode;
-use crate::model::instance::{InstanceRole, InstanceStatus};
+use crate::model::instance::{Instance, InstanceRole, InstanceStatus};
 use crate::model::key::Key;
+use crate::model::wallet_attestation::{AttestationType, WalletAttestation};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::wallet_instance::{
     IssueWalletAttestationRequest, WIARequestParams, WUARequestParams,
+    WalletUnitStatusCheckResponse,
 };
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::validator::key_security::match_key_security_level;
-
-#[derive(Debug, PartialEq)]
-#[expect(clippy::upper_case_acronyms)]
-pub(super) enum AttestationType {
-    WUA,
-    WIA,
-}
 
 impl OpenID4VCIFinal1_0 {
     /// Prepares wallet attestations (WIA/WUA) based on issuer requirements.
@@ -63,7 +58,7 @@ impl OpenID4VCIFinal1_0 {
             token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
         let wallet_attestation_required = requires_wia(token_endpoint_auth_methods);
 
-        if attestation_types.contains(&AttestationType::WIA)
+        if attestation_types.contains(&AttestationType::WalletInstanceAttestation)
             && wallet_attestation_required
             && !wallet_unit_provided
         {
@@ -72,39 +67,41 @@ impl OpenID4VCIFinal1_0 {
             ));
         }
 
-        let use_wallet_attestation = attestation_types.contains(&AttestationType::WIA)
+        let use_wallet_attestation = attestation_types
+            .contains(&AttestationType::WalletInstanceAttestation)
             && (wallet_attestation_required
                 || (wallet_attestation_supported && wallet_unit_provided));
 
         // WUA requirements, per credential configuration
-        let required_levels: Vec<Option<_>> = if attestation_types.contains(&AttestationType::WUA) {
-            requested_credentials
-                .iter()
-                .map(|requested| {
-                    configuration_to_accepted_key_storage_security(&requested.configuration)
-                        .map(|accepted_levels| {
-                            let key = &requested
-                                .holder_bindings
-                                .first()
-                                .ok_or(IssuanceProtocolError::Failed(
-                                    "No keys for holder binding".to_string(),
-                                ))?
-                                .key;
-                            Ok::<_, IssuanceProtocolError>(
-                                match_key_security_level(
-                                    &key.storage_type,
-                                    &accepted_levels,
-                                    &*self.key_security_level_provider,
+        let required_levels: Vec<Option<_>> =
+            if attestation_types.contains(&AttestationType::KeyAttestation) {
+                requested_credentials
+                    .iter()
+                    .map(|requested| {
+                        configuration_to_accepted_key_storage_security(&requested.configuration)
+                            .map(|accepted_levels| {
+                                let key = &requested
+                                    .holder_bindings
+                                    .first()
+                                    .ok_or(IssuanceProtocolError::Failed(
+                                        "No keys for holder binding".to_string(),
+                                    ))?
+                                    .key;
+                                Ok::<_, IssuanceProtocolError>(
+                                    match_key_security_level(
+                                        &key.storage_type,
+                                        &accepted_levels,
+                                        &*self.key_security_level_provider,
+                                    )
+                                    .error_while("matching key security")?,
                                 )
-                                .error_while("matching key security")?,
-                            )
-                        })
-                        .transpose()
-                })
-                .collect::<Result<_, _>>()?
-        } else {
-            vec![None; requested_credentials.len()]
-        };
+                            })
+                            .transpose()
+                    })
+                    .collect::<Result<_, _>>()?
+            } else {
+                vec![None; requested_credentials.len()]
+            };
         // a key is attested once, also when several configurations bind to it
         let mut attested_keys: Vec<(&Key, KeyStorageSecurityLevel)> = vec![];
         for (requested, level) in requested_credentials.iter().zip(&required_levels) {
@@ -145,16 +142,16 @@ impl OpenID4VCIFinal1_0 {
         let attestations_issuance_response = match attestations_issuance_request {
             None => None,
             Some(request) => {
-                let holder_wallet_unit_id = holder_wallet_unit
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "holder wallet unit is required".to_string(),
-                    ))?
-                    .id;
+                let holder_wallet_unit =
+                    holder_wallet_unit
+                        .as_ref()
+                        .ok_or(IssuanceProtocolError::Failed(
+                            "holder wallet unit is required".to_string(),
+                        ))?;
 
                 let response = self
                     .holder_wallet_unit_proto
-                    .issue_wallet_attestations(&holder_wallet_unit_id, request)
+                    .issue_wallet_attestations(holder_wallet_unit, request)
                     .await
                     .error_while("issuing attestations")?;
 
@@ -169,6 +166,14 @@ impl OpenID4VCIFinal1_0 {
                     let wia = issuance_response.provider_response.wia.first().ok_or(
                         IssuanceProtocolError::Failed("Wallet attestation is required".to_string()),
                     )?;
+
+                    self.store_received_attestation(
+                        wia,
+                        AttestationType::WalletInstanceAttestation,
+                        holder_wallet_unit.as_ref(),
+                        None,
+                    )
+                    .await?;
 
                     let wia_pop_key = issuance_response.wia_pop_key.as_ref().ok_or(
                         IssuanceProtocolError::Failed("WIA PoP key missing".to_string()),
@@ -235,9 +240,19 @@ impl OpenID4VCIFinal1_0 {
                     continue;
                 }
                 for binding in &mut requested.holder_bindings {
-                    binding.wua_proof = Some(proofs.get(&binding.key.id).cloned().ok_or(
+                    let wua = proofs.get(&binding.key.id).cloned().ok_or(
                         IssuanceProtocolError::Failed("missing key attestation".to_string()),
-                    )?);
+                    )?;
+
+                    self.store_received_attestation(
+                        &wua,
+                        AttestationType::KeyAttestation,
+                        holder_wallet_unit.as_ref(),
+                        Some(&binding.key),
+                    )
+                    .await?;
+
+                    binding.wua_proof = Some(wua);
                 }
             }
         }
@@ -267,6 +282,49 @@ impl OpenID4VCIFinal1_0 {
         Err(IssuanceProtocolError::InvalidRequest(format!(
             "No suitable alg found in client_attestation_pop_signing_alg_values_supported: {alg_values_supported:?}"
         )))
+    }
+
+    async fn store_received_attestation(
+        &self,
+        attestation: &str,
+        r#type: AttestationType,
+        holder_wallet_unit: Option<&Instance>,
+        attested_key: Option<&Key>,
+    ) -> Result<(), IssuanceProtocolError> {
+        let check_result = self
+            .holder_wallet_unit_proto
+            .check_attestation_status(attestation, r#type)
+            .await
+            .error_while("checking attestation status")?;
+
+        if check_result.status != WalletUnitStatusCheckResponse::Active {
+            return Err(IssuanceProtocolError::Failed(format!(
+                "Received {} attestation not active: {}",
+                r#type, check_result.status
+            )));
+        }
+
+        let now = crate::clock::now_utc();
+        self.wallet_attestation_repository
+            .create(WalletAttestation {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                expiration_date: check_result.expiration_date,
+                attestation: attestation.to_string(),
+                instance_id: holder_wallet_unit
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "missing holder instance".to_string(),
+                    ))?
+                    .id,
+                r#type,
+                attested_key: attested_key.map(|key| key.to_owned().into()),
+            })
+            .await
+            .error_while("creating wallet attestation")?;
+
+        Ok(())
     }
 }
 

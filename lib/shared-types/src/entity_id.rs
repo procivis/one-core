@@ -5,7 +5,7 @@ use crate::macros::impls_for_uuid_newtype;
 use crate::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId,
     InstanceId, KeyId, ManagedInstanceId, NotificationId, OrganisationId, ProofId, ProofSchemaId,
-    TrustListPublicationId, TrustListSubscriptionId, WalletInstanceAttestationId,
+    TrustListPublicationId, TrustListSubscriptionId,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -44,7 +44,6 @@ impl_from_other_type!(OrganisationId);
 impl_from_other_type!(ProofSchemaId);
 impl_from_other_type!(ProofId);
 impl_from_other_type!(ManagedInstanceId);
-impl_from_other_type!(WalletInstanceAttestationId);
 impl_from_other_type!(InstanceId);
 impl_from_other_type!(NotificationId);
 impl_from_other_type!(TrustListPublicationId);

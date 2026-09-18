@@ -36,7 +36,7 @@ use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
-use crate::entity::wallet_instance_attestation::AttestationType;
+use crate::entity::wallet_attestation::AttestationType;
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, credential_schema_format, did,
     identifier, instance, interaction, key, key_did, managed_instance,

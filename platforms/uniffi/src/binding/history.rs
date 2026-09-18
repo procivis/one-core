@@ -138,6 +138,7 @@ pub enum HistoryMetadataBinding {
         value: HistoryErrorMetadataBindingDTO,
     },
     ManagedInstanceAttestation(String),
+    WalletAttestation(String),
     WalletRelyingParty {
         value: WalletRelyingPartyMetadataBindingDTO,
     },

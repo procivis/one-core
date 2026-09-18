@@ -405,7 +405,7 @@ fn dummy_instance(
         user_nonce: None,
         organisation: organisation.into(),
         authentication_key: None,
-        wallet_unit_attestations: Default::default(),
+        wallet_attestations: Default::default(),
     }
 }
 

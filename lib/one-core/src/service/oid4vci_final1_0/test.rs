@@ -75,6 +75,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::wallet_attestation_repository::MockWalletAttestationRepository;
 use crate::service::oid4vci_final1_0::dto::{
     CredentialRequestPayload, CredentialResponsePayload, OID4VCIFinal1_0IssuerMetadataResponseEnum,
     OID4VCIFinal1_0MetadataResponseTypeEnum,
@@ -151,6 +152,7 @@ pub struct ProtocolMocks {
     pub interaction_repository: MockInteractionRepository,
     pub identifier_repository: MockIdentifierRepository,
     pub did_repository: MockDidRepository,
+    pub wallet_attestation_repository: MockWalletAttestationRepository,
 }
 
 fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
@@ -192,6 +194,7 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
         Arc::new(protocol_mocks.interaction_repository),
         Arc::new(protocol_mocks.identifier_repository),
         Arc::new(protocol_mocks.did_repository),
+        Arc::new(protocol_mocks.wallet_attestation_repository),
         Arc::new(NoTransactionManager),
     )
     .unwrap()

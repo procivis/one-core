@@ -6,10 +6,10 @@ use one_core::model::instance::{
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::{Related, RelatedVec};
-use one_core::repository::instance_repository::InstanceWalletInstanceAttestationsLoader;
+use one_core::repository::instance_repository::InstanceWalletAttestationsLoader;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use one_core::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use one_core::repository::wallet_attestation_repository::WalletAttestationRepository;
 use sea_orm::sea_query::{ColumnRef, IntoCondition};
 use sea_orm::{ColumnTrait, Condition, Set};
 
@@ -23,7 +23,7 @@ pub(crate) fn instance_from_model(
     value: Model,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     key_repository: &Arc<dyn KeyRepository>,
-    wallet_instance_attestation_repository: &Arc<dyn WalletInstanceAttestationRepository>,
+    wallet_attestation_repository: &Arc<dyn WalletAttestationRepository>,
 ) -> Instance {
     Instance {
         id: value.id,
@@ -41,10 +41,9 @@ pub(crate) fn instance_from_model(
         authentication_key: value
             .authentication_key_id
             .map(|key_id| Related::new(key_id, key_repository.to_owned())),
-        wallet_unit_attestations: RelatedVec::new(InstanceWalletInstanceAttestationsLoader {
+        wallet_attestations: RelatedVec::new(InstanceWalletAttestationsLoader {
             id: value.id,
-            wallet_instance_attestation_repository: wallet_instance_attestation_repository
-                .to_owned(),
+            wallet_attestation_repository: wallet_attestation_repository.to_owned(),
         }),
     }
 }

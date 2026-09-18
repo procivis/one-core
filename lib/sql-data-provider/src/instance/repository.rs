@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
+use one_core::error::ErrorCodeMixinExt;
 use one_core::model::instance::{
     Instance, InstanceList, InstanceListQuery, InstanceRole, UpdateInstanceRequest,
 };
@@ -21,6 +22,12 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 #[async_trait]
 impl InstanceRepository for InstanceProvider {
     async fn create(&self, request: Instance) -> Result<InstanceId, DataLayerError> {
+        if !request.wallet_attestations.as_ref().await?.is_empty() {
+            return Err(DataLayerError::IncorrectParameters
+                .error_while("Wallet attestations must be created via its repository")
+                .into());
+        }
+
         let model = instance::ActiveModel::from(request)
             .insert(&self.db)
             .await
@@ -43,7 +50,7 @@ impl InstanceRepository for InstanceProvider {
             model,
             &self.organisation_repository,
             &self.key_repository,
-            &self.wallet_unit_attestation_repository,
+            &self.wallet_attestation_repository,
         ))
     }
 
@@ -64,7 +71,7 @@ impl InstanceRepository for InstanceProvider {
             model,
             &self.organisation_repository,
             &self.key_repository,
-            &self.wallet_unit_attestation_repository,
+            &self.wallet_attestation_repository,
         )))
     }
 
@@ -92,27 +99,6 @@ impl InstanceRepository for InstanceProvider {
                 .await
                 .map_err(to_update_data_layer_error)?;
 
-            let Some(attestations) = request.wallet_unit_attestations else {
-                return Ok(());
-            };
-
-            for attestation in attestations {
-                let result = self
-                    .wallet_unit_attestation_repository
-                    .create_wallet_instance_attestation(attestation.clone())
-                    .await;
-                if let Err(err) = result {
-                    match err {
-                        DataLayerError::AlreadyExists => {
-                            let attestation_id = attestation.id;
-                            self.wallet_unit_attestation_repository
-                                .update_wallet_attestation(&attestation_id, attestation.into())
-                                .await?
-                        }
-                        err => return Err(err),
-                    }
-                }
-            }
             Ok(())
         }
         .boxed();
@@ -130,7 +116,7 @@ impl InstanceRepository for InstanceProvider {
                 m,
                 &self.organisation_repository,
                 &self.key_repository,
-                &self.wallet_unit_attestation_repository,
+                &self.wallet_attestation_repository,
             ))
         })
         .await

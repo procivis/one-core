@@ -53,6 +53,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::wallet_attestation_repository::MockWalletAttestationRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
 #[tokio::test]
@@ -225,6 +226,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockDidRepository::new()),
+        Arc::new(MockWalletAttestationRepository::new()),
         Arc::new(NoTransactionManager),
     )
     .unwrap();
@@ -424,6 +426,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockDidRepository::new()),
+        Arc::new(MockWalletAttestationRepository::new()),
         Arc::new(NoTransactionManager),
     )
     .unwrap();
@@ -587,6 +590,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockDidRepository::new()),
+        Arc::new(MockWalletAttestationRepository::new()),
         Arc::new(NoTransactionManager),
     )
     .unwrap();
@@ -692,6 +696,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockDidRepository::new()),
+        Arc::new(MockWalletAttestationRepository::new()),
         Arc::new(NoTransactionManager),
     )
     .unwrap();
@@ -791,6 +796,7 @@ async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
         Arc::new(MockInteractionRepository::new()),
         Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockDidRepository::new()),
+        Arc::new(MockWalletAttestationRepository::new()),
         Arc::new(NoTransactionManager),
     )
     .unwrap();

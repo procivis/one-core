@@ -9,9 +9,10 @@ use super::key::KeyHistoryDecorator;
 use super::organisation::OrganisationHistoryDecorator;
 use super::proof::ProofHistoryDecorator;
 use super::proof_schema::ProofSchemaHistoryDecorator;
-use crate::proto::history_decorator::trust_collection::TrustCollectionHistoryDecorator;
-use crate::proto::history_decorator::trust_list_publication::TrustListPublicationHistoryDecorator;
-use crate::proto::history_decorator::trust_list_subscription::TrustListSubscriptionHistoryDecorator;
+use super::trust_collection::TrustCollectionHistoryDecorator;
+use super::trust_list_publication::TrustListPublicationHistoryDecorator;
+use super::trust_list_subscription::TrustListSubscriptionHistoryDecorator;
+use super::wallet_attestation::WalletAttestationHistoryDecorator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::DataRepository;
@@ -43,7 +44,7 @@ use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use crate::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
 
 struct DecoratedDataProvider {
     // for non-decorated repositories
@@ -62,6 +63,7 @@ struct DecoratedDataProvider {
     trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
+    wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
 }
 
 impl DataRepository for DecoratedDataProvider {
@@ -111,6 +113,9 @@ impl DataRepository for DecoratedDataProvider {
     fn get_trust_list_subscription_repository(&self) -> Arc<dyn TrustListSubscriptionRepository> {
         self.trust_list_subscription_repository.clone()
     }
+    fn get_wallet_attestation_repository(&self) -> Arc<dyn WalletAttestationRepository> {
+        self.wallet_attestation_repository.clone()
+    }
 
     // non-decorated
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository> {
@@ -148,12 +153,6 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_instance_repository(&self) -> Arc<dyn InstanceRepository> {
         self.data_provider.get_instance_repository()
-    }
-    fn get_wallet_instance_attestation_repository(
-        &self,
-    ) -> Arc<dyn WalletInstanceAttestationRepository> {
-        self.data_provider
-            .get_wallet_instance_attestation_repository()
     }
     fn get_managed_instance_attestation_repository(
         &self,
@@ -247,6 +246,13 @@ pub(crate) fn decorate_data_provider(
     let trust_list_subscription_repository = Arc::new(TrustListSubscriptionHistoryDecorator {
         inner: data_provider.get_trust_list_subscription_repository(),
         history_repository: data_provider.get_history_repository(),
+        session_provider: session_provider.clone(),
+    });
+
+    let wallet_attestation_repository = Arc::new(WalletAttestationHistoryDecorator {
+        inner: data_provider.get_wallet_attestation_repository(),
+        instance_repository: data_provider.get_instance_repository(),
+        history_repository: data_provider.get_history_repository(),
         session_provider,
     });
 
@@ -264,5 +270,6 @@ pub(crate) fn decorate_data_provider(
         trust_list_publication_repository,
         trust_collection_repository,
         trust_list_subscription_repository,
+        wallet_attestation_repository,
     })
 }

@@ -1,7 +1,7 @@
 use one_core::model::history::HistoryAction;
 use one_core::model::instance::{InstanceRole, InstanceStatus};
 use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
-use one_core::model::wallet_instance_attestation::AttestationType;
+use one_core::model::wallet_attestation::AttestationType;
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;

@@ -2,7 +2,7 @@ use proc_macros::Model;
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId, RevocationListEntryId};
 use time::OffsetDateTime;
 
-use super::wallet_instance_attestation::AttestationType;
+use super::wallet_attestation::AttestationType;
 use crate::model::relation::Related;
 use crate::model::revocation_list::RevocationList;
 

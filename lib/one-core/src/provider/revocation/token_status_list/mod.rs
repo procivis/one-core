@@ -37,7 +37,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
     UpdateRevocationListEntryRequest,
 };
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::{
     CertSelection, CertificatePurpose, CertificateValidationOptions, CertificateValidator,
     EnforceKeyUsage,

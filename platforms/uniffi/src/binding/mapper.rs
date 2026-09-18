@@ -423,6 +423,9 @@ fn convert_history_metadata(
             HistoryMetadataResponse::ManagedInstanceAttestation(value) => Some(
                 HistoryMetadataBinding::ManagedInstanceAttestation(value.to_string()),
             ),
+            HistoryMetadataResponse::WalletAttestation(value) => {
+                Some(HistoryMetadataBinding::WalletAttestation(value.to_string()))
+            }
             HistoryMetadataResponse::WalletRelyingParty(value) => {
                 Some(HistoryMetadataBinding::WalletRelyingParty {
                     value: value.into(),

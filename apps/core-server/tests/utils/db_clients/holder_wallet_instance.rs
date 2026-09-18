@@ -60,7 +60,7 @@ impl HolderWalletInstancesDB {
                 .unwrap_or(Uuid::new_v4().into()),
             nonce: None,
             user_nonce: test_holder_wallet_instance.user_nonce,
-            wallet_unit_attestations: Default::default(),
+            wallet_attestations: Default::default(),
         };
 
         let id = self.repository.create(instance).await.unwrap();

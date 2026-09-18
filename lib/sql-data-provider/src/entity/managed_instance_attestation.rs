@@ -5,7 +5,7 @@ use sea_orm::{
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId, RevocationListEntryId};
 use time::OffsetDateTime;
 
-use crate::entity::wallet_instance_attestation::AttestationType;
+use crate::entity::wallet_attestation::AttestationType;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "managed_instance_attestation")]

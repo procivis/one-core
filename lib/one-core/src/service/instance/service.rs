@@ -469,7 +469,6 @@ impl InstanceService {
                 UpdateInstanceRequest {
                     status: Some(status),
                     authentication_key_id,
-                    ..Default::default()
                 },
             )
             .await
@@ -1308,7 +1307,7 @@ impl RegistrationStatus {
             provider_instance_id,
             nonce,
             user_nonce,
-            wallet_unit_attestations: Default::default(),
+            wallet_attestations: Default::default(),
         }
     }
 }

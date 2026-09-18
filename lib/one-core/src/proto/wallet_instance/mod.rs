@@ -2,16 +2,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::InstanceId;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
-use time::Duration;
+use strum::Display;
+use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::instance::Instance;
 use crate::model::key::Key;
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use crate::model::list_query::ListQuery;
+use crate::model::wallet_attestation::{AttestationType, WalletAttestationFilterValue};
 use crate::proto::certificate_validator::{
     CertificatePurpose, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
@@ -30,7 +32,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::repository::instance_repository::InstanceRepository;
+use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::managed_instance::dto::{
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
@@ -56,11 +58,17 @@ pub(crate) enum IssueWalletAttestationRequest<'a> {
     WuaAndWia(WUARequestParams<'a>, WIARequestParams),
 }
 
-#[derive(PartialEq)]
-pub enum WalletUnitStatusCheckResponse {
+#[derive(Debug, Clone, Copy, PartialEq, Display)]
+pub(crate) enum WalletUnitStatusCheckResponse {
     Revoked,
     Active,
     Expired,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AttestationCheckResult {
+    pub status: WalletUnitStatusCheckResponse,
+    pub expiration_date: Option<OffsetDateTime>,
 }
 
 pub(crate) struct IssuedWalletUnitAttestations {
@@ -73,7 +81,7 @@ pub(crate) struct IssuedWalletUnitAttestations {
 pub(crate) trait HolderWalletUnitProto: Send + Sync {
     async fn issue_wallet_attestations<'a>(
         &self,
-        holder_wallet_unit_id: &InstanceId,
+        holder_wallet_unit: &Instance,
         request: IssueWalletAttestationRequest<'a>,
     ) -> Result<IssuedWalletUnitAttestations, Error>;
 
@@ -88,7 +96,7 @@ pub(crate) trait HolderWalletUnitProto: Send + Sync {
         &self,
         attestation: &str,
         r#type: AttestationType,
-    ) -> Result<WalletUnitStatusCheckResponse, Error>;
+    ) -> Result<AttestationCheckResult, Error>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -121,8 +129,8 @@ pub struct HolderWalletUnitProtoImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    holder_wallet_instance_repository: Arc<dyn InstanceRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
 }
 
 impl HolderWalletUnitProtoImpl {
@@ -131,16 +139,16 @@ impl HolderWalletUnitProtoImpl {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         wallet_provider_client: Arc<dyn WalletProviderClient>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
     ) -> Self {
         Self {
             key_provider,
             key_algorithm_provider,
             wallet_provider_client,
             revocation_method_provider,
-            holder_wallet_instance_repository: holder_wallet_unit_repository,
             certificate_validator,
+            wallet_attestation_repository,
         }
     }
 
@@ -211,49 +219,61 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         &self,
         attestation: &str,
         r#type: AttestationType,
-    ) -> Result<WalletUnitStatusCheckResponse, Error> {
+    ) -> Result<AttestationCheckResult, Error> {
         const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
         const URI_KEY: &str = "uri";
         const INDEX_KEY: &str = "idx";
 
+        // for backward compatibility with old issued WUAs
         let mut deprecated_status = None;
-        let (header, attestation_status) = match r#type {
+        let (header, attestation_status, jwt_expiration) = match r#type {
             AttestationType::WalletInstanceAttestation => {
                 let parsed_attestation: Jwt<WalletInstanceAttestationClaims> =
                     Jwt::build_from_token(attestation, None, None)
                         .await
-                        .error_while("parsing attestation token")?;
+                        .error_while("parsing WIA token")?;
 
                 (
                     parsed_attestation.header,
                     parsed_attestation.payload.custom.client_status,
+                    parsed_attestation.payload.expires_at,
                 )
             }
             AttestationType::KeyAttestation => {
                 let parsed_attestation: Jwt<WalletUnitAttestationClaims> =
                     Jwt::build_from_token(attestation, None, None)
                         .await
-                        .error_while("parsing attestation token")?;
+                        .error_while("parsing KA token")?;
 
                 deprecated_status = parsed_attestation.payload.custom.status;
                 (
                     parsed_attestation.header,
                     parsed_attestation.payload.custom.key_storage_status,
+                    parsed_attestation.payload.expires_at,
                 )
             }
         };
 
-        let status = match (attestation_status, deprecated_status) {
+        let (status, expiration_date) = match (attestation_status, deprecated_status) {
             (None, None) => {
-                return Ok(WalletUnitStatusCheckResponse::Active);
+                return Ok(AttestationCheckResult {
+                    status: WalletUnitStatusCheckResponse::Active,
+                    expiration_date: jwt_expiration,
+                });
             }
-            (None, Some(status)) => status,
+            (None, Some(status)) => (status, jwt_expiration),
             (Some(attestation_status), _) => {
                 if attestation_status.expires_at < crate::clock::now_utc() {
-                    return Ok(WalletUnitStatusCheckResponse::Expired);
+                    return Ok(AttestationCheckResult {
+                        status: WalletUnitStatusCheckResponse::Expired,
+                        expiration_date: Some(attestation_status.expires_at),
+                    });
                 }
 
-                attestation_status.status
+                (
+                    attestation_status.status,
+                    Some(attestation_status.expires_at),
+                )
             }
         };
 
@@ -325,11 +345,14 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             .await
             .error_while("checking credential status")?;
 
-        Ok(match revocation_status {
-            RevocationState::Valid => WalletUnitStatusCheckResponse::Active,
-            RevocationState::Revoked | RevocationState::Suspended { .. } => {
-                WalletUnitStatusCheckResponse::Revoked
-            }
+        Ok(AttestationCheckResult {
+            expiration_date,
+            status: match revocation_status {
+                RevocationState::Valid => WalletUnitStatusCheckResponse::Active,
+                RevocationState::Revoked | RevocationState::Suspended { .. } => {
+                    WalletUnitStatusCheckResponse::Revoked
+                }
+            },
         })
     }
 
@@ -337,21 +360,38 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         &self,
         holder_wallet_unit: &Instance,
     ) -> Result<WalletUnitStatusCheckResponse, Error> {
+        let active_attestations = self
+            .wallet_attestation_repository
+            .get_attestations(ListQuery {
+                filtering: Some(
+                    WalletAttestationFilterValue::Instance(holder_wallet_unit.id).condition()
+                        & WalletAttestationFilterValue::ExpirationDate(ValueComparison {
+                            comparison: ComparisonType::GreaterThan,
+                            value: crate::clock::now_utc(),
+                        }),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting attestations")?
+            .values;
+        for attestation in active_attestations {
+            if self
+                .check_attestation_status(&attestation.attestation, attestation.r#type)
+                .await?
+                .status
+                == WalletUnitStatusCheckResponse::Revoked
+            {
+                return Ok(WalletUnitStatusCheckResponse::Revoked);
+            }
+        }
+
         let key = holder_wallet_unit
             .authentication_key
             .as_ref()
             .ok_or(Error::MappingError(
                 "holder wallet unit authentication key not found".to_string(),
             ))?;
-
-        for wua in &holder_wallet_unit.wallet_unit_attestations.as_ref().await? {
-            if let WalletUnitStatusCheckResponse::Revoked = self
-                .check_attestation_status(&wua.attestation.clone(), AttestationType::KeyAttestation)
-                .await?
-            {
-                return Ok(WalletUnitStatusCheckResponse::Revoked);
-            }
-        }
 
         let (key_handle, key_algorithm) = self.get_key_handle(key.as_ref().await?.as_ref())?;
         let bearer_token = self
@@ -384,15 +424,9 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
     async fn issue_wallet_attestations<'a>(
         &self,
-        holder_wallet_unit_id: &InstanceId,
+        holder_wallet_instance: &Instance,
         request: IssueWalletAttestationRequest<'a>,
     ) -> Result<IssuedWalletUnitAttestations, Error> {
-        let holder_wallet_instance = self
-            .holder_wallet_instance_repository
-            .get(holder_wallet_unit_id)
-            .await
-            .error_while("getting holder wallet unit")?;
-
         let authentication_key =
             holder_wallet_instance
                 .authentication_key

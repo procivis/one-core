@@ -4,7 +4,7 @@ use super::model::Params;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::error::ErrorCodeMixinExt;
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::wallet_attestation::AttestationType;
 use crate::provider::wallet::WalletProviderError;
 
 pub(super) fn validate_params(

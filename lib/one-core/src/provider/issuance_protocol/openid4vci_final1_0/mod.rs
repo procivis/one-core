@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use attestations::{AttestationType, requires_wia};
+use attestations::requires_wia;
 use indexmap::IndexMap;
 use mapper::{
     credential_config_to_holder_signing_algs_and_key_storage_security, get_credential_offer_url,
@@ -82,6 +82,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::{HttpClient, Response, is_media_type};
@@ -119,6 +120,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
+use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
@@ -172,6 +174,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     interaction_repository: Arc<dyn InteractionRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     did_repository: Arc<dyn DidRepository>,
+    wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
     tx_manager: Arc<dyn TransactionManager>,
 }
 
@@ -204,6 +207,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_repository: Arc<dyn InteractionRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         did_repository: Arc<dyn DidRepository>,
+        wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
         tx_manager: Arc<dyn TransactionManager>,
     ) -> Result<Self, InitializationError> {
         let params: OpenID4VCIFinal1Params =
@@ -248,6 +252,7 @@ impl OpenID4VCIFinal1_0 {
             interaction_repository,
             identifier_repository,
             did_repository,
+            wallet_attestation_repository,
             tx_manager,
         })
     }
@@ -468,7 +473,7 @@ impl OpenID4VCIFinal1_0 {
                 interaction_data,
                 &mut [],
                 organisation_id,
-                &[AttestationType::WIA],
+                &[AttestationType::WalletInstanceAttestation],
             )
             .await?;
 
@@ -1120,7 +1125,10 @@ impl OpenID4VCIFinal1_0 {
                 interaction_data,
                 &mut requested_credentials,
                 organisation.id,
-                &[AttestationType::WIA, AttestationType::WUA],
+                &[
+                    AttestationType::WalletInstanceAttestation,
+                    AttestationType::KeyAttestation,
+                ],
             )
             .await?;
         let token_response = self
@@ -2461,7 +2469,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &interaction_data,
                 &mut requested_credentials,
                 organisation.id,
-                &[AttestationType::WUA],
+                &[AttestationType::KeyAttestation],
             )
             .await?;
 

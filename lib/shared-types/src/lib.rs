@@ -42,7 +42,7 @@ mod trust_list_publication_id;
 mod trust_list_publication_method_id;
 mod trust_list_subscription_id;
 mod trust_list_subscription_method_id;
-mod wallet_instance_attestation_id;
+mod wallet_attestation_id;
 
 pub use blob_id::BlobId;
 pub use certificate_id::CertificateId;
@@ -86,4 +86,4 @@ pub use trust_list_publication_id::TrustListPublicationId;
 pub use trust_list_publication_method_id::TrustListPublisherId;
 pub use trust_list_subscription_id::TrustListSubscriptionId;
 pub use trust_list_subscription_method_id::TrustListSubscriberId;
-pub use wallet_instance_attestation_id::WalletInstanceAttestationId;
+pub use wallet_attestation_id::WalletAttestationId;

@@ -3,7 +3,6 @@ use one_core::model::instance::{
 };
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::model::wallet_instance_attestation::WalletInstanceAttestation;
 use one_core::repository::instance_repository::InstanceRepository;
 use shared_types::InstanceId;
 use similar_asserts::assert_eq;
@@ -79,35 +78,15 @@ async fn update_holder_wallet_instance_success() {
         .await
         .unwrap();
 
-    let now = one_core::clock::now_utc();
     let update_request = UpdateInstanceRequest {
         status: Some(InstanceStatus::Revoked),
-        wallet_unit_attestations: Some(vec![WalletInstanceAttestation {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            expiration_date: now,
-            attestation: "dummy attestation".to_string(),
-            holder_wallet_unit_id: id,
-            revocation_list_url: None,
-            revocation_list_index: None,
-            attested_key: key.clone().into(),
-        }]),
         authentication_key_id: None,
     };
 
     provider.update(&id, update_request).await.unwrap();
 
     let reloaded = provider.get(&id).await.unwrap();
-    assert_eq!(
-        reloaded
-            .wallet_unit_attestations
-            .as_ref()
-            .await
-            .unwrap()
-            .len(),
-        1
-    );
+    assert_eq!(reloaded.status, InstanceStatus::Revoked);
     assert_eq!(reloaded.organisation.id(), organisation.id);
     assert_eq!(reloaded.authentication_key.unwrap().id(), key.id);
 }
@@ -126,7 +105,7 @@ fn test_wallet_instance(id: InstanceId, organisation: Organisation, key: Key) ->
         organisation: organisation.into(),
         authentication_key: Some(key.into()),
         provider_instance_id: Uuid::new_v4().into(),
-        wallet_unit_attestations: Default::default(),
+        wallet_attestations: Default::default(),
         nonce: None,
         user_nonce: None,
     }
@@ -153,7 +132,7 @@ async fn setup_empty() -> TestSetup {
             db: TransactionManagerImpl::new(db),
             organisation_repository: data_layer.organisation_repository,
             key_repository: data_layer.key_repository,
-            wallet_unit_attestation_repository: data_layer.wallet_instance_attestation_repository,
+            wallet_attestation_repository: data_layer.wallet_attestation_repository,
         },
         organisation: dummy_organisation(Some(organisation_id)),
         key: Key {

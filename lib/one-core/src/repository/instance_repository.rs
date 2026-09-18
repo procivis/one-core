@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use shared_types::{InstanceId, OrganisationId};
 
+use super::WalletAttestationRepository;
+use super::error::DataLayerError;
 use crate::model::instance::{
     Instance, InstanceList, InstanceListQuery, InstanceRole, UpdateInstanceRequest,
 };
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::relation::AsyncVecLoader;
-use crate::model::wallet_instance_attestation::WalletInstanceAttestation;
-use crate::repository::WalletInstanceAttestationRepository;
-use crate::repository::error::DataLayerError;
+use crate::model::wallet_attestation::{WalletAttestation, WalletAttestationFilterValue};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -34,16 +36,21 @@ pub trait InstanceRepository: Send + Sync {
     async fn delete(&self, id: &InstanceId) -> Result<(), DataLayerError>;
 }
 
-pub struct InstanceWalletInstanceAttestationsLoader {
+pub struct InstanceWalletAttestationsLoader {
     pub id: InstanceId,
-    pub wallet_instance_attestation_repository: Arc<dyn WalletInstanceAttestationRepository>,
+    pub wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
 }
 
 #[async_trait::async_trait]
-impl AsyncVecLoader<WalletInstanceAttestation> for InstanceWalletInstanceAttestationsLoader {
-    async fn load(&self) -> Result<Vec<WalletInstanceAttestation>, DataLayerError> {
-        self.wallet_instance_attestation_repository
-            .get_wallet_instance_attestations_by_holder_wallet_unit(&self.id)
-            .await
+impl AsyncVecLoader<WalletAttestation> for InstanceWalletAttestationsLoader {
+    async fn load(&self) -> Result<Vec<WalletAttestation>, DataLayerError> {
+        Ok(self
+            .wallet_attestation_repository
+            .get_attestations(ListQuery {
+                filtering: Some(WalletAttestationFilterValue::Instance(self.id).condition()),
+                ..Default::default()
+            })
+            .await?
+            .values)
     }
 }

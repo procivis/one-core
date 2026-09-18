@@ -34,7 +34,7 @@ pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod used_nonce;
-pub mod wallet_instance_attestation;
+pub mod wallet_attestation;
 
 pub use identifier::{
     ActiveModel as IdentifierActiveModel, Column as IdentifierColumn, Entity as IdentifierEntity,

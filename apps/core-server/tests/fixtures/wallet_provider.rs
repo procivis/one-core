@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::organisation::{Organisation, UpdateOrganisationRequest};
@@ -6,7 +8,7 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::model::GeneratedKey;
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
-use shared_types::IdentifierId;
+use shared_types::{DidValue, IdentifierId};
 
 use crate::fixtures::jwt::signed_jwt;
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams, TestingKeyParams};
@@ -39,6 +41,8 @@ async fn create_issuer_identifier(context: &TestContext, org: &Organisation) -> 
             },
         )
         .await;
+
+    let key_multibase = issuer_key_pair.key.public_key_as_multibase().unwrap();
     let issuer_did = context
         .db
         .dids
@@ -48,8 +52,10 @@ async fn create_issuer_identifier(context: &TestContext, org: &Organisation) -> 
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: issuer_key.to_owned(),
-                    reference: "1".to_string(),
+                    reference: key_multibase.to_string(),
                 }]),
+                did_method: Some("KEY".into()),
+                did: Some(DidValue::from_str(&format!("did:key:{key_multibase}")).unwrap()),
                 ..Default::default()
             },
         )

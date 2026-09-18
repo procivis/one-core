@@ -59,7 +59,7 @@ fn dummy_instance() -> Instance {
         role: InstanceRole::Wallet,
         organisation: dummy_organisation(None).into(),
         authentication_key: None,
-        wallet_unit_attestations: Default::default(),
+        wallet_attestations: Default::default(),
         nonce: None,
         user_nonce: None,
     }

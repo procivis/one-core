@@ -12,14 +12,15 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{
     Credential, CredentialStateEnum, CredentialType, GetCredentialList,
 };
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
     Error as CredentialValidityManagerError, MockCredentialValidityManager,
 };
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_instance::{
-    Error as WalletInstanceError, MockHolderWalletUnitProto, WalletUnitStatusCheckResponse,
+    AttestationCheckResult, Error as WalletInstanceError, MockHolderWalletUnitProto,
+    WalletUnitStatusCheckResponse,
 };
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::blob_storage::MockBlobStorage;
@@ -274,7 +275,12 @@ async fn test_credential_with_valid_attestations_is_not_revoked() {
     wallet_unit_proto
         .expect_check_attestation_status()
         .once()
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Active));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Active,
+                expiration_date: None,
+            })
+        });
 
     let ecosystem = setup(Mocks {
         credential_validity_manager: no_revocations(),
@@ -300,7 +306,12 @@ async fn test_revoked_wallet_unit_attestation_revokes_the_pid() {
         .expect_check_attestation_status()
         .once()
         .with(eq(WUA_TOKEN), eq(AttestationType::KeyAttestation))
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let ecosystem = setup(Mocks {
         credential_validity_manager: revokes_successfully(),
@@ -329,7 +340,12 @@ async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
             eq(WIA_TOKEN),
             eq(AttestationType::WalletInstanceAttestation),
         )
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let ecosystem = setup(Mocks {
         credential_validity_manager: revokes_successfully(),
@@ -365,7 +381,12 @@ async fn test_revoked_wia_revokes_the_whole_batch_once() {
             eq(WIA_TOKEN),
             eq(AttestationType::WalletInstanceAttestation),
         )
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let ecosystem = setup(Mocks {
         credential_validity_manager: revokes_successfully(),
@@ -404,10 +425,13 @@ async fn test_revoked_wua_revokes_only_the_batch_item() {
         .expect_check_attestation_status()
         .times(2)
         .returning(|attestation, _| {
-            Ok(if attestation == WUA_TOKEN {
-                WalletUnitStatusCheckResponse::Revoked
-            } else {
-                WalletUnitStatusCheckResponse::Active
+            Ok(AttestationCheckResult {
+                status: if attestation == WUA_TOKEN {
+                    WalletUnitStatusCheckResponse::Revoked
+                } else {
+                    WalletUnitStatusCheckResponse::Active
+                },
+                expiration_date: None,
             })
         });
 
@@ -443,7 +467,12 @@ async fn test_revoked_wia_skips_the_wua_check() {
             eq(WIA_TOKEN),
             eq(AttestationType::WalletInstanceAttestation),
         )
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let ecosystem = setup(Mocks {
         credential_validity_manager: revokes_successfully(),
@@ -521,10 +550,13 @@ async fn test_all_pages_are_checked() {
         .times(2)
         .returning(move |_, _| {
             checked += 1;
-            Ok(if checked == 1 {
-                WalletUnitStatusCheckResponse::Active
-            } else {
-                WalletUnitStatusCheckResponse::Revoked
+            Ok(AttestationCheckResult {
+                status: if checked == 1 {
+                    WalletUnitStatusCheckResponse::Active
+                } else {
+                    WalletUnitStatusCheckResponse::Revoked
+                },
+                expiration_date: None,
             })
         });
 
@@ -550,7 +582,12 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
     wallet_unit_proto
         .expect_check_attestation_status()
         .once()
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let mut credential_validity_manager = MockCredentialValidityManager::new();
     credential_validity_manager
@@ -588,7 +625,12 @@ async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
     wallet_unit_proto
         .expect_check_attestation_status()
         .once()
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let mut credential_validity_manager = MockCredentialValidityManager::new();
     credential_validity_manager
@@ -634,7 +676,12 @@ async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
     wallet_unit_proto
         .expect_check_attestation_status()
         .once()
-        .returning(|_, _| Ok(WalletUnitStatusCheckResponse::Revoked));
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Revoked,
+                expiration_date: None,
+            })
+        });
 
     let mut credential_validity_manager = MockCredentialValidityManager::new();
     credential_validity_manager

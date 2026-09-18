@@ -29,7 +29,7 @@ pub mod trust_collection_repository;
 pub mod trust_entry_repository;
 pub mod trust_list_publication_repository;
 pub mod trust_list_subscription_repository;
-pub mod wallet_instance_attestation_repository;
+pub mod wallet_attestation_repository;
 
 use std::sync::Arc;
 
@@ -61,7 +61,7 @@ use trust_collection_repository::TrustCollectionRepository;
 use trust_entry_repository::TrustEntryRepository;
 use trust_list_publication_repository::TrustListPublicationRepository;
 use trust_list_subscription_repository::TrustListSubscriptionRepository;
-use wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use wallet_attestation_repository::WalletAttestationRepository;
 
 use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::localized_text_repository::LocalizedTextRepository;
@@ -95,9 +95,7 @@ pub trait DataRepository: Send + Sync {
     fn get_managed_instance_repository(&self) -> Arc<dyn ManagedInstanceRepository>;
     fn get_notification_repository(&self) -> Arc<dyn NotificationRepository>;
     fn get_instance_repository(&self) -> Arc<dyn InstanceRepository>;
-    fn get_wallet_instance_attestation_repository(
-        &self,
-    ) -> Arc<dyn WalletInstanceAttestationRepository>;
+    fn get_wallet_attestation_repository(&self) -> Arc<dyn WalletAttestationRepository>;
     fn get_managed_instance_attestation_repository(
         &self,
     ) -> Arc<dyn ManagedInstanceAttestationRepository>;

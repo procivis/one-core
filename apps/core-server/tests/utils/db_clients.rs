@@ -24,7 +24,7 @@ use crate::utils::db_clients::localized_text::LocalizedTextDB;
 use crate::utils::db_clients::managed_instances::ManagedInstancesDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::trust_collections::TrustCollectionDB;
-use crate::utils::db_clients::wallet_instance_attestations::WalletInstanceAttestationsDB;
+use crate::utils::db_clients::wallet_attestations::WalletAttestationsDB;
 
 pub mod blobs;
 pub mod certificates;
@@ -49,7 +49,7 @@ pub mod trust_collections;
 pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
-pub mod wallet_instance_attestations;
+pub mod wallet_attestations;
 
 pub struct DbClient {
     pub organisations: OrganisationsDB,
@@ -75,7 +75,7 @@ pub struct DbClient {
     pub managed_instances: ManagedInstancesDB,
     pub holder_wallet_units: HolderWalletInstancesDB,
     #[expect(unused)]
-    pub wallet_instance_attestations: WalletInstanceAttestationsDB,
+    pub wallet_attestations: WalletAttestationsDB,
     pub localized_text: LocalizedTextDB,
     pub db_conn: DbConn,
 }
@@ -114,8 +114,8 @@ impl DbClient {
             blobs: BlobsDB::new(layer.get_blob_repository()),
             managed_instances: ManagedInstancesDB::new(layer.get_managed_instance_repository()),
             holder_wallet_units: HolderWalletInstancesDB::new(layer.get_instance_repository()),
-            wallet_instance_attestations: WalletInstanceAttestationsDB::new(
-                layer.get_wallet_instance_attestation_repository(),
+            wallet_attestations: WalletAttestationsDB::new(
+                layer.get_wallet_attestation_repository(),
             ),
             localized_text: LocalizedTextDB::new(layer.get_localized_text_repository()),
         }

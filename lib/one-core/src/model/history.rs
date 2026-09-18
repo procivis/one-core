@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaId, EcosystemId, EntityId, HistoryId, IdentifierId,
     ManagedInstanceAttestationId, OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
+    WalletAttestationId,
 };
 use standardized_types::etsi_119_602::MultiLangString;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
@@ -23,6 +24,7 @@ pub enum HistoryMetadata {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadata),
     ManagedInstanceAttestation(ManagedInstanceAttestationId),
+    WalletAttestation(WalletAttestationId),
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadata),
     TrustResolution(TrustResolutionMetadata),

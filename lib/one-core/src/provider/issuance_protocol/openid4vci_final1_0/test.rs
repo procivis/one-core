@@ -29,7 +29,6 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VCIFinal1_0;
-use super::attestations::AttestationType;
 use super::model::{
     HolderBinding, HolderCredentialConfiguration, HolderInteractionData,
     OpenID4VCIIssuerInteractionDataDTO, RequestedCredential,
@@ -58,6 +57,7 @@ use crate::model::key::Key;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::relation::Related;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
@@ -69,8 +69,8 @@ use crate::proto::identifier_creator::{
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wallet_instance::{
-    IssueWalletAttestationRequest, IssuedWalletUnitAttestations, MockHolderWalletUnitProto,
-    WUARequestParams,
+    AttestationCheckResult, IssueWalletAttestationRequest, IssuedWalletUnitAttestations,
+    MockHolderWalletUnitProto, WUARequestParams, WalletUnitStatusCheckResponse,
 };
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
@@ -105,6 +105,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::wallet_attestation_repository::MockWalletAttestationRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::managed_instance::dto::IssueWalletUnitAttestationResponseDTO;
 use crate::service::test_utilities::{
@@ -133,6 +134,7 @@ struct TestInputs {
     pub interaction_repository: MockInteractionRepository,
     pub identifier_repository: MockIdentifierRepository,
     pub did_repository: MockDidRepository,
+    pub wallet_attestation_repository: MockWalletAttestationRepository,
     pub config: CoreConfig,
     pub params: Option<serde_json::Value>,
     pub client: Option<MockHttpClient>,
@@ -176,6 +178,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.identifier_repository),
         Arc::new(inputs.did_repository),
+        Arc::new(inputs.wallet_attestation_repository),
         Arc::new(NoTransactionManager),
     )
     .unwrap()
@@ -3712,7 +3715,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 status: InstanceStatus::Active,
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
-                wallet_unit_attestations: Default::default(),
+                wallet_attestations: Default::default(),
                 nonce: None,
                 user_nonce: None,
             }))
@@ -3731,6 +3734,25 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 wia_pop_key: None,
             })
         });
+    holder_wallet_unit_proto
+        .expect_check_attestation_status()
+        .once()
+        .with(
+            eq("wua_attestation_jwt"),
+            eq(AttestationType::KeyAttestation),
+        )
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Active,
+                expiration_date: None,
+            })
+        });
+
+    let mut wallet_attestation_repository = MockWalletAttestationRepository::new();
+    wallet_attestation_repository
+        .expect_create()
+        .once()
+        .returning(|attestation| Ok(attestation.id));
 
     let identifier = dummy_identifier();
     let mut identifier_creator = MockIdentifierCreator::new();
@@ -3762,6 +3784,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
+        wallet_attestation_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -5612,7 +5635,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
                 status: InstanceStatus::Active,
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
-                wallet_unit_attestations: Default::default(),
+                wallet_attestations: Default::default(),
                 nonce: None,
                 user_nonce: None,
             }))
@@ -5639,10 +5662,28 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
                 wia_pop_key: None,
             })
         });
+    holder_wallet_unit_proto
+        .expect_check_attestation_status()
+        .times(2)
+        .with(eq("wua"), eq(AttestationType::KeyAttestation))
+        .returning(|_, _| {
+            Ok(AttestationCheckResult {
+                status: WalletUnitStatusCheckResponse::Active,
+                expiration_date: None,
+            })
+        });
+
+    let mut wallet_attestation_repository = MockWalletAttestationRepository::new();
+    wallet_attestation_repository
+        .expect_create()
+        .times(2)
+        .returning(|attestation| Ok(attestation.id));
+
     let protocol = setup_protocol(TestInputs {
         key_security_level_provider,
         holder_wallet_unit_repository,
         holder_wallet_unit_proto,
+        wallet_attestation_repository,
         ..Default::default()
     });
 
@@ -5717,7 +5758,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
             &interaction_data,
             &mut requested_credentials,
             Uuid::new_v4().into(),
-            &[AttestationType::WUA],
+            &[AttestationType::KeyAttestation],
         )
         .await
         .unwrap();

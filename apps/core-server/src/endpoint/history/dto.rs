@@ -12,6 +12,7 @@ use serde_json::Value;
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId,
     ManagedInstanceAttestationId, OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
+    WalletAttestationId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -129,6 +130,7 @@ pub(crate) enum HistoryMetadataRestEnum {
     /// Metadata for error events.
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
     ManagedInstanceAttestation(#[try_from(infallible)] ManagedInstanceAttestationId),
+    WalletAttestation(#[try_from(infallible)] WalletAttestationId),
     /// Additional information from non-Core services recording history
     /// events.
     External(#[try_from(infallible)] serde_json::Value),

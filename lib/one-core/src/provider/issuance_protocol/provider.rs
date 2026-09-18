@@ -33,6 +33,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::instance_repository::InstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
+use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
 
 #[cfg_attr(test, mockall::automock)]
 pub(crate) trait IssuanceProtocolProvider: Send + Sync {
@@ -96,6 +97,7 @@ fn initialize_provider(
     interaction_repository: &Arc<dyn InteractionRepository>,
     identifier_repository: &Arc<dyn IdentifierRepository>,
     did_repository: &Arc<dyn DidRepository>,
+    wallet_attestation_repository: &Arc<dyn WalletAttestationRepository>,
     tx_manager: &Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn IssuanceProtocol>, InitializationError> {
     let provider: Arc<dyn IssuanceProtocol> = match fields.r#type {
@@ -126,6 +128,7 @@ fn initialize_provider(
             interaction_repository.clone(),
             identifier_repository.clone(),
             did_repository.clone(),
+            wallet_attestation_repository.clone(),
             tx_manager.clone(),
         )?),
     };
@@ -158,6 +161,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
     interaction_repository: Arc<dyn InteractionRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     did_repository: Arc<dyn DidRepository>,
+    wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
     tx_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn IssuanceProtocolProvider>, ConfigValidationError> {
     let core_config = Arc::new(config.to_owned());
@@ -192,6 +196,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
                 &interaction_repository,
                 &identifier_repository,
                 &did_repository,
+                &wallet_attestation_repository,
                 &tx_manager,
             )?;
 

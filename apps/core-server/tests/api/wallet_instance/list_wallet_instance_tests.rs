@@ -1,7 +1,7 @@
 use one_core::model::history::HistoryMetadata;
 use one_core::model::instance::InstanceStatus;
 use one_core::model::managed_instance_attestation::ManagedInstanceAttestation;
-use one_core::model::wallet_instance_attestation::AttestationType;
+use one_core::model::wallet_attestation::AttestationType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;

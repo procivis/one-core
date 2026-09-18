@@ -12,7 +12,7 @@ use crate::model::credential::{
 };
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
 use crate::model::list_query::ListPagination;
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage::BlobStorage;
@@ -236,6 +236,7 @@ impl EudiEcosystem {
             .wallet_unit_proto
             .check_attestation_status(&attestation, r#type)
             .await
+            .map(|check_result| check_result.status)
         {
             Ok(WalletUnitStatusCheckResponse::Revoked) => Ok(true),
             Ok(WalletUnitStatusCheckResponse::Active)

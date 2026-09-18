@@ -5,7 +5,7 @@ use super::EudiEcosystem;
 use crate::clock::now_utc;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::credential_schema::WalletAttestation;
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::proto::wrp_validator::error::WRPValidatorError;
@@ -74,7 +74,8 @@ impl EudiEcosystem {
             .wallet_unit_proto
             .check_attestation_status(token, AttestationType::WalletInstanceAttestation)
             .await
-            .error_while("checking wallet attestation status")?;
+            .error_while("checking wallet instance attestation status")?
+            .status;
         match status {
             WalletUnitStatusCheckResponse::Active => Ok(()),
             WalletUnitStatusCheckResponse::Revoked => Err(
@@ -125,7 +126,8 @@ impl EudiEcosystem {
             .wallet_unit_proto
             .check_attestation_status(token, AttestationType::KeyAttestation)
             .await
-            .error_while("checking wallet attestation status")?;
+            .error_while("checking key attestation status")?
+            .status;
         match status {
             WalletUnitStatusCheckResponse::Active => Ok(()),
             WalletUnitStatusCheckResponse::Revoked => {
@@ -169,7 +171,7 @@ mod test {
     use crate::proto::credential_validity_manager::MockCredentialValidityManager;
     use crate::proto::jwt::Jwt;
     use crate::proto::session_provider::NoSessionProvider;
-    use crate::proto::wallet_instance::MockHolderWalletUnitProto;
+    use crate::proto::wallet_instance::{AttestationCheckResult, MockHolderWalletUnitProto};
     use crate::proto::wrp_validator::MockWRPValidator;
     use crate::provider::blob_storage::provider::MockBlobStorageProvider;
     use crate::provider::credential_formatter::model::PublicKeySource;
@@ -325,14 +327,9 @@ mod test {
             .once()
             .withf(move |token, r#type| token == expected_token && *r#type == expected_type)
             .returning(move |_, _| {
-                Ok(match status {
-                    WalletUnitStatusCheckResponse::Active => WalletUnitStatusCheckResponse::Active,
-                    WalletUnitStatusCheckResponse::Revoked => {
-                        WalletUnitStatusCheckResponse::Revoked
-                    }
-                    WalletUnitStatusCheckResponse::Expired => {
-                        WalletUnitStatusCheckResponse::Expired
-                    }
+                Ok(AttestationCheckResult {
+                    status,
+                    expiration_date: None,
                 })
             });
         wallet_unit_proto

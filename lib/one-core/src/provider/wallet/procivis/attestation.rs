@@ -16,7 +16,7 @@ use crate::model::managed_instance::ManagedInstance;
 use crate::model::managed_instance_attestation::{
     ManagedInstanceAttestation, UpdateManagedInstanceAttestationRequest,
 };
-use crate::model::wallet_instance_attestation::AttestationType;
+use crate::model::wallet_attestation::AttestationType;
 use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::AuthenticationFn;

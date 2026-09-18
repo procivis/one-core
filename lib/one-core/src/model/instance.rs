@@ -11,7 +11,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::model::relation::{Related, RelatedVec};
-use crate::model::wallet_instance_attestation::WalletInstanceAttestation;
+use crate::model::wallet_attestation::WalletAttestation;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -33,7 +33,7 @@ pub struct Instance {
     // Relations:
     pub organisation: Related<Organisation>,
     pub authentication_key: Option<Related<Key>>,
-    pub wallet_unit_attestations: RelatedVec<WalletInstanceAttestation>,
+    pub wallet_attestations: RelatedVec<WalletAttestation>,
 }
 
 #[derive(
@@ -69,7 +69,6 @@ pub enum InstanceStatus {
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateInstanceRequest {
     pub status: Option<InstanceStatus>,
-    pub wallet_unit_attestations: Option<Vec<WalletInstanceAttestation>>,
     pub authentication_key_id: Option<KeyId>,
 }
 

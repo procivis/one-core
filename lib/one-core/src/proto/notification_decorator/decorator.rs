@@ -34,7 +34,7 @@ use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use crate::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
 
 struct DecoratedDataProvider {
     // for non-decorated repositories
@@ -125,11 +125,8 @@ impl DataRepository for DecoratedDataProvider {
     fn get_instance_repository(&self) -> Arc<dyn InstanceRepository> {
         self.data_provider.get_instance_repository()
     }
-    fn get_wallet_instance_attestation_repository(
-        &self,
-    ) -> Arc<dyn WalletInstanceAttestationRepository> {
-        self.data_provider
-            .get_wallet_instance_attestation_repository()
+    fn get_wallet_attestation_repository(&self) -> Arc<dyn WalletAttestationRepository> {
+        self.data_provider.get_wallet_attestation_repository()
     }
     fn get_managed_instance_attestation_repository(
         &self,

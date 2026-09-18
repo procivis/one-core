@@ -5,9 +5,7 @@ use sea_orm::{
     EntityTrait, EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
 };
 use serde::Deserialize;
-use shared_types::{
-    InstanceId, KeyId, ManagedInstanceId, OrganisationId, WalletInstanceAttestationId,
-};
+use shared_types::{InstanceId, KeyId, ManagedInstanceId, OrganisationId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

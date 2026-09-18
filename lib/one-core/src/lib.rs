@@ -333,8 +333,8 @@ impl OneCore {
             key_algorithm_provider.clone(),
             wallet_unit_client.clone(),
             revocation_method_provider.clone(),
-            data_provider.get_instance_repository(),
             certificate_validator.clone(),
+            data_provider.get_wallet_attestation_repository(),
         ));
 
         let csr_creator = Arc::new(CsrCreatorImpl::new(
@@ -455,6 +455,7 @@ impl OneCore {
             data_provider.get_interaction_repository(),
             data_provider.get_identifier_repository(),
             data_provider.get_did_repository(),
+            data_provider.get_wallet_attestation_repository(),
             data_provider.get_tx_manager(),
         )?;
 

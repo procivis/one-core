@@ -111,6 +111,15 @@ pub(crate) fn timestamp_null<T: IntoIden, DB: HasDatabaseBackend>(
         .null()
         .take()
 }
+pub(crate) fn timestamp_seconds_null<T: IntoIden, DB: HasDatabaseBackend>(
+    ident: T,
+    manager: &DB,
+) -> ColumnDef {
+    ColumnDef::new(ident)
+        .datetime_second_precision(manager)
+        .null()
+        .take()
+}
 
 pub(crate) fn large_blob<T: IntoIden, DB: HasDatabaseBackend>(ident: T, manager: &DB) -> ColumnDef {
     ColumnDef::new(ident).large_blob(manager).not_null().take()

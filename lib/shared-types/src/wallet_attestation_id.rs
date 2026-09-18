@@ -7,12 +7,12 @@ use crate::macros::impls_for_uuid_newtype;
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]
 #[repr(transparent)]
-pub struct WalletInstanceAttestationId(Uuid);
+pub struct WalletAttestationId(Uuid);
 
-impls_for_uuid_newtype!(WalletInstanceAttestationId);
+impls_for_uuid_newtype!(WalletAttestationId);
 
 #[cfg(feature = "sea-orm")]
 use crate::macros::impls_for_seaorm_newtype;
 
 #[cfg(feature = "sea-orm")]
-impls_for_seaorm_newtype!(WalletInstanceAttestationId);
+impls_for_seaorm_newtype!(WalletAttestationId);

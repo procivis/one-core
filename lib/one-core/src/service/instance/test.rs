@@ -595,7 +595,7 @@ async fn holder_instance_status_check_still_valid() {
                 provider_instance_id: Uuid::new_v4().into(),
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
-                wallet_unit_attestations: Default::default(),
+                wallet_attestations: Default::default(),
                 nonce: None,
                 user_nonce: None,
             })
@@ -650,7 +650,7 @@ async fn holder_instance_status_check_revocation() {
                 }
                 .into(),
                 authentication_key: None,
-                wallet_unit_attestations: Default::default(),
+                wallet_attestations: Default::default(),
                 nonce: None,
                 user_nonce: None,
             })
@@ -744,7 +744,7 @@ async fn holder_instance_status_check_already_revoked() {
                 provider_instance_id: Uuid::new_v4().into(),
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
-                wallet_unit_attestations: Default::default(),
+                wallet_attestations: Default::default(),
                 nonce: None,
                 user_nonce: None,
             })
@@ -807,7 +807,7 @@ async fn holder_register_already_exists() {
                 provider_instance_id: Uuid::new_v4().into(),
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
-                wallet_unit_attestations: Default::default(),
+                wallet_attestations: Default::default(),
                 nonce: None,
                 user_nonce: None,
             }))

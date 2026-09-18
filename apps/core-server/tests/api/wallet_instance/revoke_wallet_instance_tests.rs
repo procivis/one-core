@@ -5,7 +5,7 @@ use one_core::model::organisation::UpdateOrganisationRequest;
 use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, RevocationListPurpose,
 };
-use one_core::model::wallet_instance_attestation::AttestationType;
+use one_core::model::wallet_attestation::AttestationType;
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;

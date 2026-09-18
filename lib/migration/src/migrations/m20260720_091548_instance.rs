@@ -326,7 +326,7 @@ async fn managed_instance_attested_key_table(manager: &SchemaManager<'_>) -> Res
 }
 
 #[derive(DeriveIden)]
-enum Instance {
+pub(crate) enum Instance {
     Table,
     Id,
     AuthenticationKeyId,
@@ -480,7 +480,7 @@ async fn instance_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 }
 
 #[derive(DeriveIden)]
-enum NewWalletInstanceAttestation {
+pub(crate) enum NewWalletInstanceAttestation {
     Table,
     Id,
     CreatedDate,

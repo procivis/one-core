@@ -39,7 +39,7 @@ use one_core::repository::trust_collection_repository::TrustCollectionRepository
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use one_core::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use one_core::repository::wallet_attestation_repository::WalletAttestationRepository;
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
@@ -63,7 +63,7 @@ use crate::notification::NotificationProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
 use crate::transaction_context::TransactionManagerImpl;
-use crate::wallet_instance_attestation::WalletInstanceAttestationProvider;
+use crate::wallet_attestation::WalletAttestationProvider;
 
 mod common;
 mod entity;
@@ -131,7 +131,7 @@ pub struct DataLayer {
     notification_repository: Arc<dyn NotificationRepository>,
     wallet_instance_repository: Arc<dyn ManagedInstanceRepository>,
     holder_wallet_instance_repository: Arc<dyn InstanceRepository>,
-    wallet_instance_attestation_repository: Arc<dyn WalletInstanceAttestationRepository>,
+    wallet_attestation_repository: Arc<dyn WalletAttestationRepository>,
     managed_instance_attestation_repository: Arc<dyn ManagedInstanceAttestationRepository>,
     #[allow(dead_code)]
     localized_text_repository: Arc<dyn LocalizedTextRepository>,
@@ -315,7 +315,7 @@ impl DataLayer {
                 .clone(),
         });
 
-        let wallet_instance_attestation_repository = Arc::new(WalletInstanceAttestationProvider {
+        let wallet_attestation_repository = Arc::new(WalletAttestationProvider {
             db: transaction_manager.clone(),
             key_repository: key_repository.clone(),
         });
@@ -324,7 +324,7 @@ impl DataLayer {
             db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
             key_repository: key_repository.clone(),
-            wallet_unit_attestation_repository: wallet_instance_attestation_repository.clone(),
+            wallet_attestation_repository: wallet_attestation_repository.clone(),
         });
 
         Self {
@@ -356,7 +356,7 @@ impl DataLayer {
             notification_repository,
             wallet_instance_repository,
             holder_wallet_instance_repository,
-            wallet_instance_attestation_repository,
+            wallet_attestation_repository,
             managed_instance_attestation_repository,
             localized_text_repository,
         }
@@ -444,10 +444,8 @@ impl DataRepository for DataLayer {
         self.wallet_instance_repository.clone()
     }
 
-    fn get_wallet_instance_attestation_repository(
-        &self,
-    ) -> Arc<dyn WalletInstanceAttestationRepository> {
-        self.wallet_instance_attestation_repository.clone()
+    fn get_wallet_attestation_repository(&self) -> Arc<dyn WalletAttestationRepository> {
+        self.wallet_attestation_repository.clone()
     }
 
     fn get_managed_instance_attestation_repository(
@@ -491,4 +489,4 @@ mod managed_instance_attestation;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;
 mod transaction_context;
-mod wallet_instance_attestation;
+mod wallet_attestation;

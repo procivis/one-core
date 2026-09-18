@@ -50,3 +50,4 @@ pub mod m20260915_071407_wallet_unit_history;
 pub mod m20260915_082929_credential_schema_wallet_attestation;
 pub mod m20260915_090000_add_localized_text_name_index;
 pub mod m20260915_120242_attestation_hash;
+pub mod m20260918_015758_wallet_attestation;

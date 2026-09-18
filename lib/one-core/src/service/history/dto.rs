@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId,
     ManagedInstanceAttestationId, OrganisationId, ProofId, ProofSchemaId, TrustCollectionId,
+    WalletAttestationId,
 };
 use time::OffsetDateTime;
 
@@ -22,6 +23,7 @@ pub enum HistoryMetadataResponse {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadataDTO),
     ManagedInstanceAttestation(ManagedInstanceAttestationId),
+    WalletAttestation(WalletAttestationId),
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadataDTO),
     TrustResolution(TrustResolutionMetadataDTO),
