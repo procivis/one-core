@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{EcosystemId, OrganisationId, ProofId};
+use shared_types::{OrganisationId, ProofId};
 use standardized_types::etsi_119_475::registration_certificate;
 use standardized_types::etsi_119_475::registry::IntendedUse;
 use standardized_types::etsi_119_602::MultiLangString;
@@ -11,51 +10,26 @@ use standardized_types::openid4vp::VerifierInfoAttestation;
 use standardized_types::openid4vp::dcql::{CredentialQuery, CredentialQueryId, DcqlQuery};
 use time::Duration;
 use url::Url;
-use uuid::Uuid;
 
 use super::mapper::credential_query_matches_reg_cert_credential;
-use super::{HolderProofError, HolderProofResolver, ProofTrustSource, QueryMismatchReason};
-use crate::config::core_config::BlobStorageType;
+use super::{HolderProofError, QueryMismatchReason};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
-use crate::model::blob::{Blob, BlobType};
-use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    WalletRelyingPartyMetadata,
-};
-use crate::proto::session_provider::{SessionExt, SessionProvider};
-use crate::proto::wrp_validator::WRPValidator;
+use crate::model::history::{HistoryAction, HistoryEntityType, WalletRelyingPartyMetadata};
 use crate::proto::wrp_validator::model::AccessCertificateResult;
-use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
-use crate::repository::history_repository::HistoryRepository;
+use crate::provider::ecosystem::eudi::{AttestationCoverageSource, EudiEcosystem};
 
-impl HolderProofResolver {
-    pub(crate) fn new(
-        history_repository: Arc<dyn HistoryRepository>,
-        wrp_validator: Arc<dyn WRPValidator>,
-        blob_storage_provider: Arc<dyn BlobStorageProvider>,
-        session_provider: Arc<dyn SessionProvider>,
-        ecosystem: EcosystemId,
-    ) -> Self {
-        Self {
-            history_repository,
-            wrp_validator,
-            blob_storage_provider,
-            session_provider,
-            ecosystem,
-        }
-    }
-
+impl EudiEcosystem {
     #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
-    pub(crate) async fn resolve_trust(
+    pub(crate) async fn resolve_holder_proof(
         &self,
         verifier_details: Option<&IdentifierDetails>,
         proof_id: ProofId,
         organisation_id: OrganisationId,
         dcql_query: &DcqlQuery,
         verifier_info: &[VerifierInfoAttestation],
-        leeway: Duration,
     ) -> Result<(), HolderProofError> {
+        let leeway = self.params.leeway_seconds;
         // trust ecosystem does not support other identifiers than certificates
         let access_certificate = match verifier_details {
             None => {
@@ -121,7 +95,8 @@ impl HolderProofResolver {
 
         self.store_trust_history_event(
             HistoryAction::WrpAcReceived,
-            proof_id,
+            proof_id.into(),
+            HistoryEntityType::Proof,
             organisation_id,
             Some(certificate.chain.to_owned()),
             None,
@@ -273,7 +248,7 @@ impl HolderProofResolver {
             else {
                 return Err(HolderProofError::DisallowedQuery {
                     query: credential_query.id.to_owned(),
-                    document: ProofTrustSource::RegistrationCertificate,
+                    document: AttestationCoverageSource::RegistrationCertificate,
                     reason,
                 });
             };
@@ -301,7 +276,8 @@ impl HolderProofResolver {
         {
             self.store_trust_history_event(
                 HistoryAction::WrpRcReceived,
-                proof_id,
+                proof_id.into(),
+                HistoryEntityType::Proof,
                 organisation_id,
                 Some(used_reg_cert),
                 Some(WalletRelyingPartyMetadata {
@@ -345,7 +321,7 @@ impl HolderProofResolver {
             )
             .map_err(|reason| HolderProofError::DisallowedQuery {
                 query: credential_query.id.to_owned(),
-                document: ProofTrustSource::NationalRegistry,
+                document: AttestationCoverageSource::NationalRegistry,
                 reason,
             })?;
 
@@ -357,7 +333,8 @@ impl HolderProofResolver {
 
         self.store_trust_history_event(
             HistoryAction::WrpNrReceived,
-            proof_id,
+            proof_id.into(),
+            HistoryEntityType::Proof,
             organisation_id,
             Some(info.jwt),
             Some(WalletRelyingPartyMetadata {
@@ -368,58 +345,6 @@ impl HolderProofResolver {
             }),
         )
         .await?;
-
-        Ok(())
-    }
-
-    async fn store_trust_history_event(
-        &self,
-        action: HistoryAction,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
-        blob_content: Option<String>,
-        metadata: Option<WalletRelyingPartyMetadata>,
-    ) -> Result<(), HolderProofError> {
-        let metadata_blob_id = if let Some(blob_content) = blob_content {
-            let blob_storage = self
-                .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)?;
-
-            let blob = Blob::new(blob_content, BlobType::HistoryMetadata);
-
-            let blob_id = blob.id;
-            blob_storage
-                .create(blob)
-                .await
-                .error_while("creating history metadata blob")?;
-
-            Some(blob_id)
-        } else {
-            None
-        };
-
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                action,
-                name: Default::default(),
-                target: None,
-                source: HistorySource::Core,
-                entity_id: Some(proof_id.into()),
-                entity_type: HistoryEntityType::Proof,
-                metadata: Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        ecosystem: Some(self.ecosystem.to_owned()),
-                        ..metadata.unwrap_or_default()
-                    },
-                )),
-                metadata_blob_id,
-                organisation_id: Some(organisation_id),
-                user: self.session_provider.session().user(),
-            })
-            .await
-            .error_while("storing history")?;
 
         Ok(())
     }

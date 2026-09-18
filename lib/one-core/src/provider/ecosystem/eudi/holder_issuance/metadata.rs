@@ -8,10 +8,11 @@ use standardized_types::openid4vci::{
 use standardized_types::openid4vp::dcql;
 use url::Url;
 
-use super::{AttestationCoverageSource, HolderIssuanceError, HolderIssuanceResolver};
+use super::HolderIssuanceError;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::proto::wrp_validator::model::AccessCertificateResult;
+use crate::provider::ecosystem::eudi::{AttestationCoverageSource, EudiEcosystem};
 use crate::provider::ecosystem::model::IssuerMetadataRepresentation;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -24,7 +25,7 @@ pub(super) struct MetadataEcosystemData {
     pub access_certificate: String,
 }
 
-impl HolderIssuanceResolver {
+impl EudiEcosystem {
     /// Returns the data that the next step needs to validate the issued credentials.
     #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     pub(crate) async fn resolve_metadata_trust(
@@ -155,7 +156,7 @@ impl HolderIssuanceResolver {
                 relying_party_id,
                 registry_url,
                 Some(&self.trust_scope(organisation_id)),
-                self.leeway,
+                self.params.leeway_seconds,
             )
             .await
             .error_while("fetching from WRP registry")?;
@@ -243,7 +244,7 @@ impl HolderIssuanceResolver {
                 &issuer_info.data,
                 expected_relying_party_id,
                 Some(&self.trust_scope(organisation_id)),
-                self.leeway,
+                self.params.leeway_seconds,
             )
             .await
             .error_while("validating registration certificate")?;

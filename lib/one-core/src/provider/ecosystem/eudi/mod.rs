@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use holder_issuance::HolderIssuanceResolver;
-use holder_proof::HolderProofResolver;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
@@ -80,14 +78,21 @@ pub(super) fn pid_schema_ids(
         .collect()
 }
 
+/// A registration certificate or a national registry entry. Both list the allowed credentials.
+#[derive(Debug, Clone, Copy, strum::Display)]
+pub(crate) enum AttestationCoverageSource {
+    #[strum(serialize = "registration certificate")]
+    RegistrationCertificate,
+    #[strum(serialize = "national registry response")]
+    NationalRegistry,
+}
+
 #[derive(Provider)]
 pub struct EudiEcosystem {
     config_id: EcosystemId,
     params: Params,
     config: CoreConfig,
 
-    holder_proof_resolver: HolderProofResolver,
-    holder_issuance_resolver: HolderIssuanceResolver,
     wrp_validator: Arc<dyn WRPValidator>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -95,6 +100,7 @@ pub struct EudiEcosystem {
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    session_provider: Arc<dyn SessionProvider>,
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
 }
@@ -124,22 +130,6 @@ impl EudiEcosystem {
 
         Ok(Self {
             config,
-            holder_proof_resolver: HolderProofResolver::new(
-                history_repository.clone(),
-                wrp_validator.clone(),
-                blob_storage_provider.clone(),
-                session_provider.clone(),
-                config_id.clone(),
-            ),
-            holder_issuance_resolver: HolderIssuanceResolver::new(
-                history_repository.clone(),
-                wrp_validator.clone(),
-                blob_storage_provider.clone(),
-                session_provider,
-                formatter_provider.clone(),
-                params.leeway_seconds,
-                config_id.clone(),
-            ),
             config_id,
             wrp_validator,
             formatter_provider,
@@ -148,6 +138,7 @@ impl EudiEcosystem {
             proof_schema_repository,
             history_repository,
             blob_storage_provider,
+            session_provider,
             wallet_unit_proto,
             credential_validity_manager,
             params,
@@ -199,7 +190,6 @@ impl Ecosystem for EudiEcosystem {
                 credential_configuration_ids,
             } => {
                 let data = self
-                    .holder_issuance_resolver
                     .resolve_metadata_trust(
                         interaction.organisation.id(),
                         issuer_metadata,
@@ -214,16 +204,14 @@ impl Ecosystem for EudiEcosystem {
                 serialized,
                 credential_configuration_id,
             } => {
-                self.holder_issuance_resolver
-                    .resolve_credential_issuer_trust(
-                        credential,
-                        serialized,
-                        credential_configuration_id,
-                        interaction,
-                        &self.params.credential_schemas,
-                    )
-                    .await
-                    .error_while("resolving holder issuance trust")?;
+                self.resolve_credential_issuer_trust(
+                    credential,
+                    serialized,
+                    credential_configuration_id,
+                    interaction,
+                )
+                .await
+                .error_while("resolving holder issuance trust")?;
             }
             ProtocolArtifact::HolderProof {
                 verifier_details,
@@ -231,17 +219,15 @@ impl Ecosystem for EudiEcosystem {
                 verifier_info,
                 proof_id,
             } => {
-                self.holder_proof_resolver
-                    .resolve_trust(
-                        verifier_details.as_ref().as_ref(),
-                        *proof_id,
-                        interaction.organisation.id(),
-                        dcql_query,
-                        verifier_info,
-                        self.params.leeway_seconds,
-                    )
-                    .await
-                    .error_while("resolving holder proof trust")?;
+                self.resolve_holder_proof(
+                    verifier_details.as_ref().as_ref(),
+                    *proof_id,
+                    interaction.organisation.id(),
+                    dcql_query,
+                    verifier_info,
+                )
+                .await
+                .error_while("resolving holder proof trust")?;
             }
             ProtocolArtifact::IssuerIssuance {
                 attestation,

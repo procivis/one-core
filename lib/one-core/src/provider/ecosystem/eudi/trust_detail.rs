@@ -1,20 +1,25 @@
 use shared_types::i18n::I18nString;
-use shared_types::{EcosystemId, EntityId};
+use shared_types::{EcosystemId, EntityId, OrganisationId};
 use standardized_types::etsi_119_475::registration_certificate::{Payload, SupervisoryAuthority};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use url::Url;
+use uuid::Uuid;
 
 use super::EudiEcosystem;
+use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
+use crate::model::blob::{Blob, BlobType};
 use crate::model::common::SortDirection;
 use crate::model::history::{
-    History, HistoryAction, HistoryFilterValue, HistoryMetadata, SortableHistoryColumn,
+    History, HistoryAction, HistoryEntityType, HistoryFilterValue, HistoryMetadata, HistorySource,
+    SortableHistoryColumn, WalletRelyingPartyMetadata,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListQuery, ListSorting};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
+use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::model::WRPPayload;
 use crate::provider::blob_storage::BlobStorage;
 use crate::provider::ecosystem::error::EcosystemError;
@@ -200,6 +205,60 @@ impl EudiEcosystem {
                 Some(history) => trust_purpose_from_history(history, query_id)?,
             },
         )
+    }
+
+    /// Writes a history event with the trust data that the holder received.
+    /// [`Self::get_trust_detail`] reads it later.
+    pub(super) async fn store_trust_history_event(
+        &self,
+        action: HistoryAction,
+        entity_id: EntityId,
+        entity_type: HistoryEntityType,
+        organisation_id: OrganisationId,
+        blob_content: Option<String>,
+        metadata: Option<WalletRelyingPartyMetadata>,
+    ) -> Result<(), NestedError> {
+        let metadata_blob_id = if let Some(blob_content) = blob_content {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)?;
+
+            let blob = Blob::new(blob_content, BlobType::HistoryMetadata);
+
+            let blob_id = blob.id;
+            blob_storage
+                .create(blob)
+                .await
+                .error_while("creating history metadata blob")?;
+            Some(blob_id)
+        } else {
+            None
+        };
+
+        self.history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: now_utc(),
+                action,
+                name: Default::default(),
+                target: None,
+                source: HistorySource::Core,
+                entity_id: Some(entity_id),
+                entity_type,
+                metadata: Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        ecosystem: Some(self.config_id.to_owned()),
+                        ..metadata.unwrap_or_default()
+                    },
+                )),
+                metadata_blob_id,
+                organisation_id: Some(organisation_id),
+                user: self.session_provider.session().user(),
+            })
+            .await
+            .error_while("storing history")?;
+
+        Ok(())
     }
 }
 

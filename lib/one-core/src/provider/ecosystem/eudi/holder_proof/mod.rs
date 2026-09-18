@@ -1,28 +1,12 @@
-use std::sync::Arc;
-
-use shared_types::{EcosystemId, OrganisationId};
 use standardized_types::openid4vp::dcql::{ClaimQuery, CredentialFormat, CredentialQueryId};
 use thiserror::Error;
 
+use super::AttestationCoverageSource;
 use crate::config::core_config::IdentifierType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::proto::session_provider::SessionProvider;
-use crate::proto::wrp_validator::WRPValidator;
-use crate::proto::wrp_validator::model::TrustScope;
-use crate::provider::blob_storage::provider::BlobStorageProvider;
-use crate::repository::history_repository::HistoryRepository;
 
 mod mapper;
 mod resolver;
-
-/// Which trust document was checked when it failed to permit a requested credential.
-#[derive(Debug, Clone, Copy, strum::Display)]
-pub(crate) enum ProofTrustSource {
-    #[strum(serialize = "registration certificate")]
-    RegistrationCertificate,
-    #[strum(serialize = "national registry response")]
-    NationalRegistry,
-}
 
 #[derive(Debug, Clone, Error)]
 pub(crate) enum QueryMismatchReason {
@@ -45,7 +29,7 @@ pub(crate) enum HolderProofError {
     )]
     DisallowedQuery {
         query: CredentialQueryId,
-        document: ProofTrustSource,
+        document: AttestationCoverageSource,
         reason: QueryMismatchReason,
     },
     #[error("Missing identifier")]
@@ -65,24 +49,6 @@ impl ErrorCodeMixin for HolderProofError {
             }
             Self::DisallowedQuery { .. } => ErrorCode::BR_0503,
             Self::Nested(nested) => nested.error_code(),
-        }
-    }
-}
-
-pub(crate) struct HolderProofResolver {
-    history_repository: Arc<dyn HistoryRepository>,
-    wrp_validator: Arc<dyn WRPValidator>,
-    blob_storage_provider: Arc<dyn BlobStorageProvider>,
-    session_provider: Arc<dyn SessionProvider>,
-    ecosystem: EcosystemId,
-}
-
-impl HolderProofResolver {
-    /// Trust may only be resolved against collections of the ecosystem being acted in.
-    pub(super) fn trust_scope(&self, organisation_id: OrganisationId) -> TrustScope {
-        TrustScope {
-            organisation_id,
-            ecosystem: self.ecosystem.to_owned(),
         }
     }
 }
