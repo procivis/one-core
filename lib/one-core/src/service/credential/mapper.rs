@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialId};
+use shared_types::{CredentialFormat, CredentialId, EcosystemId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -41,7 +41,7 @@ use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
-use crate::provider::ecosystem::model::TrustDetailInfo;
+use crate::provider::ecosystem::model::{TrustDetail, TrustDetailInfo};
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::repository::credential_repository::CredentialRepository;
@@ -1083,18 +1083,28 @@ pub(crate) async fn get_credential_trust_information(
             ecosystem_errors,
         }),
         (CredentialRole::Holder, Some(ecosystem_id)) => {
-            let ecosystem = ecosystem_provider.get(ecosystem_id)?;
-            let details = ecosystem
-                .issuer_trust_details(&credential.id)
-                .await
-                .error_while("getting trust detail")?;
-
-            let name = match details.info {
-                TrustDetailInfo::Eudi(info) => info.name,
+            let (received_at, name) = match issuer_trust_detail(
+                credential,
+                ecosystem_id,
+                ecosystem_provider,
+            )
+            .await
+            {
+                Ok(details) => {
+                    let TrustDetailInfo::Eudi(info) = details.info;
+                    (details.received_at, Some(info.name))
+                }
+                Err(err) => {
+                    tracing::warn!(%err, "failed to get the issuer trust detail of credential {}", credential.id);
+                    (
+                        credential.issuance_date.unwrap_or(credential.last_modified),
+                        None,
+                    )
+                }
             };
             Some(TrustInformation {
-                received_at: details.received_at,
-                name: Some(name),
+                received_at,
+                name,
                 result: TrustResolutionResult::Trusted,
                 ecosystem_errors,
             })
@@ -1115,4 +1125,16 @@ pub(crate) async fn get_credential_trust_information(
             ecosystem_errors,
         }),
     })
+}
+
+async fn issuer_trust_detail(
+    credential: &Credential,
+    ecosystem_id: &EcosystemId,
+    ecosystem_provider: &dyn EcosystemDirectory,
+) -> Result<TrustDetail, CredentialServiceError> {
+    Ok(ecosystem_provider
+        .get(ecosystem_id)?
+        .issuer_trust_details(&credential.id)
+        .await
+        .error_while("getting trust detail")?)
 }

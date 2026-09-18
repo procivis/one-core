@@ -60,6 +60,34 @@ async fn test_resolve_trust_entries_success_empty() {
 }
 
 #[tokio::test]
+async fn test_resolve_trust_entries_identifiers_of_different_organisations() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let organisation = context.db.organisations.create().await;
+    let other_organisation = context.db.organisations.create().await;
+    let params = || TestingIdentifierParams {
+        r#type: Some(IdentifierType::Certificate),
+        ..Default::default()
+    };
+    let identifier = context.db.identifiers.create(&organisation, params()).await;
+    let other_identifier = context
+        .db
+        .identifiers
+        .create(&other_organisation, params())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .identifiers
+        .resolve_trust_entries(&[identifier.id, other_identifier.id], None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 403);
+}
+
+#[tokio::test]
 async fn test_resolve_trust_entries_from_cache_success() {
     // GIVEN
     let additional_config = r#"
@@ -199,11 +227,70 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             .await;
     }
 
+    // subscriptions of other organisations are not considered
+    let other_organisation = context.db.organisations.create().await;
+    let other_collection = context
+        .db
+        .trust_collections
+        .create(
+            other_organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("Other collection".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .trust_list_subscriptions
+        .create(
+            "Other subscription",
+            Some(TrustListRoleEnum::Issuer),
+            subscriber_id.clone(),
+            url1,
+            TrustListSubscriptionState::Active,
+            other_collection.id,
+        )
+        .await;
+
+    let organisation_without_collections = context.db.organisations.create().await;
+    let identifier_without_collections = context
+        .db
+        .identifiers
+        .create(
+            &organisation_without_collections,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                is_remote: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .certificates
+        .create(
+            identifier_without_collections.id,
+            organisation_without_collections,
+            TestingCertificateParams {
+                state: Some(CertificateState::Active),
+                chain: Some(pem.to_string()),
+                fingerprint: Some(fingerprint.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
     let resp = context
         .api
         .identifiers
         .resolve_trust_entries(&[identifier.id], None, None)
+        .await;
+    let resp_without_collections = context
+        .api
+        .identifiers
+        .resolve_trust_entries(&[identifier_without_collections.id], None, None)
         .await;
 
     // THEN
@@ -214,6 +301,10 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
 
     let trust_entries = body[0]["trustEntries"].as_array().unwrap();
     assert_eq!(trust_entries.len(), 2);
+
+    assert_eq!(resp_without_collections.status(), 200);
+    let body = resp_without_collections.json_value().await;
+    assert!(body[0]["trustEntries"].as_array().unwrap().is_empty());
 
     let mut collection_names: Vec<_> = trust_entries
         .iter()

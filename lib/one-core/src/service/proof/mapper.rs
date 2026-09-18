@@ -5,7 +5,7 @@ use std::time::Duration;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use serde_json::Value;
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaId, EcosystemId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -34,7 +34,7 @@ use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
-use crate::provider::ecosystem::model::TrustDetailInfo;
+use crate::provider::ecosystem::model::{TrustDetail, TrustDetailInfo};
 use crate::provider::verification_protocol::openid4vp::model::{
     CommonVerifierInteractionContent, TransactionDataRequest,
 };
@@ -931,18 +931,25 @@ pub(super) async fn get_proof_trust_information(
             ecosystem_errors,
         }),
         (ProofRole::Holder, Some(ecosystem_id)) => {
-            let ecosystem = ecosystem_provider.get(ecosystem_id)?;
-            let details = ecosystem
-                .verifier_trust_details(&proof.id)
-                .await
-                .error_while("getting trust detail")?;
-
-            let name = match details.info {
-                TrustDetailInfo::Eudi(info) => info.name,
+            let (received_at, name) = match verifier_trust_detail(
+                proof,
+                ecosystem_id,
+                ecosystem_provider,
+            )
+            .await
+            {
+                Ok(details) => {
+                    let TrustDetailInfo::Eudi(info) = details.info;
+                    (details.received_at, Some(info.name))
+                }
+                Err(err) => {
+                    tracing::warn!(%err, "failed to get the verifier trust detail of proof {}", proof.id);
+                    (proof.requested_date.unwrap_or(proof.last_modified), None)
+                }
             };
             Some(TrustInformation {
-                received_at: details.received_at,
-                name: Some(name),
+                received_at,
+                name,
                 result: TrustResolutionResult::Trusted,
                 ecosystem_errors,
             })
@@ -955,4 +962,16 @@ pub(super) async fn get_proof_trust_information(
             ecosystem_errors,
         }),
     })
+}
+
+async fn verifier_trust_detail(
+    proof: &Proof,
+    ecosystem_id: &EcosystemId,
+    ecosystem_provider: &dyn EcosystemDirectory,
+) -> Result<TrustDetail, ProofServiceError> {
+    Ok(ecosystem_provider
+        .get(ecosystem_id)?
+        .verifier_trust_details(&proof.id)
+        .await
+        .error_while("getting trust detail")?)
 }

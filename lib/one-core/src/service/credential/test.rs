@@ -49,7 +49,9 @@ use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
+use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
 use crate::provider::issuance_protocol::model::ShareResponse;
@@ -6308,4 +6310,34 @@ async fn test_a_verifier_with_no_ecosystem_in_play_is_told_nothing() {
             .await
             .is_none()
     );
+}
+
+#[tokio::test]
+async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
+    let mut credential = generic_credential().await;
+    credential.role = CredentialRole::Holder;
+    credential.ecosystem = Some(EcosystemId::from("EUDI"));
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider.expect_get().returning(|_| {
+        let mut ecosystem = MockEcosystem::new();
+        ecosystem.expect_issuer_trust_details().returning(|_| {
+            Err(EcosystemError::MappingError(
+                "Missing access certificate".to_string(),
+            ))
+        });
+        Ok(Arc::new(ecosystem))
+    });
+
+    let trust_information = get_credential_trust_information(
+        &credential,
+        &ecosystem_provider,
+        &history_with_outcomes(EcosystemOutcomes::default()),
+    )
+    .await
+    .unwrap()
+    .expect("the ecosystem trusted the issuer");
+
+    assert_eq!(TrustResolutionResult::Trusted, trust_information.result);
+    assert_eq!(None, trust_information.name);
 }

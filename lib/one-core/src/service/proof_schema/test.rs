@@ -1440,8 +1440,10 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let mut http_client = MockHttpClient::new();
@@ -1640,8 +1642,10 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let mut http_client = MockHttpClient::new();
@@ -1847,8 +1851,10 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let mut http_client = MockHttpClient::new();
@@ -2089,8 +2095,10 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let mut formatter = MockCredentialFormatter::new();
@@ -2283,8 +2291,10 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let mut formatter = MockCredentialFormatter::new();
@@ -2407,8 +2417,10 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let proof_schema_repository = Arc::new(proof_schema_repository);
@@ -2486,8 +2498,10 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let service = setup_service(Repositories {
@@ -2548,8 +2562,10 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_wallet_instance_attestation: None,
+                ecosystem: None,
             },
         }],
+        ecosystem: None,
     };
 
     let service = setup_service(Repositories {
@@ -2955,6 +2971,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
                 expire_duration: 0,
                 proof_input_schemas: vec![],
                 imported_source_url: "".to_string(),
+                ecosystem: None,
             },
             organisation_id: Uuid::new_v4().into(),
         })

@@ -2,6 +2,7 @@ use std::str;
 
 use one_core::model::blob::BlobType;
 use one_core::model::interaction::InteractionType;
+use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use serde_json::json;
@@ -566,4 +567,127 @@ async fn test_direct_post_dcql_json_ld_classic_no_holder_binding() {
     let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;
     assert!(str::from_utf8(&blob.value).unwrap().contains("vp_token"));
     assert_eq!(blob.r#type, BlobType::Proof);
+}
+
+#[tokio::test]
+async fn test_direct_post_dcql_issuer_untrusted_by_enforced_ecosystem() {
+    // GIVEN
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
+    context
+        .db
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    enforce_ecosystem_as_verifier: true,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false),
+        (Uuid::new_v4(), "cat2", false, "STRING", false),
+    ];
+    let credential_schema = create_credential_schema_with_claims(
+        &context.db.db_conn,
+        "NewCredentialSchema",
+        &organisation,
+        false,
+        &new_claim_schemas,
+    )
+    .await;
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
+
+    let dcql_query = json!({
+        "credentials": [{
+            "id": credential_schema.id.to_string(),
+            "format": "jwt_vc_json",
+            "require_cryptographic_holder_binding": true,
+            "meta": {
+                "type_values": [[
+                    "https://www.w3.org/2018/credentials#VerifiableCredential",
+                    format!("{}#{}", credential_schema.schema_id().await.unwrap(), "NewCredentialSchema")
+                ]]
+            },
+            "claims": [
+                {
+                    "id": new_claim_schemas[0].0.to_string(),
+                    "path": ["credentialSubject", "cat1"],
+                    "required": true
+                }
+            ]
+        }]
+    });
+    let interaction_data = json!({
+        "nonce": "nonce123",
+        "dcql_query": dcql_query,
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
+    });
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+        InteractionType::Verification,
+    )
+    .await;
+    let proof = create_proof(
+        &context.db.db_conn,
+        &verifier_identifier,
+        Some(&proof_schema),
+        ProofStateEnum::Pending,
+        ProofRole::Verifier,
+        "OPENID4VP_FINAL1",
+        Some(&interaction),
+        Some(&verifier_key),
+        None,
+        None,
+    )
+    .await;
+
+    let (_, token) = dummy_presentations().await;
+    let params = [
+        (
+            "vp_token",
+            json!({ credential_schema.id.to_string(): [token] }).to_string(),
+        ),
+        ("state", interaction.id.to_string()),
+    ];
+
+    // WHEN
+    let url = format!(
+        "{}/ssi/openid4vp/final-1.0/response",
+        context.config.app.core_base_url
+    );
+    let resp = utils::client()
+        .post(url)
+        .form(&params)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body["error"], "invalid_request");
+    assert_eq!(body["error_description"], "Credential issuer untrusted");
+
+    let proof = get_proof(&context.db.db_conn, &proof.id).await;
+    assert_eq!(proof.state, ProofStateEnum::Error);
 }

@@ -57,6 +57,7 @@ async fn test_import_proof_schema_ok() {
               "schemaId": original_credential_schema.schema_id().await.unwrap(),
               "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
               "allowSuspension": original_credential_schema.allow_suspension,
+              "ecosystem": "EUDI",
               "claims": claim_schemas.iter().map(|schema| json!({
                   "array": schema.array,
                   "createdDate": now,
@@ -84,6 +85,7 @@ async fn test_import_proof_schema_ok() {
         "organisationId": Uuid::new_v4(),
         "importedSourceUrl": "test",
         "expireDuration": 1000,
+        "ecosystem": "EUDI",
         "proofInputSchemas": [
             {
                 "claimSchemas": [{
@@ -104,6 +106,7 @@ async fn test_import_proof_schema_ok() {
                     "revocationMethod": original_credential_schema.format().await.unwrap(),
                     "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
                     "schemaId": original_credential_schema.schema_id().await.unwrap(),
+                    "ecosystem": "EUDI",
                 }
             }
         ]
@@ -127,6 +130,7 @@ async fn test_import_proof_schema_ok() {
 
     let proof_schema = context.db.proof_schemas.get(&proof_schema_id).await;
     assert_eq!("test-proof-schema", &proof_schema.name);
+    assert_eq!(Some("EUDI".into()), proof_schema.ecosystem);
 
     let proof_schema = context.db.proof_schemas.get(&proof_schema.id).await;
 
@@ -139,6 +143,7 @@ async fn test_import_proof_schema_ok() {
         .await
         .unwrap();
     assert_eq!("test-credential-schema", credential_schema.name);
+    assert_eq!(Some("EUDI".into()), credential_schema.ecosystem);
 
     let claims = proof_input_schemas[0].claim_schemas.as_ref().await.unwrap();
     assert_eq!(1, claims.len());

@@ -247,6 +247,7 @@ async fn test_resolve_trust_entries_success() {
 
     let identifier_id = Uuid::new_v4().into();
     let mut identifier = dummy_identifier();
+    let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
     identifier.is_remote = true;
     identifier.data = IdentifierData::Certificate(RelatedVec::from(vec![]));
@@ -316,6 +317,7 @@ async fn test_resolve_trust_entries_success() {
         .returning(move |_| Ok(subscriber_arc.clone()));
 
     let service = setup_service(Mocks {
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
         identifier_repository,
         trust_list_subscription_repository,
         trust_collection_repository,
@@ -340,6 +342,68 @@ async fn test_resolve_trust_entries_success() {
 }
 
 #[tokio::test]
+async fn test_resolve_trust_entries_session_org_mismatch() {
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let mut identifier = dummy_identifier();
+    identifier.organisation = dummy_organisation(None).into();
+    identifier_repository
+        .expect_get_identifier_list()
+        .returning(move |_| {
+            Ok(GetIdentifierList {
+                values: vec![identifier.clone()],
+                total_items: Some(1),
+                total_pages: Some(1),
+            })
+        });
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .resolve_trust_entries(ResolveTrustEntriesRequestDTO {
+            identifiers: vec![Uuid::new_v4().into()],
+            roles: None,
+            trust_collection_ids: None,
+        })
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+}
+
+#[tokio::test]
+async fn test_resolve_trust_entries_identifiers_of_different_organisations() {
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let identifier = dummy_identifier();
+    let organisation_id = identifier.organisation.id();
+    let other_identifier = dummy_identifier();
+    identifier_repository
+        .expect_get_identifier_list()
+        .returning(move |_| {
+            Ok(GetIdentifierList {
+                values: vec![identifier.clone(), other_identifier.clone()],
+                total_items: Some(2),
+                total_pages: Some(1),
+            })
+        });
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    let result = service
+        .resolve_trust_entries(ResolveTrustEntriesRequestDTO {
+            identifiers: vec![Uuid::new_v4().into(), Uuid::new_v4().into()],
+            roles: None,
+            trust_collection_ids: None,
+        })
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+}
+
+#[tokio::test]
 async fn test_resolve_trust_entries_filters_local() {
     // given
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -349,6 +413,7 @@ async fn test_resolve_trust_entries_filters_local() {
 
     let identifier_id = Uuid::new_v4().into();
     let mut identifier = dummy_identifier();
+    let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
     identifier.is_remote = false; // Local
     identifier.data = IdentifierData::Certificate(RelatedVec::from(vec![]));
@@ -407,6 +472,7 @@ async fn test_resolve_trust_entries_filters_local() {
         .returning(move |_| Ok(subscriber_arc.clone()));
 
     let service = setup_service(Mocks {
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
         identifier_repository,
         trust_list_subscription_repository,
         trust_collection_repository,
@@ -500,6 +566,7 @@ async fn test_resolve_trust_entries_subscriber_error() {
 
     let identifier_id = Uuid::new_v4().into();
     let mut identifier = dummy_identifier();
+    let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
     identifier.is_remote = true;
     identifier.data = IdentifierData::Certificate(RelatedVec::from(vec![]));
@@ -556,6 +623,7 @@ async fn test_resolve_trust_entries_subscriber_error() {
         .returning(move |_| Ok(subscriber_arc.clone()));
 
     let service = setup_service(Mocks {
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
         identifier_repository,
         trust_list_subscription_repository,
         trust_collection_repository,
@@ -589,6 +657,7 @@ async fn test_resolve_trust_entries_filters_key_type() {
 
     let identifier_id = Uuid::new_v4().into();
     let mut identifier = dummy_identifier();
+    let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
     identifier.is_remote = true;
     identifier.data = IdentifierData::Key(dummy_key().into());
@@ -648,6 +717,7 @@ async fn test_resolve_trust_entries_filters_key_type() {
         .returning(move |_| Ok(subscriber_arc.clone()));
 
     let service = setup_service(Mocks {
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
         identifier_repository,
         trust_list_subscription_repository,
         trust_collection_repository,

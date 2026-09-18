@@ -52,6 +52,7 @@ use crate::provider::trust_list_subscriber::{
 };
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
+use crate::service::error::ValidationError;
 use crate::service::identifier::dto::{
     CreateRemoteIdentifierRequestDTO, ResolvedTrustEntrySourceResponseDTO,
 };
@@ -652,9 +653,48 @@ impl IdentifierService {
             .error_while("getting identifiers")?
             .values;
 
+        if identifiers.is_empty() {
+            return Ok(vec![]);
+        }
+        let Ok(organisation_id) = identifiers
+            .iter()
+            .map(|identifier| identifier.organisation.id())
+            .unique()
+            .exactly_one()
+        else {
+            return Err(ValidationError::Forbidden
+                .error_while("checking organisations")
+                .into());
+        };
+        throw_if_org_id_not_matching_session(&organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
+
+        let mut collection_ids: Vec<_> = self
+            .trust_collection_repository
+            .list(TrustCollectionListQuery {
+                include_count: false,
+                filtering: Some(
+                    TrustCollectionFilterValue::OrganisationId {
+                        id: organisation_id,
+                        include_inherited_collections: true,
+                    }
+                    .condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting trust collections")?
+            .values
+            .into_iter()
+            .map(|collection| collection.id)
+            .collect();
+        if let Some(requested_ids) = &request.trust_collection_ids {
+            collection_ids.retain(|id| requested_ids.contains(id));
+        }
+
         let requested_roles = request.roles.clone().unwrap_or_default();
         let trust_list_subscriptions = self
-            .fetch_trust_list_subscriptions(request.roles, request.trust_collection_ids)
+            .fetch_trust_list_subscriptions(request.roles, Some(collection_ids))
             .await?;
         let all_resolved_entries = self
             .resolve_trust_list_subscriptions(

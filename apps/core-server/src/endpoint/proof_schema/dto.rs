@@ -96,6 +96,7 @@ pub(crate) struct ImportProofSchemaRequestRestDTO {
     pub schema: ImportProofSchemaRestDTO,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -120,6 +121,8 @@ pub(crate) struct ImportProofSchemaRestDTO {
     pub expire_duration: u32,
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaRestDTO>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -198,6 +201,8 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[allow(unused)]
     #[try_into(skip)]
     pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 // list endpoint
@@ -379,7 +384,7 @@ mod test {
             expire_duration: 42,
             imported_source_url: Some("imported_source_url".to_string()),
             organisation_id: Uuid::new_v4().into(),
-            ecosystem: None,
+            ecosystem: Some("EUDI".into()),
             proof_input_schemas: vec![ProofInputSchemaResponseRestDTO {
                 claim_schemas: vec![ProofClaimSchemaResponseRestDTO {
                     id: Uuid::new_v4(),
@@ -422,7 +427,7 @@ mod test {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: true,
                     translations: None,
-                    ecosystem: None,
+                    ecosystem: Some("EUDI".into()),
                 },
             }],
         };

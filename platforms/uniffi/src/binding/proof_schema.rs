@@ -166,6 +166,8 @@ pub struct ImportProofSchemaBindingDTO {
     /// Set of all claims to request.
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaBindingDTO>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -245,6 +247,8 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub allow_suspension: Option<bool>,
     #[try_into(infallible)]
     pub requires_wallet_instance_attestation: Option<bool>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub ecosystem: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

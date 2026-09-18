@@ -85,7 +85,12 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
-        Err(error) if error.error_code() == ErrorCode::BR_0433 => {
+        Err(error)
+            if matches!(
+                error.error_code(),
+                ErrorCode::BR_0433 | ErrorCode::BR_0476 | ErrorCode::BR_0477 | ErrorCode::BR_0488
+            ) =>
+        {
             tracing::info!("Credential issuer untrusted");
             (
                 StatusCode::BAD_REQUEST,

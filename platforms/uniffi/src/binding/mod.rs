@@ -23,7 +23,7 @@ pub mod interaction;
 pub mod jsonld;
 pub mod key;
 pub mod key_storage;
-mod mapper;
+pub(crate) mod mapper;
 pub mod nfc;
 pub mod nfc_scan;
 pub mod organisation;

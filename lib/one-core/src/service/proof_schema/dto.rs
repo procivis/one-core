@@ -132,6 +132,7 @@ pub struct ImportProofSchemaDTO {
     pub expire_duration: u32,
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaDTO>,
     pub imported_source_url: String,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -177,6 +178,7 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_wallet_instance_attestation: Option<bool>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]

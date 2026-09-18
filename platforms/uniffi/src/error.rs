@@ -1,9 +1,14 @@
-use one_core::error::ErrorCodeMixin;
+use std::collections::HashMap;
+
+use one_core::error::{ErrorCodeMixin, ErrorData};
 use one_core::provider::key_storage::error::KeyStorageError;
 use one_crypto::SignerError;
 use one_dto_mapper::{From, Into};
 use strum::EnumMessage;
 use thiserror::Error;
+
+use crate::binding::history::EcosystemOutcomeBindingDTO;
+use crate::binding::mapper::convert_ecosystem_outcomes;
 
 #[derive(Debug, Error)]
 pub(crate) enum SDKError {
@@ -29,6 +34,24 @@ pub struct ErrorResponseBindingDTO {
     pub code: String,
     pub message: String,
     pub cause: Option<Cause>,
+    /// Only set on BR_0476
+    pub data: Option<ErrorDataBindingDTO>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+#[uniffi(name = "ErrorData")]
+pub struct ErrorDataBindingDTO {
+    pub ecosystem_errors: Option<HashMap<String, EcosystemOutcomeBindingDTO>>,
+}
+
+impl From<ErrorData> for ErrorDataBindingDTO {
+    fn from(value: ErrorData) -> Self {
+        match value {
+            ErrorData::EcosystemsResolved(outcomes) => Self {
+                ecosystem_errors: Some(convert_ecosystem_outcomes(&outcomes)),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -77,6 +100,7 @@ impl<T: ErrorCodeMixin + std::error::Error> From<T> for ErrorResponseBindingDTO 
             code: Into::<&'static str>::into(code).to_string(),
             message: code.get_message().unwrap_or_default().to_string(),
             cause: Some(cause),
+            data: error.error_data().map(Into::into),
         }
     }
 }
@@ -202,5 +226,63 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for NfcError {
         Self::Unknown {
             reason: e.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use one_core::error::ErrorCode;
+    use one_core::model::ecosystem::EcosystemOutcomes;
+    use one_core::model::history::HistoryErrorMetadata;
+    use shared_types::EcosystemId;
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::binding::history::EcosystemTrustResultBindingEnum;
+
+    #[derive(Debug, Error)]
+    #[error("No ecosystem detected")]
+    struct NoEcosystemDetected(EcosystemOutcomes);
+
+    impl ErrorCodeMixin for NoEcosystemDetected {
+        fn error_code(&self) -> ErrorCode {
+            ErrorCode::BR_0476
+        }
+
+        fn error_data(&self) -> Option<ErrorData> {
+            Some(ErrorData::EcosystemsResolved(self.0.to_owned()))
+        }
+    }
+
+    #[test]
+    fn test_error_response_carries_the_ecosystem_outcomes() {
+        let mut outcomes = EcosystemOutcomes::default();
+        outcomes.record(
+            EcosystemId::from("EUDI"),
+            Err(HistoryErrorMetadata {
+                error_code: ErrorCode::BR_0486,
+                message: "not on the trust list".to_string(),
+            }),
+        );
+
+        let response: ErrorResponseBindingDTO = NoEcosystemDetected(outcomes).into();
+
+        let ecosystem_errors = response
+            .data
+            .and_then(|data| data.ecosystem_errors)
+            .expect("the outcomes are carried");
+        let outcome = &ecosystem_errors["EUDI"];
+        assert!(matches!(
+            outcome.result,
+            EcosystemTrustResultBindingEnum::NotTrusted
+        ));
+        assert_eq!(
+            "BR_0486",
+            outcome
+                .error
+                .as_ref()
+                .expect("the reason is kept")
+                .error_code
+        );
     }
 }
