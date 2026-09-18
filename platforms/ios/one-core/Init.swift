@@ -19,7 +19,7 @@ public func initializeCore(params: InitParams, dataDirPath: String? = nil) throw
   }
   if dataDir == nil {
     throw OneCoreError.Response(
-      data: ErrorResponse(code: "BR_0000", message: "invalid DataDir", cause: nil)
+      data: ErrorResponse(code: "BR_0000", message: "invalid DataDir", cause: nil, data: nil)
     )
   }
 
