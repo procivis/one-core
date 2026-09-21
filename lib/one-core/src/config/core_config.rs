@@ -983,9 +983,30 @@ pub trait ConfigKey: Debug + Display + Clone + Ord + Hash + Eq {}
 // Blanket impl
 impl<T: Debug + Display + Clone + Ord + Hash + Eq> ConfigKey for T {}
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct ConfigBlock<K: ConfigKey, T>(Dict<K, Fields<T>>);
+
+impl<'de, K, T> Deserialize<'de> for ConfigBlock<K, T>
+where
+    K: ConfigKey + Deserialize<'de>,
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let entries = Dict::<K, Fields<T>>::deserialize(deserializer)?;
+        for name in entries.keys() {
+            if name.to_string().contains(',') {
+                return Err(serde::de::Error::custom(format!(
+                    "provider name `{name}` must not contain a comma"
+                )));
+            }
+        }
+        Ok(Self(entries))
+    }
+}
 
 impl<K, T> ConfigBlock<K, T>
 where
@@ -1332,10 +1353,57 @@ fn check_overlapping_params(object: &serde_json::Map<String, Value>) -> Result<(
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use serde_json::json;
     use similar_asserts::assert_eq;
 
     use super::*;
+
+    #[rstest]
+    fn test_config_block_rejects_provider_names_with_commas(
+        #[values(",PROVIDER", "PROV,IDER", "PROVIDER,", ",")] name: &str,
+        #[values(true, false)] enabled: bool,
+    ) {
+        let config = json!({
+            name: {
+                "type": "JWT",
+                "display": "provider",
+                "enabled": enabled,
+            }
+        });
+        let expected = format!("provider name `{name}` must not contain a comma");
+
+        let error =
+            serde_json::from_value::<ConfigBlock<String, FormatType>>(config.clone()).unwrap_err();
+        assert_eq!(error.to_string(), expected);
+
+        let error = serde_json::from_value::<FormatConfig>(config).unwrap_err();
+        assert_eq!(error.to_string(), expected);
+    }
+
+    #[rstest]
+    fn test_config_block_accepts_provider_names_without_commas(
+        #[values("PROVIDER", "PROVIDER_1", "PROVIDER-1", "PROVIDER.1")] name: &str,
+    ) {
+        let config = json!({
+            name: {
+                "type": "JWT",
+                "display": "Provider, with a comma in its display label",
+            }
+        });
+
+        let string_config =
+            serde_json::from_value::<ConfigBlock<String, FormatType>>(config.clone()).unwrap();
+        assert_eq!(string_config.get_type(name).unwrap(), FormatType::Jwt);
+
+        let typed_config = serde_json::from_value::<FormatConfig>(config).unwrap();
+        assert_eq!(
+            typed_config
+                .get_type(&CredentialFormat::from(name))
+                .unwrap(),
+            FormatType::Jwt
+        );
+    }
 
     #[test]
     fn test_merge_fields_with_public_and_private_params() {
