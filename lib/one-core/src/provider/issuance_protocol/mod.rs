@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use dto::IssuanceProtocolCapabilities;
@@ -6,7 +7,7 @@ use proc_macros::provider_mock;
 use serde::Serialize;
 use serde::de::Deserialize;
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, SerializedCredential,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, SerializedCredential,
 };
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use url::Url;
@@ -28,7 +29,8 @@ pub mod model;
 pub mod openid4vci_final1_0;
 pub(crate) mod provider;
 use model::{
-    ContinueIssuanceResponseDTO, IssuanceAcceptResponse, IssuanceAcceptResult, ShareResponse,
+    ContinueIssuanceResponseDTO, IssuanceAcceptResponse, IssuanceAcceptResult,
+    IssuanceRefreshResponse, ShareResponse,
 };
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
@@ -79,6 +81,13 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
         credential_configuration_ids: Vec<String>,
     ) -> Result<IssuanceAcceptResult, IssuanceProtocolError>;
 
+    /// Reassigns accepted configurations to batch parents selected by the holder service.
+    async fn regroup_configurations(
+        &self,
+        interaction_id: InteractionId,
+        configuration_parents: HashMap<String, CredentialId>,
+    ) -> Result<(), IssuanceProtocolError>;
+
     /// Rejects a previously-accepted credential offer.
     async fn holder_reject_credential(
         &self,
@@ -96,7 +105,7 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<Credential>, IssuanceProtocolError>;
+    ) -> Result<Vec<IssuanceRefreshResponse>, IssuanceProtocolError>;
 
     /// Generates QR-code content to start the credential issuance flow.
     async fn issuer_share_credential(

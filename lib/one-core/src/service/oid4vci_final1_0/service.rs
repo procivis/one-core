@@ -894,10 +894,20 @@ impl OID4VCIFinal1_0Service {
 
         let now = crate::clock::now_utc();
         let expires_at = credential.expires_at;
-        let default_batch_item_expires_at = now + format_default_expiration;
-        let batch_item_expires_at = expires_at
-            .map(|e| e.min(default_batch_item_expires_at))
-            .unwrap_or(default_batch_item_expires_at);
+        let is_batch = credential.schema.as_ref().await?.batch_size.is_some();
+        let format_type = self
+            .config
+            .format
+            .get_type(&format.format)
+            .error_while("getting format config")?;
+        // Multiformat credentials also use batch parents. Only actual batches and MDOC
+        // need the format's default validity; other items retain the parent expiry as-is.
+        let batch_item_expires_at = if is_batch || format_type == FormatType::Mdoc {
+            let default_expiry = now + format_default_expiration;
+            Some(expires_at.map_or(default_expiry, |expiry| expiry.min(default_expiry)))
+        } else {
+            expires_at
+        };
 
         let credentials = match credential.r#type {
             CredentialType::Single => {
@@ -1603,7 +1613,7 @@ impl OID4VCIFinal1_0Service {
     async fn prepare_batch_item(
         &self,
         parent_credential_id: CredentialId,
-        expires_at: OffsetDateTime,
+        expires_at: Option<OffsetDateTime>,
         format: &CredentialSchemaFormat,
     ) -> Result<Credential, OID4VCIFinal1_0ServiceError> {
         let now = crate::clock::now_utc();
@@ -1637,7 +1647,7 @@ impl OID4VCIFinal1_0Service {
             webhook_url: None,
             interaction: None,
             claims: Default::default(),
-            expires_at: Some(expires_at),
+            expires_at,
             format: Some(format.to_owned().into()),
             state,
             // last_modified is reused from the parent credential,
@@ -1726,7 +1736,7 @@ impl OID4VCIFinal1_0Service {
                     "credential_schema format missing".to_string(),
                 ))?;
             let placeholder = self
-                .prepare_batch_item(parent.id, now_utc(), &format)
+                .prepare_batch_item(parent.id, Some(now_utc()), &format)
                 .await?;
             self.credential_repository
                 .create_credential(Credential {

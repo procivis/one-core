@@ -8,6 +8,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use attestations::requires_wia;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use mapper::{
     credential_config_to_holder_signing_algs_and_key_storage_security, get_credential_offer_url,
     intersect_supported, map_cryptographic_binding_methods_supported, map_proof_types_supported,
@@ -60,7 +61,7 @@ use super::mapper::{
 };
 use super::model::{
     ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResponse,
-    IssuanceAcceptResult, ShareResponse, SubmitIssuerResponse,
+    IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse, SubmitIssuerResponse,
 };
 use super::{
     HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, deserialize_interaction_data,
@@ -73,15 +74,20 @@ use crate::config::core_config::{
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
-use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::{ListPagination, ListQuery};
 use crate::model::organisation::Organisation;
-use crate::model::relation::Related;
+use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
@@ -999,6 +1005,16 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref()
                 .ok()
                 .map(|response| response.main_credential.credential.id);
+            stored.credential_schema_format_id = result.as_ref().ok().and_then(|response| {
+                response
+                    .batch_items
+                    .first()
+                    .unwrap_or(&response.main_credential)
+                    .credential
+                    .format
+                    .as_ref()
+                    .map(Related::id)
+            });
         }
 
         if let (Some(notification_id), Some(notification_endpoint)) =
@@ -1032,6 +1048,213 @@ impl OpenID4VCIFinal1_0 {
         result
     }
 
+    /// Selects accepted configurations whose batch parents can still be refreshed, or the
+    /// exact configuration of an MSO item. Missing associations are resolved for legacy data.
+    async fn select_refresh_configurations(
+        &self,
+        interaction: &Interaction,
+        data: &HolderInteractionData,
+        updated: Option<&Credential>,
+    ) -> Result<Vec<RefreshConfiguration>, IssuanceProtocolError> {
+        if let Some(credential) = updated {
+            let main_id = credential
+                .parent
+                .as_ref()
+                .map_or(credential.id, Related::id);
+            let format_id = credential.format.as_required_ref().await?.id;
+            let mut configuration = data
+                .configurations_for_credential(main_id)
+                .filter(|configuration| {
+                    configuration
+                        .credential_schema_format_id
+                        .is_none_or(|id| id == format_id)
+                })
+                .exactly_one()
+                .map_err(|_| {
+                    IssuanceProtocolError::Failed(
+                        "Missing or ambiguous credential configuration for MSO refresh".to_string(),
+                    )
+                })?
+                .clone();
+            configuration.credential_id = Some(main_id);
+            configuration.credential_schema_format_id = Some(format_id);
+            return Ok(vec![RefreshConfiguration {
+                configuration,
+                holder_binding: Some(Self::credential_holder_binding(credential).await?),
+            }]);
+        }
+
+        let credentials = self
+            .credential_repository
+            .get_credentials_by_interaction_id(&interaction.id)
+            .await
+            .error_while("getting accepted credentials")?;
+        let mut configurations = vec![];
+        let mut unsupported_fixed_binding = false;
+        for configuration in &data.credential_configurations {
+            let Some(parent) = credentials.iter().find(|credential| {
+                credential.r#type == CredentialType::BatchParent
+                    && credential.deleted_at.is_none()
+                    && credential.state != CredentialStateEnum::Rejected
+                    && configuration
+                        .credential_id
+                        .map_or(data.credential_configurations.len() == 1, |id| {
+                            id == credential.id
+                        })
+            }) else {
+                // Failed/skipped configurations have no stored credential. A legacy association
+                // without an ID is usable only when its parent actually exists.
+                continue;
+            };
+            let mut configuration = configuration.clone();
+            configuration.credential_id = Some(parent.id);
+            // Binding and expiry belong to concrete items, not their format-agnostic parent.
+            // Include consumed and expired items: they still determine how to renew the batch.
+            let items = self
+                .credential_repository
+                .get_credential_list(ListQuery {
+                    include_count: false,
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 1,
+                    }),
+                    filtering: Some(
+                        CredentialFilterValue::ParentCredential(parent.id).condition()
+                            & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                            & CredentialFilterValue::Deleted(false)
+                            & configuration
+                                .credential_schema_format_id
+                                .map(|id| CredentialFilterValue::FormatIds(vec![id])),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("getting batch item for refresh")?;
+            let Some(item) = items.values.first() else {
+                continue;
+            };
+            let fixed_binding = match &item.holder_identifier {
+                Some(identifier) => !identifier.as_ref().await?.autogenerated,
+                None => false,
+            };
+            if fixed_binding && item.expires_at.is_none() {
+                unsupported_fixed_binding = true;
+                continue;
+            }
+            configuration.credential_schema_format_id = item.format.as_ref().map(Related::id);
+            configurations.push(RefreshConfiguration {
+                configuration,
+                holder_binding: if fixed_binding {
+                    Some(Self::credential_holder_binding(item).await?)
+                } else {
+                    None
+                },
+            });
+        }
+        if configurations.is_empty() && unsupported_fixed_binding {
+            return Err(IssuanceProtocolError::RefreshNotSupported(
+                CredentialType::BatchParent,
+            ));
+        }
+        Ok(configurations)
+    }
+
+    async fn credential_holder_binding(
+        credential: &Credential,
+    ) -> Result<HolderBindingInput, IssuanceProtocolError> {
+        let identifier = credential
+            .holder_identifier
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing holder_identifier".to_string(),
+            ))?
+            .as_ref()
+            .await?
+            .to_owned();
+        let key = credential
+            .key
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
+            .as_ref()
+            .await?
+            .to_owned();
+        Ok(HolderBindingInput { identifier, key })
+    }
+
+    async fn get_batch_schema_format(
+        &self,
+        parent: &Credential,
+        configuration: &HolderCredentialConfiguration,
+        format_type: FormatType,
+    ) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
+        let format = if let Some(format_id) = configuration.credential_schema_format_id {
+            parent
+                .schema
+                .as_ref()
+                .await?
+                .formats
+                .as_ref()
+                .await?
+                .iter()
+                .find(|format| format.id == format_id)
+                .cloned()
+                .ok_or_else(|| {
+                    IssuanceProtocolError::Failed(format!(
+                        "Credential schema format {format_id} missing from batch schema"
+                    ))
+                })?
+        } else {
+            // Legacy batches predate the exact association. Resolve it from concrete items;
+            // schema order and a parent's legacy format do not identify the issued format.
+            let items = self
+                .credential_repository
+                .get_credential_list(ListQuery {
+                    filtering: Some(
+                        CredentialFilterValue::ParentCredential(parent.id).condition()
+                            & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                            & CredentialFilterValue::Deleted(false),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("getting legacy batch items")?;
+            let mut formats = vec![];
+            for item in items.values {
+                let format = item.format.as_required_ref().await?;
+                if self
+                    .config
+                    .format
+                    .get_type(&format.format)
+                    .error_while("getting format type")?
+                    == format_type
+                {
+                    formats.push(format.to_owned());
+                }
+            }
+            formats
+                .into_iter()
+                .unique_by(|format| format.id)
+                .exactly_one()
+                .map_err(|_| {
+                    IssuanceProtocolError::Failed(
+                        "Missing or ambiguous format association for legacy batch".to_string(),
+                    )
+                })?
+        };
+        if self
+            .config
+            .format
+            .get_type(&format.format)
+            .error_while("getting format type")?
+            != format_type
+        {
+            return Err(IssuanceProtocolError::Failed(
+                "Refreshed credential format changed".to_string(),
+            ));
+        }
+        Ok(format)
+    }
+
     async fn holder_refresh_configuration(
         &self,
         interaction: &Interaction,
@@ -1050,15 +1273,6 @@ impl OpenID4VCIFinal1_0 {
         } = requested;
 
         let notification_id = response.notification_id.to_owned();
-        if let Some(notification_id) = notification_id.to_owned()
-            && let Some(stored) =
-                interaction_data.configuration_mut(&configuration.credential_configuration_id)
-        {
-            stored.notification_id = Some(notification_id);
-            self.save_interaction_data(interaction.id, interaction_data)
-                .await?;
-        }
-
         let refreshed = self
             .holder_process_refresh(
                 &configuration,
@@ -1069,6 +1283,41 @@ impl OpenID4VCIFinal1_0 {
                 interaction,
             )
             .await;
+
+        let mut interaction_data_changed = false;
+        if let Some(stored) =
+            interaction_data.configuration_mut(&configuration.credential_configuration_id)
+        {
+            // Current issuers can rotate notification IDs on every refresh.
+            if notification_id.is_some() && stored.notification_id != notification_id {
+                stored.notification_id = notification_id.clone();
+                interaction_data_changed = true;
+            }
+            // A successful legacy refresh resolves associations absent from the old interaction.
+            if let Ok(credentials) = &refreshed
+                && let Some(credential) = credentials.first()
+            {
+                if stored.credential_id.is_none() {
+                    stored.credential_id = Some(
+                        credential
+                            .parent
+                            .as_ref()
+                            .map_or(credential.id, Related::id),
+                    );
+                    interaction_data_changed = true;
+                }
+                if stored.credential_schema_format_id.is_none()
+                    && let Some(format) = &credential.format
+                {
+                    stored.credential_schema_format_id = Some(format.id());
+                    interaction_data_changed = true;
+                }
+            }
+        }
+        if interaction_data_changed {
+            self.save_interaction_data(interaction.id, interaction_data)
+                .await?;
+        }
 
         if let (Err(err), Some(notification_id), Some(notification_endpoint)) = (
             &refreshed,
@@ -1151,6 +1400,34 @@ impl OpenID4VCIFinal1_0 {
                 )
                 .await;
             result.record(&credential_configuration_id, accepted);
+        }
+
+        // Protocol capabilities determine whether each configuration needs a parent, even if
+        // it issued just one item. The holder service only merges these parents by schema/trust.
+        if interaction_data.credential_configurations.len() > 1
+            && (interaction_data.refresh_token.is_some()
+                || interaction_data.batch_size.is_some_and(|size| size > 1)
+                || result
+                    .issued
+                    .iter()
+                    .any(|response| !response.batch_items.is_empty()))
+        {
+            for response in &mut result.issued {
+                if response.main_credential.credential.r#type == CredentialType::Single {
+                    let parent = response
+                        .main_credential
+                        .batch_parent(interaction_data.refresh_token.is_some());
+                    let mut item = std::mem::replace(&mut response.main_credential, parent);
+                    let parent_id = response.main_credential.credential.id;
+                    self.change_to_batch_item(&mut item.credential, parent_id);
+                    response.batch_items.push(item);
+                    if let Some(configuration) =
+                        interaction_data.configuration_mut(&response.credential_configuration_id)
+                    {
+                        configuration.credential_id = Some(parent_id);
+                    }
+                }
+            }
         }
         Ok(result)
     }
@@ -1399,6 +1676,7 @@ impl OpenID4VCIFinal1_0 {
                 disclosure_policy: credential_config.disclosure_policy.clone(),
                 notification_id: None,
                 credential_id: None,
+                credential_schema_format_id: None,
             });
         }
 
@@ -1908,6 +2186,39 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         Ok(result)
     }
 
+    async fn regroup_configurations(
+        &self,
+        interaction_id: InteractionId,
+        configuration_parents: HashMap<String, CredentialId>,
+    ) -> Result<(), IssuanceProtocolError> {
+        if configuration_parents.is_empty() {
+            return Ok(());
+        }
+        // Acceptance already persisted tokens, notification IDs and exact schema formats.
+        // Reload the latest data so regrouping changes only the requested parent associations.
+        let interaction = self
+            .interaction_repository
+            .get_interaction(&interaction_id, None)
+            .await
+            .error_while("getting interaction to regroup")?;
+        let mut data: HolderInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())?;
+        for (configuration_id, parent_id) in configuration_parents {
+            let configuration = data.configuration_mut(&configuration_id).ok_or_else(|| {
+                IssuanceProtocolError::Failed(format!(
+                    "Unknown credential configuration: {configuration_id}"
+                ))
+            })?;
+            if configuration.credential_id.is_none() {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Credential configuration {configuration_id} was not issued"
+                )));
+            }
+            configuration.credential_id = Some(parent_id);
+        }
+        self.save_interaction_data(interaction_id, &data).await
+    }
+
     async fn holder_reject_credential(
         &self,
         credential: Credential,
@@ -1933,16 +2244,21 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 return Ok(());
             }
         };
-        let notification_id = match interaction_data
-            .configuration_for_credential(credential.id)
-            .and_then(|configuration| configuration.notification_id.as_ref())
-        {
-            Some(value) => value.clone(),
-            None => {
-                tracing::info!("No notification_id saved for credential");
-                return Ok(());
-            }
-        };
+        let notifications: Vec<_> = interaction_data
+            .configurations_for_credential(credential.id)
+            .filter_map(|configuration| {
+                configuration.notification_id.as_ref().map(|id| {
+                    (
+                        configuration.credential_configuration_id.clone(),
+                        id.clone(),
+                    )
+                })
+            })
+            .collect();
+        if notifications.is_empty() {
+            tracing::info!("No notification_id saved for credential");
+            return Ok(());
+        }
 
         let organisation_id = interaction.organisation.id();
 
@@ -1950,16 +2266,31 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .holder_reuse_or_refresh_token(interaction.id, organisation_id, &mut interaction_data)
             .await?;
 
-        self.send_notification(
-            NotificationRequest {
-                notification_id,
-                event: NotificationEvent::CredentialDeleted,
-                event_description: None,
-            },
-            notification_endpoint.as_str(),
-            access_token.expose_secret(),
-        )
-        .await
+        let mut failures = vec![];
+        for (configuration_id, notification_id) in notifications {
+            if let Err(error) = self
+                .send_notification(
+                    NotificationRequest {
+                        notification_id,
+                        event: NotificationEvent::CredentialDeleted,
+                        event_description: None,
+                    },
+                    notification_endpoint.as_str(),
+                    access_token.expose_secret(),
+                )
+                .await
+            {
+                failures.push(format!("{configuration_id}: {error}"));
+            }
+        }
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(IssuanceProtocolError::Failed(format!(
+                "Credential deletion notifications failed: {}",
+                failures.join("; ")
+            )))
+        }
     }
 
     async fn issuer_share_credential(
@@ -2359,7 +2690,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
+    ) -> Result<Vec<IssuanceRefreshResponse>, IssuanceProtocolError> {
         let organisation = interaction.organisation.as_ref().await?;
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())
@@ -2375,57 +2706,36 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             ),
             None => None,
         };
-        let configurations = match &updated_credential {
-            Some(credential) => vec![
-                interaction_data
-                    .configuration_for_credential(credential.id)
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Missing credential configuration".to_string(),
-                    ))?
-                    .to_owned(),
-            ],
-            None => interaction_data.credential_configurations.clone(),
-        };
+        let configurations = self
+            .select_refresh_configurations(
+                interaction,
+                &interaction_data,
+                updated_credential.as_ref(),
+            )
+            .await?;
+        if configurations.is_empty() {
+            return Err(IssuanceProtocolError::RefreshNotPossible);
+        }
 
         let access_token = self
             .holder_reuse_or_refresh_token(interaction.id, organisation.id, &mut interaction_data)
             .await?;
 
-        // MSO refresh reuses the holder binding of the refreshed credential
-        let reused_holder_binding = match &updated_credential {
-            Some(credential) => {
-                let identifier = credential
-                    .holder_identifier
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Missing holder_identifier".to_string(),
-                    ))?
-                    .as_ref()
-                    .await?
-                    .to_owned();
-                let key = credential
-                    .key
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
-                    .as_ref()
-                    .await?
-                    .to_owned();
-                Some(HolderBindingInput { identifier, key })
-            }
-            None => None,
-        };
-
         let mut autogenerated_bindings = vec![];
         let result = async {
-            let mut requested_credentials = self
-                .prepare_requested_credentials(
-                    &interaction_data,
-                    configurations,
-                    reused_holder_binding.as_ref(),
-                    &organisation,
-                    &mut autogenerated_bindings,
-                )
-                .await?;
+            let mut requested_credentials = Vec::with_capacity(configurations.len());
+            for refresh in configurations {
+                requested_credentials.extend(
+                    self.prepare_requested_credentials(
+                        &interaction_data,
+                        vec![refresh.configuration],
+                        refresh.holder_binding.as_ref(),
+                        &organisation,
+                        &mut autogenerated_bindings,
+                    )
+                    .await?,
+                );
+            }
             // the keys of every configuration are attested in one wallet provider round trip
             self.prepare_wallet_attestations(
                 &interaction_data,
@@ -2453,7 +2763,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     )
                     .await
                 {
-                    Ok(credentials) => refreshed.extend(credentials),
+                    Ok(credentials) => refreshed.push(IssuanceRefreshResponse {
+                        credential_configuration_id,
+                        credentials,
+                    }),
                     Err(error) => {
                         tracing::warn!(
                             "Credential configuration {credential_configuration_id} not refreshed: {error}"
@@ -2475,18 +2788,29 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let used_identifiers = result
             .iter()
             .flatten()
+            .flat_map(|response| &response.credentials)
             .filter_map(|credential| credential.holder_identifier.as_ref())
             .map(|identifier| identifier.id())
             .collect();
         self.delete_unused_autogenerated_bindings(&autogenerated_bindings, used_identifiers)
             .await?;
 
-        result
+        let refreshed = result?;
+        if updated_credential.is_none() {
+            self.record_batch_refresh_history(&refreshed, &organisation)
+                .await?;
+        }
+        Ok(refreshed)
     }
 
     fn config_name(&self) -> &str {
         &self.config_id
     }
+}
+
+struct RefreshConfiguration {
+    configuration: HolderCredentialConfiguration,
+    holder_binding: Option<HolderBindingInput>,
 }
 
 struct PrepareIssuanceSuccess {

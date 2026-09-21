@@ -1237,10 +1237,18 @@ struct MultiFormatIssuerSetup {
     credential_id: CredentialId,
 }
 
-/// JWT + SD_JWT_VC schema, BATCH_PARENT credential, interaction offering the given formats
+/// Multiformat schema, BATCH_PARENT credential, interaction offering the given formats
 async fn multi_format_issuer_setup(
     batch_size: Option<i32>,
     offered_formats: &[&str],
+) -> MultiFormatIssuerSetup {
+    multi_format_issuer_setup_with_expiration(batch_size, offered_formats, None).await
+}
+
+async fn multi_format_issuer_setup_with_expiration(
+    batch_size: Option<i32>,
+    offered_formats: &[&str],
+    expiration: Option<Duration>,
 ) -> MultiFormatIssuerSetup {
     let setup = issuer_setup(None).await;
 
@@ -1254,9 +1262,11 @@ async fn multi_format_issuer_setup(
             TestingCreateSchemaParams {
                 formats: Some(vec![
                     ("JWT".into(), "jwt-schema-id".to_string()),
+                    ("SD_JWT".into(), "sd-jwt-schema-id".to_string()),
                     ("SD_JWT_VC".into(), "sd-jwt-vc-schema-id".to_string()),
                 ]),
                 batch_size,
+                expiration,
                 ..Default::default()
             },
         )
@@ -1305,6 +1315,7 @@ async fn multi_format_issuer_setup(
                 interaction: Some(interaction),
                 key: Some(setup.key.clone()),
                 r#type: Some(CredentialType::BatchParent),
+                expires_at: expiration.map(|duration| one_core::clock::now_utc() + duration),
                 ..Default::default()
             },
         )
@@ -1349,6 +1360,104 @@ async fn issue_offered_format(
         .as_str()
         .unwrap()
         .to_string()
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_without_batch_omits_default_expiry() {
+    check_multi_format_credential_expiry(None, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_without_batch_preserves_schema_expiry() {
+    // Explicit expiry is preserved even when it exceeds the formatter's default validity.
+    for expiration in [Duration::days(10), Duration::days(3650)] {
+        check_multi_format_credential_expiry(None, Some(expiration)).await;
+    }
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_batch_retains_default_expiry_and_cap() {
+    for expiration in [None, Some(Duration::days(10)), Some(Duration::days(3650))] {
+        check_multi_format_credential_expiry(Some(2), expiration).await;
+    }
+}
+
+async fn check_multi_format_credential_expiry(
+    batch_size: Option<i32>,
+    expiration: Option<Duration>,
+) {
+    let MultiFormatIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = multi_format_issuer_setup_with_expiration(
+        batch_size,
+        &["JWT", "SD_JWT", "SD_JWT_VC"],
+        expiration,
+    )
+    .await;
+    let parent = context.db.credentials.get(&credential_id).await;
+    let mut issued = std::collections::HashMap::new();
+    for configuration_id in ["jwt-schema-id", "sd-jwt-schema-id", "sd-jwt-vc-schema-id"] {
+        let jwt = fresh_proof_jwt(&context).await;
+        let response = context
+            .api
+            .ssi
+            .issuer_create_credential(credential_schema.id, configuration_id, &jwt)
+            .await;
+        assert_eq!(response.status(), 200);
+        let body = response.json_value().await;
+        issued.insert(
+            configuration_id.to_string(),
+            body["credentials"][0]["credential"]
+                .as_str()
+                .unwrap()
+                .to_string(),
+        );
+    }
+
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+        .await;
+    assert_eq!(items.len(), 3);
+    for item in items {
+        let format = item.format.as_ref().unwrap().as_ref().await.unwrap();
+        if batch_size.is_none() || expiration.is_some_and(|expiry| expiry <= Duration::days(10)) {
+            assert_eq!(item.expires_at, parent.expires_at);
+        } else {
+            assert!(item.expires_at.is_some());
+            if let Some(parent_expiry) = parent.expires_at {
+                assert!(item.expires_at.unwrap() < parent_expiry);
+            }
+        }
+
+        let token = &issued[&format.ecosystem_schema_id];
+        let stored = context
+            .db
+            .blobs
+            .get(&item.credential_blob_id.unwrap())
+            .await
+            .unwrap();
+        assert_eq!(std::str::from_utf8(&stored.value).unwrap(), token);
+        let payload: serde_json::Value = serde_json::from_slice(
+            &Base64UrlSafeNoPadding::decode_to_vec(token.split('.').nth(1).unwrap(), None).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            payload["exp"].as_i64(),
+            item.expires_at.map(|expiry| expiry.unix_timestamp())
+        );
+        if item.expires_at.is_none() {
+            assert!(payload.get("exp").is_none());
+            if let Some(vc) = payload.get("vc") {
+                assert!(vc.get("expirationDate").is_none());
+                assert!(vc.get("validUntil").is_none());
+            }
+        }
+    }
 }
 
 #[tokio::test]

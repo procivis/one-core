@@ -349,10 +349,14 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     drop(new_mappings);
 
     let mut resolved_schema = resolution.schema;
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut resolved_schema, &mut parsed_credential, "en")
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut resolved_schema,
+        &mut parsed_credential,
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert!(alignment.new_claim_schemas.is_empty());
     assert!(alignment.new_mappings.is_empty());
@@ -424,10 +428,14 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
     .unwrap();
 
     let mut resolved_schema = resolution.schema;
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut resolved_schema, &mut parsed_credential, "en")
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut resolved_schema,
+        &mut parsed_credential,
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(alignment.new_claim_schemas.len(), 1);
     let new_key = alignment.new_claim_schemas[0].key.to_owned();
@@ -855,7 +863,7 @@ async fn matches_existing_schema() {
     let mut credential = credential(parsed_schema, vec![claim("address/city", &parsed_cs)]).await;
 
     let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en")
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
             .await
             .unwrap();
 
@@ -913,7 +921,7 @@ async fn remaps_nested_and_array_claim_paths() {
     .await;
 
     let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en")
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
             .await
             .unwrap();
 
@@ -959,7 +967,7 @@ async fn returns_new_claim_schemas() {
     let mut credential = credential(parsed_schema, vec![claim("newClaim", &parsed_cs)]).await;
 
     let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en")
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
             .await
             .unwrap();
 
@@ -1042,7 +1050,7 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
     .await;
 
     let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en")
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
             .await
             .unwrap();
 
@@ -1082,7 +1090,8 @@ async fn errors_when_parsed_format_missing() {
     credential.format = None;
 
     let result =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en").await;
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
+            .await;
 
     assert!(result.is_err());
 }
@@ -1109,7 +1118,8 @@ async fn errors_when_stored_format_missing() {
     let mut credential = credential(parsed_schema, vec![]).await;
 
     let result =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en").await;
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
+            .await;
 
     assert!(result.is_err());
 }
@@ -1137,7 +1147,8 @@ async fn errors_when_parsed_mapping_missing() {
     let mut credential = credential(parsed_schema, vec![]).await;
 
     let result =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en").await;
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
+            .await;
 
     assert!(result.is_err());
 }
@@ -1205,7 +1216,7 @@ async fn remaps_new_nested_and_array_claim_paths() {
     .await;
 
     let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en")
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
             .await
             .unwrap();
 
@@ -1462,7 +1473,7 @@ async fn relinks_claims_of_new_root_array_claim_schema() {
     .await;
 
     let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en")
+        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
             .await
             .unwrap();
 

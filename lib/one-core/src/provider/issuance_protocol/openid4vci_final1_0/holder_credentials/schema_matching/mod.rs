@@ -441,6 +441,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     stored_schema: &mut CredentialSchema,
     credential: &mut Credential,
     default_language: &str,
+    format_id: Option<shared_types::CredentialSchemaFormatId>,
 ) -> Result<AlignmentUpdate, IssuanceProtocolError> {
     let mut claims = credential.claims.as_mut().await?;
     claims.sort_by_key(|c| c.path.clone());
@@ -463,7 +464,9 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
         let stored_formats = stored_schema.formats.as_ref().await?;
         stored_formats
             .iter()
-            .find(|format| format.format == parsed_format)
+            .find(|format| {
+                format.format == parsed_format && format_id.is_none_or(|id| format.id == id)
+            })
             .cloned()
             .ok_or(IssuanceProtocolError::Failed(format!(
                 "No matching stored format found for `{parsed_format}`"

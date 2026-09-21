@@ -2150,6 +2150,7 @@ async fn test_create_credential_success_mdoc() {
                 request.r#type == CredentialType::BatchItem
                     && request.state == CredentialStateEnum::Offered
                     && request.format.as_ref().map(|f| f.id()) == Some(format_id)
+                    && request.expires_at.is_some()
             })
             .returning(move |_| Ok(batch_item_credential_id));
         credential_repository

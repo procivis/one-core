@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, SerializedCredential,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, SerializedCredential,
 };
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use url::Url;
@@ -10,7 +11,8 @@ use url::Url;
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::IssuanceProtocolError;
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResult, ShareResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResult,
+    IssuanceRefreshResponse, ShareResponse,
 };
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::model::credential::Credential;
@@ -52,6 +54,16 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         self.disabled_error()
     }
 
+    async fn regroup_configurations(
+        &self,
+        interaction_id: InteractionId,
+        configuration_parents: HashMap<String, CredentialId>,
+    ) -> Result<(), IssuanceProtocolError> {
+        self.inner()
+            .regroup_configurations(interaction_id, configuration_parents)
+            .await
+    }
+
     async fn holder_reject_credential(
         &self,
         credential: Credential,
@@ -71,7 +83,7 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
+    ) -> Result<Vec<IssuanceRefreshResponse>, IssuanceProtocolError> {
         self.inner()
             .holder_refresh_credential(interaction, update_credential)
             .await
@@ -161,6 +173,16 @@ impl IssuanceProtocol for CapabilityChecked {
             .await
     }
 
+    async fn regroup_configurations(
+        &self,
+        interaction_id: InteractionId,
+        configuration_parents: HashMap<String, CredentialId>,
+    ) -> Result<(), IssuanceProtocolError> {
+        self.0
+            .regroup_configurations(interaction_id, configuration_parents)
+            .await
+    }
+
     async fn holder_reject_credential(
         &self,
         credential: Credential,
@@ -191,7 +213,7 @@ impl IssuanceProtocol for CapabilityChecked {
         &self,
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
-    ) -> Result<Vec<Credential>, IssuanceProtocolError> {
+    ) -> Result<Vec<IssuanceRefreshResponse>, IssuanceProtocolError> {
         self.0
             .holder_refresh_credential(interaction, update_credential)
             .await

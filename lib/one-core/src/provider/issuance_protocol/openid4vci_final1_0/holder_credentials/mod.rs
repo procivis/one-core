@@ -40,7 +40,7 @@ use crate::proto::identifier_creator::{
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
-use crate::provider::issuance_protocol::model::CredentialWithBlob;
+use crate::provider::issuance_protocol::model::{CredentialWithBlob, IssuanceRefreshResponse};
 use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtocolError};
 use crate::validator::validate_issuance_time;
 
@@ -124,32 +124,7 @@ impl OpenID4VCIFinal1_0 {
             let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
             ))?;
-            let expires_at = if interaction_data.refresh_token.is_some() {
-                None
-            } else {
-                batch_item.credential.expires_at
-            };
-            let credential = Credential {
-                id: Uuid::new_v4().into(),
-                r#type: CredentialType::BatchParent,
-                embedded_disclosure_policy: None,
-                format: None,
-                credential_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
-                wallet_key_attestation_blob_id: None,
-                issuer_identifier: None,
-                issuer_certificate: None,
-                holder_identifier: None,
-                key: None,
-                claims: Default::default(),
-                expires_at,
-                ..batch_item.credential.clone()
-            };
-
-            CredentialWithBlob {
-                credential,
-                serialized: None,
-            }
+            batch_item.batch_parent(interaction_data.refresh_token.is_some())
         } else {
             credentials.pop().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
@@ -162,7 +137,6 @@ impl OpenID4VCIFinal1_0 {
             self.change_to_batch_item(&mut item.credential, main_credential_id);
         }
 
-        // Add main credential to the front so that the batch_parent already exists when the batch_items are created.
         Ok(IssuanceAcceptResponse {
             credential_configuration_id: configuration.credential_configuration_id.to_owned(),
             main_credential,
@@ -170,7 +144,11 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    fn change_to_batch_item(&self, credential: &mut Credential, parent_id: CredentialId) {
+    pub(super) fn change_to_batch_item(
+        &self,
+        credential: &mut Credential,
+        parent_id: CredentialId,
+    ) {
         credential.r#type = CredentialType::BatchItem;
         credential.parent = Some(Related::new(parent_id, self.credential_repository.clone()));
         credential.interaction = None;
@@ -229,6 +207,7 @@ impl OpenID4VCIFinal1_0 {
             schema,
             credential,
             &self.config.global_settings.default_language,
+            None,
         )
         .await?;
 
@@ -351,20 +330,14 @@ impl OpenID4VCIFinal1_0 {
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
+        let parent_id = configuration.credential_id.as_ref().ok_or_else(|| {
+            IssuanceProtocolError::Failed("Missing credential ID for batch refresh".to_string())
+        })?;
         let batch_parent = self
             .credential_repository
-            .get_credentials_by_interaction_id(&interaction.id)
+            .get_credential(parent_id)
             .await
-            .error_while("getting credentials")?
-            .into_iter()
-            .find(|credential| {
-                configuration
-                    .credential_id
-                    .is_none_or(|credential_id| credential_id == credential.id)
-            })
-            .ok_or(IssuanceProtocolError::Failed(
-                "No credentials found".to_string(),
-            ))?;
+            .error_while("getting batch parent")?;
         if batch_parent.r#type != CredentialType::BatchParent {
             return Err(IssuanceProtocolError::RefreshNotSupported(
                 batch_parent.r#type,
@@ -381,29 +354,12 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref(),
         )?;
 
-        // TODO: persist the exact schema-format reference per configuration when implementing
-        // multi-configuration refresh routing.
-        let schema_formats = schema.formats.as_ref().await?;
-        let configuration_format = schema_formats
-            .iter()
-            .find(|f| {
-                self.config
-                    .format
-                    .get_type(&f.format)
-                    .ok()
-                    .is_some_and(|f| f == format_type)
-            })
-            .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!(
-                    "batch parent schema {} does not have a format of type `{format_type}`",
-                    schema.id
-                ))
-            })?
-            .to_owned();
-        drop(schema_formats);
+        let config_schema_format = self
+            .get_batch_schema_format(&batch_parent, configuration, format_type)
+            .await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&configuration_format.format)?;
+            .get_credential_formatter(&config_schema_format.format)?;
 
         let disclosure_policy = configuration
             .disclosure_policy
@@ -439,6 +395,7 @@ impl OpenID4VCIFinal1_0 {
                 &mut schema,
                 &mut item.credential,
                 &self.config.global_settings.default_language,
+                Some(config_schema_format.id),
             )
             .await?;
             if !alignment.new_claim_schemas.is_empty() {
@@ -452,24 +409,6 @@ impl OpenID4VCIFinal1_0 {
                 )));
             }
         }
-
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now_utc(),
-                action: HistoryAction::Refreshed,
-                name: schema.name.to_owned(),
-                source: HistorySource::Core,
-                entity_id: Some(batch_parent.id.into()),
-                entity_type: HistoryEntityType::Credential,
-                organisation_id: Some(organisation.id),
-                user: self.session_provider.session().user(),
-                target: None,
-                metadata: None,
-                metadata_blob_id: None,
-            })
-            .await
-            .error_while("storing history")?;
 
         let mut result = vec![];
         let db_blob_storage = self
@@ -507,6 +446,40 @@ impl OpenID4VCIFinal1_0 {
         }
 
         Ok(result)
+    }
+
+    pub(super) async fn record_batch_refresh_history(
+        &self,
+        refreshed: &[IssuanceRefreshResponse],
+        organisation: &Organisation,
+    ) -> Result<(), IssuanceProtocolError> {
+        // Several configurations can refresh the same parent in one request. Record the
+        // operation once per parent, after its refreshed items have been persisted.
+        for (parent_id, item) in refreshed
+            .iter()
+            .flat_map(|response| &response.credentials)
+            .filter_map(|item| item.parent.as_ref().map(|parent| (parent.id(), item)))
+            .unique_by(|(parent_id, _)| *parent_id)
+        {
+            self.history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    created_date: now_utc(),
+                    action: HistoryAction::Refreshed,
+                    name: item.schema.as_ref().await?.name.to_owned(),
+                    source: HistorySource::Core,
+                    entity_id: Some(parent_id.into()),
+                    entity_type: HistoryEntityType::Credential,
+                    organisation_id: Some(organisation.id),
+                    user: self.session_provider.session().user(),
+                    target: None,
+                    metadata: None,
+                    metadata_blob_id: None,
+                })
+                .await
+                .error_while("storing history")?;
+        }
+        Ok(())
     }
 
     #[expect(clippy::too_many_arguments)]

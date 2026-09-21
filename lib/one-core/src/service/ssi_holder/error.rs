@@ -36,6 +36,8 @@ pub enum HolderServiceError {
     IncompatibleHolderDidMethod,
     #[error("Rejection not supported")]
     RejectionNotSupported,
+    #[error("Refresh not supported")]
+    RefreshNotSupported,
     #[error("Organisation {0} is deactivated")]
     OrganisationIsDeactivated(OrganisationId),
     #[error("Invalid credential type: {0}")]
@@ -69,6 +71,7 @@ impl ErrorCodeMixin for HolderServiceError {
             Self::MissingDid(_) => ErrorCode::BR_0024,
             Self::InvalidInput(_) => ErrorCode::BR_0323,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
+            Self::RefreshNotSupported => ErrorCode::BR_0452,
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::InvalidCredentialType(_) => ErrorCode::BR_0442,

@@ -2,9 +2,10 @@ use serde::Deserialize;
 use shared_types::{InteractionId, OrganisationId, SerializedCredential, TaskId};
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::error::IssuanceProtocolError;
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialType};
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 
@@ -56,6 +57,12 @@ pub(crate) struct IssuanceAcceptResponse {
     pub batch_items: Vec<CredentialWithBlob>,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct IssuanceRefreshResponse {
+    pub credential_configuration_id: String,
+    pub credentials: Vec<Credential>,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct IssuanceAcceptResult {
     pub issued: Vec<IssuanceAcceptResponse>,
@@ -89,6 +96,34 @@ pub(crate) struct IssuanceAcceptFailure {
 pub(crate) struct CredentialWithBlob {
     pub credential: Credential,
     pub serialized: Option<SerializedCredential>,
+}
+
+impl CredentialWithBlob {
+    pub fn batch_parent(&self, refreshable: bool) -> Self {
+        Self {
+            credential: Credential {
+                id: Uuid::new_v4().into(),
+                r#type: CredentialType::BatchParent,
+                embedded_disclosure_policy: None,
+                format: None,
+                credential_blob_id: None,
+                wallet_instance_attestation_blob_id: None,
+                wallet_key_attestation_blob_id: None,
+                issuer_identifier: None,
+                issuer_certificate: None,
+                holder_identifier: None,
+                key: None,
+                claims: Default::default(),
+                expires_at: if refreshable {
+                    None
+                } else {
+                    self.credential.expires_at
+                },
+                ..self.credential.clone()
+            },
+            serialized: None,
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Debug)]

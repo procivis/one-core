@@ -238,80 +238,72 @@ async fn test_issuance_accept_openid4vc() {
     );
 }
 
-/// Accepts an offer of two `jwt_vc_json` configurations (`01ee2044-…` and `second`).
-/// With `fail_second`, the issuer rejects the credential request of the second configuration.
-async fn accept_multi_configuration_offer(
-    fail_second: bool,
-) -> (TestContext, InteractionId, serde_json::Value) {
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+#[derive(Default)]
+pub(super) struct MultiConfigurationOffer {
+    pub(super) batch_size: Option<u32>,
+    pub(super) refresh_token: bool,
+    pub(super) schema_overlap: bool,
+    pub(super) fail_second: bool,
+}
 
+pub(super) struct AcceptedMultiConfigurationOffer {
+    pub(super) context: TestContext,
+    pub(super) interaction_id: InteractionId,
+    pub(super) response: serde_json::Value,
+    schema_ids: [shared_types::CredentialSchemaId; 2],
+}
+
+/// Issue two configurations with independently selected schemas and token/batch capabilities.
+pub(super) async fn accept_multi_configuration_offer(
+    offer: MultiConfigurationOffer,
+) -> AcceptedMultiConfigurationOffer {
+    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::{Mock, MockServer, Request, ResponseTemplate};
+
+    use crate::fixtures::jwt::signed_jwt;
+
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_key = Ecdsa.generate_key().unwrap();
     let multibase = issuer_key.key.public_key_as_multibase().unwrap();
-    let issuer_did = context
+    let issuer_did: DidValue = format!("did:key:{multibase}").parse().unwrap();
+    context
         .db
         .dids
         .create(
             organisation.clone(),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
-                did: Some(format!("did:key:{multibase}").parse().unwrap()),
-                ..Default::default()
-            },
-        )
-        .await;
-    let key = context
-        .db
-        .keys
-        .create(&organisation, ecdsa_testing_params())
-        .await;
-    let holder_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key,
-                    reference: "1".to_string(),
-                }]),
-                did: Some(
-                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
-                        .unwrap(),
-                ),
-                ..Default::default()
-            },
-        )
-        .await;
-    context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(holder_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(holder_did.did_type == DidType::Remote),
+                did: Some(issuer_did.clone()),
                 ..Default::default()
             },
         )
         .await;
 
-    let credential_schema = context
+    let first_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, Default::default())
+        .create("first", &organisation, Default::default())
         .await;
-
-    let interaction_data = dummy_interaction_data(
+    let second_schema = if offer.schema_overlap {
+        first_schema.clone()
+    } else {
+        context
+            .db
+            .credential_schemas
+            .create("second", &organisation, Default::default())
+            .await
+    };
+    let schema_ids = [first_schema.id, second_schema.id];
+    let credential_server = MockServer::start().await;
+    let mut interaction_data: serde_json::Value = serde_json::from_slice(&dummy_interaction_data(
         &context,
-        &credential_schema,
+        &first_schema,
         InteractionDataParams {
-            notification_id: Some("notification".to_string()),
+            batch_size: offer.batch_size,
             notification_endpoint: Some(format!(
                 "{}/ssi/openid4vci/final-1.0/{}/notification",
                 context.server_mock.uri(),
-                credential_schema.id
+                first_schema.id
             )),
             additional_configurations: vec![ConfigurationParams {
                 credential_configuration_id: "second".to_string(),
@@ -321,7 +313,24 @@ async fn accept_multi_configuration_offer(
             }],
             ..Default::default()
         },
-    );
+    ))
+    .unwrap();
+    interaction_data["credential_endpoint"] =
+        json!(format!("{}/credential", credential_server.uri()));
+    // Token capabilities are established by the token endpoint, not by prepopulated fixture data.
+    interaction_data["refresh_token"] = serde_json::Value::Null;
+    interaction_data["refresh_token_expires_at"] = serde_json::Value::Null;
+    for (index, configuration) in interaction_data["credential_configurations"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        configuration["credential_configuration_id"] = json!(["first", "second"][index]);
+        configuration["cryptographic_binding_methods_supported"] = json!(["did:key"]);
+        configuration["disclosure_policy"] =
+            json!({"id": format!("policy-{index}"), "policy": "none"});
+    }
     let interaction = context
         .db
         .interactions
@@ -329,99 +338,335 @@ async fn accept_multi_configuration_offer(
             &organisation,
             InteractionType::Issuance,
             TestingInteractionParams {
-                data: Some(interaction_data),
+                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
                 ..Default::default()
             },
         )
         .await;
 
-    let jwt_credential = w3c_jwt_vc(
-        &issuer_key,
-        "ES256",
-        issuer_did.did.clone(),
-        holder_did.did.clone(),
-        json!({"firstName":"John"}),
-    )
-    .await;
-
-    let issued = if fail_second {
+    for (index, schema_id) in schema_ids.into_iter().enumerate() {
+        let configuration_id = ["first", "second"][index];
+        let request = Mock::given(method("POST"))
+            .and(path("/credential"))
+            .and(header("Authorization", "Bearer 123"))
+            .and(body_partial_json(
+                json!({"credential_configuration_id": configuration_id}),
+            ));
+        if index == 1 && offer.fail_second {
+            request
+                .respond_with(
+                    ResponseTemplate::new(400)
+                        .set_body_json(json!({"error": "invalid_credential_request"})),
+                )
+                .expect(1)
+                .mount(&credential_server)
+                .await;
+            continue;
+        }
+        let issuer_key = issuer_key.clone();
+        let issuer_did = issuer_did.clone();
+        let notification_id = format!("notification-{index}");
+        let response_notification_id = notification_id.clone();
+        let batch_size = offer.batch_size.unwrap_or(1) as usize;
+        request.respond_with(move |request: &Request| {
+            let body: serde_json::Value = request.body_json().unwrap();
+            let proofs = body["proofs"]["jwt"].as_array().unwrap();
+            assert_eq!(proofs.len(), batch_size);
+            let credentials: Vec<_> = proofs.iter().map(|proof| {
+                let proof = Jwt::<serde_json::Value>::decompose_token(proof.as_str().unwrap()).unwrap();
+                let kid = proof.header.key_id.unwrap();
+                let holder_did = kid.split('#').next().unwrap();
+                let credential = futures::executor::block_on(signed_jwt(
+                    &issuer_key, "ES256", None, Some(issuer_did.to_string()), Some(holder_did.to_string()),
+                    json!({"vc": {
+                        "@context": ["https://www.w3.org/2018/credentials/v1"],
+                        "type": ["VerifiableCredential"],
+                        "credentialSchema": [{"id": schema_id.to_string(), "type": "JsonSchema"}],
+                        "credentialSubject": {"firstName": "John"}
+                    }}), None,
+                ));
+                json!({"credential": credential})
+            }).collect();
+            ResponseTemplate::new(200).set_body_json(json!({
+                "credentials": credentials, "notification_id": response_notification_id
+            }))
+        }).expect(1).mount(&credential_server).await;
         context
             .server_mock
-            .ssi_credential_endpoint_failure(credential_schema.id, "123", "second")
+            .ssi_notification_endpoint(first_schema.id, notification_id, "123", 1)
             .await;
-        1
-    } else {
-        2
-    };
-    context
-        .server_mock
-        .ssi_credential_endpoint(
-            credential_schema.id,
-            "123",
-            &[jwt_credential],
-            issued,
-            Some("notification"),
-        )
-        .await;
-    context
-        .server_mock
-        .ssi_notification_endpoint(credential_schema.id, "notification", "123", issued)
-        .await;
+    }
     context
         .server_mock
         .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 2)
         .await;
-    context
-        .server_mock
-        .token_endpoint(credential_schema.id, "123")
-        .await;
+    if offer.refresh_token {
+        context
+            .server_mock
+            .token_endpoint(first_schema.id, "123")
+            .await;
+    } else {
+        context
+            .server_mock
+            .token_endpoint_without_refresh_token(first_schema.id, "123")
+            .await;
+    }
 
-    let resp = context
+    let response = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None, None)
+        .issuance_accept(interaction.id, None, None, None, None)
         .await;
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-    (context, interaction.id, resp)
+    assert_eq!(response.status(), 200);
+    AcceptedMultiConfigurationOffer {
+        context,
+        interaction_id: interaction.id,
+        response: response.json_value().await,
+        schema_ids,
+    }
 }
 
 #[tokio::test]
-async fn test_issuance_accept_multiple_configurations() {
-    let (context, interaction_id, resp) = accept_multi_configuration_offer(false).await;
+async fn test_issuance_accept_no_batch_no_refresh_distinct_schemas_creates_singles() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer::default(),
+        CredentialType::Single,
+        2,
+    )
+    .await;
+}
 
-    assert_eq!(resp["partiallySuccessful"], false);
-    let credential_ids = resp["credentialIds"].as_array().unwrap();
-    assert_eq!(credential_ids.len(), 2);
-    assert_eq!(resp["id"], credential_ids[0]);
-    for credential_id in credential_ids {
-        let credential = context.db.credentials.get(&credential_id.parse()).await;
-        assert_eq!(CredentialStateEnum::Accepted, credential.state);
-    }
+#[tokio::test]
+async fn test_issuance_accept_no_batch_no_refresh_overlapping_schemas_creates_singles() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            schema_overlap: true,
+            ..Default::default()
+        },
+        CredentialType::Single,
+        2,
+    )
+    .await;
+}
 
+#[tokio::test]
+async fn test_issuance_accept_batch_no_refresh_distinct_schemas_creates_two_parents() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            batch_size: Some(2),
+            ..Default::default()
+        },
+        CredentialType::BatchParent,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_batch_no_refresh_overlapping_schemas_creates_one_parent() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            batch_size: Some(2),
+            schema_overlap: true,
+            ..Default::default()
+        },
+        CredentialType::BatchParent,
+        1,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_no_batch_with_refresh_distinct_schemas_creates_two_parents() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            refresh_token: true,
+            ..Default::default()
+        },
+        CredentialType::BatchParent,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_no_batch_with_refresh_overlapping_schemas_creates_one_parent() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            refresh_token: true,
+            schema_overlap: true,
+            ..Default::default()
+        },
+        CredentialType::BatchParent,
+        1,
+    )
+    .await;
+}
+
+async fn check_multi_configuration_issuance(
+    offer: MultiConfigurationOffer,
+    expected_type: CredentialType,
+    expected_main_count: usize,
+) {
+    let items_per_configuration = offer.batch_size.unwrap_or(1) as usize;
+    let refreshable = offer.refresh_token;
+    let schema_overlap = offer.schema_overlap;
+    let AcceptedMultiConfigurationOffer {
+        context,
+        interaction_id,
+        response,
+        schema_ids,
+    } = accept_multi_configuration_offer(offer).await;
+
+    assert_eq!(response["partiallySuccessful"], false);
+    let main_ids = response["credentialIds"].as_array().unwrap();
+    assert_eq!(main_ids.len(), expected_main_count);
+    assert_eq!(response["id"], main_ids[0]);
+    // The accept response contains every single/parent and never exposes batch item IDs.
+    let stored_main_credentials = context
+        .db
+        .credentials
+        .list(
+            CredentialFilterValue::Types(vec![CredentialType::Single, CredentialType::BatchParent])
+                .condition(),
+        )
+        .await;
+    assert_eq!(stored_main_credentials.len(), expected_main_count);
+    assert_eq!(
+        stored_main_credentials
+            .iter()
+            .map(|credential| credential.id)
+            .collect::<HashSet<_>>(),
+        main_ids.iter().map(|id| id.parse()).collect::<HashSet<_>>()
+    );
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    assert_eq!(!data["refresh_token"].is_null(), refreshable);
+    assert_eq!(data["batch_size"].is_null(), items_per_configuration == 1);
     let configurations = data["credential_configurations"].as_array().unwrap();
     assert_eq!(configurations.len(), 2);
-    for (configuration, credential_id) in configurations.iter().zip(credential_ids) {
-        assert_eq!(configuration["notification_id"], "notification");
-        assert_eq!(&configuration["credential_id"], credential_id);
+
+    let mut all_item_ids = HashSet::new();
+    for main_id in main_ids {
+        let main = context.db.credentials.get(&main_id.parse()).await;
+        assert_eq!(main.r#type, expected_type);
+        assert_eq!(main.state, CredentialStateEnum::Accepted);
+        assert_eq!(main.interaction.as_ref().unwrap().id(), interaction_id);
+        assert!(main.parent.is_none());
+        let items = context
+            .db
+            .credentials
+            .list(CredentialFilterValue::ParentCredential(main.id).condition())
+            .await;
+        if expected_type == CredentialType::Single {
+            assert!(items.is_empty());
+            assert!(main.format.is_some());
+            assert!(main.credential_blob_id.is_some());
+        } else {
+            assert!(main.format.is_none());
+            assert!(main.credential_blob_id.is_none());
+            assert!(main.embedded_disclosure_policy.is_none());
+            assert!(main.claims.as_ref().await.unwrap().is_empty());
+            assert_eq!(main.expires_at.is_none(), refreshable);
+            assert_eq!(
+                items.len(),
+                items_per_configuration * if schema_overlap { 2 } else { 1 }
+            );
+            for item in &items {
+                assert_eq!(item.r#type, CredentialType::BatchItem);
+                assert_eq!(item.state, CredentialStateEnum::Accepted);
+                assert_eq!(item.schema.id(), main.schema.id());
+                assert!(item.interaction.is_none());
+                assert!(item.credential_blob_id.is_some());
+                assert!(
+                    !main_ids
+                        .iter()
+                        .any(|id| id.parse::<shared_types::CredentialId>() == item.id)
+                );
+                assert!(all_item_ids.insert(item.id));
+                let claims = item.claims.as_ref().await.unwrap();
+                assert!(claims.iter().all(|claim| claim.credential_id == item.id));
+                assert!(claims.iter().any(
+                    |claim| claim.path == "firstName" && claim.value.as_deref() == Some("John")
+                ));
+            }
+        }
+    }
+    assert_eq!(
+        all_item_ids.len(),
+        if expected_type == CredentialType::Single {
+            0
+        } else {
+            2 * items_per_configuration
+        }
+    );
+
+    for (index, configuration) in configurations.iter().enumerate() {
+        assert_eq!(
+            configuration["notification_id"],
+            format!("notification-{index}")
+        );
+        assert!(main_ids.contains(&configuration["credential_id"]));
+        let main = context
+            .db
+            .credentials
+            .get(&configuration["credential_id"].parse())
+            .await;
+        assert_eq!(main.schema.id(), schema_ids[index]);
+        let concrete = if expected_type == CredentialType::Single {
+            vec![main]
+        } else {
+            context
+                .db
+                .credentials
+                .list(CredentialFilterValue::ParentCredential(main.id).condition())
+                .await
+        };
+        let policy = json!({"id": format!("policy-{index}"), "policy": "none"});
+        let matching: Vec<_> = concrete
+            .iter()
+            .filter(|item| {
+                serde_json::from_str::<serde_json::Value>(
+                    item.embedded_disclosure_policy.as_ref().unwrap(),
+                )
+                .unwrap()
+                    == policy
+            })
+            .collect();
+        assert_eq!(matching.len(), items_per_configuration);
+        for item in matching {
+            assert_eq!(
+                configuration["credential_schema_format_id"],
+                item.format.as_ref().unwrap().id().to_string()
+            );
+        }
     }
 }
 
 #[tokio::test]
 async fn test_issuance_accept_partially_successful() {
-    let (context, interaction_id, resp) = accept_multi_configuration_offer(true).await;
+    let AcceptedMultiConfigurationOffer {
+        context,
+        interaction_id,
+        response,
+        ..
+    } = accept_multi_configuration_offer(MultiConfigurationOffer {
+        fail_second: true,
+        ..Default::default()
+    })
+    .await;
 
-    assert_eq!(resp["partiallySuccessful"], true);
-    let credential_ids = resp["credentialIds"].as_array().unwrap();
+    assert_eq!(response["partiallySuccessful"], true);
+    let credential_ids = response["credentialIds"].as_array().unwrap();
     assert_eq!(credential_ids.len(), 1);
-    assert_eq!(resp["id"], credential_ids[0]);
-
+    assert_eq!(response["id"], credential_ids[0]);
+    let credential = context.db.credentials.get(&credential_ids[0].parse()).await;
+    assert_eq!(credential.r#type, CredentialType::Single);
+    assert!(credential.parent.is_none());
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
     let configurations = data["credential_configurations"].as_array().unwrap();
-    assert_eq!(&configurations[0]["credential_id"], &credential_ids[0]);
+    assert_eq!(configurations[0]["credential_id"], credential_ids[0]);
     assert_eq!(configurations[1]["credential_id"], serde_json::Value::Null);
 }
 

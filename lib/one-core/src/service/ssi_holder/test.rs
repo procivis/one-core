@@ -1936,6 +1936,294 @@ fn dummy_interaction() -> HolderInteractionData {
             disclosure_policy: None,
             notification_id: None,
             credential_id: None,
+            credential_schema_format_id: None,
         }],
     }
+}
+
+#[tokio::test]
+async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
+    let service = mock_ssi_holder_service();
+    let schema = dummy_credential(None).schema;
+
+    // The protocol issued JWT and MDOC configurations of the same schema, each with its own parent.
+    let mut issued = vec![];
+    for (configuration_id, format_name) in [("jwt", "JWT"), ("mdoc", "MDOC")] {
+        let mut credential = crate::service::test_utilities::dummy_credential();
+        credential.schema = schema.clone();
+        credential.embedded_disclosure_policy = Some(format!("{configuration_id}-policy"));
+        {
+            let mut format = credential.format.as_mut().unwrap().as_mut().await.unwrap();
+            format.credential_schema_id = schema.id();
+            format.format = format_name.into();
+        }
+        let mut item = CredentialWithBlob {
+            credential,
+            serialized: Some(format!("{configuration_id}-credential").into()),
+        };
+        let parent = item.batch_parent(false);
+        item.credential.r#type = CredentialType::BatchItem;
+        item.credential.parent = Some(parent.credential.clone().into());
+        item.credential.interaction = None;
+        issued.push(IssuanceAcceptResponse {
+            credential_configuration_id: configuration_id.to_string(),
+            main_credential: parent,
+            batch_items: vec![item],
+        });
+    }
+    let jwt_parent = issued[0].main_credential.clone();
+    let original_items: Vec<_> = issued
+        .iter()
+        .flat_map(|response| response.batch_items.clone())
+        .collect();
+
+    let (grouped, assignments) = service.group_issued_credentials(issued);
+
+    // The first parent survives, and only the MDOC configuration needs reassignment.
+    assert_eq!(grouped.len(), 1);
+    let batch = &grouped[0];
+    assert_eq!(batch.main_credential.credential, jwt_parent.credential);
+    assert_eq!(batch.main_credential.serialized, jwt_parent.serialized);
+    assert_eq!(
+        assignments,
+        [("mdoc".to_string(), jwt_parent.credential.id)]
+            .into_iter()
+            .collect()
+    );
+
+    // Reparenting must preserve both concrete credentials, including formats, policies, claims and blobs.
+    assert_eq!(batch.batch_items.len(), 2);
+    for (item, mut expected) in batch.batch_items.iter().zip(original_items) {
+        expected.credential.parent = Some(jwt_parent.credential.clone().into());
+        assert_eq!(item.credential, expected.credential);
+        assert_eq!(item.serialized, expected.serialized);
+    }
+}
+
+#[test]
+fn accept_keeps_singles_separate_even_with_the_same_schema() {
+    let service = mock_ssi_holder_service();
+    let first = dummy_credential(None);
+    let second = Credential {
+        id: Uuid::new_v4().into(),
+        ..first.clone()
+    };
+    let expected = [first, second];
+    let issued = expected
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(index, credential)| IssuanceAcceptResponse {
+            credential_configuration_id: format!("config-{index}"),
+            main_credential: CredentialWithBlob {
+                credential,
+                serialized: Some(format!("serialized-{index}").into()),
+            },
+            batch_items: vec![],
+        })
+        .collect();
+
+    let (grouped, assignments) = service.group_issued_credentials(issued);
+
+    assert!(assignments.is_empty());
+    assert_eq!(grouped.len(), 2);
+    for (index, (response, original)) in grouped.iter().zip(expected).enumerate() {
+        assert_eq!(response.main_credential.credential, original);
+        assert_eq!(
+            response.main_credential.serialized,
+            Some(format!("serialized-{index}").into())
+        );
+        assert!(response.batch_items.is_empty());
+    }
+}
+
+#[test]
+fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separate() {
+    let service = mock_ssi_holder_service();
+    let first = dummy_credential(None);
+    let second = dummy_credential(None);
+    let third = Credential {
+        id: Uuid::new_v4().into(),
+        ecosystem: Some("another-ecosystem".into()),
+        ..first.clone()
+    };
+    let issued: Vec<_> = [first, second, third]
+        .into_iter()
+        .enumerate()
+        .map(|(index, credential)| {
+            let mut item = CredentialWithBlob {
+                credential,
+                serialized: Some("credential".into()),
+            };
+            let parent = item.batch_parent(true);
+            item.credential.r#type = CredentialType::BatchItem;
+            item.credential.parent = Some(parent.credential.clone().into());
+            item.credential.interaction = None;
+            IssuanceAcceptResponse {
+                credential_configuration_id: format!("config-{index}"),
+                main_credential: parent,
+                batch_items: vec![item],
+            }
+        })
+        .collect();
+    let expected_ids: Vec<_> = issued
+        .iter()
+        .map(|response| response.main_credential.credential.id)
+        .collect();
+
+    let (grouped, assignments) = service.group_issued_credentials(issued);
+
+    assert!(assignments.is_empty());
+    assert_eq!(grouped.len(), 3);
+    for (response, id) in grouped.iter().zip(expected_ids) {
+        assert_eq!(response.main_credential.credential.id, id);
+        assert_eq!(response.batch_items.len(), 1);
+        assert_eq!(
+            response.batch_items[0]
+                .credential
+                .parent
+                .as_ref()
+                .unwrap()
+                .id(),
+            id
+        );
+    }
+}
+
+#[tokio::test]
+async fn refresh_validates_each_configuration_even_when_they_share_a_batch_parent() {
+    use std::sync::Mutex;
+
+    use crate::model::blob::{Blob, BlobType};
+    use crate::provider::issuance_protocol::model::IssuanceRefreshResponse;
+
+    // Two configurations return items under the same parent. Sharing the parent must not
+    // cause the service to validate only one of the configurations against the ecosystem.
+    let mut first = dummy_credential(None);
+    let parent = CredentialWithBlob {
+        credential: first.clone(),
+        serialized: None,
+    }
+    .batch_parent(true);
+    first.r#type = CredentialType::BatchItem;
+    first.parent = Some(parent.credential.clone().into());
+    first.interaction = None;
+    let second = Credential {
+        id: Uuid::new_v4().into(),
+        credential_blob_id: Some(Uuid::new_v4().into()),
+        ..first.clone()
+    };
+    let expected_ids = vec![first.id, second.id];
+    let expected_validations = vec![
+        ("first".to_string(), first.id),
+        ("second".to_string(), second.id),
+    ];
+    let configurations = [("first", first), ("second", second)];
+    let refreshed = configurations
+        .iter()
+        .map(|(configuration_id, item)| IssuanceRefreshResponse {
+            credential_configuration_id: configuration_id.to_string(),
+            credentials: vec![item.clone()],
+        })
+        .collect();
+
+    let mut data = dummy_interaction();
+    data.refresh_token = Some(b"refresh-token".to_vec());
+    data.credential_configurations = configurations
+        .iter()
+        .map(|(configuration_id, item)| HolderCredentialConfiguration {
+            credential_configuration_id: configuration_id.to_string(),
+            format: "jwt_vc_json".to_string(),
+            credential_id: Some(parent.credential.id),
+            credential_schema_format_id: item.format.as_ref().map(|format| format.id()),
+            ..data.credential_configurations[0].clone()
+        })
+        .collect();
+
+    let mut protocol = MockIssuanceProtocol::new();
+    protocol
+        .expect_holder_refresh_credential()
+        .once()
+        .return_once(move |_, _| Ok(refreshed));
+    let mut protocol_provider = MockIssuanceProtocolProvider::new();
+    protocol_provider
+        .expect_get_protocol()
+        .return_once(move |_| Ok(Arc::new(protocol)));
+    let mut credential_repository = MockCredentialRepository::new();
+    for (_, item) in configurations {
+        credential_repository
+            .expect_get_credential()
+            .with(eq(item.id))
+            .once()
+            .return_once(move |_| Ok(item));
+    }
+    let interaction_id = Uuid::new_v4().into();
+    let mut interactions = MockInteractionRepository::new();
+    interactions
+        .expect_get_interaction()
+        .return_once(move |_, _| {
+            Ok(Interaction {
+                id: interaction_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                organisation: dummy_organisation(None).into(),
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: Some("EUDI".into()),
+                ecosystem_data: Default::default(),
+            })
+        });
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_get().returning(|id| {
+        Ok(Some(Blob {
+            id: *id,
+            ..Blob::new(b"credential".to_vec(), BlobType::Credential)
+        }))
+    });
+    let mut blobs = MockBlobStorageProvider::new();
+    blobs
+        .expect_get_blob_storage()
+        .return_once(move |_| Ok(Arc::new(blob_storage)));
+
+    let validated_configurations = Arc::new(Mutex::new(vec![]));
+    let validations = validated_configurations.clone();
+    let mut ecosystem = MockEcosystem::new();
+    ecosystem
+        .expect_validate_interaction()
+        .returning(move |artifact, _| {
+            if let ProtocolArtifact::HolderIssuanceCredential {
+                credential,
+                credential_configuration_id,
+                ..
+            } = artifact
+            {
+                validations
+                    .lock()
+                    .unwrap()
+                    .push((credential_configuration_id.clone(), credential.id));
+            }
+            Ok(())
+        });
+    let mut ecosystems = MockEcosystemDirectory::new();
+    ecosystems
+        .expect_get()
+        .return_once(move |_| Ok(Arc::new(ecosystem)));
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        interaction_repository: Arc::new(interactions),
+        issuance_protocol_provider: Arc::new(protocol_provider),
+        blob_storage_provider: Arc::new(blobs),
+        ecosystem_provider: Arc::new(ecosystems),
+        ..mock_ssi_holder_service()
+    };
+
+    let refreshed_ids = service.refresh_credentials(interaction_id).await.unwrap();
+
+    // Both configuration IDs reach the ecosystem with their own concrete item, not their shared parent.
+    assert_eq!(
+        *validated_configurations.lock().unwrap(),
+        expected_validations
+    );
+    assert_eq!(refreshed_ids, expected_ids);
 }

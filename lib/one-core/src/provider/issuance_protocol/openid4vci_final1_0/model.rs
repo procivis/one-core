@@ -192,19 +192,16 @@ impl HolderInteractionData {
             .find(|c| c.credential_configuration_id == credential_configuration_id)
     }
 
-    /// configuration the (main) credential was issued for
-    pub fn configuration_for_credential(
+    /// Successful configurations associated with the main credential
+    pub fn configurations_for_credential(
         &self,
         credential_id: CredentialId,
-    ) -> Option<&HolderCredentialConfiguration> {
-        self.credential_configurations
-            .iter()
-            .find(|c| c.credential_id == Some(credential_id))
-            // interactions created before multi-format support have a single configuration without credential id
-            .or(match self.credential_configurations.as_slice() {
-                [single] => Some(single),
-                _ => None,
-            })
+    ) -> impl Iterator<Item = &HolderCredentialConfiguration> {
+        self.credential_configurations.iter().filter(move |c| {
+            c.credential_id == Some(credential_id)
+                    // Legacy interactions have one configuration without a credential ID.
+                    || (c.credential_id.is_none() && self.credential_configurations.len() == 1)
+        })
     }
 }
 
@@ -229,6 +226,9 @@ pub(crate) struct HolderCredentialConfiguration {
     /// main credential created for this configuration
     #[serde(default)]
     pub credential_id: Option<CredentialId>,
+    /// Exact format of the issued items; absent in interactions created before format routing.
+    #[serde(default)]
+    pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
 }
 
 // procivis extension under CredentialDisplay
