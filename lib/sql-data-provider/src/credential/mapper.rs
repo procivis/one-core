@@ -26,7 +26,9 @@ use sea_orm::sea_query::{
     Alias, ColumnRef, Expr, ExprTrait, Func, NullOrdering, Order, Query, SelectStatement,
     SimpleExpr, SubQueryStatement,
 };
-use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter, Set, Value};
+use sea_orm::{
+    ActiveValue, ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait, Set, Value,
+};
 use shared_types::{
     BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, IdentifierId, InteractionId,
     KeyId,
@@ -168,8 +170,11 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::ExpiresAt(value) => {
                 get_comparison_condition(credential::Column::ExpiresAt, value)
             }
-            Self::Formats(formats) => credential::Column::Format
+            Self::FormatIds(formats) => credential::Column::Format
                 .is_in(formats.iter().map(ToString::to_string))
+                .into_condition(),
+            Self::Formats(formats) => credential_schema_format::Column::Format
+                .is_in(formats)
                 .into_condition(),
             Self::HasUnconsumedBatchItems(true) => credential::Column::Id
                 .in_subquery(unconsumed_item_select())
@@ -267,7 +272,16 @@ fn earliest_expiring_batch_item() -> SelectStatement {
 
 impl IntoJoinRelations for CredentialFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
-        vec![] // claim filters use an explicit join to the effective claim owner
+        match self {
+            Self::Formats(_) => vec![JoinRelation {
+                // Preserve credentials without a format when another OR branch matches.
+                join_type: JoinType::LeftJoin,
+                relation_def: credential::Relation::CredentialSchemaFormat.def(),
+                alias: None,
+            }],
+            // Claim filters use an explicit join to the effective claim owner.
+            _ => vec![],
+        }
     }
 }
 

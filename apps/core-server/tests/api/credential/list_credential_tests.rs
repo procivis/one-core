@@ -894,6 +894,104 @@ async fn test_get_list_credential_filter_by_everything() {
 }
 
 #[tokio::test]
+async fn test_get_list_credential_filter_by_formats() {
+    let config = indoc::indoc! {"
+        format:
+          CUSTOM_JWT:
+            type: JWT
+            display: Custom JWT
+            order: 301
+            params:
+              public:
+                expirationSeconds: 63072000
+                leewaySeconds: 60
+                embedLayoutProperties: true
+                revocationMethod: BITSTRINGSTATUSLIST
+    "};
+    let (context, organisation, _, identifier, ..) =
+        TestContext::new_with_did(Some(config.to_string())).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                formats: Some(vec![
+                    ("JWT".into(), "jwt-schema".to_string()),
+                    ("CUSTOM_JWT".into(), "custom-jwt-schema".to_string()),
+                    ("MDOC".into(), "mdoc-schema".to_string()),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // All credentials share a schema, but each has its own format.
+    let formats = credential_schema.formats.as_ref().await.unwrap();
+    let mut credentials = Vec::new();
+    for format in formats.iter() {
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    format: Some(format.clone()),
+                    ..Default::default()
+                },
+            )
+            .await;
+        credentials.push((format.format.to_string(), credential.id.to_string()));
+    }
+
+    let format_id = formats[0].id.to_string();
+    for requested_formats in [
+        vec!["JWT"],
+        vec!["CUSTOM_JWT"],
+        vec!["JWT", "MDOC"],
+        vec!["JWT", "JWT"],
+        vec!["JWT", "UNKNOWN"],
+        vec!["UNKNOWN"],
+        vec![format_id.as_str()],
+    ] {
+        let resp = context
+            .api
+            .credentials
+            .list(
+                0,
+                10,
+                &organisation.id,
+                Filters {
+                    formats: Some(&requested_formats),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await;
+
+        assert_eq!(resp.status(), 200);
+        let response = resp.json_value().await;
+        let expected_ids = credentials
+            .iter()
+            .filter(|(format, _)| requested_formats.contains(&format.as_str()))
+            .map(|(_, id)| id.as_str())
+            .collect::<HashSet<_>>();
+        let values = response["values"].as_array().unwrap();
+        let actual_ids = values
+            .iter()
+            .map(|credential| credential["id"].as_str().unwrap())
+            .collect::<HashSet<_>>();
+        assert_eq!(actual_ids, expected_ids, "formats: {requested_formats:?}");
+        assert_eq!(response["totalItems"], expected_ids.len());
+        assert_eq!(values.len(), expected_ids.len());
+    }
+}
+
+#[tokio::test]
 async fn test_get_list_credential_filter_by_profiles() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;

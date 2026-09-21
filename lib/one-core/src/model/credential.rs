@@ -197,7 +197,8 @@ pub enum CredentialFilterValue {
     IssuanceDate(ValueComparison<OffsetDateTime>),
     RevocationDate(ValueComparison<OffsetDateTime>),
     ExpiresAt(ValueComparison<OffsetDateTime>),
-    Formats(Vec<CredentialSchemaFormatId>),
+    FormatIds(Vec<CredentialSchemaFormatId>),
+    Formats(Vec<CredentialFormat>),
     HasUnconsumedBatchItems(bool),
     /// The accepted, non-deleted, unconsumed item with the earliest expiry per parent and format.
     /// Items without an expiry sort last; ties are broken by descending ID.

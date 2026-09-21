@@ -32,6 +32,7 @@ async fn test_unpack_real_backup_1_62_1() {
             organisation_id: "11111111-2222-3333-a444-ffffffffffff".to_string(),
             name: None,
             profiles: None,
+            formats: None,
             search_text: None,
             search_type: None,
             exact: None,

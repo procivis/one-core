@@ -21,6 +21,7 @@ pub struct Filters<'a> {
     pub search_text: Option<&'a str>,
     pub search_type: Option<&'a [&'a str]>,
     pub profiles: Option<&'a [&'a str]>,
+    pub formats: Option<&'a [&'a str]>,
     pub roles: Option<&'a [&'a str]>,
     pub credential_schema_ids: Option<&'a [&'a str]>,
     pub ids: Option<&'a [CredentialId]>,
@@ -147,6 +148,14 @@ impl CredentialsApi {
             .flatten()
             .fold(String::new(), |url, search_type| {
                 url + &format!("&profiles[]={search_type}")
+            });
+
+        url += &filters
+            .formats
+            .into_iter()
+            .flatten()
+            .fold(String::new(), |url, format| {
+                url + &format!("&formats[]={format}")
             });
 
         url += &filters

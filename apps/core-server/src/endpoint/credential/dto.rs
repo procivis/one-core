@@ -389,6 +389,10 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(rename = "profiles[]", inline, nullable = false)]
     #[try_into(infallible)]
     pub profiles: Option<Vec<String>>,
+    /// Filter by one or more formatter configuration names.
+    #[param(rename = "formats[]", inline, nullable = false)]
+    #[try_into(infallible)]
+    pub formats: Option<Vec<CredentialFormat>>,
     /// Filter credentials by one or more roles: issued by the system,
     /// verified by the system, or held by the system as a wallet.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]

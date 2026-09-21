@@ -75,6 +75,14 @@ pub enum Relation {
     )]
     CredentialSchema,
     #[sea_orm(
+        belongs_to = "super::credential_schema_format::Entity",
+        from = "Column::Format",
+        to = "super::credential_schema_format::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    CredentialSchemaFormat,
+    #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::IssuerIdentifierId",
         to = "super::identifier::Column::Id",

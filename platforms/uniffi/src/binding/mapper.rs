@@ -948,6 +948,7 @@ impl TryFrom<CredentialListQueryBindingDTO>
                 roles: convert_inner_of_inner(value.roles),
                 ids: into_id_opt_vec(&value.ids)?,
                 parent_id: into_id_opt(value.parent_id)?,
+                formats: convert_inner_of_inner(value.formats),
                 credential_schema_ids: into_id_opt_vec(&value.credential_schema_ids)?,
                 ecosystems: convert_inner_of_inner(value.ecosystems),
                 issuers: None,

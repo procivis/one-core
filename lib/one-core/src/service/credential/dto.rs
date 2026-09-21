@@ -236,6 +236,7 @@ pub struct CredentialFilterParamsDTO {
     pub issuers: Option<Vec<IdentifierId>>,
     pub states: Option<Vec<CredentialStateEnum>>,
     pub profiles: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
     pub types: Option<Vec<CredentialTypeEnum>>,
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,

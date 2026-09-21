@@ -195,6 +195,8 @@ pub struct CredentialListQueryBindingDTO {
     pub name: Option<String>,
     /// Filter by one or more country profiles.
     pub profiles: Option<Vec<String>>,
+    /// Filter by one or more formatter configuration names.
+    pub formats: Option<Vec<String>>,
     /// Search for a string.
     pub search_text: Option<String>,
     /// Changes where `searchText` is searched. Choose one or more

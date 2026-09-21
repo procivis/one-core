@@ -1078,7 +1078,7 @@ impl OID4VCIFinal1_0Service {
                 include_count: false,
                 filtering: Some(
                     CredentialFilterValue::ParentCredential(parent_credential_id).condition()
-                        & CredentialFilterValue::Formats(vec![format_id])
+                        & CredentialFilterValue::FormatIds(vec![format_id])
                         & CredentialFilterValue::Deleted(false),
                 ),
                 ..Default::default()

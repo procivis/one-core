@@ -662,6 +662,57 @@ async fn test_get_credential_list_success() {
 }
 
 #[tokio::test]
+async fn test_get_credential_list_formats_or_batch_parent() {
+    let TestSetupWithCredential {
+        db, credential_id, ..
+    } = setup_with_credential().await;
+    let format_id = crate::entity::credential_schema_format::Entity::find()
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap()
+        .id;
+    let provider = credential_repository(db, None);
+    let parent = Credential {
+        id: Uuid::new_v4().into(),
+        r#type: CredentialType::BatchParent,
+        format: None,
+        claims: Default::default(),
+        ..provider.get_credential(&credential_id).await.unwrap()
+    };
+    provider.create_credential(parent.clone()).await.unwrap();
+    provider
+        .update_credential(
+            credential_id,
+            UpdateCredentialRequest {
+                format: Some(format_id),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let result = provider
+        .get_credential_list(CredentialListQuery {
+            filtering: Some(
+                CredentialFilterValue::Formats(vec!["MDOC".into()]).condition()
+                    | CredentialFilterValue::Formats(vec!["JWT".into()])
+                    | CredentialFilterValue::Types(vec![CredentialType::BatchParent]),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    // Repeated format filters share one join, and the OR branch retains the formatless parent.
+    assert_eq!(result.total_items, Some(2));
+    assert_eq_unordered(
+        result.values.into_iter().map(|credential| credential.id),
+        [credential_id, parent.id],
+    );
+}
+
+#[tokio::test]
 async fn test_get_credential_list_success_filter_state() {
     let TestSetup {
         credential_schema,

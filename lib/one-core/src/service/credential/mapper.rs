@@ -502,7 +502,7 @@ async fn get_offered_formats(
                         include_count: false,
                         filtering: Some(
                             CredentialFilterValue::ParentCredential(value.id).condition()
-                                & CredentialFilterValue::Formats(vec![format.id]),
+                                & CredentialFilterValue::FormatIds(vec![format.id]),
                         ),
                         ..Default::default()
                     })
@@ -840,6 +840,7 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
         });
 
         let profiles = value.profiles.map(CredentialFilterValue::Profiles);
+        let formats = value.formats.map(CredentialFilterValue::Formats);
 
         let search_filters = match (value.search_text, value.search_type) {
             (Some(search_text), Some(search_type)) => {
@@ -991,6 +992,7 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
             & states
             & types
             & profiles
+            & formats
             & created_date_after
             & created_date_before
             & last_modified_after
