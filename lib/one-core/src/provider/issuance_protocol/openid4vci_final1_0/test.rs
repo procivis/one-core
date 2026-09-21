@@ -5759,7 +5759,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
         });
     holder_wallet_unit_proto
         .expect_check_attestation_status()
-        .times(2)
+        .times(3)
         .with(eq("wua"), eq(AttestationType::KeyAttestation))
         .returning(|_, _| {
             Ok(AttestationCheckResult {
@@ -5771,7 +5771,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
     let mut wallet_attestation_repository = MockWalletAttestationRepository::new();
     wallet_attestation_repository
         .expect_create()
-        .times(2)
+        .times(3)
         .returning(|attestation| Ok(attestation.id));
 
     let protocol = setup_protocol(TestInputs {
@@ -5782,7 +5782,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
         ..Default::default()
     });
 
-    let configuration = |id: &str, key_attestation_required: bool| HolderCredentialConfiguration {
+    let configuration = |id: &str, key_storage: Option<Vec<_>>| HolderCredentialConfiguration {
         credential_configuration_id: id.to_string(),
         format: "jwt_vc_json".to_string(),
         cryptographic_binding_methods_supported: None,
@@ -5791,12 +5791,10 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
             "jwt".to_string(),
             ProofTypeSupported {
                 proof_signing_alg_values_supported: vec!["ES256".to_string()],
-                key_attestations_required: key_attestation_required.then(|| {
-                    KeyAttestationsRequired {
-                        key_storage: vec![KeyStorageSecurityLevel::Basic],
-                        user_authentication: vec![],
-                        preferred_key_storage_status_period: None,
-                    }
+                key_attestations_required: key_storage.map(|key_storage| KeyAttestationsRequired {
+                    key_storage,
+                    user_authentication: vec![],
+                    preferred_key_storage_status_period: None,
                 }),
             },
         )])),
@@ -5810,8 +5808,8 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
         storage_type: "INTERNAL".to_string(),
         ..dummy_key()
     };
-    let requested = |id: &str, key_attestation_required: bool| RequestedCredential {
-        configuration: configuration(id, key_attestation_required),
+    let requested = |id: &str, key_storage: Option<Vec<_>>| RequestedCredential {
+        configuration: configuration(id, key_storage),
         holder_bindings: vec![HolderBinding {
             identifier: dummy_identifier(),
             key: key.clone(),
@@ -5819,9 +5817,10 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
         }],
     };
     let mut requested_credentials = vec![
-        requested("a", true),
-        requested("b", false),
-        requested("c", true),
+        requested("a", Some(vec![KeyStorageSecurityLevel::Basic])),
+        requested("b", None),
+        requested("c", Some(vec![KeyStorageSecurityLevel::Basic])),
+        requested("d", Some(vec![])),
     ];
     let interaction_data = HolderInteractionData {
         issuer_url: "http://issuer".to_string(),
@@ -5866,7 +5865,12 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
             .flat_map(|requested| &requested.holder_bindings)
             .map(|binding| binding.wua_proof.clone())
             .collect::<Vec<_>>(),
-        vec![Some("wua".to_string()), None, Some("wua".to_string())]
+        vec![
+            Some("wua".to_string()),
+            None,
+            Some("wua".to_string()),
+            Some("wua".to_string()),
+        ]
     );
 }
 

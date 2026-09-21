@@ -291,7 +291,21 @@ pub(crate) fn configuration_to_accepted_key_storage_security(
                     .key_attestations_required
                     .as_ref()
                     .map(|kar| kar.key_storage.clone())
-                    .and_then(|levels| (!levels.is_empty()).then_some(levels))
+                    // An empty `key_attestations_required` means that a key attestation is needed
+                    // without additional constraints, so each level is accepted.
+                    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.11.2.5.2.2.1
+                    .map(|levels| {
+                        if levels.is_empty() {
+                            vec![
+                                KeyStorageSecurityLevel::High,
+                                KeyStorageSecurityLevel::Moderate,
+                                KeyStorageSecurityLevel::EnhancedBasic,
+                                KeyStorageSecurityLevel::Basic,
+                            ]
+                        } else {
+                            levels
+                        }
+                    })
             })
         })
 }
