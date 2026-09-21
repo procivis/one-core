@@ -59,6 +59,7 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         &self,
         _proof: &Proof,
         _context: serde_json::Value,
+        _submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         self.disabled_error()
     }
@@ -133,6 +134,7 @@ impl VerificationProtocol for CapabilityChecked {
         &self,
         proof: &Proof,
         context: serde_json::Value,
+        submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let capabilities = self.inner.get_capabilities();
         if !capabilities
@@ -143,7 +145,7 @@ impl VerificationProtocol for CapabilityChecked {
         }
 
         self.inner
-            .holder_get_presentation_definition_v2(proof, context)
+            .holder_get_presentation_definition_v2(proof, context, submitted_credential_ids)
             .await
     }
 

@@ -41,6 +41,8 @@ use crate::router::AppState;
         definition endpoint takes the resulting `proofId` and filters the wallet,
         returning credentials which match the verifier's request.
 
+        For credential batches, returns the matching item nearest to expiry for each format.
+
         This version uses DCQL as the query language.
     "},
 )]

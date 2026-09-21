@@ -39,7 +39,8 @@ pub struct PresentationSubmitV2RequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct PresentationSubmitV2CredentialRequestDTO {
-    /// Submitted credential.
+    /// Applicable credential or batch parent ID. Batch items need not appear in the
+    /// presentation definition, but must be valid, unconsumed, and match the query.
     pub credential_id: CredentialId,
     /// Path of claims that were optionally selected by the user.
     pub user_selections: Vec<String>,

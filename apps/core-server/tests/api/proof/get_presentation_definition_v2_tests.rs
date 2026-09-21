@@ -1089,7 +1089,20 @@ async fn test_get_presentation_definition_2_batch_credential_success() {
         .as_array()
         .unwrap();
     assert_eq!(applicable_creds.len(), 1);
-    applicable_creds[0]["id"].assert_eq(&credential.id);
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    assert!(
+        items
+            .iter()
+            .any(|item| applicable_creds[0]["id"] == item.id.to_string())
+    );
+    applicable_creds[0]["parentId"].assert_eq(&credential.id);
+    assert_eq!(applicable_creds[0]["type"], "BATCH_ITEM");
+    assert_eq!(applicable_creds[0]["format"], "SD_JWT_VC");
+    assert_eq!(applicable_creds[0]["claims"][0]["value"], "value");
 }
 
 #[tokio::test]
@@ -1308,7 +1321,8 @@ async fn test_get_presentation_definition_2_mixed_batch() {
         .as_array()
         .unwrap();
     assert_eq!(applicable_creds.len(), 1);
-    applicable_creds[0]["id"].assert_eq(&credential.id);
+    applicable_creds[0]["id"].assert_eq(&items[1].id);
+    applicable_creds[0]["parentId"].assert_eq(&credential.id);
 }
 
 #[tokio::test]
@@ -1570,8 +1584,11 @@ async fn test_get_presentation_definition_2_batch_disclosure_policy_per_format()
     let mdoc = &body["credentialQueries"]["mdoc"]["applicableCredentials"];
     assert_eq!(sd_jwt.as_array().unwrap().len(), 1);
     assert_eq!(mdoc.as_array().unwrap().len(), 1);
-    sd_jwt[0]["id"].assert_eq(&parent.id);
-    mdoc[0]["id"].assert_eq(&parent.id);
+    sd_jwt[0]["parentId"].assert_eq(&parent.id);
+    mdoc[0]["parentId"].assert_eq(&parent.id);
+    assert_eq!(sd_jwt[0]["type"], "BATCH_ITEM");
+    assert_eq!(mdoc[0]["type"], "BATCH_ITEM");
+    assert_ne!(sd_jwt[0]["id"], mdoc[0]["id"]);
     assert_eq!(
         sd_jwt[0]["embeddedDisclosurePolicyViolation"]["id"],
         "sd-jwt-policy"
@@ -1708,4 +1725,138 @@ async fn complex_sd_jwt_vc_credential_schema(
             vct,
         )
         .await
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_batch_items_per_parent_and_format() {
+    use one_core::model::credential::CredentialType;
+
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let schema_id = context
+        .db
+        .credential_schemas
+        .create_with_multiformat("Multiformat batch", &org, Some(2))
+        .await
+        .unwrap();
+    let schema = context.db.credential_schemas.get(&schema_id).await;
+    let formats = schema.formats.as_ref().await.unwrap().to_owned();
+    let expiry = now_utc() + time::Duration::days(1);
+    let mut expected = Vec::new();
+    for _ in 0..2 {
+        let parent = context
+            .db
+            .credentials
+            .create_batch(
+                &schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_FINAL1",
+                TestingCredentialParams {
+                    role: Some(CredentialRole::Holder),
+                    claims_data: Some(vec![]),
+                    ..Default::default()
+                },
+                0,
+                None,
+            )
+            .await;
+        for format in &formats {
+            for days in [2, 0] {
+                let item = context
+                    .db
+                    .credentials
+                    .create(
+                        &schema,
+                        CredentialStateEnum::Accepted,
+                        &identifier,
+                        "OPENID4VCI_FINAL1",
+                        TestingCredentialParams {
+                            role: Some(CredentialRole::Holder),
+                            r#type: Some(CredentialType::BatchItem),
+                            parent_id: Some(parent.id),
+                            format: Some(format.clone()),
+                            expires_at: Some(expiry + time::Duration::days(days)),
+                            embedded_disclosure_policy: Some(
+                                json!({
+                                    "id": format!("{}-policy", format.format),
+                                    "policy": "allowList",
+                                    "options": {"values": []}
+                                })
+                                .to_string(),
+                            ),
+                            ..Default::default()
+                        },
+                    )
+                    .await;
+                if days == 0 {
+                    expected.push((format.format.to_string(), item.id, parent.id));
+                }
+            }
+        }
+    }
+    let query = DcqlQuery::builder()
+        .credentials(vec![
+            CredentialQuery::sd_jwt_vc(vec!["sd-jwt_vct".to_string()])
+                .id("sdjwt")
+                .claims(vec![
+                    ClaimQuery::builder()
+                        .path(vec!["firstName".to_string()])
+                        .build(),
+                ])
+                .build(),
+            CredentialQuery::mso_mdoc("mdoc_doctype".to_string())
+                .id("mdoc")
+                .claims(vec![
+                    ClaimQuery::builder()
+                        .path(vec!["namespace".to_string(), "firstName".to_string()])
+                        .build(),
+                ])
+                .build(),
+            // A schema-wide lookup finds these batches, but no MDOC item has this schema ID.
+            CredentialQuery::mso_mdoc("sd-jwt_vct".to_string())
+                .id("wrong_schema")
+                .build(),
+        ])
+        .build();
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &query,
+        "OPENID4VP_FINAL1",
+        None,
+    )
+    .await;
+    let response = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+    assert_eq!(response.status(), 200);
+    let body = response.json_value().await;
+    for (query_id, format) in [("sdjwt", "SD_JWT_VC"), ("mdoc", "MDOC")] {
+        let applicable = body["credentialQueries"][query_id]["applicableCredentials"]
+            .as_array()
+            .unwrap();
+        assert_eq!(applicable.len(), 2);
+        for (_, item_id, parent_id) in expected.iter().filter(|(f, _, _)| f == format) {
+            let item = applicable
+                .iter()
+                .find(|item| item["id"] == item_id.to_string())
+                .unwrap();
+            assert_eq!(item["parentId"], parent_id.to_string());
+            assert_eq!(item["type"], "BATCH_ITEM");
+            assert_eq!(item["format"], format);
+            assert_eq!(item["claims"][0]["path"], "firstName");
+            assert_eq!(
+                item["embeddedDisclosurePolicyViolation"]["id"],
+                format!("{format}-policy")
+            );
+        }
+    }
+    assert_eq!(
+        body["credentialQueries"]["wrong_schema"]["failureHint"]["reason"],
+        "NO_CREDENTIAL"
+    );
 }

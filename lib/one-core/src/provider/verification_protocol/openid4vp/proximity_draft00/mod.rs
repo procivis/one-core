@@ -601,6 +601,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         proof: &Proof,
         context: Value,
+        submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
@@ -620,6 +621,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             None,
             &[],
             None,
+            submitted_credential_ids,
         )
         .await
     }

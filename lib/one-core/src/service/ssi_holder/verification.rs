@@ -22,9 +22,7 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMix
 use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::model::claim::Claim;
-use crate::model::credential::{
-    Clearable, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
-};
+use crate::model::credential::{Clearable, CredentialType, UpdateCredentialRequest};
 use crate::model::history::{HistoryEntityType, HistoryErrorMetadata};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -220,8 +218,19 @@ impl SSIHolderService {
 
         let interaction_data: serde_json::Value = serde_json::from_slice(interaction_data)
             .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
+        let submitted_credential_ids = request
+            .submission
+            .values()
+            .flatten()
+            .map(|selection| selection.credential_id)
+            .unique()
+            .collect::<Vec<_>>();
         let presentation_definition = verification_protocol
-            .holder_get_presentation_definition_v2(&proof, interaction_data)
+            .holder_get_presentation_definition_v2(
+                &proof,
+                interaction_data,
+                &submitted_credential_ids,
+            )
             .await
             .error_while("getting presentation definition V2")?;
 
@@ -489,21 +498,12 @@ impl SSIHolderService {
             .get_credential(&credential_id)
             .await
             .error_while("loading presentation credential")?;
-        if presented_credential.r#type == CredentialType::BatchParent {
-            return Err(HolderServiceError::InvalidCredentialType(
-                CredentialType::BatchParent,
-            ));
-        }
-        if presented_credential.state != CredentialStateEnum::Accepted
-            || presented_credential.deleted_at.is_some()
-            || presented_credential.consumed_at.is_some()
-        {
-            return Err(HolderServiceError::BatchExhausted(
-                presented_credential
-                    .parent
-                    .as_ref()
-                    .map_or(credential_id, |parent| parent.id()),
-            ));
+        if !presented_credential.is_available_for_presentation(now_utc()) {
+            return Err(HolderServiceError::InvalidPresentationSubmission {
+                reason: format!(
+                    "Credential `{credential_id}` is no longer available for presentation"
+                ),
+            });
         }
         let consumed_item = (presented_credential.r#type == CredentialType::BatchItem)
             .then_some(presented_credential.id);
@@ -610,6 +610,28 @@ fn get_credential_paths_to_present(
         });
     };
 
+    if let Some(batches_with_unavailable_items) = presentation_definition
+        .matching_batches_with_unavailable_items
+        .get(query_id)
+    {
+        for selection in &credential_selection {
+            let has_available_item = match &possible_selections.credential_or_failure_hint {
+                ApplicableCredentials {
+                    applicable_credentials,
+                    ..
+                } => applicable_credentials
+                    .iter()
+                    .any(|item| item.credential.parent_id == Some(selection.credential_id)),
+                _ => false,
+            };
+            if !has_available_item
+                && batches_with_unavailable_items.contains(&selection.credential_id)
+            {
+                return Err(HolderServiceError::BatchExhausted(selection.credential_id));
+            }
+        }
+    }
+
     let ApplicableCredentials {
         applicable_credentials,
         ..
@@ -642,10 +664,12 @@ fn get_credential_paths_to_present(
                 ),
             });
         }
-        let Some(selected_credential) = applicable_credentials
-            .iter()
-            .find(|&credential| credential.credential.id == credential_id)
-        else {
+        // Parent IDs resolve to an available matching item, even for batches listed
+        // in matching_batches_with_unavailable_items.
+        let Some(selected_credential) = applicable_credentials.iter().find(|credential| {
+            credential.credential.id == credential_id
+                || credential.credential.parent_id == Some(credential_id)
+        }) else {
             return Err(HolderServiceError::InvalidPresentationSubmission {
                 reason: format!(
                     "Credential `{credential_id}` is not applicable for credential query id `{query_id}`"
@@ -658,7 +682,7 @@ fn get_credential_paths_to_present(
             user_selections,
         )?;
         result.push(CredentialPathsToPresent {
-            credential_id: selected_credential.presentation_credential_id,
+            credential_id: selected_credential.credential.id,
             presented_paths,
             transaction_data_ids,
         });

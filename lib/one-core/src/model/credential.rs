@@ -74,6 +74,19 @@ pub enum CredentialStateEnum {
 }
 
 impl Credential {
+    pub(crate) fn is_available_for_presentation(&self, now: OffsetDateTime) -> bool {
+        if self.deleted_at.is_some() || self.state != CredentialStateEnum::Accepted {
+            return false;
+        }
+        match self.r#type {
+            CredentialType::Single => true,
+            CredentialType::BatchParent => false,
+            CredentialType::BatchItem => {
+                self.consumed_at.is_none() && self.expires_at.is_none_or(|expiry| expiry > now)
+            }
+        }
+    }
+
     /// Returns the concrete credential's format. Batch parents return `None`, even if
     /// they retain a legacy format in storage; use their items' formats instead.
     pub async fn credential_format(&self) -> Result<Option<CredentialFormat>, NestedError> {

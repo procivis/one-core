@@ -1,9 +1,9 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use indexmap::IndexMap;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{ClaimId, ClaimSchemaId, OrganisationId, TransactionDataId};
+use shared_types::{ClaimId, ClaimSchemaId, CredentialId, OrganisationId, TransactionDataId};
 use standardized_types::openid4vp::dcql::matching::{ClaimFilter, CredentialFilter};
 use standardized_types::openid4vp::dcql::{
     ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, CredentialQueryId, DcqlQuery,
@@ -16,6 +16,7 @@ use super::disclosure_policy::{
     dn_and_serial_matches_any_in_chain, dn_matches_leaf_only, entitlement_matches_reg_cert,
     entitlement_matches_via_registry,
 };
+use crate::clock::now_utc;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
@@ -23,7 +24,7 @@ use crate::mapper::credential_schema_claim::claim_path_to_formatted_path;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
@@ -53,9 +54,7 @@ use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO,
 };
-use crate::service::credential::mapper::{
-    credential_detail_response_from_model, get_remaining_batch_item_count,
-};
+use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::{
     CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
     CredentialSchemaListIncludeEntityTypeEnum,
@@ -75,6 +74,7 @@ pub(crate) async fn get_presentation_definition_v2(
     verifier_details: Option<&IdentifierDetails>,
     verifier_info: &[VerifierInfoAttestation],
     transaction_data: Option<IndexMap<TransactionDataId, ValidatedHolderTxData>>,
+    submitted_credential_ids: &[CredentialId],
 ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
     let organisation_id = proof
         .interaction
@@ -90,6 +90,8 @@ pub(crate) async fn get_presentation_definition_v2(
     let query_to_filters = dcql_query.credential_filters()?;
 
     let mut credential_queries = HashMap::new();
+    let mut matching_batches_with_unavailable_items: HashMap<String, HashSet<CredentialId>> =
+        HashMap::new();
     let credential_sets = if let Some(credential_sets) = dcql_query.credential_sets {
         convert_inner(credential_sets)
     } else {
@@ -103,6 +105,7 @@ pub(crate) async fn get_presentation_definition_v2(
             .collect()
     };
 
+    let now = now_utc();
     for query in dcql_query.credentials {
         let credential_filters =
             query_to_filters
@@ -118,6 +121,7 @@ pub(crate) async fn get_presentation_definition_v2(
             organisation_id,
             credential_filters,
             credential_repository,
+            submitted_credential_ids,
         )
         .await?;
 
@@ -144,6 +148,38 @@ pub(crate) async fn get_presentation_definition_v2(
                 authorities.as_slice(),
             )
             .await;
+        }
+
+        // Historical matches are used only to classify parent submissions. They never
+        // become selectable credentials in the definition.
+        for candidate in &filtered_credential_candidates {
+            let Some(parent_id) = candidate.parent.as_ref().map(|parent| parent.id()) else {
+                continue;
+            };
+            if candidate.r#type != CredentialType::BatchItem
+                || candidate.is_available_for_presentation(now)
+                || !submitted_credential_ids.contains(&parent_id)
+                || matching_batches_with_unavailable_items
+                    .get(&query.id.to_string())
+                    .is_some_and(|batches| batches.contains(&parent_id))
+            {
+                continue;
+            }
+            let format = candidate.format.as_required_ref().await?;
+            let formatter = formatter_provider.get_credential_formatter(&format.format)?;
+            let mut claim_source = candidate.clone();
+            claim_source.claims = crate::mapper::credential::stored_credential_claims(candidate)
+                .await?
+                .into();
+            if first_matching_claims(&claim_source, credential_filters, &*formatter)
+                .await?
+                .is_some()
+            {
+                matching_batches_with_unavailable_items
+                    .entry(query.id.to_string())
+                    .or_default()
+                    .insert(parent_id);
+            }
         }
 
         if filtered_credential_candidates.is_empty() {
@@ -183,9 +219,15 @@ pub(crate) async fn get_presentation_definition_v2(
             continue;
         }
 
-        let (candidates, invalid_credentials): (Vec<_>, Vec<_>) = filtered_credential_candidates
-            .into_iter()
-            .partition(|credential| credential.state == CredentialStateEnum::Accepted);
+        let mut candidates = vec![];
+        let mut invalid_credentials = vec![];
+        for credential in filtered_credential_candidates {
+            if credential.is_available_for_presentation(now) {
+                candidates.push(credential);
+            } else {
+                invalid_credentials.push(credential);
+            }
+        }
         if candidates.is_empty() {
             let credential_schema = match invalid_credentials.into_iter().next() {
                 None => None,
@@ -221,7 +263,8 @@ pub(crate) async fn get_presentation_definition_v2(
             let format = candidate.format.as_required_ref().await?.to_owned();
             let formatter = formatter_provider.get_credential_formatter(&format.format)?;
             let mut claim_source = candidate.clone();
-            // The candidate query returns only singles and representative batch items.
+            // Definition requests return singles and representative batch items;
+            // submission also checks explicitly selected items.
             claim_source.claims = crate::mapper::credential::stored_credential_claims(&candidate)
                 .await?
                 .into();
@@ -230,23 +273,6 @@ pub(crate) async fn get_presentation_definition_v2(
             let Some(claims) = claims else {
                 continue;
             };
-            // Expose one public entry per batch using its parent's ID and metadata.
-            // The candidate remains the concrete item used for presentation.
-            let summary = match &candidate.parent {
-                Some(parent) => parent.as_ref().await?.to_owned(),
-                None => candidate.clone(),
-            };
-            if applicable_credentials
-                .iter()
-                .any(|c| c.credential.id == summary.id)
-            {
-                continue;
-            }
-            let remaining_batch_item_count =
-                get_remaining_batch_item_count(&summary, credential_repository)
-                    .await
-                    .error_while("getting remaining batch items")?;
-
             let embedded_disclosure_policy_violation = check_disclosure_policy(
                 &candidate,
                 &query.id,
@@ -257,12 +283,12 @@ pub(crate) async fn get_presentation_definition_v2(
             .await?;
 
             let credential_detail_dto = credential_detail_response_from_model(
-                summary.clone(),
+                candidate,
                 claim_source.claims.as_ref().await?.to_owned(),
                 config,
                 CredentialAttestationBlobs::default(),
                 None,
-                remaining_batch_item_count,
+                None,
                 credential_repository,
                 formatter_provider,
                 None,
@@ -274,7 +300,6 @@ pub(crate) async fn get_presentation_definition_v2(
             applicable_credentials.push(ApplicableCredential {
                 credential,
                 embedded_disclosure_policy_violation,
-                presentation_credential_id: candidate.id,
             });
         }
         if applicable_credentials.is_empty() {
@@ -318,6 +343,7 @@ pub(crate) async fn get_presentation_definition_v2(
         }
     }
     Ok(PresentationDefinitionV2ResponseDTO {
+        matching_batches_with_unavailable_items,
         credential_queries,
         credential_sets,
         transaction_data: transaction_data
@@ -827,6 +853,7 @@ async fn fetch_credentials_for_schema_ids(
     organisation_id: OrganisationId,
     credential_filters: &[CredentialFilter],
     credential_repository: &dyn CredentialRepository,
+    submitted_credential_ids: &[CredentialId],
 ) -> Result<Vec<Credential>, VerificationProtocolError> {
     let mut credentials = vec![];
 
@@ -846,6 +873,7 @@ async fn fetch_credentials_for_schema_ids(
                 credential_repository,
                 ecosystem_schema_id,
                 organisation_id,
+                submitted_credential_ids,
             )
             .await
             .error_while("getting presentation credentials for schema")?,

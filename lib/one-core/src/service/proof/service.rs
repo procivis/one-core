@@ -169,6 +169,7 @@ impl ProofService {
             .holder_get_presentation_definition_v2(
                 &proof,
                 interaction_data_from_proof(&proof).await?,
+                &[],
             )
             .await
             .error_while("getting presentation definition V2")?)

@@ -80,10 +80,14 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
     /// V2 endpoint which is tailored towards DCQL queries rather than presentation exchange.
     ///
     /// Storage access is needed to check held credentials.
+    /// On submission, pass the selected IDs to check any explicitly selected batch items
+    /// and identify matching but unavailable items for exhausted-batch errors.
+    /// Pass an empty slice for definition requests.
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
         context: serde_json::Value,
+        submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError>;
 
     /// Generates QR-code content to start the proof request flow.

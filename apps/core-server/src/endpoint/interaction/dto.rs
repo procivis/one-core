@@ -237,7 +237,9 @@ where
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(PresentationSubmitV2CredentialRequestDTO)]
 pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
-    /// Submitted credential.
+    /// Applicable credential or batch parent ID. Batch items need not appear in the
+    /// presentation definition, but must be valid, unconsumed, and match the query.
+    /// For a parent, the core selects any available item matching the query.
     pub credential_id: CredentialId,
     /// Path of claims that were optionally selected by the user.
     #[serde(default)]

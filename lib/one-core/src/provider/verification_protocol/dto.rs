@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 use shared_types::i18n::I18nString;
@@ -78,6 +78,9 @@ pub(crate) struct UpdateResponse {
 
 #[derive(Clone, Debug)]
 pub struct PresentationDefinitionV2ResponseDTO {
+    /// Map of credential query id to batch parent credential id.
+    /// Used to distinguish exhausted batches from those that do not satisfy the query at all.
+    pub(crate) matching_batches_with_unavailable_items: HashMap<String, HashSet<CredentialId>>,
     pub credential_queries: HashMap<String, CredentialQueryResponseDTO>,
     pub credential_sets: Vec<CredentialSetResponseDTO>,
     pub transaction_data: Vec<PresentationDefinitionTransactionDataDTO>,
@@ -112,9 +115,6 @@ pub enum ApplicableCredentialOrFailureHintEnum {
 pub struct ApplicableCredential {
     pub credential: CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>,
     pub embedded_disclosure_policy_violation: Option<DisclosurePolicyViolation>,
-    /// Concrete credential matching this query and the displayed claims. The public
-    /// credential ID may be its formatless batch parent; submission needs this item ID.
-    pub(crate) presentation_credential_id: CredentialId,
 }
 
 #[derive(Clone, Debug)]

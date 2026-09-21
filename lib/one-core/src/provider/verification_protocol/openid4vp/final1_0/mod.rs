@@ -824,6 +824,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         proof: &Proof,
         context: Value,
+        submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
@@ -839,6 +840,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             interaction_data.verifier_details.as_ref(),
             &interaction_data.verifier_info,
             Some(interaction_data.transaction_data.validated()?),
+            submitted_credential_ids,
         )
         .await
     }

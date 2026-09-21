@@ -263,9 +263,10 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         &self,
         proof: &Proof,
         context: Value,
+        submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         self.inner
-            .holder_get_presentation_definition_v2(proof, context)
+            .holder_get_presentation_definition_v2(proof, context, submitted_credential_ids)
             .await
     }
 

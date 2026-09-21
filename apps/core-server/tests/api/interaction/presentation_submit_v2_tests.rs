@@ -2,7 +2,7 @@ use assert2::let_assert;
 use one_core::clock::now_utc;
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
-    UpdateCredentialRequest,
+    CredentialType, UpdateCredentialRequest,
 };
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierType};
@@ -12,6 +12,7 @@ use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::json;
+use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::MockBuilder;
@@ -146,15 +147,15 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential() {
-    check_batch_presentation(false).await;
+    check_batch_presentation(false, CredentialType::BatchItem).await;
 }
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item_claims() {
-    check_batch_presentation(true).await;
+    check_batch_presentation(true, CredentialType::BatchItem).await;
 }
 
-async fn check_batch_presentation(item_claims: bool) {
+async fn check_batch_presentation(item_claims: bool, submitted_type: CredentialType) {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential = setup_batch_credential(&context, &organisation, &identifier, 2).await;
     let (verifier_did, verifier_identifier, credential, interaction, proof) =
@@ -163,11 +164,7 @@ async fn check_batch_presentation(item_claims: bool) {
 
     if item_claims {
         let claims = credential.claims.as_ref().await.unwrap().to_owned();
-        let items = context
-            .db
-            .credentials
-            .list(CredentialFilterValue::ParentCredential(credential.id).condition())
-            .await;
+        let items = batch_items(&context, credential.id).await;
         for item in items {
             let claims = claims
                 .iter()
@@ -215,11 +212,18 @@ async fn check_batch_presentation(item_claims: bool) {
         }))
         .await;
 
+    let selected_id = selected_batch_item(&context, proof.id).await;
+
+    let submitted_id = match submitted_type {
+        CredentialType::BatchParent => credential.id,
+        CredentialType::BatchItem => selected_id,
+        CredentialType::Single => unreachable!(),
+    };
     // WHEN
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &[], &[])
+        .presentation_submit_v2(interaction.id, submitted_id, &[], &[])
         .await;
 
     // THEN
@@ -270,15 +274,12 @@ async fn check_batch_presentation(item_claims: bool) {
         &verifier_identifier.id.to_string()
     );
 
-    let items = context
-        .db
-        .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
-        .await;
+    let items = batch_items(&context, credential.id).await;
     // Only one item consumed
     assert!(items.iter().any(|c| c.consumed_at.is_some()));
     assert!(items.iter().any(|c| c.consumed_at.is_none()));
     let consumed = items.iter().find(|c| c.consumed_at.is_some()).unwrap();
+    assert_eq!(consumed.id, selected_id);
     let expected_owner = if item_claims {
         consumed.id
     } else {
@@ -296,72 +297,36 @@ async fn check_batch_presentation(item_claims: bool) {
 }
 
 #[tokio::test]
-async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item() {
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-    let credential = setup_batch_credential(&context, &organisation, &identifier, 1).await;
-    let (_, _, credential, interaction, _) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
-            .await;
-    let items = context
-        .db
-        .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .interactions
-        .presentation_submit_v2(interaction.id, items[0].id, &[], &[])
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0291")
+async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_parent() {
+    check_batch_presentation(true, CredentialType::BatchParent).await;
 }
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_consumed() {
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-    let credential = setup_batch_credential(&context, &organisation, &identifier, 1).await;
-    let (_, _, credential, interaction, _) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
-            .await;
-    let items = context
-        .db
-        .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+    let batch = BatchPresentation::new(2).await;
+    batch
+        .update_selected(UpdateCredentialRequest {
+            consumed_at: Clearable::ForceSet(Some(now_utc())),
+            ..Default::default()
+        })
         .await;
-    context
-        .db
-        .credentials
-        .update(
-            items[0].id,
-            UpdateCredentialRequest {
-                consumed_at: Clearable::ForceSet(Some(now_utc())),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &[], &[])
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0291")
+    batch.assert_rejected(batch.selected_id).await;
 }
 
 #[tokio::test]
-async fn mixed_format_batch_presents_earliest_expiring_matching_item() {
+async fn mixed_format_batch_parent_presents_matching_item() {
+    check_mixed_format_batch_submission(CredentialType::BatchParent).await;
+}
+
+#[tokio::test]
+async fn mixed_format_batch_item_presents_later_expiring_item() {
+    check_mixed_format_batch_submission(CredentialType::BatchItem).await;
+}
+
+async fn check_mixed_format_batch_submission(submitted_type: CredentialType) {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let batch = setup_mixed_format_batch(&context, &organisation, &identifier).await;
-    // The request accepts JWT: skip BBS even though it expires first, and present
-    // the JWT item with the earliest expiry through the formatless parent.
+    // Definition recommends the earliest-expiring JWT item; BBS does not match.
     let (_, _, _, interaction, proof) = setup_submittable_presentation_dcql(
         &context,
         &organisation,
@@ -380,8 +345,35 @@ async fn mixed_format_batch_presents_earliest_expiring_matching_item() {
         .as_array()
         .unwrap();
     assert_eq!(applicable.len(), 1);
-    assert_eq!(applicable[0]["id"], batch.parent.id.to_string());
+    assert_eq!(
+        applicable[0]["id"],
+        batch.earliest_expiring_jwt_item.to_string()
+    );
+    assert_eq!(applicable[0]["parentId"], batch.parent.id.to_string());
+    assert_eq!(applicable[0]["type"], "BATCH_ITEM");
+    assert_eq!(applicable[0]["format"], "JWT");
 
+    let rejected = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, batch.bbs_item, &[], &[])
+        .await;
+    assert_eq!(rejected.status(), 400);
+    assert_eq!(rejected.error_code().await, "BR_0291");
+
+    let (submitted_id, presented_id, remaining_id) = match submitted_type {
+        CredentialType::BatchParent => (
+            batch.parent.id,
+            batch.earliest_expiring_jwt_item,
+            batch.later_expiring_jwt_item,
+        ),
+        CredentialType::BatchItem => (
+            batch.later_expiring_jwt_item,
+            batch.later_expiring_jwt_item,
+            batch.earliest_expiring_jwt_item,
+        ),
+        CredentialType::Single => unreachable!(),
+    };
     context
         .server_mock
         .ssi_request_uri_endpoint(None::<fn(MockBuilder) -> MockBuilder>)
@@ -389,67 +381,85 @@ async fn mixed_format_batch_presents_earliest_expiring_matching_item() {
     let response = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, batch.parent.id, &[], &[])
+        .presentation_submit_v2(interaction.id, submitted_id, &[], &[])
         .await;
     assert_eq!(response.status(), 204);
-    let items = context
-        .db
-        .credentials
-        .list(CredentialFilterValue::ParentCredential(batch.parent.id).condition())
-        .await;
+    let items = batch_items(&context, batch.parent.id).await;
     let consumed_ids: Vec<_> = items
         .into_iter()
         .filter(|item| item.consumed_at.is_some())
         .map(|item| item.id)
         .collect();
-    // Neither the later-expiring JWT item nor the non-matching BBS item is consumed.
-    assert_eq!(consumed_ids, vec![batch.earliest_expiring_jwt_item]);
-}
-
-#[tokio::test]
-async fn mixed_format_batch_rejects_submission_when_matching_format_is_exhausted() {
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-    let batch = setup_mixed_format_batch(&context, &organisation, &identifier).await;
-    // Exhaust only JWT. An available BBS item cannot satisfy the JWT request.
-    for id in [
-        batch.earliest_expiring_jwt_item,
-        batch.later_expiring_jwt_item,
-    ] {
-        context
-            .db
-            .credentials
-            .update(
-                id,
-                UpdateCredentialRequest {
-                    consumed_at: Clearable::ForceSet(Some(now_utc())),
-                    ..Default::default()
-                },
-            )
-            .await;
-    }
-    let (_, _, _, interaction, _) = setup_submittable_presentation_dcql(
+    assert_eq!(consumed_ids, vec![presented_id]);
+    let (_, _, _, _, next_proof) = setup_submittable_presentation_dcql(
         &context,
         &organisation,
         &identifier,
         Some(batch.parent.clone()),
     )
     .await;
-    let response = context
-        .api
-        .interactions
-        .presentation_submit_v2(interaction.id, batch.parent.id, &[], &[])
-        .await;
-    assert_eq!(response.status(), 400);
-    assert_eq!(response.error_code().await, "BR_0291");
-    assert!(
-        context
+    assert_eq!(
+        selected_batch_item(&context, next_proof.id).await,
+        remaining_id
+    );
+}
+
+#[tokio::test]
+async fn mixed_format_batch_parent_rejection() {
+    for (has_matching_format, error_code) in [(true, "BR_0443"), (false, "BR_0291")] {
+        let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+        let batch = setup_mixed_format_batch(&context, &organisation, &identifier).await;
+        let bbs_format = context
             .db
             .credentials
             .get(&batch.bbs_item)
             .await
-            .consumed_at
-            .is_none()
-    );
+            .format
+            .unwrap()
+            .id();
+        // Consumed JWT items imply exhaustion; consumed BBS items never match this request.
+        // In either case, the remaining available BBS item cannot satisfy the JWT request.
+        for id in [
+            batch.earliest_expiring_jwt_item,
+            batch.later_expiring_jwt_item,
+        ] {
+            context
+                .db
+                .credentials
+                .update(
+                    id,
+                    UpdateCredentialRequest {
+                        consumed_at: Clearable::ForceSet(Some(now_utc())),
+                        format: (!has_matching_format).then_some(bbs_format),
+                        ..Default::default()
+                    },
+                )
+                .await;
+        }
+        let (_, _, _, interaction, _) = setup_submittable_presentation_dcql(
+            &context,
+            &organisation,
+            &identifier,
+            Some(batch.parent.clone()),
+        )
+        .await;
+        let response = context
+            .api
+            .interactions
+            .presentation_submit_v2(interaction.id, batch.parent.id, &[], &[])
+            .await;
+        assert_eq!(response.status(), 400);
+        assert_eq!(response.error_code().await, error_code);
+        assert!(
+            context
+                .db
+                .credentials
+                .get(&batch.bbs_item)
+                .await
+                .consumed_at
+                .is_none()
+        );
+    }
 }
 
 #[tokio::test]
@@ -460,7 +470,7 @@ async fn two_queries_reuse_the_same_batch_item() {
 
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let parent = setup_batch_credential(&context, &organisation, &identifier, 2).await;
-    let (_, _, _, interaction, _) = setup_submittable_presentation_dcql(
+    let (_, _, _, interaction, proof) = setup_submittable_presentation_dcql(
         &context,
         &organisation,
         &identifier,
@@ -492,6 +502,7 @@ async fn two_queries_reuse_the_same_batch_item() {
                 .and(body_string_contains("input_1"))
         }))
         .await;
+    let selected_id = selected_batch_item(&context, proof.id).await;
     let response = context
         .api
         .client
@@ -500,18 +511,14 @@ async fn two_queries_reuse_the_same_batch_item() {
             json!({
                 "interactionId": interaction.id,
                 "submission": {
-                    "input_0": {"credentialId": parent.id},
+                    "input_0": {"credentialId": selected_id},
                     "input_1": {"credentialId": parent.id}
                 }
             }),
         )
         .await;
     assert_eq!(response.status(), 204);
-    let items = context
-        .db
-        .credentials
-        .list(CredentialFilterValue::ParentCredential(parent.id).condition())
-        .await;
+    let items = batch_items(&context, parent.id).await;
     assert_eq!(items.len(), 2);
     assert_eq!(
         items
@@ -520,6 +527,97 @@ async fn two_queries_reuse_the_same_batch_item() {
             .count(),
         1
     );
+}
+
+struct BatchPresentation {
+    context: TestContext,
+    parent: Credential,
+    items: Vec<Credential>,
+    interaction: Interaction,
+    proof: Proof,
+    selected_id: CredentialId,
+}
+
+impl BatchPresentation {
+    async fn new(num_items: usize) -> Self {
+        let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+        let parent = setup_batch_credential(&context, &organisation, &identifier, num_items).await;
+        let (_, _, parent, interaction, proof) =
+            setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(parent))
+                .await;
+        let selected_id = selected_batch_item(&context, proof.id).await;
+        let items = batch_items(&context, parent.id).await;
+        assert_eq!(items.len(), num_items);
+        Self {
+            context,
+            parent,
+            items,
+            interaction,
+            proof,
+            selected_id,
+        }
+    }
+
+    async fn update_selected(&self, update: UpdateCredentialRequest) {
+        self.context
+            .db
+            .credentials
+            .update(self.selected_id, update)
+            .await;
+    }
+
+    async fn assert_rejected(&self, credential_id: CredentialId) {
+        self.assert_rejected_with_code(credential_id, "BR_0291")
+            .await;
+    }
+
+    async fn assert_rejected_with_code(&self, credential_id: CredentialId, code: &str) {
+        let response = self
+            .context
+            .api
+            .interactions
+            .presentation_submit_v2(self.interaction.id, credential_id, &[], &[])
+            .await;
+        assert_eq!(response.status(), 400);
+        assert_eq!(response.error_code().await, code);
+        assert_eq!(
+            self.context.db.proofs.get(&self.proof.id).await.state,
+            ProofStateEnum::Requested
+        );
+    }
+
+    async fn assert_unconsumed(&self) {
+        // Load by saved IDs so deleted items are checked as well.
+        for item in &self.items {
+            let stored = self.context.db.credentials.get(&item.id).await;
+            assert!(stored.consumed_at.is_none());
+        }
+    }
+}
+
+async fn batch_items(context: &TestContext, parent_id: CredentialId) -> Vec<Credential> {
+    context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(parent_id).condition())
+        .await
+}
+
+async fn selected_batch_item(
+    context: &TestContext,
+    proof_id: shared_types::ProofId,
+) -> shared_types::CredentialId {
+    let response = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof_id)
+        .await;
+    assert_eq!(response.status(), 200);
+    let definition = response.json_value().await;
+    serde_json::from_value(
+        definition["credentialQueries"]["input_0"]["applicableCredentials"][0]["id"].clone(),
+    )
+    .unwrap()
 }
 
 struct MixedFormatBatch {
@@ -1242,4 +1340,154 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
             .unwrap(),
         &verifier_identifier.id.to_string()
     )
+}
+
+#[tokio::test]
+async fn batch_item_submission_rejects_item_after_state_change() {
+    for state in [
+        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Revoked,
+        CredentialStateEnum::Expired,
+    ] {
+        let batch = BatchPresentation::new(2).await;
+        batch
+            .update_selected(UpdateCredentialRequest {
+                state: Some(state),
+                ..Default::default()
+            })
+            .await;
+
+        batch.assert_rejected(batch.selected_id).await;
+        batch.assert_unconsumed().await;
+        // A valid sibling is available, but submission must not substitute it.
+        assert_ne!(
+            selected_batch_item(&batch.context, batch.proof.id).await,
+            batch.selected_id
+        );
+    }
+}
+
+#[tokio::test]
+async fn batch_item_submission_rejects_item_after_expiry() {
+    let batch = BatchPresentation::new(2).await;
+    // Expiry must be checked even before the lifecycle task updates the Accepted state.
+    batch
+        .update_selected(UpdateCredentialRequest {
+            expires_at: Some(now_utc() - time::Duration::seconds(1)),
+            ..Default::default()
+        })
+        .await;
+
+    batch.assert_rejected(batch.selected_id).await;
+    batch.assert_unconsumed().await;
+}
+
+#[tokio::test]
+async fn batch_item_submission_rejects_item_after_batch_deletion() {
+    let batch = BatchPresentation::new(2).await;
+    let response = batch.context.api.credentials.delete(&batch.parent.id).await;
+    assert_eq!(response.status(), 204);
+    for credential in std::iter::once(&batch.parent).chain(&batch.items) {
+        let stored = batch.context.db.credentials.get(&credential.id).await;
+        assert!(stored.deleted_at.is_some());
+    }
+    let definition = batch
+        .context
+        .api
+        .proofs
+        .presentation_definition_v2(batch.proof.id)
+        .await;
+    assert_eq!(definition.status(), 200);
+    assert_eq!(
+        definition.json_value().await["credentialQueries"]["input_0"]["failureHint"]["reason"],
+        "NO_CREDENTIAL"
+    );
+
+    batch.assert_rejected(batch.selected_id).await;
+    batch.assert_rejected(batch.parent.id).await;
+    batch.assert_unconsumed().await;
+}
+
+#[tokio::test]
+async fn batch_parent_submission_uses_next_available_item() {
+    let batch = BatchPresentation::new(3).await;
+    batch
+        .update_selected(UpdateCredentialRequest {
+            consumed_at: Clearable::ForceSet(Some(now_utc())),
+            ..Default::default()
+        })
+        .await;
+    let next_id = selected_batch_item(&batch.context, batch.proof.id).await;
+    assert_ne!(next_id, batch.selected_id);
+    batch
+        .context
+        .server_mock
+        .ssi_request_uri_endpoint(None::<fn(MockBuilder) -> MockBuilder>)
+        .await;
+
+    let response = batch
+        .context
+        .api
+        .interactions
+        .presentation_submit_v2(batch.interaction.id, batch.parent.id, &[], &[])
+        .await;
+    assert_eq!(response.status(), 204);
+    for item in batch_items(&batch.context, batch.parent.id).await {
+        assert_eq!(
+            item.consumed_at.is_some(),
+            [batch.selected_id, next_id].contains(&item.id)
+        );
+    }
+    assert_eq!(
+        batch.context.db.proofs.get(&batch.proof.id).await.state,
+        ProofStateEnum::Accepted
+    );
+}
+
+#[tokio::test]
+async fn batch_parent_submission_rejects_exhausted_batch() {
+    let batch = BatchPresentation::new(1).await;
+    batch
+        .update_selected(UpdateCredentialRequest {
+            consumed_at: Clearable::ForceSet(Some(now_utc())),
+            ..Default::default()
+        })
+        .await;
+    // Concrete IDs retain their existing invalid-submission error.
+    batch.assert_rejected(batch.selected_id).await;
+    batch
+        .assert_rejected_with_code(batch.parent.id, "BR_0443")
+        .await;
+}
+
+#[tokio::test]
+async fn batch_submission_with_nonmatching_claims_is_invalid() {
+    let batch = BatchPresentation::new(2).await;
+    // Legacy fixture items read their claims from the parent.
+    batch
+        .context
+        .db
+        .credentials
+        .update(
+            batch.parent.id,
+            UpdateCredentialRequest {
+                claims: Some(vec![]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let sibling = batch
+        .items
+        .iter()
+        .find(|item| item.id != batch.selected_id)
+        .unwrap();
+    batch.assert_rejected(sibling.id).await;
+    batch.assert_unconsumed().await;
+    batch
+        .update_selected(UpdateCredentialRequest {
+            consumed_at: Clearable::ForceSet(Some(now_utc())),
+            ..Default::default()
+        })
+        .await;
+    batch.assert_rejected(batch.parent.id).await;
 }

@@ -1,6 +1,6 @@
 use futures::future::join_all;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
-use shared_types::{OrganisationId, ProofId};
+use shared_types::{CredentialId, OrganisationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialSet;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -13,7 +13,7 @@ use crate::model::credential::{
 };
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::list_filter::ListFilterValue;
+use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::model::list_query::ListSorting;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -89,7 +89,32 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
     credential_repository: &dyn CredentialRepository,
     schema_id: String,
     organisation_id: OrganisationId,
+    submitted_credential_ids: &[CredentialId],
 ) -> Result<Vec<Credential>, DataLayerError> {
+    let mut candidates = CredentialFilterValue::Types(vec![CredentialType::Single]).condition()
+        | CredentialFilterValue::EarliestExpiringBatchItemPerFormat;
+    if !submitted_credential_ids.is_empty() {
+        // Explicit items need not be the per-format representative. For parent IDs,
+        // historical matches distinguish exhausted batches from unrelated batches.
+        let unavailable_items = CredentialFilterValue::Consumed(true).condition()
+            | CredentialFilterValue::States(vec![
+                CredentialStateEnum::Suspended,
+                CredentialStateEnum::Revoked,
+                CredentialStateEnum::Expired,
+            ])
+            | CredentialFilterValue::ExpiresAt(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: crate::clock::now_utc(),
+            });
+        let submitted_items =
+            CredentialFilterValue::CredentialIds(submitted_credential_ids.to_vec()).condition()
+                | (CredentialFilterValue::ParentCredentials(submitted_credential_ids.to_vec())
+                    .condition()
+                    & unavailable_items);
+        candidates = candidates
+            | (CredentialFilterValue::Types(vec![CredentialType::BatchItem]).condition()
+                & submitted_items);
+    }
     let credentials = credential_repository
         .get_credential_list(CredentialListQuery {
             include_count: false,
@@ -104,8 +129,7 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                     ])
                     & CredentialFilterValue::Roles(vec![CredentialRole::Holder])
                     & CredentialFilterValue::Deleted(false)
-                    & (CredentialFilterValue::Types(vec![CredentialType::Single]).condition()
-                        | CredentialFilterValue::EarliestExpiringBatchItemPerFormat),
+                    & candidates,
             ),
             sorting: Some(ListSorting {
                 column: SortableCredentialColumn::CreatedDate,

@@ -310,6 +310,7 @@ impl VerificationProtocol for IsoMdl {
         &self,
         proof: &Proof,
         context: Value,
+        submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let interaction_data: MdocBleHolderInteractionData = serde_json::from_value(context)?;
 
@@ -336,6 +337,7 @@ impl VerificationProtocol for IsoMdl {
             None,
             &[],
             None,
+            submitted_credential_ids,
         )
         .await
     }
