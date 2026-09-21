@@ -152,10 +152,15 @@ fn request_to_certificate_params(
         }
         CsrRequestProfile::Mdl => {
             params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
-            params.custom_extensions.extend([
-                prepare_extended_key_usage_extension_iso_mdl_ds(),
-                prepare_extended_key_usage_extension_iso_mdoc_ds(),
-            ]);
+            params
+                .custom_extensions
+                .extend([prepare_extended_key_usage_extension(
+                    vec![
+                        OID_EXTENDED_KEY_USAGE_ISO_MDL_DS.to_vec(),
+                        OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS.to_vec(),
+                    ],
+                    true,
+                )]);
         }
         CsrRequestProfile::Ca => {
             // Basic constraints cannot be set in CSR, so only key usages are specified here.
@@ -202,36 +207,22 @@ pub(crate) fn prepare_distinguished_name(subject: CsrRequestSubject) -> Distingu
 
 /// ISO 18013-5, B.1.4 Document signer certificate
 pub(crate) const OID_EXTENDED_KEY_USAGE_ISO_MDL_DS: [u64; 6] = [1, 0, 18013, 5, 1, 2];
-pub(crate) fn prepare_extended_key_usage_extension_iso_mdl_ds() -> CustomExtension {
-    let mdlds_extended_key_usage = yasna::construct_der(|writer| {
-        writer.write_sequence(|writer| {
-            writer.next().write_oid(&ObjectIdentifier::from_slice(
-                &OID_EXTENDED_KEY_USAGE_ISO_MDL_DS,
-            ));
-        });
-    });
-    let mut extended_key_usage_extension = CustomExtension::from_oid_content(
-        oid::extension::EXTENDED_KEY_USAGE,
-        mdlds_extended_key_usage,
-    );
-    extended_key_usage_extension.set_criticality(true);
-    extended_key_usage_extension
-}
-
 /// ISO 7367-2, C.1.4 Document signer certificate
 pub(crate) const OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS: [u64; 6] = [1, 0, 23220, 4, 1, 2];
-pub(crate) fn prepare_extended_key_usage_extension_iso_mdoc_ds() -> CustomExtension {
-    let mdocds_extended_key_usage = yasna::construct_der(|writer| {
+
+pub(crate) fn prepare_extended_key_usage_extension(
+    usages: Vec<Vec<u64>>,
+    critical: bool,
+) -> CustomExtension {
+    let extended_key_usage = yasna::construct_der(|writer| {
         writer.write_sequence(|writer| {
-            writer.next().write_oid(&ObjectIdentifier::from_slice(
-                &OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS,
-            ));
+            for usage in usages {
+                writer.next().write_oid(&ObjectIdentifier::new(usage));
+            }
         });
     });
-    let mut extended_key_usage_extension = CustomExtension::from_oid_content(
-        oid::extension::EXTENDED_KEY_USAGE,
-        mdocds_extended_key_usage,
-    );
-    extended_key_usage_extension.set_criticality(true);
+    let mut extended_key_usage_extension =
+        CustomExtension::from_oid_content(oid::extension::EXTENDED_KEY_USAGE, extended_key_usage);
+    extended_key_usage_extension.set_criticality(critical);
     extended_key_usage_extension
 }

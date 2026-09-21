@@ -893,7 +893,7 @@ async fn test_create_certificate_authority_self_signed_and_certificate_mdl_profi
     assert!(extensions.contains(&json!({
         "critical": true,
         "oid": "2.5.29.37", // extended key usage
-        "value": "1.0.18013.5.1.2"
+        "value": "1.0.18013.5.1.2\n1.0.23220.4.1.2"
     })));
 
     let certificate_id = certificate["id"].as_str().unwrap().parse().unwrap();

@@ -13,8 +13,7 @@ use x509_parser::x509::X509Name;
 use super::dto::{KeyIdDerivation, SelfSignedRequest};
 use crate::proto::csr_creator::{
     OID_EXTENDED_KEY_USAGE_ISO_MDL_DS, OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS,
-    prepare_distinguished_name, prepare_extended_key_usage_extension_iso_mdl_ds,
-    prepare_extended_key_usage_extension_iso_mdoc_ds,
+    prepare_distinguished_name, prepare_extended_key_usage_extension,
 };
 use crate::provider::signer::x509_utils::prepare_issuer_alternative_name_extension;
 
@@ -171,19 +170,22 @@ fn parse_extension<'a>(
                 return Err(CSRError::DisallowedExtension(format!("{extension:?}")));
             }
 
+            let mut usages = vec![];
             for oid in &eku.other {
-                if oid_to_vec(oid)? == OID_EXTENDED_KEY_USAGE_ISO_MDL_DS {
-                    output
-                        .custom_extensions
-                        .push(prepare_extended_key_usage_extension_iso_mdl_ds());
-                } else if oid_to_vec(oid)? == OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS {
-                    output
-                        .custom_extensions
-                        .push(prepare_extended_key_usage_extension_iso_mdoc_ds());
+                let oid = oid_to_vec(oid)?;
+
+                if oid == OID_EXTENDED_KEY_USAGE_ISO_MDL_DS
+                    || oid == OID_EXTENDED_KEY_USAGE_ISO_MDOC_DS
+                {
+                    usages.push(oid);
                 } else {
                     return Err(CSRError::DisallowedExtension(format!("{extension:?}")));
                 }
             }
+
+            output
+                .custom_extensions
+                .push(prepare_extended_key_usage_extension(usages, true));
         }
 
         // Subject alternative name (certain types only)
