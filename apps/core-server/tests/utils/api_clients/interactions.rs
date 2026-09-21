@@ -28,6 +28,23 @@ impl InteractionsApi {
             .await
     }
 
+    pub async fn handle_invitation_with_ecosystem(
+        &self,
+        organisation_id: impl Into<OrganisationId>,
+        url: &str,
+        ecosystem: &str,
+    ) -> Response {
+        let body = json!({
+          "organisationId": organisation_id.into(),
+          "url": url,
+          "ecosystem": ecosystem,
+        });
+
+        self.client
+            .post("/api/interaction/v1/handle-invitation", body)
+            .await
+    }
+
     pub async fn issuance_accept(
         &self,
         interaction_id: impl Into<Uuid>,

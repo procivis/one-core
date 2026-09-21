@@ -2605,3 +2605,70 @@ async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_tru
         "expected an error code, got {ecosystem_errors}"
     );
 }
+
+#[tokio::test]
+async fn test_handle_invitation_selected_ecosystem_rejecting_x509_certificate_returns_error() {
+    // GIVEN — the user selects EUDI, whose trust lists do not contain the x509_san_dns cert
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    context
+        .db
+        .holder_wallet_units
+        .create(
+            organisation.clone(),
+            None,
+            TestHolderWalletInstanceParams {
+                provider_name: Some("PROCIVIS_ONE".to_string()),
+                provider_url: Some(mock_server.uri()),
+                role: Some(InstanceRole::Wallet),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .organisations
+        .update(
+            &organisation.id,
+            UpdateOrganisationRequest {
+                configuration: Some(OrganisationConfiguration {
+                    selected_ecosystems: vec!["EUDI".into()],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "name": "PROCIVIS_ONE",
+            "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": true, "required": true},
+            "featureFlags": {"ecosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
+            "trustCollections": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation_with_ecosystem(
+            organisation.id,
+            make_x509_san_dns_openid4vp_request().as_ref(),
+            "EUDI",
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let body = resp.json_value().await;
+    // the error is the rejection of the selected ecosystem, and carries it
+    let rejection = &body["data"]["ecosystemErrors"]["EUDI"];
+    assert_eq!(rejection["result"], "NOT_TRUSTED");
+    assert_eq!(rejection["error"]["code"], body["code"]);
+}

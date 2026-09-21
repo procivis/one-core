@@ -2,6 +2,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use shared_types::EcosystemId;
 
+use crate::error::ErrorCodeMixin;
 use crate::model::history::HistoryErrorMetadata;
 
 /// Not [`crate::model::history::TrustResolutionResult`]. An ecosystem either validated the
@@ -50,6 +51,18 @@ impl EcosystemOutcomes {
     pub fn validated(ecosystem: EcosystemId) -> Self {
         let mut outcomes = Self::default();
         outcomes.record(ecosystem, Ok(()));
+        outcomes
+    }
+
+    pub fn rejected(ecosystem: EcosystemId, error: &impl ErrorCodeMixin) -> Self {
+        let mut outcomes = Self::default();
+        outcomes.record(
+            ecosystem,
+            Err(HistoryErrorMetadata {
+                error_code: error.error_code(),
+                message: error.to_string(),
+            }),
+        );
         outcomes
     }
 

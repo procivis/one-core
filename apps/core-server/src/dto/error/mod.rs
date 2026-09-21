@@ -18,7 +18,7 @@ pub(crate) struct ErrorResponseRestDTO {
     pub code: &'static str,
     pub message: String,
     pub cause: Option<Cause>,
-    /// Only set on BR_0476, where it carries the ecosystem outcomes behind the failure.
+    /// Only set when ecosystems rejected the interaction, carrying their outcomes.
     pub data: Option<ErrorDataRestDTO>,
     /// HTTP status to use with [`IntoResponse`].
     /// `None` falls back to 400

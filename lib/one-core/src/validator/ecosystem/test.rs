@@ -433,6 +433,14 @@ async fn test_a_committed_ecosystem_rejecting_the_artifact_fails() {
     .unwrap_err();
 
     assert_eq!(ErrorCode::BR_0477, error.error_code());
+    // the failure carries why the committed ecosystem rejected it
+    let Some(ErrorData::EcosystemsResolved(recorded)) = error.error_data() else {
+        panic!("a rejection carries the outcome");
+    };
+    assert_eq!(
+        outcomes(&[("EUDI", rejected(EcosystemError::MissingIdentifier))]),
+        recorded
+    );
 }
 
 #[tokio::test]
@@ -654,6 +662,14 @@ async fn test_submission_committed_ecosystem_rejecting_any_credential_fails() {
     .unwrap_err();
 
     assert_eq!(ErrorCode::BR_0477, error.error_code());
+    // the failure carries why the committed ecosystem rejected credential 1
+    let Some(ErrorData::EcosystemsResolved(recorded)) = error.error_data() else {
+        panic!("a rejection carries the outcome");
+    };
+    assert_eq!(
+        outcomes(&[("EUDI", rejected(EcosystemError::MissingIdentifier))]),
+        recorded
+    );
 }
 
 #[tokio::test]

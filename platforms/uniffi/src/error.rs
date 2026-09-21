@@ -34,7 +34,7 @@ pub struct ErrorResponseBindingDTO {
     pub code: String,
     pub message: String,
     pub cause: Option<Cause>,
-    /// Only set on BR_0476
+    /// Only set when ecosystems rejected the interaction
     pub data: Option<ErrorDataBindingDTO>,
 }
 

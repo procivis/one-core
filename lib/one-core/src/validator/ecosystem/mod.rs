@@ -26,8 +26,11 @@ pub(crate) enum EcosystemValidationError {
     #[error("Ecosystem `{0}` already committed on this interaction")]
     EcosystemAlreadyCommitted(EcosystemId),
     /// the committed ecosystem rejected the artifact
-    #[error(transparent)]
-    Rejected(EcosystemError),
+    #[error("Ecosystem `{ecosystem}` rejected the artifact: {source}")]
+    Rejected {
+        ecosystem: EcosystemId,
+        source: EcosystemError,
+    },
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -39,7 +42,7 @@ impl ErrorCodeMixin for EcosystemValidationError {
             Self::NoEcosystemSelected | Self::NoEcosystemDetected(_) => ErrorCode::BR_0476,
             Self::EcosystemNotPermitted => ErrorCode::BR_0475,
             Self::EcosystemAlreadyCommitted(_) => ErrorCode::BR_0477,
-            Self::Rejected(error) => error.error_code(),
+            Self::Rejected { source, .. } => source.error_code(),
             Self::Nested(nested) => nested.error_code(),
         }
     }
@@ -49,6 +52,9 @@ impl ErrorCodeMixin for EcosystemValidationError {
             Self::NoEcosystemDetected(outcomes) => {
                 Some(ErrorData::EcosystemsResolved(outcomes.to_owned()))
             }
+            Self::Rejected { ecosystem, source } => Some(ErrorData::EcosystemsResolved(
+                EcosystemOutcomes::rejected(ecosystem.to_owned(), source),
+            )),
             Self::Nested(nested) => nested.error_data(),
             _ => None,
         }
@@ -501,7 +507,10 @@ async fn validate_committed(
     ecosystem
         .validate_interaction(artifact, interaction)
         .await
-        .map_err(EcosystemValidationError::Rejected)?;
+        .map_err(|source| EcosystemValidationError::Rejected {
+            ecosystem: ecosystem_id.to_owned(),
+            source,
+        })?;
 
     Ok(EcosystemOutcomes::validated(ecosystem_id.to_owned()))
 }

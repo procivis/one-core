@@ -114,9 +114,10 @@ impl ErrorCodeMixin for OID4VCIFinal1_0ServiceError {
 impl OID4VCIFinal1_0ServiceError {
     pub(super) fn from_ecosystem_validation(error: EcosystemValidationError) -> Self {
         match error {
-            EcosystemValidationError::Rejected(EcosystemError::WalletAttestation(rejection)) => {
-                WalletAttestationError::Rejected(rejection).into()
-            }
+            EcosystemValidationError::Rejected {
+                source: EcosystemError::WalletAttestation(rejection),
+                ..
+            } => WalletAttestationError::Rejected(rejection).into(),
             error => error.error_while("validating ecosystem").into(),
         }
     }
