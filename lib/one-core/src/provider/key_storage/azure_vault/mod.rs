@@ -13,7 +13,7 @@ use mapper::{
     public_key_from_components,
 };
 use one_crypto::signer::ecdsa::ECDSASigner;
-use one_crypto::{CryptoProvider, Signer, SignerError};
+use one_crypto::{Signer, SignerError};
 use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
@@ -67,7 +67,6 @@ struct AzureAccessToken {
 
 #[derive(Provider)]
 pub struct AzureVaultKeyProvider {
-    crypto: Arc<dyn CryptoProvider>,
     azure_client: Arc<AzureClient>,
     name: String,
 }
@@ -158,8 +157,7 @@ impl KeyStorage for AzureVaultKeyProvider {
     }
 
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
-        let handle =
-            AzureVaultKeyHandle::new(key.clone(), self.crypto.clone(), self.azure_client.clone());
+        let handle = AzureVaultKeyHandle::new(key.clone(), self.azure_client.clone());
 
         Ok(KeyHandle::SignatureOnly(
             SignatureKeyHandle::WithPrivateKey {
@@ -204,7 +202,6 @@ impl AzureVaultKeyProvider {
     pub fn new(
         name: &str,
         params: serde_json::Value,
-        crypto: Arc<dyn CryptoProvider>,
         client: Arc<dyn HttpClient>,
     ) -> Result<Self, InitializationError> {
         let params: Params =
@@ -213,7 +210,6 @@ impl AzureVaultKeyProvider {
                 source: err,
             })?;
         Ok(Self {
-            crypto,
             azure_client: Arc::new(AzureClient {
                 access_token: Arc::new(Mutex::new(None)),
                 client,
@@ -226,17 +222,12 @@ impl AzureVaultKeyProvider {
 #[derive(Clone)]
 struct AzureVaultKeyHandle {
     key: Key,
-    crypto: Arc<dyn CryptoProvider>,
     azure_client: Arc<AzureClient>,
 }
 
 impl AzureVaultKeyHandle {
-    fn new(key: Key, crypto: Arc<dyn CryptoProvider>, azure_client: Arc<AzureClient>) -> Self {
-        Self {
-            key,
-            crypto,
-            azure_client,
-        }
+    fn new(key: Key, azure_client: Arc<AzureClient>) -> Self {
+        Self { key, azure_client }
     }
 }
 
@@ -278,7 +269,7 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
             .to_owned();
         let key_reference = String::from_utf8(key_reference)?;
 
-        let sign_request = create_sign_request(message, self.crypto.clone())?;
+        let sign_request = create_sign_request(message)?;
 
         let response = self.azure_client.sign(&key_reference, sign_request).await?;
 

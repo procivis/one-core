@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use one_crypto::CryptoProvider;
+use one_crypto::get_hasher;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
@@ -42,7 +42,6 @@ pub struct Params {
 
 pub struct SdjwtVCPresentationFormatter {
     client: Arc<dyn HttpClient>,
-    crypto: Arc<dyn CryptoProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
 }
@@ -50,12 +49,10 @@ pub struct SdjwtVCPresentationFormatter {
 impl SdjwtVCPresentationFormatter {
     pub(crate) fn new(
         client: Arc<dyn HttpClient>,
-        crypto: Arc<dyn CryptoProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             client,
-            crypto,
             certificate_validator,
             params: Params {
                 leeway_seconds: Duration::seconds(60),
@@ -91,8 +88,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             .get("_sd_alg")
             .and_then(|alg| alg.as_str())
             .unwrap_or("sha-256");
-
-        let hasher = self.crypto.get_hasher(hash_alg)?;
+        let hasher = get_hasher(hash_alg.try_into()?)?;
 
         // As per https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-22.html#section-4.3
         // Both nonce and audience are required
@@ -145,7 +141,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
         let (issuer, proof_of_key_possession) = self
-            .extract_presentation_internal(token, Some(verification_fn), &*self.crypto, &context)
+            .extract_presentation_internal(token, Some(verification_fn), &context)
             .await?;
 
         Ok(ExtractedPresentation {
@@ -170,7 +166,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
         let (issuer, proof_of_key_possession) = self
-            .extract_presentation_internal(token, None, &*self.crypto, &context)
+            .extract_presentation_internal(token, None, &context)
             .await?;
 
         Ok(ExtractedPresentation {
@@ -194,13 +190,11 @@ impl SdjwtVCPresentationFormatter {
         &self,
         token: &str,
         verification: Option<VerificationFn>,
-        crypto: &dyn CryptoProvider,
         context: &ExtractPresentationCtx,
     ) -> Result<(IdentifierDetails, JWTPayload<KeyBindingPayload>), FormatterError> {
         let (jwt, _issuer_details, key_binding_token): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 &token.into(),
-                crypto,
                 verification.as_ref(),
                 Some(&*self.certificate_validator),
                 &*self.client,
@@ -221,7 +215,7 @@ impl SdjwtVCPresentationFormatter {
             _ => None,
         };
         let hash_alg = jwt.payload.custom.hash_alg.as_deref().unwrap_or("sha-256");
-        let hasher = crypto.get_hasher(hash_alg)?;
+        let hasher = get_hasher(hash_alg.try_into()?)?;
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
             leeway: self.get_leeway(),

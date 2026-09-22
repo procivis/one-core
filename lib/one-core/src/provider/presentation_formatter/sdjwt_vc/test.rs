@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mockall::predicate::eq;
-use one_crypto::MockCryptoProvider;
-use one_crypto::hasher::sha256::SHA256;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
@@ -55,14 +53,6 @@ async fn test_extract_presentation() {
         y: Some("ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ".to_string()),
     });
 
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .times(2)
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let mut http_client = MockHttpClient::new();
     http_client
         .expect_get()
@@ -93,7 +83,6 @@ async fn test_extract_presentation() {
 
     let sd_formatter = SdjwtVCPresentationFormatter::new(
         Arc::new(http_client),
-        Arc::new(crypto),
         Arc::new(MockCertificateValidator::new()),
     );
 
@@ -187,14 +176,6 @@ async fn test_extract_presentation_with_holder_binding() {
         y: Some("ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ".to_string()),
     });
 
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .times(2)
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let mut http_client = MockHttpClient::new();
     http_client
         .expect_get()
@@ -225,7 +206,6 @@ async fn test_extract_presentation_with_holder_binding() {
 
     let sd_formatter = SdjwtVCPresentationFormatter::new(
         Arc::new(http_client),
-        Arc::new(crypto),
         Arc::new(MockCertificateValidator::new()),
     );
 
@@ -299,14 +279,6 @@ async fn test_extract_presentation_with_wrong_nonce() {
     let disclosures_and_kb = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
     let presentation_token = format!("{jwt_token}.{token_signature}{disclosures_and_kb}");
 
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .times(2)
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let mut http_client = MockHttpClient::new();
     http_client
         .expect_get()
@@ -337,7 +309,6 @@ async fn test_extract_presentation_with_wrong_nonce() {
 
     let sd_formatter = SdjwtVCPresentationFormatter::new(
         Arc::new(http_client),
-        Arc::new(crypto),
         Arc::new(MockCertificateValidator::new()),
     );
 

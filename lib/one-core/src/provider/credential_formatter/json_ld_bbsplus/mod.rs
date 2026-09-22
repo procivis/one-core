@@ -7,7 +7,7 @@ use std::vec;
 
 use async_trait::async_trait;
 use mapper::convert_to_detail_credential;
-use one_crypto::CryptoProvider;
+use one_crypto::hasher::sha256::SHA256;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::json;
@@ -63,7 +63,6 @@ mod test;
 #[derive(Provider)]
 pub struct JsonLdBbsplus {
     config_id: CredentialFormat,
-    crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     data_type_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -88,11 +87,9 @@ struct Params {
 }
 
 impl JsonLdBbsplus {
-    #[expect(clippy::too_many_arguments)]
     pub fn new(
         config_id: CredentialFormat,
         params: serde_json::Value,
-        crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -108,7 +105,6 @@ impl JsonLdBbsplus {
         Ok(Self {
             config_id,
             params,
-            crypto,
             did_method_provider,
             data_type_provider,
             key_algorithm_provider,
@@ -164,7 +160,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             mandatory_pointers,
             verification_method,
             &self.caching_loader,
-            &*self.crypto.get_hasher("sha-256")?,
+            &SHA256,
             &*auth_fn,
             json_ld_processor_options(),
         )
@@ -231,7 +227,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             mandatory_pointers,
             verification_method,
             &self.caching_loader,
-            &*self.crypto.get_hasher("sha-256")?,
+            &SHA256,
             &*auth_fn,
             json_ld_processor_options(),
         )

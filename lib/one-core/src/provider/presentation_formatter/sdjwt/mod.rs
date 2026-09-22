@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use one_crypto::CryptoProvider;
+use one_crypto::get_hasher;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
@@ -46,7 +46,6 @@ pub struct Params {
 // TODO ONE-6774: Remove once productive holders have been updated to release v1.57+
 pub struct SdjwtPresentationFormatter {
     client: Arc<dyn HttpClient>,
-    crypto: Arc<dyn CryptoProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     params: Params,
 }
@@ -54,12 +53,10 @@ pub struct SdjwtPresentationFormatter {
 impl SdjwtPresentationFormatter {
     pub fn new(
         client: Arc<dyn HttpClient>,
-        crypto: Arc<dyn CryptoProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             client,
-            crypto,
             key_algorithm_provider,
             params: Params {
                 leeway_seconds: Duration::seconds(60),
@@ -120,8 +117,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
                 .get("_sd_alg")
                 .and_then(|alg| alg.as_str())
                 .unwrap_or("sha-256");
-
-            let hasher = self.crypto.get_hasher(hash_alg)?;
+            let hasher = get_hasher(hash_alg.try_into()?)?;
 
             append_key_binding_token(
                 &*hasher,
@@ -193,13 +189,8 @@ impl SdjwtPresentationFormatter {
         }
 
         let serialized_credential = token.into();
-        let credential = extract_credentials_internal(
-            &serialized_credential,
-            verification,
-            &*self.crypto,
-            http_client,
-        )
-        .await?;
+        let credential =
+            extract_credentials_internal(&serialized_credential, verification, http_client).await?;
 
         // Perform KB verification at the presentation level
         let decomposed = parse_token(&serialized_credential)?;
@@ -227,7 +218,7 @@ impl SdjwtPresentationFormatter {
             .get("_sd_alg")
             .and_then(|alg| alg.as_str())
             .unwrap_or("sha-256");
-        let hasher = self.crypto.get_hasher(hash_alg)?;
+        let hasher = get_hasher(hash_alg.try_into()?)?;
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
             leeway: self.get_leeway(),

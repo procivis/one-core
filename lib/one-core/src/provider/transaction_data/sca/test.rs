@@ -1,4 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::hasher::sha512::SHA512;
 use serde_json::json;
@@ -23,7 +24,6 @@ fn provider(transaction_type: TransactionType) -> ScaTransactionData {
                 ]
             }
         }),
-        one_crypto::initialize_crypto_provider(),
     )
     .unwrap()
 }

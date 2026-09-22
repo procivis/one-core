@@ -2,8 +2,6 @@
 
 use std::sync::Arc;
 
-use one_crypto::CryptoProvider;
-
 use super::KeyStorage;
 use super::azure_vault::AzureVaultKeyProvider;
 use super::decorators::CapabilityCheckedKeyStorage;
@@ -151,11 +149,9 @@ impl SignatureProvider for AttestationSignatureProvider {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) fn key_provider_from_config(
     config: &mut CoreConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    crypto: Arc<dyn CryptoProvider>,
     client: Arc<dyn HttpClient>,
     csc_client: Arc<dyn CscClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
@@ -167,7 +163,6 @@ pub(crate) fn key_provider_from_config(
             name,
             field,
             key_algorithm_provider.clone(),
-            crypto.clone(),
             client.clone(),
             csc_client.clone(),
             certificate_validator.clone(),
@@ -185,7 +180,6 @@ fn initialize_provider(
     name: &str,
     field: &Fields<KeyStorageType>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    crypto: Arc<dyn CryptoProvider>,
     client: Arc<dyn HttpClient>,
     csc_client: Arc<dyn CscClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
@@ -201,7 +195,6 @@ fn initialize_provider(
         KeyStorageType::AzureVault => Arc::new(AzureVaultKeyProvider::new(
             name,
             field.merge_fields(),
-            crypto,
             client,
         )?),
         KeyStorageType::SecureElement => {

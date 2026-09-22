@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
-use one_crypto::CryptoProvider;
 use serde_json::json;
 use shared_types::CredentialFormat;
 
@@ -75,7 +74,6 @@ fn initialize_provider(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     client: &Arc<dyn HttpClient>,
     data_type_provider: &Arc<dyn DataTypeProvider>,
-    crypto: &Arc<dyn CryptoProvider>,
     json_ld_cache: &JsonLdCachingLoader,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     vct_type_metadata_cache: &Arc<dyn VctTypeMetadataFetcher>,
@@ -95,7 +93,6 @@ fn initialize_provider(
             base_url,
             name.clone(),
             fields.merge_fields(),
-            crypto.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
             data_type_provider.clone(),
@@ -105,7 +102,6 @@ fn initialize_provider(
             base_url,
             name.clone(),
             fields.merge_fields(),
-            crypto.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
             vct_type_metadata_cache.clone(),
@@ -117,7 +113,6 @@ fn initialize_provider(
         FormatType::JsonLdClassic => Arc::new(JsonLdClassic::new(
             name.clone(),
             fields.merge_fields(),
-            crypto.clone(),
             json_ld_cache.clone(),
             data_type_provider.clone(),
             key_algorithm_provider.clone(),
@@ -127,7 +122,6 @@ fn initialize_provider(
         FormatType::JsonLdBbsPlus => Arc::new(JsonLdBbsplus::new(
             name.clone(),
             fields.merge_fields(),
-            crypto.clone(),
             did_method_provider.clone(),
             data_type_provider.clone(),
             key_algorithm_provider.clone(),
@@ -156,7 +150,6 @@ pub(crate) fn credential_formatter_provider_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     data_type_provider: Arc<dyn DataTypeProvider>,
-    crypto: Arc<dyn CryptoProvider>,
     json_ld_cache: JsonLdCachingLoader,
     did_method_provider: Arc<dyn DidMethodProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
@@ -172,7 +165,6 @@ pub(crate) fn credential_formatter_provider_from_config(
                 &key_algorithm_provider,
                 &client,
                 &data_type_provider,
-                &crypto,
                 &json_ld_cache,
                 &did_method_provider,
                 &vct_type_metadata_cache,
@@ -214,7 +206,6 @@ pub(crate) fn credential_formatter_provider_from_config(
 
 #[cfg(test)]
 mod test {
-    use one_crypto::MockCryptoProvider;
     use similar_asserts::assert_eq;
     use time::Duration;
 
@@ -284,7 +275,6 @@ mod test {
             Arc::new(MockKeyAlgorithmProvider::new()),
             Arc::new(MockHttpClient::new()),
             Arc::new(MockDataTypeProvider::new()),
-            Arc::new(MockCryptoProvider::new()),
             jsonld_cache_resolver,
             Arc::new(MockDidMethodProvider::new()),
             Arc::new(MockVctTypeMetadataFetcher::new()),

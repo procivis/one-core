@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use indexmap::indexset;
-use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use time::Duration;
@@ -46,19 +45,13 @@ pub struct Params {
 }
 
 pub struct LdpVpPresentationFormatter {
-    pub crypto: Arc<dyn CryptoProvider>,
     pub caching_loader: ContextCache,
     pub params: Params,
 }
 
 impl LdpVpPresentationFormatter {
-    pub fn new(
-        crypto: Arc<dyn CryptoProvider>,
-        caching_loader: JsonLdCachingLoader,
-        client: Arc<dyn HttpClient>,
-    ) -> Self {
+    pub fn new(caching_loader: JsonLdCachingLoader, client: Arc<dyn HttpClient>) -> Self {
         Self {
-            crypto,
             caching_loader: ContextCache::new(caching_loader, client),
             params: Params {
                 leeway_seconds: Duration::seconds(60),
@@ -147,7 +140,6 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         let proof_hash = prepare_proof_hash(
             &presentation,
             &proof,
-            &*self.crypto,
             self.caching_loader.to_owned(),
             None,
             json_ld_processor_options(),
@@ -203,7 +195,6 @@ impl LdpVpPresentationFormatter {
             verify_presentation_signature(
                 presentation.clone(),
                 verification_fn,
-                &*self.crypto,
                 self.caching_loader.to_owned(),
             )
             .await?;
@@ -247,7 +238,6 @@ impl LdpVpPresentationFormatter {
 pub async fn verify_presentation_signature(
     mut presentation: LdPresentation,
     verification_fn: VerificationFn,
-    crypto: &dyn CryptoProvider,
     caching_loader: ContextCache,
 ) -> Result<(), FormatterError> {
     // Remove proof for canonicalization
@@ -271,7 +261,6 @@ pub async fn verify_presentation_signature(
     let proof_hash = prepare_proof_hash(
         &presentation,
         &proof,
-        crypto,
         caching_loader,
         None,
         json_ld_processor_options(),

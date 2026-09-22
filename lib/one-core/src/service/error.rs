@@ -1,4 +1,3 @@
-use one_crypto::CryptoProviderError;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, DidMethodId, DidValue, IdentifierId, InteractionId,
     ProofId,
@@ -28,9 +27,6 @@ pub enum ServiceError {
 
     #[error(transparent)]
     MissingProvider(#[from] MissingProviderError),
-
-    #[error("Crypto provider error: `{0}`")]
-    CryptoError(#[from] CryptoProviderError),
 
     #[error("Other Repository error: `{0}`")]
     Other(String),
@@ -194,7 +190,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::BusinessLogic(error) => error.error_code(),
             Self::Validation(error) => error.error_code(),
             Self::MissingProvider(error) => error.error_code(),
-            Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0048,
             Self::ValidationError(_) => ErrorCode::BR_0323,

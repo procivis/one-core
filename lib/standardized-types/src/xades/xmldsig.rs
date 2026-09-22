@@ -19,7 +19,7 @@ fn default_xmldsig_ns() -> String {
     XMLDSIG_NS.to_string()
 }
 
-// Only suites with a matching CryptoProvider hasher are listed.
+// Only suites with a supported hasher are listed.
 // ES384/RSA omitted: no SHA-384 hasher or RSA key type available.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SignatureSuite {

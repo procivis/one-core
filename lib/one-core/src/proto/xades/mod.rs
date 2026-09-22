@@ -8,8 +8,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64, Decoder};
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::{Hasher, get_hasher};
 use serde::de::DeserializeOwned;
+use standardized_types::iana::HashAlgorithm;
 use standardized_types::xades::{
     self, EXC_C14N, INC_C14N, SHA256_DIGEST_URI, SHA512_DIGEST_URI, XMLDSIG_NS,
 };
@@ -103,17 +104,12 @@ pub struct XAdESEnvelopedSignature {
 }
 
 pub struct XAdES {
-    crypto_provider: Arc<dyn CryptoProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl XAdES {
-    pub fn new(
-        crypto_provider: Arc<dyn CryptoProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-    ) -> Self {
+    pub fn new(certificate_validator: Arc<dyn CertificateValidator>) -> Self {
         Self {
-            crypto_provider,
             certificate_validator,
         }
     }
@@ -145,8 +141,8 @@ impl XAdESProto for XAdES {
             .try_into()
             .error_while("generating signature")?;
 
-        let hasher = resolve_hasher(&*self.crypto_provider, xades_suite.hash_alg_uri())
-            .error_while("generating signature")?;
+        let hasher =
+            resolve_hasher(xades_suite.hash_alg_uri()).error_while("generating signature")?;
 
         let signing_certificate = x5c
             .first()
@@ -187,9 +183,7 @@ impl XAdESProto for XAdES {
         &self,
         signed: &XAdESEnvelopedSignature,
     ) -> Result<XAdESVerified, Error> {
-        signed
-            .verify_signature(&*self.crypto_provider, &*self.certificate_validator)
-            .await
+        signed.verify_signature(&*self.certificate_validator).await
     }
 }
 
@@ -246,7 +240,6 @@ where
 impl XAdESEnvelopedSignature {
     pub(crate) async fn verify_signature(
         &self,
-        crypto_provider: &dyn CryptoProvider,
         certificate_validator: &dyn CertificateValidator,
     ) -> Result<XAdESVerified, Error> {
         let sig = &self.signature;
@@ -282,12 +275,7 @@ impl XAdESEnvelopedSignature {
 
         let mut references = Vec::with_capacity(signed_info.references.len());
         for reference in &signed_info.references {
-            self.verify_reference_digest(
-                reference,
-                signature_id,
-                signed_info_c14n,
-                crypto_provider,
-            )?;
+            self.verify_reference_digest(reference, signature_id, signed_info_c14n)?;
             references.push(VerifiedReference {
                 uri: reference.uri.clone(),
                 r#type: reference.r#type.clone(),
@@ -301,7 +289,7 @@ impl XAdESEnvelopedSignature {
 
         // EN 319 132-1 §5.2.2
         let signing_chain = self
-            .find_signing_certificate_chain(crypto_provider)
+            .find_signing_certificate_chain()
             .error_while("matching signing certificate")?;
         let pem_chain = x5c_into_pem_chain(signing_chain).error_while("parsing signer X509Data")?;
         let parsed = certificate_validator
@@ -342,7 +330,6 @@ impl XAdESEnvelopedSignature {
         reference: &xades::Reference,
         signature_id: Option<&str>,
         signed_info_c14n: &str,
-        crypto_provider: &dyn CryptoProvider,
     ) -> Result<(), Error> {
         let transforms = reference
             .transforms
@@ -374,7 +361,7 @@ impl XAdESEnvelopedSignature {
             )));
         };
 
-        let hasher = resolve_hasher(crypto_provider, &reference.digest_method.algorithm)
+        let hasher = resolve_hasher(&reference.digest_method.algorithm)
             .error_while("resolving reference digest algorithm")?;
         if hasher.hash_base64(&canonical)? != reference.digest_value {
             return Err(Error::IncorrectDigest(if reference.uri.is_empty() {
@@ -386,10 +373,7 @@ impl XAdESEnvelopedSignature {
         Ok(())
     }
 
-    fn find_signing_certificate_chain(
-        &self,
-        crypto_provider: &dyn CryptoProvider,
-    ) -> Result<&[String], Error> {
+    fn find_signing_certificate_chain(&self) -> Result<&[String], Error> {
         let sig = &self.signature;
         let signed_sig_props = &sig
             .object
@@ -408,10 +392,7 @@ impl XAdESEnvelopedSignature {
                 )
             })?;
 
-        let cert_hasher = resolve_hasher(
-            crypto_provider,
-            &cert_ref.cert_digest.digest_method.algorithm,
-        )?;
+        let cert_hasher = resolve_hasher(&cert_ref.cert_digest.digest_method.algorithm)?;
 
         let expected_digest = &cert_ref.cert_digest.digest_value;
 
@@ -486,20 +467,17 @@ fn interpret_ref_transforms(
     }
 }
 
-fn resolve_hasher(
-    crypto_provider: &dyn CryptoProvider,
-    digest_uri: &str,
-) -> Result<std::sync::Arc<dyn Hasher>, Error> {
-    let name = match digest_uri {
-        SHA256_DIGEST_URI => "sha-256",
-        SHA512_DIGEST_URI => "sha-512",
+fn resolve_hasher(digest_uri: &str) -> Result<Arc<dyn Hasher>, Error> {
+    let hash_algorithm = match digest_uri {
+        SHA256_DIGEST_URI => HashAlgorithm::Sha256,
+        SHA512_DIGEST_URI => HashAlgorithm::Sha512,
         other => {
             return Err(Error::UnsupportedSuite(format!(
                 "unsupported digest algorithm URI: {other}"
             )));
         }
     };
-    Ok(crypto_provider.get_hasher(name)?)
+    Ok(get_hasher(hash_algorithm)?)
 }
 
 #[cfg(test)]

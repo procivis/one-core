@@ -6,9 +6,8 @@ use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use maplit::hashmap;
 use mockall::predicate::eq;
-use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
-use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
 use shared_types::{DidMethodId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
@@ -71,18 +70,6 @@ use crate::util::test_utilities::assert_time_diff_less_than;
 
 #[tokio::test]
 async fn test_format_credential() {
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .returning(|_| Ok(String::from("YWJjMTIz")));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let mut credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -141,7 +128,6 @@ async fn test_format_credential() {
             "sdArrayElements": true,
             "expirationSeconds": expiration.whole_seconds()
         }),
-        Arc::new(crypto),
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(vct_metadata_cache),
@@ -222,11 +208,7 @@ async fn test_format_credential() {
     assert_eq!(vc.vc_type, "http://schema.test/id".to_string());
     assert_eq!(vc.vct_integrity, Some("integrity".to_string()));
 
-    assert!(
-        vc.digests
-            .iter()
-            .all(|hashed_claim| hashed_claim == "YWJjMTIz")
-    );
+    assert_eq!(vc.digests.len(), 2);
 
     assert!(vc.public_claims.is_empty()); // Empty until we support issuing public_claims
 }
@@ -234,18 +216,6 @@ async fn test_format_credential() {
 #[tokio::test]
 async fn test_format_credential_swiyu() {
     const IMG_DATA: &str = "iVBORw0KGgoAAAAN";
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .returning(|_| Ok(String::from("YWJjMTIz")));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
 
     let leeway = Duration::seconds(45);
 
@@ -325,7 +295,6 @@ async fn test_format_credential_swiyu() {
             "sdArrayElements": true,
             "expirationSeconds": 86_400
         }),
-        Arc::new(crypto),
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(vct_metadata_cache),
@@ -415,11 +384,7 @@ async fn test_format_credential_swiyu() {
     assert_eq!(vc.vc_type, "http://schema.test/id".to_string());
     assert_eq!(vc.vct_integrity, Some("integrity".to_string()));
 
-    assert!(
-        vc.digests
-            .iter()
-            .all(|hashed_claim| hashed_claim == "YWJjMTIz")
-    );
+    assert_eq!(vc.digests.len(), 3);
 
     assert!(vc.public_claims.is_empty()); // Empty until we support issuing public_claims
 }
@@ -443,16 +408,6 @@ async fn test_extract_credentials() {
     )
     .into();
 
-    let hasher = Arc::new(SHA256 {});
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTVCFormatter::new(
@@ -465,7 +420,6 @@ async fn test_extract_credentials() {
             "sdArrayElements": true,
             "expirationSeconds": 86_400
         }),
-        Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -590,16 +544,6 @@ async fn test_extract_credentials_swiyu() {
         WyJJdldtNmU1RmNQckNiRFpYa0kzOEt3IiwicmVmZXJlbmNlX2lkX2V4cGlyeV9kYXRlIiwiMjAzMC0wNS0wNSJd~"
     ).into();
 
-    let hasher = Arc::new(SHA256 {});
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTVCFormatter::new(
@@ -612,7 +556,6 @@ async fn test_extract_credentials_swiyu() {
             "sdArrayElements": true,
             "expirationSeconds": 86_400
         }),
-        Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -780,12 +723,6 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         "2CyX0v3AAFG9y-A_Z46uz9hHsNbr0yWTbDQaajLCrsxo-JxVh4a9dAMFVYZ8GFG2wgj2jKnA42wSgv7xVM64PA";
     let disclosures = "~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MzMyMzAxNDAsICJzZF9oYXNoIjogIkhWVjBCcG5FTHlHTnRVVFlCLU5nWHhmN2pvTjZBekprYVdEOUVkNVo1VjgifQ.FJLPPlBB2wOWEYLLtwd7WYlaTpIz0ALlRuskPi0fSYFDEn25gGkXSSJsQxjhryxqN4aLbwMRRfcvDdk1A_eLHQ";
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let mut http_client = MockHttpClient::new();
     http_client
         .expect_get()
@@ -824,7 +761,6 @@ async fn test_extract_credentials_with_cnf_no_subject() {
             "sdArrayElements": true,
             "expirationSeconds": 86_400
         }),
-        Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -898,13 +834,6 @@ async fn test_extract_credentials_example_b1() {
     // https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#appendix-B.1
     let token = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCJ9.eyJfc2QiOiBbIjBIWm1uU0lQejMzN2tTV2U3QzM0bC0tODhnekppLWVCSjJWel9ISndBVGciLCAiOVpicGxDN1RkRVc3cWFsNkJCWmxNdHFKZG1lRU9pWGV2ZEpsb1hWSmRSUSIsICJJMDBmY0ZVb0RYQ3VjcDV5eTJ1anFQc3NEVkdhV05pVWxpTnpfYXdEMGdjIiwgIklFQllTSkdOaFhJbHJRbzU4eWtYbTJaeDN5bGw5WmxUdFRvUG8xN1FRaVkiLCAiTGFpNklVNmQ3R1FhZ1hSN0F2R1RyblhnU2xkM3o4RUlnX2Z2M2ZPWjFXZyIsICJodkRYaHdtR2NKUXNCQ0EyT3RqdUxBY3dBTXBEc2FVMG5rb3ZjS09xV05FIiwgImlrdXVyOFE0azhxM1ZjeUE3ZEMtbU5qWkJrUmVEVFUtQ0c0bmlURTdPVFUiLCAicXZ6TkxqMnZoOW80U0VYT2ZNaVlEdXZUeWtkc1dDTmcwd1RkbHIwQUVJTSIsICJ3elcxNWJoQ2t2a3N4VnZ1SjhSRjN4aThpNjRsbjFqb183NkJDMm9hMXVnIiwgInpPZUJYaHh2SVM0WnptUWNMbHhLdUVBT0dHQnlqT3FhMXoySW9WeF9ZRFEiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL2lzc3VlciIsICJpYXQiOiAxNjgzMDAwMDAwLCAiZXhwIjogMTg4MzAwMDAwMCwgInZjdCI6ICJodHRwczovL2JtaS5idW5kLmV4YW1wbGUvY3JlZGVudGlhbC9waWQvMS4wIiwgImFnZV9lcXVhbF9vcl9vdmVyIjogeyJfc2QiOiBbIkZjOElfMDdMT2NnUHdyREpLUXlJR085N3dWc09wbE1Makh2UkM0UjQtV2ciLCAiWEx0TGphZFVXYzl6Tl85aE1KUm9xeTQ2VXNDS2IxSXNoWnV1cVVGS1NDQSIsICJhb0NDenNDN3A0cWhaSUFoX2lkUkNTQ2E2NDF1eWNuYzh6UGZOV3o4bngwIiwgImYxLVAwQTJkS1dhdnYxdUZuTVgyQTctRVh4dmhveHY1YUhodUVJTi1XNjQiLCAiazVoeTJyMDE4dnJzSmpvLVZqZDZnNnl0N0Fhb25Lb25uaXVKOXplbDNqbyIsICJxcDdaX0t5MVlpcDBzWWdETzN6VnVnMk1GdVBOakh4a3NCRG5KWjRhSS1jIl19LCAiX3NkX2FsZyI6ICJzaGEtMjU2IiwgImNuZiI6IHsiandrIjogeyJrdHkiOiAiRUMiLCAiY3J2IjogIlAtMjU2IiwgIngiOiAiVENBRVIxOVp2dTNPSEY0ajRXNHZmU1ZvSElQMUlMaWxEbHM3dkNlR2VtYyIsICJ5IjogIlp4amlXV2JaTVFHSFZXS1ZRNGhiU0lpcnNWZnVlY0NFNnQ0alQ5RjJIWlEifX19.GpFPbIEEgUGopARZQ0IyasBufd1KzTqq7qTjfla0PDmAlGD9W56MfhVGysuuq0FPv-hnLD7EU43r5ybMxWTQhw~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgImdpdmVuX25hbWUiLCAiRXJpa2EiXQ~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgIk11c3Rlcm1hbm4iXQ~WyI2SWo3dE0tYTVpVlBHYm9TNXRtdlZBIiwgImJpcnRoZGF0ZSIsICIxOTYzLTA4LTEyIl0~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgInNvdXJjZV9kb2N1bWVudF90eXBlIiwgImlkX2NhcmQiXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgInN0cmVldF9hZGRyZXNzIiwgIkhlaWRlc3RyYVx1MDBkZmUgMTciXQ~WyJBSngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImxvY2FsaXR5IiwgIktcdTAwZjZsbiJd~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgInBvc3RhbF9jb2RlIiwgIjUxMTQ3Il0~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgImNvdW50cnkiLCAiREUiXQ~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImFkZHJlc3MiLCB7Il9zZCI6IFsiWEZjN3pYUG03enpWZE15d20yRXVCZmxrYTVISHF2ZjhVcF9zek5HcXZpZyIsICJiZDFFVnpnTm9wVWs0RVczX2VRMm4zX05VNGl1WE9IdjlYYkdITjNnMVRFIiwgImZfRlFZZ3ZRV3Z5VnFObklYc0FSbE55ZTdZR3A4RTc3Z1JBamFxLXd2bnciLCAidjRra2JfcFAxamx2VWJTanR5YzVicWNXeUEtaThYTHZoVllZN1pUMHRiMCJdfV0~WyJuUHVvUW5rUkZxM0JJZUFtN0FuWEZBIiwgIm5hdGlvbmFsaXRpZXMiLCBbIkRFIl1d~WyI1YlBzMUlxdVpOYTBoa2FGenp6Wk53IiwgImdlbmRlciIsICJmZW1hbGUiXQ~WyI1YTJXMF9OcmxFWnpmcW1rXzdQcS13IiwgImJpcnRoX2ZhbWlseV9uYW1lIiwgIkdhYmxlciJd~WyJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRIiwgImxvY2FsaXR5IiwgIkJlcmxpbiJd~WyJIYlE0WDhzclZXM1FEeG5JSmRxeU9BIiwgInBsYWNlX29mX2JpcnRoIiwgeyJfc2QiOiBbIldwaEhvSUR5b1diQXBEQzR6YnV3UjQweGwweExoRENfY3Y0dHNTNzFyRUEiXSwgImNvdW50cnkiOiAiREUifV0~WyJDOUdTb3VqdmlKcXVFZ1lmb2pDYjFBIiwgImFsc29fa25vd25fYXMiLCAiU2Nod2VzdGVyIEFnbmVzIl0~WyJreDVrRjE3Vi14MEptd1V4OXZndnR3IiwgIjEyIiwgdHJ1ZV0~WyJIM28xdXN3UDc2MEZpMnllR2RWQ0VRIiwgIjE0IiwgdHJ1ZV0~WyJPQktsVFZsdkxnLUFkd3FZR2JQOFpBIiwgIjE2IiwgdHJ1ZV0~WyJNMEpiNTd0NDF1YnJrU3V5ckRUM3hBIiwgIjE4IiwgdHJ1ZV0~WyJEc210S05ncFY0ZEFIcGpyY2Fvc0F3IiwgIjIxIiwgdHJ1ZV0~WyJlSzVvNXBIZmd1cFBwbHRqMXFoQUp3IiwgIjY1IiwgZmFsc2Vd~".into();
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(Arc::new(SHA256 {})));
-
     let mut http_client = MockHttpClient::new();
     http_client
         .expect_get()
@@ -943,7 +872,6 @@ async fn test_extract_credentials_example_b1() {
             "sdArrayElements": true,
             "expirationSeconds": 86_400
         }),
-        Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -1091,7 +1019,6 @@ fn test_schema_id() {
             "sdArrayElements": true,
             "expirationSeconds": 86_400
         }),
-        Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -1598,12 +1525,6 @@ fn formatter_for_params(
     Arc<dyn DidMethodProvider>,
     SDJWTVCFormatter,
 ) {
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256 {}) as Arc<dyn Hasher>
-    };
-
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -1640,7 +1561,6 @@ fn formatter_for_params(
         Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
-        crypto,
         did_method_provider.clone(),
         key_algorithm_provider.clone(),
         Arc::new(vct_metadata_cache),
@@ -1664,11 +1584,6 @@ async fn test_parse_credential_eudi() {
         "sdArrayElements": true,
         "expirationSeconds": 86_400
     });
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
-    };
-
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
 
     let mut certificate_validator = MockCertificateValidator::new();
     certificate_validator
@@ -1743,7 +1658,6 @@ async fn test_parse_credential_eudi() {
         Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
-        crypto,
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -1979,11 +1893,8 @@ async fn test_parse_credential() {
         "sdArrayElements": true,
         "expirationSeconds": 86_400
     });
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
-    };
-    let mut client = MockHttpClient::new();
 
+    let mut client = MockHttpClient::new();
     client.expect_get().with(eq(ISSUER_URL)).returning(|url| {
         let mut inner_client = MockHttpClient::new();
         inner_client
@@ -2006,8 +1917,6 @@ async fn test_parse_credential() {
 
         RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
     });
-
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
 
     let mut datatype_provider = MockDataTypeProvider::new();
     // Set up expectations for all claim extractions
@@ -2051,7 +1960,6 @@ async fn test_parse_credential() {
         Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
-        crypto,
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -2219,15 +2127,10 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         "sdArrayElements": true,
         "expirationSeconds": 86_400
     });
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
-    };
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
     let formatter = SDJWTVCFormatter::new(
         Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
-        crypto,
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),
@@ -2270,15 +2173,10 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         "sdArrayElements": true,
         "expirationSeconds": 86_400
     });
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
-    };
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers));
     let formatter = SDJWTVCFormatter::new(
         Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
-        crypto,
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockVctTypeMetadataFetcher::new()),

@@ -1,3 +1,5 @@
+use one_crypto::hasher::sha256::SHA256;
+
 use super::{JsonLdBbsplus, data_integrity};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
@@ -40,15 +42,13 @@ impl JsonLdBbsplus {
             ));
         }
 
-        let hasher = self.crypto.get_hasher("sha-256")?;
-
         let mandatory_pointers = match proof_type(proof_value)? {
             ProofType::Base => {
                 let mandatory_pointers = data_integrity::verify_base_proof(
                     vcdm,
                     proof,
                     &self.caching_loader,
-                    &*hasher,
+                    &SHA256,
                     &*verification,
                     json_ld_processor_options(),
                 )
@@ -67,7 +67,7 @@ impl JsonLdBbsplus {
                     proof,
                     &public_key,
                     &self.caching_loader,
-                    &*hasher,
+                    &SHA256,
                     json_ld_processor_options(),
                 )
                 .await?;

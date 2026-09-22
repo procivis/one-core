@@ -4,7 +4,7 @@ use std::str::FromStr;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::{Hasher, get_hasher};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -303,7 +303,6 @@ pub(crate) struct SdJwtHolderBindingParams {
 impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
     pub(crate) async fn build_from_token_with_disclosures(
         token: &SerializedCredential,
-        crypto: &dyn CryptoProvider,
         verification: Option<&VerificationFn>,
         certificate_validator: Option<&dyn CertificateValidator>,
         http_client: &dyn HttpClient,
@@ -322,12 +321,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             .get("_sd_alg")
             .and_then(|alg| alg.as_str())
             .unwrap_or("sha-256");
-
-        let hasher = crypto.get_hasher(hash_alg).map_err(|_| {
-            FormatterError::CouldNotExtractCredentials(
-                "Missing or invalid hash algorithm".to_string(),
-            )
-        })?;
+        let hasher = get_hasher(hash_alg.try_into()?)?;
 
         let issuer = decomposed_token.payload.issuer.as_deref();
         let header = &decomposed_token.header;

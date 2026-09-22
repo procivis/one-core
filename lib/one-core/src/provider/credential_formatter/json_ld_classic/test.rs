@@ -3,8 +3,6 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use maplit::hashset;
-use mockall::predicate::eq;
-use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -161,29 +159,11 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
             move |_| Ok(key_algorithm.clone())
         });
 
-    let mut hasher = MockHasher::default();
-
-    hasher.expect_hash().returning(|_| {
-        Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc"
-            .as_bytes()
-            .to_vec())
-    });
-
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = JsonLdClassic::new(
         "JSON_LD_CLASSIC".into(),
         params,
-        Arc::new(crypto),
         prepare_caching_loader(None),
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
@@ -301,21 +281,6 @@ async fn test_parse_credential() {
             })
         });
 
-    let mut hasher = MockHasher::default();
-    hasher.expect_hash().returning(|_| {
-        Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc"
-            .as_bytes()
-            .to_vec())
-    });
-
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_get_did_method_by_method_name()
@@ -329,7 +294,6 @@ async fn test_parse_credential() {
             "embedLayoutProperties": false,
             "expirationSeconds": 86_400,
         }),
-        Arc::new(crypto),
         prepare_caching_loader(None),
         Arc::new(datatype_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),

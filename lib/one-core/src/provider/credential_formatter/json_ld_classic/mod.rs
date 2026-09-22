@@ -5,12 +5,13 @@ use std::vec;
 
 use async_trait::async_trait;
 use itertools::Itertools;
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::{Hasher, get_hasher};
 use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
+use standardized_types::iana::HashAlgorithm;
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -52,7 +53,6 @@ mod test;
 #[derive(Provider)]
 pub struct JsonLdClassic {
     config_id: CredentialFormat,
-    crypto: Arc<dyn CryptoProvider>,
     caching_loader: ContextCache,
     data_type_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -262,7 +262,6 @@ impl CredentialFormatter for JsonLdClassic {
         verify_credential_signature(
             vcdm.clone(),
             verification,
-            &*self.crypto,
             self.caching_loader.to_owned(),
             None,
         )
@@ -428,11 +427,9 @@ impl CredentialFormatter for JsonLdClassic {
 }
 
 impl JsonLdClassic {
-    #[expect(clippy::too_many_arguments)]
     pub fn new(
         config_id: CredentialFormat,
         params: serde_json::Value,
-        crypto: Arc<dyn CryptoProvider>,
         caching_loader: JsonLdCachingLoader,
         data_type_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -448,7 +445,6 @@ impl JsonLdClassic {
         Ok(Self {
             config_id,
             params,
-            crypto,
             caching_loader: ContextCache::new(caching_loader, client),
             data_type_provider,
             key_algorithm_provider,
@@ -467,7 +463,6 @@ impl JsonLdClassic {
             verify_credential_signature(
                 vcdm.clone(),
                 verification_fn,
-                &*self.crypto,
                 self.caching_loader.to_owned(),
                 None,
             )
@@ -545,7 +540,6 @@ impl JsonLdClassic {
         let proof_hash = prepare_proof_hash(
             &vcdm,
             &proof,
-            &*self.crypto,
             self.caching_loader.to_owned(),
             None,
             json_ld_processor_options(),
@@ -566,7 +560,6 @@ impl JsonLdClassic {
 pub(super) async fn verify_credential_signature(
     mut vcdm: VcdmCredential,
     verification_fn: VerificationFn,
-    crypto: &dyn CryptoProvider,
     caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
 ) -> Result<(), FormatterError> {
@@ -593,7 +586,6 @@ pub(super) async fn verify_credential_signature(
     let proof_hash = prepare_proof_hash(
         &vcdm,
         &proof,
-        crypto,
         caching_loader,
         extra_information,
         json_ld_processor_options(),
@@ -663,7 +655,6 @@ pub(crate) async fn sign_proof_hash(
 pub(crate) async fn prepare_proof_hash(
     document: &impl Serialize,
     proof: &VcdmProof,
-    crypto: &dyn CryptoProvider,
     caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
     options: json_ld::Options,
@@ -682,8 +673,8 @@ pub(crate) async fn prepare_proof_hash(
             .try_collect()
     }
 
-    let hashing_function = "sha-256";
-    let hasher = crypto.get_hasher(hashing_function)?;
+    let hashing_function = HashAlgorithm::Sha256;
+    let hasher = get_hasher(hashing_function)?;
 
     let transformed_document = rdf_canonize(document, &caching_loader, options.clone()).await?;
     let transformed_proof_config = rdf_canonize(proof, &caching_loader, options).await?;

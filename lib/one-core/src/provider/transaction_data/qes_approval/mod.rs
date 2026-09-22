@@ -1,9 +1,8 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::IndexMap;
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::{Hasher, get_hasher};
 use proc_macros::Provider;
 use serde::Deserialize;
 use shared_types::TransactionDataType;
@@ -15,16 +14,16 @@ use standardized_types::csc::transaction_data::{
 use standardized_types::iana;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
-use crate::config::core_config::FormatType;
-use crate::provider::presentation_formatter::model::PresentedTransactionData;
-use crate::provider::provider_directory::InitializationError;
-use crate::provider::transaction_data::error::TransactionDataError;
-use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
-use crate::provider::transaction_data::{
+use super::error::TransactionDataError;
+use super::processed_transaction_data::ProcessedTransactionData;
+use super::{
     TransactionData, TransactionDataAuthorization, TransactionDataCapabilities,
     TransactionDataDisplayParams, TransactionDataMetadata, TransactionDataParams,
     decode_transaction_data,
 };
+use crate::config::core_config::FormatType;
+use crate::provider::presentation_formatter::model::PresentedTransactionData;
+use crate::provider::provider_directory::InitializationError;
 
 #[cfg(test)]
 mod test;
@@ -33,14 +32,12 @@ mod test;
 pub struct QesApprovalTransactionData {
     config_id: TransactionDataType,
     params: TransactionDataParams,
-    crypto: Arc<dyn CryptoProvider>,
 }
 
 impl QesApprovalTransactionData {
     pub fn new(
         config_id: TransactionDataType,
         params: serde_json::Value,
-        crypto: Arc<dyn CryptoProvider>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -48,21 +45,7 @@ impl QesApprovalTransactionData {
                 source: err,
             })?;
 
-        Ok(Self {
-            config_id,
-            params,
-            crypto,
-        })
-    }
-
-    fn hasher(
-        &self,
-        algorithm: iana::HashAlgorithm,
-    ) -> Result<Arc<dyn Hasher>, TransactionDataError> {
-        let algorithm = algorithm.to_string();
-        self.crypto
-            .get_hasher(&algorithm)
-            .map_err(|_| TransactionDataError::UnsupportedHashAlgorithm(algorithm))
+        Ok(Self { config_id, params })
     }
 
     fn validate_entry(&self, entry: &QesApprovalEntry) -> Result<(), TransactionDataError> {
@@ -79,7 +62,7 @@ impl QesApprovalTransactionData {
             ));
         }
 
-        self.hasher(entry.extension.hash_algorithm.into())?;
+        get_hasher(entry.extension.hash_algorithm.into())?;
 
         Ok(())
     }
@@ -95,8 +78,7 @@ impl QesApprovalTransactionData {
             // data model bindings section 7.2.1.2: hash the base64url-encoded
             // transaction data as received, using the hashAlgorithmOID algorithm
             FormatType::SdJwtVc => {
-                let qes_approval = self
-                    .hasher(entry.extension.hash_algorithm.into())?
+                let qes_approval = get_hasher(entry.extension.hash_algorithm.into())?
                     .hash_base64(transaction_data.as_bytes())?;
 
                 Ok(ProcessedTransactionData::KbJwtClaims(
@@ -111,7 +93,7 @@ impl QesApprovalTransactionData {
             // base64url-decoded transaction data and represented as a raw byte string
             FormatType::Mdoc => {
                 let decoded = Base64UrlSafeNoPadding::decode_to_vec(transaction_data, None)?;
-                let digest = self.hasher(iana::HashAlgorithm::Sha256)?.hash(&decoded)?;
+                let digest = SHA256.hash(&decoded)?;
 
                 Ok(ProcessedTransactionData::DeviceSignedElements(
                     IndexMap::from([(

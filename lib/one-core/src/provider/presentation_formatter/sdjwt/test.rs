@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use mockall::predicate::eq;
+use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use one_crypto::{Hasher, MockCryptoProvider};
 use serde_json::Value;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -52,15 +51,8 @@ async fn test_format_presentation_with_cnf_success() {
     // The second signature is for the wrapping JWT presentation formatter
     signer.expect_sign().times(2).returning(|_| Ok(vec![0; 32]));
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let sd_formatter = SdjwtPresentationFormatter::new(
         Arc::new(MockHttpClient::new()),
-        Arc::new(crypto),
         Arc::new(MockKeyAlgorithmProvider::default()),
     );
 
@@ -147,7 +139,6 @@ async fn test_format_presentation_with_cnf_missing_nonce_fails() {
 
     let sd_formatter = SdjwtPresentationFormatter::new(
         Arc::new(MockHttpClient::new()),
-        Arc::new(MockCryptoProvider::default()),
         Arc::new(MockKeyAlgorithmProvider::default()),
     );
 
@@ -180,7 +171,6 @@ async fn test_format_presentation_with_cnf_missing_audience_fails() {
 
     let sd_formatter = SdjwtPresentationFormatter::new(
         Arc::new(MockHttpClient::new()),
-        Arc::new(MockCryptoProvider::default()),
         Arc::new(MockKeyAlgorithmProvider::default()),
     );
 
@@ -228,15 +218,8 @@ async fn test_format_presentation_without_cnf_success() {
     // We only expect 1 signature for the outer envelope
     signer.expect_sign().once().returning(|_| Ok(vec![0; 32]));
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let sd_formatter = SdjwtPresentationFormatter::new(
         Arc::new(MockHttpClient::new()),
-        Arc::new(crypto),
         Arc::new(MockKeyAlgorithmProvider::default()),
     );
 
@@ -320,15 +303,8 @@ async fn test_format_presentation_without_cnf_missing_audience_nonce_succeeds() 
     // We only expect 1 signature for the outer envelope
     signer.expect_sign().once().returning(|_| Ok(vec![0; 32]));
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(|_| Ok(Arc::new(SHA256 {})));
-
     let sd_formatter = SdjwtPresentationFormatter::new(
         Arc::new(MockHttpClient::new()),
-        Arc::new(crypto),
         Arc::new(MockKeyAlgorithmProvider::default()),
     );
 
@@ -358,11 +334,8 @@ async fn test_extract_presentation() {
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.ewogICJpYXQiOiAxNjk5MzUxODQxLAogICJleHAiOiAxNjk5MzUyMTQxLAogICJuYmYiOiAxNjk5MzUxNzk2LAogICJpc3MiOiAiZGlkOmhvbGRlcjoxMjMiLAogICJzdWIiOiAiZGlkOmhvbGRlcjoxMjMiLAogICJqdGkiOiAiYjRjYzQ5ZDUtOGQwZS00ODFlLWIxZWItOGU0ZThiOTY5NmIxIiwKICAidnAiOiB7CiAgICAiQGNvbnRleHQiOiBbCiAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIKICAgIF0sCiAgICAidHlwZSI6IFsKICAgICAgIlZlcmlmaWFibGVQcmVzZW50YXRpb24iCiAgICBdLAogICAgIl9zZF9qd3QiOiBbCiAgICAgICJleUpoYkdjaU9pSmhiR2R2Y21sMGFHMGlMQ0owZVhBaU9pSlRSRXBYVkNKOS5leUpwWVhRaU9qRTJPVGt5TnpBeU5qWXNJbVY0Y0NJNk1UYzJNak0wTWpJMk5pd2libUptSWpveE5qazVNamN3TWpJeExDSnBjM01pT2lKSmMzTjFaWElnUkVsRUlpd2ljM1ZpSWpvaWFHOXNaR1Z5WDJScFpDSXNJbXAwYVNJNklqbGhOREUwWVRZd0xUbGxObUl0TkRjMU55MDRNREV4TFRsaFlUZzNNR1ZtTkRjNE9DSXNJblpqSWpwN0lrQmpiMjUwWlhoMElqcGJJbWgwZEhCek9pOHZkM2QzTG5jekxtOXlaeTh5TURFNEwyTnlaV1JsYm5ScFlXeHpMM1l4SWl3aVEyOXVkR1Y0ZERFaVhTd2lkSGx3WlNJNld5SldaWEpwWm1saFlteGxRM0psWkdWdWRHbGhiQ0lzSWxSNWNHVXhJbDBzSW1OeVpXUmxiblJwWVd4VGRXSnFaV04wSWpwN0lsOXpaQ0k2V3lKWlYwcHFUVlJKZWlJc0lsbFhTbXBOVkVsNklsMTlMQ0pqY21Wa1pXNTBhV0ZzVTNSaGRIVnpJanA3SW1sa0lqb2lVMVJCVkZWVFgwbEVJaXdpZEhsd1pTSTZJbFJaVUVVaUxDSnpkR0YwZFhOUWRYSndiM05sSWpvaVVGVlNVRTlUUlNJc0lrWnBaV3hrTVNJNklsWmhiREVpZlgwc0lsOXpaRjloYkdjaU9pSnphR0V0TWpVMkluMC5RVUpEfld5Sk5WRWw2V1ZkS2FpSXNJbTVoYldVaUxDSktiMmh1SWwwfld5Sk5WRWw2V1ZkS2FpSXNJbUZuWlNJc0lqUXlJbDAiCiAgICBdCiAgfQp9";
     let presentation_token = format!("{jwt_token}.QUJD");
 
-    let crypto = MockCryptoProvider::default();
-
     let sd_formatter = SdjwtPresentationFormatter::new(
         Arc::new(MockHttpClient::new()),
-        Arc::new(crypto),
         Arc::new(MockKeyAlgorithmProvider::new()),
     );
 

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use asn1_rs::{Integer, SequenceOf, ToDer};
 use ct_codecs::Encoder;
+use one_crypto::Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
-use one_crypto::{CryptoProvider, Signer as _, initialize_crypto_provider};
 use serde::{Deserialize, Serialize};
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_602::xml::LoTEPayload;
@@ -69,7 +69,6 @@ impl rcgen::SigningKey for TestKey {
 struct TestFixtures {
     signer: MockSignatureProvider,
     cert_validator: MockCertificateValidator,
-    crypto: Arc<dyn CryptoProvider>,
     x5c: Vec<String>,
 }
 
@@ -124,12 +123,9 @@ fn make_xades_test_fixtures() -> TestFixtures {
             })
         });
 
-    let crypto = initialize_crypto_provider();
-
     TestFixtures {
         signer: mock_signer,
         cert_validator,
-        crypto,
         x5c: vec![cert_b64],
     }
 }
@@ -139,13 +135,11 @@ async fn sign_and_verify_roundtrip() {
     let TestFixtures {
         signer,
         cert_validator,
-        crypto,
         x5c,
     } = make_xades_test_fixtures();
     let unsigned_xml = "<Root xmlns=\"http://test\"><Data>hello</Data></Root>";
 
     let xades = XAdES {
-        crypto_provider: crypto.clone(),
         certificate_validator: Arc::new(cert_validator),
     };
 
@@ -179,13 +173,11 @@ async fn tampered_document_fails() {
     let TestFixtures {
         signer,
         cert_validator,
-        crypto,
         x5c,
     } = make_xades_test_fixtures();
     let unsigned_xml = "<Root xmlns=\"http://test\"><Data>hello</Data></Root>";
 
     let xades = XAdES {
-        crypto_provider: crypto.clone(),
         certificate_validator: Arc::new(cert_validator),
     };
     let signed_xml = xades
@@ -213,7 +205,6 @@ async fn signed_xml_contains_expected_elements() {
     let unsigned_xml = "<Root xmlns=\"http://test\"><Data>test</Data></Root>";
 
     let xades = XAdES {
-        crypto_provider: one_crypto::initialize_crypto_provider(),
         certificate_validator: Arc::new(MockCertificateValidator::new()),
     };
     let signed_xml = xades
@@ -234,7 +225,6 @@ async fn decompose_ignores_non_xmldsig_signature_elements() {
     // GIVEN a payload that includes a Signature field
     let TestFixtures {
         signer,
-        crypto,
         cert_validator,
         x5c,
         ..
@@ -259,7 +249,6 @@ async fn decompose_ignores_non_xmldsig_signature_elements() {
     let unsigned_xml = quick_xml::se::to_string(&payload).expect("should serialize struct as xml");
 
     let xades = XAdES {
-        crypto_provider: crypto.clone(),
         certificate_validator: Arc::new(cert_validator),
     };
 
@@ -289,13 +278,11 @@ async fn verify_returns_signer_chain() {
     let TestFixtures {
         signer,
         cert_validator,
-        crypto,
         x5c,
     } = make_xades_test_fixtures();
     let unsigned_xml = "<Root xmlns=\"http://test\"><Data>hello</Data></Root>";
 
     let xades = XAdES {
-        crypto_provider: crypto.clone(),
         certificate_validator: Arc::new(cert_validator),
     };
 
@@ -329,7 +316,6 @@ async fn verify_returns_signer_chain() {
 async fn dss_lote_verify_digests() {
     let xml = include_str!("./fixtures/dss-lote-signed.xml");
 
-    let crypto = one_crypto::initialize_crypto_provider();
     let mut cert_validator = MockCertificateValidator::new();
 
     let decomposed: XAdESSignedXML<LoTEPayload> =
@@ -364,7 +350,7 @@ async fn dss_lote_verify_digests() {
 
     decomposed
         .envelope()
-        .verify_signature(&*crypto, &cert_validator)
+        .verify_signature(&cert_validator)
         .await
         .expect("digest verification should succeed");
 }
@@ -377,12 +363,11 @@ async fn dss_lote_tampered_document_fails() {
     let decomposed: XAdESSignedXML<LoTEPayload> =
         XAdESSignedXML::decompose_document(&xml).expect("decompose should succeed");
 
-    let crypto = one_crypto::initialize_crypto_provider();
     let cert_validator = MockCertificateValidator::new();
 
     let err = decomposed
         .envelope()
-        .verify_signature(&*crypto, &cert_validator)
+        .verify_signature(&cert_validator)
         .await
         .expect_err("tampered document should fail verification");
 
@@ -397,7 +382,6 @@ async fn dss_lote_tampered_document_fails() {
 async fn real_eudi_inclusive_tsl_verifies_reference_digests() {
     let xml = include_str!("./fixtures/eudiw_member_tsl.xml");
 
-    let crypto = one_crypto::initialize_crypto_provider();
     let mut cert_validator = MockCertificateValidator::new();
     cert_validator.expect_parse_pem_chain().returning(|_, _| {
         let mut public_key = MockSignaturePublicKeyHandle::default();
@@ -426,7 +410,7 @@ async fn real_eudi_inclusive_tsl_verifies_reference_digests() {
 
     decomposed
         .envelope()
-        .verify_signature(&*crypto, &cert_validator)
+        .verify_signature(&cert_validator)
         .await
         .expect("inclusive-C14N reference digests must verify against real EU DSS data");
 }

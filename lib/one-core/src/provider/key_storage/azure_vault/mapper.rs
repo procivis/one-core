@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use anyhow::anyhow;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_crypto::{CryptoProvider, SignerError};
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::{Hasher, SignerError};
 use standardized_types::jwk::PrivateJwk;
 
 use super::dto::{
@@ -40,14 +39,8 @@ pub(super) fn create_import_key_request(
     })
 }
 
-pub(super) fn create_sign_request(
-    value: &[u8],
-    crypto: Arc<dyn CryptoProvider>,
-) -> Result<AzureHsmSignRequest, SignerError> {
-    let hasher = crypto
-        .get_hasher("sha-256")
-        .map_err(SignerError::CryptoError)?;
-    let value = hasher
+pub(super) fn create_sign_request(value: &[u8]) -> Result<AzureHsmSignRequest, SignerError> {
+    let value = SHA256
         .hash_base64_url(value)
         .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
 

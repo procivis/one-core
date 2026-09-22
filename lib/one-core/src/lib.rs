@@ -2,8 +2,6 @@ extern crate core;
 
 use std::sync::{Arc, Once};
 
-use one_crypto::initialize_crypto_provider;
-
 use crate::config::ConfigValidationError;
 use crate::config::core_config::CoreConfig;
 use crate::error::ErrorCodeMixinExt;
@@ -198,8 +196,6 @@ impl OneCore {
 
         let mqtt_client = Arc::new(RumqttcClient::default());
 
-        let crypto = initialize_crypto_provider();
-
         // data_provider variable gets replaced with the decorated variant, so that it cannot be misued later
         let data_provider = decorate_history(
             data_provider,
@@ -243,7 +239,6 @@ impl OneCore {
         let key_provider = key_provider_from_config(
             &mut config,
             key_algorithm_provider.clone(),
-            crypto.clone(),
             client.clone(),
             csc_client.clone(),
             certificate_validator.clone(),
@@ -260,8 +255,7 @@ impl OneCore {
             data_provider.get_remote_entity_cache_repository(),
         )?;
 
-        let transaction_data_provider =
-            transaction_data_provider_from_config(&mut config, crypto.clone())?;
+        let transaction_data_provider = transaction_data_provider_from_config(&mut config)?;
 
         let json_ld_cache = initialize_jsonld_cache_from_config(
             &config,
@@ -283,7 +277,6 @@ impl OneCore {
             key_algorithm_provider.clone(),
             client.clone(),
             data_type_provider.clone(),
-            crypto.clone(),
             json_ld_cache.clone(),
             did_method_provider.clone(),
             vct_type_metadata_cache.clone(),
@@ -375,13 +368,12 @@ impl OneCore {
             data_provider.get_tx_manager(),
         ));
 
-        let xades_proto = Arc::new(XAdES::new(crypto.clone(), certificate_validator.clone()));
+        let xades_proto = Arc::new(XAdES::new(certificate_validator.clone()));
 
         let presentation_formatter_provider = get_presentation_formatter_provider(
             key_algorithm_provider.clone(),
             client.clone(),
             core_base_url.clone(),
-            crypto.clone(),
             json_ld_cache.clone(),
             certificate_validator.clone(),
         );

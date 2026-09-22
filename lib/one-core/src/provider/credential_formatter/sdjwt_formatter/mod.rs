@@ -7,12 +7,13 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use one_crypto::CryptoProvider;
+use one_crypto::get_hasher;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
+use standardized_types::iana::HashAlgorithm;
 use time::Duration;
 use uuid::Uuid;
 
@@ -57,7 +58,6 @@ mod test;
 pub struct SDJWTFormatter {
     base_url: Option<Arc<str>>,
     config_id: CredentialFormat,
-    crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     data_type_provider: Arc<dyn DataTypeProvider>,
@@ -98,7 +98,7 @@ impl CredentialFormatter for SDJWTFormatter {
                     .into(),
             );
         };
-        const HASH_ALG: &str = "sha-256";
+        const HASH_ALG: HashAlgorithm = HashAlgorithm::Sha256;
         let mut vcdm = credential_data.vcdm;
 
         let now = crate::clock::now_utc();
@@ -127,7 +127,7 @@ impl CredentialFormatter for SDJWTFormatter {
             claims,
             inputs,
             auth_fn,
-            &*self.crypto.get_hasher(HASH_ALG)?,
+            &*get_hasher(HASH_ALG)?,
             &*self.did_method_provider,
             &*self.key_algorithm_provider,
             payload_from_digests,
@@ -158,8 +158,7 @@ impl CredentialFormatter for SDJWTFormatter {
         _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, Some(&(verification)), &*self.crypto, &*self.client)
-            .await
+        extract_credentials_internal(token, Some(&(verification)), &*self.client).await
     }
 
     async fn prepare_selective_disclosure(
@@ -170,9 +169,14 @@ impl CredentialFormatter for SDJWTFormatter {
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None, None)
             .await
             .error_while("creating SD-JWT token")?;
-        let hasher = self
-            .crypto
-            .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
+        let hasher = get_hasher(
+            jwt.payload
+                .custom
+                .hash_alg
+                .as_deref()
+                .unwrap_or("sha-256")
+                .try_into()?,
+        )?;
 
         prepare_sd_presentation(credential, &*hasher, &self.user_claims_path()).await
     }
@@ -182,7 +186,7 @@ impl CredentialFormatter for SDJWTFormatter {
         token: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, None, &*self.crypto, &*self.client).await
+        extract_credentials_internal(token, None, &*self.client).await
     }
 
     fn get_leeway(&self) -> Duration {
@@ -270,7 +274,6 @@ impl CredentialFormatter for SDJWTFormatter {
         let (parsed_credential, issuer, _): (Jwt<VcClaim>, _, _) =
             Jwt::build_from_token_with_disclosures(
                 credential,
-                &*self.crypto,
                 Some(&verification),
                 None,
                 &*self.client,
@@ -436,12 +439,10 @@ impl CredentialFormatter for SDJWTFormatter {
 }
 
 impl SDJWTFormatter {
-    #[expect(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<Arc<str>>,
         config_id: CredentialFormat,
         params: serde_json::Value,
-        crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
@@ -456,7 +457,6 @@ impl SDJWTFormatter {
         Ok(Self {
             config_id,
             params,
-            crypto,
             did_method_provider,
             key_algorithm_provider,
             data_type_provider,
@@ -469,12 +469,10 @@ impl SDJWTFormatter {
 pub(crate) async fn extract_credentials_internal(
     token: &SerializedCredential,
     verification: Option<&VerificationFn>,
-    crypto: &dyn CryptoProvider,
     http_client: &dyn HttpClient,
 ) -> Result<DetailCredential, FormatterError> {
     let (jwt, issuer_details, _): (Jwt<VcClaim>, _, _) =
-        Jwt::build_from_token_with_disclosures(token, crypto, verification, None, http_client)
-            .await?;
+        Jwt::build_from_token_with_disclosures(token, verification, None, http_client).await?;
     let metadata_claims = jwt
         .get_metadata_claims()
         .error_while("getting metadata claims")?;

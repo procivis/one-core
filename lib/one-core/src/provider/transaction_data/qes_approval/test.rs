@@ -14,7 +14,6 @@ fn qes_approval_transaction_data() -> QesApprovalTransactionData {
                 "attributes": []
             }
         }),
-        one_crypto::initialize_crypto_provider(),
     )
     .unwrap()
 }
@@ -163,7 +162,6 @@ fn test_get_display_data_groups_by_document() {
                 ]
             }
         }),
-        one_crypto::initialize_crypto_provider(),
     )
     .unwrap();
 
@@ -241,7 +239,6 @@ fn display_provider(display_params: serde_json::Value) -> QesApprovalTransaction
     QesApprovalTransactionData::new(
         "QES_APPROVAL".into(),
         json!({ "transactionDataDisplayParams": display_params }),
-        one_crypto::initialize_crypto_provider(),
     )
     .unwrap()
 }
@@ -374,15 +371,12 @@ fn test_validate_transaction_data_rejects_missing_credential_id_and_qualifier() 
 #[test]
 fn test_validate_transaction_data_rejects_unsupported_hash_algorithm() {
     let mut transaction_data = csc_example();
-    // sha-384, valid per CSC but not registered in the crypto provider
+    // sha-384, valid per CSC but not supported by crypto
     transaction_data["hashAlgorithmOID"] = json!("2.16.840.1.101.3.4.2.2");
 
     let result =
         qes_approval_transaction_data().validate_transaction_data(&encode(transaction_data));
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::UnsupportedHashAlgorithm(_))
-    ));
+    assert!(matches!(result, Err(TransactionDataError::Hashing(_))));
 }
 
 #[test]

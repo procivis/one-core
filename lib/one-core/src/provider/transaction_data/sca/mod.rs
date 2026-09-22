@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use itertools::Itertools;
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::get_hasher;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::json;
@@ -15,15 +13,15 @@ use standardized_types::openid4vp::dcql::CredentialQueryId;
 use standardized_types::openid4vp::{TRANSACTION_DATA_HASHES, TRANSACTION_DATA_HASHES_ALG};
 use time::Duration;
 
-use crate::config::core_config::FormatType;
-use crate::provider::presentation_formatter::model::PresentedTransactionData;
-use crate::provider::provider_directory::InitializationError;
-use crate::provider::transaction_data::error::TransactionDataError;
-use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
-use crate::provider::transaction_data::{
+use super::error::TransactionDataError;
+use super::processed_transaction_data::ProcessedTransactionData;
+use super::{
     Features, TransactionData, TransactionDataAuthorization, TransactionDataCapabilities,
     TransactionDataDisplayParams, TransactionDataMetadata, decode_transaction_data,
 };
+use crate::config::core_config::FormatType;
+use crate::provider::presentation_formatter::model::PresentedTransactionData;
+use crate::provider::provider_directory::InitializationError;
 
 mod model;
 #[cfg(test)]
@@ -45,7 +43,6 @@ pub struct ScaTransactionData {
     config_id: TransactionDataType,
     transaction_type: TransactionType,
     params: Params,
-    crypto: Arc<dyn CryptoProvider>,
 }
 
 impl ScaTransactionData {
@@ -53,7 +50,6 @@ impl ScaTransactionData {
         config_id: TransactionDataType,
         transaction_type: TransactionType,
         params: serde_json::Value,
-        crypto: Arc<dyn CryptoProvider>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -65,18 +61,7 @@ impl ScaTransactionData {
             config_id,
             transaction_type,
             params,
-            crypto,
         })
-    }
-
-    fn hasher(
-        &self,
-        algorithm: iana::HashAlgorithm,
-    ) -> Result<Arc<dyn Hasher>, TransactionDataError> {
-        let algorithm = algorithm.to_string();
-        self.crypto
-            .get_hasher(&algorithm)
-            .map_err(|_| TransactionDataError::UnsupportedHashAlgorithm(algorithm))
     }
 
     /// Hash of the entry as received, base64url-encoded, per OpenID4VP section 8.4
@@ -85,9 +70,7 @@ impl ScaTransactionData {
         transaction_data: &str,
         algorithm: iana::HashAlgorithm,
     ) -> Result<String, TransactionDataError> {
-        Ok(self
-            .hasher(algorithm)?
-            .hash_base64_url(transaction_data.as_bytes())?)
+        Ok(get_hasher(algorithm)?.hash_base64_url(transaction_data.as_bytes())?)
     }
 
     fn validate_entry(&self, entry: &ScaEntry) -> Result<(), TransactionDataError> {
@@ -107,7 +90,7 @@ impl ScaTransactionData {
             .unwrap_or(&[iana::HashAlgorithm::Sha256]);
         if !offered
             .iter()
-            .any(|algorithm| self.hasher(*algorithm).is_ok())
+            .any(|algorithm| get_hasher(*algorithm).is_ok())
         {
             return Err(TransactionDataError::UnsupportedHashAlgorithm(
                 offered.iter().join(", "),

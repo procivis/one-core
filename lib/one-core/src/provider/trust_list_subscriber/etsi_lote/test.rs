@@ -422,8 +422,7 @@ fn setup_subscriber_xml(reference: &Url) -> EtsiLoteSubscriber {
         .returning(move |_, _, _, _| Ok(certificate.clone()));
 
     let cert_validator = Arc::new(cert_validator);
-    let crypto = one_crypto::initialize_crypto_provider();
-    let xades = XAdES::new(crypto, cert_validator.clone());
+    let xades = XAdES::new(cert_validator.clone());
 
     let resolver = EtsiLoteResolver::new(
         client,

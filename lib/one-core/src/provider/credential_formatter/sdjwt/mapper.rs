@@ -1,3 +1,5 @@
+use standardized_types::iana::HashAlgorithm;
+
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialClaim;
 use crate::provider::credential_formatter::sdjwt::model::VcClaim;
@@ -6,7 +8,7 @@ use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredential
 pub(crate) fn vc_from_credential(
     mut credential: VcdmCredential,
     mut digests: Vec<String>,
-    algorithm: &str,
+    algorithm: HashAlgorithm,
 ) -> Result<VcClaim, FormatterError> {
     digests.sort_unstable();
 
@@ -20,7 +22,7 @@ pub(crate) fn vc_from_credential(
     Ok(VcClaim {
         digests: vec![],
         vc: credential.into(),
-        hash_alg: Some(algorithm.to_owned()),
+        hash_alg: Some(algorithm.to_string()),
         all_claims: None,
     })
 }

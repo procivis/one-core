@@ -28,8 +28,6 @@ pub enum FormatterError {
     #[error("Schema ID not allowed")]
     SchemaIdNotAllowed,
 
-    #[error("Crypto library error: `{0}`")]
-    CryptoError(#[from] one_crypto::CryptoProviderError),
     #[error("Jsonptr assign error: `{0}`")]
     JsonPtrAssignError(#[from] jsonptr::assign::Error),
     #[error("Jsonptr parse error: `{0}`")]
@@ -54,6 +52,8 @@ pub enum FormatterError {
     Base58(#[from] bs58::decode::Error),
     #[error("Hash error: `{0}`")]
     HasherError(#[from] one_crypto::HasherError),
+    #[error("Enum parse error: `{0}`")]
+    EnumParseError(#[from] strum::ParseError),
     #[error("URL error: `{0}`")]
     Url(#[from] url::ParseError),
     #[error("String parsing error: `{0}`")]
@@ -82,7 +82,6 @@ impl ErrorCodeMixin for FormatterError {
             | Self::CouldNotFormat(_)
             | Self::CouldNotExtractCredentials(_)
             | Self::CouldNotExtractPresentation(_)
-            | Self::CryptoError(_)
             | Self::JsonMapping(_)
             | Self::JsonPtrAssignError(_)
             | Self::JsonPtrParseError(_)
@@ -102,6 +101,7 @@ impl ErrorCodeMixin for FormatterError {
             | Self::ExpandError(_)
             | Self::CanonizationError(_)
             | Self::HasherError(_)
+            | Self::EnumParseError(_)
             | Self::UnsupportedIdentifierType(_)
             | Self::FloatValueIsNaN
             | Self::HexError(_) => ErrorCode::BR_0057,

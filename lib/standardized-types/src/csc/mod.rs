@@ -3,6 +3,7 @@
 pub mod data_model;
 pub mod transaction_data;
 
+use one_dto_mapper::Into;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use strum::{Display, IntoEnumIterator};
@@ -72,7 +73,8 @@ pub enum ConformanceLevel {
     AdESBLT,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, strum::EnumIter)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, strum::EnumIter, Into)]
+#[into(crate::iana::HashAlgorithm)]
 pub enum HashAlgorithm {
     #[default]
     Sha256,
@@ -98,16 +100,6 @@ impl HashAlgorithm {
             Self::Sha256 => 32,
             Self::Sha384 => 48,
             Self::Sha512 => 64,
-        }
-    }
-}
-
-impl From<HashAlgorithm> for crate::iana::HashAlgorithm {
-    fn from(value: HashAlgorithm) -> Self {
-        match value {
-            HashAlgorithm::Sha256 => Self::Sha256,
-            HashAlgorithm::Sha384 => Self::Sha384,
-            HashAlgorithm::Sha512 => Self::Sha512,
         }
     }
 }

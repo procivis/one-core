@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use one_crypto::CryptoProvider;
 use shared_types::TransactionDataType;
 use standardized_types::eudi_ts12::TransactionType;
 use standardized_types::openid4vp;
@@ -70,25 +69,19 @@ impl TransactionDataProvider
 
 pub(crate) fn transaction_data_provider_from_config(
     config: &mut CoreConfig,
-    crypto: Arc<dyn CryptoProvider>,
 ) -> Result<Arc<dyn TransactionDataProvider>, ConfigValidationError> {
     let directory = ProviderDirectory::initialize(
         config.transaction_data_provider.iter_mut(),
         |name: &TransactionDataType, fields: &Fields<TransactionDataProviderType>| {
             let provider: Arc<dyn TransactionData> = match fields.r#type {
-                TransactionDataProviderType::QesApproval => {
-                    Arc::new(QesApprovalTransactionData::new(
-                        name.clone(),
-                        fields.merge_fields(),
-                        crypto.clone(),
-                    )?)
-                }
+                TransactionDataProviderType::QesApproval => Arc::new(
+                    QesApprovalTransactionData::new(name.clone(), fields.merge_fields())?,
+                ),
                 TransactionDataProviderType::ScaLoginRiskTransaction => {
                     Arc::new(ScaTransactionData::new(
                         name.clone(),
                         TransactionType::LoginRiskTransaction,
                         fields.merge_fields(),
-                        crypto.clone(),
                     )?)
                 }
                 TransactionDataProviderType::ScaPaymentConfirmation => {
@@ -96,20 +89,17 @@ pub(crate) fn transaction_data_provider_from_config(
                         name.clone(),
                         TransactionType::Payment,
                         fields.merge_fields(),
-                        crypto.clone(),
                     )?)
                 }
                 TransactionDataProviderType::ScaAccountAccess => Arc::new(ScaTransactionData::new(
                     name.clone(),
                     TransactionType::AccountAccess,
                     fields.merge_fields(),
-                    crypto.clone(),
                 )?),
                 TransactionDataProviderType::ScaEmandate => Arc::new(ScaTransactionData::new(
                     name.clone(),
                     TransactionType::Emandate,
                     fields.merge_fields(),
-                    crypto.clone(),
                 )?),
             };
             let provider: Arc<dyn TransactionData> = Arc::new(CapabilityChecked(provider));

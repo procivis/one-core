@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use maplit::hashmap;
-use one_crypto::CryptoProvider;
 
 use super::PresentationFormatter;
 use super::jwt_vp_json::JwtVpPresentationFormatter;
@@ -58,7 +57,6 @@ pub(crate) fn get_presentation_formatter_provider(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     core_base_url: Option<String>,
-    crypto: Arc<dyn CryptoProvider>,
     json_ld_cache: JsonLdCachingLoader,
     certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Arc<dyn PresentationFormatterProvider> {
@@ -67,7 +65,6 @@ pub(crate) fn get_presentation_formatter_provider(
             (
                 "JSON_LD_CLASSIC".to_owned(),
                 Arc::new(LdpVpPresentationFormatter::new(
-                    crypto.clone(),
                     json_ld_cache,
                     client.clone(),
                 )) as _,
@@ -91,7 +88,6 @@ pub(crate) fn get_presentation_formatter_provider(
                 "SD_JWT".to_owned(),
                 Arc::new(SdjwtPresentationFormatter::new(
                     client.clone(),
-                    crypto.clone(),
                     key_algorithm_provider.clone(),
                 )) as _,
             ),
@@ -99,7 +95,6 @@ pub(crate) fn get_presentation_formatter_provider(
                 "SD_JWT_VC".to_owned(),
                 Arc::new(SdjwtVCPresentationFormatter::new(
                     client.clone(),
-                    crypto.clone(),
                     certificate_validator.clone(),
                 )) as _,
             ),

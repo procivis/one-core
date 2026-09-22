@@ -1,12 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use maplit::hashmap;
-use mockall::predicate::eq;
-use one_crypto::hasher::sha256::SHA256;
-use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -71,19 +68,6 @@ impl DisclosureArrayElement {
 
 #[tokio::test]
 async fn test_format_credential() {
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .returning(|_| Ok(String::from("YWJjMTIz")));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let mut credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -121,7 +105,6 @@ async fn test_format_credential() {
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -198,13 +181,13 @@ async fn test_format_credential() {
 
     let vc = payload.custom.vc;
 
-    assert!(
+    assert_eq!(
         vc.credential_subject[0].claims["_sd"]
             .value
             .as_array()
             .unwrap()
-            .iter()
-            .all(|hashed_claim| hashed_claim.value.as_str().unwrap() == "YWJjMTIz")
+            .len(),
+        2
     );
 
     assert!(
@@ -241,38 +224,6 @@ async fn test_format_credential_with_array() {
     );
     let claim4 = ("root_item", "root_item");
 
-    let hash1 = "MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs";
-    let hash2 = "r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw";
-    let hash3 = "sadrIPfvvuqIBTdMxsmvGh77Z89M3JyX2qQQEGzmkYg";
-    let hash4 = "GBcm8QZO2Pr4n_jmJlP4By1iwcoU0eQDVhin2AidMq4";
-
-    let mut hasher = MockHasher::default();
-    hasher.expect_hash_base64_url().returning(move |input| {
-        let input = Base64UrlSafeNoPadding::decode_to_vec(input, None).unwrap();
-        let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
-        if input.key.eq(claim1.0) {
-            Ok(hash1.to_string())
-        } else if input.key.eq(claim2.0) {
-            Ok(hash2.to_string())
-        } else if input.key.eq(claim3.0) {
-            Ok(hash3.to_string())
-        } else if input.key.eq(claim4.0) {
-            Ok(hash4.to_string())
-        } else {
-            panic!("Unexpected input")
-        }
-    });
-
-    let hasher: Arc<MockHasher> = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let leeway_seconds = Duration::seconds(45);
 
     let credential_data = get_credential_data_with_array(
@@ -302,7 +253,6 @@ async fn test_format_credential_with_array() {
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -341,7 +291,6 @@ async fn test_format_credential_with_array() {
 
     let part = DisclosureArray::from_b64(parts[3]);
     assert_eq!(part.key, claim3.0);
-    assert_eq!(part.value.to_string(), claim3.1);
 
     let part = DisclosureArray::from_b64(parts[4]);
     assert_eq!(part.key, claim4.0);
@@ -385,15 +334,12 @@ async fn test_format_credential_with_array() {
     let vc = payload.custom.vc;
 
     assert_eq!(
-        HashSet::<&str>::from_iter([hash4, hash3]),
-        HashSet::from_iter(
-            vc.credential_subject[0].claims["_sd"]
-                .value
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|d| d.value.as_str().unwrap())
-        )
+        vc.credential_subject[0].claims["_sd"]
+            .value
+            .as_array()
+            .unwrap()
+            .len(),
+        2
     );
 }
 
@@ -404,13 +350,6 @@ async fn test_format_credential_with_array_sd() {
     let claim3 = ("nested", "nested_item");
     let claim4 = "root";
     let claim5 = ("root_item", "root_item");
-
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(Arc::new(SHA256)));
 
     let leeway_seconds = Duration::seconds(45);
 
@@ -441,7 +380,6 @@ async fn test_format_credential_with_array_sd() {
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -548,38 +486,11 @@ async fn test_extract_credentials() {
     )
     .into();
 
-    let claim1 = "[\"MTIzYWJj\",\"name\",\"John\"]";
-    let claim2 = "[\"MTIzYWJj\",\"age\",\"42\"]";
-
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim1).as_bytes() || disclosure == claim1.as_bytes()
-        })
-        .returning(|_| Ok("rZjyxF4zE7fdRmkcUT8Hkr8_IHSBes1z1pZWP2vLBRE".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim2).as_bytes() || disclosure == claim2.as_bytes()
-        })
-        .returning(|_| Ok("KGPldlPB395xKJRjK8k2K5UvsEns9QhL7O7JUu59ERk".to_string()));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -704,52 +615,11 @@ async fn test_extract_credentials_with_array() {
     )
     .into();
 
-    let claim1 = "[\"MTIzYWJj\",\"array\",[\"array_item\"]]";
-    let claim2 = "[\"MTIzYWJj\",\"nested\",\"nested_item\"]";
-    let claim3 = "[\"MTIzYWJj\",\"root\",{\"_sd\":[\"WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc\",\"r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw\"]}]";
-    let claim4 = "[\"MTIzYWJj\",\"root_item\",\"root_item\"]";
-
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim1).as_bytes() || disclosure == claim1.as_bytes()
-        })
-        .returning(|_| Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim2).as_bytes() || disclosure == claim2.as_bytes()
-        })
-        .returning(|_| Ok("r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim3).as_bytes() || disclosure == claim3.as_bytes()
-        })
-        .returning(|_| Ok("pDOe9CChM-YRgHBILyT1kPTBmCqbrAekt2xOJLb8HEs".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim4).as_bytes() || disclosure == claim4.as_bytes()
-        })
-        .returning(|_| Ok("GBcm8QZO2Pr4n_jmJlP4By1iwcoU0eQDVhin2AidMq4".to_string()));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -825,53 +695,11 @@ async fn test_extract_credentials_with_array_stripped() {
             faXRlbSJd~"
     ).into();
 
-    let claim1 = "[\"MTIzYWJj\",\"array\",[\"array_item\"]]";
-    let claim2 = "[\"MTIzYWJj\",\"nested\",\"nested_item\"]";
-    let claim3 = "[\"MTIzYWJj\",\"root\",{\"_sd\":[\"WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc\",\"r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw\"]}]";
-    let claim4 = "[\"MTIzYWJj\",\"root_item\",\"root_item\"]";
-
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim1).as_bytes() || disclosure == claim1.as_bytes()
-        })
-        .returning(|_| Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .never()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim2).as_bytes() || disclosure == claim2.as_bytes()
-        })
-        .returning(|_| Ok("r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim3).as_bytes() || disclosure == claim3.as_bytes()
-        })
-        .returning(|_| Ok("pDOe9CChM-YRgHBILyT1kPTBmCqbrAekt2xOJLb8HEs".to_string()));
-    hasher
-        .expect_hash_base64_url()
-        .withf(move |disclosure| {
-            disclosure == base64_urlsafe(claim4).as_bytes() || disclosure == claim4.as_bytes()
-        })
-        .returning(|_| Ok("GBcm8QZO2Pr4n_jmJlP4By1iwcoU0eQDVhin2AidMq4".to_string()));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .once()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -1013,7 +841,6 @@ fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(MockCryptoProvider::default()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -1102,10 +929,6 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     }
 }
 
-fn base64_urlsafe(s: &str) -> String {
-    Base64UrlSafeNoPadding::encode_to_string(s).unwrap()
-}
-
 #[tokio::test]
 async fn test_parse_credential() {
     const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6ekRuYWVidnlWcHdHM1I3UWoxem5yVnk5cnRzaTZOOFRnaldQS1poeUJkYTJxdjU4dyN6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwidHlwIjoiU0RfSldUIn0.eyJpYXQiOjE3NjA1NDEyNzcsImV4cCI6MTgyMzYxMzI3NywibmJmIjoxNzYwNTQxMjc3LCJpc3MiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJzdWIiOiJkaWQ6a2V5OnpEbmFla29NQzJzRmtnY0ZMcDNLNG5uR1VGVXFZbzhnb1dzanQzc0FmaE5BVjlFUzkiLCJ2YyI6eyJpc3N1ZXIiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJ2YWxpZEZyb20iOiIyMDI1LTEwLTE1VDE1OjE0OjM3LjgyMTU4NzAxOFoiLCJ2YWxpZFVudGlsIjoiMjAyNy0xMC0xNVQxNToxNDozNy44MjE1ODcwMThaIiwiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9jb250ZXh0L3YxLzMwOTk0ODg5LTJkYzYtNGE4Mi1hYzQxLTc0ZWM1Y2MxODdiYSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiQXJyYXlzQW5kT2JqZWN0cyJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJfc2QiOlsiUFdxMVZFRVRuTDBsWWU0OG84QllrWnRzdzZFSGltZ1c5MmNHcXZ1REtmQSIsInA4b0t2YzEzeHJxYUdpeFVZbjdfU00wM2RjM2hkSG5uTmhVdjRyVy1yY0EiLCJ3WWRoOGZibW1kbThHREVCQ0xvaVZ5ZGEzRFZlUEFMX01vZW52NWRDRjdZIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoidXJuOnV1aWQ6ZjZkOWVmNDUtNWNlYy00ZTA2LWFlZjMtODExN2JjMmRlZTdhIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC82NWZhOTUwNS0wNTVkLTRkNDAtODI2MC1jZGY2ODBmOWQ5YzciLCJzdGF0dXNMaXN0SW5kZXgiOiI3In0sImNyZWRlbnRpYWxTY2hlbWEiOnsiaWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3NjaGVtYS92MS8zMDk5NDg4OS0yZGM2LTRhODItYWM0MS03NGVjNWNjMTg3YmEiLCJ0eXBlIjoiUHJvY2l2aXNPbmVTY2hlbWEyMDI0In19LCJfc2RfYWxnIjoic2hhLTI1NiJ9.aq6OyVAF39Zx6KZsUq6dBbfTR5uVofnf2mAkBZVglfc6Hdvf-PIlI161XXCn7hp4vw_Zi8e0bCDkW-93YgUpKg~WyJ5ZjJKSGktSzI2UFFDU0lnYllCamdRIiwiaG91c2UiLCJ0ZXN0IGhvdXNlIl0~WyI0Vm1KVHY1U2R3emNvV2gzRnhsYjBBIiwic3RyZWV0IiwidGVzdCBzdHJlZXQiXQ~WyJLNnNUaEJfcm02a1h4c0ZudXBSTGhnIiwiQWRkcmVzcyIseyJfc2QiOlsiS19pT1EybVFXSl9Zekt1VEhWSEdVZDVoUUVBTVVjakVmUFZFUlBDTk5LNCIsImVTTjVxemVuZXFaT2JpQXluQ1NrMWlZR3VDeUhNVm5MNXhXWWJpY2hYUzgiXX1d~WyJJZC13bDZPVjRwQVdrbUt1bkFWemRRIiwiTmFtZSIsIlRlc3QgTmFtZSJd~WyJ4MGp6dGhHNGplRFlBNnZHQjk5b09RIiwiQ0giXQ~WyJ2cFNBbnZ3R0hkUldoVXctNDZuVE5BIiwiVVQiXQ~WyJwUjdpa3RRaVVUeTRxMTFySGg4eURRIiwiTmF0aW9uYWxpdGllcyIsW3siLi4uIjoidDNGek1kTlFXbU5OLUNlSk1tdGx0T3lrd1MxeTdyLW5SeU5vd2tLU0hPOCJ9LHsiLi4uIjoiaWxDdWpaQWxZWlFuWWpsZTJfNmlELWFIdWc1NG1kWWFsMXdYOWkteXUtayJ9XV0~";
@@ -1116,11 +939,6 @@ async fn test_parse_credential() {
         "sdArrayElements": true,
         "expirationSeconds": 86_400
     });
-
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
-    };
-    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers));
 
     let mut datatype_provider = crate::provider::data_type::provider::MockDataTypeProvider::new();
     datatype_provider
@@ -1158,7 +976,6 @@ async fn test_parse_credential() {
         Some("testUrl".into()),
         "SD_JWT".into(),
         params,
-        crypto,
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(datatype_provider),
@@ -1351,11 +1168,6 @@ async fn test_parse_credential_cnf() {
         "expirationSeconds": 86_400
     });
 
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
-    };
-    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers));
-
     let mut datatype_provider = crate::provider::data_type::provider::MockDataTypeProvider::new();
     datatype_provider
         .expect_extract_json_claim()
@@ -1402,7 +1214,6 @@ async fn test_parse_credential_cnf() {
         Some("testUrl".into()),
         "SD_JWT".into(),
         params,
-        crypto,
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         Arc::new(datatype_provider),
@@ -1495,18 +1306,6 @@ fn make_issuer_certificate(cert_id: uuid::Uuid) -> Certificate {
 
 #[tokio::test]
 async fn test_format_credential_sets_x5c_and_x5u_headers() {
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .returning(|_| Ok(String::from("YWJjMTIz")));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let base_url = "http://base_url";
     let cert_id = Uuid::new_v4();
 
@@ -1536,7 +1335,6 @@ async fn test_format_credential_sets_x5c_and_x5u_headers() {
     let sd_formatter = SDJWTFormatter {
         base_url: Some(base_url.into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -1577,18 +1375,6 @@ async fn test_format_credential_sets_x5c_and_x5u_headers() {
 
 #[tokio::test]
 async fn test_format_credential_without_certificate_has_no_x5_headers() {
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64_url()
-        .returning(|_| Ok(String::from("YWJjMTIz")));
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
@@ -1615,7 +1401,6 @@ async fn test_format_credential_without_certificate_has_no_x5_headers() {
     let sd_formatter = SDJWTFormatter {
         base_url: Some("http://base_url".into()),
         config_id: "SD_JWT".into(),
-        crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),

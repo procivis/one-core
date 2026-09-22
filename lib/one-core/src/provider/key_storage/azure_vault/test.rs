@@ -1,7 +1,5 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_crypto::{CryptoProvider, CryptoProviderImpl, Hasher, MockHasher};
 use secrecy::SecretString;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -149,10 +147,6 @@ async fn sign_mock(mock_server: &MockServer, expect: u64) {
         .await;
 }
 
-fn get_crypto(hashers: Vec<(String, Arc<dyn Hasher>)>) -> Arc<dyn CryptoProvider> {
-    Arc::new(CryptoProviderImpl::new(HashMap::from_iter(hashers)))
-}
-
 #[tokio::test]
 async fn test_azure_vault_generate() {
     let mock_server = MockServer::start().await;
@@ -163,7 +157,6 @@ async fn test_azure_vault_generate() {
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params(mock_server.uri()),
-        get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();
@@ -187,7 +180,6 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params(mock_server.uri()),
-        get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();
@@ -206,7 +198,6 @@ async fn test_azure_vault_generate_failed_unsupported_key_type() {
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params("http://127.0.0.1".to_string()),
-        get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();
@@ -225,18 +216,12 @@ async fn test_azure_vault_sign() {
 
     get_token_mock(&mock_server, 3600, 1).await;
     sign_mock(&mock_server, 1).await;
-    let mut hasher_mock = MockHasher::default();
-    hasher_mock
-        .expect_hash_base64_url()
-        .times(1)
-        .returning(|_| Ok("123".to_string()));
 
     let key_reference = format!("{}/keys/uuid/keyid", mock_server.uri());
 
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params(mock_server.uri()),
-        get_crypto(vec![("sha-256".to_string(), Arc::new(hasher_mock))]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();
@@ -269,7 +254,6 @@ async fn test_azure_vault_import() {
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params(mock_server.uri()),
-        get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();
@@ -296,7 +280,6 @@ async fn test_azure_vault_import_unsupported_key_type() {
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params("http://127.0.0.1".to_string()),
-        get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();
@@ -326,7 +309,6 @@ async fn test_azure_vault_import_jwk_invalid_key_type() {
     let vault = AzureVaultKeyProvider::new(
         "azure_vault",
         get_params("http://127.0.0.1".to_string()),
-        get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
     )
     .unwrap();

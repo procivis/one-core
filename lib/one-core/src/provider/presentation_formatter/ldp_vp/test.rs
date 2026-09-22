@@ -2,8 +2,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use mockall::predicate::eq;
-use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -83,27 +81,9 @@ async fn test_format_presentation_multi_tokens() {
             move |_| Ok(key_algorithm.clone())
         });
 
-    let mut hasher = MockHasher::default();
-
-    hasher.expect_hash().returning(|_| {
-        Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc"
-            .as_bytes()
-            .to_vec())
-    });
-
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = LdpVpPresentationFormatter::new(
-        Arc::new(crypto),
         prepare_caching_loader(Some((
             "http://127.0.0.1:43741/ssi/context/v1/0f87b718-435a-4562-ae9a-b1a57eeec713",
             &json!(
@@ -288,27 +268,9 @@ async fn test_parse_presentation_multi_tokens() {
             move |_| Ok(key_algorithm.clone())
         });
 
-    let mut hasher = MockHasher::default();
-
-    hasher.expect_hash().returning(|_| {
-        Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc"
-            .as_bytes()
-            .to_vec())
-    });
-
-    let hasher = Arc::new(hasher);
-
-    let mut crypto = MockCryptoProvider::default();
-
-    crypto
-        .expect_get_hasher()
-        .with(eq("sha-256"))
-        .returning(move |_| Ok(hasher.clone()));
-
     let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = LdpVpPresentationFormatter::new(
-        Arc::new(crypto),
         prepare_caching_loader(Some((
             "http://127.0.0.1:43741/ssi/context/v1/0f87b718-435a-4562-ae9a-b1a57eeec713",
             &json!(

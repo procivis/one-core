@@ -1,4 +1,3 @@
-use one_crypto::CryptoProviderError;
 use thiserror::Error;
 use x509_parser::error::X509Error;
 
@@ -48,8 +47,6 @@ pub enum Error {
     SerdeDe(#[from] quick_xml::DeError),
     #[error("Serde Error: `{0}`")]
     SerdeSe(#[from] quick_xml::SeError),
-    #[error("Crypto provider error: {0}")]
-    CryptoProviderError(#[from] CryptoProviderError),
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -82,8 +79,8 @@ impl ErrorCodeMixin for Error {
             Self::UnsupportedSuite(_) | Self::KeyAlgorithm(_) => ErrorCode::BR_0063,
             Self::KeyHandleError(_) => ErrorCode::BR_0201,
 
-            // Crypto provider errors
-            Self::HasherError(_) | Self::CryptoProviderError(_) => ErrorCode::BR_0050,
+            // Crypto errors
+            Self::HasherError(_) => ErrorCode::BR_0050,
 
             Self::Nested(nested) => nested.error_code(),
         }

@@ -5,14 +5,13 @@
 //! certification, e.g. in the [NIST Cryptographic Module Validation Program (CMVP)][cmvp].
 //!
 //! [cmvp]: https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program
-//! Implementation of the Crypto provider, for hashing and signing.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use hmac::Hmac;
 use secrecy::SecretSlice;
 use sha2::{Sha256, Sha512};
+use standardized_types::iana;
 use thiserror::Error;
 
 use crate::hasher::sha256::SHA256;
@@ -33,47 +32,18 @@ type HmacSha512 = Hmac<Sha512>;
 #[cfg(test)]
 mod test;
 
-#[derive(Clone)]
-pub struct CryptoProviderImpl {
-    hashers: HashMap<String, Arc<dyn Hasher>>,
-}
-
-impl CryptoProviderImpl {
-    pub fn new(hashers: HashMap<String, Arc<dyn Hasher>>) -> Self {
-        Self { hashers }
-    }
-}
-
-impl CryptoProvider for CryptoProviderImpl {
-    fn get_hasher(&self, hasher: &str) -> Result<Arc<dyn Hasher>, CryptoProviderError> {
-        Ok(self
-            .hashers
-            .get(hasher)
-            .ok_or(CryptoProviderError::MissingHasher(hasher.to_owned()))?
-            .clone())
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Error, Clone)]
-pub enum CryptoProviderError {
-    #[error("Missing hasher: `{0}`")]
-    MissingHasher(String),
-}
-
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum HasherError {
     #[error("Could not hash")]
     CouldNotHash,
-    #[error("Crypto provider error: `{0}`")]
-    CryptoError(#[from] CryptoProviderError),
+    #[error("Missing hasher: `{0}`")]
+    MissingHasher(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Error, Clone)]
 pub enum SignerError {
     #[error("Could not generate key pair: `{0}`")]
     CouldNotGenerateKeyPair(String),
-    #[error("Crypto provider error: `{0}`")]
-    CryptoError(#[from] CryptoProviderError),
     #[error("Could not sign: `{0}`")]
     CouldNotSign(String),
     #[error("Could not extract keypair")]
@@ -121,18 +91,12 @@ pub trait Signer: Send + Sync {
     fn verify(&self, input: &[u8], signature: &[u8], public_key: &[u8]) -> Result<(), SignerError>;
 }
 
-/// Return hasher or signer instances. Not supported for all key storage types.
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-pub trait CryptoProvider: Send + Sync {
-    /// Returns hasher instance.
-    fn get_hasher(&self, hasher: &str) -> Result<Arc<dyn Hasher>, CryptoProviderError>;
-}
-
-pub fn initialize_crypto_provider() -> Arc<dyn CryptoProvider> {
-    let hashers: Vec<(String, Arc<dyn Hasher>)> = vec![
-        ("sha-256".to_string(), Arc::new(SHA256)),
-        ("sha-512".to_string(), Arc::new(SHA512)),
-    ];
-
-    Arc::new(CryptoProviderImpl::new(HashMap::from_iter(hashers)))
+pub fn get_hasher(algorithm: iana::HashAlgorithm) -> Result<Arc<dyn Hasher>, HasherError> {
+    Ok(match algorithm {
+        iana::HashAlgorithm::Sha256 => Arc::new(SHA256),
+        iana::HashAlgorithm::Sha512 => Arc::new(SHA512),
+        other => {
+            return Err(HasherError::MissingHasher(other.to_string()));
+        }
+    })
 }
