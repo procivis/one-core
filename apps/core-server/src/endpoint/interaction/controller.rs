@@ -137,7 +137,7 @@ pub(crate) async fn issuance_refresh(
         ("bearer" = [])
     ),
     summary = "Reject issuance",
-    description = "Rejects an offered credential.",
+    description = "Rejects credentials or individual batch items. A batch format is notified as rejected and excluded from subsequent refreshes once all its items are rejected.",
 )]
 pub(crate) async fn issuance_reject(
     state: State<AppState>,

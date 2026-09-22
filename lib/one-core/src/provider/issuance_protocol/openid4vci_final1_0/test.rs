@@ -6071,7 +6071,7 @@ async fn refresh_selects_all_refreshable_configurations() {
         .return_once(move |_| Ok(vec![parent, rejected, deleted, single]));
     repository
         .expect_get_credential_list()
-        .times(3)
+        .times(6)
         .returning(move |query| {
             let item = [&jwt_item, &mdoc_item, &fixed_without_expiry]
                 .into_iter()
@@ -6150,10 +6150,10 @@ async fn refresh_respects_holder_binding_and_item_expiry(
         .return_once(move |_| Ok(vec![parent]));
     repository
         .expect_get_credential_list()
-        .once()
-        .return_once(move |_| {
+        .times(2)
+        .returning(move |_| {
             Ok(GetCredentialList {
-                values: vec![item],
+                values: vec![item.clone()],
                 total_items: None,
                 total_pages: None,
             })
@@ -6191,12 +6191,18 @@ async fn refresh_respects_holder_binding_and_item_expiry(
     }
 }
 
+#[rstest::rstest]
+#[case::accepted(CredentialStateEnum::Accepted)]
+#[case::rejected(CredentialStateEnum::Rejected)]
 #[tokio::test]
-async fn mso_refresh_selects_the_configuration_matching_the_items_format_id() {
+async fn mso_refresh_selects_the_configuration_matching_the_items_format_id(
+    #[case] state: CredentialStateEnum,
+) {
     let parent = accepted_batch_parent();
     let mut item = Credential {
         id: Uuid::new_v4().into(),
         r#type: CredentialType::BatchItem,
+        state,
         parent: Some(parent.clone().into()),
         key: Some(dummy_key().into()),
         ..generic_credential_did_with_holder_identifier()
@@ -6210,10 +6216,17 @@ async fn mso_refresh_selects_the_configuration_matching_the_items_format_id() {
     let interaction = interaction_for(&parent, &data).await;
     let protocol = setup_protocol(TestInputs::default());
 
-    let configurations = protocol
+    let result = protocol
         .select_refresh_configurations(&interaction, &data, Some(&item))
-        .await
-        .unwrap();
+        .await;
+    if state == CredentialStateEnum::Rejected {
+        assert!(matches!(
+            result,
+            Err(super::IssuanceProtocolError::RefreshNotPossible)
+        ));
+        return;
+    }
+    let configurations = result.unwrap();
 
     let_assert!([selected] = configurations.as_slice());
     assert_eq!(

@@ -1057,6 +1057,9 @@ impl OpenID4VCIFinal1_0 {
         updated: Option<&Credential>,
     ) -> Result<Vec<RefreshConfiguration>, IssuanceProtocolError> {
         if let Some(credential) = updated {
+            if credential.state == CredentialStateEnum::Rejected {
+                return Err(IssuanceProtocolError::RefreshNotPossible);
+            }
             let main_id = credential
                 .parent
                 .as_ref()
@@ -1106,6 +1109,12 @@ impl OpenID4VCIFinal1_0 {
                 // without an ID is usable only when its parent actually exists.
                 continue;
             };
+            if self
+                .batch_format_is_rejected(parent.id, configuration.credential_schema_format_id)
+                .await?
+            {
+                continue;
+            }
             let mut configuration = configuration.clone();
             configuration.credential_id = Some(parent.id);
             // Binding and expiry belong to concrete items, not their format-agnostic parent.
@@ -1179,6 +1188,34 @@ impl OpenID4VCIFinal1_0 {
             .await?
             .to_owned();
         Ok(HolderBindingInput { identifier, key })
+    }
+
+    /// Rejection is scoped to the parent and exact schema format. Include old, consumed and
+    /// deleted items: their stored rejection state still determines whether the format can
+    /// be refreshed. Legacy single-format interactions have no stored format ID.
+    async fn batch_format_is_rejected(
+        &self,
+        parent_id: CredentialId,
+        format_id: Option<CredentialSchemaFormatId>,
+    ) -> Result<bool, IssuanceProtocolError> {
+        let items = self
+            .credential_repository
+            .get_credential_list(ListQuery {
+                include_count: false,
+                filtering: Some(
+                    CredentialFilterValue::ParentCredential(parent_id).condition()
+                        & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                        & format_id.map(|id| CredentialFilterValue::FormatIds(vec![id])),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting batch items for rejection")?
+            .values;
+        Ok(!items.is_empty()
+            && items
+                .iter()
+                .all(|item| item.state == CredentialStateEnum::Rejected))
     }
 
     async fn get_batch_schema_format(
@@ -2223,7 +2260,24 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError> {
-        let interaction = credential
+        let (main_credential, rejected_format) = if credential.r#type == CredentialType::BatchItem {
+            let parent = credential.parent.as_required_ref().await?;
+            let format_id = credential.format.id_opt().ok_or_else(|| {
+                IssuanceProtocolError::Failed("Missing CredentialSchemaFormat".to_string())
+            })?;
+            if !self
+                .batch_format_is_rejected(parent.id, Some(format_id))
+                .await?
+            {
+                // Only a single item of a batch with others of the same format has been rejected.
+                // The issuer will not be notified, and the format will still be refreshed.
+                return Ok(());
+            }
+            (parent.to_owned(), Some(format_id))
+        } else {
+            (credential, None)
+        };
+        let interaction = main_credential
             .interaction
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
@@ -2245,7 +2299,14 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             }
         };
         let notifications: Vec<_> = interaction_data
-            .configurations_for_credential(credential.id)
+            .configurations_for_credential(main_credential.id)
+            .filter(|configuration| {
+                rejected_format.is_none_or(|format_id| {
+                    configuration.credential_schema_format_id == Some(format_id)
+                        || (configuration.credential_schema_format_id.is_none()
+                            && interaction_data.credential_configurations.len() == 1)
+                })
+            })
             .filter_map(|configuration| {
                 configuration.notification_id.as_ref().map(|id| {
                     (

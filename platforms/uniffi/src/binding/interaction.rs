@@ -62,7 +62,9 @@ impl OneCore {
         })
     }
 
-    /// Rejects offered credentials. Without `credential_ids`, all credentials of the interaction are rejected.
+    /// Rejects credentials or individual batch items. Selecting a batch parent rejects all its items.
+    /// Without `credential_ids`, all credentials of the interaction are rejected.
+    /// A batch format is notified as rejected and excluded from refreshes only when all its items are rejected.
     #[uniffi::method]
     pub async fn holder_reject_credential(
         &self,

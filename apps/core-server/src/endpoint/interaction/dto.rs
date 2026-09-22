@@ -164,7 +164,10 @@ pub struct IssuanceRefreshResponseRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssuanceRejectRequestRestDTO {
     pub interaction_id: InteractionId,
-    /// Credentials to reject. If not specified, all credentials of the interaction are rejected.
+    /// Credentials or batch items to reject. Selecting a batch parent rejects all its items.
+    /// If not specified, all credentials of the interaction are rejected.
+    /// A batch format is notified as rejected and excluded from refreshes only when all its
+    /// items are rejected.
     pub credential_ids: Option<Vec<CredentialId>>,
 }
 

@@ -534,11 +534,42 @@ impl SSIHolderService {
         interaction_id: &InteractionId,
         credential_ids: Option<Vec<CredentialId>>,
     ) -> Result<(), HolderServiceError> {
-        let credentials: Vec<_> = self
+        let mut credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(interaction_id)
             .await
-            .error_while("getting credentials")?
+            .error_while("getting credentials")?;
+
+        // Items inherit the interaction from their parent. Limit the lookup to this
+        // interaction's parents, and let an explicitly selected parent cover its items.
+        if let Some(ids) = &credential_ids {
+            let parent_ids: Vec<_> = credentials
+                .iter()
+                .filter(|credential| {
+                    credential.r#type == CredentialType::BatchParent
+                        && !ids.contains(&credential.id)
+                })
+                .map(|credential| credential.id)
+                .collect();
+            if !parent_ids.is_empty() {
+                credentials.extend(
+                    self.credential_repository
+                        .get_credential_list(ListQuery {
+                            include_count: false,
+                            filtering: Some(
+                                CredentialFilterValue::ParentCredentials(parent_ids).condition()
+                                    & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                                    & CredentialFilterValue::CredentialIds(ids.clone()),
+                            ),
+                            ..Default::default()
+                        })
+                        .await
+                        .error_while("getting selected batch items")?
+                        .values,
+                );
+            }
+        }
+        let credentials: Vec<_> = credentials
             .into_iter()
             .filter(|credential| {
                 credential_ids
