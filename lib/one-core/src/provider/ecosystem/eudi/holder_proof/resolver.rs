@@ -14,7 +14,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::mapper::credential_query_matches_reg_cert_credential;
-use super::{HolderProofError, HolderProofResolver, ProofTrustSource};
+use super::{HolderProofError, HolderProofResolver, ProofTrustSource, QueryMismatchReason};
 use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::model::blob::{Blob, BlobType};
@@ -252,6 +252,7 @@ impl HolderProofResolver {
                         .unwrap_or(&empty),
                 );
 
+            let mut reason = QueryMismatchReason::NoIntendedUse;
             let Some(RefCertCredentialInfo {
                 reg_cert,
                 purpose,
@@ -259,13 +260,21 @@ impl HolderProofResolver {
                 ..
             }) = related_reg_cert_credentials.find(
                 |RefCertCredentialInfo { credential_def, .. }| {
-                    credential_query_matches_reg_cert_credential(credential_query, credential_def)
+                    let Err(mismatch_reason) = credential_query_matches_reg_cert_credential(
+                        credential_query,
+                        credential_def,
+                    ) else {
+                        return true;
+                    };
+                    reason = mismatch_reason;
+                    false
                 },
             )
             else {
                 return Err(HolderProofError::DisallowedQuery {
                     query: credential_query.id.to_owned(),
                     document: ProofTrustSource::RegistrationCertificate,
+                    reason,
                 });
             };
 
@@ -330,19 +339,19 @@ impl HolderProofResolver {
         let mut purpose: HashMap<CredentialQueryId, Vec<MultiLangString>> = Default::default();
         let mut privacy_policy_url: Option<Url> = None;
         for credential_query in &dcql_query.credentials {
-            let Some(matched) = find_matching_intended_use(
+            let matched_intended_use = find_matching_intended_use(
                 credential_query,
                 &info.payload.custom.data.intended_use,
-            ) else {
-                return Err(HolderProofError::DisallowedQuery {
-                    query: credential_query.id.to_owned(),
-                    document: ProofTrustSource::NationalRegistry,
-                });
-            };
+            )
+            .map_err(|reason| HolderProofError::DisallowedQuery {
+                query: credential_query.id.to_owned(),
+                document: ProofTrustSource::NationalRegistry,
+                reason,
+            })?;
 
-            purpose.insert(credential_query.id.to_owned(), matched.purpose);
+            purpose.insert(credential_query.id.to_owned(), matched_intended_use.purpose);
             if privacy_policy_url.is_none() {
-                privacy_policy_url = matched.privacy_policy_url;
+                privacy_policy_url = matched_intended_use.privacy_policy_url;
             }
         }
 
@@ -424,23 +433,30 @@ struct MatchedIntendedUse {
 fn find_matching_intended_use(
     credential_query: &CredentialQuery,
     among_uses: &[IntendedUse],
-) -> Option<MatchedIntendedUse> {
+) -> Result<MatchedIntendedUse, QueryMismatchReason> {
+    let mut reason = QueryMismatchReason::NoIntendedUse;
+
     for intended_use in among_uses {
-        if intended_use
-            .credential
-            .iter()
-            .any(|c| credential_query_matches_reg_cert_credential(credential_query, c))
-        {
+        if intended_use.credential.iter().any(|c| {
+            let Err(mismatch_reason) =
+                credential_query_matches_reg_cert_credential(credential_query, c)
+            else {
+                return true;
+            };
+            reason = mismatch_reason;
+            false
+        }) {
             let privacy_policy_url = intended_use
                 .privacy_policy
                 .iter()
                 .find(|policy| policy.r#type == PolicyType::PrivacyPolicy)
                 .map(|policy| policy.policy_uri.to_owned());
-            return Some(MatchedIntendedUse {
+            return Ok(MatchedIntendedUse {
                 purpose: convert_inner(intended_use.purpose.to_owned()),
                 privacy_policy_url,
             });
         }
     }
-    None
+
+    Err(reason)
 }

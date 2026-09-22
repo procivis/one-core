@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use shared_types::{EcosystemId, OrganisationId};
-use standardized_types::openid4vp::dcql::CredentialQueryId;
+use standardized_types::openid4vp::dcql::{ClaimQuery, CredentialFormat, CredentialQueryId};
 use thiserror::Error;
 
 use crate::config::core_config::IdentifierType;
@@ -24,14 +24,29 @@ pub(crate) enum ProofTrustSource {
     NationalRegistry,
 }
 
+#[derive(Debug, Clone, Error)]
+pub(crate) enum QueryMismatchReason {
+    #[error("Format mismatch, requested: `{0}`")]
+    FormatMismatch(CredentialFormat),
+    #[error("Claim mismatch, requested `{0:?}`")]
+    ClaimMismatch(ClaimQuery),
+    #[error("No claims requested")]
+    NoClaimsRequested,
+    #[error("No intended use declared")]
+    NoIntendedUse,
+}
+
 #[derive(Debug, Error)]
 pub(crate) enum HolderProofError {
     #[error("Missing registry URL")]
     MissingRegistryUrl,
-    #[error("The {document}'s intended use does not permit the requested credential `{query}`")]
+    #[error(
+        "The {document}'s intended use does not permit the requested credential `{query}`, reason: `{reason}`"
+    )]
     DisallowedQuery {
         query: CredentialQueryId,
         document: ProofTrustSource,
+        reason: QueryMismatchReason,
     },
     #[error("Missing identifier")]
     MissingIdentifier,

@@ -1,32 +1,39 @@
-use dcql::{CredentialFormat, CredentialQuery, MsoMdocMeta, PathSegment, SdJwtVcMeta, W3cVcMeta};
 use standardized_types::etsi_119_475::{Claim, Credential};
-use standardized_types::openid4vp::dcql;
+use standardized_types::openid4vp::dcql::{
+    ClaimQuery, CredentialFormat, CredentialQuery, MsoMdocMeta, PathSegment, SdJwtVcMeta, W3cVcMeta,
+};
+
+use super::QueryMismatchReason;
 
 pub(super) fn credential_query_matches_reg_cert_credential(
     credential_query: &CredentialQuery,
     req_cert_credential: &Credential,
-) -> bool {
+) -> Result<(), QueryMismatchReason> {
     if !format_matches(credential_query, req_cert_credential) {
-        return false;
+        return Err(QueryMismatchReason::FormatMismatch(
+            credential_query.format.to_owned(),
+        ));
     }
 
     // B.2.9 <https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf>
     // If claim is absent, the WRPRC does not declare any specific attributes intended to be requested by the WRP.
     if let Some(allowed_claims) = &req_cert_credential.claim {
         let Some(requested_claims) = &credential_query.claims else {
-            return false;
+            return Err(QueryMismatchReason::NoClaimsRequested);
         };
 
         for requested_claim in requested_claims {
             if !allowed_claims.iter().any(|allowed_claim| {
                 query_claim_matches_reg_cert_claim(requested_claim, allowed_claim)
             }) {
-                return false;
+                return Err(QueryMismatchReason::ClaimMismatch(
+                    requested_claim.to_owned(),
+                ));
             }
         }
     }
 
-    true
+    Ok(())
 }
 
 fn format_matches(credential_query: &CredentialQuery, req_cert_credential: &Credential) -> bool {
@@ -80,7 +87,7 @@ fn format_matches(credential_query: &CredentialQuery, req_cert_credential: &Cred
     true
 }
 
-fn query_claim_matches_reg_cert_claim(query: &dcql::ClaimQuery, claim: &Claim) -> bool {
+fn query_claim_matches_reg_cert_claim(query: &ClaimQuery, claim: &Claim) -> bool {
     if query.path.segments.len() < claim.path.segments.len() {
         // The query is less specific (i.e. matches more claims) than what would be allowed by the reg cert.
         return false;
