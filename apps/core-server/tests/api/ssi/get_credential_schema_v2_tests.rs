@@ -242,7 +242,7 @@ async fn test_ssi_get_credential_schema_v2_by_format_returns_only_requested_form
             name: "multi-format schema".into(),
             organisation_id: organisation.id.into(),
             formats: vec![
-                serde_json::json!({ "format": "JWT" }),
+                serde_json::json!({ "format": "SD_JWT_VC" }),
                 serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: vec![TestClaim {
@@ -272,7 +272,7 @@ async fn test_ssi_get_credential_schema_v2_by_format_returns_only_requested_form
     let resp = context
         .api
         .ssi
-        .get_credential_schema_v2_by_format(id, "JWT")
+        .get_credential_schema_v2_by_format(id, "SD_JWT_VC")
         .await;
 
     // then
@@ -288,7 +288,7 @@ async fn test_ssi_get_credential_schema_v2_by_format_returns_only_requested_form
         1,
         "only the requested format should be returned"
     );
-    assert_eq!(formats[0]["format"], "JWT");
+    assert_eq!(formats[0]["format"], "SD_JWT_VC");
 }
 
 #[tokio::test]

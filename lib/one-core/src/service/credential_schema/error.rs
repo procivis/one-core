@@ -28,8 +28,10 @@ pub enum CredentialSchemaServiceError {
     NestedClaimsShouldBeEmpty(String),
     #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
     ClaimSchemaSlashInKeyName(String),
-    #[error("Credential schema: Claim `{claim_name}` data type {data_type} is unsupported")]
-    ClaimSchemaUnsupportedDatatype {
+    #[error(
+        "Credential schema: Claim `{claim_name}` data type {data_type} is not supported by all selected formats"
+    )]
+    DatatypeNotSupportedByAllFormats {
         claim_name: String,
         data_type: String,
     },
@@ -80,6 +82,8 @@ pub enum CredentialSchemaServiceError {
 
     #[error("Duplicate formats")]
     DuplicateFormats,
+    #[error("Selected credential formats have no common identifier capabilities")]
+    IncompatibleFormats,
     #[error("Duplicate formats in mapping for claim `{0}`")]
     DuplicateMappingFormats(String),
 
@@ -115,7 +119,7 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::MissingNestedClaims(_) => ErrorCode::BR_0106,
             Self::NestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
             Self::ClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
-            Self::ClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
+            Self::DatatypeNotSupportedByAllFormats { .. } => ErrorCode::BR_0245,
             Self::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => ErrorCode::BR_0117,
             Self::RevocationMethodNotCompatibleWithSelectedFormat => ErrorCode::BR_0110,
             Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
@@ -126,6 +130,7 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::Nested(nested) => nested.error_code(),
             Self::MissingFormats => ErrorCode::BR_0435,
             Self::DuplicateFormats => ErrorCode::BR_0439,
+            Self::IncompatibleFormats => ErrorCode::BR_0511,
             Self::DuplicateMappingFormats(_) => ErrorCode::BR_0440,
         }
     }

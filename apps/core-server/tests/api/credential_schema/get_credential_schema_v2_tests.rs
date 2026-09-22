@@ -206,7 +206,7 @@ async fn test_get_credential_schema_v2_multiple_formats() {
             name: "multi-format schema".into(),
             organisation_id: organisation.id.into(),
             formats: vec![
-                serde_json::json!({ "format": "JWT" }),
+                serde_json::json!({ "format": "SD_JWT_VC" }),
                 serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: default_claims(),
@@ -233,7 +233,7 @@ async fn test_get_credential_schema_v2_multiple_formats() {
         .iter()
         .map(|f| f["format"].as_str().unwrap())
         .collect();
-    assert!(format_names.contains(&"JWT"));
+    assert!(format_names.contains(&"SD_JWT_VC"));
     assert!(format_names.contains(&"MDOC"));
 
     let mdoc_format = formats.iter().find(|f| f["format"] == "MDOC").unwrap();

@@ -11,14 +11,14 @@ use super::dto::{
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::create_unique_name_check_request;
-use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType};
+use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, IdentifierType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurity};
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::Features;
+use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
@@ -118,15 +118,57 @@ pub(crate) fn validate_create_v2_request(
 
     validate_key_lengths(&request.claims, 0)?;
 
+    let mut common_capabilities: Option<FormatterCapabilities> = None;
     for format_req in &request.formats {
         validate_format(&format_req.format, &config.format).error_while("validating format")?;
 
         let formatter = formatter_provider.get_credential_formatter(&format_req.format)?;
 
-        validate_nested_claim_schemas(&request.claims, config, &*formatter)?;
+        validate_nested_claim_schemas(&request.claims, config)?;
         validate_claim_names_for_formatter(&request.claims, &*formatter)?;
         validate_credential_design(request.layout_properties.as_ref(), &*formatter)?;
         validate_transaction_code(request.transaction_code.as_ref(), &*formatter)?;
+
+        let capabilities = formatter.get_capabilities();
+        if let Some(common_capabilities) = common_capabilities.as_mut() {
+            common_capabilities.combine_constraints(&capabilities);
+        } else {
+            common_capabilities = Some(capabilities);
+        }
+    }
+
+    let common_capabilities =
+        common_capabilities.ok_or(CredentialSchemaServiceError::MissingFormats)?;
+    validate_common_datatype_capabilities(&request.claims, &common_capabilities.datatypes)?;
+    validate_common_identifier_capabilities(&common_capabilities)?;
+    Ok(())
+}
+
+fn validate_common_identifier_capabilities(
+    capabilities: &FormatterCapabilities,
+) -> Result<(), CredentialSchemaServiceError> {
+    // An empty DID method intersection is acceptable when another common identifier
+    // type can be used, e.g. certificate issuance for SD-JWT VC and mdoc.
+    let can_issue = capabilities
+        .issuance_identifier_types
+        .iter()
+        .any(|identifier| {
+            *identifier != IdentifierType::Did || !capabilities.issuance_did_methods.is_empty()
+        })
+        && !capabilities.signing_key_algorithms.is_empty();
+    let can_hold = capabilities
+        .holder_identifier_types
+        .iter()
+        .any(|identifier| {
+            *identifier != IdentifierType::Did || !capabilities.holder_did_methods.is_empty()
+        })
+        && !capabilities.holder_key_algorithms.is_empty();
+    let can_verify = !capabilities.verification_identifier_types.is_empty()
+        && !capabilities.verification_key_algorithms.is_empty()
+        && !capabilities.verification_key_storages.is_empty();
+
+    if !can_issue || !can_hold || !can_verify {
+        return Err(CredentialSchemaServiceError::IncompatibleFormats);
     }
     Ok(())
 }
@@ -383,12 +425,11 @@ fn validate_claims_names_are_not_forbidden(
 fn validate_nested_claim_schemas(
     claims: &[CredentialClaimSchemaRequestDTO],
     config: &CoreConfig,
-    formatter: &dyn CredentialFormatter,
 ) -> Result<(), CredentialSchemaServiceError> {
     validate_claim_schema_keys_unique(claims)?;
 
     for claim_schema in gather_claim_schemas(claims) {
-        validate_claim_schema(claim_schema, config, formatter)?;
+        validate_claim_schema(claim_schema, config)?;
     }
 
     Ok(validate_datatypes(
@@ -401,7 +442,6 @@ fn validate_nested_claim_schemas(
 fn validate_claim_schema(
     claim_schema: &CredentialClaimSchemaRequestDTO,
     config: &CoreConfig,
-    formatter: &dyn CredentialFormatter,
 ) -> Result<(), CredentialSchemaServiceError> {
     let claim_type = config
         .datatype
@@ -416,7 +456,6 @@ fn validate_claim_schema(
             .get_if_enabled("ARRAY")
             .error_while("validating datatype")?;
     }
-    validate_claims_schema_type_supported_by_formatter(claim_schema, formatter)?;
     Ok(())
 }
 
@@ -474,28 +513,30 @@ fn validate_claim_schema_type(
     Ok(())
 }
 
-fn validate_claims_schema_type_supported_by_formatter(
-    claim_schema: &CredentialClaimSchemaRequestDTO,
-    formatter: &dyn CredentialFormatter,
+fn validate_common_datatype_capabilities(
+    claims: &[CredentialClaimSchemaRequestDTO],
+    supported_datatypes: &[String],
 ) -> Result<(), CredentialSchemaServiceError> {
-    if let Some(true) = claim_schema.array {
-        validate_datatype_formatter_capabilities(
-            &claim_schema.key,
-            &"ARRAY".to_string(),
-            formatter,
-        )?;
+    for claim in gather_claim_schemas(claims) {
+        if claim.array == Some(true) {
+            validate_datatype_formatter_capabilities(&claim.key, "ARRAY", supported_datatypes)?;
+        }
+        validate_datatype_formatter_capabilities(&claim.key, &claim.datatype, supported_datatypes)?;
     }
-    validate_datatype_formatter_capabilities(&claim_schema.key, &claim_schema.datatype, formatter)
+    Ok(())
 }
 
 fn validate_datatype_formatter_capabilities(
-    claim_name: &String,
-    datatype: &String,
-    formatter: &dyn CredentialFormatter,
+    claim_name: &str,
+    datatype: &str,
+    supported_datatypes: &[String],
 ) -> Result<(), CredentialSchemaServiceError> {
-    if !formatter.get_capabilities().datatypes.contains(datatype) {
+    if !supported_datatypes
+        .iter()
+        .any(|supported| supported == datatype)
+    {
         return Err(
-            CredentialSchemaServiceError::ClaimSchemaUnsupportedDatatype {
+            CredentialSchemaServiceError::DatatypeNotSupportedByAllFormats {
                 claim_name: claim_name.to_owned(),
                 data_type: datatype.to_owned(),
             },

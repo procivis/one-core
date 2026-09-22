@@ -368,7 +368,7 @@ async fn test_create_credential_schema_success() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![],
             datatypes: vec!["STRING".into()],
-            ..Default::default()
+            ..generic_formatter_capabilities()
         });
     formatter
         .expect_credential_schema_id()
@@ -459,7 +459,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             revocation_methods: vec![],
             features: vec![Features::SelectiveDisclosure, Features::SupportsSchemaId],
             datatypes: vec!["STRING".into(), "OBJECT".into()],
-            ..Default::default()
+            ..generic_formatter_capabilities()
         });
     formatter
         .expect_credential_schema_id()
@@ -557,7 +557,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![],
             datatypes: vec!["STRING".into(), "OBJECT".into()],
-            ..Default::default()
+            ..generic_formatter_capabilities()
         });
     formatter
         .expect_credential_schema_id()
@@ -859,7 +859,7 @@ async fn test_create_credential_schema_unique_name_error() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![],
             datatypes: vec!["STRING".into()],
-            ..Default::default()
+            ..generic_formatter_capabilities()
         });
     formatter_provider
         .expect_get_credential_formatter()
@@ -1132,7 +1132,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             datatypes: vec!["STRING".into()],
-            ..Default::default()
+            ..generic_formatter_capabilities()
         });
     formatter
         .expect_credential_schema_id()
@@ -1217,7 +1217,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![],
             datatypes: vec!["STRING".into()],
-            ..Default::default()
+            ..generic_formatter_capabilities()
         });
     formatter_provider
         .expect_get_credential_formatter()
@@ -2976,7 +2976,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
                         key: "y".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
-                        array: Some(true),
+                        array: Some(false),
                         claims: vec![],
                         mappings: None,
                         translations: None,

@@ -143,11 +143,82 @@ async fn test_create_credential_schema_v2_success_single_format_multiple_claims(
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_v2_incompatible_formats() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // MDOC has no common issuer identifier type with JWT, while BBS+ has no
+    // common signing key algorithm with JWT.
+    for format in [
+        serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
+        serde_json::json!({ "format": "JSON_LD_BBSPLUS" }),
+    ] {
+        let resp = context
+            .api
+            .credential_schemas
+            .create_v2(CreateSchemaV2Params {
+                name: "incompatible formats".into(),
+                organisation_id: organisation.id.into(),
+                formats: vec![jwt_format(), format],
+                claims: default_claims(),
+                ..Default::default()
+            })
+            .await;
+
+        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.json_value().await["code"], "BR_0511");
+    }
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_datatype_not_supported_by_all_formats() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    for nested in [false, true] {
+        // MDL_PICTURE is supported by MDOC but not SD-JWT VC.
+        let portrait = TestClaim {
+            key: "portrait".into(),
+            datatype: "MDL_PICTURE".into(),
+            required: true,
+            ..Default::default()
+        };
+        let claims = if nested {
+            vec![TestClaim {
+                key: "person".into(),
+                datatype: "OBJECT".into(),
+                required: true,
+                claims: vec![portrait],
+                ..Default::default()
+            }]
+        } else {
+            vec![portrait]
+        };
+
+        let resp = context
+            .api
+            .credential_schemas
+            .create_v2(CreateSchemaV2Params {
+                name: "unsupported datatype".into(),
+                organisation_id: organisation.id.into(),
+                formats: vec![
+                    serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
+                    serde_json::json!({ "format": "SD_JWT_VC" }),
+                ],
+                claims,
+                ..Default::default()
+            })
+            .await;
+
+        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.error_code().await, "BR_0245");
+    }
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_v2_success_multiple_formats() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    // WHEN - JWT and MDOC produce different schema_ids (MDOC uses explicit schemaId)
+    // WHEN - SD-JWT VC and MDOC produce different schema_ids (MDOC uses explicit schemaId)
     let resp = context
         .api
         .credential_schemas
@@ -155,7 +226,7 @@ async fn test_create_credential_schema_v2_success_multiple_formats() {
             name: "v2 multi-format schema".into(),
             organisation_id: organisation.id.into(),
             formats: vec![
-                jwt_format(),
+                serde_json::json!({ "format": "SD_JWT_VC" }),
                 serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: default_claims(),
@@ -183,7 +254,7 @@ async fn test_create_credential_schema_v2_success_multiple_formats() {
 }
 
 #[tokio::test]
-async fn test_create_credential_schema_v2_mdoc_with_jwt_without_root_object_succeeds() {
+async fn test_create_credential_schema_v2_mdoc_with_sd_jwt_vc_without_root_object_succeeds() {
     // given
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -202,10 +273,10 @@ async fn test_create_credential_schema_v2_mdoc_with_jwt_without_root_object_succ
         .api
         .credential_schemas
         .create_v2(CreateSchemaV2Params {
-            name: "mdoc and jwt schema".into(),
+            name: "mdoc and sd-jwt vc schema".into(),
             organisation_id: organisation.id.into(),
             formats: vec![
-                jwt_format(),
+                serde_json::json!({ "format": "SD_JWT_VC" }),
                 serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.test" }),
             ],
             claims: flat_claims,
@@ -225,7 +296,7 @@ async fn test_create_credential_schema_v2_mdoc_with_jwt_without_root_object_succ
         .as_array()
         .expect("formats should be an array");
     assert_eq!(formats.len(), 2);
-    assert!(formats.iter().any(|f| f["format"] == "JWT"));
+    assert!(formats.iter().any(|f| f["format"] == "SD_JWT_VC"));
     assert!(formats.iter().any(|f| f["format"] == "MDOC"));
 }
 
