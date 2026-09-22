@@ -6,7 +6,9 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
     ProofSchemaShareResponseDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use one_dto_mapper::{
+    From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
+};
 use shared_types::ProofSchemaId;
 
 use super::OneCore;
@@ -203,6 +205,9 @@ pub struct GetProofSchemaBindingDTO {
 #[from(ProofInputSchemaResponseDTO)]
 #[uniffi(name = "ProofInputSchema")]
 pub struct ProofInputSchemaBindingDTO {
+    /// Formatter provider names saved for this proof input.
+    #[from(with_fn = convert_inner)]
+    pub formats: Vec<String>,
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaBindingDTO>,
     pub credential_schema: CredentialSchemaBindingDTO,
@@ -212,6 +217,10 @@ pub struct ProofInputSchemaBindingDTO {
 #[try_into(T = ImportProofSchemaInputSchemaDTO, Error = ErrorResponseBindingDTO)]
 #[uniffi(name = "ImportProofSchemaInputSchema")]
 pub struct ImportProofSchemaInputSchemaBindingDTO {
+    /// Formatter provider names selected for this input. Defaulting
+    /// to all formats of the resolved credential schema if omitted.
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub formats: Option<Vec<String>>,
     #[try_into(with_fn = try_convert_inner)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaBindingDTO,
@@ -306,6 +315,10 @@ pub struct CreateProofSchemaRequestDTO {
 #[try_into(T = one_core::service::proof_schema::dto::ProofInputSchemaRequestDTO, Error = ServiceError)]
 #[uniffi(name = "CreateProofSchemaInput")]
 pub struct ProofInputSchemaRequestDTO {
+    /// Formatter provider names selected for this input. If omitted, all
+    /// formats of the credential schema are selected.
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub formats: Option<Vec<String>>,
     #[try_into(with_fn_ref = into_id)]
     pub credential_schema_id: String,
     #[try_into(with_fn = try_convert_inner)]

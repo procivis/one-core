@@ -45,6 +45,12 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 last_modified: Set(now),
                 credential_schema: Set(schema.credential_schema.id()),
                 proof_schema: Set(proof_schema_id),
+                formats: Set(schema
+                    .formats
+                    .iter()
+                    .map(|f| f.as_ref())
+                    .collect::<Vec<_>>()
+                    .join(",")),
                 ..Default::default()
             })
             .collect();

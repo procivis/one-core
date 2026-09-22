@@ -805,36 +805,43 @@ pub async fn create_proof_schema(
 ) -> ProofSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
-    let input_schemas: Vec<_> = proof_input_schemas
-        .iter()
-        .map(|proof_input_schema| {
-            let claim_schemas: Vec<_> = proof_input_schema
-                .claims
-                .iter()
-                .enumerate()
-                .map(|(order, claim)| ProofInputClaimSchema {
-                    schema: ClaimSchema {
-                        id: claim.id.to_owned(),
-                        key: claim.key.to_string(),
-                        data_type: claim.data_type.to_string(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        array: false,
-                        metadata: false,
-                        required: true,
-                        translations: Default::default(),
-                    },
-                    required: claim.required.to_owned(),
-                    order: order as _,
-                })
-                .collect();
+    let mut input_schemas = Vec::new();
+    for proof_input_schema in proof_input_schemas {
+        let claim_schemas: Vec<_> = proof_input_schema
+            .claims
+            .iter()
+            .enumerate()
+            .map(|(order, claim)| ProofInputClaimSchema {
+                schema: ClaimSchema {
+                    id: claim.id.to_owned(),
+                    key: claim.key.to_string(),
+                    data_type: claim.data_type.to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                },
+                required: claim.required.to_owned(),
+                order: order as _,
+            })
+            .collect();
 
-            ProofInputSchema {
-                claim_schemas: claim_schemas.into(),
-                credential_schema: proof_input_schema.credential_schema.to_owned().into(),
-            }
-        })
-        .collect();
+        input_schemas.push(ProofInputSchema {
+            formats: proof_input_schema
+                .credential_schema
+                .formats
+                .as_ref()
+                .await
+                .unwrap()
+                .iter()
+                .map(|f| f.format.clone())
+                .collect(),
+            claim_schemas: claim_schemas.into(),
+            credential_schema: proof_input_schema.credential_schema.to_owned().into(),
+        });
+    }
 
     let proof_schema = ProofSchema {
         ecosystem: None,

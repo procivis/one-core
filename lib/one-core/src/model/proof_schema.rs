@@ -1,5 +1,5 @@
 use proc_macros::Model;
-use shared_types::{EcosystemId, ProofSchemaId};
+use shared_types::{CredentialFormat, EcosystemId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use super::claim_schema::ClaimSchema;
@@ -31,6 +31,8 @@ pub struct ProofSchema {
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ProofInputSchema {
+    /// Formatter provider names selected when this proof input was created.
+    pub formats: Vec<CredentialFormat>,
     // Relations
     pub claim_schemas: RelatedVec<ProofInputClaimSchema>,
     pub credential_schema: Related<CredentialSchema>,

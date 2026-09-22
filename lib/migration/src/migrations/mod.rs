@@ -54,4 +54,5 @@ pub mod m20260918_015758_wallet_attestation;
 pub mod m20260918_103742_add_task_check_indexes;
 pub mod m20260918_120000_credential_available_batch_item_index;
 pub mod m20260918_130000_move_holder_disclosure_policy_to_batch_items;
+pub mod m20260921_120000_proof_input_schema_formats;
 pub mod m20260921_135415_wallet_version;

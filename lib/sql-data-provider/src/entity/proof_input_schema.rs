@@ -12,6 +12,8 @@ pub struct Model {
     pub order: i32,
     pub credential_schema: CredentialSchemaId,
     pub proof_schema: ProofSchemaId,
+    #[sea_orm(column_type = "Text")]
+    pub formats: String,
 }
 
 #[expect(clippy::enum_variant_names)]

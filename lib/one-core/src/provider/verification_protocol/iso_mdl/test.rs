@@ -170,6 +170,7 @@ async fn test_presentation_reject_ok() {
                 name: "".to_string(),
                 expire_duration: 0,
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec!["MDOC".into()],
                     claim_schemas: Default::default(),
                     credential_schema: CredentialSchema {
                         expiration: None,

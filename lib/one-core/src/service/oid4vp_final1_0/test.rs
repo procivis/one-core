@@ -157,6 +157,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
                 schema: Some(
                     ProofSchema {
                         input_schemas: vec![ProofInputSchema {
+                            formats: vec!["JWT".into()],
                             claim_schemas: vec![
                                 ProofInputClaimSchema {
                                     schema: ClaimSchema {
@@ -318,6 +319,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
                 schema: Some(
                     ProofSchema {
                         input_schemas: vec![ProofInputSchema {
+                            formats: vec!["JWT".into()],
                             claim_schemas: vec![
                                 ProofInputClaimSchema {
                                     schema: ClaimSchema {

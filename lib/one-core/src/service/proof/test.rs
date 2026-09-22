@@ -255,6 +255,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
 
     let credential_schema_id = Uuid::new_v4().into();
     ProofInputSchema {
+        formats: vec!["JWT".into()],
         claim_schemas: Default::default(),
         credential_schema: CredentialSchema {
             expiration: None,
@@ -319,6 +320,7 @@ async fn test_get_proof_exists() {
                 expire_duration: 0,
                 organisation: dummy_organisation(None).into(),
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec!["JWT".into()],
                     claim_schemas: vec![ProofInputClaimSchema {
                         schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
@@ -1378,6 +1380,7 @@ async fn test_get_proof_with_array() {
                 expire_duration: 0,
                 organisation: organisation.clone().into(),
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec!["JWT".into()],
                     claim_schemas: vec![ProofInputClaimSchema {
                         schema: claim_schema.clone(),
                         required: true,
@@ -1644,6 +1647,7 @@ async fn test_get_proof_with_array_in_object() {
                 expire_duration: 0,
                 organisation: organisation.clone().into(),
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec!["JWT".into()],
                     claim_schemas: vec![ProofInputClaimSchema {
                         schema: claim_schemas[0].clone(),
                         required: true,
@@ -1926,6 +1930,7 @@ async fn test_get_proof_with_object_array() {
                 expire_duration: 0,
                 organisation: organisation.clone().into(),
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec!["JWT".into()],
                     claim_schemas: vec![ProofInputClaimSchema {
                         schema: claim_schemas[0].clone(),
                         required: true,

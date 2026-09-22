@@ -12,7 +12,10 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
+    Set,
+};
 use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId,
     CredentialSchemaId, DidId, DidMethodId, DidValue, EntityId, HistoryId, IdentifierId,
@@ -382,7 +385,19 @@ pub async fn insert_proof_schema_with_claims_to_database(
     .await?;
 
     for (i, input) in proof_inputs.iter().enumerate() {
+        let formats = credential_schema_format::Entity::find()
+            .filter(
+                credential_schema_format::Column::CredentialSchemaId.eq(input.credential_schema_id),
+            )
+            .order_by_asc(credential_schema_format::Column::Format)
+            .all(database)
+            .await?
+            .into_iter()
+            .map(|format| format.format.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
         let input_id = proof_input_schema::ActiveModel {
+            formats: Set(formats),
             id: NotSet,
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),

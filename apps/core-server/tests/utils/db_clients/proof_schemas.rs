@@ -72,6 +72,15 @@ impl ProofSchemasDB {
                 .collect();
 
             input_schemas.push(ProofInputSchema {
+                formats: proof_input_schema
+                    .credential_schema
+                    .formats
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .iter()
+                    .map(|f| f.format.clone())
+                    .collect(),
                 claim_schemas: claim_schemas.into(),
                 credential_schema: proof_input_schema.credential_schema.to_owned().into(),
             });

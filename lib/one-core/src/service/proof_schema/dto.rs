@@ -71,6 +71,7 @@ pub struct GetProofSchemaResponseDTO {
 
 #[derive(Clone, Debug)]
 pub struct ProofInputSchemaResponseDTO {
+    pub formats: Vec<CredentialFormat>,
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
 }
@@ -104,6 +105,7 @@ pub struct CreateProofSchemaRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct ProofInputSchemaRequestDTO {
+    pub formats: Option<Vec<CredentialFormat>>,
     pub credential_schema_id: CredentialSchemaId,
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
 }
@@ -138,6 +140,7 @@ pub struct ImportProofSchemaDTO {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaInputSchemaDTO {
+    pub formats: Option<Vec<CredentialFormat>>,
     #[serde(default)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaDTO,

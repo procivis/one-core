@@ -57,10 +57,16 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProofInputSchemaRequestRestDTO {
+    /// Formatter provider names selected for this input. If omitted, all
+    /// formats of the credential schema are selected.
+    #[into(with_fn = convert_inner_of_inner)]
+    #[modify_schema(field = format)]
+    #[schema(min_items = 1, nullable = false)]
+    pub formats: Option<Vec<String>>,
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
     pub credential_schema_id: Uuid,
@@ -126,10 +132,16 @@ pub(crate) struct ImportProofSchemaRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto, ModifySchema)]
 #[try_into(T=ImportProofSchemaInputSchemaDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
+    /// Formatter provider names selected for this input. Defaulting
+    /// to all formats of the resolved credential schema if omitted.
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    #[modify_schema(field = format)]
+    #[schema(min_items = 1, nullable = false)]
+    pub formats: Option<Vec<String>>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub credential_schema: ImportProofSchemaCredentialSchemaRestDTO,
@@ -352,6 +364,10 @@ pub(crate) struct ProofClaimSchemaResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputSchemaResponseDTO)]
 pub(crate) struct ProofInputSchemaResponseRestDTO {
+    /// Formatter provider names saved for this proof input.
+    #[from(with_fn = convert_inner)]
+    #[schema(min_items = 1, example = json!(["SD_JWT_VC"]))]
+    pub formats: Vec<String>,
     /// Defines the set of attributes being requested when making proof requests using this schema.
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
@@ -367,6 +383,7 @@ pub(crate) struct ProofSchemaShareResponseRestDTO {
 
 #[cfg(test)]
 mod test {
+    use similar_asserts::assert_eq;
 
     use super::*;
     use crate::endpoint::credential_schema::dto::{
@@ -386,6 +403,7 @@ mod test {
             organisation_id: Uuid::new_v4().into(),
             ecosystem: Some("EUDI".into()),
             proof_input_schemas: vec![ProofInputSchemaResponseRestDTO {
+                formats: vec!["format".into()],
                 claim_schemas: vec![ProofClaimSchemaResponseRestDTO {
                     id: Uuid::new_v4(),
                     requested: true,
@@ -434,6 +452,23 @@ mod test {
 
         let serialized = serde_json::to_value(shared).unwrap();
 
-        serde_json::from_value::<ImportProofSchemaRestDTO>(serialized).unwrap();
+        let imported =
+            serde_json::from_value::<ImportProofSchemaRestDTO>(serialized.clone()).unwrap();
+        assert_eq!(
+            imported.proof_input_schemas[0].formats,
+            Some(vec!["format".into()])
+        );
+        let imported: ImportProofSchemaDTO = imported.try_into().unwrap();
+        assert_eq!(
+            imported.proof_input_schemas[0].formats,
+            Some(vec!["format".into()])
+        );
+        let mut legacy = serialized;
+        legacy["proofInputSchemas"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("formats");
+        let imported = serde_json::from_value::<ImportProofSchemaDTO>(legacy).unwrap();
+        assert_eq!(imported.proof_input_schemas[0].formats, None);
     }
 }

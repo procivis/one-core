@@ -1119,6 +1119,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Key Attestation does not satisfy the required key storage status period")]
     BR_0507,
+    #[strum(message = "Proof input schema must specify at least one format")]
+    BR_0508,
+    #[strum(message = "Proof input schema contains duplicate formats")]
+    BR_0509,
+    #[strum(message = "Proof input format is not part of the referenced credential schema")]
+    BR_0510,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

@@ -90,8 +90,14 @@ async fn test_db_schema_proof_input_schema() {
         "order",
         "credential_schema",
         "proof_schema",
+        "formats",
     ]);
     let id_column = proof_input_schema.column("id");
+    proof_input_schema
+        .column("formats")
+        .r#type(ColumnType::Text)
+        .nullable(false)
+        .default(None);
     id_column
         .r#type(ColumnType::BigInt)
         .nullable(false)

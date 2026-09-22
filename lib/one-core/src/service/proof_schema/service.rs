@@ -176,7 +176,8 @@ impl ProofSchemaService {
             credential_schemas,
             organisation.clone(),
             self.base_url.as_deref(),
-        )?;
+        )
+        .await?;
 
         let success_log = format!(
             "Created proof schema `{}` ({})",

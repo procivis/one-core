@@ -2,12 +2,14 @@ use std::collections::HashSet;
 
 use super::dto::{CreateProofSchemaRequestDTO, ProofInputSchemaRequestDTO};
 use super::error::ProofSchemaServiceError;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::validator::proof_schema::validate_proof_input_formats;
 
 pub async fn throw_if_invalid_credential_combination(
     schemas: &[CredentialSchema],
@@ -43,6 +45,9 @@ pub fn validate_create_request(
     let mut uniq = HashSet::new();
 
     for proof_input in &request.proof_input_schemas {
+        if let Some(formats) = &proof_input.formats {
+            validate_proof_input_formats(formats).error_while("validating proof input formats")?;
+        }
         if proof_input.claim_schemas.is_empty() {
             return Err(ProofSchemaServiceError::MissingClaims);
         }

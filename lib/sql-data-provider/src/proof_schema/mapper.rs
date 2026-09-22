@@ -10,6 +10,7 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
+use one_core::validator::proof_schema::validate_proof_input_formats;
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
 use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, Set};
@@ -145,7 +146,14 @@ impl AsyncVecLoader<ProofInputSchema> for ProofInputSchemasLoader {
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
         for input_schema in input_schemas {
+            let formats = input_schema
+                .formats
+                .split(',')
+                .map(Into::into)
+                .collect::<Vec<_>>();
+            validate_proof_input_formats(&formats).map_err(|_| DataLayerError::MappingError)?;
             inputs.push(ProofInputSchema {
+                formats,
                 claim_schemas: RelatedVec::new(ProofInputClaimSchemasLoader {
                     db: self.db.clone(),
                     proof_input_schema_id: input_schema.id,

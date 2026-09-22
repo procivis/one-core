@@ -1,4 +1,5 @@
 use super::Error;
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -6,17 +7,22 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ImportProofSchemaInputSchemaDTO,
 };
+use crate::validator::proof_schema::resolve_proof_input_formats;
 
 pub(super) async fn proof_input_from_import_request(
     input_schema: ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
 ) -> Result<ProofInputSchema, Error> {
+    let formats = resolve_proof_input_formats(input_schema.formats, &credential_schema)
+        .await
+        .error_while("resolving imported proof input formats")?;
     let proof_input_claim_schemas = {
         let credential_schema_claims = credential_schema.claim_schemas.as_ref().await?;
         extract_proof_input_claim_schemas(input_schema.claim_schemas, &credential_schema_claims)?
     };
 
     Ok(ProofInputSchema {
+        formats,
         claim_schemas: proof_input_claim_schemas.into(),
         credential_schema: credential_schema.into(),
     })

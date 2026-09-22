@@ -197,6 +197,7 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
                 imported_source_url: None,
                 organisation: dummy_organisation(None).into(),
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec![format.clone()],
                     claim_schemas: vec![ProofInputClaimSchema {
                         schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
@@ -325,6 +326,7 @@ fn test_holder_proof(
                 imported_source_url: None,
                 organisation: dummy_organisation(None).into(),
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec![format.clone()],
                     claim_schemas: Default::default(),
                     credential_schema: test_credential_schema(format).into(),
                 }]

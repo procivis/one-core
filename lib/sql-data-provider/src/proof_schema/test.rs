@@ -173,6 +173,7 @@ async fn test_create_proof_schema_already_exists() {
             expire_duration: 0,
             organisation: dummy_organisation(Some(organisation_id)).into(),
             input_schemas: vec![ProofInputSchema {
+                formats: vec!["JWT".into()],
                 claim_schemas: vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
@@ -296,6 +297,7 @@ async fn test_create_proof_schema_success() {
             expire_duration: 0,
             organisation: dummy_organisation(Some(organisation_id)).into(),
             input_schemas: vec![ProofInputSchema {
+                formats: vec!["JWT".into()],
                 claim_schemas: vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
                         id: new_claim_schemas[0].id,
@@ -1155,6 +1157,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     .id;
 
     crate::entity::proof_input_schema::ActiveModel {
+        formats: Set("JWT".into()),
         id: Set(1),
         created_date: Set(date_now),
         last_modified: Set(date_now),
@@ -1183,6 +1186,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     .id;
 
     crate::entity::proof_input_schema::ActiveModel {
+        formats: Set("MDOC".into()),
         id: Set(2),
         created_date: Set(date_now),
         last_modified: Set(date_now),
@@ -1211,6 +1215,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     .id;
 
     crate::entity::proof_input_schema::ActiveModel {
+        formats: Set("MDOC".into()),
         id: Set(3),
         created_date: Set(date_now),
         last_modified: Set(date_now),
@@ -1223,6 +1228,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     .unwrap();
 
     crate::entity::proof_input_schema::ActiveModel {
+        formats: Set("JWT".into()),
         id: Set(4),
         created_date: Set(date_now),
         last_modified: Set(date_now),

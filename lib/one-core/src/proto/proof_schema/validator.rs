@@ -10,6 +10,7 @@ use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO, ProofSchemaFilterValue,
 };
+use crate::validator::proof_schema::validate_proof_input_formats;
 
 pub(crate) async fn proof_schema_name_already_exists(
     repository: &dyn ProofSchemaRepository,
@@ -31,6 +32,9 @@ pub(super) fn validate_imported_proof_schema(
     config: &CoreConfig,
 ) -> Result<(), Error> {
     for schema in &schema.proof_input_schemas {
+        if let Some(formats) = &schema.formats {
+            validate_proof_input_formats(formats).error_while("validating proof input formats")?;
+        }
         let format = &schema.credential_schema.format;
         config
             .format

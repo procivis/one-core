@@ -453,6 +453,7 @@ async fn test_create_proof_schema_success() {
         expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            formats: None,
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
                 required: true,
@@ -625,6 +626,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         organisation_id,
         proof_input_schemas: vec![
             ProofInputSchemaRequestDTO {
+                formats: None,
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: claim_schema_software_id,
                     required: true,
@@ -632,6 +634,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 credential_schema_id: credential_schema_software_id,
             },
             ProofInputSchemaRequestDTO {
+                formats: None,
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: claim_schema_hardware_id,
                     required: true,
@@ -747,6 +750,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            formats: None,
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
                 required: true,
@@ -910,6 +914,7 @@ async fn test_create_proof_schema_array_object_fail() {
         expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            formats: None,
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_id,
                 required: true,
@@ -1078,6 +1083,7 @@ async fn test_create_proof_schema_array_success() {
         expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            formats: None,
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_id,
                 required: true,
@@ -1134,6 +1140,7 @@ async fn test_create_proof_schema_unique_name_error() {
         expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            formats: None,
             credential_schema_id: Uuid::new_v4().into(),
 
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -1269,6 +1276,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
             expire_duration: Some(0),
             organisation_id,
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+                formats: None,
                 credential_schema_id,
 
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -1296,6 +1304,7 @@ async fn test_create_proof_schema_no_claims() {
             expire_duration: Some(0),
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+                formats: None,
                 credential_schema_id: Uuid::new_v4().into(),
 
                 claim_schemas: vec![],
@@ -1319,6 +1328,7 @@ async fn test_create_proof_schema_no_required_claims() {
             expire_duration: Some(0),
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+                formats: None,
                 credential_schema_id: Uuid::new_v4().into(),
 
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -1349,6 +1359,7 @@ async fn test_create_proof_schema_duplicit_claims() {
             expire_duration: Some(0),
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+                formats: None,
                 credential_schema_id: Uuid::new_v4().into(),
 
                 claim_schemas: vec![claim_schema.clone(), claim_schema],
@@ -1417,6 +1428,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: true,
@@ -1619,6 +1631,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: true,
@@ -1828,6 +1841,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: true,
@@ -2064,6 +2078,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: false,
@@ -2260,6 +2275,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: false,
@@ -2394,6 +2410,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: true,
@@ -2475,6 +2492,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: true,
@@ -2539,6 +2557,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         organisation_id,
         expire_duration: 1000,
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 requested: true,
@@ -2627,6 +2646,7 @@ async fn test_get_proof_schema_success_nested_claims() {
 
     let mut proof_schema = generic_proof_schema();
     proof_schema.input_schemas = vec![ProofInputSchema {
+        formats: vec!["JWT".into()],
         claim_schemas: vec![ProofInputClaimSchema {
             schema: location_x_claim_schema.to_owned(),
             required: true,
@@ -2701,6 +2721,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
 
     let mut proof_schema = generic_proof_schema();
     proof_schema.input_schemas = vec![ProofInputSchema {
+        formats: vec!["JWT".into()],
         claim_schemas: vec![ProofInputClaimSchema {
             schema: location_cs.to_owned(),
             required: true,
@@ -2776,6 +2797,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
 
     let mut proof_schema = generic_proof_schema();
     proof_schema.input_schemas = vec![ProofInputSchema {
+        formats: vec!["JWT".into()],
         claim_schemas: vec![
             ProofInputClaimSchema {
                 schema: bar_cs.to_owned(),
@@ -3128,6 +3150,7 @@ async fn test_create_proof_schema_verify_nested_generic(
         expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            formats: None,
             claim_schemas: claim_schemas
                 .into_iter()
                 .map(|schema| CreateProofSchemaClaimRequestDTO {

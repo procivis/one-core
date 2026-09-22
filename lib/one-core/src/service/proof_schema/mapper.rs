@@ -25,6 +25,7 @@ use crate::model::proof_schema::{
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::service::credential_schema::mapper::to_credential_schema_list_response;
+use crate::validator::proof_schema::resolve_proof_input_formats;
 
 pub(super) async fn convert_proof_schema_to_response(
     value: ProofSchema,
@@ -76,6 +77,7 @@ async fn convert_input_schema_to_response(
     };
 
     Ok(ProofInputSchemaResponseDTO {
+        formats: value.formats.clone(),
         claim_schemas,
         credential_schema: to_credential_schema_list_response(
             credential_schema,
@@ -221,7 +223,7 @@ impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {
     }
 }
 
-pub fn proof_schema_from_create_request(
+pub async fn proof_schema_from_create_request(
     request: CreateProofSchemaRequestDTO,
     now: OffsetDateTime,
     claim_schemas: Vec<ClaimSchema>,
@@ -251,29 +253,29 @@ pub fn proof_schema_from_create_request(
         }
     }
 
-    let input_schemas = request
-        .proof_input_schemas
-        .into_iter()
-        .map(|proof_input_schema| {
-            let credential_schema_id = proof_input_schema.credential_schema_id;
-            let credential_schema = credential_schemas
-                .iter()
-                .find(|c| c.id == credential_schema_id)
+    let mut input_schemas = Vec::with_capacity(request.proof_input_schemas.len());
+    for proof_input_schema in request.proof_input_schemas {
+        let credential_schema_id = proof_input_schema.credential_schema_id;
+        let credential_schema = credential_schemas
+            .iter()
+            .find(|c| c.id == credential_schema_id)
+            .cloned()
+            .ok_or(ProofSchemaServiceError::MissingCredentialSchema)?;
+
+        let proof_input_schema = ProofInputSchema {
+            formats: resolve_proof_input_formats(proof_input_schema.formats, &credential_schema)
+                .await
+                .error_while("resolving proof input formats")?,
+            claim_schemas: proof_schema_claims
+                .get(&credential_schema_id)
                 .cloned()
-                .ok_or(ProofSchemaServiceError::MissingCredentialSchema)?;
+                .unwrap_or_default()
+                .into(),
+            credential_schema: credential_schema.into(),
+        };
 
-            let proof_input_schema = ProofInputSchema {
-                claim_schemas: proof_schema_claims
-                    .get(&credential_schema_id)
-                    .cloned()
-                    .unwrap_or_default()
-                    .into(),
-                credential_schema: credential_schema.into(),
-            };
-
-            Ok::<_, ProofSchemaServiceError>(proof_input_schema)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+        input_schemas.push(proof_input_schema);
+    }
     let id = Uuid::new_v4().into();
     Ok(ProofSchema {
         id,

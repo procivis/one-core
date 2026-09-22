@@ -392,6 +392,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         schema: Some(
             ProofSchema {
                 input_schemas: vec![ProofInputSchema {
+                    formats: vec!["JWT".into()],
                     claim_schemas: vec![
                         ProofInputClaimSchema {
                             schema: claim_schema_required,
