@@ -377,6 +377,7 @@ pub(crate) struct NoncePayload {
 pub struct WalletInstanceAttestationClaims {
     pub wallet_name: Option<String>,
     pub wallet_link: Option<String>,
+    pub wallet_version: Option<String>,
     pub wallet_solution_certification_information: Option<serde_json::Value>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
     pub client_status: Option<AttestationStatus>,

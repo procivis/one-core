@@ -240,6 +240,7 @@ impl ProcivisWalletProvider {
                     }),
                     custom: WalletInstanceAttestationClaims {
                         wallet_name: Some(self.params.wallet_name.clone()),
+                        wallet_version: managed_instance.version.to_owned(),
                         wallet_link: Some(self.params.wallet_link.clone()),
                         wallet_solution_certification_information: Some(
                             self.params.wallet_certification.to_owned(),
