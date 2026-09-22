@@ -35,6 +35,7 @@ pub struct TestWalletInstance {
     pub verifier_csr: Option<String>,
     pub os: Option<ManagedInstanceOs>,
     pub verifier_signature_ids: Option<Vec<RevocationListEntryId>>,
+    pub version: Option<String>,
 }
 
 impl ManagedInstancesDB {
@@ -79,6 +80,7 @@ impl ManagedInstancesDB {
             verifier_signature_ids: test_wallet_instance.verifier_signature_ids,
             organisation: organisation.into(),
             attestations: test_wallet_instance.attestations.unwrap_or_default().into(),
+            version: test_wallet_instance.version,
         };
 
         self.repository

@@ -113,6 +113,10 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
                 .verifier_signature_ids
                 .map(|ids| Set(Some(ids.into())))
                 .unwrap_or_default(),
+            version: request
+                .version
+                .map(|version| Set(Some(version)))
+                .unwrap_or_default(),
             ..Default::default()
         };
 

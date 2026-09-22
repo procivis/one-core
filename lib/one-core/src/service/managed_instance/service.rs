@@ -15,7 +15,7 @@ use super::dto::{
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
     ManagedInstanceFilterParamsDTO, NoncePayload, ProviderRegistrationParams,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, UserAuthenticationParams,
-    WalletProviderMetadataResponseDTO, WalletUnitActivationRequestDTO,
+    ValidatedAttestation, WalletProviderMetadataResponseDTO, WalletUnitActivationRequestDTO,
     WalletUnitActivationResponseDTO,
 };
 use super::error::ManagedInstanceError;
@@ -446,7 +446,7 @@ impl ManagedInstanceService {
 
         let integrity_check_enabled = reg_params.integrity_check.enabled && !is_web;
 
-        let authentication_key_jwk = if integrity_check_enabled {
+        let (authentication_key_jwk, version) = if integrity_check_enabled {
             let wallet_unit_nonce = wallet_unit
                 .nonce
                 .as_deref()
@@ -484,7 +484,7 @@ impl ManagedInstanceService {
                     &reg_params.integrity_check,
                 )
                 .await;
-            let attested_public_key = match attestation_result {
+            let attestation = match attestation_result {
                 Ok(key) => key,
                 Err(err) => {
                     self.set_instance_to_error(
@@ -509,7 +509,7 @@ impl ManagedInstanceService {
             .error_while("parsing attestation key proof token")?;
             self.verify_attestation_proof(
                 &attestation_key_proof,
-                &attested_public_key,
+                &attestation.attested_key,
                 wallet_unit.os,
                 true,
                 reg_params.device_auth_leeway,
@@ -549,12 +549,13 @@ impl ManagedInstanceService {
                 .await?;
                 device_signing_key
             } else {
-                attested_public_key
+                attestation
+                    .attested_key
                     .public_key_as_jwk()
                     .error_while("creating JWK")?
             };
 
-            Some(jwk)
+            (Some(jwk), attestation.app_version)
         } else if let Some(proof_str) = &request.attestation_key_proof {
             // No integrity check: self-certify by verifying the JWT is signed by the key embedded
             // in its own header. No server-provided nonce is available in this path (none was
@@ -581,9 +582,9 @@ impl ManagedInstanceService {
                 None,
             )
             .await?;
-            Some(jwk)
+            (Some(jwk), None)
         } else {
-            None
+            (None, None)
         };
 
         let provisioned_access_certificate = if let Some(verifier_access_certificate_csr) =
@@ -634,6 +635,7 @@ impl ManagedInstanceService {
                     user_sub,
                     verifier_csr: Some(None),
                     verifier_signature_ids,
+                    version,
                 },
             )
             .await
@@ -653,7 +655,7 @@ impl ManagedInstanceService {
         os: ManagedInstanceOs,
         wallet_unit_nonce: &str,
         integrity_check: &IntegrityCheck,
-    ) -> Result<KeyHandle, ManagedInstanceError> {
+    ) -> Result<ValidatedAttestation, ManagedInstanceError> {
         match os {
             ManagedInstanceOs::Ios => {
                 let attestation = attestation.first().ok_or(

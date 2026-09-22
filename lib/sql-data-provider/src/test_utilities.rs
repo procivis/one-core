@@ -836,6 +836,7 @@ pub async fn insert_wallet_instance_to_database(
         role: Set(instance::InstanceRole::Wallet),
         verifier_csr: Set(None),
         verifier_signature_ids: Set(None),
+        version: Set(None),
     }
     .insert(db)
     .await

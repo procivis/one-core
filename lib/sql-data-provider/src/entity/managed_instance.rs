@@ -28,6 +28,7 @@ pub struct Model {
     pub verifier_csr: Option<String>,
     #[sea_orm(column_type = "Json")]
     pub verifier_signature_ids: Option<VerifierSignatures>,
+    pub version: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]

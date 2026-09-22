@@ -25,6 +25,7 @@ pub struct ManagedInstance {
     pub status: InstanceStatus,
     pub role: InstanceRole,
     pub provider: String,
+    pub version: Option<String>,
     pub authentication_key_jwk: Option<PublicJwk>,
     pub last_issuance: Option<OffsetDateTime>,
     pub nonce: Option<String>,
@@ -88,4 +89,5 @@ pub struct UpdateManagedInstanceRequest {
     pub user_sub: Option<String>,
     pub verifier_csr: Option<Option<String>>,
     pub verifier_signature_ids: Option<Vec<RevocationListEntryId>>,
+    pub version: Option<String>,
 }

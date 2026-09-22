@@ -23,6 +23,7 @@ async fn test_db_schema_managed_instance() {
             "role",
             "verifier_csr",
             "verifier_signature_ids",
+            "version",
         ])
         .index(
             "index-ManagedInstance-AuthenticationKey-Organisation-Role-Unique",
@@ -103,6 +104,10 @@ async fn test_db_schema_managed_instance() {
     managed_instance
         .column("verifier_signature_ids")
         .r#type(ColumnType::JsonBinary)
+        .nullable(true);
+    managed_instance
+        .column("version")
+        .r#type(ColumnType::String(None))
         .nullable(true);
 }
 

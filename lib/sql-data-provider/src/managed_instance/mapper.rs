@@ -54,6 +54,7 @@ pub(super) fn managed_instance_from_model(
             id: value.id,
             managed_instance_repository: managed_instance_repository.clone(),
         }),
+        version: value.version,
     })
 }
 
@@ -95,6 +96,7 @@ impl TryFrom<ManagedInstance> for managed_instance::ActiveModel {
             role: Set(wallet_unit.role.into()),
             verifier_csr: Set(wallet_unit.verifier_csr),
             verifier_signature_ids: Set(convert_inner(wallet_unit.verifier_signature_ids)),
+            version: Set(wallet_unit.version),
         })
     }
 }

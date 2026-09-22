@@ -8,8 +8,7 @@ use crate::mapper::x509::x5c_into_pem_chain;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CrlMode, ParsedCertificate,
 };
-use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::managed_instance::dto::AndroidBundle;
+use crate::service::managed_instance::dto::{AndroidBundle, ValidatedAttestation};
 use crate::service::managed_instance::error::ManagedInstanceError::{
     self, AppIntegrityValidationError,
 };
@@ -22,7 +21,7 @@ pub(crate) async fn validate_attestation_android(
     server_nonce: &str,
     bundle: &AndroidBundle,
     certificate_validator: &dyn CertificateValidator,
-) -> Result<KeyHandle, ManagedInstanceError> {
+) -> Result<ValidatedAttestation, ManagedInstanceError> {
     let attestation_pem_chain = x5c_into_pem_chain(attestation).error_while("parsing x5c")?;
 
     let cert = check_ca_certs(
@@ -48,6 +47,7 @@ pub(crate) async fn validate_attestation_android(
         package_name,
         signature_digests,
         keymaster_security_level,
+        package_version,
     } = parse_attestation_extension(&extension_data).map_err(|err| {
         AppIntegrityValidationError(format!("Failed to decode extension value: {err}"))
     })?;
@@ -68,12 +68,16 @@ pub(crate) async fn validate_attestation_android(
             bundle.bundle_id
         )));
     }
-    Ok(cert.public_key)
+    Ok(ValidatedAttestation {
+        attested_key: cert.public_key,
+        app_version: Some(package_version.to_string()),
+    })
 }
 
 struct ParsedAttestationExtension {
     pub attestation_challenge: String,
     pub package_name: String,
+    pub package_version: i64,
     pub signature_digests: Vec<String>,
     pub keymaster_security_level: SecurityLevel,
 }
@@ -138,7 +142,7 @@ fn parse_attestation_extension(
     if package_info.len() != 2 {
         return Err(BerError::InvalidLength);
     }
-    // finally pull out name
+    // finally pull out name and version
     let package_name = (*String::from_utf8_lossy(
         package_info
             .first()
@@ -146,6 +150,10 @@ fn parse_attestation_extension(
             .as_slice()?,
     ))
     .to_owned();
+    let package_version = package_info
+        .get(1)
+        .ok_or(BerError::InvalidLength)?
+        .as_i64()?;
 
     // pull out signature digests
     let signature_digests = appid_seq
@@ -162,6 +170,7 @@ fn parse_attestation_extension(
     Ok(ParsedAttestationExtension {
         attestation_challenge,
         package_name,
+        package_version,
         signature_digests,
         keymaster_security_level,
     })
@@ -239,6 +248,7 @@ mod test {
     use std::sync::Arc;
 
     use maplit::hashmap;
+    use similar_asserts::assert_eq;
     use time::Duration;
     use time::macros::datetime;
 
@@ -325,28 +335,40 @@ w1IdYIg2Wxg7yHcQZemFQg==
             android_key_attestation_crl_cache,
         );
 
-        // a date the test vector happens to be valid at
-        run_with_mocked_time_async(datetime!(2024-10-01 0:00 UTC), async move {
-            validate_attestation_android(
-                &ATTESTATION_CHAIN
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>(),
-                "INdGT5ahPwBSIASvphcj5UiS4f3N8W4BBqLOiBPCksXW",
-                &AndroidBundle {
-                    bundle_id: "com.exampleapp".to_string(),
-                    signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+        let validated_attestation = run_with_mocked_time_async(
+            // a date the test vector happens to be valid at
+            datetime!(2024-10-01 0:00 UTC),
+            async move {
+                validate_attestation_android(
+                    &ATTESTATION_CHAIN
                         .iter()
                         .map(ToString::to_string)
-                        .collect(),
-                    trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
-                },
-                &certificate_validator,
-            )
-            .await
-            .expect("Failed to validate attestation");
-        })
+                        .collect::<Vec<_>>(),
+                    "INdGT5ahPwBSIASvphcj5UiS4f3N8W4BBqLOiBPCksXW",
+                    &AndroidBundle {
+                        bundle_id: "com.exampleapp".to_string(),
+                        signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect(),
+                        trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
+                    },
+                    &certificate_validator,
+                )
+                .await
+                .expect("Failed to validate attestation")
+            },
+        )
         .await;
+
+        assert_eq!(
+            validated_attestation
+                .attested_key
+                .public_key_as_multibase()
+                .unwrap(),
+            "zDnaeYwdKBuHHQ6nxvoRW8ajGtvMWzCXs5cPQn1sQ8MXkoNMR"
+        );
+        assert_eq!(validated_attestation.app_version.unwrap(), "1");
     }
 
     #[tokio::test]

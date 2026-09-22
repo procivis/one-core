@@ -1,4 +1,5 @@
 use std::any::type_name;
+use std::io::Cursor;
 
 use ct_codecs::{Base64, Decoder};
 use itertools::Itertools;
@@ -13,8 +14,7 @@ use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::jwt::model::DecomposedJwt;
-use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::managed_instance::dto::IOSBundle;
+use crate::service::managed_instance::dto::{IOSBundle, ValidatedAttestation};
 use crate::service::managed_instance::error::ManagedInstanceError::{
     self, AppIntegrityValidationError,
 };
@@ -41,12 +41,18 @@ struct AttestationStatement {
     receipt: Vec<u8>,
 }
 
+/// <https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server#Verify-the-attestation>
+#[derive(Debug, Deserialize)]
+struct Extensions {
+    apple_bundle_version_01: String,
+}
+
 pub(crate) async fn validate_attestation_ios(
     attestation: &str,
     server_nonce: &str,
     bundle: &IOSBundle,
     certificate_validator: &dyn CertificateValidator,
-) -> Result<KeyHandle, ManagedInstanceError> {
+) -> Result<ValidatedAttestation, ManagedInstanceError> {
     let attestation = decode_cbor_base64::<Attestation>(attestation)?;
 
     if attestation.auth_data.len() < 55 {
@@ -160,7 +166,43 @@ pub(crate) async fn validate_attestation_ios(
         ));
     }
 
-    Ok(attestation_cert.public_key)
+    // following bytes contain COSE_key + optional extensions (CBOR object)
+    let credential_public_key_and_extensions = attestation
+        .auth_data
+        .get((55 + credential_id_len)..)
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract credential public key".to_string(),
+        ))?;
+
+    let extensions = {
+        let mut cursor = Cursor::new(credential_public_key_and_extensions);
+        let _credential_public_key: ciborium::Value =
+            ciborium::from_reader(&mut cursor).map_err(|err| {
+                AppIntegrityValidationError(format!(
+                    "Failed to decode credential public key: {err}"
+                ))
+            })?;
+
+        let bytes_consumed = cursor.position() as usize;
+        credential_public_key_and_extensions
+            .get(bytes_consumed..)
+            .ok_or(AppIntegrityValidationError(
+                "Failed to extract extensions".to_string(),
+            ))?
+    };
+
+    let extensions: Option<Extensions> = if extensions.is_empty() {
+        None
+    } else {
+        Some(ciborium::from_reader(extensions).map_err(|err| {
+            AppIntegrityValidationError(format!("Failed to decode extensions: {err}"))
+        })?)
+    };
+
+    Ok(ValidatedAttestation {
+        attested_key: attestation_cert.public_key,
+        app_version: extensions.map(|ext| ext.apple_bundle_version_01),
+    })
 }
 
 fn validate_nonce(
@@ -277,6 +319,7 @@ mod tests {
     use std::sync::Arc;
 
     use serde_json::json;
+    use similar_asserts::assert_eq;
     use time::Duration;
     use time::macros::datetime;
     use uuid::Uuid;
@@ -319,22 +362,70 @@ oyFraWVIyd/dganmrduC1bmTBGwD
     async fn validate_attestation_success_example_app() {
         let certificate_validator = test_cert_validator();
 
-        // a date the test vector happens to be valid at
-        run_with_mocked_time_async(datetime!(2025-09-09 0:00 UTC), async move {
-            validate_attestation_ios(
-                EXAMPLE_ATTESTATION,
-                "test",
-                &IOSBundle {
-                    bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
-                    trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
-                    enforce_production_build: false,
-                },
-                &certificate_validator,
-            )
-            .await
-            .expect("Failed to validate attestation");
-        })
+        let validated_attestation = run_with_mocked_time_async(
+            // a date the test vector happens to be valid at
+            datetime!(2025-09-09 0:00 UTC),
+            async move {
+                validate_attestation_ios(
+                    EXAMPLE_ATTESTATION,
+                    "test",
+                    &IOSBundle {
+                        bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
+                        trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
+                        enforce_production_build: false,
+                    },
+                    &certificate_validator,
+                )
+                .await
+                .expect("Failed to validate attestation")
+            },
+        )
         .await;
+
+        assert_eq!(validated_attestation.app_version, None);
+        assert_eq!(
+            validated_attestation
+                .attested_key
+                .public_key_as_multibase()
+                .unwrap(),
+            "zDnaeftZjWemQQqM2mJjPBzcSm6v7LmACHbgDixGxSFGJb6GL"
+        );
+    }
+
+    // Attestation produced by Pavel's phone
+    const EXAMPLE_ATTESTATION_IOS_27: &str = "o2NmbXRvYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bXSiY3g1Y4JZBBwwggQYMIIDnqADAgECAgYBoMQEEKswCgYIKoZIzj0EAwIwTzEjMCEGA1UEAwwaQXBwbGUgQXBwIEF0dGVzdGF0aW9uIENBIDExEzARBgNVBAoMCkFwcGxlIEluYy4xEzARBgNVBAgMCkNhbGlmb3JuaWEwHhcNMjYwOTIwMTI0OTU1WhcNMjYwOTIzMTI0OTU1WjCBkTFJMEcGA1UEAwxAYzhkN2E0ZTI3OGNmMTJjMzNjZTUxNTgzYWFiNTEwMjFjOTc1MjFiNmM0Nzk4MDFmZDYzM2ZhNmZmNGY0NTFhNzEaMBgGA1UECwwRQUFBIENlcnRpZmljYXRpb24xEzARBgNVBAoMCkFwcGxlIEluYy4xEzARBgNVBAgMCkNhbGlmb3JuaWEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQtYh6s+yQUiVLIaCKdSRqxNTLUTOilGf7Ej3Lpouh7hTTwYvN0Vh2hz0/5tN+svIL353AKMZccdsX5/KfqQs9ko4ICITCCAh0wDAYDVR0TAQH/BAIwADAOBgNVHQ8BAf8EBAMCBPAwFAYDVR0lBA0wCwYJKoZIhvdjZAQYMIGDBgkqhkiG92NkCAUEdjB0pAMCAQq/iTADAgEAv4kxAwIBAL+JMgMCAQC/iTMDAgEAv4k0JwQlQUdHM1Y2UU40Ry5jaC5wcm9jaXZpcy5vbmUud2FsbGV0LmRldr+JNgMCAQS/iTcDAgEAv4k5AwIBAL+JOgMCAQC/iTsDAgEAqgMCAQAwgdEGCSqGSIb3Y2QIBwSBwzCBwL+KeAYEBDI3LjC/iFADAgECv4p5CQQHMS4wLjIzM7+KewgEBjI0QTQzN7+KfAYEBDI3LjC/in0GBAQyNy4wv4p+AwIBAL+KfwMCAQC/iwADAgEAv4sBAwIBAL+LAgMCAQC/iwMDAgEAv4sEAwIBAb+LBQMCAQC/iwoQBA4yNC4xLjQzNy4wLjAsML+LCxAEDjI0LjEuNDM3LjAuMCwwv4sMEAQOMjQuMS40MzcuMC4wLDC/iAIKBAhpcGhvbmVvczAzBgkqhkiG92NkCAIEJjAkoSIEIElV3VYP5r/AUUlYjfW4R2RIXVgvgCkK8k9BxM66uAo2MFgGCSqGSIb3Y2QIBgRLMEmjRwRFMEMMAjExMD0wCgwDb2tkoQMBAf8wCQwCb2GhAwEB/zALDARvc2duoQMBAf8wCwwEb2RlbKEDAQH/MAoMA29ja6EDAQH/MAoGCCqGSM49BAMCA2gAMGUCMQDMG8HJRQ7E+WUArjQ3CSRZZmhv65mgXoGcNt2WlAr0OA7nDcwH3SBxzNEW4RPM0UgCMGV4lomdQnrUKaup/EZjCgZIjWZ2Q+gFXh+oua9eoOONNqal2jTzGKDIPOj1TTtnylkCRzCCAkMwggHIoAMCAQICEAm6xeG8QBrZ1FOVvDgaCFQwCgYIKoZIzj0EAwMwUjEmMCQGA1UEAwwdQXBwbGUgQXBwIEF0dGVzdGF0aW9uIFJvb3QgQ0ExEzARBgNVBAoMCkFwcGxlIEluYy4xEzARBgNVBAgMCkNhbGlmb3JuaWEwHhcNMjAwMzE4MTgzOTU1WhcNMzAwMzEzMDAwMDAwWjBPMSMwIQYDVQQDDBpBcHBsZSBBcHAgQXR0ZXN0YXRpb24gQ0EgMTETMBEGA1UECgwKQXBwbGUgSW5jLjETMBEGA1UECAwKQ2FsaWZvcm5pYTB2MBAGByqGSM49AgEGBSuBBAAiA2IABK5bN6B3TXmyNY9A59HyJibxwl/vF4At6rOCalmHT/jSrRUleJqiZgQZEki2PLlnBp6Y02O9XjcPv6COMp6Ac6mF53Ruo1mi9m8p2zKvRV4hFljVZ6+eJn6yYU3CGmbOmaNmMGQwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBSskRBTM72+aEH/pwyp5frq5eWKoTAdBgNVHQ4EFgQUPuNdHAQZqcm0MfiEdNbh4Vdy45swDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2kAMGYCMQC7voiNc40FAs+8/WZtCVdQNbzWhyw/hDBJJint0fkU6HmZHJrota7406hUM/e2DQYCMQCrOO3QzIHtAKRSw7pE+ZNjZVP+zCl/LrTfn16+WkrKtplcS4IN+QQ4b3gHu1iUObdncmVjZWlwdFkPkjCABgkqhkiG9w0BBwKggDCAAgEBMQ8wDQYJYIZIAWUDBAIBBQAwgAYJKoZIhvcNAQcBoIAkgASCA+gxggVKMC0CAQICAQEEJUFHRzNWNlFONEcuY2gucHJvY2l2aXMub25lLndhbGxldC5kZXYwggQmAgEDAgEBBIIEHDCCBBgwggOeoAMCAQICBgGgxAQQqzAKBggqhkjOPQQDAjBPMSMwIQYDVQQDDBpBcHBsZSBBcHAgQXR0ZXN0YXRpb24gQ0EgMTETMBEGA1UECgwKQXBwbGUgSW5jLjETMBEGA1UECAwKQ2FsaWZvcm5pYTAeFw0yNjA5MjAxMjQ5NTVaFw0yNjA5MjMxMjQ5NTVaMIGRMUkwRwYDVQQDDEBjOGQ3YTRlMjc4Y2YxMmMzM2NlNTE1ODNhYWI1MTAyMWM5NzUyMWI2YzQ3OTgwMWZkNjMzZmE2ZmY0ZjQ1MWE3MRowGAYDVQQLDBFBQUEgQ2VydGlmaWNhdGlvbjETMBEGA1UECgwKQXBwbGUgSW5jLjETMBEGA1UECAwKQ2FsaWZvcm5pYTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABC1iHqz7JBSJUshoIp1JGrE1MtRM6KUZ/sSPcumi6HuFNPBi83RWHaHPT/m036y8gvfncAoxlxx2xfn8p+pCz2SjggIhMIICHTAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIE8DAUBgNVHSUEDTALBgkqhkiG92NkBBgwgYMGCSqGSIb3Y2QIBQR2MHSkAwIBCr+JMAMCAQC/iTEDAgEAv4kyAwIBAL+JMwMCAQC/iTQnBCVBR0czVjZRTjRHLmNoLnByb2NpdmlzLm9uZS53YWxsZXQuZGV2v4k2AwIBBL+JNwMCAQC/iTkDAgEAv4k6AwIBAL+JOwMCAQCqAwIBADCB0QYJKoZIhvdjZAgHBIHDMIHAv4p4BgQEMjcuML+IUAMCAQK/inkJBAcxLjAuMjMzv4p7CAQGMjRBNDM3v4p8BgQEMjcuML+KfQYEBDI3LjC/in4DAgEAv4p/AwIBAL+LAAMCAQC/iwEDAgEAv4sCAwIBAL+LAwMCAQC/iwQDAgEBv4sFAwIBAL+LChAEDjI0LjEuNDM3LjAuMCwwv4sLEAQOMjQuMS40MzcuMC4wLDC/iwwQBA4yNC4xLjQzNy4wLjAsML+IAgoECGlwaG9uZW9zMDMGCSqGSIb3Y2QIAgQmMCShIgQgSVXdVg/mv8BRSViN9bhHZEhdWC+AKQryT0HEzrq4CjYwWAYJKoZIhvdjZAgGBEswSaNHBEUwQwwCMTEwPTAKDANva2ShAwEB/zAJDAJvYaEDAQH/MAsMBG9zZ26hAwEB/zALDARvZGVsoQMBAf8wCgwDb2NroQMBAf8wBIIBZgoGCCqGSM49BAMCA2gAMGUCMQDMG8HJRQ7E+WUArjQ3CSRZZmhv65mgXoGcNt2WlAr0OA7nDcwH3SBxzNEW4RPM0UgCMGV4lomdQnrUKaup/EZjCgZIjWZ2Q+gFXh+oua9eoOONNqal2jTzGKDIPOj1TTtnyjAoAgEEAgEBBCAY/s++vXSXPIG1c7rOSWnwbIWW8WZ2ZwznFr0oK12RoTBgAgEFAgEBBFhmN1hjTXlyc3M4bU1ERzB3S0UxNzVySjR4aXM5aGVnb1ArZTVnZDU1NGQ5Z1h1aW9hUFk5MUIzUVIvc2plaEpUQkNZdHhBVTJra0JVV1lvcVg2dnJlUT09MA4CAQYCAQEEBkFUVEVTVDAPAgEHAgEBBAdzYW5kYm94MCACAQwCAQEEGDIwMjYtMDktMjFUMTI6NDk6NTUuODk1WjAgAgEVAgEBBBgyMDI2LTEyLTIwVDEyOjQ5OjU1Ljg5NVoAAAAAAACggDCCA64wggNUoAMCAQICEGYCOIAAFCb3XYsOFSxfbkMwCgYIKoZIzj0EAwIwfDEwMC4GA1UEAwwnQXBwbGUgQXBwbGljYXRpb24gSW50ZWdyYXRpb24gQ0EgNSAtIEcxMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcNMjYwMTIwMjAyMTA5WhcNMjcwMjE4MTg1ODM5WjBaMTYwNAYDVQQDDC1BcHBsaWNhdGlvbiBBdHRlc3RhdGlvbiBGcmF1ZCBSZWNlaXB0IFNpZ25pbmcxEzARBgNVBAoMCkFwcGxlIEluYy4xCzAJBgNVBAYTAlVTMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOxiuzsUZrYpTUbRARLSjA5lXtM29W4Uf4Bpv7eKN77D6sMNqAqQfRG4AbVgOVopngIkH80iAkUOLIM6qTJ3cVqOCAdgwggHUMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAU2Rf+S2eQOEuS9NvO1VeAFAuPPckwQwYIKwYBBQUHAQEENzA1MDMGCCsGAQUFBzABhidodHRwOi8vb2NzcC5hcHBsZS5jb20vb2NzcDAzLWFhaWNhNWcxMDEwggEcBgNVHSAEggETMIIBDzCCAQsGCSqGSIb3Y2QFATCB/TCBwwYIKwYBBQUHAgIwgbYMgbNSZWxpYW5jZSBvbiB0aGlzIGNlcnRpZmljYXRlIGJ5IGFueSBwYXJ0eSBhc3N1bWVzIGFjY2VwdGFuY2Ugb2YgdGhlIHRoZW4gYXBwbGljYWJsZSBzdGFuZGFyZCB0ZXJtcyBhbmQgY29uZGl0aW9ucyBvZiB1c2UsIGNlcnRpZmljYXRlIHBvbGljeSBhbmQgY2VydGlmaWNhdGlvbiBwcmFjdGljZSBzdGF0ZW1lbnRzLjA1BggrBgEFBQcCARYpaHR0cDovL3d3dy5hcHBsZS5jb20vY2VydGlmaWNhdGVhdXRob3JpdHkwHQYDVR0OBBYEFDRViXB0YA4i0rpnz6VbacIj8cooMA4GA1UdDwEB/wQEAwIHgDAPBgkqhkiG92NkDA8EAgUAMAoGCCqGSM49BAMCA0gAMEUCIBxnl7mCRdHW3HIEt5sCPK/4e/Lv+JN91yDEXorkZcLrAiEA/MhZhM7JoSzChqnUknb98NL2Jdx1/Hz4h0Vpe+YeqrQwggL5MIICf6ADAgECAhBW+4PUK/+NwzeZI7Varm69MAoGCCqGSM49BAMDMGcxGzAZBgNVBAMMEkFwcGxlIFJvb3QgQ0EgLSBHMzEmMCQGA1UECwwdQXBwbGUgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkxEzARBgNVBAoMCkFwcGxlIEluYy4xCzAJBgNVBAYTAlVTMB4XDTE5MDMyMjE3NTMzM1oXDTM0MDMyMjAwMDAwMFowfDEwMC4GA1UEAwwnQXBwbGUgQXBwbGljYXRpb24gSW50ZWdyYXRpb24gQ0EgNSAtIEcxMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASSzmO9fYaxqygKOxzhr/sElICRrPYx36bLKDVvREvhIeVX3RKNjbqCfJW+Sfq+M8quzQQZ8S9DJfr0vrPLg366o4H3MIH0MA8GA1UdEwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAUu7DeoVgziJqkipnevr3rr9rLJKswRgYIKwYBBQUHAQEEOjA4MDYGCCsGAQUFBzABhipodHRwOi8vb2NzcC5hcHBsZS5jb20vb2NzcDAzLWFwcGxlcm9vdGNhZzMwNwYDVR0fBDAwLjAsoCqgKIYmaHR0cDovL2NybC5hcHBsZS5jb20vYXBwbGVyb290Y2FnMy5jcmwwHQYDVR0OBBYEFNkX/ktnkDhLkvTbztVXgBQLjz3JMA4GA1UdDwEB/wQEAwIBBjAQBgoqhkiG92NkBgIDBAIFADAKBggqhkjOPQQDAwNoADBlAjEAjW+mn6Hg5OxbTnOKkn89eFOYj/TaH1gew3VK/jioTCqDGhqqDaZkbeG5k+jRVUztAjBnOyy04eg3B3fL1ex2qBo6VTs/NWrIxeaSsOFhvoBJaeRfK6ls4RECqsxh2Ti3c0owggJDMIIByaADAgECAggtxfyI0sVLlTAKBggqhkjOPQQDAzBnMRswGQYDVQQDDBJBcHBsZSBSb290IENBIC0gRzMxJjAkBgNVBAsMHUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzAeFw0xNDA0MzAxODE5MDZaFw0zOTA0MzAxODE5MDZaMGcxGzAZBgNVBAMMEkFwcGxlIFJvb3QgQ0EgLSBHMzEmMCQGA1UECwwdQXBwbGUgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkxEzARBgNVBAoMCkFwcGxlIEluYy4xCzAJBgNVBAYTAlVTMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEmOkvPUBypO2TInKBExzdEJXxxaNOcdwUFtkO5aYFKndke19OONO7HES1f/UftjJiXcnphFtPME8RWgD9WFgMpfUPLE0HRxN12peXl28xXO0rnXsgO9i5VNlemaQ6UQoxo0IwQDAdBgNVHQ4EFgQUu7DeoVgziJqkipnevr3rr9rLJKswDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwMDaAAwZQIxAIPpwcQWXhpdNBjZ7e/0bA4ARku437JGEcUP/eZ6jKGma87CA9Sc9ZPGdLhq36ojFQIwbWaKEMrUDdRPzY1DPrSKY6UzbuNt2he3ZB/IUyb5iGJ0OQsXW8tRqAzoGAPnorIoAAAxgf0wgfoCAQEwgZAwfDEwMC4GA1UEAwwnQXBwbGUgQXBwbGljYXRpb24gSW50ZWdyYXRpb24gQ0EgNSAtIEcxMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMCEGYCOIAAFCb3XYsOFSxfbkMwDQYJYIZIAWUDBAIBBQAwCgYIKoZIzj0EAwIERzBFAiAZ6V7qMUmThA9xFKAXReDUwI5kSaWGo3iBsBhzkHCLtwIhAJPzaXPj4wlrypwq+TqYOlyQt0QWuJKWycMSveMr4iTPAAAAAAAAaGF1dGhEYXRhWOJOsS8PJU7JWJfhD8KV/wtxOAB6WNUU/jplnvvKx+WFWsAAAAAAYXBwYXR0ZXN0ZGV2ZWxvcAAgyNek4njPEsM85RWDqrUQIcl1IbbEeYAf1jP6b/T0UaelAQIDJiABIVggLWIerPskFIlSyGginUkasTUy1EzopRn+xI9y6aLoe4UiWCA08GLzdFYdoc9P+bTfrLyC9+dwCjGXHHbF+fyn6kLPZKJ3YXBwbGVfYnVuZGxlX3ZlcnNpb25fMDFhMXgcYXBwbGVfdmFsaWRhdGlvbl9jYXRlZ29yeV8wMUQDAAAA";
+    #[tokio::test]
+    async fn validate_attestation_success_ios_27() {
+        let certificate_validator = test_cert_validator();
+
+        let validated_attestation = run_with_mocked_time_async(
+            // a date the test vector happens to be valid at
+            datetime!(2026-09-21 0:00 UTC),
+            async move {
+                validate_attestation_ios(
+                    EXAMPLE_ATTESTATION_IOS_27,
+                    "HU9vaeRAf56bcZjtf9zuF6Dn4oClPkNOviFKacHQfgRu",
+                    &IOSBundle {
+                        bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
+                        trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
+                        enforce_production_build: false,
+                    },
+                    &certificate_validator,
+                )
+                .await
+                .expect("Failed to validate attestation")
+            },
+        )
+        .await;
+
+        assert_eq!(validated_attestation.app_version.unwrap(), "1");
+        assert_eq!(
+            validated_attestation
+                .attested_key
+                .public_key_as_multibase()
+                .unwrap(),
+            "zDnaeTV8ApzC94fnQzx74wyejD3hkAHRER5mmYRsxGps99dhe"
+        );
     }
 
     #[tokio::test]

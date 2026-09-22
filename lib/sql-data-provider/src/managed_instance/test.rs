@@ -75,6 +75,7 @@ fn dummy_managed_instance(id: ManagedInstanceId, org: OrganisationId) -> Managed
         }
         .into(),
         attestations: Default::default(),
+        version: None,
     }
 }
 

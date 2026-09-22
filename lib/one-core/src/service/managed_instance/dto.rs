@@ -13,6 +13,7 @@ use crate::proto::jwt::TokenError;
 use crate::proto::jwt::model::{DecomposedJwt, JWTHeader};
 use crate::provider::credential_formatter::model::PublicKeySource;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
+use crate::provider::key_algorithm::key::KeyHandle;
 
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitRequestDTO {
@@ -453,4 +454,10 @@ pub(crate) struct ProviderRegistrationParams {
     pub integrity_check: IntegrityCheck,
     pub device_auth_leeway: Duration,
     pub user_authentication: Option<UserAuthenticationParams>,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct ValidatedAttestation {
+    pub attested_key: KeyHandle,
+    pub app_version: Option<String>,
 }
