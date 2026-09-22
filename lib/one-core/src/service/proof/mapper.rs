@@ -624,10 +624,6 @@ pub(super) async fn get_holder_proof_detail(
                     vec![proof_claim.clone()],
                     credential_detail_response_from_model(
                         credential.clone(),
-                        // Proof claims reference their attached credential:
-                        //  - a single
-                        //  - a new item with claims
-                        //  - a legacy parent with claims
                         crate::mapper::credential::stored_credential_claims(&credential).await?,
                         config,
                         CredentialAttestationBlobs::default(),

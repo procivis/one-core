@@ -67,8 +67,6 @@ pub enum ProofRole {
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ProofClaim {
     pub claim: Claim,
-
-    // Relations
     pub credential: Related<Credential>,
 }
 

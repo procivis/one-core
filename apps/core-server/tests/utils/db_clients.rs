@@ -100,7 +100,10 @@ impl DbClient {
             notifications: NotificationsDB::new(layer.get_notification_repository()),
             revocation_lists: RevocationListsDB::new(layer.get_revocation_list_repository()),
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
-            proofs: ProofsDB::new(layer.get_proof_repository()),
+            proofs: ProofsDB::new(
+                layer.get_proof_repository(),
+                layer.get_credential_repository(),
+            ),
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
             trust_list_publications: TrustListPublicationDB::new(
                 layer.get_trust_list_publication_repository(),

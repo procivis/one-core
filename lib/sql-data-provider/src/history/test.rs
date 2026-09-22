@@ -2075,7 +2075,7 @@ fn assert_counts(actual: &[TimeSeriesPoint], expected: &[usize]) {
 async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() {
     use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-    use crate::entity::{claim, credential};
+    use crate::entity::{claim, credential, proof_claim};
 
     let setup = setup_with_credential_schema_and_proof().await;
     let db = &setup.provider.db;
@@ -2103,6 +2103,16 @@ async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() 
         .await
         .unwrap();
 
+    proof_claim::Entity::update_many()
+        .col_expr(
+            proof_claim::Column::CredentialId,
+            sea_orm::sea_query::Expr::value(item_id),
+        )
+        .filter(proof_claim::Column::CredentialId.eq(setup.credential_id))
+        .exec(db)
+        .await
+        .unwrap();
+
     for filter in [
         HistoryFilterValue::CredentialId(setup.credential_id),
         HistoryFilterValue::SearchQuery(setup.claim_schema_name, HistorySearchEnum::ClaimName),
@@ -2122,4 +2132,69 @@ async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() 
             .unwrap();
         assert_result(2 /* parent credential and proof */, result);
     }
+}
+
+#[tokio::test]
+async fn holder_item_history_uses_presented_item_with_parent_owned_claims() {
+    use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+
+    use crate::entity::{claim, credential, proof_claim};
+
+    let setup = setup_with_credential_schema_and_proof().await;
+    let db = &setup.provider.db;
+    let mut parent = credential::Entity::find_by_id(setup.credential_id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    parent.role = Set(CredentialRole::Holder);
+    parent.r#type = Set(credential::CredentialType::BatchParent);
+    let parent = parent.update(db).await.unwrap();
+    let presented_id: CredentialId = Uuid::new_v4().into();
+    let sibling_id: CredentialId = Uuid::new_v4().into();
+    for id in [presented_id, sibling_id] {
+        let mut item = parent.clone().into_active_model();
+        item.id = Set(id);
+        item.parent_id = Set(Some(parent.id));
+        item.r#type = Set(credential::CredentialType::BatchItem);
+        item.insert(db).await.unwrap();
+    }
+    proof_claim::Entity::update_many()
+        .col_expr(
+            proof_claim::Column::CredentialId,
+            sea_orm::sea_query::Expr::value(presented_id),
+        )
+        .filter(proof_claim::Column::CredentialId.eq(parent.id))
+        .exec(db)
+        .await
+        .unwrap();
+
+    for (id, count) in [(parent.id, 2), (presented_id, 1), (sibling_id, 0)] {
+        let result = setup
+            .provider
+            .get_history_list(history_list_query_with_filter(
+                setup.organisation.id,
+                HistoryFilterValue::CredentialId(id),
+            ))
+            .await
+            .unwrap();
+        assert_result(count, result);
+    }
+    assert!(
+        claim::Entity::find()
+            .filter(claim::Column::CredentialId.eq(presented_id))
+            .all(db)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        !claim::Entity::find()
+            .filter(claim::Column::CredentialId.eq(parent.id))
+            .all(db)
+            .await
+            .unwrap()
+            .is_empty()
+    );
 }

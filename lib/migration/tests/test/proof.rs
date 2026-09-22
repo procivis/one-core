@@ -137,19 +137,27 @@ async fn test_db_schema_proof_claim() {
 
     let proof_claim = schema
         .table("proof_claim")
-        .columns(&["claim_id", "proof_id"]);
+        .columns(&["claim_id", "proof_id", "credential_id"])
+        .index("index-ProofClaim-CredentialId", false, &["credential_id"]);
     proof_claim
         .column("claim_id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
         .default(None)
         .primary_key()
-        .foreign_key("fk-ProofClaim-ClaimId", "claim", "id");
+        .foreign_key("fk-ProofClaim-Claim", "claim", "id");
     proof_claim
         .column("proof_id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
         .default(None)
         .primary_key()
-        .foreign_key("fk-ProofClaim-ProofId", "proof", "id");
+        .foreign_key("fk-ProofClaim-Proof", "proof", "id");
+    proof_claim
+        .column("credential_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key()
+        .foreign_key("fk-ProofClaim-Credential", "credential", "id");
 }

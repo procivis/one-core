@@ -294,6 +294,15 @@ async fn check_batch_presentation(item_claims: bool, submitted_type: CredentialT
             .iter()
             .all(|claim| claim.claim.credential_id == expected_owner)
     );
+    assert!(
+        proof
+            .claims
+            .as_ref()
+            .await
+            .unwrap()
+            .iter()
+            .all(|claim| claim.credential.id() == selected_id)
+    );
 }
 
 #[tokio::test]
@@ -464,6 +473,15 @@ async fn mixed_format_batch_parent_rejection() {
 
 #[tokio::test]
 async fn two_queries_reuse_the_same_batch_item() {
+    check_two_queries_with_inherited_claims(false).await;
+}
+
+#[tokio::test]
+async fn two_queries_record_different_batch_items_with_inherited_claims() {
+    check_two_queries_with_inherited_claims(true).await;
+}
+
+async fn check_two_queries_with_inherited_claims(distinct_items: bool) {
     use one_core::model::interaction::UpdateInteractionRequest;
     use one_core::repository::DataRepository;
     use sql_data_provider::DataLayer;
@@ -503,6 +521,16 @@ async fn two_queries_reuse_the_same_batch_item() {
         }))
         .await;
     let selected_id = selected_batch_item(&context, proof.id).await;
+    let second_id = if distinct_items {
+        batch_items(&context, parent.id)
+            .await
+            .into_iter()
+            .find(|item| item.id != selected_id)
+            .unwrap()
+            .id
+    } else {
+        parent.id
+    };
     let response = context
         .api
         .client
@@ -512,7 +540,7 @@ async fn two_queries_reuse_the_same_batch_item() {
                 "interactionId": interaction.id,
                 "submission": {
                     "input_0": {"credentialId": selected_id},
-                    "input_1": {"credentialId": parent.id}
+                    "input_1": {"credentialId": second_id}
                 }
             }),
         )
@@ -525,7 +553,40 @@ async fn two_queries_reuse_the_same_batch_item() {
             .iter()
             .filter(|item| item.consumed_at.is_some())
             .count(),
-        1
+        if distinct_items { 2 } else { 1 }
+    );
+    let proof = context.db.proofs.get(&proof.id).await;
+    let claims = proof.claims.as_ref().await.unwrap();
+    assert_eq!(claims.len(), if distinct_items { 2 } else { 1 });
+    assert!(
+        claims
+            .iter()
+            .all(|entry| entry.claim.credential_id == parent.id)
+    );
+    let sources: std::collections::HashSet<_> =
+        claims.iter().map(|entry| entry.credential.id()).collect();
+    let expected = if distinct_items {
+        vec![selected_id, second_id]
+    } else {
+        vec![selected_id]
+    };
+    assert_eq!(sources, expected.into_iter().collect());
+    if distinct_items {
+        assert_eq!(claims[0].claim.id, claims[1].claim.id);
+    }
+    drop(claims);
+
+    let detail = context.api.proofs.get(proof.id).await;
+    assert_eq!(detail.status(), 200);
+    let detail = detail.json_value().await;
+    let inputs = detail["proofInputs"].as_array().unwrap();
+    let detail_sources: std::collections::HashSet<_> = inputs
+        .iter()
+        .map(|input| input["credential"]["id"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(
+        detail_sources,
+        sources.iter().map(ToString::to_string).collect()
     );
 }
 

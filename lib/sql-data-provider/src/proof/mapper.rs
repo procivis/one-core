@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use one_core::model::claim::Claim;
 use one_core::model::credential::Credential;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
@@ -374,11 +373,12 @@ pub(super) fn create_list_response(
 
 pub(super) fn get_proof_claim_active_model(
     proof_id: ProofId,
-    claim: &Claim,
+    claim: &ProofClaim,
 ) -> proof_claim::ActiveModel {
     proof_claim::ActiveModel {
         proof_id: Set(proof_id),
-        claim_id: Set(claim.id),
+        claim_id: Set(claim.claim.id),
+        credential_id: Set(claim.credential.id()),
     }
 }
 
@@ -398,25 +398,42 @@ impl AsyncVecLoader<ProofClaim> for ProofClaimsLoader {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        let claim_ids: Vec<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
+        // Different presented credentials can reference the same inherited claim.
+        let claim_ids: HashSet<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
         if claim_ids.is_empty() {
             return Ok(vec![]);
         }
 
-        let claims = self.claim_repository.get_claim_list(claim_ids).await?;
-        let mut credential_relations: HashMap<CredentialId, Related<Credential>> = HashMap::new();
-        Ok(claims
+        let claims: HashMap<_, _> = self
+            .claim_repository
+            .get_claim_list(claim_ids.into_iter().collect())
+            .await?
             .into_iter()
-            .map(|claim| {
+            .map(|claim| (claim.id, claim))
+            .collect();
+        let mut credential_relations: HashMap<CredentialId, Related<Credential>> = HashMap::new();
+        proof_claims
+            .into_iter()
+            .map(|proof_claim| {
+                let claim = claims.get(&proof_claim.claim_id).cloned().ok_or_else(|| {
+                    DataLayerError::Db(anyhow::anyhow!(
+                        "Missing claim {} for proof {}",
+                        proof_claim.claim_id,
+                        self.id
+                    ))
+                })?;
                 let credential = credential_relations
-                    .entry(claim.credential_id)
+                    .entry(proof_claim.credential_id)
                     .or_insert_with(|| {
-                        Related::new(claim.credential_id, self.credential_repository.clone())
+                        Related::new(
+                            proof_claim.credential_id,
+                            self.credential_repository.clone(),
+                        )
                     })
                     .to_owned();
 
-                ProofClaim { claim, credential }
+                Ok(ProofClaim { claim, credential })
             })
-            .collect())
+            .collect()
     }
 }

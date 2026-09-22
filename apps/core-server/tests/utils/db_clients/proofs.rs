@@ -7,6 +7,8 @@ use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
 use one_core::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum, UpdateProofRequest};
 use one_core::model::proof_schema::ProofSchema;
+use one_core::model::relation::Related;
+use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::proof_repository::ProofRepository;
 use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, EcosystemId, ProofId};
@@ -40,11 +42,18 @@ pub struct TestingProofParams {
 
 pub struct ProofsDB {
     repository: Arc<dyn ProofRepository>,
+    credential_repository: Arc<dyn CredentialRepository>,
 }
 
 impl ProofsDB {
-    pub fn new(repository: Arc<dyn ProofRepository>) -> Self {
-        Self { repository }
+    pub fn new(
+        repository: Arc<dyn ProofRepository>,
+        credential_repository: Arc<dyn CredentialRepository>,
+    ) -> Self {
+        Self {
+            repository,
+            credential_repository,
+        }
     }
 
     pub async fn create(
@@ -124,6 +133,13 @@ impl ProofsDB {
     }
 
     pub async fn set_proof_claims(&self, id: &ProofId, claims: Vec<Claim>) {
+        let claims = claims
+            .into_iter()
+            .map(|claim| ProofClaim {
+                credential: Related::new(claim.credential_id, self.credential_repository.clone()),
+                claim,
+            })
+            .collect();
         self.repository.set_proof_claims(id, claims).await.unwrap()
     }
 

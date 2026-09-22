@@ -3,13 +3,12 @@ use std::sync::Arc;
 use shared_types::{InteractionId, OrganisationId, ProofId};
 use uuid::Uuid;
 
-use crate::model::claim::Claim;
 use crate::model::common::LockType;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::model::proof::{
-    GetProofList, Proof, ProofListQuery, ProofRole, ProofStateEnum, UpdateProofRequest,
+    GetProofList, Proof, ProofClaim, ProofListQuery, ProofRole, ProofStateEnum, UpdateProofRequest,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -167,7 +166,7 @@ impl ProofRepository for ProofHistoryDecorator {
     async fn set_proof_claims(
         &self,
         proof_id: &ProofId,
-        claims: Vec<Claim>,
+        claims: Vec<ProofClaim>,
     ) -> Result<(), DataLayerError> {
         self.inner.set_proof_claims(proof_id, claims).await
     }

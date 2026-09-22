@@ -4,11 +4,10 @@ use shared_types::{InteractionId, OrganisationId, ProofId};
 
 use crate::config::core_config::CoreConfig;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::claim::Claim;
 use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{
-    GetProofList, Proof, ProofListQuery, ProofStateEnum, UpdateProofRequest,
+    GetProofList, Proof, ProofClaim, ProofListQuery, ProofStateEnum, UpdateProofRequest,
 };
 use crate::proto::notification_scheduler::{NotificationPayload, NotificationScheduler};
 use crate::provider::verification_protocol::model::CommonParams;
@@ -134,7 +133,7 @@ impl ProofRepository for ProofNotificationDecorator {
     async fn set_proof_claims(
         &self,
         proof_id: &ProofId,
-        claims: Vec<Claim>,
+        claims: Vec<ProofClaim>,
     ) -> Result<(), DataLayerError> {
         self.inner.set_proof_claims(proof_id, claims).await
     }

@@ -8,12 +8,12 @@ use super::common::to_cbor;
 use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{ValidatedProofClaim, extracted_credential_to_model};
-use crate::model::claim::Claim;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::KeyRole;
 use crate::model::interaction::Interaction;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::model::relation::Related;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
@@ -379,14 +379,25 @@ pub(crate) async fn accept_proof(
         .error_while("resolving ecosystems")?
     };
 
-    let mut proof_claims: Vec<Claim> = vec![];
+    let mut proof_claims = vec![];
     for ((mut model_credential, _), ecosystem) in
         model_credentials.into_iter().zip(ecosystems.per_credential)
     {
         model_credential.ecosystem = ecosystem;
 
-        let mut claims = model_credential.claims.as_ref().await?.to_owned();
-        proof_claims.append(&mut claims);
+        let credential = Related::from(model_credential.clone());
+        proof_claims.extend(
+            model_credential
+                .claims
+                .as_ref()
+                .await?
+                .iter()
+                .cloned()
+                .map(|claim| ProofClaim {
+                    claim,
+                    credential: credential.clone(),
+                }),
+        );
 
         credential_repository
             .create_credential(model_credential)

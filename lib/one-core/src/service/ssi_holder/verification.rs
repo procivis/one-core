@@ -21,12 +21,11 @@ use crate::config::validator::transport::{
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
-use crate::model::claim::Claim;
 use crate::model::credential::{Clearable, CredentialType, UpdateCredentialRequest};
 use crate::model::history::{HistoryEntityType, HistoryErrorMetadata};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
+use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -99,7 +98,7 @@ impl SSIHolderService {
         proof: &Proof,
         verification_protocol: &dyn VerificationProtocol,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-        submitted_claims: Vec<Claim>,
+        submitted_claims: Vec<ProofClaim>,
     ) -> Result<(), HolderServiceError> {
         let submit_result = verification_protocol
             .holder_submit_proof(proof, credential_presentations)
@@ -144,12 +143,15 @@ impl SSIHolderService {
             .await
             .error_while("updating proof")?;
 
-        // Multiple queries can disclose the same claim, including claims inherited
-        // by different items of a legacy batch. Record each claim only once.
+        // Repeated queries may disclose the same claim from the same item. Different
+        // items must stay distinct, even when they inherit the same parent claim.
         self.proof_repository
             .set_proof_claims(
                 &proof.id,
-                submitted_claims.into_iter().unique_by(|c| c.id).collect(),
+                submitted_claims
+                    .into_iter()
+                    .unique_by(|c| (c.credential.id(), c.claim.id))
+                    .collect(),
             )
             .await
             .error_while("setting proof claims")?;
@@ -575,6 +577,10 @@ impl SSIHolderService {
             .iter()
             .filter(|c| presented_paths.contains(&c.path))
             .cloned()
+            .map(|claim| ProofClaim {
+                claim,
+                credential: Related::new(credential_id, self.credential_repository.clone()),
+            })
             .collect();
 
         Ok(SubmissionItem {
@@ -587,7 +593,7 @@ impl SSIHolderService {
 
 struct SubmissionItem {
     presentation: FormattedCredentialPresentation,
-    claims: Vec<Claim>,
+    claims: Vec<ProofClaim>,
     consumed_item: Option<CredentialId>,
 }
 

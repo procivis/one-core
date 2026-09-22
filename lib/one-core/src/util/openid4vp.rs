@@ -1,12 +1,13 @@
+use std::collections::HashMap;
+
 use futures::FutureExt;
-use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, EcosystemId};
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::openid4vp::credential_from_proved;
 use crate::model::common::LockType;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
@@ -42,19 +43,38 @@ pub(crate) async fn persist_accepted_proof(
                 )?;
 
                 let (credentials, claims) = validated_proof_result.into_credentials_and_claims();
+                let mut credential_relations = HashMap::new();
                 for proved_credential in credentials {
                     let credential =
                         credential_from_proved(identifier_creator, proved_credential, organisation)
                             .await?;
 
                     credential_repository
-                        .create_credential(credential)
+                        .create_credential(credential.clone())
                         .await
                         .error_while("crating credential")?;
+                    credential_relations.insert(credential.id, credential.into());
                 }
 
                 proof_repository
-                    .set_proof_claims(&proof.id, convert_inner(claims))
+                    .set_proof_claims(
+                        &proof.id,
+                        claims
+                            .into_iter()
+                            .map(|claim| {
+                                let credential = credential_relations
+                                    .get(&claim.credential_id)
+                                    .cloned()
+                                    .ok_or_else(|| {
+                                        ServiceError::MappingError(format!(
+                                            "Missing proved credential {}",
+                                            claim.credential_id
+                                        ))
+                                    })?;
+                                Ok(ProofClaim { credential, claim })
+                            })
+                            .collect::<Result<Vec<_>, ServiceError>>()?,
+                    )
                     .await
                     .error_while("setting proof claims")?;
 

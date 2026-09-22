@@ -74,9 +74,8 @@ fn credential_id_related_subqueries(credential_id: CredentialId) -> Vec<SelectSt
     vec![
         select_proof_id_from_proof_claim_to_claim_join()
             .cond_where(
-                claim::Column::CredentialId
-                    .eq(credential_id)
-                    .or(claim::Column::CredentialId.in_subquery(
+                proof_claim::Column::CredentialId.eq(credential_id).or(
+                    proof_claim::Column::CredentialId.in_subquery(
                         Query::select()
                             .column(credential::Column::Id)
                             .from(credential::Entity)
@@ -85,7 +84,8 @@ fn credential_id_related_subqueries(credential_id: CredentialId) -> Vec<SelectSt
                                 credential::Column::Role.eq(credential::CredentialRole::Holder),
                             )
                             .to_owned(),
-                    )),
+                    ),
+                ),
             )
             .to_owned(),
     ]
@@ -122,7 +122,7 @@ fn select_proof_id_from_proof_to_cred_schema_joins() -> SelectStatement {
     select_proof_id_from_proof_claim_to_claim_join()
         .inner_join(
             credential::Entity,
-            Expr::col((claim::Entity, claim::Column::CredentialId))
+            Expr::col((proof_claim::Entity, proof_claim::Column::CredentialId))
                 .eq(Expr::col((credential::Entity, credential::Column::Id))),
         )
         .inner_join(

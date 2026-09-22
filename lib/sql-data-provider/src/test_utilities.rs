@@ -449,12 +449,18 @@ pub async fn insert_many_proof_claim_to_database(
     database: &DatabaseConnection,
     proof_claims: &[(ProofId, ClaimId)],
 ) -> Result<(), DbErr> {
-    let models = proof_claims
-        .iter()
-        .map(|(proof_id, claim_id)| proof_claim::ActiveModel {
+    let mut models = Vec::with_capacity(proof_claims.len());
+    for (proof_id, claim_id) in proof_claims {
+        let claim = claim::Entity::find_by_id(*claim_id)
+            .one(database)
+            .await?
+            .ok_or_else(|| DbErr::RecordNotFound(format!("Claim {claim_id}")))?;
+        models.push(proof_claim::ActiveModel {
             claim_id: Set(*claim_id),
             proof_id: Set(*proof_id),
+            credential_id: Set(claim.credential_id),
         });
+    }
 
     proof_claim::Entity::insert_many(models)
         .exec(database)

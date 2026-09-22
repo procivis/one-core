@@ -9,8 +9,9 @@ use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use one_core::model::key::Key;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
-use one_core::model::proof::{Proof, ProofListQuery, ProofRole, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofClaim, ProofListQuery, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::ProofSchema;
+use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
 };
@@ -610,6 +611,7 @@ async fn test_get_proof_with_relations() {
     proof_claim::ActiveModel {
         claim_id: Set(claim_id),
         proof_id: Set(proof_id),
+        credential_id: Set(credential_id),
     }
     .insert(&db)
     .await
@@ -750,7 +752,15 @@ async fn test_set_proof_claims_success() {
     .await
     .unwrap();
 
-    let result = repository.set_proof_claims(&proof_id, vec![claim]).await;
+    let result = repository
+        .set_proof_claims(
+            &proof_id,
+            vec![ProofClaim {
+                claim,
+                credential: Related::new(credential.id, get_credential_repository_mock()),
+            }],
+        )
+        .await;
     assert!(result.is_ok());
 
     let db_proof_claims = crate::entity::proof_claim::Entity::find()

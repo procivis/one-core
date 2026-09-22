@@ -1,9 +1,8 @@
 use autometrics::autometrics;
-use one_core::model::claim::Claim;
 use one_core::model::common::LockType;
 use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::proof::{
-    GetProofList, Proof, ProofListQuery, ProofStateEnum, UpdateProofRequest,
+    GetProofList, Proof, ProofClaim, ProofListQuery, ProofStateEnum, UpdateProofRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
@@ -158,7 +157,7 @@ impl ProofRepository for ProofProvider {
     async fn set_proof_claims(
         &self,
         proof_id: &ProofId,
-        claims: Vec<Claim>,
+        claims: Vec<ProofClaim>,
     ) -> Result<(), DataLayerError> {
         let proof_claim_models: Vec<proof_claim::ActiveModel> = claims
             .iter()
