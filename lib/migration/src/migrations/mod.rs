@@ -57,4 +57,5 @@ pub mod m20260918_130000_move_holder_disclosure_policy_to_batch_items;
 pub mod m20260921_120000_proof_input_schema_formats;
 pub mod m20260921_135415_wallet_version;
 pub mod m20260922_120000_proof_claim_credential;
+pub mod m20260923_120000_backfill_credential_formats;
 pub mod m20260923_120000_normalize_holder_claims;

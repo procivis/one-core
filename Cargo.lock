@@ -3648,6 +3648,7 @@ dependencies = [
 name = "migration"
 version = "0.1.0"
 dependencies = [
+ "ct-codecs",
  "regex",
  "sea-orm",
  "sea-orm-migration",
