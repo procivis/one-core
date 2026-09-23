@@ -5,7 +5,6 @@ mod create_credential;
 mod create_token;
 mod credential_issuer_final1;
 mod credential_issuer_final1_translations;
-mod direct_post_dcql_test;
 mod direct_post_tests;
 mod notification;
 mod oauth_authorization_server;

@@ -88,6 +88,7 @@ rand.workspace             = true
 rcgen.workspace            = true
 reqwest                    = { workspace = true, features = ["json", "form"] }
 roxmltree.workspace        = true
+rstest.workspace           = true
 sea-orm.workspace          = true
 secrecy.workspace          = true
 serde_json_path.workspace  = true

@@ -78,6 +78,7 @@ use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, Sel
 use crate::validator::ecosystem::{
     SelectionRole, validate_ecosystem_selection_allow_not_set, validate_ecosystem_selection_final,
 };
+use crate::validator::proof_schema::resolve_proof_input_schema_formats;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
@@ -517,15 +518,40 @@ impl ProofService {
             let mut potentially_conflicting_tx_data: HashMap<_, Vec<Vec<CredentialQueryId>>> =
                 HashMap::new();
 
+            let inputs = proof_schema.input_schemas.as_ref().await?;
+            let mut formats_by_schema = HashMap::new();
+            for input in &inputs {
+                let formats = resolve_proof_input_schema_formats(input)
+                    .await
+                    .error_while("resolving proof input formats")?;
+                formats_by_schema.insert(input.credential_schema.id(), formats);
+            }
+
             for tx_data in &request.transaction_data {
                 let provider = self
                     .transaction_data_provider
                     .get_transaction_data_by_name(&tx_data.r#type)?;
-                let credential_ids: Vec<_> = tx_data
-                    .credential_schema_ids
-                    .iter()
-                    .map(|cs| CredentialQueryId::from(cs.to_string()))
-                    .collect();
+                let capabilities = provider.get_capabilities();
+                let mut credential_ids = Vec::new();
+                for schema_id in &tx_data.credential_schema_ids {
+                    let formats = formats_by_schema.get(schema_id).ok_or(
+                        ProofServiceError::TransactionDataUnknownCredentialSchema(*schema_id),
+                    )?;
+                    for format in formats {
+                        let format_type = self
+                            .config
+                            .format
+                            .get_fields(&format.format)
+                            .error_while("getting credential format config")?
+                            .r#type;
+                        if !capabilities.formats.contains(&format_type) {
+                            return Err(ProofServiceError::TransactionDataFormatUnsupported(
+                                *schema_id,
+                            ));
+                        }
+                        credential_ids.push(CredentialQueryId::from(format.id.to_string()));
+                    }
+                }
                 let encoded = provider
                     .prepare_transaction_data(credential_ids.clone(), tx_data.data.clone())
                     .error_while("preparing transaction data")?;
@@ -536,20 +562,27 @@ impl ProofService {
 
                 transaction_data.push(TransactionDataRequest {
                     r#type: tx_data.r#type.clone(),
-                    credential_ids: credential_ids.clone(),
+                    credential_ids,
                     data: tx_data.data.clone(),
                     encoded,
                 });
 
-                if !provider
-                    .get_capabilities()
+                if !capabilities
                     .features
                     .contains(&SupportsMultipleTxDataPerPresentation)
                 {
                     potentially_conflicting_tx_data
                         .entry(&tx_data.r#type)
                         .or_default()
-                        .push(credential_ids);
+                        // Format alternatives represent one proof input, not
+                        // additional credentials available to authorize entries.
+                        .push(
+                            tx_data
+                                .credential_schema_ids
+                                .iter()
+                                .map(|id| CredentialQueryId::from(id.to_string()))
+                                .collect(),
+                        );
                 }
             }
 

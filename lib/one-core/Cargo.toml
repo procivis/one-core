@@ -91,7 +91,7 @@ zip                          = { version = "7.0", default-features = false, feat
 assert2.workspace         = true
 mockall.workspace         = true
 one-crypto                = { workspace = true, features = ["mock"] }
-rstest                    = { version = "0.26" }
+rstest.workspace          = true
 rusty-fork                = { version = "0.3" }
 similar-asserts.workspace = true
 tokio                     = { workspace = true, features = ["rt-multi-thread", "macros"] }

@@ -773,25 +773,54 @@ async fn verifier_transaction_data(
             ProofServiceError::MappingError(format!("Failed to parse interaction data: {e}"))
         })?;
 
+    if content.transaction_data.is_empty() {
+        return Ok(vec![]);
+    }
+    let schema = proof
+        .schema
+        .as_ref()
+        .ok_or_else(|| ProofServiceError::MappingError("proof schema is missing".to_string()))?
+        .as_ref()
+        .await?;
+    let inputs = schema.input_schemas.as_ref().await?;
+    let mut schema_ids_by_query = HashMap::new();
+    for input in &inputs {
+        let credential_schema = input.credential_schema.as_ref().await?;
+        // Older interactions reference the credential schema directly.
+        schema_ids_by_query.insert(credential_schema.id.to_string(), credential_schema.id);
+        for format in &credential_schema.formats.as_ref().await? {
+            schema_ids_by_query.insert(format.id.to_string(), credential_schema.id);
+        }
+    }
+
     content
         .transaction_data
         .into_iter()
-        .map(transaction_data_response_from_request)
+        .map(|request| transaction_data_response_from_request(request, &schema_ids_by_query))
         .collect()
 }
 
 fn transaction_data_response_from_request(
     request: TransactionDataRequest,
+    schema_ids_by_query: &HashMap<String, CredentialSchemaId>,
 ) -> Result<TransactionDataResponseDTO, ProofServiceError> {
     let credential_schema_ids = request
         .credential_ids
         .iter()
         .map(|id| {
-            id.to_string().parse().map_err(|e| {
-                ProofServiceError::MappingError(format!("invalid transaction data id `{id}`: {e}"))
-            })
+            schema_ids_by_query
+                .get(&id.to_string())
+                .copied()
+                .ok_or_else(|| {
+                    ProofServiceError::MappingError(format!(
+                        "unknown transaction data query id `{id}`"
+                    ))
+                })
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .unique()
+        .collect();
 
     Ok(TransactionDataResponseDTO {
         r#type: request.r#type,

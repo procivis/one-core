@@ -1,13 +1,17 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::history::HistoryAction;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
-use serde_json::Value;
+use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{self, assert_history_count};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 async fn create_dcql_test_context() -> (
@@ -165,6 +169,10 @@ async fn test_share_proof_dcql_jwt_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claim_sets": [
@@ -194,7 +202,7 @@ async fn test_share_proof_dcql_jwt_success() {
                     }
                 ],
                 "format": "jwt_vc_json",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -301,6 +309,10 @@ async fn test_share_proof_dcql_mdoc_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claim_sets": [
@@ -334,7 +346,7 @@ async fn test_share_proof_dcql_mdoc_success() {
                     }
                 ],
                 "format": "mso_mdoc",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -409,6 +421,10 @@ async fn test_share_proof_dcql_jsonld_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claim_sets": [
@@ -438,7 +454,7 @@ async fn test_share_proof_dcql_jsonld_success() {
                     }
                 ],
                 "format": "ldp_vc",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -518,6 +534,10 @@ async fn test_share_proof_dcql_jsonld_bbs_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claim_sets": [
@@ -547,7 +567,7 @@ async fn test_share_proof_dcql_jsonld_bbs_success() {
                     }
                 ],
                 "format": "ldp_vc",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -627,6 +647,10 @@ async fn test_share_proof_dcql_sd_jwt_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claim_sets": [
@@ -656,7 +680,7 @@ async fn test_share_proof_dcql_sd_jwt_success() {
                     }
                 ],
                 "format": "vc+sd-jwt",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -736,6 +760,10 @@ async fn test_share_proof_dcql_sd_jwt_vc_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claim_sets": [
@@ -765,7 +793,7 @@ async fn test_share_proof_dcql_sd_jwt_vc_success() {
                     }
                 ],
                 "format": "dc+sd-jwt",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -841,6 +869,10 @@ async fn test_share_proof_dcql_nested_object_with_array_success() {
     let (_data, credential_query) = share_proof_and_extract_dcql(&context, proof.id).await;
 
     let expected = serde_json::json!({
+        "credential_sets": [{
+            "required": true,
+            "options": [[credential_schema.formats.as_ref().await.unwrap()[0].id]]
+        }],
         "credentials": [
             {
                 "claims": [
@@ -856,7 +888,7 @@ async fn test_share_proof_dcql_nested_object_with_array_success() {
                     }
                 ],
                 "format": "jwt_vc_json",
-                "id": credential_schema.id,
+                "id": credential_schema.formats.as_ref().await.unwrap()[0].id,
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
@@ -874,4 +906,161 @@ async fn test_share_proof_dcql_nested_object_with_array_success() {
 
     assert_eq!(credential_query, expected);
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[rstest::rstest]
+#[case::optional_companion(false)]
+#[case::required_companion(true)]
+#[tokio::test]
+async fn test_share_proof_dcql_multiple_options_and_transaction_data(
+    #[case] companion_required: bool,
+) {
+    let (context, organisation, _, identifier, key) = create_dcql_test_context().await;
+    let mut schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Identity",
+            &organisation,
+            TestingCreateSchemaParams {
+                formats: Some(vec![
+                    ("SD_JWT_VC".into(), "identity-vct".into()),
+                    ("MDOC".into(), "identity-mdoc".into()),
+                ]),
+                claim_mappings: Some(HashMap::from([(
+                    "firstName".to_string(),
+                    "namespace/firstName".to_string(),
+                )])),
+                ..Default::default()
+            },
+        )
+        .await;
+    let mut formats = schema.formats.as_ref().await.unwrap().to_vec();
+    formats.sort_by_key(|format| format.format == "MDOC".into());
+    let sdjwt_id = formats[0].id;
+    let mdoc_id = formats[1].id;
+    schema.formats = formats.into();
+    let companion = context
+        .db
+        .credential_schemas
+        .create(
+            "Companion",
+            &organisation,
+            TestingCreateSchemaParams {
+                schema_id: Some("companion-schema".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let companion_id = companion.formats.as_ref().await.unwrap()[0].id;
+    let claim = schema.claim_schemas.as_ref().await.unwrap()[0].clone();
+    let companion_claim = companion.claim_schemas.as_ref().await.unwrap()[0].clone();
+    let main_claims = [(Uuid::from(claim.id), "firstName", true, "STRING", false)];
+    let companion_claims = [(
+        Uuid::from(companion_claim.id),
+        "firstName",
+        companion_required,
+        "STRING",
+        false,
+    )];
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "Multi-format proof",
+            &organisation,
+            vec![
+                CreateProofInputSchema::from((&main_claims[..], &schema)),
+                CreateProofInputSchema::from((&companion_claims[..], &companion)),
+            ],
+        )
+        .await;
+    let tx_data = json!({
+        "numSignatures": 1,
+        "signatureQualifier": "eu_eidas_qes",
+        "documentInfos": [{
+            "label": "Contract",
+            "hash": "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
+            "hashType": "sodr", "access": {"type": "public"},
+            "href": "https://example.com/contract.pdf",
+            "checksum": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="
+        }],
+        "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+    });
+    let mut encoded_data = tx_data.clone();
+    encoded_data["type"] =
+        json!(standardized_types::csc::transaction_data::QES_APPROVAL_TRANSACTION_DATA_TYPE);
+    encoded_data["credential_ids"] = json!([sdjwt_id, mdoc_id]);
+    let encoded =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&encoded_data).unwrap())
+            .unwrap();
+    let transaction_data = json!([{
+        "type": "QES_APPROVAL",
+        "credential_ids": [sdjwt_id, mdoc_id],
+        "data": tx_data,
+        "encoded": encoded
+    }]);
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        &serde_json::to_vec(&json!({"transaction_data": transaction_data})).unwrap(),
+        &organisation,
+        InteractionType::Verification,
+    )
+    .await;
+    let proof = fixtures::create_proof(
+        &context.db.db_conn,
+        &identifier,
+        Some(&proof_schema),
+        ProofStateEnum::Created,
+        ProofRole::Verifier,
+        "OPENID4VP_FINAL1",
+        Some(&interaction),
+        Some(&key),
+        None,
+        None,
+    )
+    .await;
+
+    let (data, query) = share_proof_and_extract_dcql(&context, proof.id).await;
+
+    let mut expected = json!({
+        "credentials": [
+            {
+                "id": sdjwt_id,
+                "format": "dc+sd-jwt",
+                "meta": {"vct_values": ["identity-vct"]},
+                "claims": [{"id": claim.id, "path": ["namespace", "firstName"], "required": true}],
+                "multiple": false,
+                "require_cryptographic_holder_binding": true
+            },
+            {
+                "id": mdoc_id,
+                "format": "mso_mdoc",
+                "meta": {"doctype_value": "identity-mdoc"},
+                "claims": [{"id": claim.id, "path": ["namespace", "firstName"], "required": true, "intent_to_retain": true}],
+                "multiple": false,
+                "require_cryptographic_holder_binding": true
+            },
+            {
+                "id": companion_id,
+                "format": "jwt_vc_json",
+                "meta": {"type_values": [
+                    ["https://www.w3.org/2018/credentials#VerifiableCredential", "companion-schema#Companion"],
+                    ["Companion"]
+                ]},
+                "claims": [{"id": companion_claim.id, "path": ["vc", "credentialSubject", "firstName"], "required": companion_required}],
+                "multiple": false,
+                "require_cryptographic_holder_binding": true
+            }
+        ],
+        "credential_sets": [
+            {"required": true, "options": [[sdjwt_id], [mdoc_id]]},
+            {"required": companion_required, "options": [[companion_id]]}
+        ]
+    });
+    if !companion_required {
+        expected["credentials"][2]["claim_sets"] = json!([[companion_claim.id], []]);
+    }
+    assert_eq!(query, expected);
+    assert_eq!(data["transaction_data"], transaction_data);
 }

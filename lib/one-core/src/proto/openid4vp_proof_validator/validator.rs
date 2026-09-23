@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use shared_types::{DidValue, SerializedCredential};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dcql::{
-    CredentialFormat, CredentialQuery, CredentialQueryId, TrustedAuthority,
+    CredentialFormat, CredentialQuery, CredentialQueryId, DcqlQuery, TrustedAuthority,
 };
 use standardized_types::openid4vp::{DirectPostResponse, VpTokenResponse};
 use standardized_types::x509::KeyIdentifier;
@@ -16,7 +16,7 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
@@ -52,6 +52,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_expiration_time, validate_issuance_time,
 };
+use crate::validator::proof_schema::resolve_proof_input_schema_formats;
 use crate::validator::throw_if_proof_state_not_in;
 
 pub(crate) struct OpenId4VpProofValidatorProto {
@@ -176,11 +177,7 @@ impl OpenId4VpProofValidatorProto {
             .await
             .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
-        if vp_token.len() != dcql_query.credentials.len() {
-            return Err(OpenID4VCError::ValidationError(
-                "Different count of requested and submitted credentials".to_string(),
-            ));
-        }
+        validate_dcql_submission(&dcql_query, &vp_token)?;
 
         let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
         let mut transaction_data_evidence = HashMap::new();
@@ -191,18 +188,11 @@ impl OpenId4VpProofValidatorProto {
             let dcql_credential_format = &credential_query.format;
             let query_id = credential_query.id.to_string();
 
-            let proof_input_schema = proof_input_schemas
-                .iter()
-                .find(|input| input.credential_schema.id_ref().to_string() == query_id)
-                .ok_or(OpenID4VCError::Other(
-                    "Missing proof input schema for credential schema".to_owned(),
-                ))?;
-
             let Some(presentation_strings) = vp_token.get(&query_id) else {
-                return Err(OpenID4VCError::ValidationError(format!(
-                    "No presentation found for credential query {query_id}"
-                )));
+                continue;
             };
+            let (proof_input_schema, schema_format) =
+                resolve_credential_query_input(&proof_input_schemas, &query_id).await?;
 
             let context = if let CredentialFormat::MsoMdoc(_) = dcql_credential_format {
                 ExtractPresentationCtx {
@@ -231,6 +221,7 @@ impl OpenId4VpProofValidatorProto {
                     credential_query,
                     &interaction_data,
                     proof_input_schema,
+                    &schema_format,
                     presentation_strings,
                     context,
                 )
@@ -494,16 +485,32 @@ impl OpenId4VpProofValidatorProto {
                 )),
             )?;
 
+            let credential_schema = proof_schema_input
+                .credential_schema
+                .as_ref()
+                .await
+                .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+            let formats = credential_schema
+                .formats
+                .as_ref()
+                .await
+                .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+            let schema_format = formats.first().ok_or_else(|| {
+                OpenID4VCError::MappingError("missing credential schema format".to_string())
+            })?;
+
             let credential = self
                 .validate_credential(
                     Some(holder_details),
                     credential_token,
                     proof_schema_input,
+                    schema_format,
                     None,
                 )
                 .await?;
 
-            let proved_claims = validate_claims(credential, proof_schema_input).await?;
+            let proved_claims =
+                validate_claims(credential, proof_schema_input, schema_format).await?;
 
             total_proved_claims.extend(proved_claims);
         }
@@ -581,6 +588,7 @@ impl OpenId4VpProofValidatorProto {
         credential_query: &CredentialQuery,
         interaction_data: &OpenID4VPVerifierInteractionContent,
         proof_input_schema: &ProofInputSchema,
+        schema_format: &CredentialSchemaFormat,
         presentation_strings: &[String],
         context: ExtractPresentationCtx,
     ) -> Result<
@@ -600,95 +608,107 @@ impl OpenId4VpProofValidatorProto {
         let query_id = &credential_query.id;
         let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
-        // cryptographic holder binding is required, we expect verifialbe presentations (one or many, depending on `multiple` flag)
-        let (holder_details, credentials, presented_transaction_data) = if require_holder_binding {
-            if !multiple_presentations_allowed && presentation_strings.len() != 1 {
+        if presentation_strings.is_empty()
+            || (!multiple_presentations_allowed && presentation_strings.len() != 1)
+        {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "Invalid presentation count for credential query {query_id}"
+            )));
+        }
+
+        let mut transaction_data_evidence = None;
+        for presentation_string in presentation_strings {
+            // With holder binding, the tokens are verifiable presentations.
+            let (holder_details, credentials, presented_transaction_data) =
+                if require_holder_binding {
+                    let presentation_format_type = match dcql_credential_format {
+                        // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
+                        // The SD_JWT(_VC) presentation formatter was used for both W3C and IETF SD-JWTs.
+                        // This match ensures the correct w3c presentation format is used for W3C SD-JWTs.
+                        CredentialFormat::W3cSdJwt(..) => FormatType::Jwt,
+                        _ => map_from_oidc_format_to_core_detailed(
+                            credential_query.format.dcql_format(),
+                            Some(&presentation_string.as_str().into()),
+                        )
+                        .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,
+                    };
+                    let (presentation_format, _) = self
+                        .presentation_formatter_provider
+                        .get_presentation_formatter_by_type(presentation_format_type)
+                        .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
+
+                    let ExtractedPresentation {
+                        issuer,
+                        credentials,
+                        transaction_data,
+                        ..
+                    } = self
+                        .validate_presentation(
+                            presentation_string,
+                            &interaction_data.nonce,
+                            &presentation_format,
+                            context.clone(),
+                        )
+                        .await?;
+
+                    let holder_details = issuer.ok_or(OpenID4VCError::ValidationError(
+                        "Presentation missing holder id".to_string(),
+                    ))?;
+
+                    (Some(holder_details), credentials, transaction_data)
+                } else {
+                    // Without holder binding, each token is a bare credential.
+                    (None, vec![presentation_string.as_str().into()], None)
+                };
+
+            if credentials.is_empty() {
                 return Err(OpenID4VCError::ValidationError(format!(
-                    "Expected one presentation for credential query {query_id}"
+                    "Presentation has no credentials for credential query {query_id}"
                 )));
             }
 
-            let presentation_string = presentation_strings.first().ok_or_else(|| {
-                OpenID4VCError::ValidationError(format!(
-                    "No presentations for credential query {query_id}"
-                ))
-            })?;
+            for credential_token in credentials {
+                let credential = self
+                    .validate_credential(
+                        holder_details.as_ref(),
+                        &credential_token,
+                        proof_input_schema,
+                        schema_format,
+                        trusted_authorities,
+                    )
+                    .await?;
 
-            let presentation_format_type = match dcql_credential_format {
-                // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
-                // The SD_JWT(_VC) presentation formatter was used for both W3C and IETF SD-JWTs.
-                // This match ensures the correct w3c presentation format is used for W3C SD-JWTs.
-                CredentialFormat::W3cSdJwt(..) => FormatType::Jwt,
-                _ => map_from_oidc_format_to_core_detailed(
-                    credential_query.format.dcql_format(),
-                    Some(&presentation_string.as_str().into()),
-                )
-                .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,
-            };
-            let (presentation_format, _) = self
-                .presentation_formatter_provider
-                .get_presentation_formatter_by_type(presentation_format_type)
-                .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
+                let proved_claims: Vec<ValidatedProofClaimDTO> =
+                    validate_claims(credential, proof_input_schema, schema_format).await?;
 
-            let ExtractedPresentation {
-                issuer,
-                credentials,
-                transaction_data,
-                ..
-            } = self
-                .validate_presentation(
-                    presentation_string,
-                    &interaction_data.nonce,
-                    &presentation_format,
-                    context.clone(),
-                )
-                .await?;
-
-            let holder_details = issuer.ok_or(OpenID4VCError::ValidationError(
-                "Presentation missing holder id".to_string(),
-            ))?;
-
-            (Some(holder_details), credentials, transaction_data)
-        } else {
-            // No holder binding — presentation_strings contains bare credential tokens
-            let credential_tokens = presentation_strings
-                .iter()
-                .map(|token| token.as_str().into())
-                .collect();
-
-            (None, credential_tokens, None)
-        };
-
-        for credential_token in credentials {
-            let credential = self
-                .validate_credential(
-                    holder_details.as_ref(),
-                    &credential_token,
-                    proof_input_schema,
-                    trusted_authorities,
-                )
-                .await?;
-
-            let proved_claims: Vec<ValidatedProofClaimDTO> =
-                validate_claims(credential, proof_input_schema).await?;
-
-            if let Some(claim_sets) = credential_query.claim_sets.as_ref()
-                && claim_sets.iter().any(|claim_set| {
-                    claim_set.iter().all(|claim| {
-                        proved_claims.iter().any(|proved_claim| {
-                            proved_claim.proof_input_claim.schema.key == claim.to_string()
+                if let Some(claim_sets) = credential_query.claim_sets.as_ref()
+                    && !claim_sets.iter().any(|claim_set| {
+                        claim_set.iter().all(|claim| {
+                            proved_claims.iter().any(|proved_claim| {
+                                proved_claim.proof_input_claim.schema.id.to_string()
+                                    == claim.to_string()
+                            })
                         })
                     })
-                })
-            {
-                return Err(OpenID4VCError::ValidationError(
-                    "Claim set is not satisfied".to_string(),
-                ));
+                {
+                    return Err(OpenID4VCError::ValidationError(
+                        "Claim set is not satisfied".to_string(),
+                    ));
+                }
+                total_proved_claims.extend(proved_claims);
             }
-            total_proved_claims.extend(proved_claims);
+
+            if let Some(presented) = presented_transaction_data
+                && !presented.is_empty()
+                && transaction_data_evidence.replace(presented).is_some()
+            {
+                return Err(OpenID4VCError::ValidationError(format!(
+                    "Multiple presentations authorize transaction data for credential query {query_id}"
+                )));
+            }
         }
 
-        Ok((total_proved_claims, presented_transaction_data))
+        Ok((total_proved_claims, transaction_data_evidence))
     }
 
     async fn validate_credential(
@@ -696,6 +716,7 @@ impl OpenId4VpProofValidatorProto {
         holder_details: Option<&IdentifierDetails>,
         credential_token: &SerializedCredential,
         proof_schema_input: &ProofInputSchema,
+        schema_format: &CredentialSchemaFormat,
         trusted_authorities: Option<&[TrustedAuthority]>,
     ) -> Result<DetailCredential, OpenID4VCError> {
         let credential_schema = proof_schema_input
@@ -703,12 +724,9 @@ impl OpenId4VpProofValidatorProto {
             .as_ref()
             .await
             .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
-        let format = credential_schema.format().await.map_err(|_| {
-            OpenID4VCError::MappingError("missing credential schema format".to_string())
-        })?;
         let formatter = self
             .credential_formatter_provider
-            .get_credential_formatter(&format)
+            .get_credential_formatter(&schema_format.format)
             .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
 
         let credential = formatter
@@ -1004,9 +1022,89 @@ pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<KeyIdent
     result
 }
 
+pub(super) fn validate_dcql_submission(
+    query: &DcqlQuery,
+    vp_token: &HashMap<String, Vec<String>>,
+) -> Result<(), OpenID4VCError> {
+    if vp_token.is_empty() {
+        return Err(OpenID4VCError::ValidationError(
+            "Empty VP token".to_string(),
+        ));
+    }
+    let requested: HashSet<_> = query.credentials.iter().map(|q| q.id.to_string()).collect();
+    for (id, presentations) in vp_token {
+        if !requested.contains(id) {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "Unknown credential query {id}"
+            )));
+        }
+        if presentations.is_empty() || presentations.iter().any(String::is_empty) {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "No presentation for credential query {id}"
+            )));
+        }
+    }
+    if let Some(sets) = &query.credential_sets {
+        for (index, set) in sets.iter().enumerate() {
+            if set.required
+                && !set.options.iter().any(|option| {
+                    !option.is_empty()
+                        && option
+                            .iter()
+                            .all(|id| vp_token.contains_key(&id.to_string()))
+                })
+            {
+                let options: Vec<Vec<_>> = set
+                    .options
+                    .iter()
+                    .map(|option| option.iter().map(ToString::to_string).collect())
+                    .collect();
+                return Err(OpenID4VCError::ValidationError(format!(
+                    "Credential set at index {index} is not satisfied; expected one of {options:?}"
+                )));
+            }
+        }
+    } else {
+        let missing: Vec<_> = query
+            .credentials
+            .iter()
+            .map(|query| query.id.to_string())
+            .filter(|id| !vp_token.contains_key(id))
+            .collect();
+        if !missing.is_empty() {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "Missing requested credentials: {}",
+                missing.join(", ")
+            )));
+        }
+    }
+    Ok(())
+}
+
+async fn resolve_credential_query_input<'a>(
+    inputs: &'a [ProofInputSchema],
+    query_id: &str,
+) -> Result<(&'a ProofInputSchema, CredentialSchemaFormat), OpenID4VCError> {
+    for input in inputs {
+        let formats = resolve_proof_input_schema_formats(input)
+            .await
+            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+        if let Some(format) = formats
+            .into_iter()
+            .find(|format| format.id.to_string() == query_id)
+        {
+            return Ok((input, format));
+        }
+    }
+    Err(OpenID4VCError::MappingError(format!(
+        "Missing proof input format for credential query {query_id}"
+    )))
+}
+
 async fn validate_claims(
     received_credential: DetailCredential,
     proof_input_schema: &ProofInputSchema,
+    schema_format: &CredentialSchemaFormat,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let expected_credential_claims = proof_input_schema
         .claim_schemas
@@ -1020,21 +1118,26 @@ async fn validate_claims(
         .await
         .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
     let mut proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+    // Several presentations may satisfy the same query; their claims must stay
+    // attached to the credential instance from which they were extracted.
+    let credential_instance_id = uuid::Uuid::new_v4().into();
 
     for expected_credential_claim in &expected_credential_claims {
         let resolved = resolve_claim(
             &expected_credential_claim.schema,
-            &credential_schema,
+            schema_format,
             &received_credential.claims,
         )
         .await?;
         if let Some(value) = resolved {
             // Expected claim present in the presentation
             proved_claims.push(ValidatedProofClaimDTO {
+                credential_instance_id,
                 proof_input_claim: expected_credential_claim.to_owned(),
                 credential: received_credential.to_owned(),
                 value: value.to_owned(),
                 credential_schema: credential_schema.to_owned(),
+                credential_schema_format: schema_format.clone(),
             })
         } else if expected_credential_claim.required {
             // Fail as required claim was not sent
@@ -1051,17 +1154,9 @@ async fn validate_claims(
 
 async fn resolve_claim<'a>(
     claim_schema: &ClaimSchema,
-    credential_schema: &CredentialSchema,
+    format: &CredentialSchemaFormat,
     claims: &'a HashMap<String, CredentialClaim>,
 ) -> Result<Option<&'a CredentialClaim>, OpenID4VCError> {
-    let formats = credential_schema
-        .formats
-        .as_ref()
-        .await
-        .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
-    let format = formats
-        .first()
-        .ok_or(OpenID4VCError::MappingError("Missing format".to_string()))?;
     let mappings = format
         .claim_mappings
         .as_ref()

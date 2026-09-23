@@ -1226,6 +1226,7 @@ dependencies = [
  "rcgen",
  "reqwest",
  "roxmltree",
+ "rstest",
  "sea-orm",
  "secrecy",
  "sentry",

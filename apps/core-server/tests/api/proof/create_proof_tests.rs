@@ -1142,7 +1142,9 @@ async fn test_create_proof_with_transaction_data_success() {
     assert_eq!(data["transaction_data"][0]["type"], json!("QES_APPROVAL"));
     assert_eq!(
         data["transaction_data"][0]["credential_ids"],
-        json!([credential_schema.id.to_string()])
+        json!([credential_schema.formats.as_ref().await.unwrap()[0]
+            .id
+            .to_string()])
     );
     assert_eq!(data["transaction_data"][0]["data"], tx_data);
 
@@ -1165,7 +1167,9 @@ async fn test_create_proof_with_transaction_data_success() {
     assert_eq!(data["transaction_data"][0]["type"], json!("QES_APPROVAL"));
     assert_eq!(
         data["transaction_data"][0]["credential_ids"],
-        json!([credential_schema.id.to_string()])
+        json!([credential_schema.formats.as_ref().await.unwrap()[0]
+            .id
+            .to_string()])
     );
     assert_eq!(data["transaction_data"][0]["data"], tx_data);
 }
@@ -1334,4 +1338,201 @@ async fn test_create_proof_with_more_transaction_data_entries_than_credentials()
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0463", resp.error_code().await);
+}
+
+async fn multiformat_proof_schema_setup(
+    formats: &[&str],
+) -> (TestContext, Did, CredentialSchema, ProofSchema) {
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Multi-format credential",
+            &organisation,
+            TestingCreateSchemaParams {
+                formats: Some(
+                    formats
+                        .iter()
+                        .map(|name| ((*name).into(), format!("{name}-schema")))
+                        .collect(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claim = schema.claim_schemas.as_ref().await.unwrap()[0].clone();
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "Multi-format proof",
+            &organisation,
+            vec![CreateProofInputSchema {
+                credential_schema: &schema,
+                claims: vec![CreateProofClaim {
+                    id: claim.id,
+                    key: &claim.key,
+                    required: true,
+                    data_type: &claim.data_type,
+                    array: false,
+                }],
+            }],
+        )
+        .await;
+    (context, did, schema, proof_schema)
+}
+
+fn multiformat_transaction_entry(
+    schema_id: shared_types::CredentialSchemaId,
+    label: &str,
+) -> Value {
+    json!({
+        "type": "QES_APPROVAL",
+        "credentialSchemaIds": [schema_id],
+        "data": {
+            "numSignatures": 1,
+            "signatureQualifier": "eu_eidas_qes",
+            "documentInfos": [{
+                "label": label,
+                "hash": "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
+                "hashType": "sodr", "access": {"type": "public"},
+                "href": "https://example.com/contract.pdf",
+                "checksum": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="
+            }],
+            "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+        }
+    })
+}
+
+#[tokio::test]
+async fn test_create_proof_with_multiple_selected_formats() {
+    let (context, did, _, proof_schema) =
+        multiformat_proof_schema_setup(&["SD_JWT_VC", "JWT"]).await;
+    let response = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(response.status(), 201);
+    let proof = context
+        .db
+        .proofs
+        .get(&response.json_value().await["id"].parse())
+        .await;
+    assert_eq!(proof.schema.as_ref().unwrap().id(), proof_schema.id);
+    assert_eq!(proof.state, one_core::model::proof::ProofStateEnum::Created);
+}
+
+#[tokio::test]
+async fn test_create_proof_expands_transaction_data_to_selected_format_ids() {
+    use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+
+    let (context, did, schema, proof_schema) =
+        multiformat_proof_schema_setup(&["SD_JWT_VC", "MDOC"]).await;
+    let entry = multiformat_transaction_entry(schema.id, "Contract");
+    let response = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([entry])),
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(response.status(), 201);
+    let proof_id = response.json_value().await["id"].parse();
+    let proof = context.db.proofs.get(&proof_id).await;
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    let data: Value = serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+    let expected_ids: Vec<_> = schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .map(|format| format.id)
+        .collect();
+    assert_eq!(
+        data["transaction_data"][0]["credential_ids"],
+        json!(expected_ids)
+    );
+    assert_eq!(data["transaction_data"][0]["data"], entry["data"]);
+    let encoded = data["transaction_data"][0]["encoded"].as_str().unwrap();
+    let decoded: Value =
+        serde_json::from_slice(&Base64UrlSafeNoPadding::decode_to_vec(encoded, None).unwrap())
+            .unwrap();
+    assert_eq!(decoded["credential_ids"], json!(expected_ids));
+}
+
+#[tokio::test]
+async fn test_create_proof_format_alternatives_do_not_increase_transaction_capacity() {
+    let (context, did, schema, proof_schema) =
+        multiformat_proof_schema_setup(&["SD_JWT_VC", "MDOC"]).await;
+    let response = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([
+                multiformat_transaction_entry(schema.id, "Contract"),
+                multiformat_transaction_entry(schema.id, "Invoice")
+            ])),
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(response.error_code().await, "BR_0463");
+}
+
+#[tokio::test]
+async fn test_create_proof_rejects_selected_format_without_transaction_support() {
+    let (context, did, schema, proof_schema) =
+        multiformat_proof_schema_setup(&["SD_JWT_VC", "JWT"]).await;
+    let response = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([multiformat_transaction_entry(
+                schema.id, "Contract"
+            )])),
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(response.error_code().await, "BR_0460");
+}
+
+#[tokio::test]
+async fn test_create_proof_rejects_selected_format_unsupported_by_transaction_type() {
+    let (context, did, schema, proof_schema) =
+        multiformat_proof_schema_setup(&["SD_JWT_VC", "MDOC"]).await;
+    let response = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "SCA_LOGIN_RISK_TRANSACTION",
+                "credentialSchemaIds": [schema.id]
+            }])),
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(response.error_code().await, "BR_0460");
 }

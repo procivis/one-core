@@ -54,6 +54,7 @@ rcgen                    = { version = "0.14", default-features = false, feature
 regex                    = { version = "1.10" }
 reqwest                  = { version = "0.13", default-features = false, features = ["rustls", "json", "http2"] }
 roxmltree                = { version = "0.20" }
+rstest                   = { version = "0.26" }
 rustls-platform-verifier = { version = "0.6" }
 sea-orm                  = { version = "1.1", default-features = false }
 secrecy                  = { version = "0.10.3", features = ["serde"] }

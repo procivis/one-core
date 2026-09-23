@@ -4,6 +4,30 @@ use shared_types::{CredentialFormat, CredentialSchemaId};
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::proof_schema::ProofInputSchema;
+
+/// Resolves the concrete formats selected by a proof input, in selection order.
+pub(crate) async fn resolve_proof_input_schema_formats(
+    input: &ProofInputSchema,
+) -> Result<Vec<CredentialSchemaFormat>, ProofInputFormatsError> {
+    let schema = input.credential_schema.as_ref().await?;
+    let formats = schema.formats.as_ref().await?;
+    input
+        .formats
+        .iter()
+        .map(|selected| {
+            formats
+                .iter()
+                .find(|format| &format.format == selected)
+                .cloned()
+                .ok_or_else(|| ProofInputFormatsError::FormatNotInSchema {
+                    format: selected.clone(),
+                    schema_id: schema.id,
+                })
+        })
+        .collect()
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProofInputFormatsError {

@@ -23,6 +23,7 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::util::key_selection::KeyFilter;
+use crate::validator::proof_schema::resolve_proof_input_schema_formats;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_org_id_not_matching_session,
     throw_if_proof_state_not_eq,
@@ -63,24 +64,26 @@ pub(super) async fn validate_format_and_exchange_protocol_compatibility(
         .r#type;
 
     for input_schema in &input_schemas {
-        let credential_schema = input_schema.credential_schema.as_ref().await?;
-
-        let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
-
-        let capabilities = formatter.get_capabilities();
-        if !capabilities
-            .proof_exchange_protocols
-            .contains(&exchange_type)
+        for format in resolve_proof_input_schema_formats(input_schema)
+            .await
+            .error_while("resolving proof input formats")?
         {
-            return Err(ProofServiceError::IncompatibleExchangeProtocol);
-        }
+            let formatter = formatter_provider.get_credential_formatter(&format.format)?;
 
-        if !capabilities
-            .verification_identifier_types
-            .contains(&IdentifierType::Did)
-        {
-            return Err(ProofServiceError::IncompatibleVerificationIdentifier);
+            let capabilities = formatter.get_capabilities();
+            if !capabilities
+                .proof_exchange_protocols
+                .contains(&exchange_type)
+            {
+                return Err(ProofServiceError::IncompatibleExchangeProtocol);
+            }
+
+            if !capabilities
+                .verification_identifier_types
+                .contains(&IdentifierType::Did)
+            {
+                return Err(ProofServiceError::IncompatibleVerificationIdentifier);
+            }
         }
     }
     Ok(())
@@ -99,26 +102,29 @@ pub(super) async fn validate_transaction_data(
 
     let mut credential_schemas_by_id = HashMap::new();
     for input_schema in &input_schemas {
-        let credential_schema = input_schema.credential_schema.as_ref().await?;
-        credential_schemas_by_id.insert(credential_schema.id, credential_schema.to_owned());
+        credential_schemas_by_id.insert(input_schema.credential_schema.id(), input_schema);
     }
 
     for entry in transaction_data {
         for credential_schema_id in &entry.credential_schema_ids {
-            let credential_schema = credential_schemas_by_id.get(credential_schema_id).ok_or(
+            let input_schema = credential_schemas_by_id.get(credential_schema_id).ok_or(
                 ProofServiceError::TransactionDataUnknownCredentialSchema(*credential_schema_id),
             )?;
 
-            let schema_format = credential_schema.format().await?;
-            let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
-            if !formatter
-                .get_capabilities()
-                .features
-                .contains(&Features::SupportsTransactionData)
+            for format in resolve_proof_input_schema_formats(input_schema)
+                .await
+                .error_while("resolving proof input formats")?
             {
-                return Err(ProofServiceError::TransactionDataFormatUnsupported(
-                    *credential_schema_id,
-                ));
+                let formatter = formatter_provider.get_credential_formatter(&format.format)?;
+                if !formatter
+                    .get_capabilities()
+                    .features
+                    .contains(&Features::SupportsTransactionData)
+                {
+                    return Err(ProofServiceError::TransactionDataFormatUnsupported(
+                        *credential_schema_id,
+                    ));
+                }
             }
         }
     }
@@ -138,17 +144,20 @@ pub(super) async fn validate_did_and_format_compatibility(
         .error_while("finding key agreement key")?;
 
     for input_schema in &input_schemas {
-        let credential_schema = input_schema.credential_schema.as_ref().await?;
-        let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
-
-        let capabilities = formatter.get_capabilities();
-        if capabilities
-            .features
-            .contains(&Features::RequiresPresentationEncryption)
-            && key_agreement_key.is_none()
+        for format in resolve_proof_input_schema_formats(input_schema)
+            .await
+            .error_while("resolving proof input formats")?
         {
-            return Err(ProofServiceError::NoKeyWithRole(KeyRole::KeyAgreement));
+            let formatter = formatter_provider.get_credential_formatter(&format.format)?;
+
+            let capabilities = formatter.get_capabilities();
+            if capabilities
+                .features
+                .contains(&Features::RequiresPresentationEncryption)
+                && key_agreement_key.is_none()
+            {
+                return Err(ProofServiceError::NoKeyWithRole(KeyRole::KeyAgreement));
+            }
         }
     }
     Ok(())
@@ -251,16 +260,19 @@ pub(super) async fn validate_verification_key_storage_compatibility(
         .r#type;
 
     for input_schema in &input_schemas {
-        let credential_schema = input_schema.credential_schema.as_ref().await?;
-        let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
-
-        let capabilities = formatter.get_capabilities();
-        if !capabilities
-            .verification_key_storages
-            .contains(&storage_type)
+        for format in resolve_proof_input_schema_formats(input_schema)
+            .await
+            .error_while("resolving proof input formats")?
         {
-            return Err(ProofServiceError::IncompatibleKeyStorage);
+            let formatter = formatter_provider.get_credential_formatter(&format.format)?;
+
+            let capabilities = formatter.get_capabilities();
+            if !capabilities
+                .verification_key_storages
+                .contains(&storage_type)
+            {
+                return Err(ProofServiceError::IncompatibleKeyStorage);
+            }
         }
     }
 

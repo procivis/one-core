@@ -19,6 +19,7 @@ use super::error::OID4VPFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::common::LockType;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -93,8 +94,19 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
     )
 }
 
+#[rstest::rstest]
+#[case::pending(ProofStateEnum::Pending, true)]
+#[case::requested(ProofStateEnum::Requested, true)]
+#[case::accepted(ProofStateEnum::Accepted, false)]
+#[case::rejected(ProofStateEnum::Rejected, false)]
+#[case::retracted(ProofStateEnum::Retracted, false)]
+#[case::expired(ProofStateEnum::InteractionExpired, false)]
+#[case::error(ProofStateEnum::Error, false)]
 #[tokio::test]
-async fn test_submit_proof_failed_on_validator_failure() {
+async fn test_submit_proof_validator_failure_only_updates_active_proofs(
+    #[case] persisted_state: ProofStateEnum,
+    #[case] mark_failed: bool,
+) {
     let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "did:verifier:123".parse().unwrap();
     let mut proof_repository = MockProofRepository::new();
@@ -194,12 +206,25 @@ async fn test_submit_proof_failed_on_validator_failure() {
         });
 
     proof_repository
-        .expect_update_proof()
-        .withf(move |_proof_id, _, _| {
-            assert_eq!(_proof_id, &proof_id);
-            true
-        })
+        .expect_get_proof()
+        .with(eq(proof_id), eq(Some(LockType::Update)))
         .once()
+        .return_once(move |_, _| {
+            Ok(Proof {
+                id: proof_id,
+                state: persisted_state,
+                ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
+            })
+        });
+    proof_repository
+        .expect_update_proof()
+        .withf(move |id, update, error| {
+            id == &proof_id
+                && update.state == Some(ProofStateEnum::Error)
+                && update.proof_blob_id.flatten().is_some()
+                && error.is_some()
+        })
+        .times(if mark_failed { 1 } else { 0 })
         .returning(|_, _, _| Ok(()));
 
     let mut blob_storage = MockBlobStorage::new();
@@ -355,6 +380,17 @@ async fn test_submit_proof_failed_on_trust_failure() {
             })
         });
 
+    proof_repository
+        .expect_get_proof()
+        .with(eq(proof_id), eq(Some(LockType::Update)))
+        .once()
+        .return_once(move |_, _| {
+            Ok(Proof {
+                id: proof_id,
+                state: ProofStateEnum::Pending,
+                ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
+            })
+        });
     proof_repository
         .expect_update_proof()
         .withf(move |id, _, _| {

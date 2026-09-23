@@ -310,7 +310,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     let verifier_did: DidValue = "did:verifier:123".parse().unwrap();
     let proof_id: ProofId = Uuid::new_v4().into();
     let mut credential_schema = dummy_credential_schema();
-    credential_schema.id = "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap();
+    let format_id = dcql_query.credentials[0].id.to_string().parse().unwrap();
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
@@ -348,7 +348,6 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     };
     let claim_schemas = vec![claim_schema_required.clone(), claim_schema_optional.clone()];
 
-    let format_id = Uuid::new_v4().into();
     credential_schema.formats = vec![CredentialSchemaFormat {
         id: format_id,
         created_date: crate::clock::now_utc(),
@@ -392,7 +391,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         schema: Some(
             ProofSchema {
                 input_schemas: vec![ProofInputSchema {
-                    formats: vec!["JWT".into()],
+                    formats: vec!["format".into()],
                     claim_schemas: vec![
                         ProofInputClaimSchema {
                             schema: claim_schema_required,
@@ -735,4 +734,482 @@ async fn test_validate_submission_empty_transaction_data_evidence_is_ignored() {
         )
         .await
         .unwrap();
+}
+
+#[test]
+fn credential_sets_accept_alternatives_and_require_all_required_inputs() {
+    use standardized_types::openid4vp::dcql::CredentialSet;
+
+    use super::validator::validate_dcql_submission;
+
+    let mut query = dummy_dcql_query(true);
+    let template = query.credentials[0].clone();
+    query.credentials = ["a", "b", "c", "optional"]
+        .map(|id| CredentialQuery {
+            id: id.into(),
+            ..template.clone()
+        })
+        .to_vec();
+    query.credential_sets = Some(vec![
+        CredentialSet {
+            required: true,
+            options: vec![vec!["a".into()], vec!["b".into()]],
+        },
+        CredentialSet {
+            required: true,
+            options: vec![vec!["c".into()]],
+        },
+        CredentialSet {
+            required: false,
+            options: vec![vec!["optional".into()]],
+        },
+    ]);
+    for (ids, accepted) in [
+        (vec!["a", "c"], true),
+        (vec!["b", "c"], true),
+        (vec!["a", "b", "c"], true),
+        (vec!["b", "c", "optional"], true),
+        (vec!["a"], false),
+        (vec!["c"], false),
+        (vec!["optional"], false),
+        (vec!["a", "c", "unknown"], false),
+        (vec![], false),
+    ] {
+        let tokens = ids
+            .iter()
+            .map(|id| (id.to_string(), vec!["token".to_string()]))
+            .collect();
+        assert_eq!(
+            validate_dcql_submission(&query, &tokens).is_ok(),
+            accepted,
+            "{ids:?}"
+        );
+    }
+    let tokens = hashmap! {"a".to_string() => vec![], "c".to_string() => vec!["token".to_string()]};
+    assert!(validate_dcql_submission(&query, &tokens).is_err());
+    let error = validate_dcql_submission(
+        &query,
+        &hashmap! {"c".to_string() => vec!["token".to_string()]},
+    )
+    .unwrap_err();
+    assert!(matches!(error, OpenID4VCError::ValidationError(message)
+        if message == "Credential set at index 0 is not satisfied; expected one of [[\"a\"], [\"b\"]]"));
+    query.credential_sets = None;
+    let error = validate_dcql_submission(&query, &hashmap! {
+        "a".to_string() => vec!["token".to_string()], "c".to_string() => vec!["token".to_string()]
+    }).unwrap_err();
+    assert!(matches!(error, OpenID4VCError::ValidationError(message)
+        if message == "Missing requested credentials: b, optional"));
+}
+
+async fn multiformat_test_data(transaction_data: bool) -> TestData {
+    use standardized_types::openid4vp::dcql::CredentialSet;
+    let mut data = test_data(if transaction_data {
+        mdoc_dcql_query()
+    } else {
+        dummy_dcql_query(true)
+    });
+    let mut proof_schema = data
+        .proof
+        .schema
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .clone();
+    let mut input = proof_schema.input_schemas.as_ref().await.unwrap()[0].clone();
+    let mut schema = input.credential_schema.as_ref().await.unwrap().clone();
+    let mut first = schema.formats.as_ref().await.unwrap()[0].clone();
+    first.format = "first".into();
+    let mut second = first.clone();
+    second.id = Uuid::new_v4().into();
+    second.format = "second".into();
+    let mut mappings = second.claim_mappings.as_ref().await.unwrap().clone();
+    for mapping in &mut mappings {
+        mapping.credential_schema_format_id = second.id;
+        mapping.technical_key = format!("alternative_{}", mapping.technical_key);
+    }
+    second.claim_mappings = mappings.into();
+    schema.formats = vec![first.clone(), second.clone()].into();
+    input.formats = vec![first.format.clone(), second.format.clone()];
+    input.credential_schema = schema.into();
+    let required_claim = input.claim_schemas.as_ref().await.unwrap()[0].schema.id;
+    proof_schema.input_schemas = vec![input].into();
+    data.proof.schema = Some(proof_schema.into());
+    let query = data.interaction_data.dcql_query.as_mut().unwrap();
+    let mut template = query.credentials[0].clone();
+    template.claim_sets = Some(vec![vec![required_claim.to_string().into()]]);
+    query.credentials = [&first, &second]
+        .map(|format| CredentialQuery {
+            id: format.id.to_string().into(),
+            ..template.clone()
+        })
+        .to_vec();
+    query.credential_sets = Some(vec![CredentialSet {
+        required: true,
+        options: query
+            .credentials
+            .iter()
+            .map(|query| vec![query.id.clone()])
+            .collect(),
+    }]);
+    let credential = data
+        .mock_data
+        .credential_extraction
+        .as_mut()
+        .unwrap()
+        .as_mut()
+        .unwrap();
+    credential.status.clear();
+    credential.claims.insert(
+        "alternative_required_key".to_string(),
+        json!("alternative value").try_into().unwrap(),
+    );
+    data.mock_data.revocation_check = None;
+    if transaction_data {
+        let mut request = transaction_data_request();
+        request.credential_ids = query
+            .credentials
+            .iter()
+            .map(|query| query.id.clone())
+            .collect();
+        data.interaction_data.common.transaction_data = vec![request];
+        data.mock_data
+            .presentation_extraction
+            .as_mut()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .transaction_data = Some(PresentedTransactionData::DeviceSignedElements(
+            qes_approval_evidence(),
+        ));
+    }
+    data
+}
+
+fn multiformat_mocks(data: &TestData, expected_formats: Vec<&'static str>) -> Mocks {
+    let presentation = data
+        .mock_data
+        .presentation_extraction
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .clone();
+    let credential = data
+        .mock_data
+        .credential_extraction
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .clone();
+    let mut presentation_formatter = MockPresentationFormatter::new();
+    presentation_formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(10));
+    presentation_formatter
+        .expect_extract_presentation()
+        .returning(move |_, _, _| Ok(presentation.clone()));
+    let mut formatter = base_credential_formatter();
+    formatter
+        .expect_extract_credentials()
+        .returning(move |_, _, _| Ok(credential.clone()));
+    let formatter = Arc::new(formatter);
+    let mut mocks = setup_mocks(presentation_formatter, base_credential_formatter(), None);
+    mocks.credential_formatter_provider = MockCredentialFormatterProvider::new();
+    mocks
+        .credential_formatter_provider
+        .expect_get_credential_formatter()
+        .times(expected_formats.len())
+        .withf(move |format| expected_formats.contains(&format.to_string().as_str()))
+        .returning(move |_| Ok(formatter.clone()));
+    transaction_data_mocks(&mut mocks);
+    mocks
+}
+
+fn multiformat_submission(data: &TestData, selections: &[usize]) -> SubmissionRequestData {
+    let query = data.interaction_data.dcql_query.as_ref().unwrap();
+    SubmissionRequestData {
+        submission_data: VpSubmissionData::Dcql(VpTokenResponse {
+            vp_token: selections
+                .iter()
+                .map(|index| {
+                    (
+                        query.credentials[*index].id.to_string(),
+                        vec!["vp_token".to_string()],
+                    )
+                })
+                .collect(),
+        }),
+        state: Uuid::new_v4().into(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    }
+}
+
+#[rstest::rstest]
+#[case::first_format(false, 0, "first", "required_key_value")]
+#[case::second_format(false, 1, "second", "alternative value")]
+#[case::first_format_with_transaction_data(true, 0, "first", "required_key_value")]
+#[case::second_format_with_transaction_data(true, 1, "second", "alternative value")]
+#[tokio::test]
+async fn each_format_option_is_accepted_and_persisted_with_its_own_mapping(
+    #[case] transaction_data: bool,
+    #[case] selected: usize,
+    #[case] name: &'static str,
+    #[case] value: &str,
+) {
+    let data = multiformat_test_data(transaction_data).await;
+    let proto = setup_proto(multiformat_mocks(&data, vec![name]));
+    let submission = multiformat_submission(&data, &[selected]);
+    let result = proto
+        .validate_submission(
+            submission,
+            data.proof,
+            data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(result.proved_credentials.len(), 1);
+    assert_eq!(
+        result.proved_credentials[0]
+            .credential
+            .credential_format()
+            .await
+            .unwrap(),
+        Some(name.into())
+    );
+    assert_eq!(result.proved_claims[0].value, Some(value.to_string()));
+}
+
+#[tokio::test]
+async fn submitted_alternatives_are_stored_as_separate_credentials() {
+    let data = multiformat_test_data(false).await;
+    let proto = setup_proto(multiformat_mocks(&data, vec!["first", "second"]));
+    let submission = multiformat_submission(&data, &[0, 1]);
+    let result = proto
+        .validate_submission(
+            submission,
+            data.proof,
+            data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(result.proved_credentials.len(), 2);
+    assert_eq!(result.proved_claims.len(), 2);
+    assert_ne!(
+        result.proved_claims[0].credential_id,
+        result.proved_claims[1].credential_id
+    );
+}
+
+#[rstest::rstest]
+#[case::required_only_alternative_satisfied(true, false, true)]
+#[case::all_claims_alternative_satisfied(true, true, true)]
+#[case::only_alternative_missing_a_claim(false, false, false)]
+#[case::only_alternative_fully_satisfied(false, true, true)]
+#[tokio::test]
+async fn claim_sets_accept_any_satisfied_combination_of_claim_query_ids(
+    #[case] required_only_allowed: bool,
+    #[case] disclose_optional: bool,
+    #[case] accepted: bool,
+) {
+    let mut data = multiformat_test_data(false).await;
+    let (required, optional) = {
+        let schema = data.proof.schema.as_ref().unwrap().as_ref().await.unwrap();
+        let inputs = schema.input_schemas.as_ref().await.unwrap();
+        let claims = inputs[0].claim_schemas.as_ref().await.unwrap();
+        (
+            claims[0].schema.id.to_string(),
+            claims[1].schema.id.to_string(),
+        )
+    };
+    let mut sets = vec![vec![required.clone().into(), optional.into()]];
+    if required_only_allowed {
+        sets.push(vec![required.into()]);
+    }
+    data.interaction_data
+        .dcql_query
+        .as_mut()
+        .unwrap()
+        .credentials[1]
+        .claim_sets = Some(sets);
+    if disclose_optional {
+        data.mock_data
+            .credential_extraction
+            .as_mut()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .claims
+            .insert(
+                "alternative_optional_key".to_string(),
+                json!("optional value").try_into().unwrap(),
+            );
+    }
+    let proto = setup_proto(multiformat_mocks(&data, vec!["second"]));
+    let submission = multiformat_submission(&data, &[1]);
+    let result = proto
+        .validate_submission(
+            submission,
+            data.proof,
+            data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await;
+    assert_eq!(result.is_ok(), accepted);
+    if let Ok((result, _)) = result {
+        assert_eq!(
+            result.proved_claims.len(),
+            if disclose_optional { 2 } else { 1 }
+        );
+    }
+}
+
+#[rstest::rstest]
+#[case::without_holder_binding(false)]
+#[case::with_holder_binding(true)]
+#[tokio::test]
+async fn every_submitted_presentation_is_validated(#[case] holder_binding: bool) {
+    let mut data = multiformat_test_data(false).await;
+    let query = &mut data
+        .interaction_data
+        .dcql_query
+        .as_mut()
+        .unwrap()
+        .credentials[1];
+    query.multiple = true;
+    query.require_cryptographic_holder_binding = holder_binding;
+    let mut submission = multiformat_submission(&data, &[1]);
+    let VpSubmissionData::Dcql(response) = &mut submission.submission_data else {
+        unreachable!();
+    };
+    response
+        .vp_token
+        .values_mut()
+        .next()
+        .unwrap()
+        .push("invalid".to_string());
+    let mut presentation_formatter = MockPresentationFormatter::new();
+    presentation_formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(10));
+    let presentation = data.mock_data.presentation_extraction.unwrap().unwrap();
+    presentation_formatter
+        .expect_extract_presentation()
+        .times(if holder_binding { 2 } else { 0 })
+        .returning(move |token, _, _| {
+            if token == "invalid" {
+                Err(FormatterError::CouldNotVerify(
+                    "invalid signature".to_string(),
+                ))
+            } else {
+                Ok(presentation.clone())
+            }
+        });
+    let credential = data.mock_data.credential_extraction.unwrap().unwrap();
+    let mut formatter = base_credential_formatter();
+    formatter
+        .expect_extract_credentials()
+        .times(if holder_binding { 1 } else { 2 })
+        .returning(move |token, _, _| {
+            if token.as_ref() == "invalid" {
+                Err(FormatterError::CouldNotVerify(
+                    "invalid signature".to_string(),
+                ))
+            } else {
+                Ok(credential.clone())
+            }
+        });
+    let proto = setup_proto(setup_mocks(presentation_formatter, formatter, None));
+    assert!(
+        proto
+            .validate_submission(
+                submission,
+                data.proof,
+                data.interaction_data,
+                VerificationProtocolType::OpenId4VpFinal1_0,
+            )
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn two_alternatives_cannot_both_authorize_the_same_transaction_data() {
+    let data = multiformat_test_data(true).await;
+    let proto = setup_proto(multiformat_mocks(&data, vec!["first", "second"]));
+    let submission = multiformat_submission(&data, &[0, 1]);
+    let result = proto
+        .validate_submission(
+            submission,
+            data.proof,
+            data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await;
+    assert!(matches!(result, Err(OpenID4VCError::ValidationError(_))));
+}
+
+#[tokio::test]
+async fn selected_option_cannot_borrow_claims_from_another_format() {
+    let mut data = multiformat_test_data(false).await;
+    data.mock_data
+        .credential_extraction
+        .as_mut()
+        .unwrap()
+        .as_mut()
+        .unwrap()
+        .claims
+        .remove("alternative_required_key");
+    let proto = setup_proto(multiformat_mocks(&data, vec!["second"]));
+    let submission = multiformat_submission(&data, &[1]);
+    let result = proto
+        .validate_submission(
+            submission,
+            data.proof,
+            data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await;
+    assert!(
+        matches!(result, Err(OpenID4VCError::ValidationError(message)) if message == "Required claim not submitted")
+    );
+}
+
+#[tokio::test]
+async fn an_unselected_format_cannot_satisfy_a_proof_input() {
+    let mut data = multiformat_test_data(false).await;
+    let submission = multiformat_submission(&data, &[1]);
+    let mut schema = data
+        .proof
+        .schema
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .clone();
+    let mut inputs = schema.input_schemas.as_ref().await.unwrap().clone();
+    inputs[0].formats = vec!["first".into()];
+    schema.input_schemas = inputs.into();
+    data.proof.schema = Some(schema.into());
+    let proto = setup_proto(Mocks::default());
+    assert!(
+        proto
+            .validate_submission(
+                submission,
+                data.proof,
+                data.interaction_data,
+                VerificationProtocolType::OpenId4VpFinal1_0
+            )
+            .await
+            .is_err()
+    );
 }
