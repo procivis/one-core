@@ -207,8 +207,14 @@ impl HolderIssuanceResolver {
         organisation_id: OrganisationId,
     ) -> Result<(String, etsi_119_475::registration_certificate::Payload), HolderIssuanceError>
     {
+        let credential_not_covered_result =
+            || HolderIssuanceError::TrustAttestationDoesNotCoverCredential {
+                document: AttestationCoverageSource::RegistrationCertificate,
+            };
+        let mut error_result = None;
+
         for reg_cert in issuer_info {
-            if let Some(relying_party) = self
+            match self
                 .credential_config_matches_reg_cert(
                     credential_config,
                     reg_cert,
@@ -217,25 +223,37 @@ impl HolderIssuanceResolver {
                 )
                 .await
             {
-                return Ok((reg_cert.data.to_owned(), relying_party));
+                // valid certificate with matching info, stop looking
+                Ok(Some(relying_party)) => {
+                    return Ok((reg_cert.data.to_owned(), relying_party));
+                }
+
+                // propagate underlying error if no valid certificate found
+                Ok(None) => {
+                    error_result = Some(credential_not_covered_result());
+                }
+                Err(error) => {
+                    // store first failure only
+                    error_result.get_or_insert(error);
+                }
             }
         }
 
-        Err(
-            HolderIssuanceError::TrustAttestationDoesNotCoverCredential {
-                document: AttestationCoverageSource::RegistrationCertificate,
-            },
-        )
+        Err(error_result.unwrap_or_else(credential_not_covered_result))
     }
 
+    /// Returns:
+    /// - matching registration certificate payload
+    /// - or `None` if the reg-cert does not match the credential configuration
+    /// - or error if the reg-cert is not valid
     async fn credential_config_matches_reg_cert(
         &self,
         credential_config: &CredentialConfiguration,
         issuer_info: &IssuerInfoAttestation,
         expected_relying_party_id: &str,
         organisation_id: OrganisationId,
-    ) -> Option<etsi_119_475::registration_certificate::Payload> {
-        let Ok(reg_cert) = self
+    ) -> Result<Option<etsi_119_475::registration_certificate::Payload>, HolderIssuanceError> {
+        let reg_cert = self
             .wrp_validator
             .validate_registration_certificate(
                 &issuer_info.data,
@@ -244,19 +262,21 @@ impl HolderIssuanceResolver {
                 self.leeway,
             )
             .await
-        else {
-            return None;
+            .error_while("validating registration certificate")?;
+
+        let Some(provides_attestations) = &reg_cert.payload.custom.provides_attestations else {
+            return Ok(None);
         };
 
-        let provides_attestations = reg_cert.payload.custom.provides_attestations.as_ref()?;
-
-        if provides_attestations.iter().any(|attestation| {
-            credential_config_matches_reg_cert_attestation(credential_config, attestation)
-        }) {
-            Some(reg_cert.payload.custom)
-        } else {
-            None
-        }
+        Ok(
+            if provides_attestations.iter().any(|attestation| {
+                credential_config_matches_reg_cert_attestation(credential_config, attestation)
+            }) {
+                Some(reg_cert.payload.custom)
+            } else {
+                None
+            },
+        )
     }
 }
 
