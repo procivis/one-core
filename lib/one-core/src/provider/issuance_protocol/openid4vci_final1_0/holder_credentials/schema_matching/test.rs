@@ -1,3 +1,4 @@
+use rstest::rstest;
 use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -117,6 +118,79 @@ async fn existing_ecosystem_schema_id_accepts_required_claim_by_formatted_techni
         .once()
         .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
     let importer = MockCredentialSchemaImporter::new();
+
+    let resolution = find_or_import_credential_schema(
+        &importer,
+        &repository,
+        parsed_schema,
+        &parsed_format,
+        &parsed_credential,
+        dummy_organisation(None).id,
+        &CoreConfig::default(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(resolution.schema.id, stored_schema_id);
+    assert!(resolution.new_format.is_none());
+}
+
+#[rstest]
+#[tokio::test]
+async fn existing_multiformat_schema_ignores_missing_metadata_claims(
+    #[values("JWT", "SD_JWT")] format: &str,
+) {
+    let parsed_claim = claim_schema("name", "STRING");
+    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_schema = credential_schema(
+        Uuid::new_v4().into(),
+        parsed_format_id,
+        format,
+        vec![parsed_claim.clone()],
+        vec![mapping(parsed_format_id, parsed_claim.id, "name", None)],
+    );
+    let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
+    let parsed_credential =
+        credential(parsed_schema.clone(), vec![claim("name", &parsed_claim)]).await;
+
+    let stored_claim = claim_schema("name", "STRING");
+    let mut vct = claim_schema("vct", "STRING");
+    vct.metadata = true;
+    let stored_format_id = Uuid::new_v4().into();
+    let stored_schema_id = Uuid::new_v4().into();
+    let mut stored_schema = credential_schema(
+        stored_schema_id,
+        stored_format_id,
+        format,
+        vec![stored_claim.clone(), vct.clone()],
+        vec![mapping(stored_format_id, stored_claim.id, "name", None)],
+    );
+    let sd_jwt_vc_format_id = Uuid::new_v4().into();
+    stored_schema
+        .formats
+        .as_mut()
+        .await
+        .unwrap()
+        .push(CredentialSchemaFormat {
+            id: sd_jwt_vc_format_id,
+            created_date: now_utc(),
+            last_modified: now_utc(),
+            credential_schema_id: stored_schema_id,
+            format: "SD_JWT_VC".into(),
+            ecosystem_schema_id: "sd-jwt-vc-schema-id".to_string(),
+            claim_mappings: vec![
+                mapping(sd_jwt_vc_format_id, stored_claim.id, "name", None),
+                mapping(sd_jwt_vc_format_id, vct.id, "vct", None),
+            ]
+            .into(),
+        });
+
+    let mut repository = MockCredentialSchemaRepository::new();
+    let importer = MockCredentialSchemaImporter::new();
+    repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
 
     let resolution = find_or_import_credential_schema(
         &importer,
@@ -680,8 +754,14 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema() {
     assert!(resolution.new_format.is_none());
 }
 
+#[rstest]
+#[case::missing_user_claim("stored-missing", false)]
+#[case::missing_metadata_claim("vct", true)]
 #[tokio::test]
-async fn display_name_match_with_missing_required_claim_imports_new_schema() {
+async fn display_name_match_requires_only_non_metadata_claims(
+    #[case] missing_claim_key: &str,
+    #[case] metadata: bool,
+) {
     let mut parsed_claim = claim_schema("parsed-present", "STRING");
     add_claim_name_translation(&mut parsed_claim, "en", "Present").await;
     let parsed_format_id = Uuid::new_v4().into();
@@ -708,21 +788,23 @@ async fn display_name_match_with_missing_required_claim_imports_new_schema() {
 
     let mut stored_present = claim_schema("stored-present", "STRING");
     add_claim_name_translation(&mut stored_present, "en", "Present").await;
-    let mut stored_missing = claim_schema("stored-missing", "STRING");
+    let mut stored_missing = claim_schema(missing_claim_key, "STRING");
+    stored_missing.metadata = metadata;
     add_claim_name_translation(&mut stored_missing, "en", "Missing").await;
     let stored_format_id = Uuid::new_v4().into();
     let mut stored_schema = credential_schema(
         Uuid::new_v4().into(),
         stored_format_id,
-        "JWT",
+        "SD_JWT_VC",
         vec![stored_present.clone(), stored_missing.clone()],
         vec![
             mapping(stored_format_id, stored_present.id, "old-present", None),
-            mapping(stored_format_id, stored_missing.id, "old-missing", None),
+            mapping(stored_format_id, stored_missing.id, missing_claim_key, None),
         ],
     );
     set_ecosystem_schema_id(&mut stored_schema, "old-schema-id").await;
     add_name_translation(&mut stored_schema, "en", "Display name").await;
+    let stored_schema_id = stored_schema.id;
 
     let mut repository = MockCredentialSchemaRepository::new();
     repository
@@ -731,10 +813,12 @@ async fn display_name_match_with_missing_required_claim_imports_new_schema() {
         .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
     let parsed_schema_id = parsed_schema.id;
     let mut importer = MockCredentialSchemaImporter::new();
-    importer
-        .expect_import_credential_schema()
-        .once()
-        .return_once(Ok);
+    if !metadata {
+        importer
+            .expect_import_credential_schema()
+            .once()
+            .return_once(Ok);
+    }
 
     let resolution = find_or_import_credential_schema(
         &importer,
@@ -748,8 +832,15 @@ async fn display_name_match_with_missing_required_claim_imports_new_schema() {
     .await
     .unwrap();
 
-    assert_eq!(resolution.schema.id, parsed_schema_id);
-    assert!(resolution.new_format.is_none());
+    assert_eq!(
+        resolution.schema.id,
+        if metadata {
+            stored_schema_id
+        } else {
+            parsed_schema_id
+        }
+    );
+    assert_eq!(resolution.new_format.is_some(), metadata);
 }
 
 #[tokio::test]

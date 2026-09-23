@@ -271,7 +271,8 @@ async fn missing_required_claims(
     let stored_claim_schemas = stored_schema.claim_schemas.as_ref().await?;
     let mut missing = stored_claim_schemas
         .iter()
-        .filter(|claim_schema| claim_schema.required)
+        // Metadata is format-specific and may belong to another format of this schema.
+        .filter(|claim_schema| claim_schema.required && !claim_schema.metadata)
         .filter(|claim_schema| {
             !stored_mappings.iter().any(|stored_mapping| {
                 stored_mapping.claim_schema_id == claim_schema.id
@@ -378,6 +379,7 @@ async fn prepare_display_name_matched_format(
 
     if stored_claim_schemas.iter().any(|stored_claim_schema| {
         stored_claim_schema.required
+            && !stored_claim_schema.metadata
             && !matched_stored_claim_schema_ids.contains(&stored_claim_schema.id)
     }) {
         return Ok(None);
