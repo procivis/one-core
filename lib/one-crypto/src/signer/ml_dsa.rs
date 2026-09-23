@@ -1,6 +1,7 @@
 use ml_dsa::signature::{Signer as MlDsaSignerTrait, Verifier};
 use ml_dsa::{
-    B32, EncodedSignature, EncodedVerifyingKey, KeyGen, MlDsa65, Signature, VerifyingKey,
+    B32, EncodedSignature, EncodedVerifyingKey, Generate, Keypair, MlDsa65, Signature, SigningKey,
+    VerifyingKey,
 };
 use rand_chacha::ChaCha20Rng;
 use secrecy::{ExposeSecret, SecretSlice};
@@ -17,10 +18,12 @@ pub struct KeyPair {
 impl MlDsaSigner {
     pub fn generate_key_pair() -> Result<KeyPair, SignerError> {
         let mut rng: ChaCha20Rng = rand::make_rng();
-        let kp = MlDsa65::key_gen(&mut rng);
+        let sk = SigningKey::<MlDsa65>::try_generate_from_rng(&mut rng)
+            .map_err(|e| SignerError::CouldNotGenerateKeyPair(e.to_string()))?;
+
         Ok(KeyPair {
-            public: kp.verifying_key().encode().to_vec(),
-            seed: SecretSlice::from(kp.to_seed().to_vec()),
+            public: sk.verifying_key().encode().to_vec(),
+            seed: SecretSlice::from(sk.to_seed().to_vec()),
         })
     }
 
@@ -30,8 +33,8 @@ impl MlDsaSigner {
     ) -> Result<KeyPair, SignerError> {
         let seed = B32::try_from(sec_bytes.expose_secret())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-        let keys = MlDsa65::from_seed(&seed);
-        let public = keys.verifying_key().encode().to_vec();
+        let sk = SigningKey::<MlDsa65>::from_seed(&seed);
+        let public = sk.verifying_key().encode().to_vec();
         if public != pub_bytes {
             return Err(SignerError::CouldNotExtractKeyPair);
         }
@@ -51,8 +54,10 @@ impl Signer for MlDsaSigner {
     ) -> Result<Vec<u8>, SignerError> {
         let seed = B32::try_from(private_key.expose_secret())
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-        let key_pair = MlDsa65::from_seed(&seed);
-        let sig = key_pair.signing_key().sign(input);
+        let sk = SigningKey::<MlDsa65>::from_seed(&seed);
+        let sig = sk
+            .try_sign(input)
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
         Ok(sig.encode().to_vec())
     }
 
