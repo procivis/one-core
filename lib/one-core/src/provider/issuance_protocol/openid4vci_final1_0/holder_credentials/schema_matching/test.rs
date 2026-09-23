@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::{align_format_claim_schemas_and_mappings, find_or_import_credential_schema};
 use crate::clock::now_utc;
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, DatatypeType, Fields};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
@@ -269,9 +269,18 @@ async fn ecosystem_schema_id_match_takes_precedence_over_display_name_match() {
     assert!(resolution.new_format.is_none());
 }
 
+#[rstest]
+#[case::string_email("STRING", "EMAIL")]
+#[case::number_date("NUMBER", "DATE")]
+#[case::object("OBJECT", "OBJECT")]
+#[case::custom_object("CUSTOM_OBJECT", "OBJECT")]
+#[case::stored_custom_object("OBJECT", "CUSTOM_OBJECT")]
 #[tokio::test]
-async fn matches_display_name_translation_and_adds_new_format() {
-    let mut parsed_claim = claim_schema("parsed-name", "STRING");
+async fn matches_display_name_translation_and_adds_new_format(
+    #[case] parsed_data_type: &str,
+    #[case] stored_data_type: &str,
+) {
+    let mut parsed_claim = claim_schema("parsed-name", parsed_data_type);
     add_claim_name_translation(&mut parsed_claim, "en", "Full name").await;
     let parsed_format_id = Uuid::new_v4().into();
     let mut parsed_schema = credential_schema(
@@ -297,7 +306,7 @@ async fn matches_display_name_translation_and_adds_new_format() {
 
     // The internal and technical keys are entirely different. Claim display names establish the
     // match, and the heuristic data type mismatch must not reject it.
-    let mut stored_claim = claim_schema("stored-name", "EMAIL");
+    let mut stored_claim = claim_schema("stored-name", stored_data_type);
     add_claim_name_translation(&mut stored_claim, "en", "Full name").await;
     let stored_format_id = Uuid::new_v4().into();
     let stored_schema_id = Uuid::new_v4().into();
@@ -337,7 +346,7 @@ async fn matches_display_name_translation_and_adds_new_format() {
         &parsed_format,
         &parsed_credential,
         dummy_organisation(None).id,
-        &CoreConfig::default(),
+        &config_with_datatypes(),
     )
     .await
     .unwrap();
@@ -694,9 +703,23 @@ async fn display_name_match_with_same_format_and_different_schema_id_imports_new
     assert!(resolution.new_format.is_none());
 }
 
+#[rstest]
+#[case::array("NUMBER", "NUMBER", false, true)]
+#[case::parsed_object("OBJECT", "STRING", false, false)]
+#[case::stored_object("STRING", "OBJECT", false, false)]
+#[case::parsed_custom_object("CUSTOM_OBJECT", "STRING", false, false)]
+#[case::stored_custom_object("STRING", "CUSTOM_OBJECT", false, false)]
+#[case::object_array("OBJECT", "STRING", true, true)]
+#[case::stored_object_array("STRING", "OBJECT", true, true)]
 #[tokio::test]
-async fn display_name_match_with_conflicting_claim_imports_new_schema() {
-    let mut parsed_claim = claim_schema("claim", "NUMBER");
+async fn display_name_match_with_conflicting_claim_imports_new_schema(
+    #[case] parsed_data_type: &str,
+    #[case] stored_data_type: &str,
+    #[case] parsed_array: bool,
+    #[case] stored_array: bool,
+) {
+    let mut parsed_claim = claim_schema("claim", parsed_data_type);
+    parsed_claim.array = parsed_array;
     add_claim_name_translation(&mut parsed_claim, "en", "Claim").await;
     let parsed_format_id = Uuid::new_v4().into();
     let mut parsed_schema = credential_schema(
@@ -712,8 +735,8 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema() {
     let parsed_credential =
         credential(parsed_schema.clone(), vec![claim("claim", &parsed_claim)]).await;
 
-    let mut stored_claim = claim_schema("claim", "NUMBER");
-    stored_claim.array = true;
+    let mut stored_claim = claim_schema("claim", stored_data_type);
+    stored_claim.array = stored_array;
     add_claim_name_translation(&mut stored_claim, "en", "Claim").await;
     let stored_format_id = Uuid::new_v4().into();
     let mut stored_schema = credential_schema(
@@ -745,7 +768,7 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema() {
         &parsed_format,
         &parsed_credential,
         dummy_organisation(None).id,
-        &CoreConfig::default(),
+        &config_with_datatypes(),
     )
     .await
     .unwrap();
@@ -1334,6 +1357,32 @@ async fn remaps_new_nested_and_array_claim_paths() {
             parsed_nested2_array.id
         );
     }
+}
+
+fn config_with_datatypes() -> CoreConfig {
+    let mut config = CoreConfig::default();
+    for (key, r#type) in [
+        ("STRING", DatatypeType::String),
+        ("EMAIL", DatatypeType::String),
+        ("NUMBER", DatatypeType::Number),
+        ("DATE", DatatypeType::Date),
+        ("OBJECT", DatatypeType::Object),
+        ("CUSTOM_OBJECT", DatatypeType::Object),
+    ] {
+        config.datatype.insert(
+            key.to_string(),
+            Fields {
+                r#type,
+                display: key.into(),
+                order: None,
+                priority: None,
+                enabled: true,
+                capabilities: None,
+                params: None,
+            },
+        );
+    }
+    config
 }
 
 fn claim_schema(key: &str, data_type: &str) -> ClaimSchema {

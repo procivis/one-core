@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use shared_types::{ClaimSchemaId, OrganisationId};
 use uuid::Uuid;
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::add_fallback_translation;
@@ -159,9 +159,13 @@ pub(super) async fn find_or_import_credential_schema(
             continue;
         }
 
-        let Some(new_format) =
-            prepare_display_name_matched_format(&stored_schema, &parsed_schema, parsed_format)
-                .await?
+        let Some(new_format) = prepare_display_name_matched_format(
+            &stored_schema,
+            &parsed_schema,
+            parsed_format,
+            &config.datatype,
+        )
+        .await?
         else {
             continue;
         };
@@ -290,6 +294,7 @@ async fn prepare_display_name_matched_format(
     stored_schema: &CredentialSchema,
     parsed_schema: &CredentialSchema,
     parsed_format: &CredentialSchemaFormat,
+    datatype_config: &DatatypeConfig,
 ) -> Result<Option<CredentialSchemaFormat>, IssuanceProtocolError> {
     let stored_claim_schemas = stored_schema.claim_schemas.as_ref().await?;
     let parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?;
@@ -363,7 +368,8 @@ async fn prepare_display_name_matched_format(
             // Claim display names do not identify a unique one-to-one mapping.
             return Ok(None);
         }
-        if !claim_schemas_are_compatible(parsed_claim_schema, stored_claim_schema) {
+        if !claim_schemas_are_compatible(parsed_claim_schema, stored_claim_schema, datatype_config)?
+        {
             return Ok(None);
         }
         parsed_to_stored_keys.insert(
@@ -411,8 +417,21 @@ async fn claim_display_names(
         .collect())
 }
 
-fn claim_schemas_are_compatible(parsed: &ClaimSchema, stored: &ClaimSchema) -> bool {
+fn claim_schemas_are_compatible(
+    parsed: &ClaimSchema,
+    stored: &ClaimSchema,
+    datatype_config: &DatatypeConfig,
+) -> Result<bool, IssuanceProtocolError> {
     if parsed.data_type != stored.data_type {
+        let parsed_type = datatype_config
+            .get_type(&parsed.data_type)
+            .error_while("getting parsed claim datatype")?;
+        let stored_type = datatype_config
+            .get_type(&stored.data_type)
+            .error_while("getting stored claim datatype")?;
+        if (parsed_type == DatatypeType::Object) != (stored_type == DatatypeType::Object) {
+            return Ok(false);
+        }
         // This is just a warning because the data type detection is just a heuristic.
         tracing::warn!(
             "detected data type mismatch on claim `{}`: expected `{}` but parsed `{}`",
@@ -421,7 +440,7 @@ fn claim_schemas_are_compatible(parsed: &ClaimSchema, stored: &ClaimSchema) -> b
             parsed.data_type
         );
     }
-    parsed.array == stored.array && parsed.metadata == stored.metadata
+    Ok(parsed.array == stored.array && parsed.metadata == stored.metadata)
 }
 
 async fn collect_claim_mappings(

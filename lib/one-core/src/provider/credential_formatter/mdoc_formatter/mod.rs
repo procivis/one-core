@@ -1510,8 +1510,11 @@ async fn parse_claim_inner(
             (claims, mappings)
         }
         ciborium::Value::Map(map) => {
-            let mut claims = vec![];
-            let mut mappings = vec![];
+            let claim = claim_with_schema(&paths, credential_id, now, "OBJECT".to_owned(), None);
+            let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id);
+            // Array parsing infers the element type from the first returned claim.
+            let mut claims = vec![claim];
+            let mut mappings = vec![mapping];
             for (key, value) in map {
                 let key = key.as_text().ok_or(FormatterError::JsonMapping(
                     "Expected a text map key".to_string(),
@@ -1529,10 +1532,6 @@ async fn parse_claim_inner(
                 mappings.extend(child_mappings);
             }
 
-            let claim = claim_with_schema(&paths, credential_id, now, "OBJECT".to_owned(), None);
-            let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id);
-            claims.push(claim);
-            mappings.push(mapping);
             (claims, mappings)
         }
         simple_value => {

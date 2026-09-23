@@ -975,6 +975,85 @@ fn test_credential_schema_id() {
 }
 
 #[tokio::test]
+async fn test_parse_object_array_preserves_element_type() {
+    let mut datatype_provider = MockDataTypeProvider::new();
+    datatype_provider
+        .expect_extract_cbor_claim()
+        .returning(|value| match value {
+            ciborium::Value::Text(value) => Ok(ExtractedClaim {
+                data_type: "STRING".to_string(),
+                value: value.to_owned(),
+            }),
+            _ => Err(DataTypeProviderError::UnableToExtract(JsonOrCbor::Cbor(
+                value.to_owned(),
+            ))),
+        });
+    let addresses = ciborium::Value::Array(
+        ["CH", "DE"]
+            .into_iter()
+            .map(|country| {
+                ciborium::Value::Map(vec![(
+                    ciborium::Value::Text("Country".to_string()),
+                    ciborium::Value::Text(country.to_string()),
+                )])
+            })
+            .collect(),
+    );
+    let namespaces = Namespaces::from([(
+        "namespace".to_string(),
+        vec![
+            EmbeddedCbor::new(IssuerSignedItem {
+                digest_id: 0,
+                random: Bstr(vec![0; 32]),
+                element_identifier: "Address".to_string(),
+                element_value: addresses,
+            })
+            .unwrap(),
+        ],
+    )]);
+
+    let (claims, mappings) = parse_claims(
+        namespaces,
+        &datatype_provider,
+        Uuid::new_v4().into(),
+        Uuid::new_v4().into(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(claims.len(), 5);
+    let array = claims
+        .iter()
+        .find(|claim| claim.path == "namespace_Address")
+        .unwrap();
+    let array_schema = array.schema.as_ref().await.unwrap();
+    assert_eq!(array_schema.data_type, "OBJECT");
+    assert!(array_schema.array);
+    for (index, country) in ["CH", "DE"].into_iter().enumerate() {
+        let item = claims
+            .iter()
+            .find(|claim| claim.path == format!("namespace_Address/{index}"))
+            .unwrap();
+        assert_eq!(item.schema.id(), array_schema.id);
+        let child = claims
+            .iter()
+            .find(|claim| claim.path == format!("namespace_Address/{index}/Country"))
+            .unwrap();
+        assert_eq!(child.value.as_deref(), Some(country));
+        let child_schema = child.schema.as_ref().await.unwrap();
+        assert_eq!(child_schema.data_type, "STRING");
+        assert!(!child_schema.array);
+    }
+    assert_eq!(mappings.len(), 2);
+    let array_mapping = mappings
+        .iter()
+        .find(|mapping| mapping.claim_schema_id == array_schema.id)
+        .unwrap();
+    assert_eq!(array_mapping.technical_key, "Address");
+    assert_eq!(array_mapping.namespace.as_deref(), Some("namespace"));
+}
+
+#[tokio::test]
 async fn test_parse_credential() {
     const ISSUED_MDOC: &str = "ompuYW1lU3BhY2VzompuYW1lc3BhY2UxgtgYWGSkaGRpZ2VzdElEAGZyYW5kb21YIMWtCKe0UpTNc-Som7lMdasvokELGUYt1G6w_S7OPpy8cWVsZW1lbnRJZGVudGlmaWVyY29iamxlbGVtZW50VmFsdWWhaW5lc3RlZFN0cmFu2BhYWaRoZGlnZXN0SUQBZnJhbmRvbVggaVSHtwEJdYhB_UNz0MvoyMmUIQZoj31cvTLyKRfdUKZxZWxlbWVudElkZW50aWZpZXJjc3RybGVsZW1lbnRWYWx1ZWFzam5hbWVzcGFjZTKB2BhYXqRoZGlnZXN0SUQCZnJhbmRvbVggLaV6XEY6vAQWrmoGLk9k4KwhuXKslxhYGQWUQ4CvRi1xZWxlbWVudElkZW50aWZpZXJjYXJybGVsZW1lbnRWYWx1ZYJiYTFiYTJqaXNzdWVyQXV0aIRDoQEmoRghWQNGMIIDQjCCAuegAwIBAgIUJ1lFCR_rFo-SnmIFQI_2spfZ8U0wCgYIKoZIzj0EAwIwgYwxEjAQBgNVBAMMCWxvY2FsaG9zdDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEPMA0GA1UEBwwGWnVyaWNoMQswCQYDVQQGEwJDSDEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDAeFw0yNTA3MjkxMzEzMDBaFw0yNjA3MjkwMDAwMDBaMBExDzANBgNVBAMMBnNkZ2RmaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYXmT8MpwCuYqSJ5gCiDhZE_GcW6K_95Yxh5eUi-Mx6TlNSFf0hmG4l8lUc4VBbW-F3aPaJloS-5KxWgrDbmGyjggGfMIIBmzAfBgNVHSMEGDAWgBTt9O0P3c2e__llFNrZnB8VGciUSzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBTpNlM0fkAOmVL_cghB0sc1pEKkdTCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAGGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL29jc3AvMkU4NjI5NzVGRDA5MEUxRjM1QTY3NENFQUE0RTZDNTZFNUI2Nzc0OC9jZXJ0LzBaBggrBgEFBQcwAoZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vaXNzdWVyLzJFODYyOTc1RkQwOTBFMUYzNUE2NzRDRUFBNEU2QzU2RTVCNjc3NDguZGVyMFkGA1UdHwRSMFAwTqBMoEqGSGh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8yRTg2Mjk3NUZEMDkwRTFGMzVBNjc0Q0VBQTRFNkM1NkU1QjY3NzQ4LzAVBgNVHSUBAf8ECzAJBgcogYxdBQECMA4GA1UdDwEB_wQEAwIHgDAKBggqhkjOPQQDAgNJADBGAiEA1tdLIzHjsFse_1f3G2pB5hlaP0jZJFIWSVMOrq1AL98CIQCviw63vxlUhoWLwG7Y7fxVffGYYRejF_5bO1hI7KH9U1kBydgYWQHEpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiam5hbWVzcGFjZTGiAFggQbhGiPKR2NS_inPDZW5z1ccREMUkmN6J6kj-5HJe7i4BWCDeAcugZ1WThbFnW5ksTwT5349mVLOwcr4tS_ooBu_w_2puYW1lc3BhY2UyoQJYIKTvsv_kcCp3YmIJ1YFX66idSdQ62z3LkJ2Xn_q5lgz5bWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggWnxj014us6_1nQAqd_kI_3r4mFJqyJWyMwRNrqDtHNMiWCCh53efzDuA5jGknqv3WG_czqFVUwOHla5v2c8pPxkCG2dkb2NUeXBlcnBhdmVsLjc1NDUuc3RyaW5nc2x2YWxpZGl0eUluZm-kZnNpZ25lZMB0MjAyNS0xMC0xNVQwODo1ODoxM1ppdmFsaWRGcm9twHQyMDI1LTEwLTE1VDA4OjU4OjEzWmp2YWxpZFVudGlswHQyMDI1LTEwLTE4VDA4OjU4OjEzWm5leHBlY3RlZFVwZGF0ZcB0MjAyNS0xMC0xNlQwODo1ODoxM1pYQL1m2H0lKYlNRbxmo4fhtTG7-rwi1NPiggmQQFejt8G6kIJghGsJ0aVbvTgPtogN4z67KWv2xK3IUCWjxR4rNUo";
 
