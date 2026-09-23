@@ -21,6 +21,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::dto::HandleInvitationRequestDTO;
 use crate::config::core_config::TransportType;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{KeyStorageSecurity, WalletAttestation};
@@ -1977,7 +1978,7 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
         .flat_map(|response| response.batch_items.clone())
         .collect();
 
-    let (grouped, assignments) = service.group_issued_credentials(issued);
+    let (grouped, assignments) = service.group_issued_credentials(issued).await.unwrap();
 
     // The first parent survives, and only the MDOC configuration needs reassignment.
     assert_eq!(grouped.len(), 1);
@@ -2000,8 +2001,130 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
     }
 }
 
-#[test]
-fn accept_keeps_singles_separate_even_with_the_same_schema() {
+#[rstest::rstest]
+#[case::different_values(
+    &[("name", Some("Alice"), false)],
+    &[("name", Some("Bob"), false)],
+    false
+)]
+#[case::same_values_in_different_order(
+    &[("name", Some("Alice"), false), ("age", Some("30"), false)],
+    &[("age", Some("30"), false), ("name", Some("Alice"), false)],
+    true
+)]
+#[case::different_metadata(
+    &[("name", Some("Alice"), false), ("id", Some("first"), true)],
+    &[("id", Some("second"), true), ("name", Some("Alice"), false), ("expires_at", Some("tomorrow"), true)],
+    true
+)]
+#[case::only_metadata(
+    &[("id", Some("first"), true)],
+    &[("id", Some("second"), true)],
+    true
+)]
+#[case::missing_claim(
+    &[("name", Some("Alice"), false), ("age", Some("30"), false)],
+    &[("name", Some("Alice"), false)],
+    false
+)]
+#[case::different_paths(
+    &[("first_name", Some("Alice"), false)],
+    &[("last_name", Some("Alice"), false)],
+    false
+)]
+#[case::different_array_values(
+    &[("names/0", Some("Alice"), false), ("names/1", Some("Bob"), false)],
+    &[("names/0", Some("Bob"), false), ("names/1", Some("Alice"), false)],
+    false
+)]
+#[case::absent_and_empty_values(
+    &[("name", None, false)],
+    &[("name", Some(""), false)],
+    false
+)]
+#[tokio::test]
+async fn accept_groups_batches_by_non_metadata_claims(
+    #[case] first_claims: &[(&str, Option<&str>, bool)],
+    #[case] second_claims: &[(&str, Option<&str>, bool)],
+    #[case] merge: bool,
+) {
+    let service = mock_ssi_holder_service();
+    let schema = dummy_credential(None).schema;
+    let mut issued = vec![];
+    // Repeated configurations must find their matching group even after another group appears.
+    for (index, claims) in [first_claims, second_claims, first_claims, second_claims]
+        .into_iter()
+        .enumerate()
+    {
+        let mut credential = dummy_credential(None);
+        credential.schema = schema.clone();
+        credential.claims = claims
+            .iter()
+            .map(|(path, value, metadata)| Claim {
+                id: Uuid::new_v4().into(),
+                credential_id: credential.id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                value: value.map(str::to_owned),
+                path: (*path).to_owned(),
+                selectively_disclosable: false,
+                schema: ClaimSchema {
+                    key: (*path).to_owned(),
+                    metadata: *metadata,
+                    ..crate::service::test_utilities::dummy_claim_schema()
+                }
+                .into(),
+            })
+            .collect::<Vec<_>>()
+            .into();
+        let mut item = CredentialWithBlob {
+            credential,
+            serialized: Some(format!("credential-{index}").into()),
+        };
+        let parent = item.batch_parent(false);
+        item.credential.r#type = CredentialType::BatchItem;
+        item.credential.parent = Some(parent.credential.clone().into());
+        item.credential.interaction = None;
+        issued.push(IssuanceAcceptResponse {
+            credential_configuration_id: format!("config-{index}"),
+            main_credential: parent,
+            batch_items: vec![item],
+        });
+    }
+    let original = issued.clone();
+
+    let (grouped, assignments) = service.group_issued_credentials(issued).await.unwrap();
+
+    assert_eq!(grouped.len(), if merge { 1 } else { 2 });
+    let mut expected_assignments = std::collections::HashMap::new();
+    for (group_index, group) in grouped.iter().enumerate() {
+        let parent = &original[group_index].main_credential;
+        assert_eq!(group.main_credential.credential, parent.credential);
+        assert_eq!(group.main_credential.serialized, parent.serialized);
+        let members: Vec<_> = original
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| merge || index % 2 == group_index)
+            .collect();
+        assert_eq!(group.batch_items.len(), members.len());
+        for (item, (index, response)) in group.batch_items.iter().zip(members) {
+            let mut expected = response.batch_items[0].clone();
+            expected.credential.parent = Some(parent.credential.clone().into());
+            assert_eq!(item.credential, expected.credential);
+            assert_eq!(item.serialized, expected.serialized);
+            if index != group_index {
+                expected_assignments.insert(
+                    response.credential_configuration_id.clone(),
+                    parent.credential.id,
+                );
+            }
+        }
+    }
+    assert_eq!(assignments, expected_assignments);
+}
+
+#[tokio::test]
+async fn accept_keeps_singles_separate_even_with_the_same_schema() {
     let service = mock_ssi_holder_service();
     let first = dummy_credential(None);
     let second = Credential {
@@ -2023,7 +2146,7 @@ fn accept_keeps_singles_separate_even_with_the_same_schema() {
         })
         .collect();
 
-    let (grouped, assignments) = service.group_issued_credentials(issued);
+    let (grouped, assignments) = service.group_issued_credentials(issued).await.unwrap();
 
     assert!(assignments.is_empty());
     assert_eq!(grouped.len(), 2);
@@ -2037,8 +2160,8 @@ fn accept_keeps_singles_separate_even_with_the_same_schema() {
     }
 }
 
-#[test]
-fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separate() {
+#[tokio::test]
+async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separate() {
     let service = mock_ssi_holder_service();
     let first = dummy_credential(None);
     let second = dummy_credential(None);
@@ -2071,7 +2194,7 @@ fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separate() {
         .map(|response| response.main_credential.credential.id)
         .collect();
 
-    let (grouped, assignments) = service.group_issued_credentials(issued);
+    let (grouped, assignments) = service.group_issued_credentials(issued).await.unwrap();
 
     assert!(assignments.is_empty());
     assert_eq!(grouped.len(), 3);

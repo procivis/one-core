@@ -252,7 +252,7 @@ impl SSIHolderService {
             }
         }
 
-        let (issued, configuration_parents) = self.group_issued_credentials(issued);
+        let (issued, configuration_parents) = self.group_issued_credentials(issued).await?;
 
         let mut credential_ids = vec![];
         let mut credentials = vec![];
@@ -304,12 +304,13 @@ impl SSIHolderService {
         })
     }
 
-    pub(super) fn group_issued_credentials(
+    pub(super) async fn group_issued_credentials(
         &self,
         issued: Vec<IssuanceAcceptResponse>,
-    ) -> (Vec<IssuanceAcceptResponse>, HashMap<String, CredentialId>) {
+    ) -> Result<(Vec<IssuanceAcceptResponse>, HashMap<String, CredentialId>), HolderServiceError>
+    {
         // The protocol has already decided which configurations need batch parents.
-        // Preserve offer order and keep singles and different schemas/ecosystems separate.
+        // Preserve offer order and keep singles and different schemas/ecosystems/claims separate.
         let mut groups: Vec<IssuanceAcceptResponse> = vec![];
         let mut batch_groups = HashMap::new();
         let mut configuration_parents = HashMap::new();
@@ -319,7 +320,20 @@ impl SSIHolderService {
                 groups.push(response);
                 continue;
             }
-            let key = (credential.schema.id(), credential.ecosystem.clone());
+            // Parents have no claims. The protocol validates consistency within each batch,
+            // so compare the first item's non-metadata claims across configurations.
+            let Some(item) = response.batch_items.first() else {
+                groups.push(response);
+                continue;
+            };
+            let mut claims = vec![];
+            for claim in item.credential.claims.as_ref().await?.iter() {
+                if !claim.schema.as_ref().await?.metadata {
+                    claims.push((claim.path.clone(), claim.value.clone()));
+                }
+            }
+            claims.sort_unstable();
+            let key = (credential.schema.id(), credential.ecosystem.clone(), claims);
             let Some(group) = batch_groups
                 .get(&key)
                 .and_then(|&index| groups.get_mut(index))
@@ -336,7 +350,7 @@ impl SSIHolderService {
             }
             group.batch_items.append(&mut response.batch_items);
         }
-        (groups, configuration_parents)
+        Ok((groups, configuration_parents))
     }
 
     async fn validate_credential_configuration(
