@@ -445,9 +445,10 @@ async fn test_post_issuer_credential_sets_expires_at_from_schema() {
     let after = one_core::clock::now_utc();
 
     let credential = context.db.credentials.get(&credential_id).await;
-    let expires_at = credential.expires_at.unwrap();
-    assert!(expires_at >= before + Duration::days(10));
-    assert!(expires_at <= after + Duration::days(10));
+    // Compare at the database timestamp's millisecond precision.
+    let expires_at = credential.expires_at.unwrap().truncate_to_millisecond();
+    assert!(expires_at >= (before + Duration::days(10)).truncate_to_millisecond());
+    assert!(expires_at <= (after + Duration::days(10)).truncate_to_millisecond());
 }
 
 #[tokio::test]
