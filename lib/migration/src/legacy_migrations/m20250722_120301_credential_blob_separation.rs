@@ -39,11 +39,7 @@ impl MigrationTrait for Migration {
 
         let found_credentials = manager
             .get_connection()
-            .query_all(
-                manager
-                    .get_database_backend()
-                    .build(&find_credentials_with_credential_set),
-            )
+            .query_all(&find_credentials_with_credential_set)
             .await?;
         for found_credential in found_credentials.iter() {
             let id: String = found_credential.try_get_by_index(0)?;
@@ -93,9 +89,8 @@ impl MigrationTrait for Migration {
 struct LengthFunc;
 
 impl Iden for LengthFunc {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "LENGTH").unwrap();
+    fn unquoted(&self) -> &str {
+        "LENGTH"
     }
 }
 

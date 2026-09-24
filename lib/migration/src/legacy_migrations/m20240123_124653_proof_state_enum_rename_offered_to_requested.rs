@@ -27,11 +27,7 @@ pub(crate) enum ProofRequestState {
 
 impl ProofRequestState {
     fn as_expr(&self) -> Expr {
-        let mut s = String::new();
-
-        self.unquoted(&mut s);
-
-        Expr::val(s)
+        Expr::val(self.unquoted())
     }
 }
 
@@ -121,6 +117,12 @@ impl MigrationTrait for Migration {
                             .to_owned(),
                     )
                     .await?;
+            }
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
             }
         };
 

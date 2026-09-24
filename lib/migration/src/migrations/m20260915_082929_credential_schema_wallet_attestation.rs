@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{integer_null, string, string_len_null, string_null, text_null};
 
@@ -15,6 +14,7 @@ use crate::migrations::m20260417_150300_initial::{
 };
 use crate::migrations::m20260429_120000_credential_schema_multiformat::CredentialSchemaFormat;
 use crate::migrations::m20260526_095002_credential_grouping::CredentialNew as CredentialWithType;
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -53,7 +53,7 @@ impl MigrationTrait for Migration {
             .await?;
 
         disable_foreign_key_checks(manager).await?;
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             rename_wallet_key_attestation_blob_sqlite(manager).await?;
         } else {
             rename_wallet_key_attestation_blob(manager).await?;

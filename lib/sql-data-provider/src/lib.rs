@@ -9,6 +9,7 @@ use identifier::IdentifierProvider;
 use interaction::InteractionProvider;
 use managed_instance::ManagedInstanceProvider;
 use migration::runner::run_migrations;
+use migration::supported_db_type::SupportedDbType;
 use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::DataRepository;
 use one_core::repository::backup_repository::BackupRepository;
@@ -473,6 +474,10 @@ pub async fn db_conn(
     with_migration: bool,
 ) -> Result<DatabaseConnection, DbErr> {
     let db = sea_orm::Database::connect(database_url).await?;
+
+    // check that DB type is supported
+    let db_type: SupportedDbType = db.get_database_backend().try_into()?;
+    tracing::debug!("Connected to DB, type: {db_type}");
 
     if with_migration {
         run_migrations(&db).await?;

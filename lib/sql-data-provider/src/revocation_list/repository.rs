@@ -10,8 +10,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::sea_query::IntoCondition;
 use sea_orm::{
-    ActiveEnum, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, NotSet, QueryFilter,
-    QueryOrder, QuerySelect, Set, Unchanged,
+    ActiveEnum, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, ExprTrait, NotSet,
+    QueryFilter, QueryOrder, QuerySelect, Set, Unchanged,
 };
 use shared_types::{
     CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,

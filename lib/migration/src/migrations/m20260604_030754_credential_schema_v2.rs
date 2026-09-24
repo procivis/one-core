@@ -505,9 +505,6 @@ async fn execute<S: StatementBuilder>(
     manager: &SchemaManager<'_>,
     statement: &S,
 ) -> Result<(), DbErr> {
-    manager
-        .get_connection()
-        .execute(manager.get_database_backend().build(statement))
-        .await?;
+    manager.get_connection().execute(statement).await?;
     Ok(())
 }

@@ -1,11 +1,12 @@
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::managed_instance::{
     ManagedInstance, ManagedInstanceList, ManagedInstanceListQuery, UpdateManagedInstanceRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
-use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QueryOrder, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, Set, Unchanged};
 use shared_types::ManagedInstanceId;
 
 use super::ManagedInstanceProvider;
@@ -61,7 +62,7 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
         query_params: ManagedInstanceListQuery,
     ) -> Result<ManagedInstanceList, DataLayerError> {
         let mut query = managed_instance::Entity::find()
-            .with_list_query(&query_params, self.db.get_database_backend());
+            .with_list_query(&query_params, self.db.supported_db_type());
 
         if query_params.sorting.is_some() || query_params.pagination.is_some() {
             // fallback ordering

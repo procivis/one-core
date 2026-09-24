@@ -19,9 +19,15 @@ pub async fn add_enum_variant<T: Iden + IntoEnumIterator>(
 
             let change_stmt = Statement::from_string(backend, &query);
 
-            manager.get_connection().execute(change_stmt).await?;
+            manager.get_connection().execute_raw(change_stmt).await?;
         }
         sea_orm::DatabaseBackend::Postgres | sea_orm::DatabaseBackend::Sqlite => {}
+        other => {
+            return Err(DbErr::BackendNotSupported {
+                db: other.as_str(),
+                ctx: "migration",
+            });
+        }
     }
     Ok(())
 }

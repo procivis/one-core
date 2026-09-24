@@ -1,10 +1,10 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{
     boolean, boolean_null, integer_null, json_binary_null, string, string_len_null, string_null,
 };
 
 use crate::datatype::{timestamp, timestamp_null, uuid_char};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,13 +12,13 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        match manager.get_database_backend() {
-            DbBackend::MySql => {
+        match manager.supported_db_type() {
+            SupportedDbType::MySql => {
                 // JSONB type is resolved into JSON in this case, thus we don't have to execute migration there
                 Ok(())
             }
-            DbBackend::Sqlite => alter_credential_schema_sqlite(manager).await,
-            DbBackend::Postgres => {
+            SupportedDbType::Sqlite => alter_credential_schema_sqlite(manager).await,
+            SupportedDbType::Postgres => {
                 // json_binary_null(CredentialSchema::LayoutProperties).using("layout_properties::JSONB") creates strange SQL:
                 //    ALTER TABLE "credential_schema" ALTER COLUMN "layout_properties" TYPE jsonb, ALTER COLUMN "layout_properties" DROP NOT NULL USING 'layout_properties::JSONB'
                 // so I used raw version

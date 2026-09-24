@@ -99,7 +99,7 @@ script = [
 ]
 
 [tasks.seaormcli]
-install_crate = { crate_name = "sea-orm-cli", version = "1.1.0", binary = "sea-orm-cli", test_arg = "--version" }
+install_crate = { crate_name = "sea-orm-cli", version = "2.0.3", binary = "sea-orm-cli", test_arg = "--version" }
 
 [tasks.generate_migration]
 args         = ["migrate", "generate", "${@}", "-d", "./lib/migration/src/migrations"]

@@ -23,6 +23,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             sea_orm::DatabaseBackend::Sqlite => {}
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
         Ok(())
     }

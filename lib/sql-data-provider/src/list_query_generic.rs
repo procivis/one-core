@@ -1,5 +1,4 @@
-use std::fmt::Write;
-
+use migration::supported_db_type::SupportedDbType;
 use one_core::model::common::SortDirection;
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
@@ -9,7 +8,7 @@ use one_core::model::list_query::ListQuery;
 use sea_orm::prelude::Expr;
 use sea_orm::query::*;
 use sea_orm::sea_query::{ColumnRef, Func, IntoColumnRef, IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, DatabaseBackend, EntityTrait, RelationDef, RelationType};
+use sea_orm::{ColumnTrait, EntityTrait, RelationDef, RelationType};
 
 use crate::mapper::order_from_sort_direction;
 
@@ -152,7 +151,7 @@ where
     fn with_list_query(
         self,
         query: &ListQuery<SortableColumn, FilterValue, Include>,
-        db_backend: DatabaseBackend,
+        db_backend: SupportedDbType,
     ) -> Self;
 }
 
@@ -166,7 +165,7 @@ where
     fn with_list_query(
         self,
         query: &ListQuery<SortableColumn, FilterValue, Include>,
-        db_backend: DatabaseBackend,
+        db_backend: SupportedDbType,
     ) -> Select<T> {
         let mut result = self;
 
@@ -184,13 +183,13 @@ where
 
                 // case-insesitive is implicit for Postgres and MariaDB
                 (
-                    DatabaseBackend::MySql | DatabaseBackend::Postgres,
+                    SupportedDbType::MySql | SupportedDbType::Postgres,
                     ColumnSortingBehavior::CaseInsensitive,
                 ) => column.into(),
 
                 // wrap with LOWER(<column>) for sqlite to behave as case-insensitive
-                (DatabaseBackend::Sqlite, ColumnSortingBehavior::CaseInsensitive) => {
-                    Expr::expr(Func::lower(column)).into()
+                (SupportedDbType::Sqlite, ColumnSortingBehavior::CaseInsensitive) => {
+                    Expr::expr(Func::lower(column))
                 }
             };
 
@@ -287,18 +286,16 @@ pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Va
 pub struct SubStr;
 
 impl sea_orm::Iden for SubStr {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "substring").unwrap();
+    fn unquoted(&self) -> &str {
+        "substring"
     }
 }
 
 pub struct Hex;
 
 impl sea_orm::Iden for Hex {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "hex").unwrap();
+    fn unquoted(&self) -> &str {
+        "hex"
     }
 }
 

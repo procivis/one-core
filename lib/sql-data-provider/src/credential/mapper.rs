@@ -309,7 +309,7 @@ pub(crate) fn effective_claim_owner() -> SimpleExpr {
         ))
         .limit(1)
         .to_owned();
-    let own_id = Expr::col((credential::Entity, credential::Column::Id)).into();
+    let own_id = Expr::col((credential::Entity, credential::Column::Id));
     Expr::case(
         Expr::col((credential::Entity, credential::Column::Role))
             .eq(credential::CredentialRole::Holder)

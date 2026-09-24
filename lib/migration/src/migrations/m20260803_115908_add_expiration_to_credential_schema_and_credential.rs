@@ -1,9 +1,9 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::integer_null;
 
 use crate::datatype::timestamp_null;
 use crate::migrations::m20260417_150300_initial::{Credential, CredentialSchema};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 const TWO_YEARS_IN_SECONDS: i32 = 63_072_000;
 
@@ -40,14 +40,14 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        let update_expires_at = match manager.get_database_backend() {
-            DbBackend::MySql => format!(
+        let update_expires_at = match manager.supported_db_type() {
+            SupportedDbType::MySql => format!(
                 "UPDATE credential SET expires_at = DATE_ADD(issuance_date, INTERVAL {TWO_YEARS_IN_SECONDS} SECOND) WHERE issuance_date IS NOT NULL"
             ),
-            DbBackend::Postgres => format!(
+            SupportedDbType::Postgres => format!(
                 "UPDATE credential SET expires_at = issuance_date + INTERVAL '{TWO_YEARS_IN_SECONDS} seconds' WHERE issuance_date IS NOT NULL"
             ),
-            DbBackend::Sqlite => format!(
+            SupportedDbType::Sqlite => format!(
                 "UPDATE credential SET expires_at = datetime(issuance_date, '+{TWO_YEARS_IN_SECONDS} seconds') WHERE issuance_date IS NOT NULL"
             ),
         };

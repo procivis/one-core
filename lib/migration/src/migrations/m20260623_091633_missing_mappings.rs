@@ -127,9 +127,8 @@ async fn find_missing_mappings(
                 )
                 .and_where(
                     Expr::tuple([
-                        Expr::col((CredentialSchemaFormat::Table, CredentialSchemaFormat::Id))
-                            .into(),
-                        Expr::col((ClaimSchema::Table, ClaimSchema::Id)).into(),
+                        Expr::col((CredentialSchemaFormat::Table, CredentialSchemaFormat::Id)),
+                        Expr::col((ClaimSchema::Table, ClaimSchema::Id)),
                     ])
                     .not_in_subquery(
                         Query::select()

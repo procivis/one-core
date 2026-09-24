@@ -1,14 +1,14 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::proof_schema::{
     GetProofSchemaList, ProofInputSchema, ProofSchema, ProofSchemaListQuery,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
@@ -154,7 +154,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
     ) -> Result<GetProofSchemaList, DataLayerError> {
         let query = crate::entity::proof_schema::Entity::find()
             .filter(proof_schema::Column::DeletedAt.is_null())
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .order_by_desc(proof_schema::Column::CreatedDate)
             .order_by_desc(proof_schema::Column::Id);
 
@@ -182,6 +182,8 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         };
 
         proof_schema::Entity::update(schema)
+            .validate()
+            .map_err(to_update_data_layer_error)?
             .filter(proof_schema::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await

@@ -26,6 +26,12 @@ impl MigrationTrait for Migration {
             // we don't need to change enums for sqlite since they are stored as TEXT
             DatabaseBackend::Sqlite => {}
             DbBackend::Postgres => {}
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         };
         Ok(())
     }

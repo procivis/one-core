@@ -1,7 +1,7 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
 use crate::migrations::m20260512_062412_localized_text::LocalizedText;
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
             .table(LocalizedText::Table)
             .to_owned();
 
-        if manager.get_database_backend() == DbBackend::MySql {
+        if manager.supported_db_type() == SupportedDbType::MySql {
             // MariaDB limits an index to 3072 bytes. The three string columns
             // default to VARCHAR(255), while value is TEXT, so indexing the
             // complete columns exceeds that limit. Prefixes are sufficient for

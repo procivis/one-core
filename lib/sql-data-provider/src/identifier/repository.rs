@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
+use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::identifier::{
     GetIdentifierList, Identifier, IdentifierListQuery, UpdateIdentifierRequest,
 };
@@ -7,8 +8,8 @@ use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::identifier_repository::IdentifierRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, QueryFilter,
-    QueryOrder, QuerySelect, Select, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Select, Set,
+    Unchanged,
 };
 use shared_types::{DidId, IdentifierId};
 
@@ -136,6 +137,8 @@ impl IdentifierRepository for IdentifierProvider {
         };
 
         identifier::Entity::update(identifier)
+            .validate()
+            .map_err(to_update_data_layer_error)?
             .filter(identifier::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await
@@ -156,7 +159,7 @@ impl IdentifierRepository for IdentifierProvider {
         &self,
         query_params: IdentifierListQuery,
     ) -> Result<GetIdentifierList, DataLayerError> {
-        let query = get_identifier_list_query(&query_params, self.db.get_database_backend());
+        let query = get_identifier_list_query(&query_params, self.db.supported_db_type());
 
         list_query_with_custom_model(query, query_params, &self.db, |model| {
             self.identifier_from_model(model)
@@ -167,7 +170,7 @@ impl IdentifierRepository for IdentifierProvider {
 
 fn get_identifier_list_query(
     query_params: &IdentifierListQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> Select<identifier::Entity> {
     identifier::Entity::find()
         .select_only()

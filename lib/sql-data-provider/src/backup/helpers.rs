@@ -1,10 +1,9 @@
-use std::fmt::Write;
 use std::path::Path;
 
 use anyhow::Context;
 use one_core::repository::error::DataLayerError;
 use sea_orm::sea_query::{Expr, Func, QueryStatementBuilder, SimpleExpr};
-use sea_orm::{ColumnTrait, Database, Iden, Value};
+use sea_orm::{ColumnTrait, Database, ExprTrait, Iden, Value};
 
 use crate::list_query_generic::Hex;
 use crate::transaction_context::TransactionManagerImpl;
@@ -20,27 +19,24 @@ pub async fn open_sqlite_on_path(path: &Path) -> Result<TransactionManagerImpl, 
 pub struct JsonObject;
 
 impl sea_orm::Iden for JsonObject {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "json_object").unwrap();
+    fn unquoted(&self) -> &str {
+        "json_object"
     }
 }
 
 pub struct JsonArray;
 
 impl sea_orm::Iden for JsonArray {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "json_array").unwrap();
+    fn unquoted(&self) -> &str {
+        "json_array"
     }
 }
 
 pub struct JsonAgg;
 
 impl sea_orm::Iden for JsonAgg {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "json_group_array").unwrap();
+    fn unquoted(&self) -> &str {
+        "json_group_array"
     }
 }
 

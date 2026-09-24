@@ -4,6 +4,7 @@ use sea_orm::{
 };
 use sea_orm_migration::prelude::*;
 
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use crate::{LegacyMigrator, Migrator};
 
 const PG_ADVISORY_LOCK_KEY: i64 = i64::from_be_bytes(*b"\0onecore");
@@ -39,8 +40,8 @@ pub async fn run_migrations(db: &DatabaseConnection) -> Result<(), DbErr> {
 }
 
 async fn acquire_migration_lock(txn: &DatabaseTransaction) -> Result<(), DbErr> {
-    match txn.get_database_backend() {
-        DatabaseBackend::Postgres => {
+    match txn.supported_db_type() {
+        SupportedDbType::Postgres => {
             txn.execute_unprepared(&format!("SET LOCAL lock_timeout = '{LOCK_TIMEOUT_SECS}s'"))
                 .await?;
             txn.execute_unprepared(&format!(
@@ -49,9 +50,9 @@ async fn acquire_migration_lock(txn: &DatabaseTransaction) -> Result<(), DbErr> 
             .await?;
             Ok(())
         }
-        DatabaseBackend::MySql => {
+        SupportedDbType::MySql => {
             let acquired: Option<i64> = txn
-                .query_one(Statement::from_string(
+                .query_one_raw(Statement::from_string(
                     DatabaseBackend::MySql,
                     format!("SELECT GET_LOCK({MYSQL_LOCK_NAME_EXPR}, {LOCK_TIMEOUT_SECS})"),
                 ))
@@ -65,7 +66,7 @@ async fn acquire_migration_lock(txn: &DatabaseTransaction) -> Result<(), DbErr> 
             }
             Ok(())
         }
-        DatabaseBackend::Sqlite => Ok(()),
+        SupportedDbType::Sqlite => Ok(()),
     }
 }
 
@@ -100,10 +101,8 @@ async fn clean_up_legacy_migrations(txn: &DatabaseTransaction) -> Result<(), DbE
         .collect();
     if applied_migrations.contains(&LEGACY_MIGRATION_MARKER) {
         LegacyMigrator::up(txn, None).await?;
-        let stmt = txn
-            .get_database_backend()
-            .build(Query::delete().from_table(LegacyMigrator::migration_table_name()));
-        txn.execute(stmt).await?;
+        txn.execute(Query::delete().from_table(LegacyMigrator::migration_table_name()))
+            .await?;
     }
     Ok(())
 }

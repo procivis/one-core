@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use futures::future::try_join_all;
+use migration::supported_db_type::SupportedDbType;
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistoryFilterValue, HistorySearchEnum, HistorySource,
     IssuerStatsQuery, SortableHistoryColumn, SortableIssuerStatisticsColumn,
@@ -14,12 +15,12 @@ use one_core::model::list_filter::{
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{
-    Alias, CaseStatement, ColumnRef, Condition, Expr, Func, IntoColumnRef, IntoCondition, IntoIden,
-    IntoTableRef, Query, SelectStatement, SimpleExpr,
+    Alias, CaseStatement, ColumnName, ColumnRef, Condition, Expr, Func, IntoColumnRef,
+    IntoCondition, IntoIden, IntoTableRef, Query, SelectStatement, SimpleExpr,
 };
 use sea_orm::{
-    ActiveEnum, ColumnTrait, ConnectionTrait, DatabaseBackend, DbBackend, EntityTrait,
-    FromQueryResult, JoinType, Order, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
+    ActiveEnum, ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, FromQueryResult, JoinType,
+    Order, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, IdentifierId, OrganisationId, ProofId,
@@ -398,10 +399,10 @@ fn search_query_identifier_subqueries(
             .from(entity_id_column.entity_name().into_table_ref())
             .inner_join(
                 identifier::Entity,
-                Expr::col(ColumnRef::TableColumn(
-                    identifier_id_column.entity_name(),
+                Expr::col(ColumnRef::Column(ColumnName(
+                    Some(identifier_id_column.entity_name().into()),
                     identifier_id_column.into_iden(),
-                ))
+                )))
                 .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
             )
             .inner_join(
@@ -421,10 +422,10 @@ fn search_query_identifier_subqueries(
             )
             .inner_join(
                 identifier_id_column.entity_name(),
-                Expr::col(ColumnRef::TableColumn(
-                    identifier_id_column.entity_name(),
+                Expr::col(ColumnRef::Column(ColumnName(
+                    Some(identifier_id_column.entity_name().into()),
                     identifier_id_column.into_iden(),
-                ))
+                )))
                 .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
             )
             .cond_where(condition)
@@ -608,7 +609,7 @@ pub(super) fn count_ops_query(
     organisation_id: Option<OrganisationId>,
 ) -> CountOperationsQuery {
     let mut query = Query::select()
-        .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
+        .expr_as(Func::count(ColumnRef::Asterisk(None)), Alias::new("count"))
         .from(history::Entity)
         // the operations time cutoff is exclusive because the timelines query is inclusive
         .and_where(Expr::col((history::Entity, history::Column::CreatedDate)).lt(to_exclusive))
@@ -631,12 +632,12 @@ pub(super) fn org_timelines_query(
     from: Option<OffsetDateTime>,
     to: OffsetDateTime,
     organisation_id: OrganisationId,
-    db_backend: &DbBackend,
+    db_backend: SupportedDbType,
 ) -> Result<SelectStatement, DataLayerError> {
     let resolution = TimeResolution::new(from, to);
     let rounded_date = Alias::new("timestamp");
     let mut query = Query::select()
-        .expr_as(Func::count(ColumnRef::Asterisk), Alias::new("count"))
+        .expr_as(Func::count(ColumnRef::Asterisk(None)), Alias::new("count"))
         .expr_as(
             resolution.floored_time_format_expr("history.created_date", db_backend)?,
             rounded_date.clone(),
@@ -717,7 +718,7 @@ pub(super) fn top_orgs_query(
 ) -> SelectStatement {
     let count = Alias::new("count");
     let mut query = Query::select()
-        .expr_as(Func::count(ColumnRef::Asterisk), count.clone())
+        .expr_as(Func::count(ColumnRef::Asterisk(None)), count.clone())
         .columns([history::Column::OrganisationId])
         .from(history::Entity)
         .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
@@ -770,9 +771,9 @@ impl TimeResolution {
     fn floored_time_format_expr(
         &self,
         col: &str,
-        db_backend: &DbBackend,
+        db_backend: SupportedDbType,
     ) -> Result<SimpleExpr, DataLayerError> {
-        let format = if db_backend == &DbBackend::Postgres {
+        let format = if db_backend == SupportedDbType::Postgres {
             match self {
                 TimeResolution::Hour => "hour",
                 TimeResolution::Day => "day",
@@ -788,11 +789,11 @@ impl TimeResolution {
             }
         };
         let expr = match db_backend {
-            DbBackend::MySql => Expr::cust(format!(
+            SupportedDbType::MySql => Expr::cust(format!(
                 "STR_TO_DATE(DATE_FORMAT({col}, '{format}'), '%Y-%m-%dT%H:%i:%sZ')"
             )),
-            DbBackend::Sqlite => Expr::cust(format!("strftime('{format}', {col})")),
-            DbBackend::Postgres => Expr::cust(format!("date_trunc('{format}', {col})")),
+            SupportedDbType::Sqlite => Expr::cust(format!("strftime('{format}', {col})")),
+            SupportedDbType::Postgres => Expr::cust(format!("date_trunc('{format}', {col})")),
         };
         Ok(expr)
     }
@@ -918,7 +919,7 @@ const ISSUER_ACTIONS: [history::HistoryAction; 5] = [
 ];
 pub(super) fn issuer_stats_query(
     query: &IssuerStatsQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> SelectStatement {
     let mut stmt = history::Entity::find()
         .with_list_query(query, db_backend)
@@ -956,7 +957,7 @@ const VERIFIER_ACTIONS: [history::HistoryAction; 3] = [
 ];
 pub(super) fn verifier_stats_query(
     query: &VerifierStatsQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> SelectStatement {
     let mut stmt = history::Entity::find()
         .with_list_query(query, db_backend)
@@ -988,7 +989,7 @@ pub(super) fn verifier_stats_query(
 
 pub(super) fn system_interaction_stats_query(
     query: &SystemInteractionStatsQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> SelectStatement {
     let mut stmt = history::Entity::find()
         .with_list_query(query, db_backend)
@@ -1058,7 +1059,7 @@ pub(super) fn system_interaction_stats_query(
 
 pub(super) fn system_management_stats_query(
     query: &SystemManagementStatsQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> SelectStatement {
     let mut stmt = history::Entity::find()
         .with_list_query(query, db_backend)

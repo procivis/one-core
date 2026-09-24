@@ -155,14 +155,7 @@ async fn migration_credential_arrays(
             .extend(proof_ids);
     }
 
-    insert_claims_with_proof_relation(
-        db,
-        backend,
-        array_claim_schema,
-        credential_id,
-        paths_to_proofs,
-    )
-    .await
+    insert_claims_with_proof_relation(db, array_claim_schema, credential_id, paths_to_proofs).await
 }
 
 async fn proof_ids_for_claim(
@@ -185,7 +178,6 @@ async fn proof_ids_for_claim(
 
 async fn insert_claims_with_proof_relation(
     db: &SchemaManagerConnection<'_>,
-    backend: DbBackend,
     claim_schema: &ClaimSchemaResult,
     credential_id: &str,
     mut paths_to_proofs: HashMap<String, HashSet<String>>,
@@ -227,7 +219,7 @@ async fn insert_claims_with_proof_relation(
         return Ok(());
     }
 
-    db.execute(backend.build(&proof_claim_insert)).await?;
+    db.execute(&proof_claim_insert).await?;
     Ok(())
 }
 
@@ -418,14 +410,7 @@ async fn migrate_credential_objects(
         }
     }
 
-    insert_claims_with_proof_relation(
-        db,
-        backend,
-        object_claim_schema,
-        credential_id,
-        paths_to_proofs,
-    )
-    .await
+    insert_claims_with_proof_relation(db, object_claim_schema, credential_id, paths_to_proofs).await
 }
 
 fn claim_schema_base_select() -> SelectStatement {

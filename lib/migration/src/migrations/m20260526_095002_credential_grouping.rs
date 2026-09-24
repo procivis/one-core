@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_len_null, string_null, text_null};
 
@@ -12,6 +11,7 @@ use crate::migrations::m20260417_150300_initial::{
     INDEX_CREDENTIAL_ROLE, INDEX_CREDENTIAL_STATE, INDEX_CREDENTIAL_SUSPEND_END_DATE, Identifier,
     Interaction, Key,
 };
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -57,7 +57,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             sqlite_type_not_null(manager).await?;
         } else {
             manager

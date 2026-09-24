@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::*;
 
@@ -8,6 +7,7 @@ use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
 use crate::migrations::m20260417_150300_initial::{Credential, CredentialSchema};
 use crate::migrations::m20260429_120000_credential_schema_multiformat::CredentialSchemaFormat;
 use crate::migrations::m20260526_095002_credential_grouping::CredentialNew as CredentialWithType;
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -15,8 +15,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let backend = manager.get_database_backend();
-        if backend == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             up_sqlite(manager).await?;
         } else {
             manager

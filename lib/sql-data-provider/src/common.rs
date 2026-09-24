@@ -9,12 +9,14 @@ use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
 
 /// Do not poll the count future when the caller only needs values.
-pub(crate) async fn count_if_requested(
+pub(crate) async fn count_if_requested<'db, Query: PaginatorTrait<'db, TransactionManagerImpl>>(
     include_count: bool,
-    count: impl Future<Output = Result<u64, DbErr>>,
+    query: Query,
+    db: &'db TransactionManagerImpl,
 ) -> Result<Option<u64>, DbErr> {
     if include_count {
-        count.await.map(Some)
+        let paginator = query.paginate(db, 1);
+        paginator.num_items().await.map(Some)
     } else {
         Ok(None)
     }
@@ -94,10 +96,7 @@ where
 {
     let (total_items, total_pages, models) = if let Some(pagination) = query_params.pagination {
         let (count, items) = tokio::join!(
-            count_if_requested(
-                query_params.include_count,
-                PaginatorTrait::count(query.to_owned(), db)
-            ),
+            count_if_requested(query_params.include_count, query.to_owned(), db),
             query.all(db)
         );
 

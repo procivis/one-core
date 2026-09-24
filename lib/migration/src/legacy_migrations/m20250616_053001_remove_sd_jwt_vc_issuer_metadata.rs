@@ -89,10 +89,10 @@ async fn delete_trust_entities(
 ) -> Result<(), DbErr> {
     let backend = db.get_database_backend();
     let trust_entity_query = Query::select()
-        .column(ColumnRef::TableColumn(
-            TrustEntity::Table.into_iden(),
+        .column(ColumnRef::Column(ColumnName(
+            Some(TrustEntity::Table.into()),
             TrustEntity::Id.into_iden(),
-        ))
+        )))
         .from(TrustEntity::Table)
         .join(
             JoinType::LeftJoin,
@@ -117,7 +117,7 @@ async fn delete_trust_entities(
         .and_where(Expr::col(TrustEntity::Id).is_in(&trust_entity_ids))
         .to_owned();
 
-    db.execute(backend.build(&delete_trust_query)).await?;
+    db.execute(&delete_trust_query).await?;
 
     ids_to_delete.extend(trust_entity_ids);
     Ok(())

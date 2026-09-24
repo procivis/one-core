@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::organisation::{
     GetOrganisationList, Organisation, OrganisationListQuery, UpdateOrganisationRequest,
 };
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
@@ -102,7 +103,7 @@ impl OrganisationRepository for OrganisationProvider {
         query_params: OrganisationListQuery,
     ) -> Result<GetOrganisationList, DataLayerError> {
         let query = organisation::Entity::find()
-            .with_list_query(&query_params, self.db.get_database_backend());
+            .with_list_query(&query_params, self.db.supported_db_type());
 
         let repo = self.cloned();
         list_query_with_custom_model(query, query_params, &self.db, |org| {

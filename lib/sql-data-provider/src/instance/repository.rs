@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::error::ErrorCodeMixinExt;
 use one_core::model::instance::{
     Instance, InstanceList, InstanceListQuery, InstanceRole, UpdateInstanceRequest,
@@ -7,8 +8,7 @@ use one_core::model::instance::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::instance_repository::InstanceRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::{InstanceId, OrganisationId};
 
@@ -107,7 +107,7 @@ impl InstanceRepository for InstanceProvider {
 
     async fn list(&self, query_params: InstanceListQuery) -> Result<InstanceList, DataLayerError> {
         let query = instance::Entity::find()
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .order_by_desc(instance::Column::CreatedDate)
             .order_by_desc(instance::Column::Id);
 

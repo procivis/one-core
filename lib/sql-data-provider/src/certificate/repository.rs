@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::certificate::{
     Certificate, CertificateListQuery, CertificateRole, GetCertificateList,
     UpdateCertificateRequest,
@@ -9,8 +10,7 @@ use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::CertificateId;
 
@@ -84,7 +84,7 @@ impl CertificateRepository for CertificateProvider {
         query_params: CertificateListQuery,
     ) -> Result<GetCertificateList, DataLayerError> {
         let query = certificate::Entity::find()
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);
 
@@ -128,6 +128,8 @@ impl CertificateRepository for CertificateProvider {
         };
 
         certificate::Entity::update(update_model)
+            .validate()
+            .map_err(to_update_data_layer_error)?
             .filter(certificate::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await

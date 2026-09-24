@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_null, text};
 
@@ -6,6 +5,7 @@ use crate::datatype::{timestamp, timestamp_null, timestamp_seconds, uuid_char, u
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
 use crate::migrations::m20260417_150300_initial::{Certificate, Identifier, Key, Organisation};
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -24,8 +24,8 @@ impl MigrationTrait for Migration {
 
         disable_foreign_key_checks(manager).await?;
 
-        let backend = manager.get_database_backend();
-        if backend == DbBackend::Sqlite {
+        let backend = manager.supported_db_type();
+        if backend == SupportedDbType::Sqlite {
             up_sqlite(manager).await?;
         } else {
             manager

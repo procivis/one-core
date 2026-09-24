@@ -11,6 +11,12 @@ impl MigrationTrait for Migration {
             DbBackend::Postgres => Ok(()),
             DatabaseBackend::MySql => mysql_migration(manager).await,
             DatabaseBackend::Sqlite => sqlite_migration(manager).await,
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
     }
 }

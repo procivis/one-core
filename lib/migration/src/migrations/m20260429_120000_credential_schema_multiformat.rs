@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{
     boolean, boolean_null, integer_null, json_null, string, string_len_null, string_null,
@@ -6,6 +5,7 @@ use sea_orm_migration::schema::{
 
 use crate::datatype::{timestamp, timestamp_null, uuid_char};
 use crate::index_helper::table_with_indexes;
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -126,12 +126,12 @@ async fn add_business_key_to_claim_schema(manager: &SchemaManager<'_>) -> Result
 }
 
 async fn alter_credential_schema(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    match manager.get_database_backend() {
-        DbBackend::Sqlite => {
+    match manager.supported_db_type() {
+        SupportedDbType::Sqlite => {
             alter_credential_schema_sqlite(manager).await?;
             create_partial_unique_index(manager).await?;
         }
-        DbBackend::MySql | DbBackend::Postgres => {
+        SupportedDbType::MySql | SupportedDbType::Postgres => {
             alter_credential_schema_mysql_postgres(manager).await?;
             // Create the new index BEFORE dropping the old one: on MariaDB/MySQL the old index
             // covers the (credential_schema.organisation_id → organisation.id) FK, and InnoDB
@@ -313,8 +313,8 @@ async fn alter_credential_schema_sqlite(manager: &SchemaManager<'_>) -> Result<(
 async fn create_partial_unique_index(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     let db = manager.get_connection();
     let name = INDEX_CREDENTIAL_SCHEMA_SCHEMA_ID_ORG_DELETED_PARTIAL;
-    match manager.get_database_backend() {
-        DbBackend::Postgres => {
+    match manager.supported_db_type() {
+        SupportedDbType::Postgres => {
             db.execute_unprepared(&format!(
                 r#"
                 CREATE UNIQUE INDEX IF NOT EXISTS "{name}"
@@ -325,7 +325,7 @@ async fn create_partial_unique_index(manager: &SchemaManager<'_>) -> Result<(), 
             ))
             .await?;
         }
-        DbBackend::Sqlite => {
+        SupportedDbType::Sqlite => {
             db.execute_unprepared(&format!(
                 r#"
                 CREATE UNIQUE INDEX IF NOT EXISTS "{name}"
@@ -339,7 +339,7 @@ async fn create_partial_unique_index(manager: &SchemaManager<'_>) -> Result<(), 
             ))
             .await?;
         }
-        DbBackend::MySql => {
+        SupportedDbType::MySql => {
             db.execute_unprepared(&format!(
                 r#"
                 CREATE UNIQUE INDEX `{name}`

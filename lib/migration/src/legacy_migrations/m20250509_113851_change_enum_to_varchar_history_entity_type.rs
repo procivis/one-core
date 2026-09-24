@@ -19,6 +19,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             DbBackend::Sqlite | DbBackend::Postgres => {}
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
         Ok(())
     }

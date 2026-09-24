@@ -137,11 +137,9 @@ async fn copy_proof_claims(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     for table in ["proof_claim", STAGING] {
         let row = connection
             .query_one(
-                manager.get_database_backend().build(
-                    Query::select()
-                        .expr(Expr::col(ProofClaim::ClaimId).count())
-                        .from(Alias::new(table)),
-                ),
+                Query::select()
+                    .expr(Expr::col(ProofClaim::ClaimId).count())
+                    .from(Alias::new(table)),
             )
             .await?
             .ok_or_else(|| DbErr::Migration("Missing proof claim copy count".into()))?;

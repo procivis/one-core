@@ -34,6 +34,12 @@ impl MigrationTrait for Migration {
                     )
                     .await?;
             }
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
         Ok(())
     }

@@ -18,7 +18,7 @@ use one_dto_mapper::{Into, try_convert_inner};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func, Query, SelectStatement, SimpleExpr};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, ExprTrait,
     FromQueryResult, Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait,
     RelationTrait, Statement, UpdateResult, Values,
 };
@@ -166,7 +166,7 @@ impl BackupRepository for BackupProvider {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn copy_db_to(&self, path: &Path) -> Result<Metadata, DataLayerError> {
         self.db
-            .execute(Statement {
+            .execute_raw(Statement {
                 sql: "VACUUM INTO ?;".into(),
                 values: Values(vec![path.to_string_lossy().into()]).into(),
                 db_backend: DbBackend::Sqlite,
@@ -297,7 +297,7 @@ impl BackupRepository for BackupProvider {
                 "credential_schema_preferred_instance_attestation_lifetime",
             )
             .column_as(organisation::Column::Id, "organisation_id")
-            .expr_as_(
+            .expr_as(
                 coalesce_to_empty_array(
                     claim::Entity::find()
                         .select_only()

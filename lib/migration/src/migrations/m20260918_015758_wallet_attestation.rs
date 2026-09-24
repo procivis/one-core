@@ -83,31 +83,29 @@ impl MigrationTrait for Migration {
 
         for entry in old_entries {
             db.execute(
-                backend.build(
-                    Query::insert()
-                        .into_table(WalletAttestation::Table)
-                        .columns([
-                            WalletAttestation::Id,
-                            WalletAttestation::CreatedDate,
-                            WalletAttestation::LastModified,
-                            WalletAttestation::ExpirationDate,
-                            WalletAttestation::Attestation,
-                            WalletAttestation::AttestedKeyId,
-                            WalletAttestation::InstanceId,
-                            WalletAttestation::Type,
-                        ])
-                        .values([
-                            entry.id.into(),
-                            entry.created_date.into(),
-                            entry.last_modified.into(),
-                            entry.expiration_date.into(),
-                            entry.attestation.into(),
-                            entry.attested_key_id.into(),
-                            entry.instance_id.into(),
-                            "KA".into(),
-                        ])
-                        .map_err(|e| DbErr::Migration(e.to_string()))?,
-                ),
+                Query::insert()
+                    .into_table(WalletAttestation::Table)
+                    .columns([
+                        WalletAttestation::Id,
+                        WalletAttestation::CreatedDate,
+                        WalletAttestation::LastModified,
+                        WalletAttestation::ExpirationDate,
+                        WalletAttestation::Attestation,
+                        WalletAttestation::AttestedKeyId,
+                        WalletAttestation::InstanceId,
+                        WalletAttestation::Type,
+                    ])
+                    .values([
+                        entry.id.into(),
+                        entry.created_date.into(),
+                        entry.last_modified.into(),
+                        entry.expiration_date.into(),
+                        entry.attestation.into(),
+                        entry.attested_key_id.into(),
+                        entry.instance_id.into(),
+                        "KA".into(),
+                    ])
+                    .map_err(|e| DbErr::Migration(e.to_string()))?,
             )
             .await?;
         }

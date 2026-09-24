@@ -120,20 +120,16 @@ async fn resolve_duplicate_order(
         duplicate.occurences
     );
 
-    let backend = manager.get_database_backend();
     let connection = manager.get_connection();
 
     let mut max_order: i32 = connection
         .query_one(
-            backend.build(
-                Query::select()
-                    .expr(Func::max(Expr::col(ClaimSchema::Order)))
-                    .from(ClaimSchema::Table)
-                    .cond_where(
-                        Expr::col(ClaimSchema::CredentialSchemaId)
-                            .eq(&duplicate.credential_schema_id),
-                    ),
-            ),
+            Query::select()
+                .expr(Func::max(Expr::col(ClaimSchema::Order)))
+                .from(ClaimSchema::Table)
+                .cond_where(
+                    Expr::col(ClaimSchema::CredentialSchemaId).eq(&duplicate.credential_schema_id),
+                ),
         )
         .await?
         .ok_or(DbErr::Custom("Could not find max order".to_string()))?
@@ -142,17 +138,14 @@ async fn resolve_duplicate_order(
     // IDs of duplicit claim schemas
     let mut entries = connection
         .query_all(
-            backend.build(
-                Query::select()
-                    .column(ClaimSchema::Id)
-                    .from(ClaimSchema::Table)
-                    .cond_where(
-                        Expr::col(ClaimSchema::CredentialSchemaId)
-                            .eq(&duplicate.credential_schema_id),
-                    )
-                    .and_where(Expr::col(ClaimSchema::Order).eq(duplicate.order))
-                    .order_by(ClaimSchema::CreatedDate, Order::Desc),
-            ),
+            Query::select()
+                .column(ClaimSchema::Id)
+                .from(ClaimSchema::Table)
+                .cond_where(
+                    Expr::col(ClaimSchema::CredentialSchemaId).eq(&duplicate.credential_schema_id),
+                )
+                .and_where(Expr::col(ClaimSchema::Order).eq(duplicate.order))
+                .order_by(ClaimSchema::CreatedDate, Order::Desc),
         )
         .await?;
 

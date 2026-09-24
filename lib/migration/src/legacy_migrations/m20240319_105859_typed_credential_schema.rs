@@ -17,7 +17,6 @@ impl MigrationTrait for Migration {
         }
         let core_base_url = env::var("MIGRATION_CORE_URL").unwrap_or_default();
         let db = manager.get_connection();
-        let backend = manager.get_database_backend();
 
         manager
             .alter_table(
@@ -55,9 +54,7 @@ impl MigrationTrait for Migration {
                 Expr::cust(format!("CONCAT('{core_base_url}/ssi/schema/v1/', id);")),
             )
             .to_owned();
-
-        let statement = backend.build(&update_statement);
-        db.execute(statement).await?;
+        db.execute(&update_statement).await?;
 
         manager
             .create_index(

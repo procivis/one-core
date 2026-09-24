@@ -117,31 +117,29 @@ async fn managed_instance_attestation_table(manager: &SchemaManager<'_>) -> Resu
 
     for entry in old_entries {
         db.execute(
-            backend.build(
-                Query::insert()
-                    .into_table(ManagedInstanceAttestation::Table)
-                    .columns([
-                        ManagedInstanceAttestation::Id,
-                        ManagedInstanceAttestation::CreatedDate,
-                        ManagedInstanceAttestation::LastModified,
-                        ManagedInstanceAttestation::ExpirationDate,
-                        ManagedInstanceAttestation::PublicKeyJwk,
-                        ManagedInstanceAttestation::ManagedInstanceId,
-                        ManagedInstanceAttestation::RevocationListEntryId,
-                        ManagedInstanceAttestation::Type,
-                    ])
-                    .values([
-                        entry.id.into(),
-                        entry.created_date.into(),
-                        entry.last_modified.into(),
-                        entry.expiration_date.into(),
-                        entry.public_key_jwk.into(),
-                        entry.managed_instance_id.into(),
-                        entry.revocation_list_entry_id.into(),
-                        "KA".into(),
-                    ])
-                    .map_err(|e| DbErr::Migration(e.to_string()))?,
-            ),
+            Query::insert()
+                .into_table(ManagedInstanceAttestation::Table)
+                .columns([
+                    ManagedInstanceAttestation::Id,
+                    ManagedInstanceAttestation::CreatedDate,
+                    ManagedInstanceAttestation::LastModified,
+                    ManagedInstanceAttestation::ExpirationDate,
+                    ManagedInstanceAttestation::PublicKeyJwk,
+                    ManagedInstanceAttestation::ManagedInstanceId,
+                    ManagedInstanceAttestation::RevocationListEntryId,
+                    ManagedInstanceAttestation::Type,
+                ])
+                .values([
+                    entry.id.into(),
+                    entry.created_date.into(),
+                    entry.last_modified.into(),
+                    entry.expiration_date.into(),
+                    entry.public_key_jwk.into(),
+                    entry.managed_instance_id.into(),
+                    entry.revocation_list_entry_id.into(),
+                    "KA".into(),
+                ])
+                .map_err(|e| DbErr::Migration(e.to_string()))?,
         )
         .await?;
     }

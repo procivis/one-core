@@ -11,7 +11,6 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
-        let backend = db.get_database_backend();
 
         let mdoc_credential_ids = Query::select()
             .column((Credential::Table, Credential::Id))
@@ -26,13 +25,11 @@ impl MigrationTrait for Migration {
 
         // mark top 2 levels of claims of MDOC credentials as selectively disclosable
         db.execute(
-            backend.build(
-                Query::update()
-                    .table(Claim::Table)
-                    .value(ClaimNew::SelectivelyDisclosable, true)
-                    .and_where(Expr::col(Claim::Path).not_like("%/%/%"))
-                    .and_where(Expr::col(Claim::CredentialId).in_subquery(mdoc_credential_ids)),
-            ),
+            Query::update()
+                .table(Claim::Table)
+                .value(ClaimNew::SelectivelyDisclosable, true)
+                .and_where(Expr::col(Claim::Path).not_like("%/%/%"))
+                .and_where(Expr::col(Claim::CredentialId).in_subquery(mdoc_credential_ids)),
         )
         .await?;
 

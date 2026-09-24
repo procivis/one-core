@@ -79,13 +79,11 @@ impl MigrationTrait for Migration {
 
         for ((did_id, key_id), reference) in reference_mapping {
             db.execute(
-                backend.build(
-                    Query::update()
-                        .table(KeyDid::Table)
-                        .value(KeyDidNew::Reference, reference)
-                        .and_where(Expr::col(KeyDid::DidId).eq(did_id))
-                        .and_where(Expr::col(KeyDid::KeyId).eq(key_id)),
-                ),
+                Query::update()
+                    .table(KeyDid::Table)
+                    .value(KeyDidNew::Reference, reference)
+                    .and_where(Expr::col(KeyDid::DidId).eq(did_id))
+                    .and_where(Expr::col(KeyDid::KeyId).eq(key_id)),
             )
             .await?;
         }
@@ -106,6 +104,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             DatabaseBackend::Sqlite => recreate_table(manager).await?,
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         };
 
         Ok(())

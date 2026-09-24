@@ -22,7 +22,7 @@ use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use one_core::service::proof::dto::ProofFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{ColumnRef, IntoCondition};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, QueryFilter, Set};
 use shared_types::{ClaimId, CredentialId, ProofId};
 
 use super::model::ProofListItemModel;

@@ -160,7 +160,7 @@ async fn create_identifiers_for_dids(
             .map_err(|e| DbErr::Migration(e.to_string()))?;
     }
 
-    let res = db.execute(backend.build(&insert_statement)).await?;
+    let res = db.execute(&insert_statement).await?;
     Ok(res.rows_affected() >= BATCH_SIZE as u64)
 }
 

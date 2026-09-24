@@ -1,12 +1,12 @@
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::{DidId, DidValue, OrganisationId};
 
@@ -75,7 +75,7 @@ impl DidRepository for DidProvider {
         let query = did::Entity::find()
             .filter(did::Column::DeletedAt.is_null())
             .with_filter_join(&query_params)
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
 
@@ -166,6 +166,8 @@ impl DidRepository for DidProvider {
         };
 
         did::Entity::update(update_model)
+            .validate()
+            .map_err(to_update_data_layer_error)?
             .filter(did::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await

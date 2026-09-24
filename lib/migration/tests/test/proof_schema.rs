@@ -1,6 +1,6 @@
 use sea_orm::DbBackend;
 
-use crate::fixtures::{ColumnType, DefaultValue, get_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_proof_schema() {
@@ -92,24 +92,17 @@ async fn test_db_schema_proof_input_schema() {
         "proof_schema",
         "formats",
     ]);
-    let id_column = proof_input_schema.column("id");
+    proof_input_schema
+        .column("id")
+        .r#type(ColumnType::BigInt)
+        .nullable(false)
+        .primary_key()
+        .default(None);
     proof_input_schema
         .column("formats")
         .r#type(ColumnType::Text)
         .nullable(false)
         .default(None);
-    id_column
-        .r#type(ColumnType::BigInt)
-        .nullable(false)
-        .primary_key();
-    if schema.backend() == DbBackend::Postgres {
-        // auto-incrementing primary key
-        id_column.default(Some(DefaultValue::String(
-            "nextval('proof_input_schema_id_seq'::regclass)".to_string(),
-        )))
-    } else {
-        id_column.default(None)
-    };
     proof_input_schema
         .column("created_date")
         .r#type(ColumnType::TimestampMilliseconds)

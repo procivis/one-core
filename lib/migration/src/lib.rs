@@ -10,6 +10,7 @@ mod legacy_migrations;
 mod migrations;
 pub(crate) mod nullable_unique_idx;
 pub mod runner;
+pub mod supported_db_type;
 
 pub struct LegacyMigrator;
 

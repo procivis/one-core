@@ -1,10 +1,10 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_null, text};
 
 use crate::datatype::{timestamp, timestamp_null, uuid_char};
 use crate::migrations::m20260417_150300_initial::{TrustCollection, TrustListSubscription};
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,9 +12,9 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        match manager.get_database_backend() {
-            DbBackend::Sqlite => alter_trust_list_subscription_sqlite(manager).await,
-            DbBackend::MySql | DbBackend::Postgres => {
+        match manager.supported_db_type() {
+            SupportedDbType::Sqlite => alter_trust_list_subscription_sqlite(manager).await,
+            r#type @ (SupportedDbType::MySql | SupportedDbType::Postgres) => {
                 manager
                     .alter_table(
                         Table::alter()
@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                             .to_owned(),
                     )
                     .await?;
-                if manager.get_database_backend() == DbBackend::MySql {
+                if r#type == SupportedDbType::MySql {
                     manager
                         .get_connection()
                         .execute_unprepared(

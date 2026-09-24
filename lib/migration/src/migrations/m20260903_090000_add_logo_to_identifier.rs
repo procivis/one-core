@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{boolean, string};
 
@@ -8,6 +7,7 @@ use crate::migrations::m20260417_150300_initial::{
     BlobStorage, Did, Identifier, Key, Organisation,
 };
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -23,7 +23,7 @@ const INDEX_UNIQUE_IDENTIFIER_NAME_ORGANISATION_DELETED_AT: &str =
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         disable_foreign_key_checks(manager).await?;
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             self.up_sqlite(manager).await?;
         } else {
             self.up_sane(manager).await?;

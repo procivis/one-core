@@ -60,7 +60,7 @@ pub(crate) async fn add_nullable_unique_idx<T: IntoIden + 'static, C: IntoIden +
     };
     let mut quoted_column_names = non_nullable_columns
         .into_iter()
-        .map(|c| format!("`{}`", c.into_iden().to_string()))
+        .map(|c| format!("`{}`", c.into_iden()))
         .collect::<Vec<_>>();
     if let Some(pos) = nullable_column_index_pos {
         quoted_column_names.insert(pos, quoted_materialzed_column_or_expr.clone());

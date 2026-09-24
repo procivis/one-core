@@ -1,4 +1,5 @@
 use autometrics::autometrics;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::trust_entry::{
     GetTrustEntryList, TrustEntry, TrustEntryListQuery, UpdateTrustEntryRequest,
 };
@@ -6,8 +7,7 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
 };
 use shared_types::{TrustEntryId, TrustListPublicationId};
 
@@ -86,12 +86,12 @@ impl TrustEntryRepository for TrustEntryProvider {
             .column_as(identifier::Column::KeyId, "identifier_key_id")
             // list query
             .filter(trust_entry::Column::TrustListPublicationId.eq(trust_list_publication_id))
-            .with_list_query(&query, self.db.get_database_backend())
+            .with_list_query(&query, self.db.supported_db_type())
             .order_by_desc(trust_entry::Column::CreatedDate)
             .order_by_desc(trust_entry::Column::Id);
 
         let (items_count, trust_entries) = tokio::join!(
-            count_if_requested(include_count, query.to_owned().count(&self.db)),
+            count_if_requested(include_count, query.to_owned(), &self.db),
             query.into_model::<TrustEntryWithIdentifier>().all(&self.db),
         );
 

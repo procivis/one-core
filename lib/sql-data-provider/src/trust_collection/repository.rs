@@ -1,5 +1,6 @@
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::trust_collection::{
     GetTrustCollectionList, TrustCollection, TrustCollectionListQuery,
 };
@@ -7,8 +8,7 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use sea_orm::prelude::Expr;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
 use shared_types::TrustCollectionId;
 
@@ -49,7 +49,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
     ) -> Result<GetTrustCollectionList, DataLayerError> {
         let db_query = trust_collection::Entity::find()
             .filter(trust_collection::Column::DeactivatedAt.is_null())
-            .with_list_query(&query, self.db.get_database_backend())
+            .with_list_query(&query, self.db.supported_db_type())
             .order_by_desc(trust_collection::Column::CreatedDate)
             .order_by_desc(trust_collection::Column::Id);
 

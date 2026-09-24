@@ -1,4 +1,5 @@
 use autometrics::autometrics;
+use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::common::LockType;
 use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::proof::{
@@ -7,8 +8,8 @@ use one_core::model::proof::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+    RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{InteractionId, ProofId};
 
@@ -118,10 +119,10 @@ impl ProofRepository for ProofProvider {
             .as_ref()
             .map(|pagination| pagination.page_size as _);
 
-        let query = get_proof_list_query(&query_params, self.db.get_database_backend());
+        let query = get_proof_list_query(&query_params, self.db.supported_db_type());
 
         let (items_count, proofs) = tokio::join!(
-            count_if_requested(include_count, query.to_owned().count(&self.db)),
+            count_if_requested(include_count, query.to_owned(), &self.db),
             query.into_model::<ProofListItemModel>().all(&self.db)
         );
 
@@ -265,7 +266,7 @@ impl ProofRepository for ProofProvider {
 /// produces list query declared to be used together with `into_model::<ProofListItemModel>()`
 fn get_proof_list_query(
     query_params: &ProofListQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> Select<crate::entity::proof::Entity> {
     let mut query = crate::entity::proof::Entity::find()
         .select_only()

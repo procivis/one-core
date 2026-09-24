@@ -1,35 +1,36 @@
-use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use sea_orm_migration::prelude::*;
 
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
+
 pub trait ColumnDefExt {
-    fn large_blob<T: HasDatabaseBackend>(&mut self, manager: &T) -> &mut ColumnDef;
-    fn datetime_millisecond_precision<T: HasDatabaseBackend>(
+    fn large_blob<T: WithSupportedDbType>(&mut self, manager: &T) -> &mut ColumnDef;
+    fn datetime_millisecond_precision<T: WithSupportedDbType>(
         &mut self,
         manager: &T,
     ) -> &mut ColumnDef;
-    fn datetime_second_precision<T: HasDatabaseBackend>(&mut self, manager: &T) -> &mut ColumnDef;
+    fn datetime_second_precision<T: WithSupportedDbType>(&mut self, manager: &T) -> &mut ColumnDef;
 }
 
 impl ColumnDefExt for ColumnDef {
-    fn large_blob<T: HasDatabaseBackend>(&mut self, _manager: &T) -> &mut ColumnDef {
+    fn large_blob<T: WithSupportedDbType>(&mut self, _manager: &T) -> &mut ColumnDef {
         self.blob();
 
         #[cfg(feature = "mysql")]
-        if matches!(_manager.backend(), sea_orm::DatabaseBackend::MySql) {
+        if matches!(_manager.supported_db_type(), SupportedDbType::MySql) {
             self.custom(extension::mysql::MySqlType::LongBlob);
         }
 
         self
     }
 
-    fn datetime_millisecond_precision<T: HasDatabaseBackend>(
+    fn datetime_millisecond_precision<T: WithSupportedDbType>(
         &mut self,
         manager: &T,
     ) -> &mut ColumnDef {
-        let dt = match manager.backend() {
-            sea_orm::DatabaseBackend::MySql => "datetime(3)",
-            sea_orm::DatabaseBackend::Postgres => "timestamp(3) with time zone",
-            sea_orm::DatabaseBackend::Sqlite => "datetime",
+        let dt = match manager.supported_db_type() {
+            SupportedDbType::MySql => "datetime(3)",
+            SupportedDbType::Postgres => "timestamp(3) with time zone",
+            SupportedDbType::Sqlite => "datetime",
         };
 
         self.custom(Alias::new(dt));
@@ -37,44 +38,16 @@ impl ColumnDefExt for ColumnDef {
         self
     }
 
-    fn datetime_second_precision<T: HasDatabaseBackend>(&mut self, manager: &T) -> &mut ColumnDef {
-        let dt = match manager.backend() {
-            sea_orm::DatabaseBackend::MySql => "datetime(0)",
-            sea_orm::DatabaseBackend::Postgres => "timestamp(0) with time zone",
-            sea_orm::DatabaseBackend::Sqlite => "datetime",
+    fn datetime_second_precision<T: WithSupportedDbType>(&mut self, manager: &T) -> &mut ColumnDef {
+        let dt = match manager.supported_db_type() {
+            SupportedDbType::MySql => "datetime(0)",
+            SupportedDbType::Postgres => "timestamp(0) with time zone",
+            SupportedDbType::Sqlite => "datetime",
         };
 
         self.custom(Alias::new(dt));
 
         self
-    }
-}
-
-pub(super) trait HasDatabaseBackend {
-    fn backend(&self) -> sea_orm::DatabaseBackend;
-}
-
-impl HasDatabaseBackend for SchemaManager<'_> {
-    fn backend(&self) -> sea_orm::DatabaseBackend {
-        self.get_database_backend()
-    }
-}
-
-impl HasDatabaseBackend for SchemaManagerConnection<'_> {
-    fn backend(&self) -> sea_orm::DatabaseBackend {
-        self.get_database_backend()
-    }
-}
-
-impl HasDatabaseBackend for DatabaseConnection {
-    fn backend(&self) -> sea_orm::DatabaseBackend {
-        self.get_database_backend()
-    }
-}
-
-impl HasDatabaseBackend for DatabaseTransaction {
-    fn backend(&self) -> sea_orm::DatabaseBackend {
-        self.get_database_backend()
     }
 }
 
@@ -86,13 +59,13 @@ pub(crate) fn uuid_char_null<T: IntoIden>(ident: T) -> ColumnDef {
     ColumnDef::new(ident).char_len(36).null().take()
 }
 
-pub(crate) fn timestamp<T: IntoIden, DB: HasDatabaseBackend>(ident: T, manager: &DB) -> ColumnDef {
+pub(crate) fn timestamp<T: IntoIden, DB: WithSupportedDbType>(ident: T, manager: &DB) -> ColumnDef {
     ColumnDef::new(ident)
         .datetime_millisecond_precision(manager)
         .not_null()
         .take()
 }
-pub(crate) fn timestamp_seconds<T: IntoIden, DB: HasDatabaseBackend>(
+pub(crate) fn timestamp_seconds<T: IntoIden, DB: WithSupportedDbType>(
     ident: T,
     manager: &DB,
 ) -> ColumnDef {
@@ -102,7 +75,7 @@ pub(crate) fn timestamp_seconds<T: IntoIden, DB: HasDatabaseBackend>(
         .take()
 }
 
-pub(crate) fn timestamp_null<T: IntoIden, DB: HasDatabaseBackend>(
+pub(crate) fn timestamp_null<T: IntoIden, DB: WithSupportedDbType>(
     ident: T,
     manager: &DB,
 ) -> ColumnDef {
@@ -111,7 +84,7 @@ pub(crate) fn timestamp_null<T: IntoIden, DB: HasDatabaseBackend>(
         .null()
         .take()
 }
-pub(crate) fn timestamp_seconds_null<T: IntoIden, DB: HasDatabaseBackend>(
+pub(crate) fn timestamp_seconds_null<T: IntoIden, DB: WithSupportedDbType>(
     ident: T,
     manager: &DB,
 ) -> ColumnDef {
@@ -121,11 +94,14 @@ pub(crate) fn timestamp_seconds_null<T: IntoIden, DB: HasDatabaseBackend>(
         .take()
 }
 
-pub(crate) fn large_blob<T: IntoIden, DB: HasDatabaseBackend>(ident: T, manager: &DB) -> ColumnDef {
+pub(crate) fn large_blob<T: IntoIden, DB: WithSupportedDbType>(
+    ident: T,
+    manager: &DB,
+) -> ColumnDef {
     ColumnDef::new(ident).large_blob(manager).not_null().take()
 }
 
-pub(crate) fn large_blob_null<T: IntoIden, DB: HasDatabaseBackend>(
+pub(crate) fn large_blob_null<T: IntoIden, DB: WithSupportedDbType>(
     ident: T,
     manager: &DB,
 ) -> ColumnDef {

@@ -132,11 +132,7 @@ pub async fn delete_revocation_lists(
         .and_where(Expr::col(NewRevocationList::IssuerIdentifierId).is_in(identifier_ids))
         .to_owned();
 
-    db.execute(
-        db.get_database_backend()
-            .build(&delete_revocation_lists_query),
-    )
-    .await?;
+    db.execute(&delete_revocation_lists_query).await?;
 
     Ok(())
 }
@@ -167,7 +163,7 @@ async fn delete_trust_entities(
         .and_where(Expr::col(TrustEntity::Id).is_in(&trust_entity_ids))
         .to_owned();
 
-    db.execute(backend.build(&delete_trust_query)).await?;
+    db.execute(&delete_trust_query).await?;
 
     ids_to_delete.extend(trust_entity_ids);
     Ok(())
@@ -198,7 +194,6 @@ pub async fn delete_credentials(
     ids_to_delete: &mut HashSet<String>,
     interaction_ids: &mut HashSet<String>,
 ) -> Result<(), DbErr> {
-    let backend = db.get_database_backend();
     let mut credential_ids_to_delete: HashSet<String> = HashSet::new();
 
     find_credentials_by_identifiers(
@@ -225,8 +220,7 @@ pub async fn delete_credentials(
         .and_where(Expr::col(ValidityCredential::CredentialId).is_in(&credential_ids_to_delete))
         .to_owned();
 
-    db.execute(backend.build(&delete_validity_credentials_query))
-        .await?;
+    db.execute(&delete_validity_credentials_query).await?;
 
     ids_to_delete.extend(credential_ids_to_delete.iter().cloned());
 
@@ -236,13 +230,13 @@ pub async fn delete_credentials(
         .from_table(Claim::Table)
         .and_where(Expr::col(Claim::CredentialId).is_in(&credential_ids_to_delete))
         .to_owned();
-    db.execute(backend.build(&delete_claims_query)).await?;
+    db.execute(&delete_claims_query).await?;
 
     let delete_credentials_query = Query::delete()
         .from_table(Credential::Table)
         .and_where(Expr::col(Credential::Id).is_in(&credential_ids_to_delete))
         .to_owned();
-    db.execute(backend.build(&delete_credentials_query)).await?;
+    db.execute(&delete_credentials_query).await?;
 
     Ok(())
 }
@@ -336,8 +330,7 @@ pub async fn delete_proof_claims_for_credentials(
             .from_table(ProofClaim::Table)
             .and_where(Expr::col(ProofClaim::ClaimId).is_in(&all_claim_ids))
             .to_owned();
-        db.execute(backend.build(&delete_proof_claims_query))
-            .await?;
+        db.execute(&delete_proof_claims_query).await?;
     }
     Ok(())
 }
@@ -407,14 +400,13 @@ pub async fn delete_proofs(
         .from_table(ProofClaim::Table)
         .and_where(Expr::col(ProofClaim::ProofId).is_in(&proof_ids_to_delete))
         .to_owned();
-    db.execute(backend.build(&delete_proof_claims_query))
-        .await?;
+    db.execute(&delete_proof_claims_query).await?;
 
     let delete_proofs_query = Query::delete()
         .from_table(Proof::Table)
         .and_where(Expr::col(Proof::Id).is_in(&proof_ids_to_delete))
         .to_owned();
-    db.execute(backend.build(&delete_proofs_query)).await?;
+    db.execute(&delete_proofs_query).await?;
 
     ids_to_delete.extend(proof_ids_to_delete.iter().cloned());
     Ok(())
@@ -433,8 +425,7 @@ pub async fn delete_interactions(
         .and_where(Expr::col(Interaction::Id).is_in(interaction_ids))
         .to_owned();
 
-    let statement = db.get_database_backend().build(&delete_interactions_query);
-    db.execute(statement).await?;
+    db.execute(&delete_interactions_query).await?;
 
     Ok(())
 }
@@ -475,7 +466,7 @@ pub async fn delete_identifiers(
         .from_table(Identifier::Table)
         .and_where(Expr::col(Identifier::Id).is_in(&identifier_ids_to_delete))
         .to_owned();
-    db.execute(backend.build(&delete_query)).await?;
+    db.execute(&delete_query).await?;
 
     ids_to_delete_history.extend(identifier_ids_to_delete);
     Ok(())
@@ -489,13 +480,11 @@ pub async fn delete_key_did_relations(
         return Ok(());
     }
 
-    let backend = db.get_database_backend();
-
     let delete_key_did_query = Query::delete()
         .from_table(KeyDid::Table)
         .and_where(Expr::col(KeyDid::KeyId).is_in(key_ids))
         .to_owned();
-    db.execute(backend.build(&delete_key_did_query)).await?;
+    db.execute(&delete_key_did_query).await?;
 
     Ok(())
 }
@@ -508,7 +497,7 @@ pub async fn delete_dids(
         .from_table(Did::Table)
         .and_where(Expr::col(Did::Id).is_in(did_ids))
         .to_owned();
-    db.execute(db.get_database_backend().build(&query)).await?;
+    db.execute(&query).await?;
 
     Ok(())
 }
@@ -521,7 +510,7 @@ pub async fn delete_history_events(
         .from_table(History::Table)
         .and_where(Expr::col(History::EntityId).is_in(ids_to_delete))
         .to_owned();
-    db.execute(db.get_database_backend().build(&query)).await?;
+    db.execute(&query).await?;
 
     Ok(())
 }

@@ -155,7 +155,7 @@ impl MigrationTrait for Migration {
             }
 
             if entries_to_insert {
-                db.execute(backend.build(&insert_entries)).await?;
+                db.execute(&insert_entries).await?;
             }
         }
 
@@ -167,8 +167,7 @@ impl MigrationTrait for Migration {
                     .table(Credential::Table)
                     .to_owned();
 
-                db.execute(backend.build(&foreign_key_drop_statement))
-                    .await?;
+                db.execute(&foreign_key_drop_statement).await?;
 
                 manager
                     .alter_table(
@@ -180,6 +179,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             DatabaseBackend::Sqlite => sqlite_migration_drop_revocation_list_key(manager).await?,
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         };
 
         Ok(())

@@ -1,5 +1,6 @@
 use autometrics::autometrics;
 use futures::future::try_join_all;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::history::{
     GetHistoryList, GetIssuerStats, GetSystemInteractionStats, GetSystemManagementStats,
     GetVerifierStats, History, HistoryAction, HistoryListQuery, HistoryMetadata, IssuerStatsQuery,
@@ -11,8 +12,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::sea_query::SelectStatement;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, PaginatorTrait,
-    QueryFilter, QueryOrder,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, QueryFilter,
+    QueryOrder,
 };
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
@@ -99,7 +100,7 @@ impl HistoryRepository for HistoryProvider {
         };
 
         let query = history::Entity::find()
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .with_filter_join(&query_params)
             .order_by_desc(history::Column::CreatedDate)
             .order_by_desc(history::Column::Id);
@@ -109,7 +110,7 @@ impl HistoryRepository for HistoryProvider {
             .map(|pagination| pagination.page_size as u64);
 
         let (items_count, history_list) = tokio::join!(
-            count_if_requested(include_count, query.to_owned().count(&self.db)),
+            count_if_requested(include_count, query.to_owned(), &self.db),
             query.all(&self.db)
         );
 
@@ -164,7 +165,8 @@ impl HistoryRepository for HistoryProvider {
             Some(organisation_id),
             include_previous,
         );
-        let timelines_query = org_timelines_query(from, to, organisation_id, &db_backend)?;
+        let timelines_query =
+            org_timelines_query(from, to, organisation_id, self.db.supported_db_type())?;
         let (issuance_count, verification_count, credential_lifecycle_count, timelines) = tokio::try_join!(
             issuance_count_query,
             verification_count_query,
@@ -300,7 +302,7 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let db_backend = self.db.get_database_backend();
+        let db_backend = self.db.supported_db_type();
         let current = issuer_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| issuer_stats_query(&q, db_backend));
         let paginated_stats = self
@@ -319,7 +321,7 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let db_backend = self.db.get_database_backend();
+        let db_backend = self.db.supported_db_type();
         let current = verifier_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| verifier_stats_query(&q, db_backend));
         let paginated_stats = self
@@ -338,7 +340,7 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let db_backend = self.db.get_database_backend();
+        let db_backend = self.db.supported_db_type();
         let current = system_interaction_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| system_interaction_stats_query(&q, db_backend));
         let paginated_stats: PaginatedStats<SystemInteractionStatsRow> = self
@@ -357,7 +359,7 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as u64);
-        let db_backend = self.db.get_database_backend();
+        let db_backend = self.db.supported_db_type();
         let current = system_management_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| system_management_stats_query(&q, db_backend));
         let paginated_stats: PaginatedStats<SystemManagementsStatsRow> = self
@@ -370,10 +372,9 @@ impl HistoryRepository for HistoryProvider {
 
 impl HistoryProvider {
     async fn count(&self, stmt: &CountOperationsQuery) -> Result<usize, DataLayerError> {
-        let statement = self.db.get_database_backend().build(&stmt.0);
         let result = self
             .db
-            .query_one(statement)
+            .query_one(&stmt.0)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?
             .ok_or(DataLayerError::MappingError)?;
@@ -501,8 +502,8 @@ impl HistoryProvider {
         let (count, current, prev) = tokio::join!(
             count_if_requested(
                 include_count,
-                T::find_by_statement(backend.build(current.clone().reset_limit().reset_offset()))
-                    .count(&self.db)
+                T::find_by_statement(backend.build(current.clone().reset_limit().reset_offset())),
+                &self.db
             ),
             T::find_by_statement(backend.build(&current)).all(&self.db),
             async {

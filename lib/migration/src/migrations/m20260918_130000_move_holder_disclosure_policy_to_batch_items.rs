@@ -17,9 +17,9 @@ impl MigrationTrait for Migration {
                         Credential::EmbeddedDisclosurePolicy,
                         Expr::col((parent.clone(), Credential::EmbeddedDisclosurePolicy)),
                     )
-                    .from(TableRef::TableAlias(
-                        Credential::Table.into_iden(),
-                        parent.clone().into_iden(),
+                    .from(TableRef::Table(
+                        Credential::Table.into(),
+                        Some(parent.clone().into_iden()),
                     ))
                     .and_where(
                         Expr::col((Credential::Table, Credential::ParentId))

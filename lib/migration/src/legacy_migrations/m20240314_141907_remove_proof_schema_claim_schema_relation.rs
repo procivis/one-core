@@ -1,6 +1,5 @@
 use m20240110_000001_initial::ProofSchema as OldProofSchema;
 use m20240223_094129_validity_constraint_in_proof_schema::ProofSchema as NewProofSchema;
-use sea_orm::{DbBackend, Statement};
 use sea_orm_migration::prelude::*;
 
 use crate::m20240110_000001_initial::{
@@ -23,12 +22,11 @@ impl MigrationTrait for Migration {
             return Ok(());
         }
         let db = manager.get_connection();
-        let backend = db.get_database_backend();
 
-        db.execute(migrate_proof_input_schema_data(&backend).await?)
+        db.execute(&migrate_proof_input_schema_data().await?)
             .await?;
 
-        db.execute(migrate_proof_input_claim_schema(&backend).await?)
+        db.execute(&migrate_proof_input_claim_schema().await?)
             .await?;
 
         manager
@@ -52,7 +50,7 @@ impl MigrationTrait for Migration {
     }
 }
 
-async fn migrate_proof_input_claim_schema(backend: &DbBackend) -> Result<Statement, DbErr> {
+async fn migrate_proof_input_claim_schema() -> Result<InsertStatement, DbErr> {
     let temp_sub_query_input = Query::select()
         .distinct()
         .expr_as(
@@ -121,12 +119,10 @@ async fn migrate_proof_input_claim_schema(backend: &DbBackend) -> Result<Stateme
         .map_err(|e| DbErr::Migration(e.to_string()))?
         .to_owned();
 
-    let stm = backend.build(&insert_statement);
-
-    Ok(stm)
+    Ok(insert_statement)
 }
 
-async fn migrate_proof_input_schema_data(backend: &DbBackend) -> Result<Statement, DbErr> {
+async fn migrate_proof_input_schema_data() -> Result<InsertStatement, DbErr> {
     let temp_sub_query_input = Query::select()
         .distinct()
         .column((OldProofSchema::Table, OldProofSchema::CreatedDate))
@@ -186,7 +182,5 @@ async fn migrate_proof_input_schema_data(backend: &DbBackend) -> Result<Statemen
         .map_err(|e| DbErr::Migration(e.to_string()))?
         .to_owned();
 
-    let stm = backend.build(&insert_statement);
-
-    Ok(stm)
+    Ok(insert_statement)
 }

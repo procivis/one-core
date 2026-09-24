@@ -4,7 +4,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryTrait};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::EntityId;
 
 use crate::entity;
@@ -16,11 +16,9 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 impl LocalizedTextRepository for LocalizedTextProvider {
     async fn upsert(&self, localized_text: LocalizedText) -> Result<(), DataLayerError> {
         let model = ActiveModel::from(localized_text);
-        let stmt = Entity::insert(model)
+        Entity::insert(model)
             .on_conflict(update_on_conflict())
-            .build(self.db.get_database_backend());
-        self.db
-            .execute(stmt)
+            .exec(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
@@ -28,11 +26,9 @@ impl LocalizedTextRepository for LocalizedTextProvider {
 
     async fn upsert_many(&self, localized_text: Vec<LocalizedText>) -> Result<(), DataLayerError> {
         let model: Vec<ActiveModel> = convert_inner(localized_text);
-        let stmt = Entity::insert_many(model)
+        Entity::insert_many(model)
             .on_conflict(update_on_conflict())
-            .build(self.db.get_database_backend());
-        self.db
-            .execute(stmt)
+            .exec(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

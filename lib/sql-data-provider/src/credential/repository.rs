@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::claim::Claim;
 use one_core::model::credential::{
     Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
@@ -13,9 +14,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseBackend, EntityTrait, JoinType,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set,
-    SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, JoinType, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
@@ -79,7 +79,7 @@ impl CredentialProvider {
 
 fn get_credential_list_query(
     query_params: CredentialListQuery,
-    db_backend: DatabaseBackend,
+    db_backend: SupportedDbType,
 ) -> Select<credential::Entity> {
     let mut query = credential::Entity::find()
         .select_only()
@@ -375,10 +375,10 @@ impl CredentialRepository for CredentialProvider {
             .as_ref()
             .map(|pagination| pagination.page_size as _);
 
-        let query = get_credential_list_query(query_params, self.db.get_database_backend());
+        let query = get_credential_list_query(query_params, self.db.supported_db_type());
 
         let (items_count, credentials) = tokio::join!(
-            count_if_requested(include_count, query.to_owned().count(&self.db)),
+            count_if_requested(include_count, query.to_owned(), &self.db),
             query
                 .into_model::<CredentialListEntityModel>()
                 .all(&self.db)

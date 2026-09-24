@@ -1,6 +1,5 @@
 #![allow(clippy::enum_variant_names)]
 
-use sea_orm::{DatabaseBackend, DbBackend};
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{
     big_integer, boolean, json_null, string, string_len, string_len_null, string_null, text,
@@ -14,6 +13,7 @@ use crate::datatype::{
 use crate::foreign_key::disable_foreign_key_checks;
 use crate::index_helper::table_with_indexes;
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -314,7 +314,7 @@ impl MigrationTrait for Migration {
 
         foreign_key_postprocessing(manager).await?;
 
-        if manager.get_database_backend() == DbBackend::Postgres {
+        if manager.supported_db_type() == SupportedDbType::Postgres {
             // Postgres compatibility shim for hex() function.
             manager
                 .get_connection()
@@ -332,14 +332,14 @@ impl MigrationTrait for Migration {
 }
 
 async fn foreign_key_postprocessing(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    match manager.get_database_backend() {
-        DbBackend::MySql => {
+    match manager.supported_db_type() {
+        SupportedDbType::MySql => {
             manager
                 .get_connection()
                 .execute_unprepared("SET FOREIGN_KEY_CHECKS=1;")
                 .await?;
         }
-        DbBackend::Postgres => {
+        SupportedDbType::Postgres => {
             // Add the circular foreign key constraint that was skipped earlier.
             manager
                 .alter_table(
@@ -358,7 +358,7 @@ async fn foreign_key_postprocessing(manager: &SchemaManager<'_>) -> Result<(), D
                 )
                 .await?;
         }
-        DbBackend::Sqlite => {
+        SupportedDbType::Sqlite => {
             manager
                 .get_connection()
                 .execute_unprepared("PRAGMA defer_foreign_keys = OFF;")
@@ -390,7 +390,7 @@ async fn organisation_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         )
         .to_owned();
 
-    if manager.get_database_backend() != DbBackend::Postgres {
+    if manager.supported_db_type() != SupportedDbType::Postgres {
         // we add this later for Postgres, as it doesn't support to globally disable foreign key constraints
         table.foreign_key(
             ForeignKeyCreateStatement::new()
@@ -493,7 +493,7 @@ async fn history_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     ];
     table_with_indexes(table, indexes, manager).await?;
     // Create index with 255-char prefix (needed for wallet instance attestation search)
-    if manager.get_database_backend() == DbBackend::MySql {
+    if manager.supported_db_type() == SupportedDbType::MySql {
         manager
             .get_connection()
             .execute_unprepared(&format!(
@@ -1385,7 +1385,7 @@ async fn revocation_list_table(manager: &SchemaManager<'_>) -> Result<(), DbErr>
                 .to_col(Certificate::Id),
         )
         .to_owned();
-    if manager.get_database_backend() == DatabaseBackend::MySql {
+    if manager.supported_db_type() == SupportedDbType::MySql {
         // Needs varchar type because of `COALESCE` for the unique index on nullable column
         table.col(string_len_null(RevocationList::IssuerCertificateId, 36));
     } else {

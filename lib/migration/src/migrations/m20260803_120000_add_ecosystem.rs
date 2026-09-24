@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_null, text_null};
 
@@ -8,6 +7,7 @@ use crate::migrations::m20260417_150300_initial::{
     Credential, CredentialSchema, Organisation, Proof, ProofSchema, TrustCollection,
 };
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 const EUDI_ECOSYSTEM: &str = "EUDI";
 
@@ -59,7 +59,7 @@ impl MigrationTrait for Migration {
             .await?;
 
         disable_foreign_key_checks(manager).await?;
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             trust_collection_sqlite(manager).await?;
         } else {
             trust_collection_sane(manager).await?;

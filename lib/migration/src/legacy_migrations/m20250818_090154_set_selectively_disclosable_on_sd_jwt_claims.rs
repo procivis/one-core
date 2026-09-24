@@ -148,23 +148,19 @@ async fn process_credential_schema(
                     .flat_map(|claims| claims.into_iter().map(|claim| claim.id))
                     .collect::<Vec<_>>();
                 db.execute(
-                    backend.build(
-                        Query::update()
-                            .table(Claim::Table)
-                            .value(ClaimNew::SelectivelyDisclosable, true)
-                            .and_where(Expr::col(Claim::Id).in_tuples(claim_ids)),
-                    ),
+                    Query::update()
+                        .table(Claim::Table)
+                        .value(ClaimNew::SelectivelyDisclosable, true)
+                        .and_where(Expr::col(Claim::Id).in_tuples(claim_ids)),
                 )
                 .await?;
             } else {
                 // no index mangling, update all matching claims
                 db.execute(
-                    backend.build(
-                        Query::update()
-                            .table(Claim::Table)
-                            .value(ClaimNew::SelectivelyDisclosable, true)
-                            .and_where(Expr::col(Claim::ClaimSchemaId).eq(claim_schema.id)),
-                    ),
+                    Query::update()
+                        .table(Claim::Table)
+                        .value(ClaimNew::SelectivelyDisclosable, true)
+                        .and_where(Expr::col(Claim::ClaimSchemaId).eq(claim_schema.id)),
                 )
                 .await?;
             }

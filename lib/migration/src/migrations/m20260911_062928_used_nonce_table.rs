@@ -1,4 +1,4 @@
-use sea_orm::{DbBackend, FromQueryResult};
+use sea_orm::FromQueryResult;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_null};
 use time::OffsetDateTime;
@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use crate::datatype::{large_blob_null, timestamp, timestamp_null, uuid_char};
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
 use crate::migrations::m20260417_150300_initial::{Interaction, Organisation};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -34,7 +35,7 @@ impl MigrationTrait for Migration {
 
         migrate_nonce_ids(manager).await?;
 
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             cleanup_interaction_sqlite(manager).await?;
         } else {
             cleanup_interaction_simple(manager).await?;

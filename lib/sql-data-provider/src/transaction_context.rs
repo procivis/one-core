@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use futures::FutureExt;
+use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::proto::transaction_manager::{AccessMode, IsolationLevel, TransactionManager};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
@@ -54,17 +55,26 @@ impl TransactionManagerImpl {
     }
 }
 
+impl WithSupportedDbType for TransactionManagerImpl {
+    fn supported_db_type(&self) -> SupportedDbType {
+        #[expect(clippy::expect_used)]
+        self.get_database_backend()
+            .try_into()
+            .expect("Unsupported DB type")
+    }
+}
+
 #[async_trait::async_trait]
 impl ConnectionTrait for TransactionManagerImpl {
     fn get_database_backend(&self) -> DbBackend {
         self.db.get_database_backend()
     }
 
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         if let Ok(tx) = TX_CONTEXT.try_with(|(v, _, _)| v.clone()) {
-            tx.execute(stmt).await
+            tx.execute_raw(stmt).await
         } else {
-            self.db.execute(stmt).await
+            self.db.execute_raw(stmt).await
         }
     }
 
@@ -76,19 +86,19 @@ impl ConnectionTrait for TransactionManagerImpl {
         }
     }
 
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         if let Ok(tx) = TX_CONTEXT.try_with(|(v, _, _)| v.clone()) {
-            tx.query_one(stmt).await
+            tx.query_one_raw(stmt).await
         } else {
-            self.db.query_one(stmt).await
+            self.db.query_one_raw(stmt).await
         }
     }
 
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         if let Ok(tx) = TX_CONTEXT.try_with(|(v, _, _)| v.clone()) {
-            tx.query_all(stmt).await
+            tx.query_all_raw(stmt).await
         } else {
-            self.db.query_all(stmt).await
+            self.db.query_all_raw(stmt).await
         }
     }
 }

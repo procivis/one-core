@@ -23,6 +23,12 @@ impl MigrationTrait for Migration {
             DatabaseBackend::MySql => {
                 sane_migration(manager).await?;
             }
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
         Ok(())
     }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sea_orm::{DbBackend, FromQueryResult};
+use sea_orm::FromQueryResult;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{
     integer_null, json_binary_null, string, string_null, text, text_null,
@@ -16,6 +16,7 @@ use crate::migrations::m20260417_150300_initial::{
 };
 use crate::migrations::m20260427_113000_add_trusted_requirements::VerifierInstance as VerifierInstanceWithTrustedIssuerRequired;
 use crate::migrations::m20260429_083200_move_trusted_rp_required_to_holder_wallet_instance::HolderWalletInstance as HolderWalletInstanceWithTrustedRpRequired;
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -38,7 +39,7 @@ impl MigrationTrait for Migration {
 
         instance_table(manager).await?;
         wallet_instance_attestation_table(manager).await?;
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             organisation_table_schema_sqlite(manager).await?;
         } else {
             organisation_table_schema_simple(manager).await?;
@@ -168,43 +169,41 @@ async fn managed_instance_table(manager: &SchemaManager<'_>) -> Result<(), DbErr
 
     for entry in old_entries {
         db.execute(
-            backend.build(
-                Query::insert()
-                    .into_table(ManagedInstance::Table)
-                    .columns([
-                        ManagedInstance::Id,
-                        ManagedInstance::OrganisationId,
-                        ManagedInstance::CreatedDate,
-                        ManagedInstance::LastModified,
-                        ManagedInstance::LastIssuance,
-                        ManagedInstance::Name,
-                        ManagedInstance::Os,
-                        ManagedInstance::Status,
-                        ManagedInstance::Nonce,
-                        ManagedInstance::Provider,
-                        ManagedInstance::AuthenticationKeyJwk,
-                        ManagedInstance::UserNonce,
-                        ManagedInstance::UserSub,
-                        ManagedInstance::Role,
-                    ])
-                    .values([
-                        entry.id.into(),
-                        entry.organisation_id.into(),
-                        entry.created_date.into(),
-                        entry.last_modified.into(),
-                        entry.last_issuance.into(),
-                        entry.name.into(),
-                        entry.os.into(),
-                        entry.status.into(),
-                        entry.nonce.into(),
-                        entry.wallet_provider_name.into(),
-                        entry.authentication_key_jwk.into(),
-                        entry.user_nonce.into(),
-                        entry.user_sub.into(),
-                        "WALLET".into(),
-                    ])
-                    .map_err(|e| DbErr::Migration(e.to_string()))?,
-            ),
+            Query::insert()
+                .into_table(ManagedInstance::Table)
+                .columns([
+                    ManagedInstance::Id,
+                    ManagedInstance::OrganisationId,
+                    ManagedInstance::CreatedDate,
+                    ManagedInstance::LastModified,
+                    ManagedInstance::LastIssuance,
+                    ManagedInstance::Name,
+                    ManagedInstance::Os,
+                    ManagedInstance::Status,
+                    ManagedInstance::Nonce,
+                    ManagedInstance::Provider,
+                    ManagedInstance::AuthenticationKeyJwk,
+                    ManagedInstance::UserNonce,
+                    ManagedInstance::UserSub,
+                    ManagedInstance::Role,
+                ])
+                .values([
+                    entry.id.into(),
+                    entry.organisation_id.into(),
+                    entry.created_date.into(),
+                    entry.last_modified.into(),
+                    entry.last_issuance.into(),
+                    entry.name.into(),
+                    entry.os.into(),
+                    entry.status.into(),
+                    entry.nonce.into(),
+                    entry.wallet_provider_name.into(),
+                    entry.authentication_key_jwk.into(),
+                    entry.user_nonce.into(),
+                    entry.user_sub.into(),
+                    "WALLET".into(),
+                ])
+                .map_err(|e| DbErr::Migration(e.to_string()))?,
         )
         .await?;
     }
@@ -295,29 +294,27 @@ async fn managed_instance_attested_key_table(manager: &SchemaManager<'_>) -> Res
 
     for entry in old_entries {
         db.execute(
-            backend.build(
-                Query::insert()
-                    .into_table(ManagedInstanceAttestedKey::Table)
-                    .columns([
-                        ManagedInstanceAttestedKey::Id,
-                        ManagedInstanceAttestedKey::CreatedDate,
-                        ManagedInstanceAttestedKey::LastModified,
-                        ManagedInstanceAttestedKey::ExpirationDate,
-                        ManagedInstanceAttestedKey::PublicKeyJwk,
-                        ManagedInstanceAttestedKey::ManagedInstanceId,
-                        ManagedInstanceAttestedKey::RevocationListEntryId,
-                    ])
-                    .values([
-                        entry.id.into(),
-                        entry.created_date.into(),
-                        entry.last_modified.into(),
-                        entry.expiration_date.into(),
-                        entry.public_key_jwk.into(),
-                        entry.wallet_instance_id.into(),
-                        entry.revocation_list_entry_id.into(),
-                    ])
-                    .map_err(|e| DbErr::Migration(e.to_string()))?,
-            ),
+            Query::insert()
+                .into_table(ManagedInstanceAttestedKey::Table)
+                .columns([
+                    ManagedInstanceAttestedKey::Id,
+                    ManagedInstanceAttestedKey::CreatedDate,
+                    ManagedInstanceAttestedKey::LastModified,
+                    ManagedInstanceAttestedKey::ExpirationDate,
+                    ManagedInstanceAttestedKey::PublicKeyJwk,
+                    ManagedInstanceAttestedKey::ManagedInstanceId,
+                    ManagedInstanceAttestedKey::RevocationListEntryId,
+                ])
+                .values([
+                    entry.id.into(),
+                    entry.created_date.into(),
+                    entry.last_modified.into(),
+                    entry.expiration_date.into(),
+                    entry.public_key_jwk.into(),
+                    entry.wallet_instance_id.into(),
+                    entry.revocation_list_entry_id.into(),
+                ])
+                .map_err(|e| DbErr::Migration(e.to_string()))?,
         )
         .await?;
     }
@@ -437,41 +434,39 @@ async fn instance_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 
     for entry in old_entries {
         db.execute(
-            backend.build(
-                Query::insert()
-                    .into_table(Instance::Table)
-                    .columns([
-                        Instance::Id,
-                        Instance::AuthenticationKeyId,
-                        Instance::CreatedDate,
-                        Instance::LastModified,
-                        Instance::ProviderName,
-                        Instance::ProviderType,
-                        Instance::ProviderUrl,
-                        Instance::ProviderInstanceId,
-                        Instance::Status,
-                        Instance::OrganisationId,
-                        Instance::Nonce,
-                        Instance::UserNonce,
-                        Instance::Role,
-                    ])
-                    .values([
-                        entry.id.into(),
-                        entry.authentication_key_id.into(),
-                        entry.created_date.into(),
-                        entry.last_modified.into(),
-                        entry.wallet_provider_name.into(),
-                        entry.wallet_provider_type.into(),
-                        entry.wallet_provider_url.into(),
-                        entry.provider_wallet_unit_id.into(),
-                        entry.status.into(),
-                        entry.organisation_id.into(),
-                        entry.nonce.into(),
-                        entry.user_nonce.into(),
-                        "WALLET".into(),
-                    ])
-                    .map_err(|e| DbErr::Migration(e.to_string()))?,
-            ),
+            Query::insert()
+                .into_table(Instance::Table)
+                .columns([
+                    Instance::Id,
+                    Instance::AuthenticationKeyId,
+                    Instance::CreatedDate,
+                    Instance::LastModified,
+                    Instance::ProviderName,
+                    Instance::ProviderType,
+                    Instance::ProviderUrl,
+                    Instance::ProviderInstanceId,
+                    Instance::Status,
+                    Instance::OrganisationId,
+                    Instance::Nonce,
+                    Instance::UserNonce,
+                    Instance::Role,
+                ])
+                .values([
+                    entry.id.into(),
+                    entry.authentication_key_id.into(),
+                    entry.created_date.into(),
+                    entry.last_modified.into(),
+                    entry.wallet_provider_name.into(),
+                    entry.wallet_provider_type.into(),
+                    entry.wallet_provider_url.into(),
+                    entry.provider_wallet_unit_id.into(),
+                    entry.status.into(),
+                    entry.organisation_id.into(),
+                    entry.nonce.into(),
+                    entry.user_nonce.into(),
+                    "WALLET".into(),
+                ])
+                .map_err(|e| DbErr::Migration(e.to_string()))?,
         )
         .await?;
     }
@@ -579,33 +574,31 @@ async fn wallet_instance_attestation_table(manager: &SchemaManager<'_>) -> Resul
 
     for entry in old_entries {
         db.execute(
-            backend.build(
-                Query::insert()
-                    .into_table(NewWalletInstanceAttestation::Table)
-                    .columns([
-                        NewWalletInstanceAttestation::Id,
-                        NewWalletInstanceAttestation::CreatedDate,
-                        NewWalletInstanceAttestation::LastModified,
-                        NewWalletInstanceAttestation::ExpirationDate,
-                        NewWalletInstanceAttestation::Attestation,
-                        NewWalletInstanceAttestation::InstanceId,
-                        NewWalletInstanceAttestation::AttestedKeyId,
-                        NewWalletInstanceAttestation::RevocationListUrl,
-                        NewWalletInstanceAttestation::RevocationListIndex,
-                    ])
-                    .values([
-                        entry.id.into(),
-                        entry.created_date.into(),
-                        entry.last_modified.into(),
-                        entry.expiration_date.into(),
-                        entry.attestation.into(),
-                        entry.holder_wallet_unit_id.into(),
-                        entry.attested_key_id.into(),
-                        entry.revocation_list_url.into(),
-                        entry.revocation_list_index.into(),
-                    ])
-                    .map_err(|e| DbErr::Migration(e.to_string()))?,
-            ),
+            Query::insert()
+                .into_table(NewWalletInstanceAttestation::Table)
+                .columns([
+                    NewWalletInstanceAttestation::Id,
+                    NewWalletInstanceAttestation::CreatedDate,
+                    NewWalletInstanceAttestation::LastModified,
+                    NewWalletInstanceAttestation::ExpirationDate,
+                    NewWalletInstanceAttestation::Attestation,
+                    NewWalletInstanceAttestation::InstanceId,
+                    NewWalletInstanceAttestation::AttestedKeyId,
+                    NewWalletInstanceAttestation::RevocationListUrl,
+                    NewWalletInstanceAttestation::RevocationListIndex,
+                ])
+                .values([
+                    entry.id.into(),
+                    entry.created_date.into(),
+                    entry.last_modified.into(),
+                    entry.expiration_date.into(),
+                    entry.attestation.into(),
+                    entry.holder_wallet_unit_id.into(),
+                    entry.attested_key_id.into(),
+                    entry.revocation_list_url.into(),
+                    entry.revocation_list_index.into(),
+                ])
+                .map_err(|e| DbErr::Migration(e.to_string()))?,
         )
         .await?;
     }

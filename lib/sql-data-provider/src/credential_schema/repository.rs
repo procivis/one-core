@@ -1,5 +1,6 @@
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaListQuery, GetCredentialSchemaList,
     UpdateCredentialSchemaRequest,
@@ -11,9 +12,7 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged};
 use shared_types::CredentialSchemaId;
 
 use crate::common::list_query_with_custom_model;
@@ -104,6 +103,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         credential_schema::Entity::update(credential_schema)
+            .validate()
+            .map_err(to_update_data_layer_error)?
             .filter(credential_schema::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await
@@ -140,7 +141,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let query = credential_schema::Entity::find()
             .filter(credential_schema::Column::DeletedAt.is_null())
             .with_filter_join(&query_params)
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .order_by_desc(credential_schema::Column::CreatedDate)
             .order_by_desc(credential_schema::Column::Id);
 

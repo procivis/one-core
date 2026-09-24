@@ -8,8 +8,8 @@ use one_core::model::trust_collection::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::ColumnTrait;
 use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
+use sea_orm::{ColumnTrait, ExprTrait};
 use url::Url;
 
 use crate::entity::{organisation, trust_collection, trust_list_subscription};

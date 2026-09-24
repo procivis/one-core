@@ -10,7 +10,6 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
-        let backend = db.get_database_backend();
 
         // mark all claims of JSON_LD_BBSPLUS credentials as selectively disclosable
         let credential_ids = Query::select()
@@ -25,12 +24,10 @@ impl MigrationTrait for Migration {
             .to_owned();
 
         db.execute(
-            backend.build(
-                Query::update()
-                    .table(Claim::Table)
-                    .value(ClaimNew::SelectivelyDisclosable, true)
-                    .and_where(Expr::col(Claim::CredentialId).in_subquery(credential_ids)),
-            ),
+            Query::update()
+                .table(Claim::Table)
+                .value(ClaimNew::SelectivelyDisclosable, true)
+                .and_where(Expr::col(Claim::CredentialId).in_subquery(credential_ids)),
         )
         .await?;
 

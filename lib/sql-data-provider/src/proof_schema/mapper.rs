@@ -13,7 +13,7 @@ use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use one_core::validator::proof_schema::validate_proof_input_formats;
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
-use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, Set};
+use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, JoinType, QueryFilter, QueryOrder, Set};
 use shared_types::ProofSchemaId;
 
 use crate::entity::{

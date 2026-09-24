@@ -1,9 +1,10 @@
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::wallet_attestation::{
     WalletAttestation, WalletAttestationList, WalletAttestationListQuery,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_attestation_repository::WalletAttestationRepository;
-use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QueryOrder};
+use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder};
 use shared_types::WalletAttestationId;
 
 use super::mapper::wallet_instance_attestation_from_model;
@@ -32,7 +33,7 @@ impl WalletAttestationRepository for WalletAttestationProvider {
         query_params: WalletAttestationListQuery,
     ) -> Result<WalletAttestationList, DataLayerError> {
         let query = wallet_attestation::Entity::find()
-            .with_list_query(&query_params, self.db.get_database_backend())
+            .with_list_query(&query_params, self.db.supported_db_type())
             .order_by_desc(wallet_attestation::Column::CreatedDate)
             .order_by_desc(wallet_attestation::Column::Id);
 

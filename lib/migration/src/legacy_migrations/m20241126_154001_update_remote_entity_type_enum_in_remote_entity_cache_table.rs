@@ -48,6 +48,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             DatabaseBackend::Postgres => {}
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
 
         Ok(())

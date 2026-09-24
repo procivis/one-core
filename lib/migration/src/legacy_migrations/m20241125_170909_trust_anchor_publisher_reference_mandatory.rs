@@ -14,11 +14,10 @@ impl MigrationTrait for Migration {
             return Ok(());
         }
         let db = manager.get_connection();
-        let db_backend = manager.get_database_backend();
 
-        db.execute(db_backend.build(Query::delete().from_table(TrustEntity::Table)))
+        db.execute(Query::delete().from_table(TrustEntity::Table))
             .await?;
-        db.execute(db_backend.build(Query::delete().from_table(TrustAnchor::Table)))
+        db.execute(Query::delete().from_table(TrustAnchor::Table))
             .await?;
 
         manager

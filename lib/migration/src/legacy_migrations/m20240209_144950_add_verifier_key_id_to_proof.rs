@@ -26,6 +26,12 @@ impl MigrationTrait for Migration {
             DbBackend::Postgres => Ok(()),
             DbBackend::MySql => sane_migration(manager).await,
             DbBackend::Sqlite => sqlite_migration(manager).await,
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
     }
 }
@@ -171,12 +177,10 @@ async fn add_verifier_key_to_proofs(db: &SchemaManagerConnection<'_>) -> Result<
         let (_, verifier_key_id) = get_verifier_key_id(db, backend, &old).await?;
 
         db.execute(
-            backend.build(
-                Query::update()
-                    .table(Proof::Table)
-                    .value(ProofNew::VerifierKeyId, verifier_key_id)
-                    .and_where(Expr::col(Proof::Id).eq(old.id)),
-            ),
+            Query::update()
+                .table(Proof::Table)
+                .value(ProofNew::VerifierKeyId, verifier_key_id)
+                .and_where(Expr::col(Proof::Id).eq(old.id)),
         )
         .await?;
     }
@@ -229,7 +233,7 @@ async fn migrate_to_new_proof_table(db: &SchemaManagerConnection<'_>) -> Result<
             .map_err(|e| DbErr::Migration(e.to_string()))?;
     }
 
-    db.execute(backend.build(&query)).await?;
+    db.execute(&query).await?;
 
     Ok(())
 }

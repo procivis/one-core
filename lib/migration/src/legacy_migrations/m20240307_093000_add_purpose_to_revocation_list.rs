@@ -24,9 +24,9 @@ impl MigrationTrait for Migration {
                                     RevocationListPurpose::Suspension,
                                 ],
                             )
-                            .default(SimpleExpr::Constant(Value::String(Some(Box::new(
+                            .default(SimpleExpr::Constant(Value::String(Some(
                                 RevocationListPurpose::Revocation.into_iden().to_string(),
-                            )))))
+                            ))))
                             .not_null(),
                     )
                     .to_owned(),

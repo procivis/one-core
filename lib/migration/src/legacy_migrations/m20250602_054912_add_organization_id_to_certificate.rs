@@ -72,6 +72,12 @@ impl MigrationTrait for Migration {
                     )
                     .await?;
             }
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
 
         // create unique index on Fingerprint and OrganisationId for Certificate

@@ -24,7 +24,7 @@ impl MigrationTrait for Migration {
 
                 manager
                     .get_connection()
-                    .execute(backend.build(&foreign_key_drop_statement))
+                    .execute(&foreign_key_drop_statement)
                     .await?;
 
                 manager
@@ -79,6 +79,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             DatabaseBackend::Sqlite => sqlite_migration_drop_revocation_list(manager).await?,
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         };
 
         Ok(())

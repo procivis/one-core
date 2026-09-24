@@ -41,12 +41,10 @@ impl MigrationTrait for Migration {
             );
 
             db.execute(
-                backend.build(
-                    Query::update()
-                        .table(Did::Table)
-                        .value(Did::Did, did_value)
-                        .and_where(Expr::col(Did::Id).eq(&did.id)),
-                ),
+                Query::update()
+                    .table(Did::Table)
+                    .value(Did::Did, did_value)
+                    .and_where(Expr::col(Did::Id).eq(&did.id)),
             )
             .await?;
         }

@@ -57,10 +57,6 @@ enum ProofRole {
 
 impl ProofRole {
     fn as_expr(&self) -> Expr {
-        let mut s = String::new();
-
-        self.unquoted(&mut s);
-
-        Expr::val(s)
+        Expr::val(self.unquoted())
     }
 }

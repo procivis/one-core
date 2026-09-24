@@ -40,7 +40,7 @@ use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
 use rcgen::CertificateParams;
-use sea_orm::sqlx::{Executor, raw_sql};
+use sea_orm::sqlx::{AssertSqlSafe, Executor, raw_sql};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
@@ -252,7 +252,10 @@ async fn initialize_db(url: Url, init_statements: &[String]) -> DatabaseConnecti
         .await
         .unwrap();
     for stmnt in init_statements {
-        single_con.execute(raw_sql(stmnt.as_str())).await.unwrap();
+        single_con
+            .execute(raw_sql(AssertSqlSafe(stmnt.as_str())))
+            .await
+            .unwrap();
     }
     single_con
         .execute(raw_sql("SET FOREIGN_KEY_CHECKS = 1;"))
@@ -275,7 +278,7 @@ async fn init_db_statements(url: &Url) -> Vec<String> {
     let init_db = sql_data_provider::db_conn(init_db_url, true).await.unwrap();
 
     let result = init_db
-        .query_all(Statement::from_string(DbBackend::MySql, "SHOW TABLES;"))
+        .query_all_raw(Statement::from_string(DbBackend::MySql, "SHOW TABLES;"))
         .await
         .unwrap();
 
@@ -283,7 +286,7 @@ async fn init_db_statements(url: &Url) -> Vec<String> {
     for row in result {
         let table: String = row.try_get_by_index(0).unwrap();
         let create_stmt: String = init_db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 DbBackend::MySql,
                 format!("SHOW CREATE TABLE `{table}`;"),
             ))

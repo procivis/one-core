@@ -30,6 +30,12 @@ impl MigrationTrait for Migration {
                     .await
             }
             DbBackend::Sqlite => sqlite_migration(manager).await,
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
     }
 }
@@ -186,7 +192,7 @@ async fn add_unique_index_with_deleted_at_materialized_dependency(
     let table = table.into_iden().to_string();
     let other_columns = other_colums
         .into_iter()
-        .map(|column| format!("`{}`", column.to_string()))
+        .map(|column| format!("`{column}`"))
         .collect::<Vec<_>>()
         .join(",");
 

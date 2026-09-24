@@ -1,5 +1,6 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
+
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -17,7 +18,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Only mobile wallets (SQLite) ever write UnexportableEntities history metadata
-        if manager.get_database_backend() != DbBackend::Sqlite {
+        if manager.supported_db_type() != SupportedDbType::Sqlite {
             return Ok(());
         }
 

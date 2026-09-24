@@ -9,11 +9,12 @@ version                = "0.1.0"
 
 [dependencies]
 sea-orm               = { workspace = true, features = ["with-json", "with-time", "with-uuid"] }
-sea-orm-migration     = { version = "1.1", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
+sea-orm-migration     = { version = "2", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
 serde.workspace       = true
 serde_json.workspace  = true
 serde_with.workspace  = true
 shared-types          = { workspace = true, features = ["sea-orm"] }
+strum.workspace       = true
 time.workspace        = true
 tokio                 = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing.workspace     = true
@@ -26,7 +27,7 @@ postgres = ["sea-orm-migration/sqlx-postgres"]
 
 [dev-dependencies]
 regex.workspace = true
-sea-schema = { version = "0.17.0-rc.16", default-features = false, features = [
+sea-schema = { version = "0.18", default-features = false, features = [
     "discovery",
     "sqlite",
     "postgres",

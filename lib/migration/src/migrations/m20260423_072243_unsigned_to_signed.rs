@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::*;
 
@@ -6,6 +5,7 @@ use crate::migrations::m20260417_150300_initial::{
     ClaimSchema, CredentialSchema, Notification, ProofInputClaimSchema, ProofInputSchema,
     ProofSchema, RevocationListEntry, TrustListPublication, WalletInstanceAttestation,
 };
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -13,7 +13,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             // SQLite already uses signed integers
             return Ok(());
         }

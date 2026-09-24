@@ -1,4 +1,3 @@
-use sea_orm::DatabaseBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{
     boolean, integer_null, json_binary_null, string, string_len_null, string_null, text_null,
@@ -7,6 +6,7 @@ use sea_orm_migration::schema::{
 use crate::datatype::{timestamp, timestamp_null, uuid_char};
 use crate::migrations::m20260417_150300_initial::Organisation;
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -14,46 +14,38 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let backend = manager.get_database_backend();
         let db = manager.get_connection();
 
         db.execute(
-            backend.build(
-                Query::update()
-                    .table(CredentialSchema::Table)
-                    .value(CredentialSchema::AllowRevocation, false)
-                    .and_where(Expr::col(CredentialSchema::AllowRevocation).is_null())
-                    .and_where(Expr::col(CredentialSchema::RevocationMethod).is_null()),
-            ),
+            Query::update()
+                .table(CredentialSchema::Table)
+                .value(CredentialSchema::AllowRevocation, false)
+                .and_where(Expr::col(CredentialSchema::AllowRevocation).is_null())
+                .and_where(Expr::col(CredentialSchema::RevocationMethod).is_null()),
         )
         .await?;
 
         db.execute(
-            backend.build(
-                Query::update()
-                    .table(CredentialSchema::Table)
-                    .value(CredentialSchema::AllowRevocation, false)
-                    .and_where(Expr::col(CredentialSchema::AllowRevocation).is_null())
-                    .and_where(
-                        Expr::col(CredentialSchema::RevocationMethod)
-                            .eq("MDOC_MSO_UPDATE_SUSPENSION"),
-                    ),
-            ),
+            Query::update()
+                .table(CredentialSchema::Table)
+                .value(CredentialSchema::AllowRevocation, false)
+                .and_where(Expr::col(CredentialSchema::AllowRevocation).is_null())
+                .and_where(
+                    Expr::col(CredentialSchema::RevocationMethod).eq("MDOC_MSO_UPDATE_SUSPENSION"),
+                ),
         )
         .await?;
 
         db.execute(
-            backend.build(
-                Query::update()
-                    .table(CredentialSchema::Table)
-                    .value(CredentialSchema::AllowRevocation, true)
-                    .and_where(Expr::col(CredentialSchema::AllowRevocation).is_null())
-                    .and_where(Expr::col(CredentialSchema::RevocationMethod).is_not_null()),
-            ),
+            Query::update()
+                .table(CredentialSchema::Table)
+                .value(CredentialSchema::AllowRevocation, true)
+                .and_where(Expr::col(CredentialSchema::AllowRevocation).is_null())
+                .and_where(Expr::col(CredentialSchema::RevocationMethod).is_not_null()),
         )
         .await?;
 
-        if backend == DatabaseBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             sqlite_migration(manager).await?;
         } else {
             manager

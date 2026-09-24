@@ -11,6 +11,7 @@ use one_core::model::key::Key;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
+use sea_orm::ExprTrait;
 use serde_json::json;
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
@@ -755,20 +756,17 @@ async fn setup_mixed_format_batch(
             .db
             .db_conn
             .execute(
-                context.db.db_conn.get_database_backend().build(
-                    &Query::update()
-                        .table(Alias::new("credential"))
-                        .value(
-                            Alias::new("created_date"),
-                            parent.created_date - time::Duration::seconds(seconds),
-                        )
-                        .value(
-                            Alias::new("expires_at"),
-                            expiry + time::Duration::seconds(seconds),
-                        )
-                        .and_where(Expr::col(Alias::new("id")).eq(id.to_string()))
-                        .to_owned(),
-                ),
+                Query::update()
+                    .table(Alias::new("credential"))
+                    .value(
+                        Alias::new("created_date"),
+                        parent.created_date - time::Duration::seconds(seconds),
+                    )
+                    .value(
+                        Alias::new("expires_at"),
+                        expiry + time::Duration::seconds(seconds),
+                    )
+                    .and_where(Expr::col(Alias::new("id")).eq(id.to_string())),
             )
             .await
             .unwrap();
@@ -778,13 +776,10 @@ async fn setup_mixed_format_batch(
         .db
         .db_conn
         .execute(
-            context.db.db_conn.get_database_backend().build(
-                &Query::update()
-                    .table(Alias::new("credential"))
-                    .value(Alias::new("format"), Option::<String>::None)
-                    .and_where(Expr::col(Alias::new("id")).eq(parent.id.to_string()))
-                    .to_owned(),
-            ),
+            Query::update()
+                .table(Alias::new("credential"))
+                .value(Alias::new("format"), Option::<String>::None)
+                .and_where(Expr::col(Alias::new("id")).eq(parent.id.to_string())),
         )
         .await
         .unwrap();

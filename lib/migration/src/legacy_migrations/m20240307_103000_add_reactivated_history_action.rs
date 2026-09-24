@@ -29,6 +29,12 @@ impl MigrationTrait for Migration {
                     .await?;
             }
             sea_orm::DatabaseBackend::Sqlite => {}
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         };
 
         Ok(())
@@ -65,10 +71,6 @@ pub enum UpdatedHistoryAction {
 
 impl UpdatedHistoryAction {
     pub(crate) fn as_expr(&self) -> Expr {
-        let mut s = String::new();
-
-        self.unquoted(&mut s);
-
-        Expr::val(s)
+        Expr::val(self.unquoted())
     }
 }

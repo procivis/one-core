@@ -1,4 +1,3 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{boolean, boolean_null, string, string_null, text_null};
 
@@ -7,6 +6,7 @@ use crate::migrations::m20260417_150300_initial::{
     Organisation, VerifierInstance as VerifierInstanceInitial,
     WalletInstance as WalletInstanceInitial,
 };
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -14,7 +14,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        if manager.get_database_backend() == DbBackend::Sqlite {
+        if manager.supported_db_type() == SupportedDbType::Sqlite {
             self.up_sqlite(manager).await
         } else {
             self.up_sane(manager).await

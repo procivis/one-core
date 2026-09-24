@@ -1,7 +1,7 @@
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
 use crate::migrations::m20260417_150300_initial::{Did, INDEX_UNIQUE_DID_DID_ORGANISATION};
+use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -17,8 +17,8 @@ impl MigrationTrait for Migration {
 
         // add_nullable_unique_idx only supports one nullable column, so index is created manually
         // Also, the materialized columns already exist.
-        match manager.get_database_backend() {
-            DbBackend::Postgres => {
+        match manager.supported_db_type() {
+            SupportedDbType::Postgres => {
                 manager
                     .create_index(
                         Index::create()
@@ -34,7 +34,7 @@ impl MigrationTrait for Migration {
                     )
                     .await?;
             }
-            DbBackend::Sqlite => {
+            SupportedDbType::Sqlite => {
                 manager
                     .get_connection()
                     .execute_unprepared(&format!(
@@ -49,7 +49,7 @@ impl MigrationTrait for Migration {
                     ))
                     .await?;
             }
-            DbBackend::MySql => {
+            SupportedDbType::MySql => {
                 manager
                     .get_connection()
                     .execute_unprepared(&format!(

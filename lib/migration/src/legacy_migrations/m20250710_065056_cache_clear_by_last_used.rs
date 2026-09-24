@@ -38,6 +38,12 @@ impl MigrationTrait for Migration {
             DbBackend::Sqlite => {
                 sqlite_migration(manager).await?;
             }
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "migration",
+                });
+            }
         }
         Ok(())
     }

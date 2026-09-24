@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{IntoColumnRef, IntoTableRef, Query, SelectStatement, SimpleExpr};
-use sea_orm::{DbErr, FromQueryResult, TryGetable};
+use sea_orm::{DbErr, ExprTrait, FromQueryResult, TryGetable};
 use sea_orm_migration::SchemaManager;
 
 #[derive(FromQueryResult)]

@@ -5,7 +5,7 @@ use regex::Regex;
 use sea_orm::sqlx::Postgres;
 use sea_orm::{ConnectOptions, ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use sea_schema::postgres::def::{
-    ColumnExpression, ColumnInfo, Schema, StringAttr, TableDef, TimeAttr, Type,
+    ColumnDefault, ColumnInfo, Schema, StringAttr, TableDef, TimeAttr, Type,
 };
 use sea_schema::postgres::discovery::SchemaDiscovery;
 use similar_asserts::assert_eq;
@@ -55,7 +55,7 @@ static COLUMNS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\([\w, ]+\
 
 async fn extract_non_unique_indexes(conn: &DatabaseConnection) -> Vec<NonUniqueIndex> {
     let query_result = conn
-        .query_all(Statement::from_string(
+        .query_all_raw(Statement::from_string(
             DbBackend::Postgres,
             "SELECT indexname, tablename, indexdef FROM pg_indexes;",
         ))
@@ -304,12 +304,12 @@ impl From<ColumnType> for Type {
     }
 }
 
-impl From<DefaultValue> for ColumnExpression {
+impl From<DefaultValue> for ColumnDefault {
     fn from(value: DefaultValue) -> Self {
         match value {
-            DefaultValue::String(text) => Self(text),
-            DefaultValue::Integer(number) => Self(number.to_string()),
-            DefaultValue::Boolean(bool) => Self(if bool { "true" } else { "false" }.to_string()),
+            DefaultValue::String(text) => Self::String(text),
+            DefaultValue::Integer(number) => Self::Int(number),
+            DefaultValue::Boolean(bool) => Self::Bool(bool),
         }
     }
 }

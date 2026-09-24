@@ -17,7 +17,7 @@ use one_core::repository::identifier_trust_information_repository::IdentifierTru
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden};
+use sea_orm::sea_query::{Alias, ColumnName, ColumnRef, ExprTrait, IntoCondition, IntoIden};
 use sea_orm::{ColumnTrait, Condition, JoinType, RelationTrait, Set};
 use shared_types::{DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
@@ -205,15 +205,15 @@ impl IntoFilterCondition for IdentifierFilterValue {
             }
             Self::KeyAlgorithms(key_algorithms) => key::Column::KeyType
                 .is_in(&key_algorithms)
-                .or(ColumnRef::TableColumn(
-                    Alias::new("did_key").into_iden(),
+                .or(ColumnRef::Column(ColumnName(
+                    Some(Alias::new("did_key").into()),
                     key::Column::KeyType.into_iden(),
-                )
+                ))
                 .is_in(&key_algorithms))
-                .or(ColumnRef::TableColumn(
-                    Alias::new("certificate_key").into_iden(),
+                .or(ColumnRef::Column(ColumnName(
+                    Some(Alias::new("certificate_key").into()),
                     key::Column::KeyType.into_iden(),
-                )
+                ))
                 .is_in(key_algorithms))
                 .into_condition(),
             Self::KeyRoles(key_roles) => key_did::Column::Role
@@ -227,28 +227,28 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 .into_condition(),
             Self::KeyStorages(key_storages) => key::Column::StorageType
                 .is_in(&key_storages)
-                .or(ColumnRef::TableColumn(
-                    Alias::new("did_key").into_iden(),
+                .or(ColumnRef::Column(ColumnName(
+                    Some(Alias::new("did_key").into()),
                     key::Column::StorageType.into_iden(),
-                )
+                ))
                 .is_in(&key_storages))
-                .or(ColumnRef::TableColumn(
-                    Alias::new("certificate_key").into_iden(),
+                .or(ColumnRef::Column(ColumnName(
+                    Some(Alias::new("certificate_key").into()),
                     key::Column::StorageType.into_iden(),
-                )
+                ))
                 .is_in(key_storages))
                 .into_condition(),
             Self::KeyIds(key_ids) => key::Column::Id
                 .is_in(&key_ids)
-                .or(ColumnRef::TableColumn(
-                    Alias::new("did_key").into_iden(),
+                .or(ColumnRef::Column(ColumnName(
+                    Some(Alias::new("did_key").into()),
                     key::Column::Id.into_iden(),
-                )
+                ))
                 .is_in(&key_ids))
-                .or(ColumnRef::TableColumn(
-                    Alias::new("certificate_key").into_iden(),
+                .or(ColumnRef::Column(ColumnName(
+                    Some(Alias::new("certificate_key").into()),
                     key::Column::Id.into_iden(),
-                )
+                ))
                 .is_in(key_ids))
                 .into_condition(),
             Self::CertificateRole(role) => get_string_match_condition(
