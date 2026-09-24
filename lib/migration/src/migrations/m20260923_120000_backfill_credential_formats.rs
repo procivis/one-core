@@ -21,6 +21,7 @@ struct CredentialRow {
     id: String,
     credential_schema_id: String,
     credential_blob_id: Option<String>,
+    role: String,
 }
 
 #[derive(FromQueryResult)]
@@ -88,7 +89,12 @@ async fn load_credential_page(
 ) -> Result<Vec<CredentialRow>, DbErr> {
     let mut query = Query::select();
     query
-        .columns([Credential::Id, Credential::SchemaId, Credential::BlobId])
+        .columns([
+            Credential::Id,
+            Credential::SchemaId,
+            Credential::BlobId,
+            Credential::Role,
+        ])
         .from(Credential::Table)
         .and_where(Expr::col(Credential::Type).is_in(["SINGLE", "BATCH_ITEM"]))
         .and_where(Expr::col(Credential::Format).is_null())
@@ -180,7 +186,7 @@ async fn resolve_page(
                 .map(Vec::as_slice)
                 .unwrap_or_default();
             let blob = row.credential_blob_id.as_ref().and_then(|id| blobs.get(id));
-            resolve_format(schema_formats, blob.map(Vec::as_slice))
+            resolve_format(row, schema_formats, blob.map(Vec::as_slice))
                 .map(|format| FormatAssignment {
                     credential_id: row.id.clone(),
                     credential_schema_id: row.credential_schema_id.clone(),
@@ -197,12 +203,22 @@ async fn resolve_page(
 }
 
 fn resolve_format<'a>(
+    credential: &CredentialRow,
     formats: &'a [FormatRow],
     blob: Option<&[u8]>,
 ) -> Result<&'a str, &'static str> {
     match formats {
         [] => return Err("credential schema has no formats"),
         [format] => return Ok(&format.id),
+        // There are a few `INTERACTION_EXPIRED` on the issuer side as well as credentials from
+        // proofs whose data has been deleted. For these, we cannot recreate the format accurately
+        // so we will backfill just the first schema arbitrarily.
+        [first, ..]
+            if (credential.role == "ISSUER" || credential.role == "VERIFIER")
+                && credential.credential_blob_id.is_none() =>
+        {
+            return Ok(&first.id);
+        }
         _ => {}
     }
     let blob = blob.ok_or("multiple schema formats but credential blob is missing")?;
@@ -346,6 +362,7 @@ enum Credential {
     SchemaId,
     #[sea_orm(iden = "credential_blob_id")]
     BlobId,
+    Role,
     Type,
     Format,
 }
