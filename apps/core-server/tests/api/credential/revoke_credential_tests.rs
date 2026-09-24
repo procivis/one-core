@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use one_core::model::credential::{CredentialStateEnum, CredentialType};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
@@ -152,7 +153,7 @@ async fn test_revoke_credential_with_webhook() {
         .await;
     context.db.revocation_lists.create(identifier, None).await;
 
-    context
+    let webhook = context
         .server_mock
         .webhook(json!({
             "credentialId": credential.id,
@@ -165,7 +166,9 @@ async fn test_revoke_credential_with_webhook() {
 
     // THEN
     assert_eq!(resp.status(), 204);
-    context.server_mock.wait_for_background_request().await;
+    tokio::time::timeout(Duration::from_secs(5), webhook.wait_until_satisfied())
+        .await
+        .expect("Expected REVOKED webhook within 5 seconds");
 }
 
 #[tokio::test]

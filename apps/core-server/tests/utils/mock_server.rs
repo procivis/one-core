@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::time::Duration;
 
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::model::GeneratedKey;
@@ -9,7 +8,7 @@ use serde_json::json;
 use shared_types::DidValue;
 use wiremock::http::Method;
 use wiremock::matchers::{body_partial_json, body_string_contains, header, method, path};
-use wiremock::{Mock, MockBuilder, Request, ResponseTemplate};
+use wiremock::{Mock, MockBuilder, MockGuard, Request, ResponseTemplate};
 
 use crate::fixtures::presentation::w3c_jwt_vc;
 
@@ -25,15 +24,6 @@ impl MockServer {
 
     pub fn uri(&self) -> String {
         self.mock.uri()
-    }
-
-    pub async fn wait_for_background_request(&self) {
-        for _ in 0..10 {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-            if !self.received_requests().await.unwrap().is_empty() {
-                break;
-            }
-        }
     }
 
     pub async fn received_requests(&self) -> Option<Vec<wiremock::Request>> {
@@ -347,14 +337,14 @@ impl MockServer {
             .await;
     }
 
-    pub async fn webhook(&self, expected_content: serde_json::Value) {
+    pub async fn webhook(&self, expected_content: serde_json::Value) -> MockGuard {
         Mock::given(method(Method::POST))
             .and(path("/webhook"))
             .and(header(CONTENT_TYPE, "application/json"))
             .and(body_partial_json(expected_content))
             .respond_with(ResponseTemplate::new(204))
             .expect(1)
-            .mount(&self.mock)
-            .await;
+            .mount_as_scoped(&self.mock)
+            .await
     }
 }
