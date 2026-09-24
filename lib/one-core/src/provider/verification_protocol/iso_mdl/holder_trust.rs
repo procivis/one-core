@@ -15,19 +15,17 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::proto::cose::CoseSign1;
+use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName};
 use crate::provider::credential_formatter::mdoc_formatter::try_verify_detached_signature_with_provider;
 use crate::provider::credential_formatter::mdoc_formatter::util::{EmbeddedCbor, cose_header};
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, VerificationFn, X5References,
 };
-use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::presentation_formatter::mso_mdoc::model::ReaderAuthentication;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::repository::interaction_repository::InteractionRepository;
-use crate::validator::ecosystem::{SelectionRole, resolve_ecosystem};
 
 #[expect(clippy::too_many_arguments)]
 pub(super) async fn resolve_verifier_and_trust(
@@ -35,8 +33,7 @@ pub(super) async fn resolve_verifier_and_trust(
     session_transcript: &SessionTranscript,
     proof_id: ProofId,
     interaction: &Interaction,
-    interaction_repository: &dyn InteractionRepository,
-    ecosystem_provider: &dyn EcosystemDirectory,
+    ecosystem_resolver: &dyn EcosystemResolver,
     certificate_validator: &dyn CertificateValidator,
     identifier_creator: &dyn IdentifierCreator,
     verify_fn: &VerificationFn,
@@ -51,22 +48,20 @@ pub(super) async fn resolve_verifier_and_trust(
     )
     .await?;
 
-    // the device request carries all the trust information there is, so the ecosystem is final
-    let ecosystem = resolve_ecosystem(
-        interaction.id,
-        &ProtocolArtifact::HolderProof {
-            verifier_details: Cow::Borrowed(&verifier_details),
-            dcql_query,
-            verifier_info,
-            proof_id,
-        },
-        interaction_repository,
-        ecosystem_provider,
-        SelectionRole::Holder,
-    )
-    .await
-    .error_while("resolving ecosystem")?
-    .committed;
+    let ecosystem = ecosystem_resolver
+        .resolve(
+            interaction.id,
+            &[ProtocolArtifact::HolderProof {
+                verifier_details: Cow::Borrowed(&verifier_details),
+                dcql_query,
+                verifier_info,
+                proof_id,
+            }],
+            None,
+        )
+        .await
+        .error_while("resolving ecosystem")?
+        .ecosystem;
 
     let identifier = if let Some(verifier_details) = verifier_details {
         let (identifier, _) = identifier_creator

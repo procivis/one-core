@@ -2,19 +2,18 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::oid4vci_final1_0::resolver::IssuerMetadataFetcher;
@@ -45,8 +44,7 @@ pub struct OID4VCIFinal1_0Service {
     identifier_creator: Arc<dyn IdentifierCreator>,
     issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    ecosystem_provider: Arc<dyn EcosystemDirectory>,
-    history_repository: Arc<dyn HistoryRepository>,
+    ecosystem_resolver: Arc<dyn EcosystemResolver>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -69,8 +67,7 @@ impl OID4VCIFinal1_0Service {
         identifier_creator: Arc<dyn IdentifierCreator>,
         issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        ecosystem_provider: Arc<dyn EcosystemDirectory>,
-        history_repository: Arc<dyn HistoryRepository>,
+        ecosystem_resolver: Arc<dyn EcosystemResolver>,
     ) -> Self {
         Self {
             credential_schema_repository,
@@ -90,8 +87,7 @@ impl OID4VCIFinal1_0Service {
             identifier_creator,
             issuer_metadata_cache,
             formatter_provider,
-            ecosystem_provider,
-            history_repository,
+            ecosystem_resolver,
         }
     }
 }

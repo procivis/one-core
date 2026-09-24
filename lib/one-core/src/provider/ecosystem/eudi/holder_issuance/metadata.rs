@@ -11,7 +11,6 @@ use url::Url;
 use super::{AttestationCoverageSource, HolderIssuanceError, HolderIssuanceResolver};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
-use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::proto::wrp_validator::model::AccessCertificateResult;
 use crate::provider::ecosystem::model::IssuerMetadataRepresentation;
 
@@ -26,13 +25,14 @@ pub(super) struct MetadataEcosystemData {
 }
 
 impl HolderIssuanceResolver {
+    /// Returns the data that the next step needs to validate the issued credentials.
     #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     pub(crate) async fn resolve_metadata_trust(
         &self,
-        interaction: &Interaction,
+        organisation_id: OrganisationId,
         issuer_metadata: &IssuerMetadataRepresentation,
         credential_configuration_ids: &[String],
-    ) -> Result<(), HolderIssuanceError> {
+    ) -> Result<serde_json::Value, HolderIssuanceError> {
         // only signed metadata allowed
         let (access_certificate_pem_chain, metadata) = match issuer_metadata {
             IssuerMetadataRepresentation::Unsigned(_) => {
@@ -54,7 +54,7 @@ impl HolderIssuanceResolver {
             .wrp_validator
             .validate_access_certificate(
                 &access_certificate_pem_chain,
-                Some(&self.trust_scope(interaction.organisation.id())),
+                Some(&self.trust_scope(organisation_id)),
             )
             .await
             .error_while("validating access certificate")?;
@@ -70,7 +70,7 @@ impl HolderIssuanceResolver {
                 .validate_credential_configuration(
                     configuration,
                     metadata,
-                    interaction.organisation.id(),
+                    organisation_id,
                     &access_certificate,
                 )
                 .await?;
@@ -92,25 +92,9 @@ impl HolderIssuanceResolver {
             return Err(HolderIssuanceError::NoCredentialConfiguration);
         };
 
-        let mut ecosystem_data = interaction.ecosystem_data.to_owned();
-        ecosystem_data
-            .set(self.ecosystem.to_owned(), &interaction_data)
-            .map_err(|e| {
-                HolderIssuanceError::MappingError(format!("serializing ecosystem data: {e}"))
-            })?;
-
-        self.interaction_repository
-            .update_interaction(
-                interaction.id,
-                UpdateInteractionRequest {
-                    ecosystem_data: Some(ecosystem_data),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("updating interaction")?;
-
-        Ok(())
+        serde_json::to_value(&interaction_data).map_err(|e| {
+            HolderIssuanceError::MappingError(format!("serializing ecosystem data: {e}"))
+        })
     }
 
     async fn validate_credential_configuration(

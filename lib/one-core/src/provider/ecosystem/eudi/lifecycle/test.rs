@@ -30,7 +30,6 @@ use crate::provider::ecosystem::eudi::EudiEcosystem;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
 use crate::service::test_utilities::dummy_credential;
@@ -72,7 +71,6 @@ fn setup(mocks: Mocks) -> EudiEcosystem {
         }),
         CoreConfig::default(),
         Arc::new(MockHistoryRepository::new()),
-        Arc::new(MockInteractionRepository::new()),
         Arc::new(MockWRPValidator::new()),
         Arc::new(mocks.blob_storage_provider),
         Arc::new(NoSessionProvider),
@@ -222,7 +220,6 @@ async fn test_no_pid_schemas_configured_skips_the_check() {
         json!({}),
         CoreConfig::default(),
         Arc::new(MockHistoryRepository::new()),
-        Arc::new(MockInteractionRepository::new()),
         Arc::new(MockWRPValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Arc::new(NoSessionProvider),

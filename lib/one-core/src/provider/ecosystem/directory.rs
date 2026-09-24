@@ -18,7 +18,6 @@ use crate::provider::provider_directory::ProviderDirectory;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -47,7 +46,6 @@ impl EcosystemDirectory
 pub(crate) fn ecosystem_directory_from_config(
     config: &mut CoreConfig,
     history_repository: Arc<dyn HistoryRepository>,
-    interaction_repository: Arc<dyn InteractionRepository>,
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
@@ -68,7 +66,6 @@ pub(crate) fn ecosystem_directory_from_config(
                     fields.merge_fields(),
                     config_clone.clone(),
                     history_repository.clone(),
-                    interaction_repository.clone(),
                     wrp_validator.clone(),
                     blob_storage_provider.clone(),
                     session_provider.clone(),
@@ -108,7 +105,6 @@ mod test {
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
     use crate::repository::history_repository::MockHistoryRepository;
-    use crate::repository::interaction_repository::MockInteractionRepository;
     use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 
     fn fields() -> Fields<EcosystemProviderType> {
@@ -139,7 +135,6 @@ mod test {
         let directory = ecosystem_directory_from_config(
             &mut config,
             Arc::new(MockHistoryRepository::new()),
-            Arc::new(MockInteractionRepository::new()),
             Arc::new(MockWRPValidator::new()),
             Arc::new(MockBlobStorageProvider::new()),
             Arc::new(NoSessionProvider),

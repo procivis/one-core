@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use shared_types::{EntityId, InteractionId, OrganisationId};
-
 use crate::config::core_config;
-use crate::model::ecosystem::EcosystemOutcomes;
-use crate::model::history::HistoryEntityType;
+use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
-use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -17,12 +14,10 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::common_mapper::{record_ecosystems_resolved, resolved_ecosystems};
 
 pub mod dto;
 pub mod error;
@@ -54,7 +49,7 @@ pub struct SSIHolderService {
     identifier_creator: Arc<dyn IdentifierCreator>,
     transaction_manager: Arc<dyn TransactionManager>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
-    history_repository: Arc<dyn HistoryRepository>,
+    ecosystem_resolver: Arc<dyn EcosystemResolver>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -77,7 +72,7 @@ impl SSIHolderService {
         identifier_creator: Arc<dyn IdentifierCreator>,
         transaction_manager: Arc<dyn TransactionManager>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
-        history_repository: Arc<dyn HistoryRepository>,
+        ecosystem_resolver: Arc<dyn EcosystemResolver>,
     ) -> Self {
         Self {
             credential_repository,
@@ -97,40 +92,7 @@ impl SSIHolderService {
             identifier_creator,
             transaction_manager,
             ecosystem_provider,
-            history_repository,
+            ecosystem_resolver,
         }
-    }
-
-    /// One event per entity the interaction produced. Best-effort: the interaction has already
-    /// ended, so a failed write must not change its result.
-    async fn record_ecosystems_resolved(
-        &self,
-        interaction_id: &InteractionId,
-        entities: &[(EntityId, HistoryEntityType)],
-    ) {
-        let Some((outcomes, organisation_id)) =
-            resolved_ecosystems(interaction_id, self.interaction_repository.as_ref()).await
-        else {
-            return;
-        };
-
-        self.write_ecosystems_resolved(&outcomes, organisation_id, entities)
-            .await;
-    }
-
-    async fn write_ecosystems_resolved(
-        &self,
-        outcomes: &EcosystemOutcomes,
-        organisation_id: OrganisationId,
-        entities: &[(EntityId, HistoryEntityType)],
-    ) {
-        record_ecosystems_resolved(
-            outcomes,
-            organisation_id,
-            entities,
-            self.session_provider.session().user(),
-            &*self.history_repository,
-        )
-        .await;
     }
 }

@@ -40,7 +40,7 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         &self,
         _interaction_artifact: &ProtocolArtifact<'a>,
         _interaction: &Interaction,
-    ) -> Result<(), EcosystemError> {
+    ) -> Result<Option<serde_json::Value>, EcosystemError> {
         self.disabled_error()
     }
 
@@ -105,11 +105,12 @@ impl Ecosystem for CapabilityChecked {
         self.0.get_capabilities()
     }
 
+    #[expect(clippy::disallowed_methods)]
     async fn validate_interaction<'a>(
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
-    ) -> Result<(), EcosystemError> {
+    ) -> Result<Option<serde_json::Value>, EcosystemError> {
         self.0
             .validate_interaction(interaction_artifact, interaction)
             .await

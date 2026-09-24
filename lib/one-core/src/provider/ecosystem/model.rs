@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 
 use serde::Serialize;
-use shared_types::{CredentialSchemaId, ProofId, ProofSchemaId, SerializedCredential};
+use shared_types::{
+    CredentialId, CredentialSchemaId, ProofId, ProofSchemaId, SerializedCredential,
+};
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use standardized_types::openid4vp::VerifierInfoAttestation;
 use standardized_types::openid4vp::dcql::DcqlQuery;
@@ -64,11 +66,13 @@ pub enum ProtocolArtifact<'a> {
         attestation: WalletAttestationArtifact<'a>,
         /// as defined by the credential schema
         requirements: &'a WalletAttestation,
+        credential_id: CredentialId,
     },
     /// As verifier, protocol artifacts of a proof-request (after submission)
     VerifierSubmission {
         credential: Cow<'a, Credential>,
         issuer_details: Cow<'a, IdentifierDetails>,
+        proof_id: ProofId,
     },
 }
 

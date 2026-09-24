@@ -17,6 +17,7 @@ use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporterPr
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
+use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::ecosystem_sync::EcosystemSyncProto;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
@@ -465,7 +466,6 @@ impl OneCore {
         let ecosystem_provider = ecosystem_directory_from_config(
             &mut config,
             data_provider.get_history_repository(),
-            data_provider.get_interaction_repository(),
             wrp_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
@@ -476,6 +476,13 @@ impl OneCore {
             wallet_unit_proto.clone(),
             credential_validity_manager.clone(),
         )?;
+
+        let ecosystem_resolver = Arc::new(EcosystemResolverProto::new(
+            data_provider.get_interaction_repository(),
+            ecosystem_provider.clone(),
+            data_provider.get_history_repository(),
+            session_provider.clone(),
+        ));
 
         let verification_provider = verification_protocol_provider_from_config(
             &mut config,
@@ -682,13 +689,11 @@ impl OneCore {
                 identifier_creator.clone(),
                 credential_issuer_metadata_cache.clone(),
                 credential_formatter_provider.clone(),
-                ecosystem_provider.clone(),
-                data_provider.get_history_repository(),
+                ecosystem_resolver.clone(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
-                data_provider.get_interaction_repository(),
                 data_provider.get_key_repository(),
                 key_provider.clone(),
                 config.clone(),
@@ -697,14 +702,12 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
-                ecosystem_provider.clone(),
+                ecosystem_resolver.clone(),
                 verification_provider.clone(),
-                data_provider.get_history_repository(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
-                data_provider.get_interaction_repository(),
                 data_provider.get_key_repository(),
                 key_provider.clone(),
                 config.clone(),
@@ -713,9 +716,8 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
-                ecosystem_provider.clone(),
+                ecosystem_resolver.clone(),
                 verification_provider.clone(),
-                data_provider.get_history_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),
@@ -780,6 +782,7 @@ impl OneCore {
                 notification_scheduler,
                 transaction_data_provider,
                 ecosystem_provider.clone(),
+                ecosystem_resolver.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
@@ -819,7 +822,7 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 ecosystem_provider.clone(),
-                data_provider.get_history_repository(),
+                ecosystem_resolver,
             ),
             managed_instance_service: ManagedInstanceService::new(
                 data_provider.get_organisation_repository(),

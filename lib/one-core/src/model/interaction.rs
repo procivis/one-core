@@ -88,13 +88,8 @@ impl InteractionEcosystems {
     }
 
     /// Replace the slot of `ecosystem`.
-    pub fn set<T: Serialize>(
-        &mut self,
-        ecosystem: EcosystemId,
-        data: &T,
-    ) -> Result<(), serde_json::Error> {
-        self.data.insert(ecosystem, serde_json::to_value(data)?);
-        Ok(())
+    pub fn set(&mut self, ecosystem: EcosystemId, data: serde_json::Value) {
+        self.data.insert(ecosystem, data);
     }
 }
 
@@ -146,8 +141,14 @@ mod tests {
     #[test]
     fn test_ecosystem_data_slots_are_kept_per_ecosystem() {
         let mut map = InteractionEcosystems::default();
-        map.set(EcosystemId::from("EUDI"), &slot("eudi")).unwrap();
-        map.set(EcosystemId::from("OTHER"), &slot("other")).unwrap();
+        map.set(
+            EcosystemId::from("EUDI"),
+            serde_json::to_value(slot("eudi")).unwrap(),
+        );
+        map.set(
+            EcosystemId::from("OTHER"),
+            serde_json::to_value(slot("other")).unwrap(),
+        );
 
         let stored = map.into_stored().unwrap();
         let map = InteractionEcosystems::from_stored(stored);
@@ -169,7 +170,10 @@ mod tests {
     #[test]
     fn test_ecosystem_data_of_unknown_ecosystem_is_missing() {
         let mut map = InteractionEcosystems::default();
-        map.set(EcosystemId::from("EUDI"), &slot("eudi")).unwrap();
+        map.set(
+            EcosystemId::from("EUDI"),
+            serde_json::to_value(slot("eudi")).unwrap(),
+        );
 
         assert!(
             map.get::<Slot>(&EcosystemId::from("OTHER"))

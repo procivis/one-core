@@ -29,12 +29,12 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::model::VerificationFn;
-use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
@@ -134,7 +134,7 @@ pub(crate) async fn receive_mdl_request(
     proof_id: ProofId,
     qr_engagement: Option<EmbeddedCbor<DeviceEngagement>>,
     nfc_engagement: Option<NfcHceSession>,
-    ecosystem_provider: Arc<dyn EcosystemDirectory>,
+    ecosystem_resolver: Arc<dyn EcosystemResolver>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     verify_fn: VerificationFn,
@@ -244,8 +244,7 @@ pub(crate) async fn receive_mdl_request(
                         session_transcript_bytes.inner(),
                         proof_id,
                         &interaction,
-                        interaction_repository.as_ref(),
-                        ecosystem_provider.as_ref(),
+                        ecosystem_resolver.as_ref(),
                         certificate_validator.as_ref(),
                         identifier_creator.as_ref(),
                         &verify_fn,

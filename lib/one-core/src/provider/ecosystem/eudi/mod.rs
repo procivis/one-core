@@ -34,7 +34,6 @@ use crate::provider::provider_directory::InitializationError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 mod holder_issuance;
@@ -107,7 +106,6 @@ impl EudiEcosystem {
         params: serde_json::Value,
         config: CoreConfig,
         history_repository: Arc<dyn HistoryRepository>,
-        interaction_repository: Arc<dyn InteractionRepository>,
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
@@ -135,7 +133,6 @@ impl EudiEcosystem {
             ),
             holder_issuance_resolver: HolderIssuanceResolver::new(
                 history_repository.clone(),
-                interaction_repository,
                 wrp_validator.clone(),
                 blob_storage_provider.clone(),
                 session_provider,
@@ -195,20 +192,22 @@ impl Ecosystem for EudiEcosystem {
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
-    ) -> Result<(), EcosystemError> {
+    ) -> Result<Option<serde_json::Value>, EcosystemError> {
         match interaction_artifact {
             ProtocolArtifact::HolderIssuanceInvitation {
                 issuer_metadata,
                 credential_configuration_ids,
             } => {
-                self.holder_issuance_resolver
+                let data = self
+                    .holder_issuance_resolver
                     .resolve_metadata_trust(
-                        interaction,
+                        interaction.organisation.id(),
                         issuer_metadata,
                         credential_configuration_ids,
                     )
                     .await
                     .error_while("resolving holder issuance trust")?;
+                return Ok(Some(data));
             }
             ProtocolArtifact::HolderIssuanceCredential {
                 credential,
@@ -247,6 +246,7 @@ impl Ecosystem for EudiEcosystem {
             ProtocolArtifact::IssuerIssuance {
                 attestation,
                 requirements,
+                ..
             } => {
                 self.resolve_wallet_attestation(
                     attestation,
@@ -258,6 +258,7 @@ impl Ecosystem for EudiEcosystem {
             ProtocolArtifact::VerifierSubmission {
                 credential,
                 issuer_details,
+                ..
             } => {
                 self.resolve_verifier_submission(
                     credential,
@@ -268,7 +269,7 @@ impl Ecosystem for EudiEcosystem {
             }
         };
 
-        Ok(())
+        Ok(None)
     }
 
     async fn validate_credential(&self, credential: &Credential) -> Result<(), EcosystemError> {

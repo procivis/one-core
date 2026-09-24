@@ -15,22 +15,20 @@ use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest}
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::relation::Related;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
-use crate::validator::ecosystem::{SelectionRole, resolve_credential_ecosystems};
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 pub(super) struct ValidatedProofCredential {
@@ -272,16 +270,14 @@ fn extract_matching_requested_claim(
 }
 
 /// proof processing on verifier's side
-#[expect(clippy::too_many_arguments)]
 pub(crate) async fn accept_proof(
     proof: Proof,
     interaction: &Interaction,
     proved_credentials: Vec<ValidatedProofCredential>,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
-    interaction_repository: &dyn InteractionRepository,
     identifier_creator: Arc<dyn IdentifierCreator>,
-    ecosystem_provider: Arc<dyn EcosystemDirectory>,
+    ecosystem_resolver: &dyn EcosystemResolver,
 ) -> Result<(), ServiceError> {
     let proof_schema = proof
         .schema
@@ -364,19 +360,15 @@ pub(crate) async fn accept_proof(
                 |(model_credential, issuer_details)| ProtocolArtifact::VerifierSubmission {
                     credential: Cow::Borrowed(model_credential),
                     issuer_details: Cow::Borrowed(issuer_details),
+                    proof_id: proof.id,
                 },
             )
             .collect::<Vec<_>>();
 
-        resolve_credential_ecosystems(
-            interaction.id,
-            &artifacts,
-            interaction_repository,
-            ecosystem_provider.as_ref(),
-            SelectionRole::Verifier,
-        )
-        .await
-        .error_while("resolving ecosystems")?
+        ecosystem_resolver
+            .resolve(interaction.id, &artifacts, None)
+            .await
+            .error_while("resolving ecosystems")?
     };
 
     let mut proof_claims = vec![];
@@ -410,7 +402,7 @@ pub(crate) async fn accept_proof(
             &proof.id,
             UpdateProofRequest {
                 state: Some(ProofStateEnum::Accepted),
-                ecosystem: Some(ecosystems.committed),
+                ecosystem: Some(ecosystems.ecosystem),
                 ..Default::default()
             },
             None,

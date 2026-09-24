@@ -30,7 +30,6 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::
     MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
 };
 use crate::util::openid4vp::persist_accepted_proof;
-use crate::validator::ecosystem::{SelectionRole, resolve_credential_ecosystems};
 
 impl ProofService {
     // TODO: This method is used as part of the OID4VP BLE/MQTT flow
@@ -231,18 +230,14 @@ impl ProofService {
                     .map(|proved_credential| ProtocolArtifact::VerifierSubmission {
                         credential: Cow::Borrowed(&proved_credential.credential),
                         issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
+                        proof_id: proof.id,
                     })
                     .collect::<Vec<_>>();
 
-                resolve_credential_ecosystems(
-                    interaction.id,
-                    &artifacts,
-                    self.interaction_repository.as_ref(),
-                    self.ecosystem_provider.as_ref(),
-                    SelectionRole::Verifier,
-                )
-                .await
-                .error_while("resolving ecosystems")?
+                self.ecosystem_resolver
+                    .resolve(interaction.id, &artifacts, None)
+                    .await
+                    .error_while("resolving ecosystems")?
             };
 
             for (proved_credential, ecosystem) in proof_result
@@ -253,7 +248,7 @@ impl ProofService {
                 proved_credential.credential.ecosystem = ecosystem;
             }
 
-            Ok((proof_result, ecosystems.committed, response))
+            Ok((proof_result, ecosystems.ecosystem, response))
         }
         .await;
 
@@ -272,6 +267,7 @@ impl ProofService {
                 )
                 .await
                 .error_while("persisting accepted proof")?;
+
                 Ok(response)
             }
             Err(err) => {

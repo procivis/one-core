@@ -65,7 +65,6 @@ mod test {
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
     use crate::repository::history_repository::MockHistoryRepository;
-    use crate::repository::interaction_repository::MockInteractionRepository;
     use crate::repository::proof_schema_repository::MockProofSchemaRepository;
     use crate::service::test_utilities::{dummy_credential, generic_formatter_capabilities};
 
@@ -106,7 +105,6 @@ mod test {
             json!({"credentialSchemas": [{"format": "MDOC", "pidSchemaIds": ["mdoc-pid"]}]}),
             CoreConfig::default(),
             Arc::new(MockHistoryRepository::new()),
-            Arc::new(MockInteractionRepository::new()),
             Arc::new(wrp),
             Arc::new(MockBlobStorageProvider::new()),
             Arc::new(NoSessionProvider),

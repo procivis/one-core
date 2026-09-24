@@ -33,11 +33,13 @@ pub trait Ecosystem: Provider + Send + Sync {
 
     fn get_capabilities(&self) -> EcosystemCapabilities;
 
+    /// Returns data for the later steps of this ecosystem, or `None`. The resolver stores it on
+    /// the interaction.
     async fn validate_interaction<'a>(
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
-    ) -> Result<(), EcosystemError>;
+    ) -> Result<Option<serde_json::Value>, EcosystemError>;
 
     /// validate credential before issuance (issuer)
     async fn validate_credential(&self, credential: &Credential) -> Result<(), EcosystemError>;

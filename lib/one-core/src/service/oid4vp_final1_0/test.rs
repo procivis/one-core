@@ -21,14 +21,17 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::LockType;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::history::{HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::openid4vp_proof_validator::{MockOpenId4VpProofValidator, ValidatedProofResult};
+use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
@@ -79,7 +82,6 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
     OID4VPFinal1_0Service::new(
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.proof_repository),
-        Arc::new(mocks.interaction_repository),
         Arc::new(mocks.key_repository),
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
@@ -88,9 +90,13 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
         Arc::new(mocks.proof_validator),
-        Arc::new(mocks.ecosystem_provider),
+        Arc::new(EcosystemResolverProto::new(
+            Arc::new(mocks.interaction_repository),
+            Arc::new(mocks.ecosystem_provider),
+            Arc::new(mocks.history_repository),
+            Arc::new(NoSessionProvider),
+        )),
         Arc::new(mocks.protocol_provider),
-        Arc::new(mocks.history_repository),
     )
 }
 
@@ -451,12 +457,29 @@ async fn test_submit_proof_failed_on_trust_failure() {
             Ok(Arc::new(ecosystem))
         });
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(move |history| {
+            history.action == HistoryAction::EcosystemsResolved
+                && history.entity_type == HistoryEntityType::Proof
+                && history.entity_id == Some(proof_id.into())
+                && matches!(
+                    &history.metadata,
+                    Some(HistoryMetadata::EcosystemsResolved(outcomes))
+                        if outcomes.get(&"EUDI".into()).is_some_and(|outcome| !outcome.is_trusted())
+                )
+        })
+        .returning(|history| Ok(history.id));
+
     let service = setup_service(Mocks {
         proof_repository,
         interaction_repository,
         blob_storage_provider,
         proof_validator,
         ecosystem_provider,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });

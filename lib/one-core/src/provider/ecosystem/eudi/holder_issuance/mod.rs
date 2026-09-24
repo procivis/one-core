@@ -11,7 +11,6 @@ use crate::proto::wrp_validator::model::TrustScope;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::interaction_repository::InteractionRepository;
 
 mod credential;
 mod metadata;
@@ -66,7 +65,6 @@ impl ErrorCodeMixin for HolderIssuanceError {
 
 pub(crate) struct HolderIssuanceResolver {
     history_repository: Arc<dyn HistoryRepository>,
-    interaction_repository: Arc<dyn InteractionRepository>,
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
@@ -76,10 +74,8 @@ pub(crate) struct HolderIssuanceResolver {
 }
 
 impl HolderIssuanceResolver {
-    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         history_repository: Arc<dyn HistoryRepository>,
-        interaction_repository: Arc<dyn InteractionRepository>,
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
@@ -89,7 +85,6 @@ impl HolderIssuanceResolver {
     ) -> Self {
         Self {
             history_repository,
-            interaction_repository,
             wrp_validator,
             blob_storage_provider,
             session_provider,

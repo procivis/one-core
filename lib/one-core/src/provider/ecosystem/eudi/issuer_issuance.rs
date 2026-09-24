@@ -181,7 +181,6 @@ mod test {
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
     use crate::repository::history_repository::MockHistoryRepository;
-    use crate::repository::interaction_repository::MockInteractionRepository;
     use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 
     const WALLET_PROVIDER_CERTIFICATE: &str = "wallet-provider-certificate";
@@ -198,7 +197,6 @@ mod test {
             json!({}),
             CoreConfig::default(),
             Arc::new(MockHistoryRepository::new()),
-            Arc::new(MockInteractionRepository::new()),
             Arc::new(mocks.wrp_validator),
             Arc::new(MockBlobStorageProvider::new()),
             Arc::new(NoSessionProvider),

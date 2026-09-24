@@ -138,10 +138,9 @@ impl ProofService {
             self.key_algorithm_provider.clone(),
             self.credential_repository.clone(),
             self.proof_repository.clone(),
-            self.interaction_repository.clone(),
             self.certificate_validator.clone(),
             self.identifier_creator.clone(),
-            self.ecosystem_provider.clone(),
+            self.ecosystem_resolver.clone(),
         )
         .await
         .error_while("starting client")?;

@@ -35,6 +35,7 @@ use crate::model::history::{
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::interaction::{Interaction, InteractionEcosystems, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
@@ -279,11 +280,16 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
         })
         .return_once(|history| Ok(history.id));
 
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        interaction_repository: Arc::new(interaction_repository),
-        history_repository: Arc::new(history_repository),
+        interaction_repository: interaction_repository.clone(),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            history_repository,
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -341,12 +347,17 @@ async fn test_rejecting_a_proof_consults_no_ecosystem_and_records_nothing() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository.expect_get_interaction().never();
 
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
-        interaction_repository: Arc::new(interaction_repository),
-        history_repository: Arc::new(history_repository),
+        interaction_repository: interaction_repository.clone(),
         // the directory has no expectations: consulting any ecosystem here would panic
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            history_repository,
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -620,6 +631,7 @@ async fn test_accept_credential() {
     // no ecosystem selected, so nothing is consulted and the interaction is not touched
     interaction_repository.expect_update_interaction().never();
 
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
@@ -628,7 +640,12 @@ async fn test_accept_credential() {
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
         key_security_level_provider: Arc::new(key_security_level_provider),
-        interaction_repository: Arc::new(interaction_repository),
+        interaction_repository: interaction_repository.clone(),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            MockHistoryRepository::new(),
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -781,7 +798,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
     ecosystem
         .expect_validate_interaction()
         .times(2)
-        .returning(|_, _| Ok(()));
+        .returning(|_, _| Ok(None));
     let ecosystem = Arc::new(ecosystem);
     let mut ecosystem_provider = MockEcosystemDirectory::new();
     ecosystem_provider
@@ -789,6 +806,18 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
         .with(eq(ecosystem_id))
         .returning(move |_| Ok(ecosystem.clone()));
 
+    // One history event for each issued credential.
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .times(2)
+        .withf(|history| {
+            history.action == HistoryAction::EcosystemsResolved
+                && history.entity_type == HistoryEntityType::Credential
+        })
+        .returning(|history| Ok(history.id));
+
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
@@ -797,8 +826,12 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
         key_security_level_provider: Arc::new(key_security_level_provider),
-        interaction_repository: Arc::new(interaction_repository),
-        ecosystem_provider: Arc::new(ecosystem_provider),
+        interaction_repository: interaction_repository.clone(),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            ecosystem_provider,
+            history_repository,
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -934,6 +967,7 @@ async fn test_accept_credential_with_did() {
     // no ecosystem selected, so nothing is consulted and the interaction is not touched
     interaction_repository.expect_update_interaction().never();
 
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
@@ -942,7 +976,12 @@ async fn test_accept_credential_with_did() {
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
         key_security_level_provider: Arc::new(key_security_level_provider),
-        interaction_repository: Arc::new(interaction_repository),
+        interaction_repository: interaction_repository.clone(),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            MockHistoryRepository::new(),
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -1044,12 +1083,18 @@ async fn test_accept_credential_batch() {
     // no ecosystem selected, so nothing is consulted and the interaction is not touched
     interaction_repository.expect_update_interaction().never();
 
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
-        interaction_repository: Arc::new(interaction_repository),
+        interaction_repository: interaction_repository.clone(),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            MockHistoryRepository::new(),
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -1437,11 +1482,17 @@ async fn test_continue_issuance() {
         .expect_create_credential()
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
+    let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {
-        interaction_repository: Arc::new(interaction_repository),
+        interaction_repository: interaction_repository.clone(),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         credential_repository: Arc::new(credential_repository),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            MockHistoryRepository::new(),
+        ),
         ..mock_ssi_holder_service()
     };
 
@@ -1553,8 +1604,26 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         identifier_creator: Arc::new(MockIdentifierCreator::new()),
         transaction_manager: Arc::new(NoTransactionManager),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
-        history_repository: Arc::new(MockHistoryRepository::new()),
+        ecosystem_resolver: ecosystem_resolver(
+            Arc::new(MockInteractionRepository::new()),
+            MockEcosystemDirectory::new(),
+            MockHistoryRepository::new(),
+        ),
     }
+}
+
+/// A real resolver that uses the same interaction repository as the service.
+fn ecosystem_resolver(
+    interaction_repository: Arc<MockInteractionRepository>,
+    ecosystem_provider: MockEcosystemDirectory,
+    history_repository: MockHistoryRepository,
+) -> Arc<EcosystemResolverProto> {
+    Arc::new(EcosystemResolverProto::new(
+        interaction_repository,
+        Arc::new(ecosystem_provider),
+        Arc::new(history_repository),
+        Arc::new(NoSessionProvider),
+    ))
 }
 
 fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
@@ -2281,6 +2350,8 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
             .return_once(move |_| Ok(item));
     }
     let interaction_id = Uuid::new_v4().into();
+    let mut organisation = dummy_organisation(None);
+    organisation.configuration.selected_ecosystems = vec!["EUDI".into()];
     let mut interactions = MockInteractionRepository::new();
     interactions
         .expect_get_interaction()
@@ -2290,7 +2361,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&data).unwrap()),
-                organisation: dummy_organisation(None).into(),
+                organisation: organisation.into(),
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
                 ecosystem: Some("EUDI".into()),
@@ -2326,18 +2397,23 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
                     .unwrap()
                     .push((credential_configuration_id.clone(), credential.id));
             }
-            Ok(())
+            Ok(None)
         });
+    let ecosystem = Arc::new(ecosystem);
     let mut ecosystems = MockEcosystemDirectory::new();
     ecosystems
         .expect_get()
-        .return_once(move |_| Ok(Arc::new(ecosystem)));
+        .returning(move |_| Ok(ecosystem.clone()));
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         interaction_repository: Arc::new(interactions),
         issuance_protocol_provider: Arc::new(protocol_provider),
         blob_storage_provider: Arc::new(blobs),
-        ecosystem_provider: Arc::new(ecosystems),
+        ecosystem_resolver: ecosystem_resolver(
+            Arc::new(MockInteractionRepository::new()),
+            ecosystems,
+            MockHistoryRepository::new(),
+        ),
         ..mock_ssi_holder_service()
     };
 

@@ -22,7 +22,7 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMix
 use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::model::credential::{Clearable, CredentialType, UpdateCredentialRequest};
-use crate::model::history::{HistoryEntityType, HistoryErrorMetadata};
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
 use crate::model::relation::{OptionalRelatedExt, Related};
@@ -41,7 +41,6 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
-use crate::validator::ecosystem::{SelectionRole, commit_selected_ecosystem, resolve_ecosystem};
 use crate::validator::{throw_if_endpoint_version_incompatible, throw_if_proof_state_not_eq};
 
 impl SSIHolderService {
@@ -375,37 +374,18 @@ impl SSIHolderService {
             .await
             .error_while("handling invitation")?;
 
-        // the proof request carries all the trust information there is, no later step adds to it,
-        // so the ecosystem is already final here
-        let (ecosystem, ecosystem_errors) = match user_selected_ecosystem {
-            Some(selection) => {
-                let outcomes = commit_selected_ecosystem(
-                    interaction_id,
-                    &ecosystem_artifact,
-                    &selection,
-                    self.interaction_repository.as_ref(),
-                    self.ecosystem_provider.as_ref(),
-                )
-                .await
-                .error_while("committing selected ecosystem")?;
-                (Some(selection), outcomes)
-            }
-            None => {
-                let resolution = resolve_ecosystem(
-                    interaction_id,
-                    &ecosystem_artifact,
-                    self.interaction_repository.as_ref(),
-                    self.ecosystem_provider.as_ref(),
-                    SelectionRole::Holder,
-                )
-                .await
-                .error_while("resolving ecosystem")?;
-                (resolution.committed, resolution.outcomes)
-            }
-        };
+        let resolved = self
+            .ecosystem_resolver
+            .resolve(
+                interaction_id,
+                &[ecosystem_artifact],
+                user_selected_ecosystem.as_ref(),
+            )
+            .await
+            .error_while("resolving ecosystem")?;
 
         proof.protocol = protocol.clone();
-        proof.ecosystem = ecosystem.to_owned();
+        proof.ecosystem = resolved.ecosystem.to_owned();
 
         self.fill_verifier_in_proof(&mut proof).await?;
 
@@ -415,20 +395,12 @@ impl SSIHolderService {
             .await
             .error_while("creating proof")?;
 
-        // trust is decided at this point, we record it now so the wallet can render any
-        // relevant ecosystemErrors
-        self.record_ecosystems_resolved(
-            &interaction_id,
-            &[(proof_id.into(), HistoryEntityType::Proof)],
-        )
-        .await;
-
         Ok(HandleInvitationResultDTO::ProofRequest {
             interaction_id,
             proof_id,
             protocol,
-            ecosystem,
-            ecosystem_errors,
+            ecosystem: resolved.ecosystem,
+            ecosystem_errors: resolved.outcomes,
         })
     }
 

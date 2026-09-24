@@ -4,3 +4,4 @@ allow-panic-in-tests            = true
 allow-print-in-tests            = true
 allow-unwrap-in-tests           = true
 disallowed-macros               = [{ path = "std::assert_eq", reason = "use similar_asserts::assert_eq - it has diff support" }]
+disallowed-methods              = [{ path = "one_core::provider::ecosystem::Ecosystem::validate_interaction", reason = "use proto::ecosystem_resolver - it records the outcome" }]

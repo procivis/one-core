@@ -27,8 +27,6 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
-use crate::model::ecosystem::EcosystemOutcomes;
-use crate::model::history::HistoryEntityType;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
@@ -49,12 +47,8 @@ use crate::provider::issuance_protocol::{
     self, HolderBindingInput, IssuanceProtocol, deserialize_interaction_data,
     serialize_interaction_data,
 };
-use crate::service::common_mapper::resolved_ecosystems;
 use crate::service::error::MissingProviderError;
-use crate::validator::ecosystem::{
-    SelectionRole, commit_selected_ecosystem, resolve_credential_ecosystems,
-    validate_ecosystem_selection_allow_not_set, validate_ecosystem_step,
-};
+use crate::validator::ecosystem::validate_ecosystem_selection_allow_not_set;
 use crate::validator::key_security::match_key_security_level;
 use crate::validator::{throw_if_credential_state_not_eq, throw_if_org_id_not_matching_session};
 
@@ -105,13 +99,9 @@ impl SSIHolderService {
             None
         };
 
-        // the issuance ends here, success or not, so this is where the ecosystems get recorded
         let response = self
             .accept_credential_final1(interaction_id, holder_binding_input, tx_code)
-            .await;
-        self.record_issuance_ecosystems(&interaction_id, response.as_ref().ok())
-            .await;
-        let response = response?;
+            .await?;
 
         tracing::info!(
             "Accepted issuance of credentials {:?} for interaction {interaction_id}",
@@ -234,15 +224,11 @@ impl SSIHolderService {
                 })
             })
             .collect::<Result<Vec<_>, HolderServiceError>>()?;
-        let ecosystems = resolve_credential_ecosystems(
-            interaction.id,
-            &artifacts,
-            self.interaction_repository.as_ref(),
-            self.ecosystem_provider.as_ref(),
-            SelectionRole::Holder,
-        )
-        .await
-        .error_while("resolving ecosystems")?;
+        let ecosystems = self
+            .ecosystem_resolver
+            .resolve(interaction.id, &artifacts, None)
+            .await
+            .error_while("resolving ecosystems")?;
 
         let mut issued = result.issued;
         for (issuer_response, ecosystem) in issued.iter_mut().zip(ecosystems.per_credential) {
@@ -298,9 +284,7 @@ impl SSIHolderService {
             id,
             credential_ids,
             partially_successful,
-            // the credentials are the last artifacts of the issuance, so the merged outcome is
-            // final here
-            ecosystem_errors: EcosystemOutcomes::merged(&ecosystems.outcomes),
+            ecosystem_errors: ecosystems.outcomes,
         })
     }
 
@@ -493,8 +477,7 @@ impl SSIHolderService {
             .map(|credential| credential.id)
             .collect();
 
-        if let Some(ecosystem_id) = &interaction.ecosystem {
-            let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
+        if interaction.ecosystem.is_some() {
             let db_blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)?;
@@ -523,14 +506,14 @@ impl SSIHolderService {
                     .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
                     .into();
 
-                ecosystem
-                    .validate_interaction(
-                        &ProtocolArtifact::HolderIssuanceCredential {
+                self.ecosystem_resolver
+                    .revalidate(
+                        &interaction,
+                        &[ProtocolArtifact::HolderIssuanceCredential {
                             credential: Cow::Owned(batch_item),
                             serialized,
                             credential_configuration_id: response.credential_configuration_id,
-                        },
-                        &interaction,
+                        }],
                     )
                     .await
                     .error_while("validating ecosystem")?;
@@ -662,43 +645,6 @@ impl SSIHolderService {
         Ok(())
     }
 
-    /// A failed issuance may have produced no credential. There is then nothing to attach the
-    /// record to, but the caller still gets the reason in the error response.
-    async fn record_issuance_ecosystems(
-        &self,
-        interaction_id: &InteractionId,
-        issued: Option<&IssuanceAcceptResponseDTO>,
-    ) {
-        let Some((outcomes, organisation_id)) =
-            resolved_ecosystems(interaction_id, self.interaction_repository.as_ref()).await
-        else {
-            return;
-        };
-
-        let credential_ids = match issued {
-            Some(response) => response.credential_ids.to_owned(),
-            None => match self
-                .credential_repository
-                .get_credentials_by_interaction_id(interaction_id)
-                .await
-            {
-                Ok(credentials) => credentials.into_iter().map(|it| it.id).collect(),
-                Err(err) => {
-                    tracing::warn!(%err, "failed to load the credentials of interaction {interaction_id} to record the resolved ecosystems");
-                    return;
-                }
-            },
-        };
-
-        let entities: Vec<_> = credential_ids
-            .into_iter()
-            .map(|id| (id.into(), HistoryEntityType::Credential))
-            .collect();
-
-        self.write_ecosystems_resolved(&outcomes, organisation_id, &entities)
-            .await;
-    }
-
     // the items of a batch follow their parent
     async fn credential_and_batch_item_ids(
         &self,
@@ -725,39 +671,6 @@ impl SSIHolderService {
             .collect())
     }
 
-    /// Settle the ecosystem of an interaction the protocol has just created: a user selection is
-    /// a commitment and is recorded as one, so that every later step runs under it. Without a
-    /// selection, autodetection starts narrowing the candidates here.
-    async fn start_ecosystem(
-        &self,
-        interaction_id: InteractionId,
-        artifact: &ProtocolArtifact<'_>,
-        user_selected_ecosystem: Option<&EcosystemId>,
-    ) -> Result<EcosystemOutcomes, HolderServiceError> {
-        let outcomes = match user_selected_ecosystem {
-            Some(selection) => commit_selected_ecosystem(
-                interaction_id,
-                artifact,
-                selection,
-                self.interaction_repository.as_ref(),
-                self.ecosystem_provider.as_ref(),
-            )
-            .await
-            .error_while("committing selected ecosystem")?,
-            None => validate_ecosystem_step(
-                interaction_id,
-                artifact,
-                self.interaction_repository.as_ref(),
-                self.ecosystem_provider.as_ref(),
-                SelectionRole::Holder,
-            )
-            .await
-            .error_while("narrowing ecosystem candidates")?,
-        };
-
-        Ok(outcomes)
-    }
-
     pub(super) async fn handle_issuance_invitation(
         &self,
         url: Url,
@@ -782,12 +695,15 @@ impl SSIHolderService {
                 ecosystem_artifact,
             } => {
                 let ecosystem_errors = self
-                    .start_ecosystem(
+                    .ecosystem_resolver
+                    .resolve(
                         interaction_id,
-                        &ecosystem_artifact,
+                        &[ecosystem_artifact],
                         user_selected_ecosystem.as_ref(),
                     )
-                    .await?;
+                    .await
+                    .error_while("resolving ecosystem")?
+                    .outcomes;
 
                 Ok(HandleInvitationResultDTO::Credential {
                     interaction_id,
@@ -830,15 +746,12 @@ impl SSIHolderService {
                     .await?;
 
                 // `initiate_issuance` created the interaction carrying any user selection
-                let ecosystem_errors = validate_ecosystem_step(
-                    interaction_id,
-                    &ecosystem_artifact,
-                    self.interaction_repository.as_ref(),
-                    self.ecosystem_provider.as_ref(),
-                    SelectionRole::Holder,
-                )
-                .await
-                .error_while("validating ecosystem")?;
+                let ecosystem_errors = self
+                    .ecosystem_resolver
+                    .resolve(interaction_id, &[ecosystem_artifact], None)
+                    .await
+                    .error_while("resolving ecosystem")?
+                    .outcomes;
 
                 Ok(HandleInvitationResultDTO::AuthorizationCodeFlow {
                     interaction_id,
@@ -1029,12 +942,14 @@ impl SSIHolderService {
 
         // continuing creates a fresh interaction, so a selection made when the flow was initiated
         // has to be committed onto that one too
-        self.start_ecosystem(
-            interaction_id,
-            &ecosystem_artifact,
-            user_selected_ecosystem.as_ref(),
-        )
-        .await?;
+        self.ecosystem_resolver
+            .resolve(
+                interaction_id,
+                &[ecosystem_artifact],
+                user_selected_ecosystem.as_ref(),
+            )
+            .await
+            .error_while("resolving ecosystem")?;
 
         tracing::info!(
             "Processed authorization code flow result for credential issuance using interaction {interaction_id}"

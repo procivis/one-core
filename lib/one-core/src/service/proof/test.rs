@@ -41,6 +41,7 @@ use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::notification_scheduler::MockNotificationScheduler;
@@ -118,6 +119,18 @@ struct Repositories {
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
+    let history_repository = Arc::new(repositories.history_repository);
+    let interaction_repository = Arc::new(repositories.interaction_repository);
+    let ecosystem_provider = Arc::new(repositories.ecosystem_provider);
+    let session_provider = repositories
+        .session_provider
+        .unwrap_or(Arc::new(NoSessionProvider));
+    let ecosystem_resolver = Arc::new(EcosystemResolverProto::new(
+        interaction_repository.clone(),
+        ecosystem_provider.clone(),
+        history_repository.clone(),
+        session_provider.clone(),
+    ));
     ProofService::new(
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.key_provider),
@@ -126,8 +139,8 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.identifier_repository),
         Arc::new(repositories.claim_repository),
         Arc::new(repositories.credential_repository),
-        Arc::new(repositories.history_repository),
-        Arc::new(repositories.interaction_repository),
+        history_repository,
+        interaction_repository,
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.presentation_formatter_provider),
         Arc::new(repositories.protocol_provider),
@@ -143,15 +156,14 @@ fn setup_service(repositories: Repositories) -> ProofService {
             let m: Arc<dyn NfcHce> = Arc::new(m);
             m
         }),
-        repositories
-            .session_provider
-            .unwrap_or(Arc::new(NoSessionProvider)),
+        session_provider,
         Arc::new(repositories.identifier_creator),
         Arc::new(NoTransactionManager),
         Arc::new(repositories.proof_validator),
         Arc::new(repositories.notification_scheduler),
         Arc::new(repositories.transaction_data_provider),
-        Arc::new(repositories.ecosystem_provider),
+        ecosystem_provider,
+        ecosystem_resolver,
     )
 }
 
