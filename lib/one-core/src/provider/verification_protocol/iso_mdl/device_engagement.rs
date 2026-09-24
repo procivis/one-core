@@ -403,11 +403,11 @@ fn get_cbor_map_value(
 #[cfg(test)]
 mod test {
     use hex_literal::hex;
-    use one_crypto::utilities::get_rng;
     use similar_asserts::assert_eq;
     use uuid::uuid;
 
     use super::*;
+    use crate::provider::verification_protocol::iso_mdl::common::KeyAgreement;
 
     #[test]
     fn test_device_engagement_serialization() {
@@ -494,15 +494,12 @@ mod test {
     }
 
     fn get_example_engagement() -> DeviceEngagement {
-        let mut rng = get_rng();
-        let pk = x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(
-            &mut rng,
-        ));
+        let ka_device = KeyAgreement::<EDeviceKey>::generate().unwrap();
 
         DeviceEngagement {
             version: Default::default(),
             security: Security {
-                key_bytes: EmbeddedCbor::new(EDeviceKey::new(pk)).unwrap(),
+                key_bytes: EmbeddedCbor::new(ka_device.device_key().to_owned()).unwrap(),
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {

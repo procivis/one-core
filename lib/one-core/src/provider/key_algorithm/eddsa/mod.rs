@@ -268,7 +268,7 @@ impl PrivateKeyAgreementHandle for EddsaPrivateKeyHandle {
         &self,
         remote_jwk: &PublicJwk,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
-        EDDSASigner::shared_secret_x25519(&self.private_key, remote_jwk)
+        EDDSASigner::shared_secret_x25519_jwk(&self.private_key, remote_jwk)
     }
 }
 

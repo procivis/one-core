@@ -11,6 +11,7 @@ use crate::{Signer, SignerError};
 
 pub struct EDDSASigner;
 
+#[derive(Clone)]
 pub struct KeyPair {
     pub public: Vec<u8>,
     pub private: SecretSlice<u8>,
@@ -93,18 +94,37 @@ impl EDDSASigner {
         Ok(key.to_vec().into())
     }
 
-    pub fn shared_secret_x25519(
+    pub fn shared_secret_x25519_jwk(
         private_key_ed25519: &SecretSlice<u8>,
         recipient_jwk: &PublicJwk,
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
+        let peer_pub_key = Self::get_public_key_x25519_from_jwk(recipient_jwk)?;
+        Self::shared_secret(private_key_ed25519, &peer_pub_key)
+    }
+
+    pub fn shared_secret_x25519_bytes(
+        private_key_ed25519: &SecretSlice<u8>,
+        public_key_x25519: &[u8],
+    ) -> Result<SecretSlice<u8>, EncryptionError> {
+        let key = x25519::PublicKey::from_slice(public_key_x25519).map_err(|e| {
+            EncryptionError::Crypto(
+                SignerError::CouldNotExtractPublicKey(e.to_string()).to_string(),
+            )
+        })?;
+
+        Self::shared_secret(private_key_ed25519, &key)
+    }
+
+    fn shared_secret(
+        private_key_ed25519: &SecretSlice<u8>,
+        peer_pub_key: &x25519::PublicKey,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         let secret_key = SecretKey::from_slice(private_key_ed25519.expose_secret())
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
         let secret_x25519 = x25519::SecretKey::from_ed25519(&secret_key)
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
 
-        let peer_pub_key = Self::get_public_key_from_jwk(recipient_jwk)?;
-
-        let shared_secret = *peer_pub_key
+        let shared_secret = peer_pub_key
             .dh(&secret_x25519)
             .map_err(|e| EncryptionError::Crypto(format!("Failed to derive shared secret: {e}")))?;
         Ok(SecretSlice::from(shared_secret.to_vec()))
@@ -128,7 +148,7 @@ impl EDDSASigner {
         }))
     }
 
-    fn get_public_key_from_jwk(
+    fn get_public_key_x25519_from_jwk(
         remote_jwk: &PublicJwk,
     ) -> Result<x25519::PublicKey, EncryptionError> {
         let PublicJwk::Okp(remote_jwk) = remote_jwk else {

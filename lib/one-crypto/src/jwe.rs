@@ -620,7 +620,7 @@ mod test {
                 &self,
                 remote_jwk: &PublicJwk,
             ) -> Result<SecretSlice<u8>, EncryptionError> {
-                EDDSASigner::shared_secret_x25519(&self.0, remote_jwk)
+                EDDSASigner::shared_secret_x25519_jwk(&self.0, remote_jwk)
             }
         }
 

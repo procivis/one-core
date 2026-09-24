@@ -9,12 +9,11 @@ use anyhow::{Context, anyhow, bail};
 use coset::iana::{self, EnumI64};
 use coset::{AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label};
 use hkdf::Hkdf;
-use one_crypto::utilities::get_rng;
+use one_crypto::signer::eddsa::EDDSASigner;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use sha2::{Digest, Sha256};
-use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::device_engagement::DeviceEngagement;
 use crate::mapper::secret_slice;
@@ -98,19 +97,23 @@ pub(super) fn split_into_chunks(
 
 // EDeviceKey = COSE_Key
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct EDeviceKey(pub x25519_dalek::PublicKey);
+pub(crate) struct EDeviceKey {
+    pub x25519_pub_key: Vec<u8>,
+}
 
 impl EDeviceKey {
-    pub(crate) fn new(pk: x25519_dalek::PublicKey) -> Self {
-        Self(pk)
+    pub(crate) fn new(x25519_pub_key: Vec<u8>) -> Self {
+        Self { x25519_pub_key }
     }
 
     fn to_cose_key(&self) -> CoseKey {
-        x25519_to_cose_key(self.0.to_bytes().to_vec())
+        x25519_to_cose_key(self.x25519_pub_key.to_owned())
     }
 
     fn from_cose_key(key: CoseKey) -> anyhow::Result<Self> {
-        x25519_from_cose_key(key).map(Self)
+        Ok(Self {
+            x25519_pub_key: x25519_from_cose_key(key)?,
+        })
     }
 }
 
@@ -140,19 +143,23 @@ impl<'de> Deserialize<'de> for EDeviceKey {
 
 // EReaderKey = COSE_Key
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct EReaderKey(x25519_dalek::PublicKey);
+pub(crate) struct EReaderKey {
+    pub x25519_pub_key: Vec<u8>,
+}
 
 impl EReaderKey {
-    pub(super) fn new(pk: x25519_dalek::PublicKey) -> Self {
-        Self(pk)
+    pub(super) fn new(x25519_pub_key: Vec<u8>) -> Self {
+        Self { x25519_pub_key }
     }
 
     fn to_cose_key(&self) -> CoseKey {
-        x25519_to_cose_key(self.0.to_bytes().to_vec())
+        x25519_to_cose_key(self.x25519_pub_key.to_owned())
     }
 
     fn from_cose_key(key: CoseKey) -> anyhow::Result<Self> {
-        x25519_from_cose_key(key).map(Self)
+        Ok(Self {
+            x25519_pub_key: x25519_from_cose_key(key)?,
+        })
     }
 }
 
@@ -183,21 +190,23 @@ impl<'de> Deserialize<'de> for EReaderKey {
 }
 
 pub(crate) struct KeyAgreement<PK> {
-    pk: PK,
-    sk: EphemeralSecret,
+    public_key: PK,
+    private_key: SecretSlice<u8>,
 }
 
 impl KeyAgreement<EDeviceKey> {
-    pub fn new() -> Self {
-        let mut rng = get_rng();
-        let sk = EphemeralSecret::random_from_rng(&mut rng);
-        let pk = EDeviceKey::new(PublicKey::from(&sk));
+    pub fn generate() -> anyhow::Result<Self> {
+        let key = EDDSASigner::generate_key_pair();
+        let public_key = EDDSASigner::public_key_into_x25519(&key.public)?;
 
-        KeyAgreement { pk, sk }
+        Ok(Self {
+            public_key: EDeviceKey::new(public_key),
+            private_key: key.private,
+        })
     }
 
     pub(crate) fn device_key(&self) -> &EDeviceKey {
-        &self.pk
+        &self.public_key
     }
 
     pub(crate) fn derive_session_keys(
@@ -205,21 +214,27 @@ impl KeyAgreement<EDeviceKey> {
         pk: EReaderKey,
         session_transcript_bytes: &[u8],
     ) -> anyhow::Result<(SkDevice, SkReader)> {
-        derive_session_keys(self.sk, pk.0, session_transcript_bytes)
+        derive_session_keys(
+            self.private_key,
+            pk.x25519_pub_key,
+            session_transcript_bytes,
+        )
     }
 }
 
 impl KeyAgreement<EReaderKey> {
-    pub(super) fn new() -> Self {
-        let mut rng = get_rng();
-        let sk = EphemeralSecret::random_from_rng(&mut rng);
-        let pk = EReaderKey::new(PublicKey::from(&sk));
+    pub fn generate() -> anyhow::Result<Self> {
+        let key = EDDSASigner::generate_key_pair();
+        let public_key = EDDSASigner::public_key_into_x25519(&key.public)?;
 
-        KeyAgreement { pk, sk }
+        Ok(Self {
+            public_key: EReaderKey::new(public_key),
+            private_key: key.private,
+        })
     }
 
     pub(crate) fn reader_key(&self) -> &EReaderKey {
-        &self.pk
+        &self.public_key
     }
 
     pub(crate) fn derive_session_keys(
@@ -227,7 +242,11 @@ impl KeyAgreement<EReaderKey> {
         pk: EDeviceKey,
         session_transcript_bytes: &[u8],
     ) -> anyhow::Result<(SkDevice, SkReader)> {
-        derive_session_keys(self.sk, pk.0, session_transcript_bytes)
+        derive_session_keys(
+            self.private_key,
+            pk.x25519_pub_key,
+            session_transcript_bytes,
+        )
     }
 }
 
@@ -281,13 +300,14 @@ impl SkReader {
 }
 
 fn derive_session_keys(
-    private_key: x25519_dalek::EphemeralSecret,
-    public_key: x25519_dalek::PublicKey,
+    private_key: SecretSlice<u8>,
+    public_key: Vec<u8>,
     session_transcript_bytes: &[u8],
 ) -> anyhow::Result<(SkDevice, SkReader)> {
-    let z_ab = private_key.diffie_hellman(&public_key);
+    let z_ab = EDDSASigner::shared_secret_x25519_bytes(&private_key, &public_key)?;
+
     let salt = Sha256::digest(session_transcript_bytes);
-    let hkdf = Hkdf::<Sha256>::new(Some(&salt), z_ab.as_bytes());
+    let hkdf = Hkdf::<Sha256>::new(Some(&salt), z_ab.expose_secret());
 
     let mut sk_device = SecretSlice::from(vec![0u8; 32]);
     hkdf.expand(b"SKDevice", sk_device.expose_secret_mut())
@@ -343,7 +363,7 @@ fn x25519_to_cose_key(pk: Vec<u8>) -> CoseKey {
         .build()
 }
 
-fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey> {
+fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<Vec<u8>> {
     if key.kty != KeyType::Assigned(iana::KeyType::OKP) {
         anyhow::bail!(
             "Unsupported key type, expected OKP(x25519) found {:?}",
@@ -377,7 +397,7 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
                 )
             })?;
 
-            Ok(x25519_dalek::PublicKey::from(public_key))
+            Ok(EDDSASigner::check_x25519_public_key(&public_key)?)
         }
     }
 }
@@ -410,8 +430,8 @@ mod test {
 
     #[test]
     fn test_derive_session_key() {
-        let ka_device = KeyAgreement::<EDeviceKey>::new();
-        let ka_reader = KeyAgreement::<EReaderKey>::new();
+        let ka_device = KeyAgreement::<EDeviceKey>::generate().unwrap();
+        let ka_reader = KeyAgreement::<EReaderKey>::generate().unwrap();
 
         let device_pk = ka_device.device_key().clone();
 
@@ -435,8 +455,8 @@ mod test {
 
     #[test]
     fn test_encryption_decryption_with_session_keys() {
-        let ka_device = KeyAgreement::<EDeviceKey>::new();
-        let ka_reader = KeyAgreement::<EReaderKey>::new();
+        let ka_device = KeyAgreement::<EDeviceKey>::generate().unwrap();
+        let ka_reader = KeyAgreement::<EReaderKey>::generate().unwrap();
 
         let device_pk = ka_device.device_key().clone();
 
@@ -459,7 +479,7 @@ mod test {
 
     #[test]
     fn test_device_key_serialization() {
-        let ka = KeyAgreement::<EDeviceKey>::new();
+        let ka = KeyAgreement::<EDeviceKey>::generate().unwrap();
 
         let device_key = ka.device_key().clone();
 
@@ -473,7 +493,7 @@ mod test {
 
     #[test]
     fn test_reader_key_serialization() {
-        let ka = KeyAgreement::<EReaderKey>::new();
+        let ka = KeyAgreement::<EReaderKey>::generate().unwrap();
 
         let device_key = ka.reader_key().clone();
 

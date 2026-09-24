@@ -397,7 +397,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         )?;
 
         let interaction_id = Uuid::new_v4().into();
-        let key_agreement = KeyAgreementKey::new_random();
+        let key_agreement =
+            KeyAgreementKey::generate().map_err(VerificationProtocolError::Other)?;
 
         let (presentation_definition, dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
             prepare_proof_share(ProofShareParams {

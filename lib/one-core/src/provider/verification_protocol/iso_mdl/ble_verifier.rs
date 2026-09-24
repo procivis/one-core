@@ -76,7 +76,8 @@ pub(crate) async fn setup_verifier_session(
     handover: Option<Handover>,
     verifier: Option<&IsoMdlVerifier>,
 ) -> Result<VerifierSession, VerificationProtocolError> {
-    let key_pair = KeyAgreement::<EReaderKey>::new();
+    let key_pair =
+        KeyAgreement::<EReaderKey>::generate().map_err(VerificationProtocolError::Other)?;
 
     let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())?;
 

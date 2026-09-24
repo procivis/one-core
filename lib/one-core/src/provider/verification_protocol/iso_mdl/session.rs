@@ -60,7 +60,7 @@ mod test {
 
     #[test]
     fn test_session_establishment_serialization() {
-        let reader_key = KeyAgreement::<EReaderKey>::new();
+        let reader_key = KeyAgreement::<EReaderKey>::generate().unwrap();
         let session_establishment = SessionEstablishment {
             e_reader_key: EmbeddedCbor::new(reader_key.reader_key().clone()).unwrap(),
             data: Bstr(b"test data".to_vec()),
@@ -90,8 +90,8 @@ mod test {
 
     #[test]
     fn test_session_transcript_serialization() {
-        let device_key = KeyAgreement::<EDeviceKey>::new();
-        let reader_key = KeyAgreement::<EReaderKey>::new();
+        let device_key = KeyAgreement::<EDeviceKey>::generate().unwrap();
+        let reader_key = KeyAgreement::<EReaderKey>::generate().unwrap();
 
         let session_transcript = SessionTranscript {
             device_engagement_bytes: EmbeddedCbor::new(DeviceEngagement {

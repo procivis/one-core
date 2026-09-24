@@ -424,7 +424,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         broker_url: Some(broker_url),
     });
 
-    let key_agreement = KeyAgreementKey::new_random();
+    let key_agreement = KeyAgreementKey::generate().unwrap();
     let interaction_id = Uuid::new_v4().into();
 
     let url = protocol
@@ -456,7 +456,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
 }
 
 fn generate_verifier_key() -> (KeyAgreementKey, String) {
-    let key_agreement_key = KeyAgreementKey::new_random();
+    let key_agreement_key = KeyAgreementKey::generate().unwrap();
     let public_key = key_agreement_key.public_key_bytes();
 
     (key_agreement_key, hex::encode(public_key))

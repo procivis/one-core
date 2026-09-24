@@ -316,7 +316,7 @@ mod test {
         identify.expect_recv().once().return_once(|| {
             Ok((
                 IdentityRequest {
-                    key: [0u8; 32],
+                    key: KeyAgreementKey::generate().unwrap().public_key_bytes(),
                     nonce: [0u8; 12],
                     version: ProtocolVersion::V2,
                 }
@@ -339,7 +339,7 @@ mod test {
         };
 
         let context = transport
-            .wallet_connect(&KeyAgreementKey::new_random())
+            .wallet_connect(&KeyAgreementKey::generate().unwrap())
             .await
             .unwrap();
 
@@ -357,7 +357,7 @@ mod test {
         identify.expect_recv().once().return_once(|| {
             Ok((
                 IdentityRequest {
-                    key: [0u8; 32],
+                    key: KeyAgreementKey::generate().unwrap().public_key_bytes(),
                     nonce: [0u8; 12],
                     version: ProtocolVersion::V2,
                 }
@@ -380,7 +380,7 @@ mod test {
         };
 
         let context = transport
-            .wallet_connect(&KeyAgreementKey::new_random())
+            .wallet_connect(&KeyAgreementKey::generate().unwrap())
             .await
             .unwrap();
 

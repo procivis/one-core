@@ -882,11 +882,12 @@ impl ProofService {
         let ble_server = start_mdl_server(ble)
             .await
             .error_while("starting mDL server")?;
-        let key_pair = KeyAgreement::<EDeviceKey>::new();
+        let key_pair = KeyAgreement::<EDeviceKey>::generate()
+            .map_err(|e| ProofServiceError::Other(e.to_string()))?;
         let device_engagement = DeviceEngagement {
             version: Default::default(),
             security: Security {
-                key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
+                key_bytes: EmbeddedCbor::new(key_pair.device_key().to_owned())
                     .map_err(|e| ProofServiceError::MappingError(e.to_string()))?,
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {

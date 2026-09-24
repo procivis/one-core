@@ -464,7 +464,8 @@ fn session_key_and_identity_request(
     verifier_device: DeviceInfo,
     verifier_public_key: [u8; 32],
 ) -> Result<(IdentityRequest, BLEPeer), VerificationProtocolError> {
-    let key_agreement_key = KeyAgreementKey::new_random();
+    let key_agreement_key =
+        KeyAgreementKey::generate().map_err(VerificationProtocolError::Other)?;
     let public_key = key_agreement_key.public_key_bytes();
     let nonce = generate_random_bytes::<12>();
 
