@@ -45,6 +45,8 @@ struct AttestationStatement {
 #[derive(Debug, Deserialize)]
 struct Extensions {
     apple_bundle_version_01: String,
+    // ignored
+    // apple_validation_category_01: <u32 as LE bytes>
 }
 
 pub(crate) async fn validate_attestation_ios(
@@ -287,9 +289,17 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Mana
     })
 }
 
+#[derive(Debug, Deserialize)]
+pub(crate) struct AssertionContent {
+    pub message: Vec<u8>,
+    pub signature: Vec<u8>,
+    pub app_version: Option<String>,
+}
+
 pub(crate) fn webauthn_signed_jwt_to_msg_and_sig<T>(
     proof: &DecomposedJwt<T>,
-) -> Result<(Vec<u8>, Vec<u8>), ManagedInstanceError> {
+    bundle: Option<&IOSBundle>,
+) -> Result<AssertionContent, ManagedInstanceError> {
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct WebAuthnSignature {
@@ -300,17 +310,86 @@ pub(crate) fn webauthn_signed_jwt_to_msg_and_sig<T>(
         ciborium::de::from_reader(&proof.signature[..]).map_err(|err| {
             AppIntegrityValidationError(format!("Failed to deserialize webauthn signature: {err}"))
         })?;
+    let app_version = validate_assertion_auth_data(&webauthn_sig.authenticator_data, bundle)?;
+
     let mut msg = webauthn_sig.authenticator_data;
     msg.extend(SHA256.hash(proof.unverified_jwt.as_bytes()).map_err(|e| {
         ManagedInstanceError::CouldNotVerifyProof(format!("failed to hash token payload: {e}"))
     })?);
-    let msg = SHA256.hash(&msg).map_err(|e| {
+    let message = SHA256.hash(&msg).map_err(|e| {
         ManagedInstanceError::CouldNotVerifyProof(format!("failed to hash message: {e}"))
     })?;
-    let sig = ecdsa_sig_from_der(&webauthn_sig.signature).map_err(|e| {
+    let signature = ecdsa_sig_from_der(&webauthn_sig.signature).map_err(|e| {
         ManagedInstanceError::CouldNotVerifyProof(format!("failed parse signature: {e}"))
     })?;
-    Ok((msg, sig))
+
+    Ok(AssertionContent {
+        message,
+        signature,
+        app_version,
+    })
+}
+
+fn validate_assertion_auth_data(
+    authenticator_data: &[u8],
+    bundle: Option<&IOSBundle>,
+) -> Result<Option<String>, ManagedInstanceError> {
+    if authenticator_data.len() < 37 {
+        return Err(AppIntegrityValidationError(format!(
+            "Invalid auth data length: must be at least 37 bytes but was only {} bytes",
+            authenticator_data.len()
+        )));
+    }
+
+    // RP_ID is the first 32 bytes of the authenticator data, which must be equal to the app id hash.
+    let rp_id = authenticator_data
+        .get(..32)
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract RP_ID".to_string(),
+        ))?;
+    if let Some(bundle) = bundle {
+        let app_id_hash = SHA256
+            .hash(bundle.bundle_id.as_bytes())
+            .map_err(|err| AppIntegrityValidationError(format!("Failed to hash: {err}")))?;
+        if rp_id != app_id_hash {
+            return Err(AppIntegrityValidationError("App id mismatch".to_string()));
+        }
+    }
+
+    // Signature counter of the particular key
+    let counter = u32::from_be_bytes(
+        authenticator_data
+            .get(33..37)
+            .ok_or(AppIntegrityValidationError(
+                "Failed to extract signature counter".to_string(),
+            ))?
+            .try_into()
+            .map_err(|err| {
+                AppIntegrityValidationError(format!(
+                    "Failed to read signature counter from authenticator data: {err}"
+                ))
+            })?,
+    );
+    if counter != 1 {
+        return Err(AppIntegrityValidationError(format!(
+            "Invalid signature counter: must be 1 but was {counter}"
+        )));
+    }
+
+    let extensions = authenticator_data
+        .get(37..)
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract extensions".to_string(),
+        ))?;
+    let extensions: Option<Extensions> = if extensions.is_empty() {
+        None
+    } else {
+        Some(ciborium::from_reader(extensions).map_err(|err| {
+            AppIntegrityValidationError(format!("Failed to decode extensions: {err}"))
+        })?)
+    };
+
+    Ok(extensions.map(|e| e.apple_bundle_version_01))
 }
 
 #[cfg(test)]
@@ -497,10 +576,39 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
             .unwrap();
         let token = "eyJhbGciOiJFUzI1NiIsInR5cCI6Imp3dCJ9.eyJpYXQiOjE3NTc1MDczMTUsImV4cCI6MTc1NzUxMDkxNSwibmJmIjoxNzU3NTA3MzE1LCJhdWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20ifQ.omlzaWduYXR1cmVYRzBFAiEA_o4x5n1J9431oVI5HsFGfhH61g9jWLt2VuNs07s0RMECIG_aWSIG588XX8EspngSqexII8K33wx_wTbebInJCsC1cWF1dGhlbnRpY2F0b3JEYXRhWCVOsS8PJU7JWJfhD8KV_wtxOAB6WNUU_jplnvvKx-WFWkAAAAAB";
         let proof = Jwt::<()>::decompose_token(token).unwrap();
-        let (msg, sig) = webauthn_signed_jwt_to_msg_and_sig(&proof).unwrap();
+        let result = webauthn_signed_jwt_to_msg_and_sig(
+            &proof,
+            Some(&IOSBundle {
+                bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
+                trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
+                enforce_production_build: false,
+            }),
+        )
+        .unwrap();
 
-        let result = certificate.public_key.verify(&msg, &sig);
+        assert_eq!(result.app_version, None);
+        let result = certificate
+            .public_key
+            .verify(&result.message, &result.signature);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_assertion_auth_data_ios_27() {
+        let example_auth_data_ios_27 = hex::decode(
+            "4eb12f0f254ec95897e10fc295ff0b7138007a58d514fe3a659efbcac7e5855ac000000001a2776170706c655f62756e646c655f76657273696f6e5f30316131781c6170706c655f76616c69646174696f6e5f63617465676f72795f30314403000000",
+        ).unwrap();
+        let app_version = validate_assertion_auth_data(
+            &example_auth_data_ios_27,
+            Some(&IOSBundle {
+                bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
+                trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
+                enforce_production_build: false,
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(app_version.unwrap(), "1");
     }
 
     fn test_cert_validator() -> CertificateValidatorImpl {

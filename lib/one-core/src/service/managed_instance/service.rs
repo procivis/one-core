@@ -507,15 +507,17 @@ impl ManagedInstanceService {
                     .error_while("parsing attestation key proof token")?,
             )
             .error_while("parsing attestation key proof token")?;
-            self.verify_attestation_proof(
-                &attestation_key_proof,
-                &attestation.attested_key,
-                wallet_unit.os,
-                true,
-                reg_params.device_auth_leeway,
-                Some(wallet_unit_nonce),
-            )
-            .await?;
+            let assertion_app_version = self
+                .verify_attestation_proof(
+                    &attestation_key_proof,
+                    &attestation.attested_key,
+                    wallet_unit.os,
+                    true,
+                    reg_params.device_auth_leeway,
+                    Some(wallet_unit_nonce),
+                    &reg_params,
+                )
+                .await?;
 
             // Allow devices to have the attestation issued to some other key than the attestation
             // key. This is necessary as the attestation key might have limitations in regard to
@@ -555,7 +557,7 @@ impl ManagedInstanceService {
                     .error_while("creating JWK")?
             };
 
-            (Some(jwk), attestation.app_version)
+            (Some(jwk), attestation.app_version.or(assertion_app_version))
         } else if let Some(proof_str) = &request.attestation_key_proof {
             // No integrity check: self-certify by verifying the JWT is signed by the key embedded
             // in its own header. No server-provided nonce is available in this path (none was
@@ -573,16 +575,18 @@ impl ManagedInstanceService {
             let key_handle = self
                 .parse_jwk(&proof.header.algorithm, &jwk)
                 .error_while("parsing attestation key proof JWK")?;
-            self.verify_attestation_proof(
-                &proof,
-                &key_handle,
-                wallet_unit.os,
-                false,
-                reg_params.device_auth_leeway,
-                None,
-            )
-            .await?;
-            (Some(jwk), None)
+            let app_version = self
+                .verify_attestation_proof(
+                    &proof,
+                    &key_handle,
+                    wallet_unit.os,
+                    false,
+                    reg_params.device_auth_leeway,
+                    None,
+                    &reg_params,
+                )
+                .await?;
+            (Some(jwk), app_version)
         } else {
             (None, None)
         };
@@ -872,6 +876,7 @@ impl ManagedInstanceService {
             .map_err(|e| ManagedInstanceError::CouldNotVerifyProof(e.to_string()))
     }
 
+    #[expect(clippy::too_many_arguments)]
     async fn verify_attestation_proof(
         &self,
         proof: &DecomposedJwt<NoncePayload>,
@@ -880,10 +885,21 @@ impl ManagedInstanceService {
         integrity_check_enabled: bool,
         leeway: Duration,
         nonce: Option<&str>,
-    ) -> Result<(), ManagedInstanceError> {
+        reg_params: &ProviderRegistrationParams,
+    ) -> Result<Option<String>, ManagedInstanceError> {
+        let mut app_version = None;
+
         let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
-            (true, ManagedInstanceOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)
-                .error_while("verifying iOS attestation")?,
+            (true, ManagedInstanceOs::Ios) => {
+                let result = webauthn_signed_jwt_to_msg_and_sig(
+                    proof,
+                    reg_params.integrity_check.ios.as_ref(),
+                )
+                .error_while("verifying iOS attestation")?;
+
+                app_version = result.app_version;
+                (result.message, result.signature)
+            }
             _ => (
                 proof.unverified_jwt.as_bytes().to_vec(),
                 proof.signature.clone(),
@@ -894,7 +910,9 @@ impl ManagedInstanceService {
             .verify(&msg, &signature)
             .map_err(|e| ManagedInstanceError::CouldNotVerifyProof(e.to_string()))
             .error_while("verifying attestation proof signature")?;
-        validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
+        validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)?;
+
+        Ok(app_version)
     }
 
     async fn verify_device_signing_proof(
