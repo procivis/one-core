@@ -398,7 +398,7 @@ impl AsyncVecLoader<ProofClaim> for ProofClaimsLoader {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        // Different presented credentials can reference the same inherited claim.
+        // Load each claim once while preserving every proof/credential association.
         let claim_ids: HashSet<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
         if claim_ids.is_empty() {
             return Ok(vec![]);

@@ -42,6 +42,7 @@ assert2.workspace         = true
 futures.workspace         = true
 mockall.workspace         = true
 one-core                  = { workspace = true, features = ["mock"] }
+rstest.workspace          = true
 similar-asserts.workspace = true
 tempfile.workspace        = true
 

@@ -6338,6 +6338,7 @@ dependencies = [
  "mockall",
  "one-core",
  "one-dto-mapper",
+ "rstest",
  "sea-orm",
  "serde",
  "serde_json",

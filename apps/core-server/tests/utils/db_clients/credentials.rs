@@ -248,6 +248,13 @@ impl CredentialsDB {
             )
             .await;
         credential.r#type = CredentialType::BatchParent;
+        let holder_claims = if credential.role == CredentialRole::Holder {
+            let claims = credential.claims.as_ref().await.unwrap().to_owned();
+            credential.claims = Default::default();
+            Some(claims)
+        } else {
+            None
+        };
         let embedded_disclosure_policy = if credential.role == CredentialRole::Holder {
             credential.embedded_disclosure_policy.take()
         } else {
@@ -284,8 +291,23 @@ impl CredentialsDB {
             } else {
                 None
             };
+            let item_id = Uuid::new_v4().into();
+            let claims = holder_claims
+                .as_ref()
+                .map(|claims| {
+                    claims
+                        .iter()
+                        .map(|claim| Claim {
+                            id: Uuid::new_v4().into(),
+                            credential_id: item_id,
+                            ..claim.clone()
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
             let batch_item_credential = Credential {
-                id: Uuid::new_v4().into(),
+                id: item_id,
+                claims: claims.into(),
                 credential_blob_id,
                 ..batch_item_template.clone()
             };

@@ -147,59 +147,16 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
 }
 
 #[tokio::test]
-async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential() {
-    check_batch_presentation(false, CredentialType::BatchItem).await;
+async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item() {
+    check_batch_presentation(CredentialType::BatchItem).await;
 }
 
-#[tokio::test]
-async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item_claims() {
-    check_batch_presentation(true, CredentialType::BatchItem).await;
-}
-
-async fn check_batch_presentation(item_claims: bool, submitted_type: CredentialType) {
+async fn check_batch_presentation(submitted_type: CredentialType) {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
     let credential = setup_batch_credential(&context, &organisation, &identifier, 2).await;
     let (verifier_did, verifier_identifier, credential, interaction, proof) =
         setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
             .await;
-
-    if item_claims {
-        let claims = credential.claims.as_ref().await.unwrap().to_owned();
-        let items = batch_items(&context, credential.id).await;
-        for item in items {
-            let claims = claims
-                .iter()
-                .cloned()
-                .map(|mut claim| {
-                    claim.id = Uuid::new_v4().into();
-                    claim.credential_id = item.id;
-                    claim
-                })
-                .collect();
-            context
-                .db
-                .credentials
-                .update(
-                    item.id,
-                    UpdateCredentialRequest {
-                        claims: Some(claims),
-                        ..Default::default()
-                    },
-                )
-                .await;
-        }
-        context
-            .db
-            .credentials
-            .update(
-                credential.id,
-                UpdateCredentialRequest {
-                    claims: Some(vec![]),
-                    ..Default::default()
-                },
-            )
-            .await;
-    }
 
     context
         .server_mock
@@ -281,11 +238,6 @@ async fn check_batch_presentation(item_claims: bool, submitted_type: CredentialT
     assert!(items.iter().any(|c| c.consumed_at.is_none()));
     let consumed = items.iter().find(|c| c.consumed_at.is_some()).unwrap();
     assert_eq!(consumed.id, selected_id);
-    let expected_owner = if item_claims {
-        consumed.id
-    } else {
-        credential.id
-    };
     assert!(
         proof
             .claims
@@ -293,7 +245,7 @@ async fn check_batch_presentation(item_claims: bool, submitted_type: CredentialT
             .await
             .unwrap()
             .iter()
-            .all(|claim| claim.claim.credential_id == expected_owner)
+            .all(|claim| claim.claim.credential_id == consumed.id)
     );
     assert!(
         proof
@@ -308,7 +260,7 @@ async fn check_batch_presentation(item_claims: bool, submitted_type: CredentialT
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_parent() {
-    check_batch_presentation(true, CredentialType::BatchParent).await;
+    check_batch_presentation(CredentialType::BatchParent).await;
 }
 
 #[tokio::test]
@@ -474,15 +426,15 @@ async fn mixed_format_batch_parent_rejection() {
 
 #[tokio::test]
 async fn two_queries_reuse_the_same_batch_item() {
-    check_two_queries_with_inherited_claims(false).await;
+    check_two_queries_with_item_claims(false).await;
 }
 
 #[tokio::test]
-async fn two_queries_record_different_batch_items_with_inherited_claims() {
-    check_two_queries_with_inherited_claims(true).await;
+async fn two_queries_record_different_batch_items_with_identical_claim_values() {
+    check_two_queries_with_item_claims(true).await;
 }
 
-async fn check_two_queries_with_inherited_claims(distinct_items: bool) {
+async fn check_two_queries_with_item_claims(distinct_items: bool) {
     use one_core::model::interaction::UpdateInteractionRequest;
     use one_core::repository::DataRepository;
     use sql_data_provider::DataLayer;
@@ -562,7 +514,7 @@ async fn check_two_queries_with_inherited_claims(distinct_items: bool) {
     assert!(
         claims
             .iter()
-            .all(|entry| entry.claim.credential_id == parent.id)
+            .all(|entry| entry.claim.credential_id == entry.credential.id())
     );
     let sources: std::collections::HashSet<_> =
         claims.iter().map(|entry| entry.credential.id()).collect();
@@ -573,7 +525,8 @@ async fn check_two_queries_with_inherited_claims(distinct_items: bool) {
     };
     assert_eq!(sources, expected.into_iter().collect());
     if distinct_items {
-        assert_eq!(claims[0].claim.id, claims[1].claim.id);
+        assert_ne!(claims[0].claim.id, claims[1].claim.id);
+        assert_eq!(claims[0].claim.value, claims[1].claim.value);
     }
     drop(claims);
 
@@ -771,7 +724,7 @@ async fn setup_mixed_format_batch(
             .await
             .unwrap();
     }
-    // The generic batch fixture models legacy storage; new parents have no format.
+    // The generic batch fixture retains a format; holder parents have no format.
     context
         .db
         .db_conn
@@ -1519,19 +1472,20 @@ async fn batch_parent_submission_rejects_exhausted_batch() {
 #[tokio::test]
 async fn batch_submission_with_nonmatching_claims_is_invalid() {
     let batch = BatchPresentation::new(2).await;
-    // Legacy fixture items read their claims from the parent.
-    batch
-        .context
-        .db
-        .credentials
-        .update(
-            batch.parent.id,
-            UpdateCredentialRequest {
-                claims: Some(vec![]),
-                ..Default::default()
-            },
-        )
-        .await;
+    for item in &batch.items {
+        batch
+            .context
+            .db
+            .credentials
+            .update(
+                item.id,
+                UpdateCredentialRequest {
+                    claims: Some(vec![]),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
     let sibling = batch
         .items
         .iter()

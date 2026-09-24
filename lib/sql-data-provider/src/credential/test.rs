@@ -38,6 +38,7 @@ use one_core::repository::organisation_repository::{
     MockOrganisationRepository, OrganisationRepository,
 };
 use one_dto_mapper::convert_inner;
+use rstest::rstest;
 use sea_orm::{DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
@@ -941,6 +942,83 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
 
     assert_eq!(0, credentials.total_items.unwrap());
     assert_eq!(0, credentials.values.len());
+}
+
+#[rstest]
+#[case::initial([false, false, true], true, Some("newest"))]
+#[case::empty_latest([false, false, true], false, None)]
+#[case::deleted_latest([false, true, true], false, Some("older"))]
+#[case::no_live_items([true, true, true], false, None)]
+#[tokio::test]
+async fn holder_parent_claim_search_uses_only_newest_nondeleted_item(
+    #[case] deleted_items: [bool; 3],
+    #[case] newest_has_claims: bool,
+    #[case] expected: Option<&str>,
+    #[values("older", "newest", "deleted")] search_value: &str,
+) {
+    use sea_orm::{ActiveModelTrait, IntoActiveModel};
+
+    let TestSetupWithCredential {
+        db,
+        credential_id,
+        credential_schema,
+        ..
+    } = setup_with_credential().await;
+    let mut parent = credential::Entity::find_by_id(credential_id)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    parent.role = Set(credential::CredentialRole::Holder);
+    parent.r#type = Set(credential::CredentialType::BatchParent);
+    let parent = parent.update(&db).await.unwrap();
+    let schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let item_ids: [CredentialId; 3] = [1, 2, 3].map(|n| Uuid::from_u128(n).into());
+    for ((item_id, value), deleted) in item_ids
+        .into_iter()
+        .zip(["older", "newest", "deleted"])
+        .zip(deleted_items)
+    {
+        let mut item = parent.clone().into_active_model();
+        item.id = Set(item_id);
+        item.parent_id = Set(Some(parent.id));
+        item.r#type = Set(credential::CredentialType::BatchItem);
+        item.deleted_at = Set(deleted.then_some(get_dummy_date()));
+        item.insert(&db).await.unwrap();
+        if value == "newest" && !newest_has_claims {
+            continue;
+        }
+        claim::ActiveModel {
+            id: Set(Uuid::new_v4().into()),
+            credential_id: Set(item_id),
+            claim_schema_id: Set(schema_id),
+            path: Set("name".into()),
+            value: Set(Some(value.as_bytes().to_vec())),
+            created_date: Set(get_dummy_date()),
+            last_modified: Set(get_dummy_date()),
+            selectively_disclosable: Set(false),
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+    }
+    let provider = credential_repository(db.clone(), None);
+    let result = provider
+        .get_credential_list(CredentialListQuery {
+            filtering: Some(
+                CredentialFilterValue::Types(vec![CredentialType::BatchParent]).condition()
+                    & CredentialFilterValue::ClaimValue(StringMatch::contains(search_value))
+                        .condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        result.values.len(),
+        usize::from(expected == Some(search_value))
+    );
 }
 
 #[tokio::test]

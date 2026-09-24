@@ -9,23 +9,16 @@ use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::OptionalRelatedExt;
 use crate::repository::credential_repository::CredentialRepository;
 
-/// Returns stored claims, resolving parent-owned claims for batch items.
-/// Issuer items and legacy holder items inherit their parent's claims; new holder
-/// items carry their own, including metadata. Batch parents return their existing claims
-/// relation unchanged: empty for new holder parents unless already populated by the caller
+/// Returns stored claims, resolving parent-owned claims for non-holder batch items.
+/// Holder items carry their own claims, including metadata. Batch parents return their claims
+/// relation unchanged: empty for holder parents unless already populated by the caller
 /// (as in backup snapshots). This never loads child claims;
 /// use [`detail_claims`] to derive a holder batch parent's summary from its newest item.
 pub(crate) async fn stored_credential_claims(
     credential: &Credential,
 ) -> Result<Vec<Claim>, NestedError> {
-    if credential.r#type != CredentialType::BatchItem {
+    if credential.r#type != CredentialType::BatchItem || credential.role == CredentialRole::Holder {
         return Ok(credential.claims.as_ref().await?.to_owned());
-    }
-    if credential.role == CredentialRole::Holder {
-        let claims = credential.claims.as_ref().await?.to_owned();
-        if !claims.is_empty() {
-            return Ok(claims);
-        }
     }
     Ok(credential
         .parent
@@ -37,21 +30,20 @@ pub(crate) async fn stored_credential_claims(
         .to_owned())
 }
 
-/// The holder's batch summary follows its newest item, with a fallback for stored
-/// legacy parent claims. This does not change the persisted claim ownership.
+/// The holder's batch summary follows its newest nondeleted item.
 pub(crate) async fn detail_claims(
     credential: &Credential,
     repository: &dyn CredentialRepository,
 ) -> Result<Vec<Claim>, NestedError> {
     if credential.role == CredentialRole::Holder && credential.r#type == CredentialType::BatchParent
     {
-        holder_detail_claims(credential, repository).await
+        holder_batch_parent_claims(credential, repository).await
     } else {
         stored_credential_claims(credential).await
     }
 }
 
-async fn holder_detail_claims(
+async fn holder_batch_parent_claims(
     credential: &Credential,
     repository: &dyn CredentialRepository,
 ) -> Result<Vec<Claim>, NestedError> {
@@ -75,12 +67,9 @@ async fn holder_detail_claims(
         .await
         .error_while("loading newest batch item")?;
     if let Some(item) = items.values.first() {
-        let claims = item.claims.as_ref().await?.to_owned();
-        if !claims.is_empty() {
-            return Ok(claims);
-        }
+        return Ok(item.claims.as_ref().await?.to_owned());
     }
-    Ok(credential.claims.as_ref().await?.to_owned())
+    Ok(vec![])
 }
 
 #[cfg(test)]
@@ -93,7 +82,7 @@ mod test {
     use crate::service::test_utilities::dummy_credential;
 
     #[tokio::test]
-    async fn concrete_claims_preserve_ownership_and_legacy_fallback() {
+    async fn holder_items_use_only_own_claims_while_issuer_items_inherit() {
         let parent = dummy_credential();
         let parent_claim_id = parent.claims.as_ref().await.unwrap()[0].id;
         let mut item = Credential {
@@ -115,14 +104,11 @@ mod test {
         );
         item.role = CredentialRole::Holder;
         item.claims = Default::default();
-        assert_eq!(
-            stored_credential_claims(&item).await.unwrap()[0].id,
-            parent_claim_id
-        );
+        assert!(stored_credential_claims(&item).await.unwrap().is_empty());
     }
 
     #[tokio::test]
-    async fn parent_details_use_item_claims_then_legacy_fallback() {
+    async fn parent_details_use_only_newest_item_claims() {
         for (has_item, has_item_claims) in [(true, true), (true, false), (false, false)] {
             let mut parent = Credential {
                 role: CredentialRole::Holder,
@@ -150,14 +136,11 @@ mod test {
                     })
                 });
             let claims = detail_claims(&parent, &repository).await.unwrap();
-            assert_eq!(
-                claims[0].id,
-                if has_item_claims {
-                    item_claim_id
-                } else {
-                    parent.claims.as_ref().await.unwrap()[0].id
-                }
-            );
+            if has_item_claims {
+                assert_eq!(claims[0].id, item_claim_id);
+            } else {
+                assert!(claims.is_empty());
+            }
             parent.claims = Default::default();
             assert_eq!(
                 detail_claims(&parent, &repository)

@@ -143,8 +143,8 @@ impl SSIHolderService {
             .await
             .error_while("updating proof")?;
 
-        // Repeated queries may disclose the same claim from the same item. Different
-        // items must stay distinct, even when they inherit the same parent claim.
+        // Repeated queries may disclose the same claim from the same item.
+        // Keep distinct presented credentials as separate proof inputs.
         self.proof_repository
             .set_proof_claims(
                 &proof.id,

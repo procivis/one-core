@@ -23,8 +23,8 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{
-    Alias, ColumnRef, Expr, ExprTrait, Func, NullOrdering, Order, Query, SelectStatement,
-    SimpleExpr, SubQueryStatement,
+    Alias, ColumnRef, Expr, ExprTrait, NullOrdering, Order, Query, SelectStatement, SimpleExpr,
+    SubQueryStatement,
 };
 use sea_orm::{
     ActiveValue, ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait, Set, Value,
@@ -285,8 +285,8 @@ impl IntoJoinRelations for CredentialFilterValue {
     }
 }
 
-/// Match the holder detail view: use the newest item's own claims, falling back
-/// to stored legacy parent claims when that item has none. Other roles are unchanged.
+/// Match the holder detail view: use the newest nondeleted item's own claims.
+/// Other roles are unchanged.
 pub(crate) fn effective_claim_owner() -> SimpleExpr {
     let item = Alias::new("claim_source_item");
     let latest = Query::select()
@@ -301,15 +301,6 @@ pub(crate) fn effective_claim_owner() -> SimpleExpr {
         .order_by((item, credential::Column::Id), Order::Desc)
         .limit(1)
         .to_owned();
-    let owner = Query::select()
-        .column(claim::Column::CredentialId)
-        .from(claim::Entity)
-        .and_where(Expr::col((claim::Entity, claim::Column::CredentialId)).eq(
-            SimpleExpr::SubQuery(None, Box::new(SubQueryStatement::SelectStatement(latest))),
-        ))
-        .limit(1)
-        .to_owned();
-    let own_id = Expr::col((credential::Entity, credential::Column::Id));
     Expr::case(
         Expr::col((credential::Entity, credential::Column::Role))
             .eq(credential::CredentialRole::Holder)
@@ -317,10 +308,7 @@ pub(crate) fn effective_claim_owner() -> SimpleExpr {
                 Expr::col((credential::Entity, credential::Column::Type))
                     .eq(credential::CredentialType::BatchParent),
             ),
-        Func::coalesce([
-            SimpleExpr::SubQuery(None, Box::new(SubQueryStatement::SelectStatement(owner))),
-            own_id,
-        ]),
+        SimpleExpr::SubQuery(None, Box::new(SubQueryStatement::SelectStatement(latest))),
     )
     .finally(Expr::col((credential::Entity, credential::Column::Id)))
     .into()
