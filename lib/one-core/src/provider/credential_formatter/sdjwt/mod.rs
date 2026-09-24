@@ -40,7 +40,6 @@ use crate::provider::credential_formatter::sdjwt::model::{
     KeyBindingPayload, SdJwtFormattingInputs,
 };
 use crate::provider::credential_formatter::sdjwt::x5c::resolve_jwks_url;
-use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -59,9 +58,8 @@ pub(crate) enum SdJwtType {
 
 #[expect(clippy::too_many_arguments)]
 pub(crate) async fn format_credential<T: Serialize>(
-    credential: VcdmCredential,
     claims: Value,
-    additional_inputs: SdJwtFormattingInputs,
+    inputs: SdJwtFormattingInputs,
     auth_fn: AuthenticationFn,
     hasher: &dyn Hasher,
     did_method_provider: &dyn DidMethodProvider,
@@ -70,14 +68,10 @@ pub(crate) async fn format_credential<T: Serialize>(
     sd_array_elements: bool,
     base_url: &str,
 ) -> Result<SerializedCredential, FormatterError> {
-    let issuer = credential.issuer.as_url().to_string();
-    let id = credential.id.clone();
-    let invalid_before = credential.valid_from.or(credential.issuance_date);
-    let expires_at = credential.valid_until.or(credential.expiration_date);
     let (payload, disclosures) =
         format_hashed_credential(&claims, hasher, digests_to_payload, sd_array_elements)?;
 
-    let proof_of_possession_key = match &additional_inputs.holder_identifier {
+    let proof_of_possession_key = match &inputs.holder_identifier {
         Some(identifier) => match &identifier.data {
             IdentifierData::Did(did) => {
                 let did = did.as_ref().await?;
@@ -87,7 +81,7 @@ pub(crate) async fn format_credential<T: Serialize>(
                     .error_while("resolving DID")?;
                 did_document
                     .find_verification_method(
-                        additional_inputs.holder_key_id.as_deref(),
+                        inputs.holder_key_id.as_deref(),
                         Some(KeyRole::AssertionMethod),
                     )
                     .map(|verification_method| verification_method.public_key_jwk.clone())
@@ -120,35 +114,36 @@ pub(crate) async fn format_credential<T: Serialize>(
         None => None,
     };
 
-    let subject = match additional_inputs
-        .holder_identifier
-        .as_ref()
-        .and_then(|identifier| match &identifier.data {
-            IdentifierData::Did(did) => Some(did),
-            _ => None,
-        }) {
-        Some(did) => Some(did.as_ref().await?.did.to_string()),
-        None => None,
-    };
+    let subject =
+        match inputs
+            .holder_identifier
+            .as_ref()
+            .and_then(|identifier| match &identifier.data {
+                IdentifierData::Did(did) => Some(did),
+                _ => None,
+            }) {
+            Some(did) => Some(did.as_ref().await?.did.to_string()),
+            None => None,
+        };
 
     let payload = JWTPayload {
         issued_at: Some(crate::clock::now_utc()),
-        expires_at,
-        invalid_before,
+        expires_at: inputs.valid_until,
+        invalid_before: Some(inputs.valid_from),
         subject,
         audience: None,
-        issuer: Some(issuer),
-        jwt_id: id.map(|id| id.to_string()),
+        issuer: Some(inputs.issuer.to_string()),
+        jwt_id: inputs.id.map(|id| id.to_string()),
         custom: payload,
         proof_of_possession_key,
     };
 
     let key_id = auth_fn.get_key_id();
     let jwt = Jwt::new(
-        additional_inputs.token_type,
+        inputs.token_type,
         auth_fn.jose_alg().error_while("preparing JWT")?,
         key_id,
-        additional_inputs
+        inputs
             .issuer_certificate
             .map(|issuer_certificate| certificate_into_x5c_and_x5u(base_url, &issuer_certificate))
             .transpose()

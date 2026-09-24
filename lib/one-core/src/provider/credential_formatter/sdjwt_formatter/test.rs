@@ -19,11 +19,12 @@ use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use crate::provider::credential_formatter::CredentialFormatter;
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, CredentialData, CredentialSchema, CredentialStatus,
-    Features, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource, PublishedClaim,
+    CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, Features,
+    IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource, UnsignedCredential,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     DisclosureArray, DisclosureArrayElement,
@@ -31,9 +32,8 @@ use crate::provider::credential_formatter::sdjwt::disclosures::{
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwt_formatter::{Params, VcClaim};
 use crate::provider::credential_formatter::vcdm::{
-    ContextType, VcdmCredential, VcdmCredentialSubject,
+    ContextType, VcdmCredential, VcdmCredentialSchema, VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::MockDidMethod;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -77,13 +77,14 @@ async fn test_format_credential() {
         },
         "http://base_url",
     );
-    credential_data
-        .vcdm
-        .context
+    let UnsignedCredential::Vcdm(vcdm) = &mut credential_data.credential else {
+        unreachable!()
+    };
+    vcdm.context
         .insert(ContextType::Url("http://context.com".parse().unwrap()));
-    credential_data.vcdm.r#type.push("Type1".to_string());
-    credential_data.vcdm.valid_from = None;
-    credential_data.vcdm.valid_until = None;
+    vcdm.r#type.push("Type1".to_string());
+    vcdm.valid_from = None;
+    vcdm.valid_until = None;
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -873,7 +874,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         .parse::<Url>()
         .unwrap()
         .into();
-    let schema = CredentialSchema {
+    let schema = VcdmCredentialSchema {
         id: "CredentialSchemaId".to_owned(),
         r#type: "TestType".to_owned(),
         metadata: None,
@@ -881,27 +882,15 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
 
     let holder_did: DidValue = "did:example:123".parse().unwrap();
 
-    let claims = vec![
-        PublishedClaim {
-            key: "root/array/0".into(),
-            value: "array_item".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-        PublishedClaim {
-            key: "root/nested".into(),
-            value: "nested_item".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-        PublishedClaim {
-            key: "root_item".into(),
-            value: "root_item".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-    ];
-
     let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
-    let credential_subject =
-        VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap()).unwrap();
+    let credential_subject = VcdmCredentialSubject::new([
+        (
+            "root",
+            json!({"array": ["array_item"], "nested": "nested_item"}),
+        ),
+        ("root_item", json!("root_item")),
+    ])
+    .unwrap();
 
     let mut vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
         .add_context(schema_context)
@@ -921,8 +910,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         ..dummy_identifier()
     };
     CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Vcdm(vcdm),
         holder_identifier: Some(holder_identifier),
         holder_key_id: Some("did-vm-id".to_string()),
         issuer_certificate: None,

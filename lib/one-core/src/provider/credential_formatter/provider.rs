@@ -134,7 +134,6 @@ fn initialize_provider(
             fields.merge_fields(),
             certificate_validator.clone(),
             did_method_provider.clone(),
-            datatype_config.clone(),
             data_type_provider.clone(),
             key_algorithm_provider.clone(),
             client.clone(),

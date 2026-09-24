@@ -101,15 +101,12 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
-use crate::provider::credential_formatter::mapper::first_certificate;
+use crate::provider::credential_formatter::mapper::{first_certificate, unsigned_credential};
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialStatus, VerificationFn,
-};
+use crate::provider::credential_formatter::model::{CredentialData, VerificationFn};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::model::ProtocolArtifact;
-use crate::provider::issuance_protocol::openid4vci_final1_0::mapper_v2::credential_to_credential_detail_v2;
 use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::Features as KeyAlgorithmFeatures;
@@ -135,7 +132,6 @@ use crate::util::key_selection::KeyFilter;
 mod attestations;
 mod holder_credentials;
 pub(crate) mod mapper;
-mod mapper_v2;
 pub mod model;
 pub mod proof_formatter;
 pub mod service;
@@ -2006,29 +2002,6 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?)
     }
-
-    async fn map_to_credential_data(
-        &self,
-        format_id: CredentialSchemaFormatId,
-        credential: &Credential,
-        credential_status: Vec<CredentialStatus>,
-        core_base_url: &str,
-    ) -> Result<CredentialData, IssuanceProtocolError> {
-        let schema = credential.schema.as_ref().await?;
-        let schema_formats = schema.formats.as_ref().await?;
-        let schema_format = schema_formats.iter().find(|f| f.id == format_id).ok_or(
-            IssuanceProtocolError::Failed("missing credential schema format".to_string()),
-        )?;
-        credential_to_credential_detail_v2(
-            credential,
-            &schema,
-            schema_format,
-            &self.config,
-            core_base_url,
-            credential_status,
-        )
-        .await
-    }
 }
 
 #[async_trait]
@@ -2546,17 +2519,26 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
         let holder_identifier_id = holder_identifier.id;
-        let mut credential_data = self
-            .map_to_credential_data(format_id, &credential, credential_status, core_base_url)
-            .await?;
-
-        credential_data.holder_identifier = Some(holder_identifier);
-        credential_data.holder_key_id = Some(holder_key_id);
-        credential_data.issuer_certificate = match credential.issuer_certificate.as_ref() {
+        let issuer_certificate = match credential.issuer_certificate.as_ref() {
             Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
             None => first_certificate(&issuer_identifier)
                 .await
                 .error_while("getting issuer certificate")?,
+        };
+        let credential_data = CredentialData {
+            credential: unsigned_credential(
+                &credential,
+                core_base_url,
+                credential_status,
+                &credential_schema,
+                format,
+                &self.config,
+            )
+            .await
+            .error_while("creating credential")?,
+            holder_identifier: Some(holder_identifier),
+            holder_key_id: Some(holder_key_id),
+            issuer_certificate,
         };
 
         let token = formatter

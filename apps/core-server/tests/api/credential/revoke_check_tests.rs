@@ -4,8 +4,10 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
-use one_core::provider::credential_formatter::model::{CredentialData, Issuer};
-use one_core::provider::credential_formatter::vcdm::VcdmCredential;
+use one_core::provider::credential_formatter::mdoc_formatter::MdocCredential;
+use one_core::provider::credential_formatter::model::{
+    CredentialData, IssuedClaims, UnsignedCredential,
+};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::service::test_utilities::dummy_organisation;
@@ -2327,33 +2329,12 @@ async fn expired_mdoc_credential() -> SerializedCredential {
 
 async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredential {
     let credential = CredentialData {
-        vcdm: VcdmCredential {
-            context: Default::default(),
-            id: None,
-            r#type: vec![],
-            issuer: Issuer::Url("https://example.issuer.com".parse().unwrap()),
-            valid_from: None,
-            issuance_date: None,
+        credential: UnsignedCredential::Mdoc(MdocCredential {
+            doctype: "schema".to_string(),
             valid_until: None,
-            expiration_date: None,
-            credential_subject: vec![],
             credential_status: vec![],
-            proof: None,
-            credential_schema: Some(vec![
-                one_core::provider::credential_formatter::model::CredentialSchema {
-                    id: "schema".to_string(),
-                    r#type: "schema".to_string(),
-                    metadata: None,
-                },
-            ]),
-            refresh_service: None,
-            name: None,
-            description: None,
-            terms_of_use: None,
-            evidence: None,
-            related_resource: None,
-        },
-        claims: vec![],
+            claims: IssuedClaims::new(),
+        }),
         holder_identifier: Some(Identifier {
             id: Uuid::new_v4().into(),
             created_date: one_core::clock::now_utc(),

@@ -86,7 +86,6 @@ pub async fn format_mdoc_credential(
             android_key_attestation_crl_cache,
         )) as _,
         Arc::new(did_method_provider),
-        config.datatype,
         datatype_provider,
         key_algorithm_provider,
         Arc::new(ReqwestClient::default()),

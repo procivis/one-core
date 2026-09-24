@@ -21,17 +21,11 @@ pub enum FormatterError {
     BBSOnly,
     #[error("JSON mapping error: `{0}`")]
     JsonMapping(String),
-    #[error("Float value is NaN")]
-    FloatValueIsNaN,
     #[error("Unsupported identifier type `{0}`")]
     UnsupportedIdentifierType(IdentifierType),
     #[error("Schema ID not allowed")]
     SchemaIdNotAllowed,
 
-    #[error("Jsonptr assign error: `{0}`")]
-    JsonPtrAssignError(#[from] jsonptr::assign::Error),
-    #[error("Jsonptr parse error: `{0}`")]
-    JsonPtrParseError(#[from] jsonptr::ParseError),
     #[error("Json serialization error: `{0}`")]
     JsonSerialization(#[from] serde_json::Error),
     #[error("Json serialization error: `{0}`")]
@@ -83,8 +77,6 @@ impl ErrorCodeMixin for FormatterError {
             | Self::CouldNotExtractCredentials(_)
             | Self::CouldNotExtractPresentation(_)
             | Self::JsonMapping(_)
-            | Self::JsonPtrAssignError(_)
-            | Self::JsonPtrParseError(_)
             | Self::JsonSerialization(_)
             | Self::JsonSyntaxSerialization(_)
             | Self::JsonSyntaxDeserialization(_)
@@ -103,7 +95,6 @@ impl ErrorCodeMixin for FormatterError {
             | Self::HasherError(_)
             | Self::EnumParseError(_)
             | Self::UnsupportedIdentifierType(_)
-            | Self::FloatValueIsNaN
             | Self::HexError(_) => ErrorCode::BR_0057,
             Self::Nested(nested) => nested.error_code(),
         }

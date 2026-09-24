@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use model::{SdJwtVc, SdJwtVcStatus};
+use model::{SdJwtVc, SdJwtVcCredential, SdJwtVcStatus};
 use one_crypto::get_hasher;
 use proc_macros::Provider;
 use sdjwt::format_credential;
@@ -31,12 +31,11 @@ use super::mapper::{default_2_years, first_certificate, to_format_with_mappings}
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
-    IdentifierDetails, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
+    IdentifierDetails, IssuedClaimValue, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
 use super::sdjwt::{parse_holder_identifier, prepare_sd_presentation};
-use super::vcdm::VcdmCredential;
 use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
@@ -244,20 +243,20 @@ impl CredentialFormatter for SDJWTVCFormatter {
             );
         };
         const HASH_ALG: HashAlgorithm = HashAlgorithm::Sha256;
-        // todo: here we need sdjwt-vc specific data model instead of using vcdm
-        let mut vcdm = credential_data.vcdm;
-        let now = crate::clock::now_utc();
-        if vcdm.valid_from.is_none() {
-            vcdm.valid_from = Some(now);
+        let SdJwtVcCredential {
+            vct,
+            issuer,
+            valid_until,
+            credential_status,
+            mut claims,
+        } = credential_data.credential.into_sd_jwt_vc()?;
+
+        if self.params.swiyu_mode {
+            for claim in claims.values_mut() {
+                strip_swiyu_picture_prefix(claim);
+            }
         }
-        let schema_id = vcdm
-            .credential_schema
-            .as_ref()
-            .and_then(|schemas| schemas.first())
-            .map(|schema| schema.id.to_owned())
-            .ok_or_else(|| {
-                FormatterError::CouldNotFormat("Missing credential schema id".to_string())
-            })?;
+        let claims = Value::from(IssuedClaimValue::Object(claims));
 
         let token_type = if self.params.swiyu_mode {
             // SWIYU still uses the old typ
@@ -266,27 +265,27 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "dc+sd-jwt".to_string()
         };
         let inputs = SdJwtFormattingInputs {
+            issuer,
+            id: None,
+            valid_from: crate::clock::now_utc(),
+            valid_until,
             holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
-            leeway: self.params.leeway_seconds,
             token_type,
             issuer_certificate: credential_data.issuer_certificate,
         };
 
         let vct_integrity = self
             .vct_type_metadata_cache
-            .get(&schema_id)
+            .get(&vct)
             .await
             .error_while("getting VCT")?
             .and_then(|item| item.integrity);
 
-        let status = vcdm.credential_status.clone();
         let payload_from_digests = |digests: Vec<String>| {
-            sdjwt_vc_from_credential(status, digests, HASH_ALG, schema_id, vct_integrity)
+            sdjwt_vc_from_credential(credential_status, digests, HASH_ALG, vct, vct_integrity)
         };
-        let claims = self.credential_to_claims(&vcdm, &credential_data.claims)?;
         format_credential(
-            vcdm,
             claims,
             inputs,
             auth_fn,
@@ -583,49 +582,22 @@ impl SDJWTVCFormatter {
             status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
         })
     }
+}
 
-    fn credential_to_claims(
-        &self,
-        credential: &VcdmCredential,
-        published_claims: &[PublishedClaim],
-    ) -> Result<Value, FormatterError> {
-        let claims = credential
-            .credential_subject
-            .first()
-            .map(|cs| cs.claims.clone())
-            .ok_or_else(|| {
-                FormatterError::CouldNotFormat(
-                    "Credential is missing credential subject".to_string(),
-                )
-            })?;
-
-        let mut claims = HashMap::from_iter(claims);
-
-        if self.params.swiyu_mode {
-            // Remove data uri prefix from image claim values when formatting for SWIYU
-            for published_claim in published_claims.iter().filter(|claim| {
-                let Some(ref data_type) = claim.datatype else {
-                    return false;
-                };
-                let Some(fields) = self.datatype_config.get_fields(data_type).ok() else {
-                    return false;
-                };
-                fields.r#type == DatatypeType::SwiyuPicture
-            }) {
-                let path = published_claim.key.split(NESTED_CLAIM_MARKER).collect();
-                post_process_claims(path, &mut claims, |value| {
-                    value
-                        .trim_start_matches(JPEG_DATA_URI_PREFIX)
-                        .trim_start_matches(PNG_DATA_URI_PREFIX)
-                        .to_string()
-                });
-            }
+/// SWIYU credentials don't encode image claims with the data uri prefix
+fn strip_swiyu_picture_prefix(claim: &mut IssuedClaimValue) {
+    match claim {
+        IssuedClaimValue::SwiyuPicture(value) => {
+            *value = value
+                .trim_start_matches(JPEG_DATA_URI_PREFIX)
+                .trim_start_matches(PNG_DATA_URI_PREFIX)
+                .to_string();
         }
-        Ok(Value::Object(serde_json::Map::from_iter(
-            claims
-                .into_iter()
-                .map(|(key, value)| (key, serde_json::Value::from(value.value))),
-        )))
+        IssuedClaimValue::Object(claims) => {
+            claims.values_mut().for_each(strip_swiyu_picture_prefix)
+        }
+        IssuedClaimValue::Array(claims) => claims.iter_mut().for_each(strip_swiyu_picture_prefix),
+        _ => {}
     }
 }
 

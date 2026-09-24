@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
+use itertools::Itertools;
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use crate::mapper::{
     NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR, paths_to_leafs, translations_to_i18n,
 };
 use crate::model::claim::Claim;
+use crate::model::claim_path::ClaimPathSegment;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
@@ -16,6 +18,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::relation::OptionalRelatedExt;
 use crate::provider::credential_formatter::MetadataClaimSchema;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
@@ -166,11 +169,13 @@ pub(crate) async fn add_fallback_translation(
     Ok(claim_schema)
 }
 
-pub(crate) fn claim_path_to_formatted_path(
+/// Returns the path of the claim in the formatted credential. The schema keys are replaced by
+/// the technical keys of the claim mapping, the array indices of the stored path are kept.
+pub(crate) fn technical_claim_path(
     claim: &Claim,
     claim_schema: &ClaimSchema,
     claim_mapping: &CredentialSchemaFormatClaimSchema,
-) -> Result<String, IssuanceProtocolError> {
+) -> Result<Vec<ClaimPathSegment>, FormatterError> {
     let key_segments = claim_schema
         .key
         .split(NESTED_CLAIM_MARKER)
@@ -184,45 +189,64 @@ pub(crate) fn claim_path_to_formatted_path(
         .split(NESTED_CLAIM_MARKER)
         .collect::<VecDeque<&str>>();
     if key_segments.len() != technical_key_segments.len() {
-        return Err(IssuanceProtocolError::Failed(format!(
+        return Err(FormatterError::CouldNotFormat(format!(
             "key `{}` and technical key `{}` have different number of segments",
             claim_schema.key, claim_mapping.technical_key
         )));
     }
-    let mut mapped_path = vec![];
+    let mut path = vec![];
+    if let Some(namespace) = &claim_mapping.namespace {
+        path.push(ClaimPathSegment::Key(namespace.clone()));
+    }
     for (key_segment, technical_key_segment) in
         key_segments.iter().zip(technical_key_segments.iter())
     {
-        map_array_indices(&mut path_segments, key_segment, &mut mapped_path)?;
-        mapped_path.push(technical_key_segment);
+        map_array_indices(&mut path_segments, key_segment, &mut path)?;
+        path.push(ClaimPathSegment::Key(technical_key_segment.to_string()));
     }
     // path segments left over are array indices, which are not part of the schema keys
-    mapped_path.extend(path_segments);
-    if let Some(namespace) = &claim_mapping.namespace {
-        mapped_path.insert(0, namespace);
+    for index in path_segments {
+        path.push(array_index(index)?);
     }
-    Ok(mapped_path.join(NESTED_CLAIM_MARKER_STR))
+    Ok(path)
 }
 
 /// Maps path segments to the mapped path until one matches the key segment.
 /// The path may contain additional segments (the array indices), which are not represented in the
 /// schema keys, which is why we need to do this in the first place.
-fn map_array_indices<'a>(
-    path_segments: &mut VecDeque<&'a str>,
+fn map_array_indices(
+    path_segments: &mut VecDeque<&str>,
     key_segment: &str,
-    mapped_path: &mut Vec<&'a str>,
-) -> Result<(), IssuanceProtocolError> {
+    path: &mut Vec<ClaimPathSegment>,
+) -> Result<(), FormatterError> {
     loop {
         let Some(curr_path_segment) = path_segments.pop_front() else {
-            return Err(IssuanceProtocolError::Failed(format!(
+            return Err(FormatterError::CouldNotFormat(format!(
                 "path segment missing for key segment `{key_segment}`"
             )));
         };
         if curr_path_segment == key_segment {
             return Ok(());
         }
-        mapped_path.push(curr_path_segment);
+        path.push(array_index(curr_path_segment)?);
     }
+}
+
+fn array_index(segment: &str) -> Result<ClaimPathSegment, FormatterError> {
+    segment
+        .parse()
+        .map(ClaimPathSegment::Index)
+        .map_err(|_| FormatterError::CouldNotFormat(format!("`{segment}` is not an array index")))
+}
+
+pub(crate) fn claim_path_to_formatted_path(
+    claim: &Claim,
+    claim_schema: &ClaimSchema,
+    claim_mapping: &CredentialSchemaFormatClaimSchema,
+) -> Result<String, IssuanceProtocolError> {
+    let path = technical_claim_path(claim, claim_schema, claim_mapping)
+        .error_while("mapping claim path")?;
+    Ok(path.iter().join(NESTED_CLAIM_MARKER_STR))
 }
 
 /// Maps credential claims (as shown in credential details) to disclosed keys as formatted in the

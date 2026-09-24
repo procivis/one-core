@@ -1,11 +1,8 @@
-use indexmap::IndexMap;
-
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::der_chain_into_pem_chain;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
-use crate::provider::credential_formatter::model::PublishedClaim;
 
 /// Resolves the certificate (chain) referenced by the `x5u` header parameter
 /// (IETF RFC 7515 clause 4.1.5 for JOSE, IETF RFC 9360 for COSE). ETSI TS 119 472-1
@@ -60,38 +57,6 @@ pub async fn resolve_x5u(
     })
 }
 
-pub fn nest_claims(
-    claims: impl IntoIterator<Item = PublishedClaim>,
-) -> Result<IndexMap<String, serde_json::Value>, FormatterError> {
-    let mut data = serde_json::Value::Object(Default::default());
-
-    let mut claims = claims.into_iter().collect::<Vec<PublishedClaim>>();
-    // numeric-aware ordering so array indices assign in order (1, 2, ..., 10 instead of 1, 10, 2)
-    claims.sort_unstable_by(|a, b| human_sort::compare(&a.key, &b.key));
-
-    for claim in claims {
-        let path = format!("/{}", json_pointer_escape(&claim.key));
-        let pointer = jsonptr::Pointer::parse(&path)?;
-        let value: serde_json::Value = claim.value.try_into()?;
-        pointer.assign(&mut data, value)?;
-    }
-
-    Ok(data
-        .as_object()
-        .ok_or(FormatterError::JsonMapping(
-            "data is not an Object".to_string(),
-        ))?
-        .into_iter()
-        .map(|(k, v)| (k.to_owned(), v.to_owned()))
-        .collect())
-}
-
-/// Escape paths based on <https://datatracker.ietf.org/doc/html/rfc6901#section-3>
-/// except forward slash `/`, as that is used internally
-fn json_pointer_escape(input: &str) -> String {
-    input.replace("~", "~0")
-}
-
 #[cfg(test)]
 #[derive(Clone)]
 pub struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
@@ -124,107 +89,5 @@ impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
 
     fn get_public_key(&self) -> Vec<u8> {
         vec![]
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-    use similar_asserts::assert_eq;
-
-    use super::*;
-
-    #[test]
-    fn test_format_nested_vc_jwt() {
-        let claims = vec![
-            PublishedClaim {
-                key: "name".into(),
-                value: "John".into(),
-                datatype: None,
-            },
-            PublishedClaim {
-                key: "location/x".into(),
-                value: "1".into(),
-                datatype: None,
-            },
-            PublishedClaim {
-                key: "location/y".into(),
-                value: "2".into(),
-                datatype: None,
-            },
-        ];
-        let expected = IndexMap::from([
-            (
-                "location".to_string(),
-                json!({
-                  "x": "1",
-                  "y": "2"
-                }),
-            ),
-            ("name".to_string(), json!("John")),
-        ]);
-
-        assert_eq!(expected, nest_claims(claims).unwrap());
-    }
-
-    #[test]
-    fn test_format_nested_vc_jwt_array() {
-        let claims = vec![
-            PublishedClaim {
-                key: "name".into(),
-                value: "John".into(),
-                datatype: None,
-            },
-            PublishedClaim {
-                key: "location/0".into(),
-                value: "1".into(),
-                datatype: None,
-            },
-            PublishedClaim {
-                key: "location/1".into(),
-                value: "2".into(),
-                datatype: None,
-            },
-        ];
-        let expected = IndexMap::from([
-            ("location".to_string(), json!(["1", "2"])),
-            ("name".to_string(), json!("John")),
-        ]);
-
-        assert_eq!(expected, nest_claims(claims).unwrap());
-    }
-
-    #[test]
-    fn test_format_special_characters() {
-        let claims = vec![
-            PublishedClaim {
-                key: "name".into(),
-                value: "John".into(),
-                datatype: None,
-            },
-            PublishedClaim {
-                key: "location/weird ~!@#$%^&*()_+{}|:\"<>?`-=[]\\;',.".into(),
-                value: "1".into(),
-                datatype: None,
-            },
-        ];
-        let expected = IndexMap::from([
-            (
-                "location".to_string(),
-                json!({
-                  "weird ~!@#$%^&*()_+{}|:\"<>?`-=[]\\;',.": "1",
-                }),
-            ),
-            ("name".to_string(), json!("John")),
-        ]);
-
-        assert_eq!(expected, nest_claims(claims).unwrap());
-    }
-
-    #[test]
-    fn test_json_pointer_escape() {
-        assert_eq!(json_pointer_escape("bar"), "bar");
-        assert_eq!(json_pointer_escape("/~bar/foo"), "/~0bar/foo");
-        assert_eq!(json_pointer_escape("/bar/foo"), "/bar/foo");
     }
 }

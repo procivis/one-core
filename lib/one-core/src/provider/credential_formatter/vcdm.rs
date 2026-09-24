@@ -10,10 +10,9 @@ use url::Url;
 
 use super::error::FormatterError;
 use super::model::CredentialClaim;
+use crate::model::credential_schema::LayoutProperties;
 use crate::provider::credential_formatter::MetadataClaimSchema;
-use crate::provider::credential_formatter::model::{
-    CredentialSchema, CredentialStatus, Description, Issuer, Name,
-};
+use crate::provider::credential_formatter::model::{CredentialStatus, Description, Issuer, Name};
 
 #[skip_serializing_none]
 #[serde_as]
@@ -59,7 +58,7 @@ pub struct VcdmCredential {
     pub proof: Option<VcdmProof>,
 
     #[serde_as(as = "Option<OneOrMany<_>>")]
-    pub credential_schema: Option<Vec<CredentialSchema>>,
+    pub credential_schema: Option<Vec<VcdmCredentialSchema>>,
 
     #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
@@ -141,7 +140,7 @@ impl VcdmCredential {
     }
 
     #[must_use]
-    pub fn add_credential_schema(mut self, credential_schema: CredentialSchema) -> Self {
+    pub fn add_credential_schema(mut self, credential_schema: VcdmCredentialSchema) -> Self {
         self.credential_schema
             .get_or_insert(vec![])
             .push(credential_schema);
@@ -230,6 +229,25 @@ impl VcdmCredentialSubject {
         self.id = Some(id.into());
         self
     }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcdmCredentialSchema {
+    pub id: String,
+    pub r#type: String,
+    pub metadata: Option<CredentialSchemaMetadata>,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaMetadata {
+    pub layout_properties: LayoutProperties,
+    /// only for backward compatibility
+    #[serde(default)]
+    pub layout_type: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -389,7 +407,7 @@ pub struct JwtVcdmCredential {
     proof: Option<VcdmProof>,
 
     #[serde_as(as = "Option<OneOrMany<_>>")]
-    pub(super) credential_schema: Option<Vec<CredentialSchema>>,
+    pub(super) credential_schema: Option<Vec<VcdmCredentialSchema>>,
 
     #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]

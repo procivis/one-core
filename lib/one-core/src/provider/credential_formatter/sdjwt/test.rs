@@ -13,17 +13,16 @@ use uuid::Uuid;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, Issuer,
-    MockSignatureProvider, PublishedClaim,
+    CredentialData, CredentialPresentation, CredentialStatus, Issuer, MockSignatureProvider,
+    UnsignedCredential,
 };
-use crate::provider::credential_formatter::nest_claims;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     DisclosureArray, compute_object_disclosures, parse_disclosure, select_disclosures,
 };
 use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
-    ContextType, VcdmCredential, VcdmCredentialSubject,
+    ContextType, VcdmCredential, VcdmCredentialSchema, VcdmCredentialSubject,
 };
 use crate::service::test_utilities::{dummy_did, dummy_identifier};
 
@@ -651,7 +650,7 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
         .parse::<Url>()
         .unwrap()
         .into();
-    let schema = CredentialSchema {
+    let schema = VcdmCredentialSchema {
         id: "http://schema.test/id".to_owned(),
         r#type: "TestType".to_owned(),
         metadata: None,
@@ -659,21 +658,9 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
 
     let holder_did: DidValue = "did:example:123".parse().unwrap();
 
-    let claims = vec![
-        PublishedClaim {
-            key: "name".into(),
-            value: "John".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-        PublishedClaim {
-            key: "age".into(),
-            value: "42".into(),
-            datatype: Some("NUMBER".to_owned()),
-        },
-    ];
     let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
     let credential_subject =
-        VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap()).unwrap();
+        VcdmCredentialSubject::new([("name", json!("John")), ("age", json!("42"))]).unwrap();
     let mut vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
         .add_context(schema_context)
         .add_credential_schema(schema)
@@ -693,8 +680,7 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
     };
 
     CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Vcdm(vcdm),
         holder_identifier: Some(holder_identifier),
         holder_key_id: Some("did-vm-id".to_string()),
         issuer_certificate: None,

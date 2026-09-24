@@ -130,7 +130,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             .get_key_id()
             .ok_or_else(|| FormatterError::CouldNotFormat("Missing jwk key id".to_string()))?;
 
-        let mut vcdm = credential_data.vcdm;
+        let mut vcdm = credential_data.credential.into_vcdm()?;
 
         let now = crate::clock::now_utc();
         if vcdm.valid_from.is_none() {

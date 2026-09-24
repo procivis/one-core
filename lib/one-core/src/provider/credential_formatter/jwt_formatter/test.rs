@@ -4,6 +4,7 @@ use std::sync::Arc;
 use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use maplit::hashset;
+use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
@@ -21,16 +22,16 @@ use crate::model::credential_schema::LayoutProperties;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::jwt::model::JWTPayload;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialStatus, Features, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource,
-    PublishedClaim,
+    CredentialData, CredentialPresentation, CredentialStatus, Features, IdentifierDetails, Issuer,
+    MockTokenVerifier, PublicKeySource, UnsignedCredential,
 };
 use crate::provider::credential_formatter::vcdm::{
-    ContextType, VcdmCredential, VcdmCredentialSubject,
+    ContextType, CredentialSchemaMetadata, VcdmCredential, VcdmCredentialSchema,
+    VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::MockDidMethod;
@@ -48,7 +49,7 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
         .parse::<Url>()
         .unwrap()
         .into();
-    let schema = CredentialSchema {
+    let schema = VcdmCredentialSchema {
         id: "CredentialSchemaId".to_owned(),
         r#type: "TestType".to_owned(),
         metadata: Some(CredentialSchemaMetadata {
@@ -65,22 +66,10 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
     };
 
     let holder_did: DidValue = "did:example:123".parse().unwrap();
-    let claims = vec![
-        PublishedClaim {
-            key: "name".into(),
-            value: "John".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-        PublishedClaim {
-            key: "age".into(),
-            value: "42".into(),
-            datatype: Some("NUMBER".to_owned()),
-        },
-    ];
-
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
-        .unwrap()
-        .with_id(holder_did.clone().into_url());
+    let credential_subject =
+        VcdmCredentialSubject::new([("name", json!("John")), ("age", json!("42"))])
+            .unwrap()
+            .with_id(holder_did.clone().into_url());
 
     let mut vcdm = VcdmCredential::new_v2(
         Issuer::Url("did:issuer:test".parse().unwrap()),
@@ -104,8 +93,7 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
     };
 
     CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Vcdm(vcdm),
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: None,
@@ -118,7 +106,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         .unwrap()
         .into();
 
-    let schema = CredentialSchema {
+    let schema = VcdmCredentialSchema {
         id: "CredentialSchemaId".to_owned(),
         r#type: "TestType".to_owned(),
         metadata: None,
@@ -128,27 +116,15 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     let valid_for = time::Duration::days(365 * 2);
 
     let holder_did: DidValue = "did:example:123".parse().unwrap();
-    let claims = vec![
-        PublishedClaim {
-            key: "root_item".into(),
-            value: "root_item".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-        PublishedClaim {
-            key: "root/nested".into(),
-            value: "nested_item".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-        PublishedClaim {
-            key: "root/array/0".into(),
-            value: "array_item".into(),
-            datatype: Some("STRING".to_owned()),
-        },
-    ];
-
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
-        .unwrap()
-        .with_id(holder_did.clone().into_url());
+    let credential_subject = VcdmCredentialSubject::new([
+        (
+            "root",
+            json!({"nested": "nested_item", "array": ["array_item"]}),
+        ),
+        ("root_item", json!("root_item")),
+    ])
+    .unwrap()
+    .with_id(holder_did.clone().into_url());
 
     let mut vcdm = VcdmCredential::new_v2(
         Issuer::Url("did:issuer:test".parse().unwrap()),
@@ -172,8 +148,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     };
 
     CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Vcdm(vcdm),
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: None,
@@ -207,9 +182,13 @@ async fn test_format_credential() {
     );
 
     let context: ContextType = "http://context.com".parse::<Url>().unwrap().into();
-    credential_data.vcdm = credential_data.vcdm.add_context(context).add_type("Type1");
-    credential_data.vcdm.valid_from = None;
-    credential_data.vcdm.valid_until = None;
+    let UnsignedCredential::Vcdm(vcdm) = &mut credential_data.credential else {
+        unreachable!()
+    };
+    vcdm.context.insert(context);
+    vcdm.r#type.push("Type1".to_string());
+    vcdm.valid_from = None;
+    vcdm.valid_until = None;
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
@@ -303,7 +282,11 @@ async fn test_format_credential_with_layout_properties() {
     );
 
     let context: ContextType = "https://custom-context.org".parse::<Url>().unwrap().into();
-    credential_data.vcdm = credential_data.vcdm.add_context(context).add_type("Type1");
+    let UnsignedCredential::Vcdm(vcdm) = &mut credential_data.credential else {
+        unreachable!()
+    };
+    vcdm.context.insert(context);
+    vcdm.r#type.push("Type1".to_string());
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 

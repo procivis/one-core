@@ -32,20 +32,18 @@ use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::vct::{
     MockVctTypeMetadataFetcher, SdJwtVcTypeMetadataCacheItem,
 };
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialPresentation,
-    CredentialSchema, CredentialStatus, IdentifierDetails, Issuer, MockSignatureProvider,
-    MockTokenVerifier, PublicKeySource, PublishedClaim, PublishedClaimValue,
+    CredentialStatus, IdentifierDetails, IssuedClaimValue, IssuedClaims, MockSignatureProvider,
+    MockTokenVerifier, PublicKeySource, UnsignedCredential, issued_claims,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
-use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcCredential};
 use crate::provider::credential_formatter::sdjwtvc_formatter::{
     SDJWTVCFormatter, post_process_claims,
 };
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -70,17 +68,16 @@ use crate::util::test_utilities::assert_time_diff_less_than;
 
 #[tokio::test]
 async fn test_format_credential() {
-    let mut credential_data = get_credential_data(
+    let credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
         },
-        "http://base_url",
+        None,
+        IssuedClaims::new(),
     );
-    credential_data.vcdm.valid_from = None;
-    credential_data.vcdm.valid_until = None;
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -219,37 +216,19 @@ async fn test_format_credential_swiyu() {
 
     let leeway = Duration::seconds(45);
 
-    let mut credential_data = get_credential_data(
+    let credential_data = get_credential_data(
         CredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
         },
-        "http://base_url",
-    );
-    let picture_value = format!("data:image/jpeg;base64,{IMG_DATA}");
-    credential_data
-        .vcdm
-        .credential_subject
-        .get_mut(0)
-        .unwrap()
-        .claims
-        .insert(
+        Some(crate::clock::now_utc() + Duration::days(365 * 2)),
+        IssuedClaims::from([(
             "portrait".to_string(),
-            CredentialClaim {
-                value: serde_json::Value::String(picture_value.clone())
-                    .try_into()
-                    .unwrap(),
-                selectively_disclosable: true,
-                metadata: false,
-            },
-        );
-    credential_data.claims.push(PublishedClaim {
-        key: "portrait".to_string(),
-        value: PublishedClaimValue::String(picture_value),
-        datatype: Some("SWIYU_PICTURE".to_string()),
-    });
+            IssuedClaimValue::SwiyuPicture(format!("data:image/jpeg;base64,{IMG_DATA}")),
+        )]),
+    );
     let mut did_method_provider = MockDidMethodProvider::new();
 
     let_assert!(
@@ -1108,46 +1087,10 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         .unwrap()
         .did;
 
-    let claims = vec![
-        PublishedClaim {
-            key: "age".to_string(),
-            value: PublishedClaimValue::Integer(22),
-            datatype: Some("NUMBER".to_string()),
-        },
-        PublishedClaim {
-            key: "object/name".to_string(),
-            value: PublishedClaimValue::String("Mike".to_string()),
-            datatype: Some("STRING".to_string()),
-        },
-        PublishedClaim {
-            key: "is_over_18".to_string(),
-            value: PublishedClaimValue::Bool(true),
-            datatype: Some("BOOLEAN".to_string()),
-        },
-        PublishedClaim {
-            key: "object/measurements/0/air pollution".to_string(),
-            value: PublishedClaimValue::Float(24.6),
-            datatype: Some("NUMBER".to_string()),
-        },
-    ];
+    let claims = round_trip_claims();
 
-    let schema = CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "FallbackSchema2024".to_string(),
-        metadata: None,
-    };
     let holder_did =
         DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
-
-    let issuer = Issuer::Url(issuer_did.to_string().parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
-        .unwrap()
-        .with_id(holder_did.clone().into_url());
-
-    let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
-        .add_credential_schema(schema)
-        .with_valid_from(now);
-    vcdm.valid_until = Some(now + Duration::seconds(10));
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -1161,8 +1104,13 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
     };
 
     let credential_data = CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::SdJwtVc(SdJwtVcCredential {
+            vct: "credential-schema-id".to_string(),
+            issuer: issuer_did.to_string().parse().unwrap(),
+            valid_until: Some(now + Duration::seconds(10)),
+            credential_status: vec![],
+            claims,
+        }),
         holder_identifier: Some(holder_identifier),
         holder_key_id: Some(format!("{holder_did}#0")),
         issuer_certificate: None,
@@ -1320,46 +1268,10 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         .unwrap()
         .did;
 
-    let claims = vec![
-        PublishedClaim {
-            key: "age".to_string(),
-            value: PublishedClaimValue::Integer(22),
-            datatype: Some("NUMBER".to_string()),
-        },
-        PublishedClaim {
-            key: "object/name".to_string(),
-            value: PublishedClaimValue::String("Mike".to_string()),
-            datatype: Some("STRING".to_string()),
-        },
-        PublishedClaim {
-            key: "is_over_18".to_string(),
-            value: PublishedClaimValue::Bool(true),
-            datatype: Some("BOOLEAN".to_string()),
-        },
-        PublishedClaim {
-            key: "object/measurements/0/air pollution".to_string(),
-            value: PublishedClaimValue::Float(24.6),
-            datatype: Some("NUMBER".to_string()),
-        },
-    ];
+    let claims = round_trip_claims();
 
-    let schema = CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "FallbackSchema2024".to_string(),
-        metadata: None,
-    };
     let holder_did =
         DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
-
-    let issuer = Issuer::Url(issuer_did.to_string().parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
-        .unwrap()
-        .with_id(holder_did.clone().into_url());
-
-    let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
-        .add_credential_schema(schema)
-        .with_valid_from(now);
-    vcdm.valid_until = Some(now + Duration::seconds(10));
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -1373,8 +1285,13 @@ async fn test_format_extract_round_trip_sd_array_elements() {
     };
 
     let credential_data = CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::SdJwtVc(SdJwtVcCredential {
+            vct: "credential-schema-id".to_string(),
+            issuer: issuer_did.to_string().parse().unwrap(),
+            valid_until: Some(now + Duration::seconds(10)),
+            credential_status: vec![],
+            claims,
+        }),
         holder_identifier: Some(holder_identifier),
         holder_key_id: Some(format!("{holder_did}#0")),
         issuer_certificate: None,
@@ -2208,6 +2125,39 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
     );
 }
 
+fn get_credential_data(
+    status: CredentialStatus,
+    valid_until: Option<OffsetDateTime>,
+    additional_claims: IssuedClaims,
+) -> CredentialData {
+    let holder_did: DidValue = "did:example:123".parse().unwrap();
+
+    let mut claims = issued_claims(json!({"name": "John", "age": "42"}));
+    claims.extend(additional_claims);
+
+    CredentialData {
+        credential: UnsignedCredential::SdJwtVc(SdJwtVcCredential {
+            vct: "http://schema.test/id".to_string(),
+            issuer: "did:issuer:test".parse().unwrap(),
+            valid_until,
+            credential_status: vec![status],
+            claims,
+        }),
+        holder_identifier: Some(Identifier {
+            data: IdentifierData::Did(
+                (Did {
+                    did: holder_did,
+                    ..dummy_did()
+                })
+                .into(),
+            ),
+            ..dummy_identifier()
+        }),
+        holder_key_id: Some("did-vm-id".to_string()),
+        issuer_certificate: None,
+    }
+}
+
 fn claim(value: CredentialClaimValue) -> CredentialClaim {
     CredentialClaim {
         selectively_disclosable: false,
@@ -2286,4 +2236,15 @@ fn test_post_process_claims_object_array() {
         document.get("name").unwrap().value.as_str(),
         Some("passport")
     );
+}
+
+fn round_trip_claims() -> IssuedClaims {
+    issued_claims(json!({
+        "age": 22,
+        "object": {
+            "name": "Mike",
+            "measurements": [{"air pollution": 24.6}],
+        },
+        "is_over_18": true,
+    }))
 }

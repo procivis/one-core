@@ -13,7 +13,7 @@ use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::json_ld_context::ContextCache;
-use crate::provider::credential_formatter::model::CredentialData;
+use crate::provider::credential_formatter::model::{CredentialData, UnsignedCredential};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -168,9 +168,8 @@ impl VCAPIService {
         */
 
         let credential_data = CredentialData {
-            holder_identifier: None, // For VC API verification, we don't have a full Identifier object
-            vcdm,
-            claims: vec![],
+            credential: UnsignedCredential::Vcdm(vcdm),
+            holder_identifier: None,
             holder_key_id: None,
             issuer_certificate: None,
         };

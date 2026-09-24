@@ -106,7 +106,7 @@ impl CredentialFormatter for JWTFormatter {
     ) -> Result<SerializedCredential, FormatterError> {
         let now = crate::clock::now_utc();
 
-        let mut vcdm = credential_data.vcdm;
+        let mut vcdm = credential_data.credential.into_vcdm()?;
         let invalid_before = vcdm.valid_from.or(vcdm.issuance_date);
         let expires_at = vcdm.valid_until.or(vcdm.expiration_date);
         let credential_id = vcdm.id.clone().map(|id| id.to_string());

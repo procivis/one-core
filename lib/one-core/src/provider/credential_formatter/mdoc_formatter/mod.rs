@@ -44,13 +44,14 @@ use super::mapper::first_certificate;
 use super::mdoc_formatter::util::StatusListEncoded;
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
-    CredentialPresentation, DetailCredential, Features, FormatterCapabilities, IdentifierDetails,
-    PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
+    CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
+    IdentifierDetails, IssuedClaimValue, IssuedClaims, PublicKeySource, SelectiveDisclosure,
+    TokenVerifier, VerificationFn,
 };
-use super::{CredentialFormatter, MetadataClaimSchema, nest_claims};
+use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
-    DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
-    KeyStorageType, RevocationType, VerificationProtocolType,
+    DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
+    RevocationType, VerificationProtocolType,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_into_x5c;
@@ -88,7 +89,6 @@ pub struct MdocFormatter {
     certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    datatype_config: DatatypeConfig,
     datatype_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<Arc<str>>,
@@ -118,7 +118,6 @@ impl MdocFormatter {
         params: serde_json::Value,
         certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
-        datatype_config: DatatypeConfig,
         datatype_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
@@ -135,12 +134,19 @@ impl MdocFormatter {
             certificate_validator,
             params,
             did_method_provider,
-            datatype_config,
             datatype_provider,
             key_algorithm_provider,
             client,
         })
     }
+}
+
+#[derive(Debug)]
+pub struct MdocCredential {
+    pub doctype: String,
+    pub valid_until: Option<OffsetDateTime>,
+    pub credential_status: Vec<CredentialStatus>,
+    pub claims: IssuedClaims,
 }
 
 #[async_trait]
@@ -157,20 +163,14 @@ impl CredentialFormatter for MdocFormatter {
                     .into(),
             );
         };
-        let vcdm = credential_data.vcdm;
-        let credential_schema = vcdm
-            .credential_schema
-            .and_then(|schema| schema.into_iter().next())
-            .ok_or_else(|| {
-                FormatterError::CouldNotFormat(
-                    "MDOC credential missing credential schema".to_string(),
-                )
-            })?;
+        let MdocCredential {
+            doctype,
+            valid_until,
+            credential_status,
+            claims,
+        } = credential_data.credential.into_mdoc()?;
 
-        let claims = nest_claims(credential_data.claims.clone())?;
-
-        let namespaces =
-            try_build_namespaces(claims, credential_data.claims, &self.datatype_config)?;
+        let namespaces = try_build_namespaces(claims)?;
 
         let holder_identifier =
             credential_data
@@ -224,7 +224,7 @@ impl CredentialFormatter for MdocFormatter {
             signed: DateTime(crate::clock::now_utc()),
             valid_from: DateTime(crate::clock::now_utc()),
             valid_until: DateTime(
-                vcdm.valid_until
+                valid_until
                     .unwrap_or_else(|| crate::clock::now_utc() + self.params.expiration_seconds),
             ),
             expected_update: Some(DateTime(
@@ -238,9 +238,9 @@ impl CredentialFormatter for MdocFormatter {
             digest_algorithm,
             value_digests: try_build_value_digests(&namespaces, digest_algorithm)?,
             device_key_info,
-            doc_type: credential_schema.id,
+            doc_type: doctype,
             validity_info,
-            status: create_status(vcdm.credential_status)?,
+            status: create_status(credential_status)?,
         };
         let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)?.into_bytes();
 
@@ -841,38 +841,28 @@ pub async fn try_verify_detached_signature_with_provider(
         .await
 }
 
-fn try_build_namespaces(
-    claims: IndexMap<String, serde_json::Value>,
-    flat_claims: Vec<PublishedClaim>,
-    datatype_config: &DatatypeConfig,
-) -> Result<Namespaces, FormatterError> {
+fn try_build_namespaces(claims: IssuedClaims) -> Result<Namespaces, FormatterError> {
     let mut namespaces = Namespaces::new();
 
     let mut digest_id: u64 = 0;
 
-    for (namespace_key, namespace_value) in claims.iter() {
-        let namespace = namespaces.entry(namespace_key.to_owned()).or_default();
+    for (namespace_key, namespace_value) in claims {
+        let IssuedClaimValue::Object(elements) = namespace_value else {
+            return Err(FormatterError::CouldNotFormat(format!(
+                "namespace `{namespace_key}` is not an object"
+            )));
+        };
+        let namespace = namespaces.entry(namespace_key).or_default();
 
-        let namespace_object = namespace_value
-            .as_object()
-            .ok_or(FormatterError::JsonMapping(
-                "Expected an object".to_string(),
-            ))?;
-
-        for (item_key, item_value) in namespace_object {
+        for (element_identifier, element_value) in elements {
             // random has to be minimum 16 bytes
             let random = Bstr(generate_random_bytes::<32>().to_vec());
 
             let signed_item = IssuerSignedItem {
                 digest_id,
                 random,
-                element_identifier: item_key.to_owned(),
-                element_value: build_ciborium_value(
-                    item_value,
-                    &format!("{namespace_key}/{item_key}"),
-                    &flat_claims,
-                    datatype_config,
-                )?,
+                element_identifier,
+                element_value: cbor_value(element_value)?,
             };
 
             namespace.push(EmbeddedCbor::new(signed_item)?);
@@ -883,140 +873,74 @@ fn try_build_namespaces(
     Ok(namespaces)
 }
 
-fn build_ciborium_value(
-    value: &serde_json::Value,
-    this_path: &str,
-    claims: &Vec<PublishedClaim>,
-    datatype_config: &DatatypeConfig,
-) -> Result<DataElementValue, FormatterError> {
-    match value {
-        serde_json::Value::Object(object) => {
-            let mut items: Vec<(ciborium::Value, ciborium::Value)> = Vec::new();
-            for (key, value) in object {
-                items.push((
-                    ciborium::Value::Text(key.to_owned()),
-                    build_ciborium_value(
-                        value,
-                        &format!("{this_path}/{key}"),
-                        claims,
-                        datatype_config,
-                    )?,
-                ));
-            }
-            Ok(ciborium::Value::Map(items))
-        }
-        serde_json::Value::Array(array) => {
-            let mut items: Vec<ciborium::Value> = Vec::new();
-            for (i, value) in array.iter().enumerate() {
-                items.push(build_ciborium_value(
-                    value,
-                    &format!("{this_path}/{i}"),
-                    claims,
-                    datatype_config,
-                )?);
-            }
-            Ok(ciborium::Value::Array(items))
-        }
-        serde_json::Value::Null => Ok(ciborium::Value::Null),
-        _ => {
-            let claim = claims.iter().find(|c| c.key == this_path).ok_or(
-                FormatterError::CouldNotFormat(format!("Missing claim: {this_path}")),
-            )?;
-            map_to_ciborium_value(claim, datatype_config)
-        }
-    }
-}
-
 // full-date (ISO mDL 7.2.1)
 pub(crate) const FULL_DATE_TAG: u64 = 1004;
 pub(crate) const TDATE_TAG: u64 = 0;
 
-fn map_to_ciborium_value(
-    claim: &PublishedClaim,
-    datatype_config: &DatatypeConfig,
-) -> Result<ciborium::Value, FormatterError> {
-    let data_type = claim
-        .datatype
-        .as_ref()
-        .ok_or(FormatterError::CouldNotFormat(
-            "Missing data type".to_string(),
-        ))?;
-    let fields = datatype_config
-        .get_fields(data_type)
-        .error_while("getting datatype config")?;
-
-    let value_as_string = claim.value.to_string();
-    Ok(match fields.r#type {
-        DatatypeType::String | DatatypeType::Enum => ciborium::Value::Text(value_as_string),
-        DatatypeType::Number => {
-            let value = value_as_string
-                .parse::<i128>()
-                .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-            ciborium::Value::from(value)
+fn cbor_value(claim: IssuedClaimValue) -> Result<DataElementValue, FormatterError> {
+    Ok(match claim {
+        IssuedClaimValue::Object(claims) => ciborium::Value::Map(
+            claims
+                .into_iter()
+                .map(|(key, value)| Ok((ciborium::Value::Text(key), cbor_value(value)?)))
+                .collect::<Result<_, FormatterError>>()?,
+        ),
+        IssuedClaimValue::Array(values) => ciborium::Value::Array(
+            values
+                .into_iter()
+                .map(cbor_value)
+                .collect::<Result<_, _>>()?,
+        ),
+        IssuedClaimValue::String(text) => ciborium::Value::Text(text),
+        IssuedClaimValue::Number(number) => {
+            let integer = if let Some(integer) = number.as_i64() {
+                ciborium::value::Integer::from(integer)
+            } else if let Some(integer) = number.as_u64() {
+                ciborium::value::Integer::from(integer)
+            } else {
+                return Err(FormatterError::CouldNotFormat(format!(
+                    "mdoc number must be an integer: {number}"
+                )));
+            };
+            ciborium::Value::Integer(integer)
         }
-        DatatypeType::Date => {
-            let tag = if Date::parse(&value_as_string, FULL_DATE_FORMAT).is_ok() {
+        IssuedClaimValue::Bool(value) => ciborium::Value::Bool(value),
+        IssuedClaimValue::Date(date) => {
+            let tag = if Date::parse(&date, FULL_DATE_FORMAT).is_ok() {
                 FULL_DATE_TAG
-            } else if OffsetDateTime::parse(&value_as_string, &Rfc3339).is_ok() {
+            } else if OffsetDateTime::parse(&date, &Rfc3339).is_ok() {
                 TDATE_TAG
             } else {
                 return Err(FormatterError::CouldNotFormat(format!(
-                    "Invalid mdoc date format. Expected tdate or full-date got: {value_as_string}"
+                    "Invalid mdoc date format. Expected tdate or full-date got: {date}"
                 )));
             };
 
-            ciborium::Value::Tag(tag, ciborium::Value::from(value_as_string).into())
+            ciborium::Value::Tag(tag, ciborium::Value::from(date).into())
         }
-        DatatypeType::Boolean => {
-            let value: bool = match value_as_string.as_str() {
-                "true" => true,
-                "false" => false,
-                _ => {
-                    return Err(FormatterError::CouldNotFormat(format!(
-                        "Invalid boolean value: {}",
-                        claim.value
-                    )));
-                }
-            };
-            ciborium::Value::Bool(value)
-        }
-        DatatypeType::Picture => {
-            let mut file_parts = value_as_string.splitn(2, ',');
-
-            let mime_type = file_parts.next().ok_or(FormatterError::CouldNotFormat(
-                "Missing data type of base64".to_string(),
-            ))?;
-
-            let content = file_parts.next().ok_or(FormatterError::CouldNotFormat(
-                "Missing base64 data".to_string(),
-            ))?;
-
-            if let Some(params) = &fields.params
-                && let Some(public) = &params.public
-                && public["encodeAsMdlPortrait"].as_bool().unwrap_or(false)
-            {
-                let decoded = Base64::decode_to_vec(content, None)?;
-                return Ok(ciborium::Value::Bytes(decoded));
-            }
-
+        IssuedClaimValue::Picture(data_uri) => {
+            let (mime_type, content) = split_data_uri(&data_uri)?;
             ciborium::Value::Array(vec![
                 ciborium::Value::Text(mime_type.to_string()),
                 ciborium::Value::Bytes(content.as_bytes().to_vec()),
             ])
         }
-        DatatypeType::SwiyuPicture => {
-            return Err(FormatterError::CouldNotFormat(format!(
-                "Unsupported datatype: {}",
-                fields.r#type
-            )));
+        IssuedClaimValue::MdlPortrait(data_uri) => {
+            let (_, content) = split_data_uri(&data_uri)?;
+            ciborium::Value::Bytes(Base64::decode_to_vec(content, None)?)
         }
-        DatatypeType::Object | DatatypeType::Array => {
-            return Err(FormatterError::CouldNotFormat(format!(
-                "Unexpected container datatype: {}",
-                fields.r#type
-            )));
+        IssuedClaimValue::SwiyuPicture(_) => {
+            return Err(FormatterError::CouldNotFormat(
+                "Unsupported datatype: SWIYU_PICTURE".to_string(),
+            ));
         }
     })
+}
+
+fn split_data_uri(data_uri: &str) -> Result<(&str, &str), FormatterError> {
+    data_uri
+        .split_once(',')
+        .ok_or_else(|| FormatterError::CouldNotFormat("Missing base64 data".to_string()))
 }
 
 /// <https://www.rfc-editor.org/info/rfc9360/#section-2-5.3>

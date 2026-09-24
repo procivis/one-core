@@ -18,7 +18,6 @@ use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
 
 pub(crate) mod common;
-pub use common::nest_claims;
 
 mod decorators;
 pub mod error;
@@ -35,9 +34,6 @@ pub mod sdjwt_formatter;
 pub mod sdjwtvc_formatter;
 pub mod status_list_jwt_formatter;
 pub mod vcdm;
-
-#[cfg(test)]
-mod test;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MetadataClaimSchema {

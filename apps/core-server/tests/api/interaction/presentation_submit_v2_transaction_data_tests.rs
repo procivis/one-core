@@ -8,10 +8,10 @@ use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
+use one_core::provider::credential_formatter::mdoc_formatter::MdocCredential;
 use one_core::provider::credential_formatter::model::{
-    CredentialData, Issuer, PublishedClaim, PublishedClaimValue,
+    CredentialData, IssuedClaimValue, IssuedClaims, UnsignedCredential,
 };
-use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -89,37 +89,18 @@ async fn create_mdoc_holder_credential(
 
     let token = format_mdoc_credential(
         CredentialData {
-            vcdm: VcdmCredential {
-                context: Default::default(),
-                id: None,
-                r#type: vec![],
-                issuer: Issuer::Url("https://example.issuer.com".parse().unwrap()),
-                valid_from: None,
-                issuance_date: None,
+            credential: UnsignedCredential::Mdoc(MdocCredential {
+                doctype: MDOC_DOCTYPE.to_string(),
                 valid_until: None,
-                expiration_date: None,
-                credential_subject: vec![],
                 credential_status: vec![],
-                proof: None,
-                credential_schema: Some(vec![
-                    one_core::provider::credential_formatter::model::CredentialSchema {
-                        id: MDOC_DOCTYPE.to_string(),
-                        r#type: "schema".to_string(),
-                        metadata: None,
-                    },
-                ]),
-                refresh_service: None,
-                name: None,
-                description: None,
-                terms_of_use: None,
-                evidence: None,
-                related_resource: None,
-            },
-            claims: vec![PublishedClaim {
-                key: format!("{MDOC_NAMESPACE}/given_name"),
-                value: PublishedClaimValue::String("John".to_string()),
-                datatype: Some("STRING".to_string()),
-            }],
+                claims: IssuedClaims::from([(
+                    MDOC_NAMESPACE.to_string(),
+                    IssuedClaimValue::Object(IssuedClaims::from([(
+                        "given_name".to_string(),
+                        IssuedClaimValue::String("John".to_string()),
+                    )])),
+                )]),
+            }),
             holder_identifier: Some(holder_identifier.clone()),
             holder_key_id: None,
             issuer_certificate: None,

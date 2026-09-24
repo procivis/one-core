@@ -2,6 +2,7 @@ pub mod backup;
 pub mod blob;
 pub mod certificate;
 pub mod claim;
+pub mod claim_path;
 pub mod claim_schema;
 pub mod common;
 pub mod credential;

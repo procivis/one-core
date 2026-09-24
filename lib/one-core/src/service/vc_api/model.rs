@@ -7,10 +7,8 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
 
-use crate::provider::credential_formatter::model::{
-    CredentialSchema, CredentialStatus, Description, Issuer, Name,
-};
-use crate::provider::credential_formatter::vcdm::ContextType;
+use crate::provider::credential_formatter::model::{CredentialStatus, Description, Issuer, Name};
+use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredentialSchema};
 // The main credential
 #[skip_serializing_none]
 #[serde_as]
@@ -49,7 +47,7 @@ pub struct LdCredential {
     pub proof: Option<LdProof>,
 
     #[serde_as(as = "Option<OneOrMany<_>>")]
-    pub credential_schema: Option<Vec<CredentialSchema>>,
+    pub credential_schema: Option<Vec<VcdmCredentialSchema>>,
 
     #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]

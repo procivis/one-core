@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -16,6 +15,8 @@ use time::OffsetDateTime;
 use url::Url;
 
 use super::error::FormatterError;
+use super::mdoc_formatter::MdocCredential;
+use super::sdjwtvc_formatter::model::SdJwtVcCredential;
 use super::vcdm::VcdmCredential;
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
@@ -23,7 +24,6 @@ use crate::config::core_config::{
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
-use crate::model::credential_schema::LayoutProperties;
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::TokenError;
 use crate::provider::did_method::error::DidMethodError;
@@ -214,81 +214,124 @@ impl<'de> Deserialize<'de> for CredentialClaimValue {
     }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CredentialSchema {
-    pub id: String,
-    pub r#type: String,
-    pub metadata: Option<CredentialSchemaMetadata>,
-}
+/// Claims of the credential, nested by technical keys.
+pub type IssuedClaims = IndexMap<String, IssuedClaimValue>;
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CredentialSchemaMetadata {
-    pub layout_properties: LayoutProperties,
-    /// only for backward compatibility
-    #[serde(default)]
-    pub layout_type: Option<String>,
-}
-
+/// Claim value resolved by its datatype
 #[derive(Clone, Debug, PartialEq)]
-pub struct PublishedClaim {
-    pub key: String,
-    pub value: PublishedClaimValue,
-    pub datatype: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum PublishedClaimValue {
+pub enum IssuedClaimValue {
     Bool(bool),
-    Float(f64),
-    Integer(i64),
+    Number(serde_json::Number),
     String(String),
+    /// full-date or RFC 3339 date-time
+    Date(String),
+    /// data URI
+    Picture(String),
+    /// data URI, encoded as raw image bytes in mdoc (ISO 18013-5 portrait)
+    MdlPortrait(String),
+    /// data URI, SWIYU credentials strip the prefix
+    SwiyuPicture(String),
+    Object(IssuedClaims),
+    Array(Vec<IssuedClaimValue>),
 }
 
-impl TryFrom<PublishedClaimValue> for serde_json::Value {
-    type Error = FormatterError;
-
-    fn try_from(value: PublishedClaimValue) -> Result<Self, Self::Error> {
-        Ok(match value {
-            PublishedClaimValue::Bool(value) => serde_json::Value::Bool(value),
-            PublishedClaimValue::Float(value) => serde_json::Value::Number(
-                serde_json::Number::from_f64(value).ok_or(FormatterError::FloatValueIsNaN)?,
+impl From<IssuedClaimValue> for serde_json::Value {
+    fn from(claim: IssuedClaimValue) -> Self {
+        match claim {
+            IssuedClaimValue::Bool(value) => Self::Bool(value),
+            IssuedClaimValue::Number(value) => Self::Number(value),
+            IssuedClaimValue::String(value)
+            | IssuedClaimValue::Date(value)
+            | IssuedClaimValue::Picture(value)
+            | IssuedClaimValue::MdlPortrait(value)
+            | IssuedClaimValue::SwiyuPicture(value) => Self::String(value),
+            IssuedClaimValue::Object(claims) => Self::Object(
+                claims
+                    .into_iter()
+                    .map(|(key, value)| (key, value.into()))
+                    .collect(),
             ),
-            PublishedClaimValue::Integer(value) => {
-                serde_json::Value::Number(serde_json::Number::from(value))
+            IssuedClaimValue::Array(values) => {
+                Self::Array(values.into_iter().map(Into::into).collect())
             }
-            PublishedClaimValue::String(value) => serde_json::Value::String(value),
-        })
-    }
-}
-
-impl Display for PublishedClaimValue {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Bool(value) => write!(f, "{value}"),
-            Self::Float(value) => write!(f, "{value}"),
-            Self::Integer(value) => write!(f, "{value}"),
-            Self::String(value) => write!(f, "{value}"),
         }
     }
 }
 
-impl From<&str> for PublishedClaimValue {
-    fn from(value: &str) -> Self {
-        PublishedClaimValue::String(value.to_string())
+#[cfg(test)]
+impl From<serde_json::Value> for IssuedClaimValue {
+    fn from(value: serde_json::Value) -> Self {
+        match value {
+            serde_json::Value::Bool(value) => Self::Bool(value),
+            serde_json::Value::Number(value) => Self::Number(value),
+            serde_json::Value::String(value) => Self::String(value),
+            serde_json::Value::Array(values) => {
+                Self::Array(values.into_iter().map(Self::from).collect())
+            }
+            serde_json::Value::Object(_) => Self::Object(issued_claims(value)),
+            serde_json::Value::Null => panic!("null is not an issued claim value"),
+        }
     }
+}
+
+/// Builds test claims from JSON. JSON strings become string claims, date and picture claims need
+/// to be built by hand.
+#[cfg(test)]
+pub(crate) fn issued_claims(value: serde_json::Value) -> IssuedClaims {
+    let serde_json::Value::Object(claims) = value else {
+        panic!("issued claims must be a JSON object");
+    };
+    claims
+        .into_iter()
+        .map(|(key, value)| (key, value.into()))
+        .collect()
 }
 
 #[derive(Debug)]
 pub struct CredentialData {
-    pub vcdm: VcdmCredential,
-    pub claims: Vec<PublishedClaim>,
+    pub credential: UnsignedCredential,
     pub holder_identifier: Option<Identifier>,
     pub holder_key_id: Option<String>,
     pub issuer_certificate: Option<Certificate>,
+}
+
+/// Format-specific content of a credential to be issued
+#[derive(Debug)]
+#[expect(clippy::large_enum_variant)]
+pub enum UnsignedCredential {
+    /// W3C VCDM based formats (JWT, SD-JWT, JSON-LD)
+    Vcdm(VcdmCredential),
+    Mdoc(MdocCredential),
+    SdJwtVc(SdJwtVcCredential),
+}
+
+impl UnsignedCredential {
+    pub fn into_vcdm(self) -> Result<VcdmCredential, FormatterError> {
+        match self {
+            Self::Vcdm(vcdm) => Ok(vcdm),
+            _ => Err(FormatterError::CouldNotFormat(
+                "Expected VCDM credential".to_string(),
+            )),
+        }
+    }
+
+    pub fn into_mdoc(self) -> Result<MdocCredential, FormatterError> {
+        match self {
+            Self::Mdoc(mdoc) => Ok(mdoc),
+            _ => Err(FormatterError::CouldNotFormat(
+                "Expected mdoc credential".to_string(),
+            )),
+        }
+    }
+
+    pub fn into_sd_jwt_vc(self) -> Result<SdJwtVcCredential, FormatterError> {
+        match self {
+            Self::SdJwtVc(sd_jwt_vc) => Ok(sd_jwt_vc),
+            _ => Err(FormatterError::CouldNotFormat(
+                "Expected SD-JWT VC credential".to_string(),
+            )),
+        }
+    }
 }
 
 #[skip_serializing_none]

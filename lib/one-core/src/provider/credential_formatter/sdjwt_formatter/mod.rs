@@ -99,31 +99,28 @@ impl CredentialFormatter for SDJWTFormatter {
             );
         };
         const HASH_ALG: HashAlgorithm = HashAlgorithm::Sha256;
-        let mut vcdm = credential_data.vcdm;
-
-        let now = crate::clock::now_utc();
-        if vcdm.valid_from.is_none() {
-            vcdm.valid_from = Some(now);
-        }
+        let mut vcdm = credential_data.credential.into_vcdm()?;
+        let valid_from = *vcdm.valid_from.get_or_insert_with(crate::clock::now_utc);
 
         if !self.params.embed_layout_properties {
             vcdm.remove_layout_properties();
         }
 
         let inputs = SdJwtFormattingInputs {
+            issuer: vcdm.issuer.as_url().clone(),
+            id: vcdm.id.clone(),
+            valid_from,
+            valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
-            leeway: self.params.leeway_seconds,
             token_type: "SD_JWT".to_string(),
             issuer_certificate: credential_data.issuer_certificate,
         };
 
-        let cred = vcdm.clone();
-        let payload_from_digests =
-            |digests: Vec<String>| vc_from_credential(cred, digests, HASH_ALG);
         let claims = credential_to_claims(&vcdm)?;
+        let payload_from_digests =
+            |digests: Vec<String>| vc_from_credential(vcdm, digests, HASH_ALG);
         format_credential(
-            vcdm,
             claims,
             inputs,
             auth_fn,

@@ -4,13 +4,23 @@ use maplit::hashmap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none};
+use time::OffsetDateTime;
 use url::Url;
 
 use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, SettableClaims,
+    CredentialClaim, CredentialClaimValue, CredentialStatus, IssuedClaims, SettableClaims,
 };
+
+#[derive(Debug)]
+pub struct SdJwtVcCredential {
+    pub vct: String,
+    pub issuer: Url,
+    pub valid_until: Option<OffsetDateTime>,
+    pub credential_status: Vec<CredentialStatus>,
+    pub claims: IssuedClaims,
+}
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]

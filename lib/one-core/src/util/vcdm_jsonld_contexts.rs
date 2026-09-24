@@ -2,8 +2,8 @@ use indexmap::{IndexSet, indexset};
 use url::Url;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{Context, CredentialSchema};
-use crate::provider::credential_formatter::vcdm::ContextType;
+use crate::provider::credential_formatter::model::Context;
+use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredentialSchema};
 
 pub(crate) fn vcdm_v2_base_context(
     additional_contexts: Option<Vec<ContextType>>,
@@ -26,7 +26,7 @@ static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
 pub(crate) fn is_context_list_valid(
     context_list: &IndexSet<ContextType>,
     allowed_contexts: Option<&Vec<Url>>,
-    credential_schemas: Option<&Vec<CredentialSchema>>,
+    credential_schemas: Option<&Vec<VcdmCredentialSchema>>,
 ) -> Result<(), FormatterError> {
     for context in context_list {
         match context {

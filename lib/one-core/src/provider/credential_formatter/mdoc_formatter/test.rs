@@ -15,16 +15,14 @@ use uuid::Uuid;
 use super::*;
 use crate::clock::run_with_mocked_time_async;
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::model::credential_schema::{BackgroundProperties, LayoutProperties};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::http_client::MockHttpClient;
 use crate::provider::credential_formatter::model::{
-    CertificateDetails, CredentialSchema, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
-    MockTokenVerifier, PublishedClaimValue, X5References,
+    CertificateDetails, MockSignatureProvider, MockTokenVerifier, UnsignedCredential, X5References,
+    issued_claims,
 };
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::data_type::error::DataTypeProviderError;
 use crate::provider::data_type::model::JsonOrCbor;
 use crate::provider::data_type::provider::MockDataTypeProvider;
@@ -38,7 +36,7 @@ use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{
-    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation,
 };
 
 #[test]
@@ -194,36 +192,7 @@ fn test_device_response_serialize_deserialize() {
 
 #[tokio::test]
 async fn test_credential_formatting_ok_for_ecdsa() {
-    let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
-
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-    }];
-
-    let vcdm = VcdmCredential::new_v2(
-        issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: Some(CredentialSchemaMetadata {
-            layout_properties: LayoutProperties {
-                background: Some(BackgroundProperties {
-                    color: Some("color".to_string()),
-                    image: None,
-                }),
-                logo: None,
-                primary_attribute: None,
-                secondary_attribute: None,
-                picture_attribute: None,
-                code: None,
-            },
-            layout_type: None,
-        }),
-    });
+    let claims = test_claims();
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
@@ -239,8 +208,12 @@ async fn test_credential_formatting_ok_for_ecdsa() {
     };
     let cert_id = Uuid::new_v4();
     let credential_data = CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Mdoc(MdocCredential {
+            doctype: "credential-schema-id".to_string(),
+            valid_until: None,
+            credential_status: vec![],
+            claims,
+        }),
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
@@ -342,15 +315,12 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         "leewaySeconds": 60
     });
 
-    let config = generic_config().core;
-
     let formatter = MdocFormatter::new(
         Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(MockCertificateValidator::new()),
         Arc::new(did_method_provider),
-        config.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
@@ -483,13 +453,7 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
     // (`vcdm.valid_until`) rather than being independently recomputed from
     // `now + expirationSeconds`, otherwise the signed mdoc's own validity info can disagree
     // with the expiration date the core reports for the credential elsewhere (e.g. GET credential).
-    let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
-
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-    }];
+    let claims = test_claims();
 
     // chosen far outside the `expirationSeconds: 10` fallback window used below, so a test
     // failure (i.e. falling back to `now + expirationSeconds`) can't accidentally pass;
@@ -497,17 +461,6 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
     let real_valid_until = (crate::clock::now_utc() + Duration::days(3))
         .replace_nanosecond(0)
         .unwrap();
-
-    let mut vcdm = VcdmCredential::new_v2(
-        issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "credential-schema-id".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: None,
-    });
-    vcdm.valid_until = Some(real_valid_until);
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
@@ -523,8 +476,12 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
     };
 
     let credential_data = CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Mdoc(MdocCredential {
+            doctype: "credential-schema-id".to_string(),
+            valid_until: Some(real_valid_until),
+            credential_status: vec![],
+            claims,
+        }),
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
@@ -624,15 +581,12 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         "leewaySeconds": 60
     });
 
-    let config = generic_config().core;
-
     let formatter = MdocFormatter::new(
         Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(MockCertificateValidator::new()),
         Arc::new(did_method_provider),
-        config.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
@@ -664,25 +618,9 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 #[tokio::test]
 async fn test_unverified_credential_extraction() {
     // arrange
-    let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
-
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-    }];
-
-    let vcdm = VcdmCredential::new_v2(
-        issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
-    )
-    .add_credential_schema(CredentialSchema {
-        id: "doctype".to_string(),
-        r#type: "Mdoc".to_string(),
-        metadata: None,
-    });
+    let claims = test_claims();
 
     let holder_identifier = Identifier {
         data: IdentifierData::Did(
@@ -696,8 +634,12 @@ async fn test_unverified_credential_extraction() {
     };
 
     let credential_data = CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Mdoc(MdocCredential {
+            doctype: "doctype".to_string(),
+            valid_until: None,
+            credential_status: vec![],
+            claims,
+        }),
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
@@ -827,15 +769,12 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         })
     });
 
-    let config = generic_config().core;
-
     let formatter = MdocFormatter::new(
         Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
-        config.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
@@ -940,7 +879,6 @@ fn test_credential_schema_id() {
         params,
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
-        generic_config().core.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHttpClient::new()),
@@ -1125,7 +1063,6 @@ async fn test_parse_credential() {
         params,
         Arc::new(certificate_validator),
         Arc::new(MockDidMethodProvider::new()),
-        generic_config().core.datatype,
         Arc::new(datatype_provider),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
@@ -1294,7 +1231,6 @@ async fn test_format_status_list() {
         params,
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
-        generic_config().core.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHttpClient::new()),
@@ -1359,21 +1295,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     );
 }
 
-#[test]
-fn test_map_enum_datatype_to_ciborium_value() {
-    // ENUM datatypes are encoded as their (string) value, like a STRING.
-    let datatype_config = generic_config().core.datatype;
-
-    let claim = PublishedClaim {
-        key: "org.iso.example/category".to_string(),
-        value: PublishedClaimValue::String("urn:etsi:esi:eaa:eu:qualified".to_string()),
-        datatype: Some("EAA_CATEGORY".to_string()),
-    };
-
-    let value = map_to_ciborium_value(&claim, &datatype_config).unwrap();
-
-    assert_eq!(
-        ciborium::Value::Text("urn:etsi:esi:eaa:eu:qualified".to_string()),
-        value
-    );
+fn test_claims() -> IssuedClaims {
+    issued_claims(json!({"a": {"b": {"c": "15"}}}))
 }

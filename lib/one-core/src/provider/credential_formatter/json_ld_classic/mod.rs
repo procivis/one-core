@@ -82,7 +82,7 @@ impl CredentialFormatter for JsonLdClassic {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<SerializedCredential, FormatterError> {
-        let mut vcdm = credential_data.vcdm;
+        let mut vcdm = credential_data.credential.into_vcdm()?;
 
         let now = crate::clock::now_utc();
         if vcdm.valid_from.is_none() {

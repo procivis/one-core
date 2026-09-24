@@ -5,7 +5,7 @@ use maplit::hashmap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use url::Url;
 
 use crate::model::certificate::Certificate;
@@ -13,10 +13,11 @@ use crate::model::identifier::Identifier;
 use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, CredentialSchema, CredentialStatus, Issuer,
-    SettableClaims,
+    CredentialClaim, CredentialClaimValue, CredentialStatus, Issuer, SettableClaims,
 };
-use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
+use crate::provider::credential_formatter::vcdm::{
+    ContextType, JwtVcdmCredential, VcdmCredentialSchema,
+};
 
 #[skip_serializing_none]
 #[serde_as]
@@ -31,7 +32,7 @@ pub struct VCContent {
     #[serde(default)]
     #[serde_as(as = "OneOrMany<_>")]
     pub credential_status: Vec<CredentialStatus>,
-    pub credential_schema: Option<CredentialSchema>,
+    pub credential_schema: Option<VcdmCredentialSchema>,
     #[serde(default)]
     pub issuer: Option<Issuer>,
     #[serde(with = "time::serde::rfc3339::option")]
@@ -171,9 +172,12 @@ pub struct DecomposedToken<'a> {
 }
 
 pub struct SdJwtFormattingInputs {
+    pub issuer: Url,
+    pub id: Option<Url>,
+    pub valid_from: OffsetDateTime,
+    pub valid_until: Option<OffsetDateTime>,
     pub holder_identifier: Option<Identifier>,
     pub holder_key_id: Option<String>,
-    pub leeway: Duration,
     pub token_type: String,
     pub issuer_certificate: Option<Certificate>,
 }

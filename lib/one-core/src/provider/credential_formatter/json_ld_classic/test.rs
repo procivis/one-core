@@ -21,14 +21,14 @@ use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::http_client::HttpClient;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
-    MockTokenVerifier, PublishedClaim, PublishedClaimValue,
+    CredentialData, Issuer, MockSignatureProvider, MockTokenVerifier, UnsignedCredential,
 };
 use crate::provider::credential_formatter::vcdm::{
-    ContextType, VcdmCredential, VcdmCredentialSubject,
+    ContextType, CredentialSchemaMetadata, VcdmCredential, VcdmCredentialSchema,
+    VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::MockDidMethod;
@@ -77,7 +77,7 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
             .unwrap(),
     );
 
-    let schema = CredentialSchema {
+    let schema = VcdmCredentialSchema {
         id: "credential-schema-id".to_string(),
         r#type: "FallbackSchema2024".to_string(),
         metadata: Some(CredentialSchemaMetadata {
@@ -108,16 +108,11 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
         .to_owned(),
     );
 
-    let claims = vec![PublishedClaim {
-        key: "a/b/c".to_string(),
-        value: PublishedClaimValue::String("15".to_string()),
-        datatype: Some("STRING".to_string()),
-    }];
     let now = crate::clock::now_utc();
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+    let credential_subject = VcdmCredentialSubject::new([("a", json!({"b": {"c": "15"}}))])
         .unwrap()
         .with_id(holder_did.clone().into_url());
 
@@ -128,8 +123,7 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
     vcdm.valid_until = valid_until;
 
     let credential_data = CredentialData {
-        vcdm,
-        claims,
+        credential: UnsignedCredential::Vcdm(vcdm),
         holder_identifier: Some(Identifier {
             data: IdentifierData::Did(
                 (Did {
