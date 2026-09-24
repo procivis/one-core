@@ -1,5 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use hmac::Mac;
+use hmac::{KeyInit, Mac};
 use p256::ecdsa::Signature;
 use rand::distr::{Alphanumeric, Distribution, SampleString, Uniform};
 use rand::{CryptoRng, Rng};

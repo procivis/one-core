@@ -41,7 +41,7 @@ impl KeyAlgorithm for Ecdsa {
     }
 
     fn generate_key(&self) -> Result<GeneratedKey, KeyAlgorithmError> {
-        let (private, public) = ECDSASigner::generate_key_pair();
+        let (private, public) = ECDSASigner::generate_key_pair()?;
 
         let private_handle = Arc::new(EcdsaPrivateKeyHandle::new(private.clone(), public.clone()));
         let public_handle = Arc::new(EcdsaPublicKeyHandle::new(public.clone(), None));

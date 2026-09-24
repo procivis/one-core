@@ -495,10 +495,9 @@ mod test {
 
     fn get_example_engagement() -> DeviceEngagement {
         let mut rng = get_rng();
-        let wrapper = one_crypto::rand08::CompatWrapper(&mut rng);
-
-        let pk =
-            x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(wrapper));
+        let pk = x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(
+            &mut rng,
+        ));
 
         DeviceEngagement {
             version: Default::default(),

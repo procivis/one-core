@@ -15,10 +15,9 @@ pub(crate) struct KeyAgreementKey {
 impl KeyAgreementKey {
     pub(crate) fn new_random() -> Self {
         let mut rng = get_rng();
-        let wrapper = one_crypto::rand08::CompatWrapper(&mut rng);
 
         Self {
-            secret_key: ReusableSecret::random_from_rng(wrapper),
+            secret_key: ReusableSecret::random_from_rng(&mut rng),
         }
     }
 

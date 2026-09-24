@@ -17,16 +17,16 @@ async-trait.workspace        = true
 blstrs                       = { version = "0.7" }
 cbc                          = { version = "0.1.2" }
 chacha20poly1305             = { version = "0.10" }
-cocoon                       = { version = "0.4" }
+cocoon                       = { version = "0.5" }
 concat-kdf                   = { version = "0.1" }
 ct-codecs.workspace          = true
-ed25519-compact              = { version = "2.1" }
+ed25519-compact              = { version = "2.4", default-features = false, features = ["pem", "std", "x25519"] }
 flate2.workspace             = true
-hmac                         = { version = "0.12" }
+hmac                         = { version = "0.13" }
 ml-dsa                       = { version = "0.1", default-features = false, features = ["rand_core", "zeroize"] }
 mockall                      = { workspace = true, optional = true }
-p256                         = { version = "0.13", features = ["jwk", "ecdh"] }
-pbkdf2                       = { version = "0.12", features = ["simple"] }
+p256                         = { version = "0.14", features = ["ecdh"] }
+pbkdf2                       = { version = "0.13" }
 secrecy.workspace            = true
 serde.workspace              = true
 serde_json.workspace         = true
@@ -42,6 +42,7 @@ pairing_crypto = { version = "0.4.3", git = "https://github.com/procivis/pairing
 rand        = { workspace = true }
 rand_chacha = { version = "0.10.0" }
 rand_old    = { package = "rand", version = "0.8.5" }
+sha2_v10    = { package = "sha2", version = "0.10" }
 
 [dev-dependencies]
 hex.workspace             = true

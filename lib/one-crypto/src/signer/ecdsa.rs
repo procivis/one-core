@@ -1,12 +1,11 @@
 use p256::ecdh::diffie_hellman;
-use p256::ecdsa::signature::{Signer as _, Verifier as _};
+use p256::ecdsa::signature::{Signer as _, Verifier};
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
-use p256::elliptic_curve::SecretKey;
-use p256::elliptic_curve::generic_array::GenericArray;
-use p256::elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
+use p256::elliptic_curve::sec1::{FromSec1Point, ToSec1Point};
+use p256::elliptic_curve::{Generate, SecretKey};
 use p256::pkcs8::{DecodePublicKey, EncodePublicKey};
-use p256::{AffinePoint, EncodedPoint, NistP256};
-use secrecy::{ExposeSecret, SecretSlice, SecretString};
+use p256::{AffinePoint, NistP256, Sec1Point};
+use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::PublicJwk;
 
 use crate::encryption::EncryptionError;
@@ -18,12 +17,7 @@ pub struct ECDSASigner;
 
 impl ECDSASigner {
     fn from_bytes(public_key: &[u8]) -> Result<VerifyingKey, SignerError> {
-        let point = EncodedPoint::from_bytes(public_key).map_err(|err| {
-            SignerError::CouldNotExtractPublicKey(format!(
-                "couldn't initialize verifying key: {err}"
-            ))
-        })?;
-        VerifyingKey::from_encoded_point(&point).map_err(|err| {
+        VerifyingKey::from_sec1_bytes(public_key).map_err(|err| {
             SignerError::CouldNotExtractPublicKey(format!(
                 "couldn't initialize verifying key: {err}"
             ))
@@ -32,7 +26,7 @@ impl ECDSASigner {
 
     pub fn parse_public_key(public_key: &[u8], compressed: bool) -> Result<Vec<u8>, SignerError> {
         let vk = Self::from_bytes(public_key)?;
-        Ok(vk.to_encoded_point(compressed).to_bytes().into())
+        Ok(vk.to_sec1_point(compressed).to_bytes().into())
     }
 
     pub fn parse_public_key_coordinates(
@@ -40,33 +34,15 @@ impl ECDSASigner {
         y: &[u8],
         compressed: bool,
     ) -> Result<Vec<u8>, SignerError> {
-        if x.len() != 32 {
-            return Err(SignerError::CouldNotExtractPublicKey(format!(
-                "Couldn't initialize verifying key, invalid x length: {}",
-                x.len()
-            )));
-        };
+        let point = Self::point_from_public_key_coordinates(x, y)?;
 
-        if y.len() != 32 {
-            return Err(SignerError::CouldNotExtractPublicKey(format!(
-                "Couldn't initialize verifying key, invalid y length: {}",
-                y.len()
-            )));
-        };
-
-        let encoded_point = EncodedPoint::from_affine_coordinates(
-            GenericArray::from_slice(x),
-            GenericArray::from_slice(y),
-            false,
-        );
-
-        let key = VerifyingKey::from_encoded_point(&encoded_point).map_err(|err| {
+        let key = VerifyingKey::from_sec1_point(&point).map_err(|err| {
             SignerError::CouldNotExtractPublicKey(format!(
                 "couldn't initialize verifying key: {err}"
             ))
         })?;
 
-        Ok(key.to_encoded_point(compressed).to_bytes().into())
+        Ok(key.to_sec1_point(compressed).to_bytes().into())
     }
 
     pub fn parse_private_key_coordinates(
@@ -81,7 +57,7 @@ impl ECDSASigner {
         let vk = sk.verifying_key();
         Ok((
             sk.to_bytes().to_vec().into(),
-            vk.to_encoded_point(compressed).to_bytes().into(),
+            vk.to_sec1_point(compressed).to_bytes().into(),
         ))
     }
 
@@ -92,7 +68,7 @@ impl ECDSASigner {
         let pk = p256::PublicKey::from_public_key_der(public_key_der)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
-        Ok(pk.to_encoded_point(compressed).to_bytes().into())
+        Ok(pk.to_sec1_point(compressed).to_bytes().into())
     }
 
     pub fn public_key_to_der(public_key_raw: &[u8]) -> Result<Vec<u8>, SignerError> {
@@ -108,7 +84,7 @@ impl ECDSASigner {
         public_key: &[u8],
     ) -> Result<(Vec<u8>, Vec<u8>), SignerError> {
         let vk = Self::from_bytes(public_key)?;
-        let point = vk.to_encoded_point(false);
+        let point = vk.to_sec1_point(false);
         Ok((
             point
                 .x()
@@ -125,23 +101,16 @@ impl ECDSASigner {
         ))
     }
 
-    pub fn generate_key_pair() -> (SecretSlice<u8>, Vec<u8>) {
+    pub fn generate_key_pair() -> Result<(SecretSlice<u8>, Vec<u8>), SignerError> {
         let mut rng = get_rng();
-        let mut wrapper = crate::rand08::CompatWrapper(&mut rng);
 
-        let sk = SigningKey::random(&mut wrapper);
+        let sk = SigningKey::try_generate_from_rng(&mut rng)
+            .map_err(|e| SignerError::CouldNotGenerateKeyPair(e.to_string()))?;
         let pk = VerifyingKey::from(&sk);
-        (
+        Ok((
             sk.to_bytes().to_vec().into(),
-            pk.to_encoded_point(true).to_bytes().into(),
-        )
-    }
-
-    pub fn private_key_as_jwk(secret_key: &SecretSlice<u8>) -> Result<SecretString, SignerError> {
-        let secret_key = p256::SecretKey::from_slice(secret_key.expose_secret())
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-
-        Ok(SecretString::from(secret_key.to_jwk_string().to_string()))
+            pk.to_sec1_point(true).to_bytes().into(),
+        ))
     }
 
     pub fn shared_secret_p256(
@@ -160,30 +129,15 @@ impl ECDSASigner {
             .ok_or(EncryptionError::Crypto("Missing y coordinate".to_string()))?;
         let y = decode_b64(y_encoded.as_str(), "y coordinate")?;
 
-        if x.len() != 32 {
-            return Err(EncryptionError::Crypto(format!(
-                "Couldn't initialize remote key, invalid x length: {}",
-                x.len()
-            )));
-        };
-
-        if y.len() != 32 {
-            return Err(EncryptionError::Crypto(format!(
-                "Couldn't initialize remote key, invalid y length: {}",
-                y.len()
-            )));
-        };
+        let point = Self::point_from_public_key_coordinates(&x, &y)
+            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
 
         let peer_affine_point =
-            AffinePoint::from_encoded_point(&EncodedPoint::from_affine_coordinates(
-                GenericArray::from_slice(&x),
-                GenericArray::from_slice(&y),
-                false,
-            ))
-            .into_option()
-            .ok_or(EncryptionError::Crypto(
-                "Invalid JWK coordinates".to_string(),
-            ))?;
+            AffinePoint::from_sec1_point(&point)
+                .into_option()
+                .ok_or(EncryptionError::Crypto(
+                    "Invalid JWK coordinates".to_string(),
+                ))?;
 
         let secret_key: SecretKey<NistP256> = SecretKey::from_slice(private_key.expose_secret())
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
@@ -197,7 +151,7 @@ impl ECDSASigner {
 
     pub fn public_key_coordinates(public_key: &[u8]) -> Result<(Vec<u8>, Vec<u8>), SignerError> {
         let verifying_key = ECDSASigner::from_bytes(public_key)?;
-        let point = verifying_key.to_encoded_point(false);
+        let point = verifying_key.to_sec1_point(false);
         let x = point.x().ok_or(SignerError::CouldNotExtractPublicKey(
             "Missing X coordinate".to_string(),
         ))?;
@@ -205,6 +159,36 @@ impl ECDSASigner {
             "Missing Y coordinate".to_string(),
         ))?;
         Ok((x.to_vec(), y.to_vec()))
+    }
+
+    fn point_from_public_key_coordinates(x: &[u8], y: &[u8]) -> Result<Sec1Point, SignerError> {
+        if x.len() != 32 {
+            return Err(SignerError::CouldNotExtractPublicKey(format!(
+                "Couldn't initialize verifying key, invalid x length: {}",
+                x.len()
+            )));
+        };
+
+        if y.len() != 32 {
+            return Err(SignerError::CouldNotExtractPublicKey(format!(
+                "Couldn't initialize verifying key, invalid y length: {}",
+                y.len()
+            )));
+        };
+
+        Ok(Sec1Point::from_affine_coordinates(
+            &x.try_into().map_err(|err| {
+                SignerError::CouldNotExtractPublicKey(format!(
+                    "Couldn't initialize verifying key, invalid x length: {err}"
+                ))
+            })?,
+            &y.try_into().map_err(|err| {
+                SignerError::CouldNotExtractPublicKey(format!(
+                    "Couldn't initialize verifying key, invalid y length: {err}"
+                ))
+            })?,
+            false,
+        ))
     }
 }
 
@@ -215,12 +199,12 @@ impl Signer for ECDSASigner {
         public_key: &[u8],
         private_key: &SecretSlice<u8>,
     ) -> Result<Vec<u8>, SignerError> {
-        let sk = SigningKey::from_bytes(private_key.expose_secret().into()).map_err(|err| {
+        let sk = SigningKey::from_slice(private_key.expose_secret()).map_err(|err| {
             SignerError::CouldNotExtractPublicKey(format!("couldn't initialize secret key: {err}"))
         })?;
         let pk = VerifyingKey::from(&sk);
 
-        if pk.to_encoded_point(true).as_bytes() != public_key {
+        if pk.to_sec1_point(true).as_bytes() != public_key {
             return Err(SignerError::CouldNotExtractKeyPair);
         }
         let signature: Signature = sk.sign(input);

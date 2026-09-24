@@ -557,7 +557,7 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
 }
 
 async fn create_proof() -> (String, KeyHandle) {
-    let (holder_private, holder_public) = ECDSASigner::generate_key_pair();
+    let (holder_private, holder_public) = ECDSASigner::generate_key_pair().unwrap();
     let holder_key_handle = Ecdsa
         .reconstruct_key(&holder_public, Some(holder_private.clone()), None)
         .unwrap();
@@ -657,7 +657,7 @@ async fn make_user_id_token(
     sub: Option<&str>,
     nonce: Option<&str>,
 ) -> (String, standardized_types::jwk::PublicJwk) {
-    let (private, public) = ECDSASigner::generate_key_pair();
+    let (private, public) = ECDSASigner::generate_key_pair().unwrap();
     let key_handle = Ecdsa
         .reconstruct_key(&public, Some(private.clone()), None)
         .unwrap();

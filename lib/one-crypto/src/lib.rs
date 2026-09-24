@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 
-use hmac::Hmac;
+use hmac::HmacReset;
 use secrecy::SecretSlice;
 use sha2::{Sha256, Sha512};
 use standardized_types::iana;
@@ -26,8 +26,8 @@ pub mod utilities;
 
 mod password;
 
-type HmacSha256 = Hmac<Sha256>;
-type HmacSha512 = Hmac<Sha512>;
+type HmacSha256 = HmacReset<Sha256>;
+type HmacSha512 = HmacReset<Sha512>;
 
 #[cfg(test)]
 mod test;

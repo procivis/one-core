@@ -18,15 +18,14 @@ async-trait.workspace        = true
 ct-codecs.workspace          = true
 one-core                     = { workspace = true, features = ["config_json"] }
 one-crypto.workspace         = true
-standardized-types.workspace = true
 one-dto-mapper.workspace     = true
-reqwest.workspace            = true
 rustls-platform-verifier     = { workspace = true }
 secrecy.workspace            = true
 serde.workspace              = true
 serde_json.workspace         = true
 shared-types.workspace       = true
 sql-data-provider.workspace  = true
+standardized-types.workspace = true
 strum.workspace              = true
 thiserror.workspace          = true
 time.workspace               = true

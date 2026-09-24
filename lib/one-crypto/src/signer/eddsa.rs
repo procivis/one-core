@@ -1,10 +1,12 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use ed25519_compact::{PublicKey, SecretKey, Seed, x25519};
+use rand::Rng;
 use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 
 use crate::encryption::EncryptionError;
 use crate::jwe::decode_b64;
+use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
 
 pub struct EDDSASigner;
@@ -40,7 +42,10 @@ impl EDDSASigner {
     }
 
     pub fn generate_key_pair() -> KeyPair {
-        let key_pair = ed25519_compact::KeyPair::generate();
+        let mut rng = get_rng();
+        let mut seed = [0u8; Seed::BYTES];
+        rng.fill_bytes(&mut seed);
+        let key_pair = ed25519_compact::KeyPair::from_seed(Seed::new(seed));
 
         KeyPair {
             public: key_pair.pk.to_vec(),

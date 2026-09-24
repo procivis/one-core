@@ -8,12 +8,12 @@ use aes::cipher::{
 };
 use aes::{Aes128, Aes256};
 use aes_gcm::aead::generic_array::GenericArray;
-use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit};
+use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit as AesKeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use flate2::read::DeflateDecoder;
 use flate2::write::DeflateEncoder;
-use hmac::Mac;
 use hmac::digest::FixedOutputReset;
+use hmac::{KeyInit as HmacKeyInit, Mac};
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
@@ -156,7 +156,7 @@ fn encrypt_in_place_aes_gmc<Aes>(
     key: &SecretSlice<u8>,
 ) -> Result<AeadOutput, EncryptionError>
 where
-    Aes: BlockSizeUser<BlockSize = U16> + BlockEncrypt + KeyInit + BlockCipher,
+    Aes: BlockSizeUser<BlockSize = U16> + BlockEncrypt + AesKeyInit + BlockCipher,
 {
     // TODO: Remove the wrapper once a compatible version of the crate is available (ONE-9596)
     let mut rng = get_rng();
@@ -175,8 +175,8 @@ where
 }
 
 fn encrypt_in_place_aes_cbc_hmac<
-    Cipher: BlockEncryptMut + BlockCipher + KeySizeUser + KeyInit,
-    Hash: Mac + KeyInit + FixedOutputReset,
+    Cipher: BlockEncryptMut + BlockCipher + KeySizeUser + AesKeyInit,
+    Hash: Mac + HmacKeyInit + FixedOutputReset,
 >(
     buf: &mut Vec<u8>,
     associated_data: &[u8],
@@ -226,8 +226,8 @@ fn encrypt_in_place_aes_cbc_hmac<
 
 fn decrypt_in_place_aes_cbc_hmac<
     'a,
-    Cipher: BlockDecryptMut + BlockCipher + KeySizeUser + KeyInit,
-    Hash: Mac + KeyInit + FixedOutputReset,
+    Cipher: BlockDecryptMut + BlockCipher + KeySizeUser + AesKeyInit,
+    Hash: Mac + HmacKeyInit + FixedOutputReset,
 >(
     buf: &'a mut [u8],
     associated_data: &[u8],
@@ -277,13 +277,13 @@ fn decrypt_in_place_aes_cbc_hmac<
     Ok(plaintext)
 }
 
-fn calculate_tag_aes_cbc<Hmac: Mac + KeyInit + FixedOutputReset>(
+fn calculate_tag_aes_cbc<Hmac: Mac + HmacKeyInit + FixedOutputReset>(
     buf: &[u8],
     associated_data: &[u8],
     iv: &[u8],
     hmac_key: &[u8],
 ) -> Result<Vec<u8>, EncryptionError> {
-    let mut mac = <Hmac as Mac>::new_from_slice(hmac_key)
+    let mut mac = <Hmac as HmacKeyInit>::new_from_slice(hmac_key)
         .map_err(|e| EncryptionError::Crypto(format!("failed to create mac: {e}")))?;
     Mac::update(&mut mac, associated_data);
     Mac::update(&mut mac, iv);
@@ -495,7 +495,7 @@ pub(super) fn derive_encryption_key(
     other_info.extend(key_len.to_be_bytes());
 
     let mut encryption_key = SecretSlice::from(key_buffer);
-    concat_kdf::derive_key_into::<sha2::Sha256>(
+    concat_kdf::derive_key_into::<sha2_v10::Sha256>(
         shared_secret.expose_secret(),
         &other_info,
         encryption_key.expose_secret_mut(),
@@ -577,9 +577,16 @@ mod test {
     const PRIVATE_JWK_ED25519: &str = r#"{"kty":"OKP","crv":"Ed25519","x":"0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM","d":"IM92LwWowNDr7OHXEYwuZ1uVm71ihELJda3i50doJ53TISuUpwwLHkMbrOaChSecW8sERC65hZBJggvBXY71Mw"}"#;
 
     fn wrap_p256_private_key(jwk: &str) -> impl PrivateKeyAgreementHandle {
-        pub struct Wrapper {
-            pub key: p256::SecretKey,
+        #[derive(Debug, Deserialize)]
+        struct PrivateJwk {
+            // pub kty: String,
+            // pub crv: String,
+            pub d: String,
         }
+        let jwk: PrivateJwk = serde_json::from_str(jwk).unwrap();
+        let d = decode_b64(&jwk.d, "d").unwrap();
+
+        struct Wrapper(SecretSlice<u8>);
 
         #[async_trait::async_trait]
         impl PrivateKeyAgreementHandle for Wrapper {
@@ -587,16 +594,15 @@ mod test {
                 &self,
                 remote_jwk: &PublicJwk,
             ) -> Result<SecretSlice<u8>, EncryptionError> {
-                ECDSASigner::shared_secret_p256(&self.key.to_bytes().to_vec().into(), remote_jwk)
+                ECDSASigner::shared_secret_p256(&self.0, remote_jwk)
             }
         }
 
-        let key = p256::SecretKey::from_jwk_str(jwk).unwrap();
-        Wrapper { key }
+        Wrapper(d.into())
     }
 
     fn wrap_ed25519_private_key(jwk: &str) -> impl PrivateKeyAgreementHandle {
-        #[derive(Debug, Clone, Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct PrivateJwk {
             // pub kty: String,
             // pub crv: String,
@@ -605,11 +611,8 @@ mod test {
 
         let jwk: PrivateJwk = serde_json::from_str(jwk).unwrap();
         let d = decode_b64(&jwk.d, "d").unwrap();
-        let key = ed25519_compact::SecretKey::from_slice(&d).unwrap();
 
-        pub struct Wrapper {
-            pub key: ed25519_compact::SecretKey,
-        }
+        struct Wrapper(SecretSlice<u8>);
 
         #[async_trait::async_trait]
         impl PrivateKeyAgreementHandle for Wrapper {
@@ -617,11 +620,11 @@ mod test {
                 &self,
                 remote_jwk: &PublicJwk,
             ) -> Result<SecretSlice<u8>, EncryptionError> {
-                EDDSASigner::shared_secret_x25519(&self.key.to_vec().into(), remote_jwk)
+                EDDSASigner::shared_secret_x25519(&self.0, remote_jwk)
             }
         }
 
-        Wrapper { key }
+        Wrapper(d.into())
     }
 
     #[tokio::test]

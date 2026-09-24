@@ -64,7 +64,7 @@ serde_json_path          = { version = "0.7.2" }
 serde_qs                 = { version = "0.15" }
 serde_urlencoded         = { version = "0.7" }
 serde_with               = { version = "3.8", features = ["json", "time_0_3"] }
-sha2                     = { version = "0.10" }
+sha2                     = { version = "0.11" }
 shadow-rs                = { version = "1.5" }
 similar-asserts          = { version = "1.7" }
 strum                    = { version = "0.27", features = ["derive"] }

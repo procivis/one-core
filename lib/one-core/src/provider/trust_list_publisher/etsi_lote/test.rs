@@ -107,7 +107,7 @@ fn make_signing_mocks() -> (
     Certificate,
     Vec<u8>,
 ) {
-    let (private_key, public_key) = ECDSASigner::generate_key_pair();
+    let (private_key, public_key) = ECDSASigner::generate_key_pair().unwrap();
     let private_bytes: Vec<u8> = private_key.expose_secret().to_vec();
     let pem = generate_self_signed_pem();
 
