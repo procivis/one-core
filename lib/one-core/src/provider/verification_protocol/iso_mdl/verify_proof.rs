@@ -31,6 +31,9 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
+#[cfg(test)]
+mod test;
+
 pub(super) struct ValidatedProofCredential {
     credential: DetailCredential,
     credential_schema_id: CredentialSchemaId,
@@ -315,6 +318,24 @@ pub(crate) async fn accept_proof(
             .await
             .error_while("creating remote issuer identifier")?;
 
+        let holder_details = credential
+            .subject
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential subject is missing".to_string(),
+            ))?;
+        let (holder_identifier, _) = identifier_creator
+            .get_or_create_remote_identifier(
+                &organisation,
+                holder_details,
+                IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
+                true,
+                None,
+                None,
+            )
+            .await
+            .error_while("creating remote holder identifier")?;
+
         let credential_schema =
             credential_schemas
                 .get(&credential_schema_id)
@@ -344,7 +365,7 @@ pub(crate) async fn accept_proof(
             claims,
             issuer_identifier,
             issuer_identifier_relation,
-            None,
+            Some(holder_identifier),
             proof.protocol.to_owned(),
             credential.issuance_date,
             Some(format),
