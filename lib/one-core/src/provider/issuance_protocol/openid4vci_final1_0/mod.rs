@@ -1022,11 +1022,7 @@ impl OpenID4VCIFinal1_0 {
                     event: NotificationEvent::CredentialAccepted,
                     event_description: None,
                 },
-                Err(err) => NotificationRequest {
-                    notification_id,
-                    event: NotificationEvent::CredentialFailure,
-                    event_description: Some(err.to_string()),
-                },
+                Err(err) => NotificationRequest::failure(notification_id, &err.to_string()),
             };
 
             if let Err(error) = self
@@ -1357,11 +1353,7 @@ impl OpenID4VCIFinal1_0 {
             notification_id,
             &interaction_data.notification_endpoint,
         ) {
-            let notification = NotificationRequest {
-                notification_id,
-                event: NotificationEvent::CredentialFailure,
-                event_description: Some(err.to_string()),
-            };
+            let notification = NotificationRequest::failure(notification_id, &err.to_string());
 
             if let Err(error) = self
                 .send_notification(

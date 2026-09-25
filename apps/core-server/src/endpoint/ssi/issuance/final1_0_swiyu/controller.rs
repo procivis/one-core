@@ -60,13 +60,14 @@ use crate::router::AppState;
     "},
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
-    accept: TypedHeader<Accept>,
+    accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
         Path<(String, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
+    let accept = accept.map(|TypedHeader(accept)| accept).unwrap_or_default();
     let Some(response_type) = accept.negotiate(&[
         (
             &APPLICATION_JSON,
@@ -144,13 +145,14 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
     "},
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
-    accept: TypedHeader<Accept>,
+    accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
         Path<(String, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
+    let accept = accept.map(|TypedHeader(accept)| accept).unwrap_or_default();
     let Some(response_type) = accept.negotiate(&[
         (
             &APPLICATION_JSON,

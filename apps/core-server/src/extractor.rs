@@ -173,6 +173,15 @@ impl Header for Accept {
     }
 }
 
+/// A request without an `Accept` header accepts any media type
+/// (RFC 9110, section 12.5.1). Handlers take `Option<TypedHeader<Accept>>` and fall back
+/// to this; a header that is present but invalid is still rejected by the extractor.
+impl Default for Accept {
+    fn default() -> Self {
+        Self::from(mime::STAR_STAR)
+    }
+}
+
 impl From<Mime> for Accept {
     fn from(m: Mime) -> Accept {
         Accept(vec![m])
@@ -253,6 +262,14 @@ mod tests {
         assert_eq!(vec!["jwt", "json"], negotiate_all("application/jwt, */*"));
         assert_eq!(vec!["jwt"], negotiate_all("application/json;q=0, */*"));
         assert_eq!(Vec::<&str>::new(), negotiate_all("text/plain"));
+    }
+
+    #[test]
+    fn test_default_accept_accepts_any_media_type() {
+        assert_eq!(
+            Some("json"),
+            Accept::default().negotiate(&[(&mime::APPLICATION_JSON, "json")])
+        );
     }
 
     #[test]
