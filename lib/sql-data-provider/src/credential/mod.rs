@@ -13,6 +13,8 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 
 use crate::transaction_context::TransactionManagerImpl;
 
+mod claim_deduplication;
+mod creation;
 mod entity_model;
 pub mod mapper;
 pub mod repository;

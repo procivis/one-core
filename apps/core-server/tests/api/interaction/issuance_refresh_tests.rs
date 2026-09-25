@@ -353,7 +353,16 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         batch_size as usize * if fail_on_accept { 1 } else { 2 }
     );
     let mut policy_counts = [0, 0];
+    let mut initial_payload_claim_ids = std::collections::HashSet::new();
     for item in &items {
+        let claims = item.claims.as_ref().await.unwrap();
+        initial_payload_claim_ids.insert(
+            claims
+                .iter()
+                .find(|claim| claim.path == "string")
+                .unwrap()
+                .id,
+        );
         if let Some(expires) = offer.fixed_identifier_expiry {
             assert_eq!(item.expires_at.is_some(), expires);
             assert_eq!(
@@ -374,6 +383,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         policy_counts,
         [batch_size, if fail_on_accept { 0 } else { batch_size }]
     );
+    assert_eq!(initial_payload_claim_ids.len(), 1);
 
     // the issuer refuses the second configuration on refresh
     if !fail_on_accept && refresh_supported && !offer.refresh_all_configurations {
@@ -454,7 +464,8 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         let claims = item.claims.as_ref().await.unwrap();
         assert!(!claims.is_empty());
 
-        assert!(claims.iter().any(|claim| claim.path == "string"));
+        let payload = claims.iter().find(|claim| claim.path == "string").unwrap();
+        assert!(initial_payload_claim_ids.contains(&payload.id));
     }
     assert_eq!(
         refreshed_policy_counts,

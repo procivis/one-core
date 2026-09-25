@@ -532,7 +532,7 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
     };
     assert_eq!(sources, expected.into_iter().collect());
     if distinct_items {
-        assert_ne!(claims[0].claim.id, claims[1].claim.id);
+        assert_eq!(claims[0].claim.id, claims[1].claim.id);
         assert_eq!(claims[0].claim.value, claims[1].claim.value);
     }
     drop(claims);

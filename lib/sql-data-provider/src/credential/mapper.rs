@@ -29,10 +29,7 @@ use sea_orm::sea_query::{
 use sea_orm::{
     ActiveValue, ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait, Set, Value,
 };
-use shared_types::{
-    BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, IdentifierId, InteractionId,
-    KeyId,
-};
+use shared_types::{CredentialId, CredentialSchemaFormatId};
 use time::Duration;
 
 use crate::TransactionManagerImpl;
@@ -389,18 +386,7 @@ pub(crate) fn model_to_credential(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
-pub(super) fn request_to_active_model(
-    request: &Credential,
-    issuer_identifier_id: Option<IdentifierId>,
-    issuer_certificate_id: Option<CertificateId>,
-    holder_identifier_id: Option<IdentifierId>,
-    interaction_id: Option<InteractionId>,
-    key_id: Option<KeyId>,
-    credential_blob_id: Option<BlobId>,
-    wallet_key_attestation_blob_id: Option<BlobId>,
-    wallet_instance_attestation_blob_id: Option<BlobId>,
-) -> credential::ActiveModel {
+pub(super) fn request_to_active_model(request: &Credential) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id),
         credential_schema_id: Set(request.schema.id()),
@@ -412,19 +398,31 @@ pub(super) fn request_to_active_model(
         consumed_at: Set(request.consumed_at),
         protocol: Set(request.protocol.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
-        issuer_identifier_id: Set(issuer_identifier_id),
-        issuer_certificate_id: Set(issuer_certificate_id),
-        holder_identifier_id: Set(holder_identifier_id),
-        interaction_id: Set(interaction_id),
-        key_id: Set(key_id),
+        issuer_identifier_id: Set(request
+            .issuer_identifier
+            .as_ref()
+            .map(|identifier| identifier.id())),
+        issuer_certificate_id: Set(request
+            .issuer_certificate
+            .as_ref()
+            .map(|certificate| certificate.id())),
+        holder_identifier_id: Set(request
+            .holder_identifier
+            .as_ref()
+            .map(|identifier| identifier.id())),
+        interaction_id: Set(request
+            .interaction
+            .as_ref()
+            .map(|interaction| interaction.id())),
+        key_id: Set(request.key.as_ref().map(|key| key.id())),
         role: Set(request.role.to_owned().into()),
         state: Set(request.state.into()),
         suspend_end_date: Set(request.suspend_end_date),
         profile: Set(request.profile.clone()),
         parent_id: Set(request.parent.as_ref().map(|m| m.id())),
-        credential_blob_id: Set(credential_blob_id),
-        wallet_key_attestation_blob_id: Set(wallet_key_attestation_blob_id),
-        wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
+        credential_blob_id: Set(request.credential_blob_id),
+        wallet_key_attestation_blob_id: Set(request.wallet_key_attestation_blob_id),
+        wallet_instance_attestation_blob_id: Set(request.wallet_instance_attestation_blob_id),
         webhook_url: Set(request.webhook_url.to_owned()),
         embedded_disclosure_policy: Set(request.embedded_disclosure_policy.clone()),
         subscriber_information: Set(request.subscriber_information.clone()),

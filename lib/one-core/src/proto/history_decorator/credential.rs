@@ -88,22 +88,35 @@ impl CredentialHistoryDecorator {
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialHistoryDecorator {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let state = request.state;
-        let role = request.role;
-        let credential_id = self.inner.create_credential(request).await?;
+        let id = request.id;
+        self.create_credentials(vec![request]).await?;
+        Ok(id)
+    }
 
-        if role == CredentialRole::Holder && state == CredentialStateEnum::Accepted {
-            self.create_history_entry(
-                credential_id,
-                [HistoryAction::Issued, HistoryAction::Accepted],
-            )
-            .await;
-        } else {
-            self.create_history_entry(credential_id, [action_from_state(state)])
+    async fn create_credentials(
+        &self,
+        requests: Vec<Credential>,
+    ) -> Result<Vec<CredentialId>, DataLayerError> {
+        let ids = self.inner.create_credentials(requests.clone()).await?;
+        // Creation preserves state, role and schema; history does not need to reload
+        // every stored credential or inspect its canonical claim IDs.
+        for credential in requests {
+            if credential.role == CredentialRole::Holder
+                && credential.state == CredentialStateEnum::Accepted
+            {
+                for action in [HistoryAction::Issued, HistoryAction::Accepted] {
+                    self.create_history_entry_for_credential(&credential, action)
+                        .await;
+                }
+            } else {
+                self.create_history_entry_for_credential(
+                    &credential,
+                    action_from_state(credential.state),
+                )
                 .await;
-        };
-
-        Ok(credential_id)
+            }
+        }
+        Ok(ids)
     }
 
     async fn update_credential(

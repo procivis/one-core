@@ -543,9 +543,14 @@ async fn test_accept_credential() {
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_create_credential()
+        .expect_create_credentials()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|credentials| {
+            Ok(credentials
+                .into_iter()
+                .map(|credential| credential.id)
+                .collect())
+        });
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -689,9 +694,15 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_create_credential()
-        .times(2)
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .expect_create_credentials()
+        .once()
+        .withf(|credentials| credentials.len() == 2)
+        .returning(|credentials| {
+            Ok(credentials
+                .into_iter()
+                .map(|credential| credential.id)
+                .collect())
+        });
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -878,9 +889,14 @@ async fn test_accept_credential_with_did() {
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_create_credential()
+        .expect_create_credentials()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|credentials| {
+            Ok(credentials
+                .into_iter()
+                .map(|credential| credential.id)
+                .collect())
+        });
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -995,9 +1011,15 @@ async fn test_accept_credential_with_did() {
 async fn test_accept_credential_batch() {
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_create_credential()
-        .times(3)
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .expect_create_credentials()
+        .once()
+        .withf(|credentials| credentials.len() == 3)
+        .returning(|credentials| {
+            Ok(credentials
+                .into_iter()
+                .map(|credential| credential.id)
+                .collect())
+        });
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     let main_credential = dummy_credential(None);
@@ -1479,8 +1501,13 @@ async fn test_continue_issuance() {
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_create_credential()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .expect_create_credentials()
+        .return_once(|credentials| {
+            Ok(credentials
+                .into_iter()
+                .map(|credential| credential.id)
+                .collect())
+        });
 
     let interaction_repository = Arc::new(interaction_repository);
     let service = SSIHolderService {

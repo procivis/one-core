@@ -53,6 +53,9 @@ use crate::test_utilities;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
+#[path = "test/deduplication.rs"]
+mod deduplication;
+
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
     pub credential_schema: CredentialSchema,
@@ -60,9 +63,7 @@ struct TestSetup {
 }
 
 async fn setup_empty() -> TestSetup {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let db = data_layer.db;
-
+    let db = setup_test_data_layer_and_connection().await.db;
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let credential_schema_id = insert_credential_schema_to_database(
@@ -300,13 +301,6 @@ fn credential_repository(
 
 #[tokio::test]
 async fn test_create_credential_success() {
-    let mut claim_repository = MockClaimRepository::default();
-    claim_repository
-        .expect_create_claim_list()
-        .times(1)
-        .withf(|_, claims| claims.len() == 2)
-        .returning(|_, _| Ok(()));
-
     let TestSetup {
         credential_schema,
         db,
@@ -329,7 +323,6 @@ async fn test_create_credential_success() {
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
-            claim_repository: Arc::new(claim_repository),
             credential_schema_repository: Arc::new(schema_repository),
             identifier_repository: Arc::new(identifier_repository),
             ..Repositories::default()
@@ -353,7 +346,7 @@ async fn test_create_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("value2".to_string()),
-            path: claim_schema.key.to_string(),
+            path: format!("{}/0", claim_schema.key),
             schema: claim_schema.into(),
             selectively_disclosable: false,
         },

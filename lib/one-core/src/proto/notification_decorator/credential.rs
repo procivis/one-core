@@ -104,6 +104,13 @@ impl CredentialRepository for CredentialNotificationDecorator {
         self.inner.create_credential(request).await
     }
 
+    async fn create_credentials(
+        &self,
+        requests: Vec<Credential>,
+    ) -> Result<Vec<CredentialId>, DataLayerError> {
+        self.inner.create_credentials(requests).await
+    }
+
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
         self.inner.delete_credentials(credentials).await
     }

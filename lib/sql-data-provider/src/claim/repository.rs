@@ -184,7 +184,27 @@ async fn insert_missing_claims(
     connection: &impl ConnectionTrait,
     models: &[claim::Model],
 ) -> Result<(), DataLayerError> {
-    claim::Entity::insert_many(models.iter().map(|claim| claim.clone().into_active_model()))
+    let existing_ids: HashSet<ClaimId> = claim::Entity::find()
+        .select_only()
+        .column(claim::Column::Id)
+        .filter(claim::Column::Id.is_in(models.iter().map(|claim| claim.id)))
+        .into_tuple()
+        .all(connection)
+        .await
+        .map_err(to_data_layer_error)?
+        .into_iter()
+        .collect();
+    let missing: Vec<_> = models
+        .iter()
+        .filter(|claim| !existing_ids.contains(&claim.id))
+        .map(|claim| claim.clone().into_active_model())
+        .collect();
+    if missing.is_empty() {
+        return Ok(());
+    }
+    // A concurrent caller may still insert an ID after the lookup. Validate the
+    // stored contents afterward, while avoiding MySQL no-op updates on reused rows.
+    claim::Entity::insert_many(missing)
         .on_conflict_do_nothing()
         .exec_without_returning(connection)
         .await

@@ -980,13 +980,23 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         .await;
     assert_eq!(2, batch_items.len());
     assert!(credential.claims.as_ref().await.unwrap().is_empty());
-    let mut claim_ids = std::collections::HashSet::new();
+    let mut canonical_claim_ids = std::collections::HashMap::new();
+    let mut shared_claims = 0;
     for item in batch_items {
         let claims = item.claims.as_ref().await.unwrap();
         assert!(!claims.is_empty());
         let mut has_metadata = false;
         for claim in &claims {
-            assert!(claim_ids.insert(claim.id));
+            let contents = (
+                claim.schema.id(),
+                claim.path.clone(),
+                claim.value.clone(),
+                claim.selectively_disclosable,
+            );
+            if let Some(id) = canonical_claim_ids.insert(contents, claim.id) {
+                assert_eq!(id, claim.id);
+                shared_claims += 1;
+            }
             has_metadata |= claim.schema.as_ref().await.unwrap().metadata;
         }
         assert!(has_metadata);
@@ -994,6 +1004,7 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         assert_eq!(CredentialType::BatchItem, item.r#type);
         assert!(item.expires_at.is_some());
     }
+    assert!(shared_claims > 0);
 }
 
 #[tokio::test]

@@ -60,3 +60,4 @@ pub mod m20260922_120000_proof_claim_credential;
 pub mod m20260923_120000_backfill_credential_formats;
 pub mod m20260923_120000_normalize_holder_claims;
 pub mod m20260924_120000_credential_claim;
+pub mod m20260924_130000_deduplicate_holder_claims;

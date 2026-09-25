@@ -259,10 +259,17 @@ impl SSIHolderService {
         self.transaction_manager
             .tx_with_config(
                 async {
+                    let mut prepared = Vec::with_capacity(credentials.len());
                     for credential in credentials {
-                        self.create_credential(credential, db_blob_storage.as_ref())
-                            .await?;
+                        prepared.push(
+                            self.prepare_credential(credential, db_blob_storage.as_ref())
+                                .await?,
+                        );
                     }
+                    self.credential_repository
+                        .create_credentials(prepared)
+                        .await
+                        .error_while("creating credentials")?;
                     if !configuration_parents.is_empty() {
                         protocol
                             .regroup_configurations(interaction_id, configuration_parents)
@@ -272,7 +279,7 @@ impl SSIHolderService {
                     Ok::<_, HolderServiceError>(())
                 }
                 .boxed(),
-                // `CredentialRepository::create_credential` opens a READ COMMITTED
+                // `CredentialRepository::create_credentials` opens a READ COMMITTED
                 // transaction to avoid InnoDB gap-lock deadlocks (ONES-54). Nesting
                 // requires the enclosing transaction to use the same isolation level.
                 Some(IsolationLevel::ReadCommitted),
@@ -401,11 +408,11 @@ impl SSIHolderService {
         Ok(())
     }
 
-    async fn create_credential(
+    async fn prepare_credential(
         &self,
         credential: CredentialWithBlob,
         db_blob_storage: &dyn BlobStorage,
-    ) -> Result<(), HolderServiceError> {
+    ) -> Result<Credential, HolderServiceError> {
         let CredentialWithBlob {
             credential,
             serialized,
@@ -423,15 +430,11 @@ impl SSIHolderService {
             None
         };
 
-        self.credential_repository
-            .create_credential(Credential {
-                state: CredentialStateEnum::Accepted,
-                credential_blob_id,
-                ..credential
-            })
-            .await
-            .error_while("creating credential")?;
-        Ok(())
+        Ok(Credential {
+            state: CredentialStateEnum::Accepted,
+            credential_blob_id,
+            ..credential
+        })
     }
 
     pub async fn refresh_credentials(

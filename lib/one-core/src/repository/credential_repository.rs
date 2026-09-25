@@ -14,6 +14,13 @@ use crate::model::relation::AsyncModelLoader;
 pub trait CredentialRepository: Send + Sync {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
+    /// Create credentials and their claims atomically, preserving input ID order.
+    /// Parents may be supplied together with their items, in any order.
+    async fn create_credentials(
+        &self,
+        requests: Vec<Credential>,
+    ) -> Result<Vec<CredentialId>, DataLayerError>;
+
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError>;
 
     async fn delete_credential_blobs(

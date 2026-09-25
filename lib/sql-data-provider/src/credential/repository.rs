@@ -14,15 +14,14 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, JoinType, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, RelationTrait, Select, Set, SqlErr, Unchanged,
+    QuerySelect, QueryTrait, RelationTrait, Select, Set, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
 use super::CredentialProvider;
+use super::creation::{insert_credentials_with_claims, prepare_credentials};
 use super::entity_model::CredentialListEntityModel;
-use super::mapper::{
-    credentials_to_repository, from_clearable, model_to_credential, request_to_active_model,
-};
+use super::mapper::{credentials_to_repository, from_clearable, model_to_credential};
 use crate::common::{calculate_pages_count, count_if_requested};
 use crate::entity::{
     claim, claim_schema, credential, credential_claim, credential_schema, identifier,
@@ -242,71 +241,29 @@ fn get_credential_list_query(
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let issuer_identifier_id = request
-            .issuer_identifier
-            .as_ref()
-            .map(|identifier| identifier.id());
+        let id = request.id;
+        self.create_credentials(vec![request]).await?;
+        Ok(id)
+    }
 
-        let issuer_certificate_id = request.issuer_certificate.as_ref().map(|cert| cert.id());
-
-        let holder_identifier_id = request
-            .holder_identifier
-            .as_ref()
-            .map(|identifier| identifier.id());
-
-        let claims = request.claims.as_ref().await?.to_owned();
-
-        let interaction_id = request
-            .interaction
-            .as_ref()
-            .map(|interaction| interaction.id());
-
-        let key_id = request.key.as_ref().map(|key| key.id());
-
-        let credential_id = request.id;
-        let active_model = request_to_active_model(
-            &request,
-            issuer_identifier_id,
-            issuer_certificate_id,
-            holder_identifier_id,
-            interaction_id,
-            key_id,
-            request.credential_blob_id,
-            request.wallet_key_attestation_blob_id,
-            request.wallet_instance_attestation_blob_id,
-        );
-
+    async fn create_credentials(
+        &self,
+        requests: Vec<Credential>,
+    ) -> Result<Vec<CredentialId>, DataLayerError> {
+        if requests.is_empty() {
+            return Ok(vec![]);
+        }
+        let ids = requests.iter().map(|request| request.id).collect();
+        let credentials = prepare_credentials(requests).await?;
         self.db
             .tx_with_config(
-                async {
-                    active_model
-                        .insert(&self.db)
-                        .await
-                        .map_err(|e| match e.sql_err() {
-                            Some(SqlErr::UniqueConstraintViolation(_)) => {
-                                DataLayerError::AlreadyExists
-                            }
-                            _ => DataLayerError::Db(e.into()),
-                        })?;
-
-                    if !claims.is_empty() {
-                        self.claim_repository
-                            .create_claim_list(credential_id, claims)
-                            .await?;
-                    }
-
-                    Ok::<_, DataLayerError>(())
-                }
-                .boxed(),
-                // In isolation mode "read committed" InnoDB will _not_ create gap locks. Given there
-                // are multiple unique indexes, this is necessary to avoid deadlocks during parallel
-                // inserts.
+                insert_credentials_with_claims(&self.db, credentials).boxed(),
+                // READ COMMITTED avoids InnoDB gap locks during parallel inserts.
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
             .await??;
-
-        Ok(credential_id)
+        Ok(ids)
     }
 
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {

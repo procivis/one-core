@@ -770,7 +770,7 @@ async fn bulk_detach_preserves_remaining_credential_and_distinct_claim_ids() {
             .id,
         shared.id
     );
-    // Equal contents under a fresh ID remain separate until the deduplication step.
+    // Direct claim insertion preserves explicit IDs; holder batch creation handles content reuse.
     let distinct = Claim {
         id: Uuid::new_v4().into(),
         ..shared.clone()
