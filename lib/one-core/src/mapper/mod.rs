@@ -5,7 +5,7 @@ use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::i18n::I18nString;
-use shared_types::{BlobId, ClaimSchemaId, CredentialId};
+use shared_types::{BlobId, ClaimSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -61,7 +61,6 @@ pub(crate) fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> Ge
 }
 
 pub(crate) fn value_to_model_claims(
-    credential_id: CredentialId,
     claim_schemas: &[ClaimSchema],
     mappings: &HashMap<ClaimSchemaId, &CredentialSchemaFormatClaimSchema>,
     claim_value: CredentialClaim,
@@ -73,7 +72,6 @@ pub(crate) fn value_to_model_claims(
 
     let mut claim_stub = Claim {
         id: Uuid::new_v4().into(),
-        credential_id,
         created_date: now,
         last_modified: now,
         value: None,
@@ -139,7 +137,6 @@ pub(crate) fn value_to_model_claims(
                     )));
                 };
                 model_claims.extend(value_to_model_claims(
-                    credential_id,
                     claim_schemas,
                     mappings,
                     value,
@@ -154,7 +151,6 @@ pub(crate) fn value_to_model_claims(
             for (index, value) in array.into_iter().enumerate() {
                 let child_path = format!("{claim_path}/{index}");
                 model_claims.extend(value_to_model_claims(
-                    credential_id,
                     claim_schemas,
                     mappings,
                     value,
@@ -194,7 +190,6 @@ pub(crate) fn extracted_credential_to_model(
     let mut model_claims = vec![];
     for claim in claims {
         model_claims.extend(value_to_model_claims(
-            credential_id,
             claim_schemas,
             mappings,
             claim.value,

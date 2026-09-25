@@ -895,7 +895,6 @@ async fn dummy_credential() -> Credential {
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             value: Some("claim value".to_string()),

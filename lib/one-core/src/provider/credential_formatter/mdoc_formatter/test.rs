@@ -950,14 +950,9 @@ async fn test_parse_object_array_preserves_element_type() {
         ],
     )]);
 
-    let (claims, mappings) = parse_claims(
-        namespaces,
-        &datatype_provider,
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
-    )
-    .await
-    .unwrap();
+    let (claims, mappings) = parse_claims(namespaces, &datatype_provider, Uuid::new_v4().into())
+        .await
+        .unwrap();
 
     assert_eq!(claims.len(), 5);
     let array = claims

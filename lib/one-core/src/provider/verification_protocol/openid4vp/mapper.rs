@@ -280,7 +280,6 @@ pub(crate) fn extracted_credential_to_model(
     for (value, claim_schema) in claims {
         model_claims.extend(
             value_to_model_claims(
-                credential_id,
                 claim_schemas,
                 mappings,
                 value,

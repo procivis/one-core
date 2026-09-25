@@ -146,13 +146,25 @@ impl ProofRepository for ProofProvider {
     }
 
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
-        proof_claim::Entity::delete_many()
-            .filter(proof_claim::Column::ProofId.eq(proof_id))
-            .exec(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        Ok(())
+        self.db
+            .tx(async {
+                let references = proof_claim::Entity::find()
+                    .filter(proof_claim::Column::ProofId.eq(proof_id))
+                    .all(&self.db)
+                    .await
+                    .map_err(crate::mapper::to_data_layer_error)?;
+                proof_claim::Entity::delete_many()
+                    .filter(proof_claim::Column::ProofId.eq(proof_id))
+                    .exec(&self.db)
+                    .await
+                    .map_err(crate::mapper::to_data_layer_error)?;
+                let ids: Vec<_> = references
+                    .into_iter()
+                    .map(|reference| reference.claim_id)
+                    .collect();
+                crate::claim::repository::delete_orphan_claims(&self.db, &ids).await
+            })
+            .await?
     }
 
     async fn set_proof_claims(

@@ -260,21 +260,26 @@ pub async fn insert_many_claims_to_database(
     claims: ClaimList<'_>,
 ) -> Result<(), DbErr> {
     let models = claims.iter().map(
-        |(id, claim_schema_id, credential_id, value, path, selectively_disclosable)| {
-            claim::ActiveModel {
-                id: Set(*id),
-                claim_schema_id: Set(*claim_schema_id),
-                credential_id: Set(*credential_id),
-                value: Set(value.to_owned()),
-                created_date: Set(get_dummy_date()),
-                last_modified: Set(get_dummy_date()),
-                path: Set(path.to_owned()),
-                selectively_disclosable: Set(*selectively_disclosable),
-            }
+        |(id, claim_schema_id, _, value, path, selectively_disclosable)| claim::ActiveModel {
+            id: Set(*id),
+            claim_schema_id: Set(*claim_schema_id),
+            value: Set(value.to_owned()),
+            created_date: Set(get_dummy_date()),
+            last_modified: Set(get_dummy_date()),
+            path: Set(path.to_owned()),
+            selectively_disclosable: Set(*selectively_disclosable),
         },
     );
 
     claim::Entity::insert_many(models).exec(database).await?;
+    crate::entity::credential_claim::Entity::insert_many(claims.iter().map(
+        |(id, _, credential_id, _, _, _)| crate::entity::credential_claim::ActiveModel {
+            credential_id: Set(*credential_id),
+            claim_id: Set(*id),
+        },
+    ))
+    .exec(database)
+    .await?;
     Ok(())
 }
 
@@ -447,18 +452,14 @@ pub async fn insert_proof_schema_to_database(
 
 pub async fn insert_many_proof_claim_to_database(
     database: &DatabaseConnection,
-    proof_claims: &[(ProofId, ClaimId)],
+    proof_claims: &[(ProofId, CredentialId, ClaimId)],
 ) -> Result<(), DbErr> {
     let mut models = Vec::with_capacity(proof_claims.len());
-    for (proof_id, claim_id) in proof_claims {
-        let claim = claim::Entity::find_by_id(*claim_id)
-            .one(database)
-            .await?
-            .ok_or_else(|| DbErr::RecordNotFound(format!("Claim {claim_id}")))?;
+    for (proof_id, credential_id, claim_id) in proof_claims {
         models.push(proof_claim::ActiveModel {
             claim_id: Set(*claim_id),
             proof_id: Set(*proof_id),
-            credential_id: Set(claim.credential_id),
+            credential_id: Set(*credential_id),
         });
     }
 

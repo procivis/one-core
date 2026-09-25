@@ -192,7 +192,6 @@ async fn generic_credential() -> Credential {
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: now,
             last_modified: now,
             value: Some("123".to_string()),
@@ -3605,7 +3604,6 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         .into();
     *credential.claims.as_mut().await.unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
-        credential_id: credential.id,
         created_date: now,
         last_modified: now,
         value: Some("123".to_string()),
@@ -3665,17 +3663,11 @@ fn generate_claim_schema(key: &str, datatype: &str, array: bool) -> ClaimSchema 
     }
 }
 
-fn generate_claim(
-    credential_id: CredentialId,
-    claim_schema: &ClaimSchema,
-    value: &str,
-    path: &str,
-) -> Claim {
+fn generate_claim(claim_schema: &ClaimSchema, value: &str, path: &str) -> Claim {
     let now = get_dummy_date();
 
     Claim {
         id: Uuid::new_v4().into(),
-        credential_id,
         created_date: now,
         last_modified: now,
         value: Some(value.to_string()),
@@ -3719,26 +3711,26 @@ async fn test_get_credential_success_array_complex_nested_all() {
     let id = Uuid::new_v4().into();
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
-        generate_claim(id, &schema_root_name, "123", "root/0/name"),
-        generate_claim(id, &schema_root_cap, "invoke", "root/0/cap/0"),
-        generate_claim(id, &schema_root_cap, "revoke", "root/0/cap/1"),
-        generate_claim(id, &schema_root_cap, "delete", "root/0/cap/2"),
-        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/1"),
-        generate_claim(id, &schema_root_name, "456", "root/1/name"),
-        generate_claim(id, &schema_root_cap, "invoke", "root/1/cap/0"),
-        generate_claim(id, &schema_root_cap, "revoke", "root/1/cap/1"),
-        generate_claim(id, &schema_root_cap, "delete", "root/1/cap/2"),
-        generate_claim(id, &schema_other_0_name, "name1", "other/0/0/name"),
-        generate_claim(id, &schema_other_0_name, "name2", "other/0/1/name"),
-        generate_claim(id, &schema_other_1, "other1", "other/1/0"),
-        generate_claim(id, &schema_other_1, "other2", "other/1/1"),
-        generate_claim(id, &schema_other_1, "other3", "other/1/2"),
-        generate_claim(id, &schema_str, "str1", "str/0"),
-        generate_claim(id, &schema_str, "str1", "str/1"),
-        generate_claim(id, &schema_str, "str1", "str/2"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(&schema_root_name, "123", "root/0/name"),
+        generate_claim(&schema_root_cap, "invoke", "root/0/cap/0"),
+        generate_claim(&schema_root_cap, "revoke", "root/0/cap/1"),
+        generate_claim(&schema_root_cap, "delete", "root/0/cap/2"),
+        generate_claim(&schema_root_index_list, "456", "root/1/indexlist/0"),
+        generate_claim(&schema_root_index_list, "456", "root/1/indexlist/1"),
+        generate_claim(&schema_root_name, "456", "root/1/name"),
+        generate_claim(&schema_root_cap, "invoke", "root/1/cap/0"),
+        generate_claim(&schema_root_cap, "revoke", "root/1/cap/1"),
+        generate_claim(&schema_root_cap, "delete", "root/1/cap/2"),
+        generate_claim(&schema_other_0_name, "name1", "other/0/0/name"),
+        generate_claim(&schema_other_0_name, "name2", "other/0/1/name"),
+        generate_claim(&schema_other_1, "other1", "other/1/0"),
+        generate_claim(&schema_other_1, "other2", "other/1/1"),
+        generate_claim(&schema_other_1, "other3", "other/1/2"),
+        generate_claim(&schema_str, "str1", "str/0"),
+        generate_claim(&schema_str, "str1", "str/1"),
+        generate_claim(&schema_str, "str1", "str/2"),
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -4514,19 +4506,19 @@ async fn test_get_credential_success_array_index_sorting() {
     let id = Uuid::new_v4().into();
 
     let claims = vec![
-        generate_claim(id, &schema_str, "str1", "str/2"),
-        generate_claim(id, &schema_str, "str1", "str/0"),
-        generate_claim(id, &schema_str, "str1", "str/1"),
-        generate_claim(id, &schema_str, "str1", "str/6"),
-        generate_claim(id, &schema_str, "str1", "str/7"),
-        generate_claim(id, &schema_str, "str1", "str/3"),
-        generate_claim(id, &schema_str, "str1", "str/4"),
-        generate_claim(id, &schema_str, "str1", "str/10"),
-        generate_claim(id, &schema_str, "str1", "str/11"),
-        generate_claim(id, &schema_str, "str1", "str/5"),
-        generate_claim(id, &schema_str, "str1", "str/9"),
-        generate_claim(id, &schema_str, "str1", "str/8"),
-        generate_claim(id, &schema_str, "str1", "str/12"),
+        generate_claim(&schema_str, "str1", "str/2"),
+        generate_claim(&schema_str, "str1", "str/0"),
+        generate_claim(&schema_str, "str1", "str/1"),
+        generate_claim(&schema_str, "str1", "str/6"),
+        generate_claim(&schema_str, "str1", "str/7"),
+        generate_claim(&schema_str, "str1", "str/3"),
+        generate_claim(&schema_str, "str1", "str/4"),
+        generate_claim(&schema_str, "str1", "str/10"),
+        generate_claim(&schema_str, "str1", "str/11"),
+        generate_claim(&schema_str, "str1", "str/5"),
+        generate_claim(&schema_str, "str1", "str/9"),
+        generate_claim(&schema_str, "str1", "str/8"),
+        generate_claim(&schema_str, "str1", "str/12"),
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -4950,8 +4942,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     let id = Uuid::new_v4().into();
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/1"),
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -5217,7 +5209,6 @@ async fn test_get_credential_success_array_single_element() {
     let id = Uuid::new_v4().into();
 
     let claims = vec![generate_claim(
-        id,
         &schema_root_index_list,
         "123",
         "root/0/indexlist/0",
@@ -5588,12 +5579,11 @@ async fn test_create_credential_array_simple_string() {
     let schema_str = generate_claim_schema("str", "STRING", true);
 
     let claim_schemas = vec![schema_str.to_owned()];
-    let id = Uuid::new_v4().into();
 
     let claims = vec![
-        generate_claim(id, &schema_str, "str1", "str/0"),
-        generate_claim(id, &schema_str, "str1", "str/1"),
-        generate_claim(id, &schema_str, "str1", "str/2"),
+        generate_claim(&schema_str, "str1", "str/0"),
+        generate_claim(&schema_str, "str1", "str/1"),
+        generate_claim(&schema_str, "str1", "str/2"),
     ];
 
     test_create_credential_array(claim_schemas, claims)
@@ -5603,16 +5593,14 @@ async fn test_create_credential_array_simple_string() {
 
 #[tokio::test]
 async fn test_create_credential_array_simple_object() {
-    let id = Uuid::new_v4().into();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/1"),
     ];
 
     test_create_credential_array(claim_schemas, claims)
@@ -5646,29 +5634,27 @@ async fn test_create_credential_array_complex_structure() {
         schema_str.to_owned(),
     ];
 
-    let id = Uuid::new_v4().into();
-
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
-        generate_claim(id, &schema_root_name, "123", "root/0/name"),
-        generate_claim(id, &schema_root_cap, "invoke", "root/0/cap/0"),
-        generate_claim(id, &schema_root_cap, "revoke", "root/0/cap/1"),
-        generate_claim(id, &schema_root_cap, "delete", "root/0/cap/2"),
-        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/1"),
-        generate_claim(id, &schema_root_name, "456", "root/1/name"),
-        generate_claim(id, &schema_root_cap, "invoke", "root/1/cap/0"),
-        generate_claim(id, &schema_root_cap, "revoke", "root/1/cap/1"),
-        generate_claim(id, &schema_root_cap, "delete", "root/1/cap/2"),
-        generate_claim(id, &schema_other_0_name, "name1", "other/0/0/name"),
-        generate_claim(id, &schema_other_0_name, "name2", "other/0/1/name"),
-        generate_claim(id, &schema_other_1, "other1", "other/1/0"),
-        generate_claim(id, &schema_other_1, "other2", "other/1/1"),
-        generate_claim(id, &schema_other_1, "other3", "other/1/2"),
-        generate_claim(id, &schema_str, "str1", "str/0"),
-        generate_claim(id, &schema_str, "str1", "str/1"),
-        generate_claim(id, &schema_str, "str1", "str/2"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(&schema_root_name, "123", "root/0/name"),
+        generate_claim(&schema_root_cap, "invoke", "root/0/cap/0"),
+        generate_claim(&schema_root_cap, "revoke", "root/0/cap/1"),
+        generate_claim(&schema_root_cap, "delete", "root/0/cap/2"),
+        generate_claim(&schema_root_index_list, "456", "root/1/indexlist/0"),
+        generate_claim(&schema_root_index_list, "456", "root/1/indexlist/1"),
+        generate_claim(&schema_root_name, "456", "root/1/name"),
+        generate_claim(&schema_root_cap, "invoke", "root/1/cap/0"),
+        generate_claim(&schema_root_cap, "revoke", "root/1/cap/1"),
+        generate_claim(&schema_root_cap, "delete", "root/1/cap/2"),
+        generate_claim(&schema_other_0_name, "name1", "other/0/0/name"),
+        generate_claim(&schema_other_0_name, "name2", "other/0/1/name"),
+        generate_claim(&schema_other_1, "other1", "other/1/0"),
+        generate_claim(&schema_other_1, "other2", "other/1/1"),
+        generate_claim(&schema_other_1, "other3", "other/1/2"),
+        generate_claim(&schema_str, "str1", "str/0"),
+        generate_claim(&schema_str, "str1", "str/1"),
+        generate_claim(&schema_str, "str1", "str/2"),
     ];
 
     test_create_credential_array(claim_schemas, claims)
@@ -5678,15 +5664,12 @@ async fn test_create_credential_array_complex_structure() {
 
 #[tokio::test]
 async fn test_create_credential_array_fail_incorrect_index() {
-    let id = Uuid::new_v4().into();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
 
     let unparsable_index = generate_claim(
-        id,
         &schema_root_index_list,
         "123",
         "root/0/indexlist/not_an_index",
@@ -5698,7 +5681,6 @@ async fn test_create_credential_array_fail_incorrect_index() {
     );
 
     let unparsable_index_parent = generate_claim(
-        id,
         &schema_root_index_list,
         "123",
         "root/not_an_index/indexlist/0",
@@ -5709,21 +5691,21 @@ async fn test_create_credential_array_fail_incorrect_index() {
             .is_err()
     );
 
-    let missing_component = generate_claim(id, &schema_root_index_list, "123", "root/indexlist/0");
+    let missing_component = generate_claim(&schema_root_index_list, "123", "root/indexlist/0");
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), vec![missing_component])
             .await
             .is_err()
     );
 
-    let malformed_path = generate_claim(id, &schema_root_index_list, "123", "not_even_a_path");
+    let malformed_path = generate_claim(&schema_root_index_list, "123", "not_even_a_path");
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), vec![malformed_path])
             .await
             .is_err()
     );
 
-    let malformed_path = generate_claim(id, &schema_root_index_list, "123", "///////");
+    let malformed_path = generate_claim(&schema_root_index_list, "123", "///////");
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), vec![malformed_path])
             .await
@@ -5733,16 +5715,14 @@ async fn test_create_credential_array_fail_incorrect_index() {
 
 #[tokio::test]
 async fn test_create_credential_array_fail_index_incorrect_order() {
-    let id = Uuid::new_v4().into();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/2"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/2"),
     ];
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), claims)
@@ -5751,8 +5731,8 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
     );
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
     ];
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), claims)
@@ -5761,8 +5741,8 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
     );
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/2/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/2/indexlist/0"),
     ];
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), claims)
@@ -5771,8 +5751,8 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
     );
 
     let claims = vec![
-        generate_claim(id, &schema_root_index_list, "123", "root/1/indexlist/0"),
-        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/1/indexlist/0"),
+        generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
     ];
     assert!(
         test_create_credential_array(claim_schemas.to_owned(), claims)
@@ -5783,8 +5763,6 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
 
 #[tokio::test]
 async fn test_create_credential_number_named_claims() {
-    let id = Uuid::new_v4().into();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_00 = generate_claim_schema("root/00", "STRING", false);
     let schema_1 = generate_claim_schema("root/1", "STRING", false);
@@ -5798,10 +5776,10 @@ async fn test_create_credential_number_named_claims() {
     ];
 
     let claims = vec![
-        generate_claim(id, &schema_00, "zero", "root/0/00"),
-        generate_claim(id, &schema_1, "1first", "root/0/1"),
-        generate_claim(id, &schema_1, "1second", "root/1/1"),
-        generate_claim(id, &schema_2array, "2first", "root/0/2-array/0"),
+        generate_claim(&schema_00, "zero", "root/0/00"),
+        generate_claim(&schema_1, "1first", "root/0/1"),
+        generate_claim(&schema_1, "1second", "root/1/1"),
+        generate_claim(&schema_2array, "2first", "root/0/2-array/0"),
     ];
     test_create_credential_array(claim_schemas.to_owned(), claims)
         .await

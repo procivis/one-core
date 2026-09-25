@@ -22,11 +22,10 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 pub async fn parse_claims(
     public_claims: HashMap<String, CredentialClaim>,
     datatype_provider: &dyn DataTypeProvider,
-    credential_id: shared_types::CredentialId,
 ) -> Result<(Vec<Claim>, Vec<ClaimSchema>), FormatterError> {
     let mut result = vec![];
     for (key, claim_value) in public_claims {
-        let claims = parse_claim(&key, &key, claim_value, datatype_provider, credential_id).await?;
+        let claims = parse_claim(&key, &key, claim_value, datatype_provider).await?;
         result.extend(claims);
     }
 
@@ -65,14 +64,12 @@ fn parse_claim<'a>(
     claim_schema_path: &'a str,
     claim_value: CredentialClaim,
     datatype_provider: &'a dyn DataTypeProvider,
-    credential_id: shared_types::CredentialId,
 ) -> BoxFuture<'a, Result<Vec<Claim>, FormatterError>> {
     Box::pin(parse_claim_inner(
         claim_path,
         claim_schema_path,
         claim_value,
         datatype_provider,
-        credential_id,
     ))
 }
 
@@ -81,7 +78,6 @@ async fn parse_claim_inner(
     claim_schema_path: &str,
     claim_value: CredentialClaim,
     datatype_provider: &dyn DataTypeProvider,
-    credential_id: shared_types::CredentialId,
 ) -> Result<Vec<Claim>, FormatterError> {
     let now = crate::clock::now_utc();
 
@@ -103,14 +99,8 @@ async fn parse_claim_inner(
             let mut subclaims: Vec<Claim> = vec![];
             for (index, value) in values.into_iter().enumerate() {
                 let item_path = format!("{claim_path}/{index}");
-                let claims = parse_claim(
-                    &item_path,
-                    claim_schema_path,
-                    value,
-                    datatype_provider,
-                    credential_id,
-                )
-                .await?;
+                let claims =
+                    parse_claim(&item_path, claim_schema_path, value, datatype_provider).await?;
                 subclaims.extend(claims);
             }
 
@@ -125,7 +115,6 @@ async fn parse_claim_inner(
 
             let mut result = vec![Claim {
                 id: Uuid::new_v4().into(),
-                credential_id,
                 created_date: now,
                 last_modified: now,
                 value: None,
@@ -152,20 +141,13 @@ async fn parse_claim_inner(
             for (key, value) in map {
                 let item_path = format!("{claim_path}/{key}");
                 let item_schema_path = format!("{claim_schema_path}/{key}");
-                let claims = parse_claim(
-                    &item_path,
-                    &item_schema_path,
-                    value,
-                    datatype_provider,
-                    credential_id,
-                )
-                .await?;
+                let claims =
+                    parse_claim(&item_path, &item_schema_path, value, datatype_provider).await?;
                 result.extend(claims);
             }
 
             result.push(Claim {
                 id: Uuid::new_v4().into(),
-                credential_id,
                 created_date: now,
                 last_modified: now,
                 value: None,
@@ -196,7 +178,6 @@ async fn parse_claim_inner(
 
             vec![Claim {
                 id: Uuid::new_v4().into(),
-                credential_id,
                 created_date: now,
                 last_modified: now,
                 value: Some(extracted.value),

@@ -9,7 +9,6 @@ impl From<Claim> for claim::ActiveModel {
     fn from(value: Claim) -> Self {
         Self {
             id: Set(value.id),
-            credential_id: Set(value.credential_id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             value: Set(value.value.map(|val| val.as_bytes().to_vec())),
@@ -23,7 +22,6 @@ impl From<Claim> for claim::ActiveModel {
 pub(crate) fn claim_from_model(value: claim::Model, schema: Related<ClaimSchema>) -> Claim {
     Claim {
         id: value.id,
-        credential_id: value.credential_id,
         value: value
             .value
             .map(|data| String::from_utf8_lossy(&data).into_owned()),

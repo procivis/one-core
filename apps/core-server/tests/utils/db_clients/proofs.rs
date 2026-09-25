@@ -11,7 +11,7 @@ use one_core::model::relation::Related;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::proof_repository::ProofRepository;
 use one_dto_mapper::convert_inner;
-use shared_types::{BlobId, EcosystemId, ProofId};
+use shared_types::{BlobId, CredentialId, EcosystemId, ProofId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -132,11 +132,16 @@ impl ProofsDB {
         self.get(&proof_id).await
     }
 
-    pub async fn set_proof_claims(&self, id: &ProofId, claims: Vec<Claim>) {
+    pub async fn set_proof_claims(
+        &self,
+        id: &ProofId,
+        credential_id: CredentialId,
+        claims: Vec<Claim>,
+    ) {
         let claims = claims
             .into_iter()
             .map(|claim| ProofClaim {
-                credential: Related::new(claim.credential_id, self.credential_repository.clone()),
+                credential: Related::new(credential_id, self.credential_repository.clone()),
                 claim,
             })
             .collect();

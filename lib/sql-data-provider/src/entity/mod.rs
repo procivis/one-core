@@ -5,6 +5,7 @@ pub mod certificate;
 pub mod claim;
 pub mod claim_schema;
 pub mod credential;
+pub mod credential_claim;
 pub mod credential_schema;
 pub mod credential_schema_format;
 pub mod credential_schema_format_claim_schema;

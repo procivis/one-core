@@ -516,7 +516,6 @@ async fn test_get_proof_with_relations() {
         .returning(move |ids| {
             Ok(vec![Claim {
                 id: ids[0],
-                credential_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 value: Some("value".to_string()),
@@ -597,7 +596,6 @@ async fn test_get_proof_with_relations() {
 
     claim::ActiveModel {
         id: Set(claim_id),
-        credential_id: Set(credential_id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set(Some("value".into())),
         path: Set("path".into()),
@@ -728,7 +726,6 @@ async fn test_set_proof_claims_success() {
 
     let claim = Claim {
         id: Uuid::new_v4().into(),
-        credential_id: credential.id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("value".to_string()),
@@ -740,7 +737,6 @@ async fn test_set_proof_claims_success() {
     // necessary to pass db consistency checks
     claim::ActiveModel {
         id: Set(claim.id),
-        credential_id: Set(credential.id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set(Some("value".into())),
         path: Set("path".into()),

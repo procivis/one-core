@@ -10,7 +10,13 @@ use crate::model::relation::AsyncVecLoader;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait ClaimRepository: Send + Sync {
-    async fn create_claim_list(&self, request: Vec<Claim>) -> Result<(), DataLayerError>;
+    /// Store new claims and associate them with a credential. Existing claim IDs
+    /// may be shared, but their stored contents must not change.
+    async fn create_claim_list(
+        &self,
+        credential_id: CredentialId,
+        request: Vec<Claim>,
+    ) -> Result<(), DataLayerError>;
 
     async fn delete_claims_for_credential(
         &self,
@@ -25,7 +31,7 @@ pub trait ClaimRepository: Send + Sync {
     async fn get_claim_list(&self, id: Vec<ClaimId>) -> Result<Vec<Claim>, DataLayerError>;
 
     /// Claims belonging to a credential, ordered according to the claim order defined by the
-    /// owning credential schema.
+    /// credential schema.
     async fn get_claims_for_credential(
         &self,
         credential_id: CredentialId,

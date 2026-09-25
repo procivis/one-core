@@ -191,7 +191,6 @@ impl CredentialService {
 
         let credential_id = Uuid::new_v4().into();
         let claims = claims_from_create_request(
-            credential_id,
             request.claim_values.clone(),
             &schema.claim_schemas.as_ref().await?,
         )?;

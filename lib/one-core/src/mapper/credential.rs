@@ -93,7 +93,7 @@ mod test {
         };
         item.claims.as_mut().await.unwrap()[0].selectively_disclosable = true;
         let own = stored_credential_claims(&item).await.unwrap();
-        assert_eq!(own[0].credential_id, item.id);
+        assert_eq!(own[0].id, item.claims.as_ref().await.unwrap()[0].id);
         assert!(own[0].selectively_disclosable);
         assert_ne!(own[0].id, parent_claim_id);
 

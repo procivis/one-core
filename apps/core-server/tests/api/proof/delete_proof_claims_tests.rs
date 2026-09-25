@@ -135,6 +135,7 @@ async fn test_delete_proof_claims_success() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;

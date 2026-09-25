@@ -485,7 +485,6 @@ async fn test_get_presentation_definition_v2() {
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_name"].clone().into(),
@@ -495,7 +494,6 @@ async fn test_get_presentation_definition_v2() {
         },
         Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_age"].clone().into(),
@@ -505,7 +503,6 @@ async fn test_get_presentation_definition_v2() {
         },
         Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_country"]
@@ -517,7 +514,6 @@ async fn test_get_presentation_definition_v2() {
         },
         Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_country_code"]
@@ -529,7 +525,6 @@ async fn test_get_presentation_definition_v2() {
         },
         Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_info"].clone().into(),
@@ -539,7 +534,6 @@ async fn test_get_presentation_definition_v2() {
         },
         Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_info/code"]

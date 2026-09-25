@@ -63,15 +63,18 @@ pub(crate) async fn persist_accepted_proof(
                             .into_iter()
                             .map(|claim| {
                                 let credential = credential_relations
-                                    .get(&claim.credential_id)
+                                    .get(&claim.credential.id())
                                     .cloned()
                                     .ok_or_else(|| {
                                         ServiceError::MappingError(format!(
                                             "Missing proved credential {}",
-                                            claim.credential_id
+                                            claim.credential.id()
                                         ))
                                     })?;
-                                Ok(ProofClaim { credential, claim })
+                                Ok(ProofClaim {
+                                    credential,
+                                    claim: claim.claim,
+                                })
                             })
                             .collect::<Result<Vec<_>, ServiceError>>()?,
                     )

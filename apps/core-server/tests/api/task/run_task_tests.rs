@@ -1612,6 +1612,7 @@ async fn test_run_retain_proof_check_with_update() {
         .proofs
         .set_proof_claims(
             &proof_1.id,
+            credential_1.id,
             credential_1.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1621,6 +1622,7 @@ async fn test_run_retain_proof_check_with_update() {
         .proofs
         .set_proof_claims(
             &proof_2.id,
+            credential_2.id,
             credential_2.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;

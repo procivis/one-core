@@ -144,17 +144,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let (mut claims, mut claim_schemas) = parse_claims(
             parsed_credential.payload.custom.public_claims,
             self.data_type_provider.as_ref(),
-            credential_id,
         )
         .await?;
 
         // Add parsed metadata claims
-        let (metadata_claims, metadata_claim_schemas) = parse_claims(
-            metadata_claims,
-            self.data_type_provider.as_ref(),
-            credential_id,
-        )
-        .await?;
+        let (metadata_claims, metadata_claim_schemas) =
+            parse_claims(metadata_claims, self.data_type_provider.as_ref()).await?;
         claims.extend(metadata_claims);
         claim_schemas.extend(metadata_claim_schemas);
 

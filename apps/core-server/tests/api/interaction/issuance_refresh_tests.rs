@@ -453,7 +453,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         refreshed_policy_counts[index] += 1;
         let claims = item.claims.as_ref().await.unwrap();
         assert!(!claims.is_empty());
-        assert!(claims.iter().all(|claim| claim.credential_id == item.id));
+
         assert!(claims.iter().any(|claim| claim.path == "string"));
     }
     assert_eq!(

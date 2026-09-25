@@ -223,16 +223,11 @@ async fn test_db_schema_claim() {
             "created_date",
             "last_modified",
             "claim_schema_id",
-            "credential_id",
             "value",
             "path",
             "selectively_disclosable",
         ])
-        .index(
-            "index-Claim-Path-CredentialId-Unique",
-            true,
-            &["path", "credential_id"],
-        );
+        .index("index-Claim-ClaimSchemaId", false, &["claim_schema_id"]);
     claim
         .column("id")
         .r#type(ColumnType::Uuid)
@@ -256,12 +251,6 @@ async fn test_db_schema_claim() {
         .default(None)
         .foreign_key("fk-Claim-ClaimSchemaId", "claim_schema", "id");
     claim
-        .column("credential_id")
-        .r#type(ColumnType::Uuid)
-        .nullable(false)
-        .default(None)
-        .foreign_key("fk-Claim-CredentialId", "credential", "id");
-    claim
         .column("value")
         .r#type(ColumnType::Blob)
         .nullable(true);
@@ -275,4 +264,25 @@ async fn test_db_schema_claim() {
         .r#type(ColumnType::Boolean)
         .nullable(false)
         .default(None);
+}
+
+#[tokio::test]
+async fn test_db_schema_credential_claim() {
+    let schema = get_schema().await;
+    let association = schema
+        .table("credential_claim")
+        .columns(&["credential_id", "claim_id"])
+        .index("index-CredentialClaim-ClaimId", false, &["claim_id"]);
+    association
+        .column("credential_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .primary_key()
+        .foreign_key("fk-CredentialClaim-CredentialId", "credential", "id");
+    association
+        .column("claim_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .primary_key()
+        .foreign_key("fk-CredentialClaim-ClaimId", "claim", "id");
 }

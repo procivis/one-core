@@ -29,8 +29,8 @@ use shared_types::{
 use time::OffsetDateTime;
 
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, did, history, identifier, proof,
-    proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
+    claim, claim_schema, credential, credential_claim, credential_schema, did, history, identifier,
+    proof, proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
     trust_list_subscription,
 };
 use crate::history::mapper::{ceil, floor};
@@ -226,9 +226,17 @@ fn select_holder_parent_ids_for_claims() -> SelectStatement {
         .expr_as(credential::Column::ParentId.into_expr(), ENTITY_ID)
         .from(claim::Entity)
         .inner_join(
+            credential_claim::Entity,
+            Expr::col((credential_claim::Entity, credential_claim::Column::ClaimId))
+                .equals((claim::Entity, claim::Column::Id)),
+        )
+        .inner_join(
             credential::Entity,
-            Expr::col((claim::Entity, claim::Column::CredentialId))
-                .equals((credential::Entity, credential::Column::Id)),
+            Expr::col((
+                credential_claim::Entity,
+                credential_claim::Column::CredentialId,
+            ))
+            .equals((credential::Entity, credential::Column::Id)),
         )
         .and_where(credential::Column::Role.eq(credential::CredentialRole::Holder))
         .and_where(credential::Column::ParentId.is_not_null())
@@ -251,8 +259,16 @@ fn search_query_subqueries(
                 .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
                 .to_owned(),
             Query::select()
-                .expr_as(claim::Column::CredentialId.into_expr(), ENTITY_ID)
+                .expr_as(
+                    credential_claim::Column::CredentialId.into_expr(),
+                    ENTITY_ID,
+                )
                 .from(claim::Entity)
+                .inner_join(
+                    credential_claim::Entity,
+                    Expr::col((credential_claim::Entity, credential_claim::Column::ClaimId))
+                        .equals((claim::Entity, claim::Column::Id)),
+                )
                 .inner_join(
                     claim_schema::Entity,
                     Expr::col((claim_schema::Entity, claim_schema::Column::Id))
@@ -307,8 +323,16 @@ fn search_query_subqueries(
                 ))
                 .to_owned(),
             Query::select()
-                .expr_as(claim::Column::CredentialId.into_expr(), ENTITY_ID)
+                .expr_as(
+                    credential_claim::Column::CredentialId.into_expr(),
+                    ENTITY_ID,
+                )
                 .from(claim::Entity)
+                .inner_join(
+                    credential_claim::Entity,
+                    Expr::col((credential_claim::Entity, credential_claim::Column::ClaimId))
+                        .equals((claim::Entity, claim::Column::Id)),
+                )
                 .cond_where(get_blob_match_condition(
                     claim::Column::Value,
                     StringMatch {

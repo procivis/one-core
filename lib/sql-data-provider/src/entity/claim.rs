@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
-use shared_types::{ClaimId, ClaimSchemaId, CredentialId};
+use shared_types::{ClaimId, ClaimSchemaId};
 use time::OffsetDateTime;
 
 use crate::common::{bool_from_int, opt_hex};
@@ -12,7 +12,6 @@ pub struct Model {
     pub id: ClaimId,
 
     pub claim_schema_id: ClaimSchemaId,
-    pub credential_id: CredentialId,
 
     #[serde(deserialize_with = "opt_hex")]
     #[sea_orm(column_type = "Blob")]
@@ -38,15 +37,9 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     ClaimSchema,
-    #[sea_orm(
-        belongs_to = "super::credential::Entity",
-        from = "Column::CredentialId",
-        to = "super::credential::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    Credential,
-    #[sea_orm(has_one = "super::proof_claim::Entity")]
+    #[sea_orm(has_many = "super::credential_claim::Entity")]
+    CredentialClaim,
+    #[sea_orm(has_many = "super::proof_claim::Entity")]
     ProofClaim,
 }
 
@@ -64,7 +57,10 @@ impl Related<super::proof_claim::Entity> for Entity {
 
 impl Related<super::credential::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Credential.def()
+        super::credential_claim::Relation::Credential.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::credential_claim::Relation::Claim.def().rev())
     }
 }
 

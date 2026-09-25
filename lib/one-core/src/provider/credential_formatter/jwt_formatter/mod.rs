@@ -370,17 +370,12 @@ impl CredentialFormatter for JWTFormatter {
         let (mut claims, mut claim_schemas) = parse_claims(
             HashMap::from_iter(credential_subject.claims.clone()),
             self.data_type_provider.as_ref(),
-            credential_id,
         )
         .await?;
 
         // Add parsed metadata claims
-        let (metadata_claims, metadata_claim_schemas) = parse_claims(
-            metadata_claims,
-            self.data_type_provider.as_ref(),
-            credential_id,
-        )
-        .await?;
+        let (metadata_claims, metadata_claim_schemas) =
+            parse_claims(metadata_claims, self.data_type_provider.as_ref()).await?;
         claims.extend(metadata_claims);
         claim_schemas.extend(metadata_claim_schemas);
 

@@ -147,7 +147,6 @@ pub struct UpdateCredentialRequest {
     pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
 
-    pub claims: Option<Vec<Claim>>,
     pub credential_blob_id: Option<BlobId>,
     pub format: Option<CredentialSchemaFormatId>,
 }

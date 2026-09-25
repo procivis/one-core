@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
-use one_core::model::claim::Claim;
 use one_core::model::credential::{
     Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
     GetCredentialList, UpdateCredentialRequest,
@@ -25,7 +24,9 @@ use super::mapper::{
     credentials_to_repository, from_clearable, model_to_credential, request_to_active_model,
 };
 use crate::common::{calculate_pages_count, count_if_requested};
-use crate::entity::{claim, claim_schema, credential, credential_schema, identifier};
+use crate::entity::{
+    claim, claim_schema, credential, credential_claim, credential_schema, identifier,
+};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -49,31 +50,6 @@ impl CredentialProvider {
             .into_iter()
             .map(|model| self.credential_model_to_repository_model(model))
             .collect()
-    }
-
-    async fn update_claims(
-        &self,
-        credential_id: CredentialId,
-        claims: Option<Vec<Claim>>,
-    ) -> Result<(), DataLayerError> {
-        if let Some(claims) = claims {
-            if claims
-                .iter()
-                .any(|claim| claim.credential_id != credential_id)
-            {
-                return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
-            }
-
-            self.claim_repository
-                .delete_claims_for_credential(credential_id)
-                .await?;
-
-            if !claims.is_empty() {
-                self.claim_repository.create_claim_list(claims).await?;
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -224,12 +200,22 @@ fn get_credential_list_query(
             )
         })
     }) {
-        QueryTrait::query(&mut query).join(
-            JoinType::LeftJoin,
-            claim::Entity,
-            Expr::col((claim::Entity, claim::Column::CredentialId))
+        QueryTrait::query(&mut query)
+            .join(
+                JoinType::LeftJoin,
+                credential_claim::Entity,
+                Expr::col((
+                    credential_claim::Entity,
+                    credential_claim::Column::CredentialId,
+                ))
                 .eq(super::mapper::effective_claim_owner()),
-        );
+            )
+            .join(
+                JoinType::LeftJoin,
+                claim::Entity,
+                Expr::col((claim::Entity, claim::Column::Id))
+                    .equals((credential_claim::Entity, credential_claim::Column::ClaimId)),
+            );
         query = query.distinct();
     }
 
@@ -277,10 +263,6 @@ impl CredentialRepository for CredentialProvider {
 
         let key_id = request.key.as_ref().map(|key| key.id());
 
-        if claims.iter().any(|claim| claim.credential_id != request.id) {
-            return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
-        }
-
         let credential_id = request.id;
         let active_model = request_to_active_model(
             &request,
@@ -308,7 +290,9 @@ impl CredentialRepository for CredentialProvider {
                         })?;
 
                     if !claims.is_empty() {
-                        self.claim_repository.create_claim_list(claims).await?;
+                        self.claim_repository
+                            .create_claim_list(credential_id, claims)
+                            .await?;
                     }
 
                     Ok::<_, DataLayerError>(())
@@ -501,8 +485,6 @@ impl CredentialRepository for CredentialProvider {
             ..Default::default()
         };
 
-        self.update_claims(credential_id, request.claims).await?;
-
         update_model
             .update(&self.db)
             .await
@@ -516,7 +498,11 @@ impl CredentialRepository for CredentialProvider {
         claim_names: Vec<String>,
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
-            .join(JoinType::InnerJoin, credential::Relation::Claim.def())
+            .join(
+                JoinType::InnerJoin,
+                credential::Relation::CredentialClaim.def(),
+            )
+            .join(JoinType::InnerJoin, credential_claim::Relation::Claim.def())
             .join(
                 JoinType::InnerJoin,
                 claim::Relation::ClaimSchema

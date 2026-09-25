@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId, ProofId};
 
-use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofClaim};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::provider::credential_formatter::model::{CredentialClaim, DetailCredential};
@@ -32,7 +31,7 @@ impl ValidatedProofResult {
         validate_proof(proof.to_owned(), proved_claims).await
     }
 
-    pub(crate) fn into_credentials_and_claims(self) -> (Vec<ProvedCredential>, Vec<Claim>) {
+    pub(crate) fn into_credentials_and_claims(self) -> (Vec<ProvedCredential>, Vec<ProofClaim>) {
         (self.proved_credentials, self.proved_claims)
     }
 }
@@ -69,7 +68,7 @@ async fn validate_proof(
 
     let mut proved_credentials = vec![];
 
-    let mut proof_claims: Vec<Claim> = vec![];
+    let mut proof_claims: Vec<ProofClaim> = vec![];
     for credential_claims in claims_per_credential.into_values() {
         let claims: Vec<(CredentialClaim, ClaimSchema)> = credential_claims
             .iter()
@@ -120,14 +119,19 @@ async fn validate_proof(
             credential.issuance_date,
         )?;
 
-        proof_claims.append(
-            &mut proved_credential
+        proof_claims.extend(
+            proved_credential
                 .credential
                 .claims
                 .as_ref()
                 .await
                 .map_err(|e| OpenID4VCError::Other(e.to_string()))?
-                .to_owned(),
+                .iter()
+                .cloned()
+                .map(|claim| ProofClaim {
+                    credential: proved_credential.credential.clone().into(),
+                    claim,
+                }),
         );
 
         proved_credentials.push(proved_credential);

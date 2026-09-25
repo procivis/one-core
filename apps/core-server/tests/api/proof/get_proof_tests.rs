@@ -641,6 +641,7 @@ async fn test_get_proof_with_array() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -923,6 +924,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1060,6 +1062,7 @@ async fn test_get_proof_with_credentials() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1183,6 +1186,7 @@ async fn test_get_proof_with_deleted_credential() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1480,6 +1484,7 @@ async fn test_get_proof_with_deleted_claims() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1577,6 +1582,7 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1719,6 +1725,7 @@ async fn test_get_proof_with_credentials_returns_profiles() {
         .proofs
         .set_proof_claims(
             &proof.id,
+            credential.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;

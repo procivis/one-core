@@ -32,8 +32,8 @@ use super::mappers::credential_from_unexportable_model;
 use super::models::UnexportableCredentialModel;
 use crate::did::mapper::did_from_model;
 use crate::entity::{
-    certificate, claim, claim_schema, credential, credential_schema, did, history, identifier,
-    instance, key, key_did, organisation, wallet_attestation,
+    certificate, claim, claim_schema, credential, credential_claim, credential_schema, did,
+    history, identifier, instance, key, key_did, organisation, wallet_attestation,
 };
 use crate::identifier::mapper::identifier_from_model;
 use crate::key::mapper::key_from_model;
@@ -311,9 +311,13 @@ impl BackupRepository for BackupProvider {
                             ),
                         )
                         .join(JoinType::InnerJoin, claim::Relation::ClaimSchema.def())
+                        .join(JoinType::InnerJoin, claim::Relation::CredentialClaim.def())
                         .filter(
-                            Expr::col((claim::Entity, claim::Column::CredentialId))
-                                .eq(crate::credential::mapper::effective_claim_owner()),
+                            Expr::col((
+                                credential_claim::Entity,
+                                credential_claim::Column::CredentialId,
+                            ))
+                            .eq(crate::credential::mapper::effective_claim_owner()),
                         )
                         .into_query(),
                 ),

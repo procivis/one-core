@@ -662,7 +662,6 @@ pub(super) fn from_create_request(
 }
 
 pub(super) fn claims_from_create_request(
-    credential_id: CredentialId,
     claims: Vec<CredentialRequestClaimDTO>,
     claim_schemas: &[ClaimSchema],
 ) -> Result<Vec<Claim>, CredentialServiceError> {
@@ -677,7 +676,6 @@ pub(super) fn claims_from_create_request(
             .ok_or(CredentialServiceError::MissingClaimSchema(claim_schema_id))?;
         let claim = Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: now,
             last_modified: now,
             value: Some(claim_dto.value),
@@ -687,8 +685,7 @@ pub(super) fn claims_from_create_request(
         };
         claims_map.insert(claim_dto.path.clone(), claim);
         let mut current_path = claim_dto.path;
-        current_path =
-            insert_array_parent(schema, credential_id, now, &mut claims_map, current_path)?;
+        current_path = insert_array_parent(schema, now, &mut claims_map, current_path)?;
 
         let mut current_schema_path = schema.key.clone();
         let mut current_path_split = current_path.rsplit_once('/');
@@ -714,7 +711,6 @@ pub(super) fn claims_from_create_request(
                 )))?;
             let parent_claim = Claim {
                 id: Uuid::new_v4().into(),
-                credential_id,
                 created_date: now,
                 last_modified: now,
                 value: None,
@@ -723,8 +719,7 @@ pub(super) fn claims_from_create_request(
                 schema: schema.clone().into(),
             };
             claims_map.insert(current_path.clone(), parent_claim);
-            current_path =
-                insert_array_parent(schema, credential_id, now, &mut claims_map, current_path)?;
+            current_path = insert_array_parent(schema, now, &mut claims_map, current_path)?;
             current_path_split = current_path.rsplit_once('/');
             current_schema_path = parent_schema_path.to_string();
         }
@@ -734,7 +729,6 @@ pub(super) fn claims_from_create_request(
 
 fn insert_array_parent(
     schema: &ClaimSchema,
-    credential_id: CredentialId,
     now: OffsetDateTime,
     claims_map: &mut HashMap<String, Claim>,
     current_path: String,
@@ -748,7 +742,6 @@ fn insert_array_parent(
         if !claims_map.contains_key(array_path) {
             let parent_claim = Claim {
                 id: Uuid::new_v4().into(),
-                credential_id,
                 created_date: now,
                 last_modified: now,
                 value: None,

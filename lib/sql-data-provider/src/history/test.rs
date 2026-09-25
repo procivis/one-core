@@ -15,8 +15,8 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use shared_types::{
-    ClaimId, CredentialId, CredentialSchemaId, DidId, EntityId, IdentifierId, KeyId,
-    OrganisationId, ProofId, ProofSchemaId,
+    CredentialId, CredentialSchemaId, DidId, EntityId, IdentifierId, KeyId, OrganisationId,
+    ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -363,7 +363,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     )
     .await
     .unwrap();
-    let proof_claim: Vec<(ProofId, ClaimId)> = vec![(proof_id.to_owned(), claims[0].0)];
+    let proof_claim = vec![(proof_id, credential.id, claims[0].0)];
     insert_many_proof_claim_to_database(&db, proof_claim.as_slice())
         .await
         .unwrap();
@@ -2075,7 +2075,7 @@ fn assert_counts(actual: &[TimeSeriesPoint], expected: &[usize]) {
 async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() {
     use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-    use crate::entity::{claim, credential, proof_claim};
+    use crate::entity::{credential, credential_claim, proof_claim};
 
     let setup = setup_with_credential_schema_and_proof().await;
     let db = &setup.provider.db;
@@ -2093,12 +2093,12 @@ async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() 
     item.parent_id = Set(Some(setup.credential_id));
     item.r#type = Set(credential::CredentialType::BatchItem);
     item.insert(db).await.unwrap();
-    claim::Entity::update_many()
+    credential_claim::Entity::update_many()
         .col_expr(
-            claim::Column::CredentialId,
+            credential_claim::Column::CredentialId,
             sea_orm::sea_query::Expr::value(item_id),
         )
-        .filter(claim::Column::CredentialId.eq(setup.credential_id))
+        .filter(credential_claim::Column::CredentialId.eq(setup.credential_id))
         .exec(db)
         .await
         .unwrap();
@@ -2135,10 +2135,10 @@ async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() 
 }
 
 #[tokio::test]
-async fn holder_item_history_uses_presented_item_with_parent_owned_claims() {
+async fn holder_item_history_uses_presented_item_with_shared_claims() {
     use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-    use crate::entity::{claim, credential, proof_claim};
+    use crate::entity::{credential, credential_claim, proof_claim};
 
     let setup = setup_with_credential_schema_and_proof().await;
     let db = &setup.provider.db;
@@ -2160,6 +2160,27 @@ async fn holder_item_history_uses_presented_item_with_parent_owned_claims() {
         item.r#type = Set(credential::CredentialType::BatchItem);
         item.insert(db).await.unwrap();
     }
+    let parent_links = credential_claim::Entity::find()
+        .filter(credential_claim::Column::CredentialId.eq(parent.id))
+        .all(db)
+        .await
+        .unwrap();
+    for id in [presented_id, sibling_id] {
+        credential_claim::Entity::insert_many(parent_links.iter().map(|link| {
+            credential_claim::ActiveModel {
+                credential_id: Set(id),
+                claim_id: Set(link.claim_id),
+            }
+        }))
+        .exec(db)
+        .await
+        .unwrap();
+    }
+    credential_claim::Entity::delete_many()
+        .filter(credential_claim::Column::CredentialId.eq(parent.id))
+        .exec(db)
+        .await
+        .unwrap();
     proof_claim::Entity::update_many()
         .col_expr(
             proof_claim::Column::CredentialId,
@@ -2182,16 +2203,16 @@ async fn holder_item_history_uses_presented_item_with_parent_owned_claims() {
         assert_result(count, result);
     }
     assert!(
-        claim::Entity::find()
-            .filter(claim::Column::CredentialId.eq(presented_id))
+        !credential_claim::Entity::find()
+            .filter(credential_claim::Column::CredentialId.eq(presented_id))
             .all(db)
             .await
             .unwrap()
             .is_empty()
     );
     assert!(
-        !claim::Entity::find()
-            .filter(claim::Column::CredentialId.eq(parent.id))
+        credential_claim::Entity::find()
+            .filter(credential_claim::Column::CredentialId.eq(parent.id))
             .all(db)
             .await
             .unwrap()

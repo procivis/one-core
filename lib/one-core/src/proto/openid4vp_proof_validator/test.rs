@@ -983,7 +983,7 @@ async fn each_format_option_is_accepted_and_persisted_with_its_own_mapping(
             .unwrap(),
         Some(name.into())
     );
-    assert_eq!(result.proved_claims[0].value, Some(value.to_string()));
+    assert_eq!(result.proved_claims[0].claim.value, Some(value.to_string()));
 }
 
 #[tokio::test]
@@ -1004,8 +1004,8 @@ async fn submitted_alternatives_are_stored_as_separate_credentials() {
     assert_eq!(result.proved_credentials.len(), 2);
     assert_eq!(result.proved_claims.len(), 2);
     assert_ne!(
-        result.proved_claims[0].credential_id,
-        result.proved_claims[1].credential_id
+        result.proved_claims[0].credential.id(),
+        result.proved_claims[1].credential.id()
     );
 }
 

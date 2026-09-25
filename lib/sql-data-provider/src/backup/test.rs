@@ -1150,7 +1150,7 @@ async fn test_delete_unexportable_identifiers() {
 async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
     use sea_orm::IntoActiveModel;
 
-    use crate::entity::claim;
+    use crate::entity::credential_claim;
 
     let setup = setup_empty().await;
     let keys = add_unexportable_keys(&setup.db, setup.organisation_id).await;
@@ -1169,20 +1169,20 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
     item.parent_id = Set(Some(parent_id));
     item.r#type = Set(CredentialType::BatchItem);
     item.insert(&setup.db).await.unwrap();
-    claim::Entity::update_many()
+    credential_claim::Entity::update_many()
         .col_expr(
-            claim::Column::CredentialId,
+            credential_claim::Column::CredentialId,
             sea_orm::sea_query::Expr::value(item_id),
         )
-        .filter(claim::Column::CredentialId.eq(parent_id))
+        .filter(credential_claim::Column::CredentialId.eq(parent_id))
         .exec(&setup.db)
         .await
         .unwrap();
 
     let snapshot = NamedTempFile::new().unwrap();
     setup.provider.copy_db_to(snapshot.path()).await.unwrap();
-    claim::Entity::delete_many()
-        .filter(claim::Column::CredentialId.eq(item_id))
+    credential_claim::Entity::delete_many()
+        .filter(credential_claim::Column::CredentialId.eq(item_id))
         .exec(&setup.db)
         .await
         .unwrap();
@@ -1198,6 +1198,5 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
         .unwrap();
     let claims = parent.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);
-    assert_eq!(claims[0].credential_id, item_id);
     assert_eq!(claims[0].schema.as_ref().await.unwrap().key, "name");
 }

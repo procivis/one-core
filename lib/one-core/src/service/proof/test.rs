@@ -545,7 +545,6 @@ async fn test_get_proof_with_array_holder() {
         claims: vec![
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -555,7 +554,6 @@ async fn test_get_proof_with_array_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
@@ -565,7 +563,6 @@ async fn test_get_proof_with_array_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
@@ -792,7 +789,6 @@ async fn test_get_proof_with_array_in_object_holder() {
         claims: vec![
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -802,7 +798,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -812,7 +807,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
@@ -822,7 +816,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
@@ -1054,7 +1047,6 @@ async fn test_get_proof_with_object_array_holder() {
         claims: vec![
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1064,7 +1056,6 @@ async fn test_get_proof_with_object_array_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1074,7 +1065,6 @@ async fn test_get_proof_with_object_array_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1084,7 +1074,6 @@ async fn test_get_proof_with_object_array_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
@@ -1094,7 +1083,6 @@ async fn test_get_proof_with_object_array_holder() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
@@ -1321,7 +1309,6 @@ async fn test_get_proof_with_array() {
         claims: vec![
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1331,7 +1318,6 @@ async fn test_get_proof_with_array() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
@@ -1341,7 +1327,6 @@ async fn test_get_proof_with_array() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
@@ -1578,7 +1563,6 @@ async fn test_get_proof_with_array_in_object() {
         claims: vec![
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1588,7 +1572,6 @@ async fn test_get_proof_with_array_in_object() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1598,7 +1581,6 @@ async fn test_get_proof_with_array_in_object() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
@@ -1608,7 +1590,6 @@ async fn test_get_proof_with_array_in_object() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),
@@ -1851,7 +1832,6 @@ async fn test_get_proof_with_object_array() {
         claims: vec![
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1861,7 +1841,6 @@ async fn test_get_proof_with_object_array() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1871,7 +1850,6 @@ async fn test_get_proof_with_object_array() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: None,
@@ -1881,7 +1859,6 @@ async fn test_get_proof_with_object_array() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo1".into()),
@@ -1891,7 +1868,6 @@ async fn test_get_proof_with_object_array() {
             },
             Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("foo2".into()),

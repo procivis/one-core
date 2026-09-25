@@ -2131,7 +2131,6 @@ async fn accept_groups_batches_by_non_metadata_claims(
             .iter()
             .map(|(path, value, metadata)| Claim {
                 id: Uuid::new_v4().into(),
-                credential_id: credential.id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 value: value.map(str::to_owned),

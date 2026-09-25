@@ -21,8 +21,8 @@ use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DidValue,
-    OrganisationId, RevocationMethodId, SerializedCredential,
+    CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId, DidValue, OrganisationId,
+    RevocationMethodId, SerializedCredential,
 };
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
@@ -580,14 +580,12 @@ impl CredentialFormatter for MdocFormatter {
         let (mut claims, mut mappings) = parse_claims(
             namespaces,
             self.datatype_provider.as_ref(),
-            credential_id,
             credential_format_id,
         )
         .await?;
         let doctype_schema_id = Uuid::new_v4().into();
         claims.push(Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: now,
             last_modified: now,
             value: Some(doctype.to_owned()),
@@ -1221,7 +1219,6 @@ fn extract_claims(
 async fn parse_claims(
     namespaces: Namespaces,
     datatype_provider: &dyn DataTypeProvider,
-    credential_id: CredentialId,
     credential_schema_format_id: CredentialSchemaFormatId,
 ) -> Result<(Vec<Claim>, Vec<CredentialSchemaFormatClaimSchema>), FormatterError> {
     let mut claims_with_schemas = vec![];
@@ -1237,7 +1234,6 @@ async fn parse_claims(
                 paths,
                 issuer_signed_item.element_value,
                 datatype_provider,
-                credential_id,
                 credential_schema_format_id,
             )
             .await?;
@@ -1358,14 +1354,12 @@ fn parse_claim(
     paths: Paths,
     value: ciborium::Value,
     datatype_provider: &dyn DataTypeProvider,
-    credential_id: CredentialId,
     credential_schema_format_id: CredentialSchemaFormatId,
 ) -> BoxFuture<'_, Result<ParsedClaims, FormatterError>> {
     Box::pin(parse_claim_inner(
         paths,
         value,
         datatype_provider,
-        credential_id,
         credential_schema_format_id,
     ))
 }
@@ -1374,7 +1368,6 @@ async fn parse_claim_inner(
     paths: Paths,
     value: ciborium::Value,
     datatype_provider: &dyn DataTypeProvider,
-    credential_id: CredentialId,
     credential_schema_format_id: CredentialSchemaFormatId,
 ) -> Result<(Vec<Claim>, Vec<CredentialSchemaFormatClaimSchema>), FormatterError> {
     let now = crate::clock::now_utc();
@@ -1384,7 +1377,7 @@ async fn parse_claim_inner(
         && let Ok(ExtractedClaim { data_type, value }) =
             datatype_provider.extract_cbor_claim(&value)
     {
-        let claim = claim_with_schema(&paths, credential_id, now, data_type, Some(value));
+        let claim = claim_with_schema(&paths, now, data_type, Some(value));
         let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id);
         return Ok((vec![claim], vec![mapping]));
     }
@@ -1410,7 +1403,6 @@ async fn parse_claim_inner(
                     child_paths,
                     value,
                     datatype_provider,
-                    credential_id,
                     credential_schema_format_id,
                 )
                 .await?;
@@ -1424,7 +1416,7 @@ async fn parse_claim_inner(
             };
             let first_data_type = first.schema.as_ref().await?.data_type.to_owned();
 
-            let mut claim = claim_with_schema(&paths, credential_id, now, first_data_type, None);
+            let mut claim = claim_with_schema(&paths, now, first_data_type, None);
             claim.schema.as_mut().await?.array = true;
             let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id);
             // Insert parent claim & mapping _first_ so that it's schema (with the array flag set) will be used
@@ -1434,7 +1426,7 @@ async fn parse_claim_inner(
             (claims, mappings)
         }
         ciborium::Value::Map(map) => {
-            let claim = claim_with_schema(&paths, credential_id, now, "OBJECT".to_owned(), None);
+            let claim = claim_with_schema(&paths, now, "OBJECT".to_owned(), None);
             let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id);
             // Array parsing infers the element type from the first returned claim.
             let mut claims = vec![claim];
@@ -1448,7 +1440,6 @@ async fn parse_claim_inner(
                     item_paths,
                     value,
                     datatype_provider,
-                    credential_id,
                     credential_schema_format_id,
                 )
                 .await?;
@@ -1463,7 +1454,7 @@ async fn parse_claim_inner(
                 .extract_cbor_claim(&simple_value)
                 .error_while("extracting CBOR claim")?;
 
-            let claim = claim_with_schema(&paths, credential_id, now, data_type, Some(value));
+            let claim = claim_with_schema(&paths, now, data_type, Some(value));
             let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id);
             (vec![claim], vec![mapping])
         }
@@ -1488,14 +1479,12 @@ fn mapping_for_claim(
 
 fn claim_with_schema(
     paths: &Paths,
-    credential_id: CredentialId,
     now: OffsetDateTime,
     data_type: String,
     value: Option<String>,
 ) -> Claim {
     Claim {
         id: Uuid::new_v4().into(),
-        credential_id,
         created_date: now,
         last_modified: now,
         value,

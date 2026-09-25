@@ -105,7 +105,6 @@ impl CredentialsDB {
 
                     Claim {
                         id: Uuid::new_v4().into(),
-                        credential_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         value: new_claim.value,
@@ -128,7 +127,6 @@ impl CredentialsDB {
                         vec![
                             Claim {
                                 id: Uuid::new_v4().into(),
-                                credential_id,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
                                 value: schema_to_dummy_value(claim_schema, params.random_claims),
@@ -138,7 +136,6 @@ impl CredentialsDB {
                             },
                             Claim {
                                 id: Uuid::new_v4().into(),
-                                credential_id,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
                                 value: None,
@@ -150,7 +147,6 @@ impl CredentialsDB {
                     } else {
                         vec![Claim {
                             id: Uuid::new_v4().into(),
-                            credential_id,
                             created_date: get_dummy_date(),
                             last_modified: get_dummy_date(),
                             value: schema_to_dummy_value(claim_schema, params.random_claims),
@@ -299,7 +295,6 @@ impl CredentialsDB {
                         .iter()
                         .map(|claim| Claim {
                             id: Uuid::new_v4().into(),
-                            credential_id: item_id,
                             ..claim.clone()
                         })
                         .collect::<Vec<_>>()

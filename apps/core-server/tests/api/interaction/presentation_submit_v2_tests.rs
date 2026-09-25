@@ -245,7 +245,7 @@ async fn check_batch_presentation(submitted_type: CredentialType) {
             .await
             .unwrap()
             .iter()
-            .all(|claim| claim.claim.credential_id == consumed.id)
+            .all(|claim| claim.credential.id() == consumed.id)
     );
     assert!(
         proof
@@ -511,11 +511,18 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
     let proof = context.db.proofs.get(&proof.id).await;
     let claims = proof.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), if distinct_items { 2 } else { 1 });
-    assert!(
-        claims
-            .iter()
-            .all(|entry| entry.claim.credential_id == entry.credential.id())
-    );
+    for entry in &claims {
+        let credential = entry.credential.as_ref().await.unwrap();
+        assert!(
+            credential
+                .claims
+                .as_ref()
+                .await
+                .unwrap()
+                .iter()
+                .any(|claim| claim.id == entry.claim.id)
+        );
+    }
     let sources: std::collections::HashSet<_> =
         claims.iter().map(|entry| entry.credential.id()).collect();
     let expected = if distinct_items {
@@ -1471,20 +1478,13 @@ async fn batch_parent_submission_rejects_exhausted_batch() {
 
 #[tokio::test]
 async fn batch_submission_with_nonmatching_claims_is_invalid() {
+    use one_core::repository::DataRepository;
+
     let batch = BatchPresentation::new(2).await;
+    let claims = sql_data_provider::DataLayer::build(batch.context.db.db_conn.clone(), vec![])
+        .get_claim_repository();
     for item in &batch.items {
-        batch
-            .context
-            .db
-            .credentials
-            .update(
-                item.id,
-                UpdateCredentialRequest {
-                    claims: Some(vec![]),
-                    ..Default::default()
-                },
-            )
-            .await;
+        claims.delete_claims_for_credential(item.id).await.unwrap();
     }
     let sibling = batch
         .items

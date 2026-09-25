@@ -268,7 +268,6 @@ fn generic_credential() -> Credential {
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
-            credential_id,
             created_date: now,
             last_modified: now,
             value: Some("123".to_string()),

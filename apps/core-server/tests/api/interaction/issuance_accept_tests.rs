@@ -585,7 +585,7 @@ async fn check_multi_configuration_issuance(
                 );
                 assert!(all_item_ids.insert(item.id));
                 let claims = item.claims.as_ref().await.unwrap();
-                assert!(claims.iter().all(|claim| claim.credential_id == item.id));
+
                 assert!(claims.iter().any(
                     |claim| claim.path == "firstName" && claim.value.as_deref() == Some("John")
                 ));
@@ -986,7 +986,6 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         assert!(!claims.is_empty());
         let mut has_metadata = false;
         for claim in &claims {
-            assert_eq!(claim.credential_id, item.id);
             assert!(claim_ids.insert(claim.id));
             has_metadata |= claim.schema.as_ref().await.unwrap().metadata;
         }

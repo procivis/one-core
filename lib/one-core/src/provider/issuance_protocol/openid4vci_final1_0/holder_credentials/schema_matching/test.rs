@@ -1422,7 +1422,6 @@ fn claim(path: &str, schema: &ClaimSchema) -> Claim {
     let now = now_utc();
     Claim {
         id: Uuid::new_v4().into(),
-        credential_id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         value: Some("value".to_string()),

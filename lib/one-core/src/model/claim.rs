@@ -1,4 +1,4 @@
-use shared_types::{ClaimId, CredentialId};
+use shared_types::ClaimId;
 use time::OffsetDateTime;
 
 use super::claim_schema::ClaimSchema;
@@ -8,7 +8,6 @@ use super::relation::Related;
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Claim {
     pub id: ClaimId,
-    pub credential_id: CredentialId, // cannot be a relation, because credential defines a reverse relation already
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub value: Option<String>,
