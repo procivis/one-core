@@ -1750,8 +1750,19 @@ async fn test_system_interaction_history_stats() {
     assert_eq!(result.values[1].previous.as_ref().unwrap().issued_count, 2);
 }
 
+#[rstest::rstest]
+#[case::first_page(Some(ListPagination { page: 0, page_size: 3 }), vec![(10, 1), (9, 2), (8, 3)])]
+#[case::later_page(Some(ListPagination { page: 2, page_size: 3 }), vec![(4, 0), (3, 8), (2, 9)])]
+#[case::last_page(Some(ListPagination { page: 3, page_size: 3 }), vec![(1, 10)])]
+#[case::empty_page(Some(ListPagination { page: 4, page_size: 3 }), vec![])]
+#[case::unpaginated(None, vec![(10, 1), (9, 2), (8, 3), (7, 4), (6, 5), (5, 6), (4, 0), (3, 8), (2, 9), (1, 10)])]
 #[tokio::test]
-async fn test_system_interaction_pagination() {
+async fn test_system_interaction_pagination(
+    #[case] pagination: Option<ListPagination>,
+    #[case] expected_counts: Vec<(usize, usize)>,
+    #[values(true, false)] include_count: bool,
+    #[values(true, false)] include_previous: bool,
+) {
     let TestSetup {
         mut provider,
         mut db,
@@ -1759,8 +1770,10 @@ async fn test_system_interaction_pagination() {
         ..
     } = setup_empty().await;
     let now = one_core::clock::now_utc();
+    let mut organisations = Vec::new();
     for i in 0..10 {
         let org = insert_organisation_to_database(&db, None).await.unwrap();
+        organisations.push(org);
         for _ in 0..=i {
             add_history(
                 &db,
@@ -1772,54 +1785,61 @@ async fn test_system_interaction_pagination() {
             )
             .await;
         }
+        // Reverse the rankings between periods, with one organisation having no prior events.
+        let previous_count = if i == 3 { 0 } else { 10 - i };
+        for _ in 0..previous_count {
+            add_history(
+                &db,
+                HistoryEntityType::Credential,
+                HistoryAction::Issued,
+                Some(credential_id),
+                org,
+                now - Duration::days(1),
+            )
+            .await;
+        }
     }
 
-    let to = SystemStatsFilterValue::From(ValueComparison {
-        comparison: ComparisonType::LessThan,
-        value: now + Duration::days(1),
-    })
-    .condition();
-    // Query with pagination
-    let query = SystemInteractionStatsQuery {
-        include_count: true,
-        pagination: Some(ListPagination {
-            page: 2,
-            page_size: 3,
-        }),
-        sorting: Some(ListSorting {
-            column: SortableSystemInteractionStatisticsColumn::Issued,
-            direction: Some(SortDirection::Descending),
-        }),
-        filtering: Some(to),
-        include: None,
-    };
+    let mut current = system_interaction_stats_query(
+        SortableSystemInteractionStatisticsColumn::Issued,
+        Some(now),
+        now + Duration::days(1),
+    );
+    current.pagination = pagination.clone();
+    current.include_count = include_count;
+    let mut previous = system_interaction_stats_query(
+        SortableSystemInteractionStatisticsColumn::Issued,
+        Some(now - Duration::days(1)),
+        now,
+    );
+    previous.pagination = pagination.clone();
+    previous.include_count = !include_count;
 
     let counts = track_count_queries(&mut db);
     provider.db = TransactionManagerImpl::new(db);
-    for include_count in [true, false] {
-        counts.store(0, std::sync::atomic::Ordering::Relaxed);
-        let mut current = query.clone();
-        current.include_count = include_count;
-        let mut previous = query.clone();
-        previous.include_count = !include_count;
-        let result = provider
-            .system_interaction_stats(current, Some(previous))
-            .await
-            .unwrap();
+    let result = provider
+        .system_interaction_stats(current, include_previous.then_some(previous))
+        .await
+        .unwrap();
 
-        assert_eq!(result.total_items, include_count.then_some(10));
-        assert_eq!(result.total_pages, include_count.then_some(4));
-        assert_eq!(result.values.len(), 3);
-        // because of sorting by issued
-        assert_eq!(result.values[0].current.issued_count, 4);
-        assert_eq!(result.values[1].current.issued_count, 3);
-        assert_eq!(result.values[2].current.issued_count, 2);
-        assert_eq!(result.values[0].previous.as_ref().unwrap().issued_count, 4);
+    assert_eq!(result.total_items, include_count.then_some(10));
+    assert_eq!(
+        result.total_pages,
+        include_count.then_some(if pagination.is_some() { 4 } else { 0 })
+    );
+    assert_eq!(result.values.len(), expected_counts.len());
+    for (row, (current_count, previous_count)) in result.values.iter().zip(expected_counts) {
+        assert_eq!(row.organisation_id, organisations[current_count - 1]);
+        assert_eq!(row.current.issued_count, current_count);
         assert_eq!(
-            counts.load(std::sync::atomic::Ordering::Relaxed),
-            usize::from(include_count)
+            row.previous.as_ref().map(|previous| previous.issued_count),
+            include_previous.then_some(previous_count)
         );
     }
+    assert_eq!(
+        counts.load(std::sync::atomic::Ordering::Relaxed),
+        usize::from(include_count)
+    );
 }
 
 async fn multi_org_test_data(

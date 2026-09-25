@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use autometrics::autometrics;
 use futures::future::try_join_all;
 use migration::supported_db_type::WithSupportedDbType;
@@ -10,20 +12,21 @@ use one_core::model::history::{
 use one_core::model::list_query::ListQuery;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::history_repository::HistoryRepository;
-use sea_orm::sea_query::SelectStatement;
+use sea_orm::sea_query::{Expr, IntoColumnRef, SelectStatement};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, QueryFilter,
-    QueryOrder,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, FromQueryResult,
+    QueryFilter, QueryOrder, Value,
 };
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use super::mapper::{
-    create_list_response, map_to_stats, paginated_stats_to_list_response, to_ops_org_count,
+    PaginatedStatsRow, create_list_response, map_to_stats, paginated_stats_to_list_response,
+    to_ops_org_count,
 };
 use crate::common::count_if_requested;
-use crate::entity::history;
 use crate::entity::history::HistoryEntityType;
+use crate::entity::{credential, history, proof};
 use crate::history::HistoryProvider;
 use crate::history::model::{
     OrganisationOpsCount, PaginatedStats, SystemInteractionStatsRow, SystemManagementsStatsRow,
@@ -306,7 +309,12 @@ impl HistoryRepository for HistoryProvider {
         let current = issuer_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| issuer_stats_query(&q, db_backend));
         let paginated_stats = self
-            .collect_paginated_stats(current, prev, current_query.include_count)
+            .collect_paginated_stats(
+                current,
+                prev,
+                current_query.include_count,
+                (credential::Entity, credential::Column::CredentialSchemaId),
+            )
             .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -325,7 +333,12 @@ impl HistoryRepository for HistoryProvider {
         let current = verifier_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| verifier_stats_query(&q, db_backend));
         let paginated_stats = self
-            .collect_paginated_stats(current, prev, current_query.include_count)
+            .collect_paginated_stats(
+                current,
+                prev,
+                current_query.include_count,
+                (proof::Entity, proof::Column::ProofSchemaId),
+            )
             .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -344,7 +357,12 @@ impl HistoryRepository for HistoryProvider {
         let current = system_interaction_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| system_interaction_stats_query(&q, db_backend));
         let paginated_stats: PaginatedStats<SystemInteractionStatsRow> = self
-            .collect_paginated_stats(current, prev, current_query.include_count)
+            .collect_paginated_stats(
+                current,
+                prev,
+                current_query.include_count,
+                (history::Entity, history::Column::OrganisationId),
+            )
             .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -363,7 +381,12 @@ impl HistoryRepository for HistoryProvider {
         let current = system_management_stats_query(&current_query, db_backend);
         let prev = previous_query.map(|q| system_management_stats_query(&q, db_backend));
         let paginated_stats: PaginatedStats<SystemManagementsStatsRow> = self
-            .collect_paginated_stats(current, prev, current_query.include_count)
+            .collect_paginated_stats(
+                current,
+                prev,
+                current_query.include_count,
+                (history::Entity, history::Column::OrganisationId),
+            )
             .await?;
         let stats = paginated_stats_to_list_response(paginated_stats, limit);
         Ok(stats)
@@ -492,34 +515,48 @@ impl HistoryProvider {
         })
     }
 
-    async fn collect_paginated_stats<T: FromQueryResult + Send + Sync>(
+    async fn collect_paginated_stats<T, ID>(
         &self,
         current: SelectStatement,
         prev: Option<SelectStatement>,
         include_count: bool,
-    ) -> Result<PaginatedStats<T>, DataLayerError> {
+        id_column: impl IntoColumnRef,
+    ) -> Result<PaginatedStats<T>, DataLayerError>
+    where
+        T: FromQueryResult + Send + Sync + PaginatedStatsRow<ID>,
+        ID: Eq + Hash + Into<Value>,
+    {
         let backend = self.db.get_database_backend();
-        let (count, current, prev) = tokio::join!(
+        let (count, current) = tokio::join!(
             count_if_requested(
                 include_count,
                 T::find_by_statement(backend.build(current.clone().reset_limit().reset_offset())),
                 &self.db
             ),
-            T::find_by_statement(backend.build(&current)).all(&self.db),
-            async {
-                let result = T::find_by_statement(backend.build(&prev?))
+            T::find_by_statement(backend.build(&current)).all(&self.db)
+        );
+        let total_items = count.map_err(|err| DataLayerError::Db(err.into()))?;
+        let current = current.map_err(|err| DataLayerError::Db(err.into()))?;
+        let previous = match prev {
+            Some(mut prev) if !current.is_empty() => {
+                // Compare the current page's entities, regardless of their previous rankings.
+                prev.reset_limit()
+                    .reset_offset()
+                    .clear_order_by()
+                    .and_where(Expr::col(id_column).is_in(current.iter().map(|row| row.id())));
+                let rows = T::find_by_statement(backend.build(&prev))
                     .all(&self.db)
                     .await
-                    .map_err(|err| DataLayerError::Db(err.into()));
-                Some(result)
+                    .map_err(|err| DataLayerError::Db(err.into()))?;
+                Some(rows)
             }
-        );
+            Some(_) => Some(vec![]),
+            None => None,
+        };
         Ok(PaginatedStats {
-            current: current.map_err(|err| DataLayerError::Db(err.into()))?,
-            previous: prev
-                .transpose()
-                .map_err(|err| DataLayerError::Db(err.into()))?,
-            total_items: count.map_err(|err| DataLayerError::Db(err.into()))?,
+            current,
+            previous,
+            total_items,
         })
     }
 }
