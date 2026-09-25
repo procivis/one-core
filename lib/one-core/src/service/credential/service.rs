@@ -10,7 +10,7 @@ use super::dto::{
     ChangeCredentialStateDTO, CreateCredentialRequestDTO, CredentialAttestationBlobs,
     CredentialDetailResponseDTO, CredentialFilterParamsDTO, CredentialRevocationCheckResponseDTO,
     DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, ShareCredentialResponseDTO,
-    SuspendCredentialRequestDTO,
+    SuspendCredentialRequestDTO, WalletInstanceAttestationDTO,
 };
 use super::error::CredentialServiceError;
 use super::mapper::{
@@ -365,8 +365,15 @@ impl CredentialService {
             get_remaining_batch_item_count(&credential, self.credential_repository.as_ref())
                 .await?;
 
+        let wallet_name = attestation_blobs
+            .wallet_instance_attestation_blob
+            .clone()
+            .map(WalletInstanceAttestationDTO::try_from)
+            .transpose()?
+            .map(|attestation| attestation.name);
         let trust_information = get_credential_trust_information(
             &credential,
+            wallet_name,
             self.ecosystem_provider.as_ref(),
             &*self.history_repository,
         )
@@ -698,17 +705,20 @@ impl CredentialService {
             return Err(CredentialServiceError::InvalidRole(credential.role));
         }
 
+        let history_id = credential.ecosystem_history_id();
         let mut result = TrustInformationDetailResponseDTO {
-            // an untrusted issuer is an answer, not a failed request, so this is a 200
-            ecosystem_errors: recorded_ecosystem_outcomes(id.into(), &*self.history_repository)
-                .await?,
+            ecosystem_errors: recorded_ecosystem_outcomes(
+                history_id.into(),
+                &*self.history_repository,
+            )
+            .await?,
             ..Default::default()
         };
 
         if let Some(ecosystem_id) = credential.ecosystem {
             let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
             let issuer = ecosystem
-                .issuer_trust_details(&id)
+                .issuer_trust_details(&history_id)
                 .await
                 .error_while("getting ecosystem trust detail")?;
 
@@ -718,8 +728,6 @@ impl CredentialService {
 
         Ok(result)
     }
-
-    // ============ Private methods
 
     /// Get credential with the latest credential state
     async fn get_credential_with_state(

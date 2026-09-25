@@ -1051,33 +1051,37 @@ pub(crate) async fn get_remaining_batch_item_count(
 
 pub(crate) async fn get_credential_trust_information(
     credential: &Credential,
+    wallet_name: Option<String>,
     ecosystem_provider: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
     let ecosystem_errors =
-        recorded_ecosystem_outcomes(credential.id.into(), history_repository).await?;
+        recorded_ecosystem_outcomes(credential.ecosystem_history_id().into(), history_repository)
+            .await?;
 
-    Ok(match (credential.role, &credential.ecosystem) {
-        // the issuer sees the wallet provider. Reported only when an ecosystem was consulted,
-        // so an organisation not using ecosystems still gets nothing
-        (CredentialRole::Issuer, ecosystem) => {
-            (!ecosystem_errors.is_empty()).then(|| TrustInformation {
+    match credential.role {
+        // The issuer records trust info about  the Wallet Provider
+        CredentialRole::Issuer => {
+            if ecosystem_errors.is_empty() {
+                return Ok(None);
+            }
+            Ok(Some(TrustInformation {
                 received_at: credential.issuance_date.unwrap_or(credential.last_modified),
-                name: None,
-                result: match ecosystem {
-                    Some(_) => TrustResolutionResult::Trusted,
-                    None => TrustResolutionResult::Untrusted,
-                },
+                name: wallet_name,
+                result: resolution(&credential.ecosystem),
                 ecosystem_errors,
-            })
+            }))
         }
-        (CredentialRole::Holder, None) => Some(TrustInformation {
-            received_at: credential.issuance_date.unwrap_or(credential.last_modified),
-            name: None,
-            result: TrustResolutionResult::Untrusted,
-            ecosystem_errors,
-        }),
-        (CredentialRole::Holder, Some(ecosystem_id)) => {
+        // The holder records trust info related to the issuer
+        CredentialRole::Holder => {
+            let Some(ecosystem_id) = &credential.ecosystem else {
+                return Ok(Some(TrustInformation {
+                    received_at: credential.issuance_date.unwrap_or(credential.last_modified),
+                    name: None,
+                    result: TrustResolutionResult::Untrusted,
+                    ecosystem_errors,
+                }));
+            };
             let (received_at, name) = match issuer_trust_detail(
                 credential,
                 ecosystem_id,
@@ -1097,29 +1101,34 @@ pub(crate) async fn get_credential_trust_information(
                     )
                 }
             };
-            Some(TrustInformation {
+            Ok(Some(TrustInformation {
                 received_at,
                 name,
                 result: TrustResolutionResult::Trusted,
                 ecosystem_errors,
-            })
+            }))
         }
-        // no ecosystem trusted the issuer, and the verifier gets to see why
-        (CredentialRole::Verifier, None) => {
-            (!ecosystem_errors.is_empty()).then(|| TrustInformation {
+        // The verifier records trust info about the issuer of received credentials
+        CredentialRole::Verifier => {
+            if credential.ecosystem.is_none() && ecosystem_errors.is_empty() {
+                return Ok(None);
+            }
+            Ok(Some(TrustInformation {
                 received_at: credential.created_date,
-                name: None,
-                result: TrustResolutionResult::Untrusted,
+                name: issuer_name(credential).await?,
+                result: resolution(&credential.ecosystem),
                 ecosystem_errors,
-            })
+            }))
         }
-        (CredentialRole::Verifier, Some(_)) => Some(TrustInformation {
-            received_at: credential.created_date,
-            name: None,
-            result: TrustResolutionResult::Trusted,
-            ecosystem_errors,
-        }),
-    })
+    }
+}
+
+/// An ecosystem accepted the counterparty, or none did.
+fn resolution(ecosystem: &Option<EcosystemId>) -> TrustResolutionResult {
+    match ecosystem {
+        Some(_) => TrustResolutionResult::Trusted,
+        None => TrustResolutionResult::Untrusted,
+    }
 }
 
 async fn issuer_trust_detail(
@@ -1129,7 +1138,14 @@ async fn issuer_trust_detail(
 ) -> Result<TrustDetail, CredentialServiceError> {
     Ok(ecosystem_provider
         .get(ecosystem_id)?
-        .issuer_trust_details(&credential.id)
+        .issuer_trust_details(&credential.ecosystem_history_id())
         .await
         .error_while("getting trust detail")?)
+}
+
+async fn issuer_name(credential: &Credential) -> Result<Option<String>, CredentialServiceError> {
+    Ok(match &credential.issuer_certificate {
+        Some(certificate) => Some(certificate.as_ref().await?.name.to_owned()),
+        None => None,
+    })
 }

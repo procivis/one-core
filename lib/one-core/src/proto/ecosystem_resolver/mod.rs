@@ -432,16 +432,10 @@ fn remaining_candidates(
 fn history_entity(artifact: &ProtocolArtifact<'_>) -> Option<(EntityId, HistoryEntityType)> {
     match artifact {
         ProtocolArtifact::HolderIssuanceInvitation { .. } => None,
-        ProtocolArtifact::HolderIssuanceCredential { credential, .. } => {
-            // The event goes on the parent credential of the batch. The ecosystems write their
-            // own history events there too.
-            let credential_id = credential
-                .parent
-                .as_ref()
-                .map(|parent| parent.id())
-                .unwrap_or(credential.id);
-            Some((credential_id.into(), HistoryEntityType::Credential))
-        }
+        ProtocolArtifact::HolderIssuanceCredential { credential, .. } => Some((
+            credential.ecosystem_history_id().into(),
+            HistoryEntityType::Credential,
+        )),
         ProtocolArtifact::HolderProof { proof_id, .. } => {
             Some(((*proof_id).into(), HistoryEntityType::Proof))
         }

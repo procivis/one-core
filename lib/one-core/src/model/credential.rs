@@ -74,6 +74,15 @@ pub enum CredentialStateEnum {
 }
 
 impl Credential {
+    /// The credential that holds the relevant ecosystem history events.
+    /// Points to the batch parent for credentials of type [CredentialType::BatchItem]
+    pub(crate) fn ecosystem_history_id(&self) -> CredentialId {
+        self.parent
+            .as_ref()
+            .map(|parent| parent.id())
+            .unwrap_or(self.id)
+    }
+
     pub(crate) fn is_available_for_presentation(&self, now: OffsetDateTime) -> bool {
         if self.deleted_at.is_some() || self.state != CredentialStateEnum::Accepted {
             return false;

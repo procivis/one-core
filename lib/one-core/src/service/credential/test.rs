@@ -6,7 +6,7 @@ use assert2::let_assert;
 use mockall::predicate::*;
 use serde_json::json;
 use serde_yaml;
-use shared_types::{CredentialId, EcosystemId};
+use shared_types::{CredentialId, EcosystemId, EntityId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -35,11 +35,12 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
-    HistorySource, TrustResolutionResult,
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryFilterValue,
+    HistoryMetadata, HistorySource, TrustResolutionResult,
 };
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterCondition;
 use crate::model::relation::RelatedVec;
 use crate::proto::credential_validity_manager::MockCredentialValidityManager;
 use crate::proto::notification_scheduler::MockNotificationScheduler;
@@ -64,7 +65,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{
-    dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
     generic_formatter_capabilities, get_dummy_date,
 };
 
@@ -6170,36 +6171,38 @@ async fn test_validate_create_request_invalid_enum_value() {
 }
 
 /// A history repository that reports `outcomes` as the resolved ecosystems of any entity.
+fn outcomes_event(outcomes: &EcosystemOutcomes) -> GetListResponse<History, Option<u64>> {
+    let values = if outcomes.is_empty() {
+        vec![]
+    } else {
+        vec![History {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            action: HistoryAction::EcosystemsResolved,
+            name: Default::default(),
+            target: None,
+            source: HistorySource::Core,
+            entity_id: None,
+            entity_type: HistoryEntityType::Credential,
+            metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes.to_owned())),
+            organisation_id: None,
+            user: None,
+            metadata_blob_id: None,
+        }]
+    };
+    let total_items = values.len() as u64;
+    GetListResponse {
+        values,
+        total_pages: Some(1),
+        total_items: Some(total_items),
+    }
+}
+
 fn history_with_outcomes(outcomes: EcosystemOutcomes) -> MockHistoryRepository {
     let mut history_repository = MockHistoryRepository::new();
-    history_repository.expect_get_history_list().returning({
-        move |_| {
-            let values = if outcomes.is_empty() {
-                vec![]
-            } else {
-                vec![History {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    action: HistoryAction::EcosystemsResolved,
-                    name: Default::default(),
-                    target: None,
-                    source: HistorySource::Core,
-                    entity_id: None,
-                    entity_type: HistoryEntityType::Credential,
-                    metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes.to_owned())),
-                    organisation_id: None,
-                    user: None,
-                    metadata_blob_id: None,
-                }]
-            };
-            let total_items = values.len() as u64;
-            Ok(GetListResponse {
-                values,
-                total_pages: Some(1),
-                total_items: Some(total_items),
-            })
-        }
-    });
+    history_repository
+        .expect_get_history_list()
+        .returning(move |_| Ok(outcomes_event(&outcomes)));
     history_repository
 }
 
@@ -6227,6 +6230,7 @@ async fn trust_information_of(
 
     get_credential_trust_information(
         &credential,
+        None,
         &MockEcosystemDirectory::new(),
         &history_with_outcomes(outcomes),
     )
@@ -6292,6 +6296,54 @@ async fn test_a_verifier_with_no_ecosystem_in_play_is_told_nothing() {
     );
 }
 
+fn trusted_by(ecosystem: &str) -> EcosystemOutcomes {
+    let mut outcomes = EcosystemOutcomes::default();
+    outcomes.record(EcosystemId::from(ecosystem), Ok(()));
+    outcomes
+}
+
+#[tokio::test]
+async fn test_the_verifier_sees_the_issuer_by_name() {
+    let mut credential = generic_credential().await;
+    credential.role = CredentialRole::Verifier;
+    credential.ecosystem = Some(EcosystemId::from("EUDI"));
+    credential.issuer_certificate = Some(dummy_certificate(Uuid::new_v4().into()).into());
+
+    let trust_information = get_credential_trust_information(
+        &credential,
+        None,
+        &MockEcosystemDirectory::new(),
+        &history_with_outcomes(trusted_by("EUDI")),
+    )
+    .await
+    .unwrap()
+    .expect("the ecosystem trusted the issuer");
+
+    assert_eq!(Some("certificate".to_string()), trust_information.name);
+}
+
+#[tokio::test]
+async fn test_the_issuer_sees_the_wallet_by_name() {
+    let mut credential = generic_credential().await;
+    credential.role = CredentialRole::Issuer;
+    credential.ecosystem = Some(EcosystemId::from("EUDI"));
+
+    let trust_information = get_credential_trust_information(
+        &credential,
+        Some("Procivis One Wallet".to_string()),
+        &MockEcosystemDirectory::new(),
+        &history_with_outcomes(trusted_by("EUDI")),
+    )
+    .await
+    .unwrap()
+    .expect("the ecosystem trusted the wallet provider");
+
+    assert_eq!(
+        Some("Procivis One Wallet".to_string()),
+        trust_information.name
+    );
+}
+
 #[tokio::test]
 async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
     let mut credential = generic_credential().await;
@@ -6311,6 +6363,7 @@ async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
 
     let trust_information = get_credential_trust_information(
         &credential,
+        None,
         &ecosystem_provider,
         &history_with_outcomes(EcosystemOutcomes::default()),
     )
@@ -6320,4 +6373,54 @@ async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
 
     assert_eq!(TrustResolutionResult::Trusted, trust_information.result);
     assert_eq!(None, trust_information.name);
+}
+
+#[tokio::test]
+async fn test_a_batch_item_reads_the_ecosystem_history_of_its_batch() {
+    let batch = generic_credential().await;
+    let batch_id = batch.id;
+    let mut item = generic_credential().await;
+    item.role = CredentialRole::Holder;
+    item.r#type = CredentialType::BatchItem;
+    item.parent = Some(batch.into());
+    item.ecosystem = Some(EcosystemId::from("EUDI"));
+
+    let mut outcomes = untrusted_by("LITHUANIA_SANDBOX");
+    outcomes.record(EcosystemId::from("EUDI"), Ok(()));
+
+    let returned = outcomes.to_owned();
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_get_history_list()
+        .withf(move |query| match &query.filtering {
+            Some(ListFilterCondition::And(conditions)) => conditions.iter().any(|condition| {
+                matches!(
+                    condition,
+                    ListFilterCondition::Value(HistoryFilterValue::EntityIds(ids))
+                        if *ids == vec![EntityId::from(batch_id)]
+                )
+            }),
+            _ => false,
+        })
+        .times(1)
+        .returning(move |_| Ok(outcomes_event(&returned)));
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider.expect_get().returning(move |_| {
+        let mut ecosystem = MockEcosystem::new();
+        ecosystem
+            .expect_issuer_trust_details()
+            .withf(move |credential_id| *credential_id == batch_id)
+            .returning(|_| Err(EcosystemError::MappingError("no trust detail".to_string())));
+        Ok(Arc::new(ecosystem))
+    });
+
+    let trust_information =
+        get_credential_trust_information(&item, None, &ecosystem_provider, &history_repository)
+            .await
+            .unwrap()
+            .expect("the ecosystem trusted the issuer");
+
+    assert_eq!(TrustResolutionResult::Trusted, trust_information.result);
+    assert_eq!(outcomes, trust_information.ecosystem_errors);
 }

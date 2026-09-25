@@ -27,11 +27,7 @@ impl EudiEcosystem {
         let formatter = self.formatter_provider.get_credential_formatter(format)?;
         let organisation_id = interaction.organisation.id();
         // Validation uses the concrete item; trust history remains attached to its batch.
-        let history_credential_id = credential
-            .parent
-            .as_ref()
-            .map(|parent| parent.id())
-            .unwrap_or(credential.id);
+        let history_credential_id = credential.ecosystem_history_id();
 
         let issuer = formatter
             .extract_credentials_unverified(serialized, Some(&schema))

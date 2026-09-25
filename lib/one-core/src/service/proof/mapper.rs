@@ -229,10 +229,14 @@ pub(super) async fn get_verifier_proof_detail(
 
     for (credential_schema_id, credential) in credential_for_schema_model {
         // trust is per credential: its own ecosystem, not the one of the proof
-        let trust_information =
-            get_credential_trust_information(&credential, ecosystem_provider, history_repository)
-                .await
-                .error_while("getting credential trust information")?;
+        let trust_information = get_credential_trust_information(
+            &credential,
+            None,
+            ecosystem_provider,
+            history_repository,
+        )
+        .await
+        .error_while("getting credential trust information")?;
 
         // Verifier side, credentials are type single and have claims directly
         let claims = crate::mapper::credential::stored_credential_claims(&credential).await?;
@@ -941,51 +945,40 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
     }
 }
 
+/// Trust information recorded by the holder about a verifier
+/// Verifiers call [`get_verifier_proof_detail`] instead
 pub(super) async fn get_proof_trust_information(
     proof: &Proof,
     ecosystem_provider: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
-) -> Result<Option<TrustInformation>, ProofServiceError> {
+) -> Result<TrustInformation, ProofServiceError> {
     let ecosystem_errors = recorded_ecosystem_outcomes(proof.id.into(), history_repository).await?;
 
-    Ok(match (proof.role, &proof.ecosystem) {
-        (ProofRole::Holder, None) => Some(TrustInformation {
+    let Some(ecosystem_id) = &proof.ecosystem else {
+        return Ok(TrustInformation {
             received_at: proof.requested_date.unwrap_or(proof.last_modified),
             name: None,
             result: TrustResolutionResult::Untrusted,
             ecosystem_errors,
-        }),
-        (ProofRole::Holder, Some(ecosystem_id)) => {
-            let (received_at, name) = match verifier_trust_detail(
-                proof,
-                ecosystem_id,
-                ecosystem_provider,
-            )
-            .await
-            {
-                Ok(details) => {
-                    let TrustDetailInfo::Eudi(info) = details.info;
-                    (details.received_at, Some(info.name))
-                }
-                Err(err) => {
-                    tracing::warn!(%err, "failed to get the verifier trust detail of proof {}", proof.id);
-                    (proof.requested_date.unwrap_or(proof.last_modified), None)
-                }
-            };
-            Some(TrustInformation {
-                received_at,
-                name,
-                result: TrustResolutionResult::Trusted,
-                ecosystem_errors,
-            })
+        });
+    };
+    let (received_at, name) = match verifier_trust_detail(proof, ecosystem_id, ecosystem_provider)
+        .await
+    {
+        Ok(details) => {
+            let TrustDetailInfo::Eudi(info) = details.info;
+            (details.received_at, Some(info.name))
         }
-        (ProofRole::Verifier, None) => None,
-        (ProofRole::Verifier, Some(_)) => Some(TrustInformation {
-            received_at: proof.completed_date.unwrap_or(proof.last_modified),
-            name: None,
-            result: TrustResolutionResult::Trusted,
-            ecosystem_errors,
-        }),
+        Err(err) => {
+            tracing::warn!(%err, "failed to get the verifier trust detail of proof {}", proof.id);
+            (proof.requested_date.unwrap_or(proof.last_modified), None)
+        }
+    };
+    Ok(TrustInformation {
+        received_at,
+        name,
+        result: TrustResolutionResult::Trusted,
+        ecosystem_errors,
     })
 }
 

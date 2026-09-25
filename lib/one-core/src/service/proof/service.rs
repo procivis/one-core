@@ -134,12 +134,14 @@ impl ProofService {
             )
             .await
         } else {
-            let trust_information = get_proof_trust_information(
-                &proof,
-                self.ecosystem_provider.as_ref(),
-                &*self.history_repository,
-            )
-            .await?;
+            let trust_information = Some(
+                get_proof_trust_information(
+                    &proof,
+                    self.ecosystem_provider.as_ref(),
+                    &*self.history_repository,
+                )
+                .await?,
+            );
 
             get_holder_proof_detail(
                 proof,
