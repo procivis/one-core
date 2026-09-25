@@ -108,11 +108,13 @@ impl From<xml::PolicyOrLegalNoticeItem> for json::PolicyOrLegalNoticeItem {
 
 impl From<json::OtherLoTEPointer> for xml::OtherLoTEPointer {
     fn from(p: json::OtherLoTEPointer) -> Self {
-        let q = p.lote_qualifiers;
+        // The JSON binding allows several qualifier sets, the XML binding a single one.
+        // We map the first; it is unclear whether any deployment will publish more than one.
+        let q = p.lote_qualifiers.into_iter().next();
         Self {
             service_digital_identities: p.service_digital_identities.into(),
             lote_location: p.lote_location,
-            additional_information: Some(xml::AdditionalInformation {
+            additional_information: q.map(|q| xml::AdditionalInformation {
                 lote_type: Some(q.lote_type),
                 scheme_operator_name: Some(q.scheme_operator_name.into()),
                 mime_type: Some(q.mime_type),
@@ -137,13 +139,13 @@ impl From<xml::OtherLoTEPointer> for json::OtherLoTEPointer {
         Self {
             service_digital_identities: p.service_digital_identities.into(),
             lote_location: p.lote_location,
-            lote_qualifiers: json::LoTEQualifier {
+            lote_qualifiers: vec![json::LoTEQualifier {
                 lote_type: a.lote_type.unwrap_or_default(),
                 scheme_operator_name: a.scheme_operator_name.map(Into::into).unwrap_or_default(),
                 mime_type: a.mime_type.unwrap_or_default(),
                 scheme_type_community_rules: a.scheme_type_community_rules.map(Into::into),
                 scheme_territory: a.scheme_territory,
-            },
+            }],
         }
     }
 }

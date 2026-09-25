@@ -154,19 +154,21 @@ async fn test_get_trust_list_publication_with_entries() {
     assert!(!body.is_empty());
     let jwt = Jwt::<serde_json::Value>::decompose_token(&body).unwrap();
     assert_eq!(
-        jwt.payload.custom["ListAndSchemeInformation"]["LoTESequenceNumber"],
+        jwt.payload.custom["LoTE"]["ListAndSchemeInformation"]["LoTESequenceNumber"],
         serde_json::Value::Number(3.into())
     );
     assert_eq!(
-        jwt.payload.custom["ListAndSchemeInformation"]["SchemeName"][0]["value"],
+        jwt.payload.custom["LoTE"]["ListAndSchemeInformation"]["SchemeName"][0]["value"],
         serde_json::Value::String("test_trust_list_with_entries".into())
     );
     assert_eq!(
-        jwt.payload.custom["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"][0]["value"],
+        jwt.payload.custom["LoTE"]["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"]
+            [0]["value"],
         serde_json::Value::String("Test Entity #2".into())
     );
     assert_eq!(
-        jwt.payload.custom["TrustedEntitiesList"][1]["TrustedEntityInformation"]["TEName"][0]["value"],
+        jwt.payload.custom["LoTE"]["TrustedEntitiesList"][1]["TrustedEntityInformation"]["TEName"]
+            [0]["value"],
         serde_json::Value::String("Test Entity #1".into())
     );
 }
@@ -263,22 +265,23 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
     assert!(!body.is_empty());
     let jwt = Jwt::<serde_json::Value>::decompose_token(&body).unwrap();
     assert_eq!(
-        jwt.payload.custom["ListAndSchemeInformation"]["LoTESequenceNumber"],
+        jwt.payload.custom["LoTE"]["ListAndSchemeInformation"]["LoTESequenceNumber"],
         serde_json::Value::Number(4.into())
     );
     assert_eq!(
-        jwt.payload.custom["ListAndSchemeInformation"]["SchemeName"][0]["value"],
+        jwt.payload.custom["LoTE"]["ListAndSchemeInformation"]["SchemeName"][0]["value"],
         serde_json::Value::String("test_trust_list_with_suspended".into())
     );
     assert_eq!(
-        jwt.payload.custom["TrustedEntitiesList"]
+        jwt.payload.custom["LoTE"]["TrustedEntitiesList"]
             .as_array()
             .unwrap()
             .len(),
         1
     );
     assert_eq!(
-        jwt.payload.custom["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"][0]["value"],
+        jwt.payload.custom["LoTE"]["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"]
+            [0]["value"],
         serde_json::Value::String("Active Test Entity".into())
     );
 }

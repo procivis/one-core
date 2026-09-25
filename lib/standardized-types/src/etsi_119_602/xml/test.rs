@@ -301,9 +301,7 @@ fn round_trip_with_entities() {
                                 other_ids: None,
                                 public_key_values: None,
                             }),
-                            service_status: Some(
-                                "http://uri.etsi.org/19602/ServiceStatus/granted".into(),
-                            ),
+                            service_status: Some(ServiceStatus::PubEaaNotified),
                             status_starting_time: Some(
                                 OffsetDateTime::parse("2025-01-01T00:00:00Z", &Rfc3339).unwrap(),
                             ),
@@ -898,8 +896,10 @@ fn parse_dss_valid_full() {
         Some("http://uri.etsi.org/TrstSvc/Svctype/QES".to_string())
     );
     assert_eq!(
-        svc.service_status.as_deref(),
-        Some("http://uri.etsi.org/TrstSvc/Status/underSupervision")
+        svc.service_status,
+        Some(ServiceStatus::Other(
+            "http://uri.etsi.org/TrstSvc/Status/underSupervision".to_string()
+        ))
     );
 
     let def_uri = svc.scheme_service_definition_uri.as_ref().unwrap();
@@ -920,7 +920,7 @@ fn parse_dss_valid_full() {
     );
     assert_eq!(
         history.instances[0].service_status,
-        "http://uri.etsi.org/TrstSvc/Status/recognised"
+        ServiceStatus::Other("http://uri.etsi.org/TrstSvc/Status/recognised".to_string())
     );
     assert_eq!(
         history.instances[0].status_starting_time,

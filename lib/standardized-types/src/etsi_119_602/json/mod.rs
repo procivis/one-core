@@ -3,8 +3,10 @@
 //! JSON binding types for the LoTE trust list format.
 //! Spec: <https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf>
 
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::formats::PreferMany;
+use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -180,6 +182,73 @@ impl LoTEType {
     }
 }
 
+/// Service current status URIs (clause 6.6.4). The base clause leaves the values to the profiles.
+///
+/// Deserialized through `String`, like [`LoTEType`], because quick-xml does not support untagged
+/// enum variants.
+#[derive(Clone, Debug, PartialEq, Eq, Display, Serialize)]
+#[serde(into = "String")]
+pub enum ServiceStatus {
+    /// Pub-EAA providers list, clause H.3
+    #[strum(to_string = "http://uri.etsi.org/19602/PubEAAProvidersList/SvcStatus/notified")]
+    PubEaaNotified,
+    /// Pub-EAA providers list, clause H.3
+    #[strum(to_string = "http://uri.etsi.org/19602/PubEAAProvidersList/SvcStatus/withdrawn")]
+    PubEaaWithdrawn,
+    #[strum(to_string = "{0}")]
+    Other(String),
+}
+
+impl From<String> for ServiceStatus {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "http://uri.etsi.org/19602/PubEAAProvidersList/SvcStatus/notified" => {
+                Self::PubEaaNotified
+            }
+            "http://uri.etsi.org/19602/PubEAAProvidersList/SvcStatus/withdrawn" => {
+                Self::PubEaaWithdrawn
+            }
+            _ => Self::Other(s),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ServiceStatus {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer).map(Self::from)
+    }
+}
+
+impl From<ServiceStatus> for String {
+    fn from(status: ServiceStatus) -> Self {
+        status.to_string()
+    }
+}
+
+/// JSON list of trusted entities (TS 119 602 v1.1.1, Annex A): an object with the single
+/// member `LoTE` that holds the list.
+/// Note: lists published by earlier versions of core omit the root object and are not fully compliant.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct LoTEDocument {
+    #[serde(rename = "LoTE")]
+    pub lote: LoTEPayload,
+}
+
+impl<'de> Deserialize<'de> for LoTEDocument {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut value = serde_json::Value::deserialize(deserializer)?;
+        // Backwards compatibility: earlier versions of core serialized the list without the root object.
+        // Being lenient also helps interop, since some deployments still do not wrap the list.
+        let lote = match value.get_mut("LoTE") {
+            Some(lote) => lote.take(),
+            None => value,
+        };
+        serde_json::from_value(lote)
+            .map(|lote| Self { lote })
+            .map_err(D::Error::custom)
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -323,7 +392,7 @@ pub struct ServiceInformation {
     pub service_digital_identity: Option<ServiceDigitalIdentity>,
 
     #[serde(rename = "ServiceStatus")]
-    pub service_status: Option<String>,
+    pub service_status: Option<ServiceStatus>,
 
     #[serde(
         rename = "StatusStartingTime",
@@ -418,16 +487,18 @@ pub enum PolicyOrLegalNoticeItem {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde_as]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OtherLoTEPointer {
     #[serde(rename = "LoTELocation")]
     pub lote_location: String,
     #[serde(rename = "ServiceDigitalIdentities")]
     pub service_digital_identities: Vec<ServiceDigitalIdentity>,
+    /// Unlike the XML binding, the JSON binding defines this field as an array (TS 119 602 v1.1.1,
+    /// Annex A). Earlier versions of core wrote a single object; `OneOrMany` keeps those lists readable.
     #[serde(rename = "LoTEQualifiers")]
-    #[serde_as(as = "Vec<_>")]
-    pub lote_qualifiers: LoTEQualifier,
+    #[serde_as(as = "OneOrMany<_, PreferMany>")]
+    pub lote_qualifiers: Vec<LoTEQualifier>,
 }
 
 #[skip_serializing_none]
@@ -462,7 +533,7 @@ pub struct ServiceHistoryInstance {
     #[serde(rename = "ServiceDigitalIdentity")]
     pub service_digital_identity: ServiceDigitalIdentity,
     #[serde(rename = "ServiceStatus")]
-    pub service_status: String,
+    pub service_status: ServiceStatus,
     #[serde(rename = "StatusStartingTime", with = "time::serde::rfc3339")]
     pub status_starting_time: OffsetDateTime,
     #[serde(rename = "ServiceTypeIdentifier")]

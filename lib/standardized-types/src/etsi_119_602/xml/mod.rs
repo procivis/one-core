@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 mod mapper;
 mod serde_wrappers;
 
-use crate::etsi_119_602::json::LoTEType;
+use crate::etsi_119_602::json::{LoTEType, ServiceStatus};
 
 pub const LOTE_NS: &str = "http://uri.etsi.org/019602/v1#";
 pub const LOTE_TAG: &str = "http://uri.etsi.org/019602/tag#";
@@ -375,7 +375,7 @@ pub struct ServiceInformation {
     #[into(with_fn = "convert_inner")]
     pub service_digital_identity: Option<ServiceDigitalIdentity>,
 
-    pub service_status: Option<String>,
+    pub service_status: Option<ServiceStatus>,
 
     #[serde(default, with = "crate::mapper::xml_datetime::option")]
     pub status_starting_time: Option<OffsetDateTime>,
@@ -408,7 +408,7 @@ pub struct ServiceHistoryInstance {
     pub service_type_identifier: Option<String>,
     pub service_name: MultiLangNameList,
     pub service_digital_identity: ServiceDigitalIdentity,
-    pub service_status: String,
+    pub service_status: ServiceStatus,
 
     #[serde(with = "time::serde::rfc3339")]
     pub status_starting_time: OffsetDateTime,

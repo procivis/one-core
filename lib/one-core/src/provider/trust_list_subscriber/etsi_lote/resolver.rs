@@ -12,7 +12,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
-use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::{HttpClient, is_media_type};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::xades::{XAdESProto, XAdESSignedXML, XAdESVerified};
@@ -123,7 +123,7 @@ impl EtsiLoteResolver {
                 ResolverError::InvalidResponse("header Content-Type not present".to_string())
             })?
             .to_owned();
-        if response_content_type != content_type {
+        if !is_media_type(&response_content_type, &content_type) {
             return Err(ResolverError::InvalidResponse(format!(
                 "Unexpected content type `{response_content_type}`, expected `{content_type}`"
             )));
@@ -133,7 +133,7 @@ impl EtsiLoteResolver {
             match self.content_type {
                 LoteContentType::Jwt => {
                     let decomposed_token =
-                        Jwt::<json::LoTEPayload>::decompose_token(str::from_utf8(&response.body)?)
+                        Jwt::<json::LoTEDocument>::decompose_token(str::from_utf8(&response.body)?)
                             .error_while("parsing ETSI LoTE JWT")?;
 
                     let x5c = decomposed_token.header.x5c.as_ref().ok_or(
@@ -152,7 +152,7 @@ impl EtsiLoteResolver {
                         .verify_signature(pub_key_source, &verification)
                         .await
                         .error_while("verifying ETSI LoTE JWT signature")?;
-                    (decomposed_token.payload.custom, signer_pem)
+                    (decomposed_token.payload.custom.lote, signer_pem)
                 }
                 LoteContentType::Xml => {
                     let signed_xml = XAdESSignedXML::<xml::LoTEPayload>::decompose_document(

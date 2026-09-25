@@ -4,7 +4,8 @@ use std::slice::from_ref;
 use ct_codecs::{Base64, Encoder};
 use one_dto_mapper::try_convert_inner;
 use standardized_types::etsi_119_602::{
-    LoTEPayload, MultiLangString, ServiceDigitalIdentity, TrustedEntity, TrustedEntityInformation,
+    LoTEPayload, MultiLangString, ServiceDigitalIdentity, ServiceStatus, TrustedEntity,
+    TrustedEntityInformation,
 };
 use standardized_types::jwk::PublicJwk;
 use standardized_types::x509::KeyIdentifier;
@@ -176,6 +177,12 @@ struct PreprocessedCertificate {
     pem: String,
 }
 
+/// According to the profile defined in 119 602 v1.1.1 annex H, entries in the Pub-EAA providers list SHALL include the status.
+/// For all other profiles / list types, when an entity is suspended it's simply removed from the list, and the status field is not allowed.
+fn is_active(service_status: Option<&ServiceStatus>) -> bool {
+    !matches!(service_status, Some(ServiceStatus::PubEaaWithdrawn))
+}
+
 async fn preprocess_trusted_entity(
     trusted_entity: TrustedEntity,
     certificate_validator: &dyn CertificateValidator,
@@ -185,6 +192,17 @@ async fn preprocess_trusted_entity(
     let mut public_keys = HashSet::new();
 
     for service in trusted_entity.trusted_entity_services {
+        if !is_active(service.service_information.service_status.as_ref()) {
+            tracing::debug!(
+                status = service
+                    .service_information
+                    .service_status
+                    .as_ref()
+                    .map(ToString::to_string),
+                "skipping LoTE service that is not active"
+            );
+            continue;
+        }
         let Some(identity) = service.service_information.service_digital_identity else {
             continue;
         };
@@ -423,6 +441,16 @@ mod test {
             entity(Some(TrustListRoleEnum::WalletProvider)),
         ];
         assert_eq!(aggregate_role(&entities), None);
+    }
+
+    #[test]
+    fn withdrawn_services_are_not_active() {
+        assert!(is_active(None));
+        assert!(is_active(Some(&ServiceStatus::PubEaaNotified)));
+        assert!(is_active(Some(&ServiceStatus::Other(
+            "http://uri.etsi.org/19602/ServiceStatus/granted".to_string()
+        ))));
+        assert!(!is_active(Some(&ServiceStatus::PubEaaWithdrawn)));
     }
 
     #[test]

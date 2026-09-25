@@ -287,10 +287,11 @@ fn make_stateful_repos(key: Key, certificate: Certificate) -> MockRepos {
 
 fn decode_jws_payload(jws_bytes: &[u8]) -> LoTEPayload {
     let jws = std::str::from_utf8(jws_bytes).unwrap();
-    Jwt::<LoTEPayload>::decompose_token(jws)
+    let mut payload = Jwt::<serde_json::Value>::decompose_token(jws)
         .unwrap()
         .payload
-        .custom
+        .custom;
+    serde_json::from_value(payload["LoTE"].take()).unwrap()
 }
 
 fn make_publisher(

@@ -354,7 +354,7 @@ fn setup_subscriber_xml(reference: &Url) -> EtsiLoteSubscriber {
         reference.to_string(),
         Response {
             body: LOTE_XML.as_bytes().to_vec(),
-            headers: hashmap! { "Content-Type".to_string() => "application/xml".to_string() },
+            headers: hashmap! { "Content-Type".to_string() => "application/xml; charset=UTF-8".to_string() },
             status: StatusCode(200),
             request: Request {
                 body: None,

@@ -9,8 +9,8 @@ use serde_with::DurationSeconds;
 use sha2::{Digest, Sha256};
 use shared_types::{TrustEntryId, TrustListPublicationId, TrustListPublisherId};
 use standardized_types::etsi_119_602::{
-    ListAndSchemeInformation, LoTEPayload, LoTEType, MultiLangString, MultiLangUri, PkiObject,
-    ServiceDigitalIdentity, ServiceInformation, TrustedEntity, TrustedEntityInformation,
+    ListAndSchemeInformation, LoTEDocument, LoTEPayload, LoTEType, MultiLangString, MultiLangUri,
+    PkiObject, ServiceDigitalIdentity, ServiceInformation, TrustedEntity, TrustedEntityInformation,
     TrustedEntityService, xml,
 };
 use standardized_types::jades::JadesHeader;
@@ -308,7 +308,7 @@ impl EtsiLotePublisher {
                 Ok(signed_document.into_bytes())
             }
             LoteContentType::Jwt => {
-                let payload_json = serde_json::to_vec(&payload)?;
+                let payload_json = serde_json::to_vec(&LoTEDocument { lote: payload })?;
                 sign_jades_compact(&payload_json, &*signer, x5c, now).await
             }
         }

@@ -43,6 +43,27 @@ fn round_trip_minimal() {
 }
 
 #[test]
+fn document_has_lote_root() {
+    let document = LoTEDocument {
+        lote: minimal_payload(),
+    };
+    let json = serde_json::to_value(&document).unwrap();
+    assert_eq!(
+        json,
+        serde_json::json!({ "LoTE": serde_json::to_value(minimal_payload()).unwrap() })
+    );
+    assert_eq!(document, serde_json::from_value(json).unwrap());
+}
+
+/// Backwards compatibility, see [`LoTEDocument`].
+#[test]
+fn document_accepts_list_without_root() {
+    let json = serde_json::to_string(&minimal_payload()).unwrap();
+    let document: LoTEDocument = serde_json::from_str(&json).unwrap();
+    assert_eq!(minimal_payload(), document.lote);
+}
+
+#[test]
 fn round_trip_full() {
     let base = minimal_payload();
     let payload = LoTEPayload {
@@ -138,7 +159,7 @@ fn round_trip_full() {
                         other_ids: None,
                         public_key_values: None,
                     }),
-                    service_status: Some("http://uri.etsi.org/19602/ServiceStatus/granted".into()),
+                    service_status: Some(ServiceStatus::PubEaaNotified),
                     status_starting_time: Some(
                         OffsetDateTime::parse("2025-01-01T00:00:00Z", &Rfc3339).unwrap(),
                     ),
@@ -282,4 +303,31 @@ fn optional_fields_absent_when_none() {
     assert!(!json.contains("\"PointersToOtherLoTE\""));
     assert!(!json.contains("\"DistributionPoints\""));
     assert!(!json.contains("\"SchemeExtensions\""));
+}
+
+/// `LoTEQualifiers` is an array in the JSON binding (TS 119 602 v1.1.1) and a single object in XML.
+/// Earlier versions of core published a single object in JSON; that is fixed, and such lists stay readable.
+#[test]
+fn pointer_qualifiers_are_an_array() {
+    let qualifier = serde_json::json!({
+        "LoTEType": "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList",
+        "SchemeOperatorName": [{ "lang": "en", "value": "Example" }],
+        "MimeType": "application/jose"
+    });
+    let pointer = |qualifiers: serde_json::Value| -> OtherLoTEPointer {
+        serde_json::from_value(serde_json::json!({
+            "LoTELocation": "https://example.com/lote.jwt",
+            "ServiceDigitalIdentities": [],
+            "LoTEQualifiers": qualifiers
+        }))
+        .unwrap()
+    };
+
+    assert_eq!(
+        1,
+        pointer(serde_json::json!([qualifier]))
+            .lote_qualifiers
+            .len()
+    );
+    assert_eq!(1, pointer(qualifier).lote_qualifiers.len());
 }
