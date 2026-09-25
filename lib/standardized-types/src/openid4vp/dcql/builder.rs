@@ -9,7 +9,7 @@ impl CredentialQuery {
     }
 
     pub fn sd_jwt_vc(vct_values: Vec<String>) -> CredentialQueryBuilder<SetFormat> {
-        Self::builder().format(CredentialFormat::SdJwt(SdJwtVcMeta { vct_values }))
+        Self::builder().format(CredentialFormat::SdJwtVc(SdJwtVcMeta { vct_values }))
     }
 
     pub fn jwt_vc(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetFormat> {
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(credential.id, CredentialQueryId::from("test_id"));
 
         match &credential.format {
-            CredentialFormat::SdJwt(sd_jwt_vc_meta) => {
+            CredentialFormat::SdJwtVc(sd_jwt_vc_meta) => {
                 assert_eq!(sd_jwt_vc_meta.vct_values.len(), 1);
                 assert_eq!(
                     sd_jwt_vc_meta.vct_values[0],
@@ -236,7 +236,7 @@ mod tests {
         ));
         assert!(matches!(
             query.credentials[1].format,
-            CredentialFormat::SdJwt(_)
+            CredentialFormat::SdJwtVc(_)
         ));
         assert!(matches!(
             query.credentials[2].format,

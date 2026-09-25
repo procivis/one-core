@@ -131,7 +131,7 @@ pub enum CredentialFormat {
     #[serde(rename = "mso_mdoc")]
     MsoMdoc(MsoMdocMeta),
     #[serde(rename = "dc+sd-jwt")]
-    SdJwt(SdJwtVcMeta),
+    SdJwtVc(SdJwtVcMeta),
     #[serde(rename = "vc+sd-jwt")]
     W3cSdJwt(W3cVcMeta),
 }
@@ -142,7 +142,7 @@ impl CredentialFormat {
             CredentialFormat::JwtVc(_) => "jwt_vc_json",
             CredentialFormat::LdpVc(_) => "ldp_vc",
             CredentialFormat::MsoMdoc(_) => "mso_mdoc",
-            CredentialFormat::SdJwt(_) => "dc+sd-jwt",
+            CredentialFormat::SdJwtVc(_) => "dc+sd-jwt",
             CredentialFormat::W3cSdJwt(_) => "vc+sd-jwt",
         }
     }
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(pid_credential.id, "pid".into());
 
         match &pid_credential.format {
-            CredentialFormat::SdJwt(sd_jwt_vc_meta) => {
+            CredentialFormat::SdJwtVc(sd_jwt_vc_meta) => {
                 assert_eq!(sd_jwt_vc_meta.vct_values.len(), 1);
                 assert_eq!(
                     sd_jwt_vc_meta.vct_values[0],
@@ -472,7 +472,7 @@ mod tests {
 
         // Verify metadata
         match &credential.format {
-            CredentialFormat::SdJwt(sd_jwt_vc_meta) => {
+            CredentialFormat::SdJwtVc(sd_jwt_vc_meta) => {
                 assert_eq!(sd_jwt_vc_meta.vct_values.len(), 1);
                 assert_eq!(
                     sd_jwt_vc_meta.vct_values[0],
@@ -562,7 +562,7 @@ mod tests {
 
         // Verify meta data
         match &credential.format {
-            CredentialFormat::SdJwt(sd_jwt_meta) => {
+            CredentialFormat::SdJwtVc(sd_jwt_meta) => {
                 assert_eq!(
                     sd_jwt_meta.vct_values,
                     &["https://credentials.example.com/identity_credential"]

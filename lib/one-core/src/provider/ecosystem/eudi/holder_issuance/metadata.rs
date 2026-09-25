@@ -278,7 +278,7 @@ fn credential_config_matches_reg_cert_attestation(
             .doctype
             .as_ref()
             .is_some_and(|doctype| doctype == &meta.doctype_value),
-        dcql::CredentialFormat::SdJwt(meta) => credential_config
+        dcql::CredentialFormat::SdJwtVc(meta) => credential_config
             .vct
             .as_ref()
             .is_some_and(|vct| meta.vct_values.contains(vct)),

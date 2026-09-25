@@ -558,7 +558,7 @@ fn credential_to_schema_formats(
     let dcql_format = value.format.dcql_format().to_owned();
     let schema_ids = match value.format {
         dcql::CredentialFormat::MsoMdoc(meta) => vec![meta.doctype_value],
-        dcql::CredentialFormat::SdJwt(meta) => meta.vct_values,
+        dcql::CredentialFormat::SdJwtVc(meta) => meta.vct_values,
         _ => {
             return Err(IdentifierServiceError::InvalidTrustInformation(
                 "W3C credentials are not supported in trust information".to_string(),

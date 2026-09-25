@@ -434,7 +434,7 @@ fn schema_to_dcql_meta(
     format_type: &FormatType,
 ) -> dcql::CredentialFormat {
     match format_type {
-        FormatType::SdJwtVc => dcql::CredentialFormat::SdJwt(SdJwtVcMeta {
+        FormatType::SdJwtVc => dcql::CredentialFormat::SdJwtVc(SdJwtVcMeta {
             vct_values: vec![format.ecosystem_schema_id.clone()],
         }),
         FormatType::Mdoc => dcql::CredentialFormat::MsoMdoc(MsoMdocMeta {

@@ -543,7 +543,7 @@ fn format_matches(
                 || credential_format == FormatType::JsonLdClassic
         }
         CredentialFormat::MsoMdoc(_) => credential_format == FormatType::Mdoc,
-        CredentialFormat::SdJwt(_) => credential_format == FormatType::SdJwtVc,
+        CredentialFormat::SdJwtVc(_) => credential_format == FormatType::SdJwtVc,
         CredentialFormat::W3cSdJwt(_) => credential_format == FormatType::SdJwt,
     }
 }
@@ -894,7 +894,7 @@ fn map_schema_id(filter: &CredentialFilter, ecosystem_schema_id: &str) -> String
                 .map(|(first, _)| first)
                 .unwrap_or(ecosystem_schema_id)
         }
-        CredentialFormat::MsoMdoc(_) | CredentialFormat::SdJwt(_) => ecosystem_schema_id,
+        CredentialFormat::MsoMdoc(_) | CredentialFormat::SdJwtVc(_) => ecosystem_schema_id,
     }
     .to_string()
 }

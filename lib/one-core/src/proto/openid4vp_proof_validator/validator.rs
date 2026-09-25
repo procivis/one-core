@@ -228,7 +228,7 @@ impl OpenId4VpProofValidatorProto {
                 .await?;
 
             let format = match dcql_credential_format {
-                CredentialFormat::SdJwt(_) => Some(FormatType::SdJwtVc),
+                CredentialFormat::SdJwtVc(_) => Some(FormatType::SdJwtVc),
                 CredentialFormat::MsoMdoc(_) => Some(FormatType::Mdoc),
                 _ => None,
             };

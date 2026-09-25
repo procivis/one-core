@@ -2,8 +2,9 @@ use core::str;
 use std::collections::BTreeSet;
 
 use shared_types::DidValue;
+use standardized_types::openid4vp::dcql::{CredentialFormat, CredentialQuery};
 use standardized_types::openid4vp::{
-    AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix,
+    AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, VPFormatsSupported,
     VerifierAttestationClaims,
 };
 use url::Url;
@@ -533,109 +534,17 @@ pub(super) fn validate_interaction_data(
         ));
     };
 
-    let mso_mdoc = client_metadata.vp_formats_supported.mso_mdoc.as_ref();
-    let jwt_vc_json = client_metadata.vp_formats_supported.jwt_vc_json.as_ref();
-    let ldp_vc = client_metadata.vp_formats_supported.ldp_vc.as_ref();
-    let sd_jwt_vc = client_metadata.vp_formats_supported.dc_sd_jwt.as_ref();
-
-    if jwt_vc_json.is_none() && sd_jwt_vc.is_none() && mso_mdoc.is_none() && ldp_vc.is_none() {
-        Err(VerificationProtocolError::InvalidRequest(
-            "unsupported client_metadata.vp_formats_supported must contain 'jwt_vc_json', 'dc+sd-jwt', 'mso_mdoc', or 'ldp_vc'".to_string(),
+    // check that each requested format has a valid and supported related entry in the vp_formats_supported
+    for credential_query in &interaction_data.dcql_query.credentials {
+        validate_vp_formats_supported_for_query(
+            credential_query,
+            &client_metadata.vp_formats_supported,
+        )
+        .error_while(format!(
+            "validating vp_formats_supported for query: `{}`:{}",
+            credential_query.id, credential_query.format
         ))?;
     }
-
-    let cose_supported = [-7, -8, -9, -19];
-    let jose_supported = ["ES256".to_string(), "EdDSA".to_string()];
-
-    /// find at least one common entry
-    fn is_supported<T: Clone + Ord>(remotely_supported: &[T], locally_supported: &[T]) -> bool {
-        if remotely_supported.is_empty() {
-            return true; // no remotely specified means no known restrictions
-        }
-
-        let locally_supported = BTreeSet::from_iter(locally_supported);
-        !locally_supported.is_disjoint(&BTreeSet::from_iter(remotely_supported))
-    }
-
-    match jwt_vc_json {
-        None => {}
-        Some(jwt_vc_json) => {
-            if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'jwt_vc_json' ({:?}) does not contain a supported algorithm",
-                    jwt_vc_json.alg_values
-                )));
-            }
-        }
-    };
-
-    match ldp_vc {
-        None => {}
-        Some(ldp_vc) => {
-            if !is_supported(
-                &ldp_vc.proof_type_values,
-                &["DataIntegrityProof".to_string()],
-            ) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'ldp_vc' ({:?}) must contain 'DataIntegrityProof' proof type",
-                    ldp_vc.proof_type_values
-                )));
-            }
-
-            if !is_supported(
-                &ldp_vc.cryptosuite_values,
-                &[
-                    "bbs-2023".to_string(),
-                    "ecdsa-rdfc-2019".to_string(),
-                    "eddsa-rdfc-2022".to_string(),
-                ],
-            ) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'ldp_vc' ({:?}) does not contain a supported cryptosuite",
-                    ldp_vc.cryptosuite_values
-                )));
-            }
-        }
-    }
-
-    match sd_jwt_vc {
-        None => {}
-        Some(sd_jwt_vc) => {
-            if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'dc+sd-jwt' ({:?}) does not contain a supported algorithm",
-                    sd_jwt_vc.sd_jwt_alg_values
-                )));
-            }
-
-            if !is_supported(&sd_jwt_vc.kb_jwt_alg_values, &jose_supported) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'dc+sd-jwt' ({:?}) does not contain a supported algorithm",
-                    sd_jwt_vc.kb_jwt_alg_values
-                )));
-            }
-        }
-    };
-
-    // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed -> will be matched as empty arrays
-    match mso_mdoc {
-        None => {}
-        Some(mso_mdoc) => {
-            if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'mso_mdoc' ({:?}) do not contain supported algorithms",
-                    mso_mdoc.issuerauth_alg_values
-                )));
-            }
-
-            if !is_supported(&mso_mdoc.deviceauth_alg_values, &cose_supported) {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "client_metadata.vp_formats_supported entry for 'mso_mdoc' ({:?}) do not contain supported algorithms",
-                    mso_mdoc.deviceauth_alg_values
-                )));
-            }
-        }
-    };
 
     let Some(response_uri) = interaction_data.response_uri.as_ref() else {
         return Err(VerificationProtocolError::InvalidRequest(
@@ -654,6 +563,133 @@ pub(super) fn validate_interaction_data(
         return Err(VerificationProtocolError::InvalidRequest(
             "nonce must be set".to_string(),
         ));
+    }
+
+    Ok(())
+}
+
+fn validate_vp_formats_supported_for_query(
+    query: &CredentialQuery,
+    vp_formats_supported: &VPFormatsSupported,
+) -> Result<(), VerificationProtocolError> {
+    let cose_supported: Vec<_> = {
+        use coset::iana::{Algorithm, EnumI64};
+
+        [
+            Algorithm::ES256,
+            Algorithm::ESP256,
+            Algorithm::EdDSA,
+            Algorithm::Ed25519,
+        ]
+        .into_iter()
+        .map(|alg| alg.to_i64() as i32)
+        .collect()
+    };
+    let jose_supported = [
+        "ES256".to_string(),
+        "EdDSA".to_string(),
+        "Ed25519".to_string(),
+    ];
+
+    /// find at least one common entry
+    fn is_supported<T: Clone + Ord>(remotely_supported: &[T], locally_supported: &[T]) -> bool {
+        if remotely_supported.is_empty() {
+            return true; // no remotely specified means no known restrictions
+        }
+
+        let locally_supported = BTreeSet::from_iter(locally_supported);
+        !locally_supported.is_disjoint(&BTreeSet::from_iter(remotely_supported))
+    }
+
+    match &query.format {
+        CredentialFormat::JwtVc(_) | CredentialFormat::W3cSdJwt(_) => {
+            let Some(jwt_vc_json) = vp_formats_supported.jwt_vc_json.as_ref() else {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "vp_formats_supported must contain 'jwt_vc_json'".to_string(),
+                ));
+            };
+
+            if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'jwt_vc_json' ({:?}) does not contain a supported algorithm",
+                    jwt_vc_json.alg_values
+                )));
+            }
+        }
+        CredentialFormat::LdpVc(_) => {
+            let Some(ldp_vc) = vp_formats_supported.ldp_vc.as_ref() else {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "vp_formats_supported must contain 'ldp_vc'".to_string(),
+                ));
+            };
+
+            if !is_supported(
+                &ldp_vc.proof_type_values,
+                &["DataIntegrityProof".to_string()],
+            ) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'ldp_vc.proof_type_values' ({:?}) must contain 'DataIntegrityProof' proof type",
+                    ldp_vc.proof_type_values
+                )));
+            }
+
+            if !is_supported(
+                &ldp_vc.cryptosuite_values,
+                &[
+                    "bbs-2023".to_string(),
+                    "ecdsa-rdfc-2019".to_string(),
+                    "eddsa-rdfc-2022".to_string(),
+                ],
+            ) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'ldp_vc.cryptosuite_values' ({:?}) does not contain a supported cryptosuite",
+                    ldp_vc.cryptosuite_values
+                )));
+            }
+        }
+        CredentialFormat::SdJwtVc(_) => {
+            let Some(sd_jwt_vc) = vp_formats_supported.dc_sd_jwt.as_ref() else {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "vp_formats_supported must contain 'dc+sd-jwt'".to_string(),
+                ));
+            };
+
+            if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'dc+sd-jwt.sd-jwt_alg_values' ({:?}) does not contain a supported algorithm",
+                    sd_jwt_vc.sd_jwt_alg_values
+                )));
+            }
+
+            if !is_supported(&sd_jwt_vc.kb_jwt_alg_values, &jose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'dc+sd-jwt.kb-jwt_alg_values' ({:?}) does not contain a supported algorithm",
+                    sd_jwt_vc.kb_jwt_alg_values
+                )));
+            }
+        }
+        CredentialFormat::MsoMdoc(_) => {
+            // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed -> will be matched as empty arrays
+            let Some(mso_mdoc) = vp_formats_supported.mso_mdoc.as_ref() else {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "vp_formats_supported must contain 'mso_mdoc'".to_string(),
+                ));
+            };
+
+            if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'mso_mdoc.issuerauth_alg_values' ({:?}) do not contain supported algorithms",
+                    mso_mdoc.issuerauth_alg_values
+                )));
+            }
+
+            if !is_supported(&mso_mdoc.deviceauth_alg_values, &cose_supported) {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "vp_formats_supported entry for 'mso_mdoc.deviceauth_alg_values' ({:?}) do not contain supported algorithms",
+                    mso_mdoc.deviceauth_alg_values
+                )));
+            }
+        }
     }
 
     Ok(())

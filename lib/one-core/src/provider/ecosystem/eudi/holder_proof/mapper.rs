@@ -47,10 +47,10 @@ fn format_matches(credential_query: &CredentialQuery, req_cert_credential: &Cred
             }),
         ) if requested == allowed => {}
         (
-            CredentialFormat::SdJwt(SdJwtVcMeta {
+            CredentialFormat::SdJwtVc(SdJwtVcMeta {
                 vct_values: requested,
             }),
-            CredentialFormat::SdJwt(SdJwtVcMeta {
+            CredentialFormat::SdJwtVc(SdJwtVcMeta {
                 vct_values: allowed,
             }),
         ) if requested.iter().all(|vct| allowed.contains(vct)) => {}

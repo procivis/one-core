@@ -982,13 +982,13 @@ fn dummy_reg_cert() -> JWTPayload<Payload> {
                 status_list: HashMap::new(),
             },
             provides_attestations: Some(vec![Credential {
-                format: CredentialFormat::SdJwt(SdJwtVcMeta {
+                format: CredentialFormat::SdJwtVc(SdJwtVcMeta {
                     vct_values: vec!["https://example.com".to_string()],
                 }),
                 claim: None,
             }]),
             credentials: Some(vec![Credential {
-                format: CredentialFormat::SdJwt(SdJwtVcMeta {
+                format: CredentialFormat::SdJwtVc(SdJwtVcMeta {
                     vct_values: vec!["https://example2.com".to_string()],
                 }),
                 claim: None,

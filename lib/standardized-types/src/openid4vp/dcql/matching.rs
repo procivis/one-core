@@ -42,7 +42,7 @@ impl DcqlQuery {
         for credential_query in &self.credentials {
             let ecosystem_schema_ids = match &credential_query.format {
                 CredentialFormat::MsoMdoc(meta) => vec![meta.doctype_value.clone()],
-                CredentialFormat::SdJwt(meta) => meta.vct_values.clone(),
+                CredentialFormat::SdJwtVc(meta) => meta.vct_values.clone(),
                 CredentialFormat::W3cSdJwt(meta)
                 | CredentialFormat::JwtVc(meta)
                 | CredentialFormat::LdpVc(meta) => meta

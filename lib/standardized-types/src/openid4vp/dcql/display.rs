@@ -44,7 +44,7 @@ impl Display for CredentialFormat {
             CredentialFormat::MsoMdoc(meta) => {
                 write!(f, "mso_mdoc(doctype: {})", meta.doctype_value)
             }
-            CredentialFormat::SdJwt(meta) => {
+            CredentialFormat::SdJwtVc(meta) => {
                 write!(f, "dc+sd-jwt(vct_types: {:?})", meta.vct_values)
             }
             CredentialFormat::LdpVc(meta) => {
