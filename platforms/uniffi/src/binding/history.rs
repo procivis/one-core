@@ -92,6 +92,7 @@ pub enum HistoryActionBindingEnum {
     Signed,
     KaCreated,
     WiaCreated,
+    ClientSecretRegenerated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]

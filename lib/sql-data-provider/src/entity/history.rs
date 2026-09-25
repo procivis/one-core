@@ -145,6 +145,8 @@ pub enum HistoryAction {
     KaCreated,
     #[sea_orm(string_value = "WIA_CREATED")]
     WiaCreated,
+    #[sea_orm(string_value = "CLIENT_SECRET_REGENERATED")]
+    ClientSecretRegenerated,
 }
 
 impl From<&HistoryAction> for SimpleExpr {

@@ -229,6 +229,7 @@ pub enum HistoryAction {
     Signed,
     KaCreated,
     WiaCreated,
+    ClientSecretRegenerated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
