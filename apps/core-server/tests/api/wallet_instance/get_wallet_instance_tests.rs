@@ -16,7 +16,7 @@ async fn test_get_wallet_instance_success() {
         .await;
 
     // WHEN
-    let resp = context.api.wallet_units.get(&wallet_unit.id).await;
+    let resp = context.api.managed_instances.get(&wallet_unit.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -25,6 +25,7 @@ async fn test_get_wallet_instance_success() {
     resp["id"].assert_eq(&wallet_unit.id);
     resp["name"].assert_eq(&wallet_unit.name);
     resp["os"].assert_eq(&wallet_unit.os);
+    resp["version"].assert_eq(&wallet_unit.version);
     resp["status"].assert_eq(&String::from("ACTIVE"));
     resp["providerName"].assert_eq(&wallet_unit.provider);
     assert_eq!(resp["providerType"], "PROCIVIS_ONE");
@@ -54,7 +55,7 @@ async fn test_get_revoked_wallet_instance_success() {
         .await;
 
     // WHEN
-    let resp = context.api.wallet_units.get(&wallet_unit.id).await;
+    let resp = context.api.managed_instances.get(&wallet_unit.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -88,7 +89,7 @@ async fn test_get_wallet_instance_user_sub_in_response() {
         .await;
 
     // WHEN
-    let resp = context.api.wallet_units.get(&wallet_unit.id).await;
+    let resp = context.api.managed_instances.get(&wallet_unit.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -98,13 +99,39 @@ async fn test_get_wallet_instance_user_sub_in_response() {
 }
 
 #[tokio::test]
+async fn test_get_wallet_instance_version_in_response() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    let wallet_unit = context
+        .db
+        .managed_instances
+        .create(
+            org,
+            TestWalletInstance {
+                version: Some("v1".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.managed_instances.get(&wallet_unit.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["version"], "v1");
+}
+
+#[tokio::test]
 async fn test_get_wallet_instance_not_found() {
     // GIVEN
     let context = TestContext::new(None).await;
     let non_existent_id = uuid::Uuid::new_v4();
 
     // WHEN
-    let resp = context.api.wallet_units.get(&non_existent_id).await;
+    let resp = context.api.managed_instances.get(&non_existent_id).await;
 
     // THEN
     assert_eq!(resp.status(), 404);

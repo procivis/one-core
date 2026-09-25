@@ -153,6 +153,7 @@ impl ManagedInstanceService {
             authentication_key_jwk: instance.authentication_key_jwk,
             user_sub: instance.user_sub,
             verifier_csr: instance.verifier_csr,
+            version: instance.version,
         }
     }
 

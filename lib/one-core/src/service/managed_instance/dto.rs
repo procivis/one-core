@@ -248,6 +248,7 @@ pub struct GetManagedInstanceResponseDTO {
     pub authentication_key_jwk: Option<PublicJwk>,
     pub user_sub: Option<String>,
     pub verifier_csr: Option<String>,
+    pub version: Option<String>,
 }
 
 pub type GetManagedInstanceListResponseDTO = GetListResponse<GetManagedInstanceResponseDTO>;

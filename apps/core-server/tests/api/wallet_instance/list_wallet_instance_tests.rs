@@ -11,7 +11,7 @@ use time::Duration;
 use uuid::Uuid;
 
 use crate::api_wallet_unit_tests::create_wallet_instance_attestation;
-use crate::utils::api_clients::wallet_units::ListFilters;
+use crate::utils::api_clients::managed_instances::ListFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::managed_instances::TestWalletInstance;
@@ -41,7 +41,7 @@ async fn test_list_wallet_instance_success() {
     // WHEN
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters::new(org.id))
         .await;
 
@@ -104,7 +104,7 @@ async fn test_list_wallet_instance_revoked_success() {
     // WHEN
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters::new(org.id))
         .await;
 
@@ -193,7 +193,7 @@ async fn test_list_wallet_instance_by_attestation_success() {
     // WHEN
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters {
             organisation_id: organisation.id,
             attestation: Some(attestation),
@@ -232,7 +232,7 @@ async fn test_list_wallet_instance_empty_success() {
     // WHEN
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters::new(Uuid::new_v4().into()))
         .await;
 
@@ -267,7 +267,7 @@ async fn test_list_wallet_instance_user_sub_in_response() {
     // WHEN
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters::new(org.id))
         .await;
 
@@ -313,7 +313,7 @@ async fn test_list_wallet_instance_filter_by_user_sub() {
     // WHEN — filter by exact user_sub
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters {
             organisation_id: org.id,
             user_sub: Some("sub-alice".to_string()),
@@ -353,7 +353,7 @@ async fn test_list_wallet_instance_filter_by_user_sub_prefix() {
     // WHEN — filter by prefix "sub-a" should match alice and adam
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters {
             organisation_id: org.id,
             user_sub: Some("sub-a".to_string()),
@@ -391,7 +391,7 @@ async fn test_list_wallet_instance_org_success() {
     // WHEN
     let resp = context
         .api
-        .wallet_units
+        .managed_instances
         .list(ListFilters::new(Uuid::new_v4().into())) // different org
         .await;
 

@@ -4,7 +4,7 @@ use shared_types::OrganisationId;
 
 use super::{HttpClient, Response};
 
-pub struct WalletUnitsApi {
+pub struct ManagedInstancesApi {
     client: HttpClient,
 }
 
@@ -26,7 +26,7 @@ impl ListFilters {
     }
 }
 
-impl WalletUnitsApi {
+impl ManagedInstancesApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
     }

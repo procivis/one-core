@@ -110,10 +110,8 @@ async fn test_list_managed_instances_returns_all_roles() {
     // when: no roles filter
     let resp = context
         .api
-        .wallet_units
-        .list(crate::utils::api_clients::wallet_units::ListFilters::new(
-            org.id,
-        ))
+        .managed_instances
+        .list(crate::utils::api_clients::managed_instances::ListFilters::new(org.id))
         .await;
 
     assert_eq!(resp.status(), 200);
@@ -145,10 +143,10 @@ async fn test_list_managed_instances_honors_explicit_roles_filter() {
     // when: explicitly requesting VERIFIER role
     let resp = context
         .api
-        .wallet_units
-        .list(crate::utils::api_clients::wallet_units::ListFilters {
+        .managed_instances
+        .list(crate::utils::api_clients::managed_instances::ListFilters {
             roles: Some(vec!["VERIFIER".to_string()]),
-            ..crate::utils::api_clients::wallet_units::ListFilters::new(org.id)
+            ..crate::utils::api_clients::managed_instances::ListFilters::new(org.id)
         })
         .await;
 
@@ -180,7 +178,11 @@ async fn test_get_managed_instance_verifier_role_success() {
         .await;
 
     // when
-    let resp = context.api.wallet_units.get(&verifier_instance.id).await;
+    let resp = context
+        .api
+        .managed_instances
+        .get(&verifier_instance.id)
+        .await;
 
     // then
     assert_eq!(resp.status(), 200);

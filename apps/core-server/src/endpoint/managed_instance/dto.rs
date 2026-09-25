@@ -55,6 +55,7 @@ pub(crate) struct ManagedInstanceResponseRestDTO {
     pub authentication_key_jwk: Option<PublicJwk>,
     pub user_sub: Option<String>,
     pub verifier_csr: Option<String>,
+    pub version: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]

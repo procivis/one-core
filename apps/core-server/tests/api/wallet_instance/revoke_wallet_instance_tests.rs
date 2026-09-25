@@ -97,7 +97,7 @@ async fn test_revoke_wallet_instance_success() {
         .await;
 
     // WHEN
-    let resp = context.api.wallet_units.revoke(&wallet_unit.id).await;
+    let resp = context.api.managed_instances.revoke(&wallet_unit.id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);

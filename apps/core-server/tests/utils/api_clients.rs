@@ -16,6 +16,7 @@ use self::histories::HistoriesApi;
 use self::identifiers::IdentifiersApi;
 use self::interactions::InteractionsApi;
 use self::keys::KeysApi;
+use self::managed_instances::ManagedInstancesApi;
 use self::organisations::OrganisationsApi;
 use self::other::OtherApi;
 use self::proof_schemas::ProofSchemasApi;
@@ -23,7 +24,6 @@ use self::proofs::ProofsApi;
 use self::ssi::SSIApi;
 use self::tasks::TasksApi;
 use self::trust_collections::TrustCollectionsApi;
-use self::wallet_units::WalletUnitsApi;
 use super::field_match::FieldHelpers;
 use crate::utils::api_clients::cache::CacheApi;
 use crate::utils::api_clients::holder_wallet_instance::HolderWalletInstancesApi;
@@ -43,6 +43,7 @@ pub mod identifiers;
 pub mod interactions;
 pub mod jsonld;
 pub mod keys;
+pub mod managed_instances;
 pub mod organisations;
 pub mod other;
 pub mod proof_schemas;
@@ -51,7 +52,6 @@ pub mod signatures;
 pub mod ssi;
 pub mod tasks;
 pub mod trust_collections;
-pub mod wallet_units;
 
 pub mod holder_wallet_instance;
 mod statistics;
@@ -249,7 +249,7 @@ pub struct Client {
     pub identifiers: IdentifiersApi,
     pub certificates: CertificatesApi,
     pub wallet_provider: WalletProviderApi,
-    pub wallet_units: WalletUnitsApi,
+    pub managed_instances: ManagedInstancesApi,
     pub holder_wallet_instances: HolderWalletInstancesApi,
     pub signatures: SignaturesApi,
     pub statistics: StatisticsApi,
@@ -286,7 +286,7 @@ impl Client {
             identifiers: IdentifiersApi::new(client.clone()),
             certificates: CertificatesApi::new(client.clone()),
             wallet_provider: WalletProviderApi::new(client.clone()),
-            wallet_units: WalletUnitsApi::new(client.clone()),
+            managed_instances: ManagedInstancesApi::new(client.clone()),
             holder_wallet_instances: HolderWalletInstancesApi::new(client.clone()),
             signatures: SignaturesApi::new(client.clone()),
             statistics: StatisticsApi::new(client.clone()),
