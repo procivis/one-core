@@ -490,7 +490,7 @@ async fn test_fail_create_credential_schema_transaction_code_length_too_big() {
 }
 
 #[tokio::test]
-async fn test_create_credential_schema_modc_without_schema_id() {
+async fn test_create_credential_schema_mdoc_without_schema_id() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

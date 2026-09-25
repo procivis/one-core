@@ -50,7 +50,7 @@ pub struct JsonLDInlineEntityDTO {
 }
 
 /// (Partial) SD-JWT VC type metadata.
-/// See https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html#name-type-metadata-format for
+/// See https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-19#name-type-metadata-format for
 /// more details.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -60,6 +60,8 @@ pub struct SdJwtVcTypeMetadataResponseDTO {
 
     #[serde(default)]
     pub name: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub display: Vec<SdJwtVcDisplayMetadataDTO>,
@@ -67,11 +69,6 @@ pub struct SdJwtVcTypeMetadataResponseDTO {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub claims: Vec<SdJwtVcClaimDTO>,
 
-    #[serde(default)]
-    pub schema: Option<serde_json::Value>,
-
-    #[serde(default)]
-    pub schema_uri: Option<Url>,
     // Non-standard property
     #[serde(default)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
@@ -80,8 +77,10 @@ pub struct SdJwtVcTypeMetadataResponseDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcDisplayMetadataDTO {
-    pub lang: String,
+    pub locale: String,
     pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
 
     #[serde(default)]
     pub rendering: Option<SdJwtVcRenderingDTO>,
@@ -101,6 +100,8 @@ pub struct SdJwtVcSimpleRenderingDTO {
     pub logo: Option<SdJwtVcSimpleRenderingLogoDTO>,
 
     #[serde(default)]
+    pub background_image: Option<SdJwtVcSimpleRenderingBackgroundImageDTO>,
+    #[serde(default)]
     pub background_color: Option<String>,
 
     #[serde(default)]
@@ -116,6 +117,11 @@ pub struct SdJwtVcSimpleRenderingLogoDTO {
     pub alt_text: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SdJwtVcSimpleRenderingBackgroundImageDTO {
+    pub uri: Url,
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcClaimDTO {
@@ -124,6 +130,9 @@ pub struct SdJwtVcClaimDTO {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub display: Vec<SdJwtVcClaimDisplayDTO>,
+
+    #[serde(default)]
+    pub mandatory: Option<bool>,
 
     #[serde(default)]
     pub sd: Option<SdJwtVcClaimSd>,
@@ -137,10 +146,13 @@ pub enum SdJwtVcClaimSd {
     Never,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SdJwtVcClaimDisplayDTO {
-    pub lang: String,
+    pub locale: String,
     pub label: String,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug)]

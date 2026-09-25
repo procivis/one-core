@@ -20,6 +20,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
+use crate::service::ssi_issuer::dto::SdJwtVcSimpleRenderingBackgroundImageDTO;
 
 impl Default for JsonLDContextDTO {
     fn default() -> Self {
@@ -122,25 +123,15 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
     vct: String,
     schema: CredentialSchema,
 ) -> Result<SdJwtVcTypeMetadataResponseDTO, IssuerServiceError> {
-    let background_color: Option<String> = schema.layout_properties.as_ref().map(|props| {
-        props
-            .background
-            .iter()
-            .flat_map(|bg| bg.color.clone())
-            .collect()
+    let simple_rendering = vct_simple_rendering_from_schema(&schema)?;
+    let rendering = simple_rendering.map(|simple| SdJwtVcRenderingDTO {
+        simple: Some(simple),
     });
-    let logo = vct_logo_from_schema(&schema)?;
-    let rendering = SdJwtVcRenderingDTO {
-        simple: Some(SdJwtVcSimpleRenderingDTO {
-            logo,
-            background_color, // defaults to None
-            text_color: Some("#FFFFFF".to_string()),
-        }),
-    };
     let display_en_us = SdJwtVcDisplayMetadataDTO {
-        lang: "en-US".to_string(),
+        locale: "en-US".to_string(),
         name: schema.name,
-        rendering: Some(rendering),
+        description: None,
+        rendering,
     };
 
     let user_claims: Vec<_> = schema
@@ -157,13 +148,12 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
     Ok(SdJwtVcTypeMetadataResponseDTO {
         vct,
         name: Some(credential_schema_id),
+        description: None,
         display: vec![display_en_us],
         claims,
         layout_properties: schema
             .layout_properties
             .map(CredentialSchemaLayoutPropertiesResponseDTO::from),
-        schema: None,
-        schema_uri: None,
     })
 }
 
@@ -231,29 +221,55 @@ fn vct_claim_from_path_label(path: Vec<Value>, label: String) -> SdJwtVcClaimDTO
     SdJwtVcClaimDTO {
         path,
         display: vec![SdJwtVcClaimDisplayDTO {
-            lang: "en-US".to_string(),
+            locale: "en-US".to_string(),
             label,
+            description: None,
         }],
+        mandatory: None,
         sd: Some(SdJwtVcClaimSd::Allowed),
     }
 }
 
-fn vct_logo_from_schema(
+fn vct_simple_rendering_from_schema(
     schema: &CredentialSchema,
-) -> Result<Option<SdJwtVcSimpleRenderingLogoDTO>, IssuerServiceError> {
-    Ok(schema
-        .layout_properties
-        .iter()
-        .flat_map(|layout| &layout.logo)
-        .flat_map(|logo| &logo.image)
-        .map(|s| Url::try_from(s.as_str()))
-        .next()
-        .transpose()
-        .map_err(|err| {
+) -> Result<Option<SdJwtVcSimpleRenderingDTO>, IssuerServiceError> {
+    let Some(layout_properties) = &schema.layout_properties else {
+        return Ok(None);
+    };
+
+    let mut result = SdJwtVcSimpleRenderingDTO {
+        logo: None,
+        background_image: None,
+        background_color: None,
+        text_color: None,
+    };
+
+    if let Some(logo) = &layout_properties.logo
+        && let Some(image) = &logo.image
+    {
+        let uri = Url::try_from(image.as_str()).map_err(|err| {
             IssuerServiceError::MappingError(format!("failed to parse logo URL: {err}"))
-        })?
-        .map(|uri| SdJwtVcSimpleRenderingLogoDTO {
+        })?;
+        result.logo = Some(SdJwtVcSimpleRenderingLogoDTO {
             uri,
             alt_text: None,
-        }))
+        });
+    }
+
+    if let Some(background) = &layout_properties.background {
+        if let Some(color) = &background.color {
+            result.background_color = Some(color.to_owned());
+        }
+
+        if let Some(image) = &background.image {
+            let uri = Url::try_from(image.as_str()).map_err(|err| {
+                IssuerServiceError::MappingError(format!(
+                    "failed to parse background image URL: {err}"
+                ))
+            })?;
+            result.background_image = Some(SdJwtVcSimpleRenderingBackgroundImageDTO { uri });
+        }
+    }
+
+    Ok(Some(result))
 }

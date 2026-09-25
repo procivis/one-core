@@ -5,7 +5,7 @@
         "description": "PID Credential",
         "display": [
             {
-                "lang": "en-US",
+                "locale": "en-US",
                 "name": "PID",
                 "description": "National ID credential",
                 "rendering": {
@@ -27,12 +27,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Nachname",
                         "description": "Der Name"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Family Name",
                         "description": "The name"
                     }
@@ -45,12 +45,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Vorname",
                         "description": "Der Name"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Given Name",
                         "description": "The given name"
                     }
@@ -63,7 +63,7 @@
                 ],
                 "display": [
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Birth Date",
                         "description": "Birth Date"
                     }
@@ -76,12 +76,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Adresse",
                         "description": "Adresse zum Zeitpunkt des Abschlusses"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Address",
                         "description": "Address at the time of graduation"
                     }
@@ -94,11 +94,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Straße"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Street Address"
                     }
                 ],
@@ -110,11 +110,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Locality"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Locality"
                     }
                 ],
@@ -126,11 +126,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Region"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Region"
                     }
                 ],
@@ -142,11 +142,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Postal Code"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Postal Code"
                     }
                 ],
@@ -158,11 +158,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Country"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Country"
                     }
                 ],
@@ -174,12 +174,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Age",
                         "description": "Age over 12"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Age",
                         "description": "Age over 12"
                     }
@@ -192,12 +192,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Age",
                         "description": "Age over 14"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Age",
                         "description": "Age over 14"
                     }
@@ -210,12 +210,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Age",
                         "description": "Age over 16"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Age",
                         "description": "Age over 16"
                     }
@@ -228,12 +228,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Age",
                         "description": "Age over 18"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Age",
                         "description": "Age over 18"
                     }
@@ -246,12 +246,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Age",
                         "description": "Age over 21"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Age",
                         "description": "Age over 21"
                     }
@@ -264,12 +264,12 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Age",
                         "description": "Age over 65"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Age",
                         "description": "Age over 65"
                     }
@@ -282,11 +282,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Geschlecht"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Gender"
                     }
                 ],
@@ -298,11 +298,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Nationalität"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Nationality"
                     }
                 ],
@@ -314,11 +314,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Ausstellungsdatum"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Issuance Date"
                     }
                 ],
@@ -330,11 +330,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Ablaufdatum"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Expiry Date"
                     }
                 ],
@@ -346,11 +346,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Ausstellende Behörde"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Issuing Authority"
                     }
                 ],
@@ -362,11 +362,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Dokumentennummer"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Document Number"
                     }
                 ],
@@ -378,11 +378,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Verwaltungsnummer"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Administrative Number"
                     }
                 ],
@@ -394,11 +394,11 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Ausstellungsland"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Issuing Country"
                     }
                 ],
@@ -410,17 +410,16 @@
                 ],
                 "display": [
                     {
-                        "lang": "de-DE",
+                        "locale": "de-DE",
                         "label": "Ausstellungszuständigkeit"
                     },
                     {
-                        "lang": "en-US",
+                        "locale": "en-US",
                         "label": "Issuing Jurisdiction"
                     }
                 ],
                 "sd": "allowed"
             }
-        ],
-        "schema_url": "https://www.procivis.ch/specs/v1/eudi/schemas/pid.json"
+        ]
     }
 ]

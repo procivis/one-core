@@ -7,7 +7,8 @@ use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
     JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
-    SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
+    SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO,
+    SdJwtVcSimpleRenderingBackgroundImageDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
 use one_core::service::trust_collection::dto::{TrustCollectionPublicResponseDTO, TrustListDTO};
@@ -166,12 +167,11 @@ pub(crate) struct JsonLDInlineEntityRestDTO {
 pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
     pub vct: String,
     pub name: Option<String>,
+    pub description: Option<String>,
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcDisplayMetadataRestDTO>,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<SdJwtVcClaimRestDTO>,
-    pub schema: Option<serde_json::Value>,
-    pub schema_uri: Option<Url>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
@@ -180,8 +180,9 @@ pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcDisplayMetadataDTO)]
 pub(crate) struct SdJwtVcDisplayMetadataRestDTO {
-    pub lang: String,
+    pub locale: String,
     pub name: String,
+    pub description: Option<String>,
     #[from(with_fn = convert_inner)]
     pub rendering: Option<SdJwtVcRenderingRestDTO>,
 }
@@ -197,10 +198,11 @@ pub(crate) struct SdJwtVcRenderingRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcSimpleRenderingDTO)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct SdJwtVcSimpleRenderingRestDTO {
     #[from(with_fn = convert_inner)]
     pub logo: Option<SdJwtVcSimpleRenderingLogoRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub background_image: Option<SdJwtVcSimpleRenderingBackgroundImageRestDTO>,
     pub background_color: Option<String>,
     pub text_color: Option<String>,
 }
@@ -208,10 +210,16 @@ pub(crate) struct SdJwtVcSimpleRenderingRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcSimpleRenderingLogoDTO)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct SdJwtVcSimpleRenderingLogoRestDTO {
     pub uri: Url,
     pub alt_text: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcSimpleRenderingBackgroundImageDTO)]
+pub struct SdJwtVcSimpleRenderingBackgroundImageRestDTO {
+    pub uri: Url,
 }
 
 #[options_not_nullable]
@@ -221,6 +229,7 @@ pub(crate) struct SdJwtVcClaimRestDTO {
     pub path: Vec<Value>,
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcClaimDisplayRestDTO>,
+    pub mandatory: Option<bool>,
     #[from(with_fn = convert_inner)]
     pub sd: Option<SdJwtVcClaimSdRestEnum>,
 }
@@ -234,11 +243,13 @@ pub(crate) enum SdJwtVcClaimSdRestEnum {
     Never,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcClaimDisplayDTO)]
 pub(crate) struct SdJwtVcClaimDisplayRestDTO {
-    pub lang: String,
+    pub locale: String,
     pub label: String,
+    pub description: Option<String>,
 }
 
 #[options_not_nullable]

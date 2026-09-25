@@ -186,7 +186,7 @@ before_script:
     WAIT_ON_TIMEOUT: 10m
   trigger:
     project: procivis/one/one-tests
-    branch: v1.85.13
+    branch: v1.85.14
     strategy: depend
     forward:
       pipeline_variables: true

@@ -64,8 +64,7 @@ async fn test_vct_metadata_simple() {
         resp["display"][0]["rendering"],
         json!({
           "simple": {
-            "backgroundColor": "#DA2727",
-            "textColor": "#FFFFFF"
+            "background_color": "#DA2727"
           }
         })
     );
@@ -78,7 +77,7 @@ async fn test_vct_metadata_simple() {
       ],
       "display": [
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "firstName"
         }
       ],
@@ -90,7 +89,7 @@ async fn test_vct_metadata_simple() {
       ],
       "display": [
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "label": "isOver18"
         }
       ],
@@ -140,7 +139,7 @@ async fn test_vct_metadata_nested_claims() {
           "display": [
             {
               "label": "namespace",
-              "lang": "en-US"
+              "locale": "en-US"
             }
           ],
           "path": [
@@ -152,7 +151,7 @@ async fn test_vct_metadata_nested_claims() {
           "display": [
             {
               "label": "root_array",
-              "lang": "en-US"
+              "locale": "en-US"
             }
           ],
           "path": [
@@ -165,7 +164,7 @@ async fn test_vct_metadata_nested_claims() {
           "display": [
             {
               "label": "nested",
-              "lang": "en-US"
+              "locale": "en-US"
             }
           ],
           "path": [
@@ -180,7 +179,7 @@ async fn test_vct_metadata_nested_claims() {
           "display": [
             {
               "label": "field",
-              "lang": "en-US"
+              "locale": "en-US"
             }
           ],
           "path": [
@@ -197,7 +196,7 @@ async fn test_vct_metadata_nested_claims() {
           "display": [
             {
               "label": "root_field",
-              "lang": "en-US"
+              "locale": "en-US"
             }
           ],
           "path": [
@@ -209,13 +208,8 @@ async fn test_vct_metadata_nested_claims() {
       ],
       "display": [
         {
-          "lang": "en-US",
+          "locale": "en-US",
           "name": "test_name",
-          "rendering": {
-            "simple": {
-              "textColor": "#FFFFFF"
-            }
-          }
         }
       ],
       "name": "test_id",
@@ -301,12 +295,12 @@ async fn test_vct_metadata_v2_simple() {
     assert_eq!(claims.len(), 2);
     assert!(claims.contains(&json!({
         "path": ["firstName"],
-        "display": [{"lang": "en-US", "label": "firstName"}],
+        "display": [{"locale": "en-US", "label": "firstName"}],
         "sd": "allowed"
     })));
     assert!(claims.contains(&json!({
         "path": ["isOver18"],
-        "display": [{"lang": "en-US", "label": "isOver18"}],
+        "display": [{"locale": "en-US", "label": "isOver18"}],
         "sd": "allowed"
     })));
 }
