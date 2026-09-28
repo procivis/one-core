@@ -4,6 +4,9 @@ use std::collections::hash_map::Entry;
 use sea_orm::{DbBackend, FromQueryResult, TransactionTrait};
 use sea_orm_migration::prelude::*;
 use shared_types::{ClaimId, ClaimSchemaId, CredentialId};
+use time::OffsetDateTime;
+
+use crate::datatype::uuid_char;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,22 +14,35 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        // A failed MySQL run can leave completed chunks committed. Keep the
+        // completed parent IDs until the following migration removes this table.
+        manager
+            .create_table(
+                Table::create()
+                    .if_not_exists()
+                    .table(DeduplicationProgress::Table)
+                    .col(uuid_char(DeduplicationProgress::ParentId).primary_key())
+                    .to_owned(),
+            )
+            .await?;
         let connection = manager.get_connection();
         // Preceding MySQL DDL may have committed the runner's pinned transaction.
         // A nested SeaORM transaction would then create a savepoint without an
-        // active transaction, so start a real transaction on that connection.
+        // active transaction. Commit each replacement chunk on that connection
+        // so a large migration does not hold locks and undo rows until the end.
+        // Completed chunks are safe to revisit if the migration is restarted.
         if manager.get_database_backend() == DbBackend::MySql
             && matches!(connection, SchemaManagerConnection::Transaction(_))
         {
-            connection.execute_unprepared("START TRANSACTION").await?;
-            let result = deduplicate(connection).await;
-            connection
-                .execute_unprepared(if result.is_ok() { "COMMIT" } else { "ROLLBACK" })
-                .await?;
-            result
+            // Close any runner transaction before the read phase as well. The
+            // migration lock is connection-scoped on MySQL, not transaction-scoped.
+            connection.execute_unprepared("COMMIT").await?;
+            deduplicate(connection, true).await
         } else {
+            // PostgreSQL's migration lock and SQLite's migration serialization
+            // require the runner's enclosing transaction to stay open.
             let transaction = connection.begin().await?;
-            match deduplicate(&transaction).await {
+            match deduplicate(&transaction, false).await {
                 Ok(()) => transaction.commit().await,
                 Err(error) => {
                     transaction.rollback().await?;
@@ -40,6 +56,7 @@ impl MigrationTrait for Migration {
 #[derive(FromQueryResult)]
 struct BatchParent {
     id: CredentialId,
+    created_date: OffsetDateTime,
 }
 
 #[derive(FromQueryResult)]
@@ -51,37 +68,96 @@ struct ClaimRow {
     selectively_disclosable: bool,
 }
 
-/// Process holder parents oldest first. Each batch has its own canonical claims;
-/// other roles and unrelated credentials retain their existing associations.
-async fn deduplicate(connection: &impl ConnectionTrait) -> Result<(), DbErr> {
-    let parents_oldest_first = Query::select()
-        .column(Credential::Id)
-        .from(Credential::Table)
-        .and_where(Expr::col(Credential::Role).eq("HOLDER"))
-        .and_where(Expr::col(Credential::Type).eq("BATCH_PARENT"))
-        .order_by(Credential::CreatedDate, Order::Asc)
-        .order_by(Credential::Id, Order::Asc)
-        .to_owned();
-    let parents = BatchParent::find_by_statement(
+/// Fetch one unprocessed holder parent at a time. New parents committed before
+/// the final lookup can join the work, and completed parents are skipped on retry.
+async fn deduplicate(
+    connection: &impl ConnectionTrait,
+    commit_each_chunk: bool,
+) -> Result<(), DbErr> {
+    let mut completed = 0;
+    let mut cursor: Option<BatchParent> = None;
+    loop {
+        let Some(parent) = next_batch_parent(connection, cursor.as_ref()).await? else {
+            if cursor.take().is_some() {
+                // Catch a newly inserted parent with an older timestamp.
+                continue;
+            }
+            break;
+        };
+        let (duplicates, deleted) =
+            deduplicate_batch(connection, &parent, commit_each_chunk).await?;
         connection
-            .get_database_backend()
-            .build(&parents_oldest_first),
-    )
-    .all(connection)
-    .await?;
-    let total = parents.len();
-    for (index, parent) in parents.iter().enumerate() {
-        let (duplicates, deleted) = deduplicate_batch(connection, parent).await?;
+            .execute(
+                &Query::insert()
+                    .into_table(DeduplicationProgress::Table)
+                    .columns([DeduplicationProgress::ParentId])
+                    .values([parent.id.into()])
+                    .map_err(|error| DbErr::Migration(error.to_string()))?
+                    .to_owned(),
+            )
+            .await?;
+        completed += 1;
         tracing::debug!(
             parent_id = %parent.id,
-            current = index + 1,
-            total,
+            completed,
             duplicates,
             deleted,
             "Deduplicated holder batch claims"
         );
+        cursor = Some(parent);
     }
     Ok(())
+}
+
+async fn next_batch_parent(
+    connection: &impl ConnectionTrait,
+    cursor: Option<&BatchParent>,
+) -> Result<Option<BatchParent>, DbErr> {
+    let mut unprocessed = Query::select()
+        .columns([
+            (Credential::Table, Credential::Id),
+            (Credential::Table, Credential::CreatedDate),
+        ])
+        .from(Credential::Table)
+        .left_join(
+            DeduplicationProgress::Table,
+            Expr::col((Credential::Table, Credential::Id)).equals((
+                DeduplicationProgress::Table,
+                DeduplicationProgress::ParentId,
+            )),
+        )
+        .and_where(Expr::col((Credential::Table, Credential::Role)).eq("HOLDER"))
+        .and_where(Expr::col((Credential::Table, Credential::Type)).eq("BATCH_PARENT"))
+        .and_where(
+            Expr::col((
+                DeduplicationProgress::Table,
+                DeduplicationProgress::ParentId,
+            ))
+            .is_null(),
+        )
+        .order_by((Credential::Table, Credential::CreatedDate), Order::Asc)
+        .order_by((Credential::Table, Credential::Id), Order::Asc)
+        .limit(1)
+        .to_owned();
+    if let Some(cursor) = cursor {
+        unprocessed.cond_where(
+            Condition::any()
+                .add(
+                    Expr::col((Credential::Table, Credential::CreatedDate)).gt(cursor.created_date),
+                )
+                .add(
+                    Condition::all()
+                        .add(
+                            Expr::col((Credential::Table, Credential::CreatedDate))
+                                .eq(cursor.created_date),
+                        )
+                        .add(Expr::col((Credential::Table, Credential::Id)).gt(cursor.id)),
+                ),
+        );
+    }
+    BatchParent::find_by_statement(connection.get_database_backend().build(&unprocessed))
+        .one(connection)
+        .await
 }
 
 /// Include deleted, expired and consumed items: their claims and proofs still exist.
@@ -164,6 +240,7 @@ async fn load_batch_claims(
 async fn deduplicate_batch(
     connection: &impl ConnectionTrait,
     parent: &BatchParent,
+    commit_each_chunk: bool,
 ) -> Result<(usize, u64), DbErr> {
     let mut canonical = HashMap::new();
     let mut duplicates = Vec::new();
@@ -186,8 +263,20 @@ async fn deduplicate_batch(
     let mut deleted = 0;
     // Bound CASE expressions and bind counts, and avoid one round trip per claim.
     for replacements in duplicates.chunks(200) {
-        remap_batch_references(connection, parent, replacements).await?;
-        deleted += delete_unreferenced_claims(connection, replacements).await?;
+        if commit_each_chunk {
+            connection.execute_unprepared("START TRANSACTION").await?;
+        }
+        let result = async {
+            remap_batch_references(connection, parent, replacements).await?;
+            delete_unreferenced_claims(connection, replacements).await
+        }
+        .await;
+        if commit_each_chunk {
+            connection
+                .execute_unprepared(if result.is_ok() { "COMMIT" } else { "ROLLBACK" })
+                .await?;
+        }
+        deleted += result?;
     }
     Ok((duplicates.len(), deleted))
 }
@@ -283,4 +372,11 @@ enum Claim {
 enum ClaimReference {
     CredentialId,
     ClaimId,
+}
+
+#[derive(DeriveIden)]
+enum DeduplicationProgress {
+    #[sea_orm(iden = "holder_claim_deduplication_progress")]
+    Table,
+    ParentId,
 }
