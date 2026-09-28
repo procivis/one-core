@@ -1,6 +1,7 @@
 use std::cmp::Reverse;
 use std::sync::Arc;
 
+use coset::CoseKey;
 use itertools::Itertools;
 use secrecy::SecretSlice;
 use standardized_types::jwk::{JwkUse, PublicJwk};
@@ -47,6 +48,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
 
     fn parse_jwk(&self, key: &PublicJwk) -> Result<ParsedKey, KeyAlgorithmProviderError>;
     fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError>;
+    fn parse_cose(&self, cose_key: &CoseKey) -> Result<ParsedKey, KeyAlgorithmProviderError>;
 
     fn reconstruct_key(
         &self,
@@ -129,6 +131,22 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError> {
         for (_, algorithm) in self.directory.iter() {
             if let Ok(public_key) = algorithm.parse_multibase(multibase) {
+                return Ok(ParsedKey {
+                    algorithm_type: algorithm.algorithm_type(),
+                    key: public_key,
+                });
+            }
+        }
+
+        Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+            "None of the algorithms supports given key".to_string(),
+        ))
+    }
+
+    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
+    fn parse_cose(&self, cose_key: &CoseKey) -> Result<ParsedKey, KeyAlgorithmProviderError> {
+        for (_, algorithm) in self.directory.iter() {
+            if let Ok(public_key) = algorithm.parse_cose(cose_key) {
                 return Ok(ParsedKey {
                     algorithm_type: algorithm.algorithm_type(),
                     key: public_key,

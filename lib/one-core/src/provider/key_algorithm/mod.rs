@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use coset::CoseKey;
 use error::KeyAlgorithmError;
 use model::GeneratedKey;
 use proc_macros::provider_mock;
@@ -48,9 +49,11 @@ pub trait KeyAlgorithm: Provider + Send + Sync {
 
     /// parse public keys coming from an external source
     fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError>;
-    fn parse_private_jwk(&self, jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError>;
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError>;
     fn parse_der(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError>;
+    fn parse_cose(&self, cose_key: &CoseKey) -> Result<KeyHandle, KeyAlgorithmError>;
+
+    fn parse_private_jwk(&self, jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError>;
 }
 
 impl Display for dyn KeyAlgorithm {

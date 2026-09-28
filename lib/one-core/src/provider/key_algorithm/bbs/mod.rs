@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use coset::CoseKey;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use proc_macros::Provider;
@@ -121,6 +122,12 @@ impl KeyAlgorithm for BBS {
     fn parse_der(&self, _public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
         Err(KeyAlgorithmError::NotSupported(
             "raw BBS keys not supported".to_string(),
+        ))
+    }
+
+    fn parse_cose(&self, _cose_key: &CoseKey) -> Result<KeyHandle, KeyAlgorithmError> {
+        Err(KeyAlgorithmError::NotSupported(
+            "COSE BBS keys not supported".to_string(),
         ))
     }
 }

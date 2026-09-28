@@ -160,3 +160,41 @@ async fn test_parse_jwk_invalid_crv() {
     // then
     assert!(matches!(result, Err(KeyAlgorithmError::NotSupported(msg)) if msg == "crv P-512"));
 }
+
+#[test]
+fn test_parse_cose() {
+    // given
+    let cose_key = CoseKey {
+        kty: iana::KeyType::EC2.into(),
+        params: vec![
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::Crv.to_i64()),
+                ciborium::Value::from(iana::EllipticCurve::P_256 as u64),
+            ),
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::X.to_i64()),
+                ciborium::Value::Bytes(
+                    hex::decode("5A88D182BCE5F42EFA59943F33359D2E8A968FF289D93E5FA444B624343167FE")
+                        .unwrap(),
+                ),
+            ),
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::Y.to_i64()),
+                ciborium::Value::Bytes(
+                    hex::decode("B16E8CF858DDC7690407BA61D4C338237A8CFCF3DE6AA672FC60A557AA32FC67")
+                        .unwrap(),
+                ),
+            ),
+        ],
+        ..Default::default()
+    };
+
+    // when
+    let key_handle = Ecdsa.parse_cose(&cose_key).unwrap();
+
+    // then
+    assert_eq!(
+        key_handle.public_key_as_multibase().unwrap(),
+        "zDnaeokh7UgnA8VdiHDjK67m68a4yCw13txKjnz3KjdjipE13"
+    );
+}

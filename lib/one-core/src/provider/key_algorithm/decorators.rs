@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use coset::CoseKey;
 use secrecy::SecretSlice;
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk};
 
@@ -67,6 +68,10 @@ impl<T: Provider + KeyAlgorithm + Display + ?Sized> KeyAlgorithm for DisabledPro
     }
 
     fn parse_der(&self, _public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
+        self.disabled_error()
+    }
+
+    fn parse_cose(&self, _cose_key: &CoseKey) -> Result<KeyHandle, KeyAlgorithmError> {
         self.disabled_error()
     }
 }

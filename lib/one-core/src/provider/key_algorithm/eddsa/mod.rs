@@ -188,6 +188,43 @@ impl KeyAlgorithm for Eddsa {
             key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
         })
     }
+
+    fn parse_cose(&self, cose_key: &CoseKey) -> Result<KeyHandle, KeyAlgorithmError> {
+        if cose_key.kty != coset::KeyType::Assigned(iana::KeyType::OKP) {
+            return Err(KeyAlgorithmError::InvalidKeyType);
+        }
+
+        let crv: i128 = cose_key
+            .params
+            .iter()
+            .filter(|(label, _)| label == &coset::Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))
+            .find_map(|(_, value)| value.as_integer())
+            .ok_or(KeyAlgorithmError::MissingParameter("crv".to_string()))?
+            .into();
+
+        let x = cose_key
+            .params
+            .iter()
+            .filter(|(label, _)| label == &coset::Label::Int(iana::Ec2KeyParameter::X.to_i64()))
+            .find_map(|(_, value)| value.as_bytes())
+            .ok_or(KeyAlgorithmError::MissingParameter("x".to_string()))?
+            .to_vec();
+
+        Ok(if crv == iana::EllipticCurve::Ed25519.to_i64() as i128 {
+            let handle = Arc::new(
+                EddsaPublicKeyHandle::new(x, None).error_while("creating public key handle")?,
+            );
+            KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+            }
+        } else if crv == iana::EllipticCurve::X25519.to_i64() as i128 {
+            let handle = Arc::new(X25519PublicKeyHandle::new(x));
+            KeyHandle::KeyAgreementOnly(KeyAgreementHandle::PublicKeyOnly(handle))
+        } else {
+            return Err(KeyAlgorithmError::NotSupported(format!("crv: {crv}")));
+        })
+    }
 }
 
 struct EddsaPublicKeyHandle {

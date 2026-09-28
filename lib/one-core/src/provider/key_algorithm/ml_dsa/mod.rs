@@ -139,6 +139,12 @@ impl KeyAlgorithm for MlDsa {
             "parse DER not supported for ML-DSA".to_string(),
         ))
     }
+
+    fn parse_cose(&self, _cose_key: &CoseKey) -> Result<KeyHandle, KeyAlgorithmError> {
+        Err(KeyAlgorithmError::NotSupported(
+            "parse COSE not supported for ML-DSA".to_string(),
+        ))
+    }
 }
 
 struct MlDsaPublicKeyHandle {

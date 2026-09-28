@@ -234,3 +234,65 @@ async fn test_parse_jwk_invalid_crv() {
     // then
     assert!(matches!(result, Err(KeyAlgorithmError::NotSupported(msg)) if msg == "crv P-512"));
 }
+
+#[test]
+fn test_parse_cose_ed25519() {
+    // given
+    let cose_key = CoseKey {
+        kty: iana::KeyType::OKP.into(),
+        params: vec![
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::Crv.to_i64()),
+                ciborium::Value::from(iana::EllipticCurve::Ed25519 as u64),
+            ),
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::X.to_i64()),
+                ciborium::Value::Bytes(
+                    hex::decode("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
+                        .unwrap(),
+                ),
+            ),
+        ],
+        ..Default::default()
+    };
+
+    // when
+    let key_handle = Eddsa.parse_cose(&cose_key).unwrap();
+
+    // then
+    assert_eq!(
+        key_handle.public_key_as_multibase().unwrap(),
+        "z6MktwupdmLXVVqTzCw4i46r4uGyosGXRnR3XjN4Zq7oMMsw"
+    );
+}
+
+#[test]
+fn test_parse_cose_x25519() {
+    // given
+    let cose_key = CoseKey {
+        kty: iana::KeyType::OKP.into(),
+        params: vec![
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::Crv.to_i64()),
+                ciborium::Value::from(iana::EllipticCurve::X25519 as u64),
+            ),
+            (
+                coset::Label::Int(iana::Ec2KeyParameter::X.to_i64()),
+                ciborium::Value::Bytes(
+                    hex::decode("7bf2ab247345df19ed1d0335e23a3be189679f2af4b5fb27211bf4b0ea6c001c")
+                        .unwrap(),
+                ),
+            ),
+        ],
+        ..Default::default()
+    };
+
+    // when
+    let key_handle = Eddsa.parse_cose(&cose_key).unwrap();
+
+    // then
+    assert_eq!(
+        key_handle.public_key_as_multibase().unwrap(),
+        "z6LSk21vqjYr1tFcs55uEnympDnDEepCMXNdJ7PJYMGjGYbu"
+    );
+}

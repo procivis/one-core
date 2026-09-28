@@ -162,6 +162,48 @@ impl KeyAlgorithm for Ecdsa {
             key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
         })
     }
+
+    fn parse_cose(&self, cose_key: &CoseKey) -> Result<KeyHandle, KeyAlgorithmError> {
+        if cose_key.kty != coset::KeyType::Assigned(iana::KeyType::EC2) {
+            return Err(KeyAlgorithmError::InvalidKeyType);
+        }
+
+        let crv: i128 = cose_key
+            .params
+            .iter()
+            .filter(|(label, _)| label == &coset::Label::Int(iana::Ec2KeyParameter::Crv.to_i64()))
+            .find_map(|(_, value)| value.as_integer())
+            .ok_or(KeyAlgorithmError::MissingParameter("crv".to_string()))?
+            .into();
+
+        Ok(if crv == iana::EllipticCurve::P_256.to_i64() as i128 {
+            let x = cose_key
+                .params
+                .iter()
+                .filter(|(label, _)| label == &coset::Label::Int(iana::Ec2KeyParameter::X.to_i64()))
+                .find_map(|(_, value)| value.as_bytes())
+                .ok_or(KeyAlgorithmError::MissingParameter("x".to_string()))?
+                .to_vec();
+
+            let y = cose_key
+                .params
+                .iter()
+                .filter(|(label, _)| label == &coset::Label::Int(iana::Ec2KeyParameter::Y.to_i64()))
+                .find_map(|(_, value)| value.as_bytes())
+                .ok_or(KeyAlgorithmError::MissingParameter("y".to_string()))?
+                .to_vec();
+
+            let public_key = ECDSASigner::parse_public_key_coordinates(&x, &y, true)?;
+            let handle = Arc::new(EcdsaPublicKeyHandle::new(public_key, None));
+
+            KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(handle.clone()),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(handle),
+            }
+        } else {
+            return Err(KeyAlgorithmError::NotSupported(format!("crv: {crv}")));
+        })
+    }
 }
 
 pub(crate) struct EcdsaPublicKeyHandle {
