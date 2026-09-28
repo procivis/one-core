@@ -121,22 +121,9 @@ impl OpenID4VCIFinal1_0 {
             .await?;
         }
 
-        let main_credential = if credentials.len() > 1 {
-            let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
-                "No credentials received".to_string(),
-            ))?;
-            batch_item.batch_parent(interaction_data.refresh_token.is_some())
-        } else {
-            credentials.pop().ok_or(IssuanceProtocolError::Failed(
-                "No credentials received".to_string(),
-            ))?
-        };
-
-        let main_credential_id = main_credential.credential.id;
-
-        for item in &mut credentials {
-            self.change_to_batch_item(&mut item.credential, main_credential_id);
-        }
+        // Parent creation happens after all configurations have been issued, when the
+        // protocol knows both the offer capabilities and what the issuer returned.
+        let main_credential = credentials.remove(0);
 
         Ok(IssuanceAcceptResponse {
             credential_configuration_id: configuration.credential_configuration_id.to_owned(),

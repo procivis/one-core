@@ -2,8 +2,13 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use assert2::let_assert;
+use ct_codecs::{Base64, Decoder};
+use one_core::mapper::x509::pem_chain_into_x5c;
+use one_core::model::certificate::Certificate;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialFilterValue, CredentialStateEnum, CredentialType};
+use one_core::model::credential::{
+    CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
@@ -13,6 +18,8 @@ use one_core::model::list_filter::ListFilterValue;
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use shared_types::{DidValue, InteractionId};
 use similar_asserts::assert_eq;
@@ -29,6 +36,7 @@ use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifi
 use crate::utils::api_clients::dids::DidFilters;
 use crate::utils::api_clients::keys::KeyFilters;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
 use crate::utils::db_clients::interactions::TestingInteractionParams;
@@ -241,7 +249,9 @@ async fn test_issuance_accept_openid4vc() {
 #[derive(Default)]
 pub(super) struct MultiConfigurationOffer {
     pub(super) batch_size: Option<u32>,
+    pub(super) single_credential_response: bool,
     pub(super) refresh_token: bool,
+    pub(super) without_expiry: bool,
     pub(super) schema_overlap: bool,
     pub(super) fail_second: bool,
 }
@@ -368,15 +378,17 @@ pub(super) async fn accept_multi_configuration_offer(
         let notification_id = format!("notification-{index}");
         let response_notification_id = notification_id.clone();
         let batch_size = offer.batch_size.unwrap_or(1) as usize;
+        let single_credential_response = offer.single_credential_response;
+        let without_expiry = offer.without_expiry;
         request.respond_with(move |request: &Request| {
             let body: serde_json::Value = request.body_json().unwrap();
             let proofs = body["proofs"]["jwt"].as_array().unwrap();
             assert_eq!(proofs.len(), batch_size);
-            let credentials: Vec<_> = proofs.iter().map(|proof| {
+            let credentials: Vec<_> = proofs.iter().take(if single_credential_response { 1 } else { batch_size }).map(|proof| {
                 let proof = Jwt::<serde_json::Value>::decompose_token(proof.as_str().unwrap()).unwrap();
                 let kid = proof.header.key_id.unwrap();
                 let holder_did = kid.split('#').next().unwrap();
-                let credential = futures::executor::block_on(signed_jwt(
+                let mut credential = futures::executor::block_on(signed_jwt(
                     &issuer_key, "ES256", None, Some(issuer_did.to_string()), Some(holder_did.to_string()),
                     json!({"vc": {
                         "@context": ["https://www.w3.org/2018/credentials/v1"],
@@ -385,6 +397,19 @@ pub(super) async fn accept_multi_configuration_offer(
                         "credentialSubject": {"firstName": "John"}
                     }}), None,
                 ));
+                if without_expiry {
+                    use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
+
+                    let mut jwt = Jwt::<serde_json::Value>::decompose_token(&credential).unwrap();
+                    jwt.payload.expires_at = None;
+                    let unsigned = format!(
+                        "{}.{}",
+                        string_to_b64url_string(&serde_json::to_string(&jwt.header).unwrap()).unwrap(),
+                        string_to_b64url_string(&serde_json::to_string(&jwt.payload).unwrap()).unwrap(),
+                    );
+                    let signature = futures::executor::block_on(issuer_key.key.sign(unsigned.as_bytes())).unwrap();
+                    credential = format!("{unsigned}.{}", bin_to_b64url_string(&signature).unwrap());
+                }
                 json!({"credential": credential})
             }).collect();
             ResponseTemplate::new(200).set_body_json(json!({
@@ -477,6 +502,34 @@ async fn test_issuance_accept_batch_no_refresh_overlapping_schemas_creates_one_p
 }
 
 #[tokio::test]
+async fn test_issuance_accept_batch_without_expiry_creates_parent() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            batch_size: Some(2),
+            without_expiry: true,
+            ..Default::default()
+        },
+        CredentialType::BatchParent,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_advertised_batch_with_single_response_creates_parent() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            batch_size: Some(2),
+            single_credential_response: true,
+            ..Default::default()
+        },
+        CredentialType::BatchParent,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn test_issuance_accept_no_batch_with_refresh_distinct_schemas_creates_two_parents() {
     check_multi_configuration_issuance(
         MultiConfigurationOffer {
@@ -503,13 +556,197 @@ async fn test_issuance_accept_no_batch_with_refresh_overlapping_schemas_creates_
     .await;
 }
 
+#[tokio::test]
+async fn test_issuance_accept_no_expiry_with_refresh_distinct_schemas_creates_singles() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            refresh_token: true,
+            without_expiry: true,
+            ..Default::default()
+        },
+        CredentialType::Single,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_no_expiry_with_refresh_overlapping_schemas_creates_singles() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            refresh_token: true,
+            without_expiry: true,
+            schema_overlap: true,
+            ..Default::default()
+        },
+        CredentialType::Single,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
+    let (context, issuer_organisation, _, certificate, issuer_key) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let certificate_der =
+        Base64::decode_to_vec(&pem_chain_into_x5c(&certificate.chain).unwrap()[0], None).unwrap();
+    let issuer_certificate = Certificate {
+        id: Uuid::new_v4().into(),
+        identifier_id: Uuid::new_v4().into(),
+        fingerprint: hex::encode(SHA256.hash(&certificate_der).unwrap()),
+        ..certificate
+    };
+    let issuer_identifier = context
+        .db
+        .identifiers
+        .create(
+            &issuer_organisation,
+            TestingIdentifierParams {
+                id: Some(issuer_certificate.identifier_id),
+                r#type: Some(IdentifierType::Certificate),
+                certificates: Some(vec![issuer_certificate.clone()]),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .certificates
+        .create(
+            issuer_identifier.id,
+            issuer_organisation.clone(),
+            TestingCertificateParams::from(issuer_certificate).await,
+        )
+        .await;
+    let holder_organisation = context.db.organisations.create().await;
+    let schema_id = context
+        .db
+        .credential_schemas
+        .create_with_multiformat("multiformat", &issuer_organisation, None)
+        .await
+        .unwrap();
+    let schema = context.db.credential_schemas.get(&schema_id).await;
+    assert!(schema.batch_size.is_none());
+    assert!(schema.expiration.is_none());
+
+    let issuer_credential = context
+        .db
+        .credentials
+        .create(
+            &schema,
+            CredentialStateEnum::Created,
+            &issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                key: Some(issuer_key),
+                ..Default::default()
+            },
+        )
+        .await;
+    let share = context.api.credentials.share(&issuer_credential.id).await;
+    assert_eq!(share.status(), 201);
+    let offer_url = share.json_value().await["url"].as_str().unwrap().to_owned();
+    let invitation = context
+        .api
+        .interactions
+        .handle_invitation(holder_organisation.id, &offer_url)
+        .await;
+    assert_eq!(invitation.status(), 201);
+    let interaction_id: InteractionId = invitation.json_value().await["interactionId"].parse();
+
+    let acceptance = context
+        .api
+        .interactions
+        .issuance_accept(interaction_id, None, None, None, None)
+        .await;
+    assert_eq!(acceptance.status(), 200);
+    let accepted = acceptance.json_value().await;
+    assert_eq!(accepted["partiallySuccessful"], false);
+    let main_ids = accepted["credentialIds"].as_array().unwrap();
+    assert_eq!(main_ids.len(), 2);
+    let mut mains = Vec::new();
+    for id in main_ids {
+        mains.push(context.db.credentials.get(&id.parse()).await);
+    }
+    let mdoc_parent = mains
+        .iter()
+        .find(|credential| credential.r#type == CredentialType::BatchParent)
+        .unwrap();
+    let sd_jwt_vc = mains
+        .iter()
+        .find(|credential| credential.r#type == CredentialType::Single)
+        .unwrap();
+    assert_eq!(mdoc_parent.role, CredentialRole::Holder);
+    assert_eq!(sd_jwt_vc.role, CredentialRole::Holder);
+    assert_eq!(mdoc_parent.schema.id(), sd_jwt_vc.schema.id());
+
+    let mdoc_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(mdoc_parent.id).condition())
+        .await;
+    assert_eq!(mdoc_items.len(), 1);
+    assert_eq!(mdoc_items[0].r#type, CredentialType::BatchItem);
+    assert_eq!(
+        mdoc_items[0]
+            .format
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .format
+            .to_string(),
+        "MDOC"
+    );
+    assert!(mdoc_items[0].expires_at.is_some());
+    assert!(mdoc_parent.expires_at.is_none());
+    assert!(mdoc_parent.format.is_none());
+
+    assert_eq!(
+        sd_jwt_vc
+            .format
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .format
+            .to_string(),
+        "SD_JWT_VC"
+    );
+    assert!(sd_jwt_vc.expires_at.is_none());
+    assert!(sd_jwt_vc.parent.is_none());
+    assert!(
+        context
+            .db
+            .credentials
+            .list(CredentialFilterValue::ParentCredential(sd_jwt_vc.id).condition())
+            .await
+            .is_empty()
+    );
+
+    let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
+    let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    assert!(data["batch_size"].is_null());
+    assert!(!data["refresh_token"].is_null());
+}
+
 async fn check_multi_configuration_issuance(
     offer: MultiConfigurationOffer,
     expected_type: CredentialType,
     expected_main_count: usize,
 ) {
-    let items_per_configuration = offer.batch_size.unwrap_or(1) as usize;
+    let items_per_configuration = if offer.single_credential_response {
+        1
+    } else {
+        offer.batch_size.unwrap_or(1) as usize
+    };
+    let advertised_batch = offer.batch_size.is_some();
     let refreshable = offer.refresh_token;
+    let without_expiry = offer.without_expiry;
     let schema_overlap = offer.schema_overlap;
     let AcceptedMultiConfigurationOffer {
         context,
@@ -542,7 +779,7 @@ async fn check_multi_configuration_issuance(
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
     assert_eq!(!data["refresh_token"].is_null(), refreshable);
-    assert_eq!(data["batch_size"].is_null(), items_per_configuration == 1);
+    assert_eq!(data["batch_size"].is_null(), !advertised_batch);
     let configurations = data["credential_configurations"].as_array().unwrap();
     assert_eq!(configurations.len(), 2);
 
@@ -562,12 +799,13 @@ async fn check_multi_configuration_issuance(
             assert!(items.is_empty());
             assert!(main.format.is_some());
             assert!(main.credential_blob_id.is_some());
+            assert_eq!(main.expires_at.is_none(), without_expiry);
         } else {
             assert!(main.format.is_none());
             assert!(main.credential_blob_id.is_none());
             assert!(main.embedded_disclosure_policy.is_none());
             assert!(main.claims.as_ref().await.unwrap().is_empty());
-            assert_eq!(main.expires_at.is_none(), refreshable);
+            assert_eq!(main.expires_at.is_none(), refreshable || without_expiry);
             assert_eq!(
                 items.len(),
                 items_per_configuration * if schema_overlap { 2 } else { 1 }

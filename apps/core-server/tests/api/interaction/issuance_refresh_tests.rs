@@ -134,7 +134,7 @@ async fn test_issuance_refresh_does_not_retry_configuration_refused_on_accept() 
 
 #[tokio::test]
 async fn test_issuance_refresh_without_advertised_batch_support() {
-    // Each configuration issues one item. The refresh token makes their shared schema a batch.
+    // Each expiring configuration issues one item and shares a refreshable parent.
     check_issuance_refresh(RefreshOffer::default()).await;
 }
 
@@ -330,6 +330,24 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         .await;
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+    if offer.fixed_identifier_expiry == Some(false) {
+        let ids = resp["credentialIds"].as_array().unwrap();
+        assert_eq!(ids.len(), 2);
+        for id in ids {
+            let credential = context.db.credentials.get(&id.parse()).await;
+            assert_eq!(credential.r#type, CredentialType::Single);
+            assert!(credential.expires_at.is_none());
+            assert!(credential.parent.is_none());
+        }
+        let response = context
+            .api
+            .interactions
+            .issuance_refresh(interaction.id)
+            .await;
+        assert_eq!(response.status(), 400);
+        assert_eq!(response.json_value().await["code"], "BR_0238");
+        return;
+    }
     let parents = resp["credentialIds"].as_array().unwrap();
     assert_eq!(parents.len(), 1);
     let first_parent: CredentialId = parents[0].parse();
