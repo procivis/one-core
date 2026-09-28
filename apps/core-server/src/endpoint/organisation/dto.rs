@@ -44,11 +44,15 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     /// Specify which configured wallet provider this organization will use
     /// to issue attestations to wallet units, and the identifier used to
     /// sign them. Sending `null` clears the wallet provider association.
+    // three-state field (omitted / null / value): must stay nullable in the schema so generated
+    // clients can express the explicit `null`; `options_not_nullable` skips fields with `schema`
+    #[schema(nullable = true)]
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub wallet_provider: Option<Option<UpsertProviderRequestRestDTO>>,
     /// Specify which configured verifier provider this organization will
     /// use, and the identifier used to authenticate to it. Sending `null`
     /// clears the verifier provider association.
+    #[schema(nullable = true)]
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub verifier_provider: Option<Option<UpsertProviderRequestRestDTO>>,
     /// Policy-level configuration for this organization.
@@ -56,11 +60,16 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     /// The trust collections this organization's wallet subscribes to,
     /// selected from those made available by the Wallet Provider. Omit to
     /// leave the current selection unchanged.
+    // nullable so generated clients omit the list unless it is set explicitly: an empty list
+    // replaces the current selection, `null` is equivalent to omitting the field
+    #[schema(nullable = true)]
     #[deprecated = "use configuration.selectedEcosystems instead"]
     pub trust_collections: Option<Vec<TrustCollectionId>>,
     /// Optionally assign a parent organization to share policy-level
     /// configuration, such as trust collections, across a one-level hierarchy.
     /// The provided organization must not have a parent organization.
+    /// Sending `null` removes the parent organization.
+    #[schema(nullable = true)]
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub parent_organisation: Option<Option<OrganisationId>>,
 }
@@ -82,6 +91,9 @@ pub(crate) struct UpsertProviderRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct UpsertOrganisationConfigurationRestDTO {
     /// The ecosystems this organization participates in.
+    // nullable so generated clients omit the list unless it is set explicitly: an empty list
+    // replaces the current selection, `null` is equivalent to omitting the field
+    #[schema(nullable = true)]
     #[modify_schema(field = ecosystem)]
     pub selected_ecosystems: Option<Vec<String>>,
     /// When true, the verifier will only validate presentations of
