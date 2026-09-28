@@ -12,7 +12,9 @@ use super::dto::{
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -61,7 +63,7 @@ pub(crate) async fn post_proof_schema(
     permissions = [Permission::ProofSchemaList],
     get,
     path = "/api/proof-schema/v1",
-    responses(OkOrErrorResponse<GetProofSchemaListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetProofSchemaListResponseRestDTO>),
     params(GetProofSchemaQuery),
     tag = "proof_schema_management",
     security(

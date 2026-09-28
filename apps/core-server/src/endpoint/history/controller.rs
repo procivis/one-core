@@ -11,7 +11,7 @@ use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
 use crate::dto::common::{Boolean, EntityResponseRestDTO, GetHistoryListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::history::dto::CreateHistoryRequestRestDTO;
 use crate::extractor::Qs;
 use crate::middleware::Authorized;
@@ -23,7 +23,7 @@ use crate::session::CoreServerSessionProvider;
     permissions = [Permission::HistoryList, Permission::SystemHistoryList],
     get,
     path = "/api/history/v1",
-    responses(OkOrErrorResponse<GetHistoryListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetHistoryListResponseRestDTO>),
     params(GetHistoryQuery),
     tag = "history_management",
     security(

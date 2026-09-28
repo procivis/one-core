@@ -11,7 +11,9 @@ use super::dto::{
 };
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -59,7 +61,7 @@ pub(crate) async fn get_did(
     permissions = [Permission::DidList],
     get,
     path = "/api/did/v1",
-    responses(OkOrErrorResponse<GetDidsResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetDidsResponseRestDTO>),
     params(
         GetDidQuery
     ),

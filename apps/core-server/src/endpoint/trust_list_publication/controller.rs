@@ -14,7 +14,9 @@ use super::dto::{
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -99,7 +101,7 @@ pub(crate) async fn get_trust_list_publication(
     permissions = [Permission::TrustListPublicationList],
     get,
     path = "/api/trust-list/v1",
-    responses(OkOrErrorResponse<GetTrustListPublicationListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetTrustListPublicationListResponseRestDTO>),
     params(ListTrustListPublicationsEntitiesQuery),
     tag = "trust_list_publication_management",
     security(
@@ -300,7 +302,7 @@ pub(crate) async fn delete_trust_entry(
     permissions = [Permission::TrustEntryPublicationDetail],
     get,
     path = "/api/trust-list/v1/{id}/entry",
-    responses(OkOrErrorResponse<GetTrustEntryListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetTrustEntryListResponseRestDTO>),
     params(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id"),
         ListTrustEntryEntitiesQuery

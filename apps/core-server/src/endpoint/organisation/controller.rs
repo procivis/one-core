@@ -16,7 +16,8 @@ use super::dto::{
 use crate::dto::common::GetOrganisationListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    VecResponse,
 };
 use crate::endpoint::organisation::mapper::upsert_request_from_request;
 use crate::extractor::Qs;
@@ -49,7 +50,7 @@ pub(crate) async fn get_organisation(
     permissions = [Permission::StsOrganisationList],
     get,
     path = "/api/organisation/v1",
-    responses(OkOrErrorResponse<GetOrganisationListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetOrganisationListResponseRestDTO>),
     params(GetOrganisationsQuery),
     tag = "organisation_management",
     security(

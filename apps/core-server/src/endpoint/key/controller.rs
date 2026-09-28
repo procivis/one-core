@@ -10,7 +10,7 @@ use shared_types::{KeyId, Permission};
 use super::dto::GetKeyQuery;
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::key::dto::{
     KeyGenerateCSRRequestRestDTO, KeyGenerateCSRResponseRestDTO, KeyListItemResponseRestDTO,
     KeyRequestRestDTO, KeyResponseRestDTO,
@@ -99,7 +99,7 @@ pub(crate) async fn post_key(
     permissions = [Permission::KeyList],
     get,
     path = "/api/key/v1",
-    responses(OkOrErrorResponse<GetKeyListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetKeyListResponseRestDTO>),
     params(GetKeyQuery),
     tag = "key",
     security(

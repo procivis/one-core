@@ -14,7 +14,9 @@ use super::dto::{
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -90,7 +92,7 @@ pub(crate) async fn get_trust_collection(
     permissions = [Permission::TrustCollectionList],
     get,
     path = "/api/trust-collection/v1",
-    responses(OkOrErrorResponse<GetTrustCollectionListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetTrustCollectionListResponseRestDTO>),
     params(ListTrustCollectionEntitiesQuery),
     tag = "trust_collection_management",
     security(
@@ -222,7 +224,7 @@ pub(crate) async fn delete_trust_list_subscription(
     permissions = [Permission::TrustCollectionDetail],
     get,
     path = "/api/trust-collection/v1/{trustCollectionId}/trust-list",
-    responses(OkOrErrorResponse<GetTrustListSubscriptionListResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetTrustListSubscriptionListResponseRestDTO>),
     params(
         ("trustCollectionId" = TrustCollectionId, Path, description = "Trust collection id"),
         ListTrustListSubscriptionsEntitiesQuery

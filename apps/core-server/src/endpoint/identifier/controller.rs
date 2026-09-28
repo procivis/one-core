@@ -14,7 +14,9 @@ use super::dto::{
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+};
 use crate::endpoint::identifier::dto::CreateRemoteIdentifierRequestRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -203,7 +205,7 @@ pub(crate) async fn get_identifier_list(
     post,
     path = "/api/identifier/v1/resolve-trust-entries",
     request_body = ResolveTrustEntriesRequestRestDTO,
-    responses(OkOrErrorResponse<Vec<ResolvedTrustEntriesResponseRestDTO>>),
+    responses(InlineOkOrErrorResponse<Vec<ResolvedTrustEntriesResponseRestDTO>>),
     tag = "identifier_management",
     security(
         ("bearer" = [])

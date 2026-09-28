@@ -15,7 +15,9 @@ use crate::dto::common::{
     EntityResponseRestDTO, GetCredentialSchemasResponseDTO, GetCredentialSchemasV2ResponseDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+};
 use crate::endpoint::credential_schema::dto::{
     CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaV2RequestRestDTO,
 };
@@ -80,7 +82,7 @@ pub(crate) async fn get_credential_schema(
     permissions = [Permission::CredentialSchemaList],
     get,
     path = "/api/credential-schema/v1",
-    responses(OkOrErrorResponse<GetCredentialSchemasResponseDTO>),
+    responses(InlineOkOrErrorResponse<GetCredentialSchemasResponseDTO>),
     params(GetCredentialSchemaQuery),
     tag = "credential_schema_management",
     security(
@@ -111,7 +113,7 @@ pub(crate) async fn get_credential_schema_list(
     permissions = [Permission::CredentialSchemaList],
     get,
     path = "/api/credential-schema/v2",
-    responses(OkOrErrorResponse<GetCredentialSchemasV2ResponseDTO>),
+    responses(InlineOkOrErrorResponse<GetCredentialSchemasV2ResponseDTO>),
     params(GetCredentialSchemaV2Query),
     tag = "credential_schema_management",
     security(

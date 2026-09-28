@@ -16,8 +16,8 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
-    ReferencedOkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, InlineOkOrErrorResponse,
+    OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -160,7 +160,7 @@ pub(crate) async fn delete_proof(
     permissions = [Permission::ProofList],
     get,
     path = "/api/proof-request/v1",
-    responses(OkOrErrorResponse<GetProofsResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetProofsResponseRestDTO>),
     params(GetProofQuery),
     tag = "proof_management",
     security(
@@ -300,7 +300,7 @@ pub(crate) async fn delete_proof_claims(
     permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{id}/trust-detail",
-    responses(ReferencedOkOrErrorResponse<ProofTrustInformationDetailResponseRestDTO>),
+    responses(OkOrErrorResponse<ProofTrustInformationDetailResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),

@@ -16,7 +16,7 @@ use crate::dto::common::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
-use crate::dto::response::OkOrErrorResponse;
+use crate::dto::response::{InlineOkOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::statistics::mapper::{
     map_to_issuer_stats_queries, map_to_system_interaction_stats_queries,
     map_to_system_management_stats_queries, map_to_verifier_stats_queries,
@@ -63,7 +63,7 @@ pub(crate) async fn organisation_statistics(
     get,
     path = "/api/statistics/v1/dashboard/issuer",
     params(GetIssuerSchemaStatsQueryRest),
-    responses(OkOrErrorResponse<GetIssuerStatsResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetIssuerStatsResponseRestDTO>),
     tag = "statistics",
     security(
         ("bearer" = [])
@@ -101,7 +101,7 @@ pub(crate) async fn issuer_statistics(
     get,
     path = "/api/statistics/v1/dashboard/verifier",
     params(GetVerifierSchemaStatsQueryRest),
-    responses(OkOrErrorResponse<GetVerifierStatsResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetVerifierStatsResponseRestDTO>),
     tag = "statistics",
     security(
         ("bearer" = [])
@@ -168,7 +168,7 @@ pub(crate) async fn system_statistics(
     get,
     path = "/api/statistics/v1/dashboard/system/interaction",
     params(GetSystemInteractionStatsQueryRest),
-    responses(OkOrErrorResponse<GetSystemInteractionStatsResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetSystemInteractionStatsResponseRestDTO>),
     tag = "statistics",
     security(
         ("bearer" = [])
@@ -204,7 +204,7 @@ pub(crate) async fn system_interaction_statistics(
     get,
     path = "/api/statistics/v1/dashboard/system/management",
     params(GetSystemManagementStatsQueryRest),
-    responses(OkOrErrorResponse<GetSystemManagementStatsResponseRestDTO>),
+    responses(InlineOkOrErrorResponse<GetSystemManagementStatsResponseRestDTO>),
     tag = "statistics",
     security(
         ("bearer" = [])
